@@ -370,7 +370,7 @@ Note them in the Summary → Open Threads section of the discussion file. Commit
 
 ## I. In-Flight Agent Check
 
-The last gate before conclusion, whichever path led here. Run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}` and read the response's `in_flight` list (agents dispatched but not yet returned). An agent dispatched by an earlier session cannot still be running — each row's `created` timestamp tells you which those are; close each (`agent incorporate`), re-scan, and count only this session's.
+The last gate before conclusion, whichever path led here. Run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}` and read the response's `in_flight` list (agents dispatched but not yet returned). An agent dispatched by an earlier session cannot still be running — each row's `created` timestamp tells you which those are; close each (`agent incorporate`), re-scan, and count only this session's. A dead `synthesis` row is the exception: handle it per **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)** — closed *and* re-dispatched, so the council's tensions aren't lost.
 
 #### If no agents are in flight
 

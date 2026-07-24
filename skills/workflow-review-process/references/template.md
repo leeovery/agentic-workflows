@@ -22,7 +22,7 @@
 
 ### Plan Completion
 - [ ] Phase N acceptance criteria met
-- [ ] All tasks completed
+- [ ] All tasks completed or deliberately discarded (list any skipped/cancelled tasks here — discards are disclosed, never silent)
 - [ ] No scope creep
 
 ### Code Quality

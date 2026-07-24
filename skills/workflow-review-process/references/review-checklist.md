@@ -70,7 +70,7 @@ After task-level verification, check overall plan completion:
 
 For each phase:
 - Are all phase-level acceptance criteria met?
-- Were all tasks in the phase completed?
+- Were all tasks in the phase completed? (Tasks the backend marks skipped or cancelled are deliberate discards — they don't count against completion)
 
 ### Scope
 

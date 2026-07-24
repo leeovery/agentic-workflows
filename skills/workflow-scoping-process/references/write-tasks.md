@@ -61,10 +61,10 @@ Load the chosen format's **[authoring.md](../../workflow-planning-process/refere
 
 ## C. Register Plan in Manifest
 
-Commit the specification first — the baseline hash must name a commit that contains it:
+Commit the scoping work on disk first — the baseline hash must name a commit that contains the specification:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): specification"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): specification baseline"
 ```
 
 Capture the resulting commit hash: `git rev-parse HEAD`
@@ -96,7 +96,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit
 Commit all scoping artifacts — `--plan` stages the work unit, the project manifest, and the plan's declared storage in one scoped call:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): specification and plan" --plan {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): register plan" --plan {topic}
 ```
 
 → Return to caller.

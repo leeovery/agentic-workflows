@@ -6,7 +6,7 @@
 
 Follow stages A through H sequentially for each task. Do not abbreviate, skip, or compress stages based on previous iterations.
 
-At loop entry (crash-resume healing): if the plan marks tasks done that the manifest's `completed_tasks` lacks, run `engine task complete` for each missing internal id before retrieving the next task — the push is an idempotent no-op for ids already recorded, and this reseals the seam a crash between the plan mark and the bookkeeping can leave.
+At loop entry (crash-resume healing): if the plan marks tasks completed — completed, not skipped — that the manifest's `completed_tasks` lacks, run `engine task complete` for each missing internal id before retrieving the next task — the push is an idempotent no-op for ids already recorded, and this reseals the seam a crash between the plan mark and the bookkeeping can leave.
 
 ```
 A. Retrieve next task + mark in-progress
@@ -343,6 +343,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
 The response also carries the `MENU: blocked tasks` section that **A. Retrieve Next Task** emits — never emit it here.
 
 **Internal ID convention**: The internal ID used with the engine and in commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If only the format adapter's external ID is at hand, pass `--external {external_id}` in place of `{internal_id}` — the engine resolves it through the plan's task map and reports the internal id in its response.
+
+**If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`).
 
 **Commit all changes** with raw git — stage the task's code and tests, the plan's `storage_paths` (recorded on the planning item), the work unit's manifest, and the task's fix-tracking file when one exists (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`), then commit:
 

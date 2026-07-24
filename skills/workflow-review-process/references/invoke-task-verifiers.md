@@ -30,7 +30,7 @@ Read the work type:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-Using the format reading adapter loaded in Step 2, extract every task across all phases from each plan in scope:
+Using the format reading adapter loaded in Step 2, extract every task across all phases from each plan in scope — excluding tasks the backend marks skipped or cancelled (deliberately discarded work is not reviewed; note the excluded ids — they are recorded as covered after the verifiers run, and the report discloses them):
 - Note each task's description
 - Note each task's acceptance criteria — quick-fix tasks carry a **Verification** section instead of acceptance criteria; note that
 - Note expected micro acceptance (test name) — absent for quick-fix tasks
@@ -112,7 +112,7 @@ Full findings are written to `.workflows/{work_unit}/review/{topic}/report-{phas
 
 ## F. Update Reviewed Tasks
 
-After all verifiers complete, read `reviewed_tasks` once and push each verified task's internal ID that is not already recorded — `push` appends unconditionally, so a crash-resume re-run must not double-record:
+After all verifiers complete, read `reviewed_tasks` once and push each verified task's internal ID that is not already recorded — `push` appends unconditionally, so a crash-resume re-run must not double-record. Push the ids excluded as skipped/cancelled at extraction too (excluded-by-design is covered — without this, the resume gate counts them unreviewed forever):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks

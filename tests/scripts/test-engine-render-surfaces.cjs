@@ -168,6 +168,18 @@ describe('render resume-gate variants', () => {
     assert.ok(out.includes('- **`r`/`restart`** — Delete review, re-review all 3 tasks'));
   });
 
+  it('review coverage tolerates reviewed ids outside completed_tasks — restart-skips count as covered', () => {
+    // The verifier flow records backend-skipped/cancelled ids as covered even
+    // when they never entered completed_tasks (restart-skips). The negative
+    // difference must fall through to all-reviewed, never a phantom count.
+    writeManifest(dir, 'pay', { phases: {
+      implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b'] } } },
+      review: { items: { portal: { status: 'in-progress', reviewed_tasks: ['a', 'b', 'restart-skipped-1'] } } },
+    } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
+    assert.ok(out.includes('All 2 tasks have been reviewed.'), 'excluded-by-design ids never surface as unreviewed');
+  });
+
   it('review coverage counts distinct ids — duplicate pushes never inflate it', () => {
     writeManifest(dir, 'pay', { phases: {
       implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b', 'c'] } } },
