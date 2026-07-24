@@ -511,6 +511,21 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.discussion`, 'analysis_cache.checksum', 'abc123']);
     sim.run(['manifest', 'set', `${wu}.discussion`, 'analysis_cache.generated', '2026-07-23']);
 
+    // Staging, candidate, and tracking state walks the manifest with
+    // validated vocabularies at every step.
+    sim.run(['manifest', 'set', `${wu}.specification.unified`, 'tracking.review-input-tracking-c1', 'in-progress']);
+    sim.run(['manifest', 'set', `${wu}.specification.unified`, 'tracking.review-input-tracking-c1', 'complete']);
+    sim.refuses(['manifest', 'set', `${wu}.specification.unified`, 'tracking.review-input-tracking-c1', 'done'], /Invalid tracking status/);
+    sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
+    sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.1', 'approved']);
+    sim.refuses(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.2', 'later'], /Invalid staging task status/);
+    sim.run(['manifest', 'set', `${wu}.discovery`,
+      'analysis_staging.research-analysis.gate_mode=gated',
+      'analysis_staging.research-analysis.candidates.gamma-prime.status=pending',
+      'analysis_staging.research-analysis.candidates.gamma-prime.fanout_offer=pending']);
+    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.research-analysis.candidates.gamma-prime.status', 'approved']);
+    sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.research-analysis']);
+
     // Bridge continuation surfaces render at every state.
     sim.render(['phase-completed', wu, '--phase', 'specification'], { expect: 'content' });
     sim.render(['epic-all-done-gate', wu], { expect: 'content' });

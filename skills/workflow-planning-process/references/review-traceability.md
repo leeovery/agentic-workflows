@@ -61,18 +61,10 @@ Is everything in the plan actually from the specification? This is the anti-hall
 
 After completing the analysis, create a tracking file at `.workflows/{work_unit}/planning/{topic}/review-traceability-tracking-c{N}.md` (where N is the current review cycle).
 
-Tracking files are **never deleted**. After all findings are processed, the orchestrator marks `status: complete`. Previous cycles' files persist as review history.
+Tracking files are **never deleted** — pure markdown, no frontmatter; previous cycles' files persist as review history. The orchestrator records each file's gate state in the manifest (`tracking.{file stem}`: `in-progress` at dispatch, `complete` when all findings are processed).
 
 **Format**:
 ```markdown
----
-status: in-progress
-created: YYYY-MM-DD  # Use today's actual date
-cycle: {N}
-phase: Traceability Review
-topic: {Topic Name}
----
-
 # Review Tracking: {Topic Name} - Traceability
 
 ## Findings

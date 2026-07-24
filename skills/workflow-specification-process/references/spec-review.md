@@ -112,7 +112,7 @@ Dispatch the `workflow-specification-review-input` agent via the Task tool:
 
 Record its STATUS as `phase_1_status`.
 
-**If the agent created a tracking file**, commit it:
+**If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): input review cycle {N}"
@@ -139,7 +139,7 @@ Dispatch the `workflow-specification-review-gap-analysis` agent via the Task too
 
 Record its STATUS as `phase_2_status`.
 
-**If the agent created a tracking file**, commit it:
+**If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): gap analysis cycle {N}"
@@ -227,11 +227,11 @@ Run another review cycle?
 
 ## F. Completion
 
-1. **Verify tracking files are marked complete** — All input review and gap analysis tracking files across all cycles must have `status: complete`.
+1. **Verify tracking is complete** — read `manifest get {work_unit}.specification.{topic} tracking`; every entry across all cycles must be `complete`.
 
-> **CHECKPOINT**: Do not confirm completion if any tracking files still show `status: in-progress`. They indicate incomplete review work.
+> **CHECKPOINT**: Do not confirm completion if the manifest's `tracking` subtree still holds an `in-progress` entry. It indicates incomplete review work.
 
-If any tracking file still shows `status: in-progress`, its findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify.
+If any entry is `in-progress`, that file's findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify.
 
 2. **Commit** all review tracking files:
 

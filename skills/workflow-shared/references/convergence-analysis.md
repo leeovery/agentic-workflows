@@ -55,8 +55,8 @@ Read analysis reports and task staging files for all available cycles:
 ```
 
 For each cycle, extract:
-- From report frontmatter: `total_findings`, `deduplicated_findings`, `proposed_tasks`
-- From staging file: each task's title, severity, sources, and status (approved/skipped)
+- From the report's **Stats** section: total findings, deduplicated findings, proposed tasks
+- From the staging file: each task's title, severity, and sources; its approved/skipped outcome from the manifest's `staging.c{N}.tasks` (`manifest get {work_unit}.implementation.{topic} staging`)
 
 → Proceed to **B. Classify Findings**.
 

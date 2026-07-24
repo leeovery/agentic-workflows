@@ -470,6 +470,45 @@ describe('engine manifest set — two grammars, never mixed', () => {
   });
 });
 
+describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
+  let dir;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'staging-guard-'));
+    writeWorkUnit(dir, 'pay', 'epic', { phases: {
+      review: { items: { pay: { status: 'in-progress' } } },
+      implementation: { items: { pay: { status: 'in-progress' } } },
+      planning: { items: { pay: { status: 'in-progress' } } },
+      discovery: { items: {} },
+    } });
+  });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  it('staging task decisions take only the gate vocabulary', () => {
+    runJson(dir, ['set', 'pay.review.pay', 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
+    runJson(dir, ['set', 'pay.review.pay', 'staging.c1.tasks.1', 'approved']);
+    assert.match(runFails(dir, ['set', 'pay.review.pay', 'staging.c1.tasks.2', 'done']).error, /Invalid staging task status/);
+    assert.match(runFails(dir, ['set', 'pay.implementation.pay', 'staging.c2.tasks.1', 'yes']).error, /Invalid staging task status/);
+  });
+
+  it('candidate gate state takes only its vocabularies', () => {
+    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.research-analysis.gate_mode=gated',
+      'analysis_staging.research-analysis.candidates.auth.status=pending',
+      'analysis_staging.research-analysis.candidates.auth.fanout_offer=pending']);
+    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.research-analysis.candidates.auth.status', 'resolved']);
+    assert.match(runFails(dir, ['set', 'pay.discovery', 'analysis_staging.research-analysis.candidates.auth.status', 'maybe']).error,
+      /Invalid candidate status/);
+    assert.match(runFails(dir, ['set', 'pay.discovery', 'analysis_staging.research-analysis.candidates.auth.fanout_offer', 'no']).error,
+      /Invalid fanout_offer/);
+  });
+
+  it('tracking flips take only in-progress|complete', () => {
+    runJson(dir, ['set', 'pay.planning.pay', 'tracking.review-traceability-tracking-c1', 'in-progress']);
+    runJson(dir, ['set', 'pay.planning.pay', 'tracking.review-traceability-tracking-c1', 'complete']);
+    assert.match(runFails(dir, ['set', 'pay.planning.pay', 'tracking.review-integrity-tracking-c1', 'done']).error,
+      /Invalid tracking status/);
+  });
+});
+
 describe('work-unit-level fields never shadow the phases tree', () => {
   let dir;
   beforeEach(() => {
