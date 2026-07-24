@@ -16,11 +16,11 @@ You receive via the orchestrator's prompt:
 1. **Work unit** — the work unit name (for path construction)
 2. **Topic name** — the implementation topic (used to scope tasks to the correct plan)
 3. **Staging file path** — path to the staging file (task content only — decisions live in the orchestrator's store)
-4. **Approved task numbers** — the `## Task {n}` numbers to create; every other task was skipped
-5. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
-6. **Plan format reading adapter path** — how to read tasks from the plan (for determining next phase number)
-7. **Plan format authoring adapter path** — how to create tasks in the plan
-8. **Phase label** — the label for the new phase (e.g., "Analysis (Cycle 1)", "Review Remediation (Cycle 1)")
+4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
+5. **Plan format reading adapter path** — how to read tasks from the plan (for determining next phase number)
+6. **Plan format authoring adapter path** — how to create tasks in the plan
+7. **Phase label** — the label for the new phase (e.g., "Analysis (Cycle 1)", "Review Remediation (Cycle 1)")
+8. **Approved task numbers** — the `## Task {n}` numbers to create; every other task was skipped
 
 ## Your Process
 

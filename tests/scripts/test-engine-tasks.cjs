@@ -369,6 +369,19 @@ describe('engine task complete', () => {
     assert.strictEqual(implItem(dir).fix_attempts, 0);
   });
 
+  it('completing an id that is not current_task preserves the in-flight task\'s fix counter', () => {
+    const m = readManifest(dir);
+    m.phases.implementation.items['auth-flow'].fix_attempts = 2;
+    m.phases.implementation.items['auth-flow'].current_task = 'auth-flow-1-2';
+    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+
+    engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--skipped']);
+    const item = implItem(dir);
+    assert.deepStrictEqual(item.completed_tasks, ['auth-flow-1-1']);
+    assert.strictEqual(item.fix_attempts, 2, 'an out-of-band completion never zeroes a live fix loop');
+    assert.strictEqual(item.current_task, 'auth-flow-1-2');
+  });
+
   it('--next-task ~ clears current_task to null', () => {
     const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--next-task', '~']);
     assert.deepStrictEqual(res.recorded, { completed_task: 'auth-flow-1-1', current_task: null });

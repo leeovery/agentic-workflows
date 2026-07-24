@@ -301,18 +301,26 @@ function validateSet(segments, value, fieldSegments = segments) {
 // A work-unit-level field whose first segment names a phase builds a shadow
 // tree beside `phases.*` that no read ever joins — a typo'd dot-path
 // (`set wu specification.x` for `set wu.specification.topic x`) must fail
-// loudly, not land silently. Mutations only (set, push, pull, apply set-ops);
-// reads and delete stay free so a stray tree can still be inspected and
-// repaired.
-/** @param {string|null} phase @param {string[]} fieldSegments */
-function refuseShadowField(phase, fieldSegments) {
-  if (phase !== null) return;
+// loudly, not land silently. The same rule refuses the non-canonical
+// spellings of real tree locations (`phases.…` at work-unit level, `items.…`
+// at phase level): they resolve, but field-relative vocabulary validation
+// can't see them, so a validated write would become a silent unvalidated
+// one. Mutations only (set, push, pull, apply set-ops); reads and delete
+// stay free so a stray tree can still be inspected and repaired.
+/** @param {string|null} phase @param {string|null} topic @param {string[]} fieldSegments */
+function refuseShadowField(phase, topic, fieldSegments) {
   const head = fieldSegments[0];
-  if (head === 'phases' && fieldSegments.length === 1) {
-    fail('"phases" is the phase tree itself — address it as <work-unit>.<phase>[.<topic>], never as a wholesale field');
+  if (phase === null) {
+    if (head === 'phases') {
+      fail('"phases" is the phase tree itself — address it as <work-unit>.<phase>[.<topic>] <field>, never through a phases.-prefixed field');
+    }
+    if (VALID_PHASES.includes(head)) {
+      fail(`Invalid field "${fieldSegments.join('.')}" at work-unit level: "${head}" is a phase — use the dot-path (<work-unit>.${head}[.<topic>] <field>) so the write lands under phases with validation`);
+    }
+    return;
   }
-  if (VALID_PHASES.includes(head)) {
-    fail(`Invalid field "${fieldSegments.join('.')}" at work-unit level: "${head}" is a phase — use the dot-path (<work-unit>.${head}[.<topic>] <field>) so the write lands under phases with validation`);
+  if (topic === null && head === 'items') {
+    fail(`Invalid field "${fieldSegments.join('.')}" at phase level: "items" is the topic tree — use the dot-path (<work-unit>.<phase>.<topic> <field>) so the write lands with validation`);
   }
 }
 
@@ -820,7 +828,7 @@ function cmdSet(cwd, args) {
   const planned = writes.map((write) => {
     const fieldSegments = write.field.split('.');
     refuseEmptyFieldSegments(write.field, fieldSegments);
-    refuseShadowField(phase, fieldSegments);
+    refuseShadowField(phase, topic, fieldSegments);
     refuseContainerWrite(fieldSegments);
     const segments = resolveSegments(phase, topic, fieldSegments);
     validateSet(segments, write.value, fieldSegments);
@@ -877,7 +885,10 @@ function cmdPush(cwd, args) {
   requireWorkUnit(cwd, workUnit);
 
   refuseEmptyFieldSegments(args[1], fieldSegments);
-  refuseShadowField(phase, fieldSegments);
+  refuseShadowField(phase, topic, fieldSegments);
+  if (['staging', 'tracking', 'analysis_staging'].includes(fieldSegments[0])) {
+    fail(`"${fieldSegments[0]}" is a guarded state container — its fields take vocabulary values via set, never array pushes`);
+  }
   const segments = resolveSegments(phase, topic, fieldSegments);
 
   const length = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
@@ -932,7 +943,7 @@ function cmdPull(cwd, args) {
 
   requireWorkUnit(cwd, workUnit);
 
-  refuseShadowField(phase, fieldSegments);
+  refuseShadowField(phase, topic, fieldSegments);
   const segments = resolveSegments(phase, topic, fieldSegments);
 
   const result = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
@@ -1039,7 +1050,7 @@ function cmdApply(cwd, args) {
       const writes = entries.map(([field, value]) => {
         const fieldSegments = field.split('.');
         refuseEmptyFieldSegments(field, fieldSegments);
-        refuseShadowField(phase, fieldSegments);
+        refuseShadowField(phase, topic, fieldSegments);
         refuseContainerWrite(fieldSegments);
         const segments = resolveSegments(phase, topic, fieldSegments);
         validateSet(segments, value, fieldSegments);

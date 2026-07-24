@@ -27,9 +27,9 @@ Read `staging_file` (candidate content) and the gate state: `manifest get {work_
 
 #### If `K` is `0`
 
-Nothing to review (every candidate was pre-resolved at stage time, or already approved/skipped on a prior pass).
+Nothing to review (the analysis staged nothing, every candidate was pre-resolved at stage time, or all were already approved/skipped on a prior pass).
 
-A processed gate's state is spent — approved candidates live on the map, skipped names on the dismissed list. Clear it, set `gate_outcome` to `processed`:
+A processed gate's state is spent — approved candidates live on the map, skipped names on the dismissed list. Set `gate_outcome` to `processed` and clear the state — skip the call when the gate-state read found no `analysis_staging.{analysis}` subtree (the analysis staged nothing, so there is no state to clear):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.{analysis}

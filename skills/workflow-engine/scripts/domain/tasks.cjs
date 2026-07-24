@@ -209,7 +209,7 @@ function initTasks(cwd, workUnit, topic) {
 function startTask(cwd, workUnit, topic, internalId) {
   safeName(internalId, 'internal id');
   const file = fixTrackingPath(cwd, workUnit, topic, internalId);
-  const { item, restarting } = withWorkUnitLock(cwd, workUnit, () => {
+  const item = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const found = implementationItem(manifest, topic);
     const resumed = found.current_task === internalId && fs.existsSync(file);
@@ -217,7 +217,7 @@ function startTask(cwd, workUnit, topic, internalId) {
     found.current_task = internalId;
     if (!resumed && fs.existsSync(file)) fs.unlinkSync(file);
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { item: found, restarting: resumed };
+    return found;
   });
 
   return {
