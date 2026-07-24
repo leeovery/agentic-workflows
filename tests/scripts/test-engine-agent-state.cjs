@@ -333,6 +333,10 @@ describe('engine agent — lifecycle store', () => {
       // '' is refused one layer up, at the CLI's usage check — still a refusal.
       assert.match(runFails(dir, ['dispatch', 'pay', 'research', topic, '--kind', 'review']).error, /Invalid topic|Usage:/);
       assert.match(runFails(dir, ['ack', 'pay', 'research', topic, 'review-001', '--clean']).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['scan', 'pay', 'research', topic]).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['announce', 'pay', 'research', topic, 'review-001']).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['surface', 'pay', 'research', topic, 'review-001', 'F1']).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['incorporate', 'pay', 'research', topic, 'review-001']).error, /Invalid topic|Usage:/);
     }
     assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', 'escape')), false);
     assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'a')), false);

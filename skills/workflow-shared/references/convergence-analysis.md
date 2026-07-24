@@ -17,7 +17,7 @@ The caller provides these via context before loading:
 
 ## Threshold Check
 
-Cross-cycle analysis requires at least 2 data points. Determine the number of available cycles from how the loop type stores them: the `fix` loop appends every cycle as an `## Attempt {N}` section inside its single tracking file — count those sections; the other three loop types write one numbered `-c{N}` file per cycle — count the files.
+Cross-cycle analysis requires at least 2 data points. Determine the number of available cycles from how the loop type stores them: the `fix` loop appends every cycle as an `## Attempt {N}` section inside its single tracking file — count those sections; the other three loop types write numbered `-c{N}` files, up to two per cycle — count the **distinct `{N}` suffixes**, never the files.
 
 #### If fewer than 2 cycles of data exist
 

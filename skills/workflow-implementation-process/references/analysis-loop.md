@@ -287,6 +287,12 @@ impl({work_unit}): analysis cycle {N} — tasks skipped
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
+**If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
+```
+
 Commit all analysis and plan changes with raw git — stage the analysis outputs, the plan's `storage_paths` (recorded on the planning item), and the work unit, then commit:
 
 ```

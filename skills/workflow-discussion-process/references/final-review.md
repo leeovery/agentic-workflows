@@ -20,9 +20,31 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} di
 
 Synthesis findings drain first — perspective-council tensions that never finished surfacing during the session would otherwise be dropped at conclusion.
 
+#### If a complete `perspective` set has no `synthesis` row
+
+Every member of the set is `pending` — a landed council awaiting synthesis (the scan just promoted lenses that finished after the session's last check). Promote it via the **Perspective completion check** in **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)**, then bounce back to the session — the in-flight gate owns the new synthesis on the next conclusion attempt. An incomplete set (a lens still in flight) is not caught here — the session's in-flight gate already owns that wait-or-proceed decision.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+
 #### If any `synthesis` row is `pending` or `acknowledged`
 
-Surface one tension via **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)**, then bounce back to the session so the user can engage.
+Surface one tension via **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)**.
+
+**If a tension was raised:**
+
+Bounce back to the session so the user can engage.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+
+**If the row incorporated without findings** (a clean report):
+
+Nothing awaited engagement — drain any further rows before proceeding.
+
+→ Return to **A. Check Review State**.
+
+**If the row still holds unraised findings** (the user deferred at the announce menu):
+
+The session owns the deferral — the next done-signal re-enters this gate.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 
