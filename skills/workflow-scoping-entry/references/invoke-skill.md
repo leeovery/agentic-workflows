@@ -28,3 +28,4 @@ Invoke the **workflow-scoping-process** skill (Skill tool) with the next fenced 
 Scoping session for: {topic}
 Work unit: {work_unit}
 Description: {description}
+```
