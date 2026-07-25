@@ -7,18 +7,20 @@
 
 world_before: bugfix-investigating
 
+The investigation is open with its symptoms gathered and its root cause
+documented. The processing skill has worked down to its root-cause
+validation step; nothing has been validated yet and no agent has run.
+
 ### when
 
-The investigation is open with its root cause documented, and the
-process has reached its root-cause validation step. Walk
-root-cause-validation.md from the top, as the processing skill would.
-Stop when the reference returns to its caller.
+Walk root-cause-validation.md from the top, as the processing skill
+would. Stop when the reference returns to its caller.
 
 answers:
 1. yes — run root cause validation
 
 stubs:
-  - root-cause-validated: when the prose dispatches the validation agent
+  - root-cause-validated: when the engine records a dispatch of kind root-cause-validation
 
 ### then
 

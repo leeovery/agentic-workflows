@@ -66,6 +66,16 @@ The trigger belongs to the case, not the stub, so one stub serves many
 moments — first dispatch versus re-dispatch, happy path versus recovery.
 A stub with no trigger is arrange in disguise, and validation rejects it.
 
+**A trigger names an observable event, not a narrative moment.** An
+engine call with its arguments, a specific menu appearing, a named file
+being created — something the walker can match with certainty and that
+shows up in the transcript, so the asserter can confirm the substitution
+fired where it should have. "When the prose dispatches an agent" is too
+loose the moment a walk covers more than one dispatch; "when the engine
+records a dispatch of kind root-cause-validation" is not. Add an ordinal
+only where a case genuinely needs one ("on the re-dispatch after the
+gaps are addressed").
+
 **Whatever a stub covers is not under test in that case.** Stubbing a
 discussion's session loop means some other case must walk that loop
 without stubbing it. The stub boundary is a scope decision, not a

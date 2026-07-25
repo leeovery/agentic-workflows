@@ -154,8 +154,11 @@ function cmdPrompt(argv) {
     }),
   ] : [];
 
+  const situation = c.situation ? ['', 'SITUATION — where the project stands as you begin:', c.situation] : [];
+
   process.stdout.write(`${[
     ...setting,
+    ...situation,
     '',
     'TASK',
     c.when,

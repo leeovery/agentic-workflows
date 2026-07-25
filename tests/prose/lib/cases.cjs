@@ -14,6 +14,9 @@
 //
 //   ### given
 //   world_before: {fixture name}
+//   {free text: what that world represents — what has already happened,
+//    where the session stands. Context for the walker, never an
+//    instruction.}
 //
 //   ### when
 //   {free text: where to enter, what to follow, where to stop}
@@ -64,7 +67,7 @@ function parseCaseFile(file) {
   const lines = fs.readFileSync(file, 'utf8').split('\n');
   const c = {
     id: null, file: path.relative(ROOT, file), origin: null, files: [],
-    worldBefore: null, stubs: [], when: [], answers: [],
+    worldBefore: null, situation: [], stubs: [], when: [], answers: [],
     worldAfter: null, trace: [], notes: [],
   };
   let section = null;   // null | given | when | then
@@ -105,6 +108,7 @@ function parseCaseFile(file) {
     if (section === 'given') {
       const wb = line.match(/^world_before:\s*(\S+)\s*$/);
       if (wb) c.worldBefore = wb[1];
+      else c.situation.push(line);
       continue;
     }
 
@@ -138,6 +142,7 @@ function parseCaseFile(file) {
   }
 
   c.when = c.when.join('\n').trim();
+  c.situation = c.situation.join('\n').trim();
   return c;
 }
 

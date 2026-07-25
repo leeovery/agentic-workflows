@@ -67,11 +67,12 @@ testing.
   allocated ids) or material. No normalisation table to maintain, no
   hand-written per-field assertions, and nothing goes unchecked
   because nobody thought to assert it. Engine responses during the
-  walk are real. CI (`npm test`, zero tokens) holds the deterministic
-  perimeter: every snapshot rebuilds from its recipe byte-identical
-  (drift red-flags in the PR that moved the world, as a reviewable
-  snapshot diff), and every case's paths, anchors, worlds, stubs, and
-  trace resolve.
+  walk are real. **`npm test`** holds the deterministic perimeter —
+  zero tokens, and run before every commit, this project having no
+  automated CI: every snapshot rebuilds from its recipe byte-identical
+  (so a world the engine moved goes red at the gate and lands as a
+  reviewable snapshot diff in the PR that moved it), and every case's
+  paths, anchors, worlds, stubs, and trace resolve.
 - **P4 — walker/asserter separation.** The walking agent never sees the
   `then` block; an agent that knows the expected answer will find it.
   The walker gets the world, the coarse instruction, the answer script
@@ -85,7 +86,8 @@ testing.
   credits the walk for what the framework supplied. Whatever a stub
   covers is not under test in that case — some other case must walk it
   unstubbed.
-- **P5 — run on command, never in CI.** Walks cost tokens. The runner
+- **P5 — run on command, never in the test suite.** Walks cost tokens,
+  so they never ride `npm test` — only the perimeter of P3 does. The runner
   is invoked deliberately: scoped by diff-intersection (the same
   computation powers the PR-end suggestion — "these N cases intersect
   this PR's prose changes"), by hand-picked ids, or `--all`. An
@@ -97,7 +99,7 @@ testing.
 - **P7 — a failing case is a finding either way.** Either the prose
   broke, or the world/design moved and the case is stale. The
   adjudication is the point; only the typo-class staleness is
-  pre-filtered by CI (P3).
+  pre-filtered by the perimeter (P3).
 
 ## Architecture
 
@@ -217,8 +219,8 @@ testing.
   store re-derived at materialise), and the runner (`run.cjs`: list ·
   select · world · prompt · grade · snap · verify · destroy). The
   `prompt` command is the P4 boundary — walker prompts are
-  machine-assembled and never contain expects. CI gains two token-free
-  suites (corpus validation, snapshot rebuild-compare); the `/prose-test`
+  machine-assembled and never contain expects. `npm test` gains two
+  token-free suites (corpus validation, snapshot rebuild-compare); the `/prose-test`
   dev skill owns the model layer (Sonnet walks, Opus confirms, quoted
   evidence or it didn't happen). First fixture: `base` — a post-boot
   keyword-only empty project, proven byte-deterministic across rebuilds.
@@ -230,7 +232,7 @@ testing.
   prose tests own their worlds) with the engine kept at authoring
   time via recipes; recipe + golden snapshot over either alone
   (always-current *and* visible drift *and* frozen runs); on-command
-  invocation only — tokens are spent deliberately, CI holds the
-  deterministic perimeter; Sonnet→Opus escalation; happy path
+  invocation only — tokens are spent deliberately, `npm test` holds
+  the deterministic perimeter; Sonnet→Opus escalation; happy path
   first-class, corpus seeded from the sim's mainline enumeration
   before the failure harvest.
