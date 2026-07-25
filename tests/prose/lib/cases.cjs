@@ -2,7 +2,9 @@
 
 // Case corpus: parsing and validation.
 //
-// A case file is markdown under tests/prose/{flow}/ (any name, .md).
+// One case per file: tests/prose/{flow}/{case-id}.md, where the
+// filename IS the id (validated, so a rename can never drift from the
+// heading). A flow's README.md carries its prose intro and is ignored.
 // Grammar, deterministic to parse:
 //
 //   ## case: {kebab-id}
@@ -180,11 +182,23 @@ function headingExists(absPath, anchor) {
 function validateCorpus(cases) {
   const errors = [];
   const seen = new Set();
+  const perFile = new Map();
+  for (const c of cases) perFile.set(c.file, (perFile.get(c.file) || 0) + 1);
+
+  for (const [file, count] of perFile) {
+    if (count > 1) {
+      errors.push(`${file}: holds ${count} cases — one case per file, named {case-id}.md`);
+    }
+  }
+
   for (const c of cases) {
     const at = `${c.file} :: ${c.id}`;
     if (!/^[a-z0-9][a-z0-9-]*$/.test(c.id)) errors.push(`${at}: id is not kebab-case`);
     if (seen.has(c.id)) errors.push(`${at}: duplicate case id`);
     seen.add(c.id);
+
+    const stem = path.basename(c.file, '.md');
+    if (stem !== c.id) errors.push(`${at}: filename must equal the case id (expected ${c.id}.md)`);
 
     if (c.files.length === 0) errors.push(`${at}: no files: scope`);
     for (const f of c.files) {

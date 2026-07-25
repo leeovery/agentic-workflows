@@ -7,6 +7,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
 
 const cases = require('../prose/lib/cases.cjs');
 
@@ -28,6 +29,17 @@ describe('prose-test corpus', () => {
     assert.ok(cases.parseStateAssertion('the manifest should look right').error);
     assert.ok(cases.parseStateAssertion('file exists').error);
     assert.ok(cases.parseStateAssertion('json only.json pointer').error);
+  });
+
+  it('holds exactly one case per file, filename equal to the id', () => {
+    const all = cases.loadAllCases();
+    const seen = new Map();
+    for (const c of all) {
+      assert.ok(!seen.has(c.file), `${c.file}: more than one case in a file`);
+      seen.set(c.file, c.id);
+      assert.strictEqual(path.basename(c.file, '.md'), c.id,
+        `${c.file}: filename must equal the case id`);
+    }
   });
 
   it('parses the optional stub section as free text, defaulting empty', () => {

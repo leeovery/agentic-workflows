@@ -8,7 +8,8 @@ Run via the `/prose-test` skill; everything deterministic lives in
 
 ## Layout
 
-- `{flow}/*.md` — case files (grammar: header comment in `lib/cases.cjs`)
+- `{flow}/{case-id}.md` — **one case per file**, filename = case id
+  (validated; a flow's `README.md` holds its intro and is ignored)
 - `fixtures/{name}/recipe.cjs` — builds the world with real engine calls
   under a frozen clock (`lib/fake-clock.cjs`)
 - `fixtures/{name}/snapshot/` — the recipe's committed golden output;
@@ -17,9 +18,9 @@ Run via the `/prose-test` skill; everything deterministic lives in
 
 ## Adding a case
 
-Add a `## case:` block to the flow's file (or a new file for a long
-walk). Scope `files:` tightly — diff-selection and the PR-end suggestion
-run off it. `routing:` expects are agent-graded against the walk
+Create `{flow}/{case-id}.md` holding a single `## case:` block — the
+filename must equal the id. Scope `files:` tightly — diff-selection and
+the PR-end suggestion run off it. `routing:` expects are agent-graded against the walk
 transcript; `state:` expects are asserted in code and require a `world:`.
 
 **Stub the agents, walk the lifecycle.** Prose that dispatches a

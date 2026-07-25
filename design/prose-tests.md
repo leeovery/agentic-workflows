@@ -37,9 +37,10 @@ testing.
   prose asked something the case didn't predict), `expect:` (concrete
   checkable claims: routing assertions graded by the agent with quoted
   line evidence, end-state assertions diffed by code), `origin:` (the
-  finding or flow it pins). Granularity is whatever the case needs —
-  compact routing cases live several-per-file, long end-to-end walks
-  get their own file, under `tests/prose/{flow}/`.
+  finding or flow it pins). **One case per file**:
+  `tests/prose/{flow}/{case-id}.md`, filename equal to the id and
+  validated as such. A case runs as long or short as it needs to —
+  length never justifies bundling two into one file.
 - **P2 — worlds are real, never imagined.** A fixture is authored by a
   **recipe** (a node script running real engine calls + perturbations
   against a scratch project) and committed as a **golden snapshot**
