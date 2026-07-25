@@ -162,7 +162,9 @@ function plan(h) {
 }
 
 function implement(h) {
-  h.engine('topic', 'start', WU, 'implementation', WU);
+  // No `topic start` here: implementation is the one phase whose prose
+  // never issues it — `task init` owns creation (process Step 0, the
+  // created arm), and only that arm writes the full field set.
   h.engine('task', 'init', WU, WU);
   h.engine('task', 'start', WU, WU, `${WU}-1-1`);
   h.write(`.workflows/${WU}/planning/${WU}/tasks/${WU}-1-1.md`, taskFile(TASKS[0], 'completed'));

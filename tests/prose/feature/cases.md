@@ -152,6 +152,7 @@ implementing that task (writing code or tests) — implement nothing.
 
 - routing: the plan entry gate passes (empty render) and the implementation is a new entry
 - routing: with no environment-setup file recorded, the entry asks the environment question (answered none)
+- routing: the processing skill's resume detection reports mode created — the fresh path, with its start-implementation commit — never the resuming-from-previous-session note
 - routing: the next available task per the plan format's reading procedure is pay-1-1 — phase 1, first task, nothing completed yet
 - state: manifest equals pay.implementation.pay status in-progress
 - state: manifest equals pay.implementation.pay current_task pay-1-1
