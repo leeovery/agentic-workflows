@@ -286,7 +286,7 @@ describe('config merge carries base_url', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-compat-'));
   });
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('merges base_url from the system config through to the merged config', () => {

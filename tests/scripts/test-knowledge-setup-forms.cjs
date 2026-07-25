@@ -103,7 +103,7 @@ describe('runKeyOnly', () => {
 
   afterEach(() => {
     process.env.HOME = savedHome;
-    fs.rmSync(home, { recursive: true, force: true });
+    fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   const deps = (answers) => ({
@@ -172,8 +172,8 @@ describe('runFromSystem refusals', () => {
     process.chdir(savedCwd);
     process.env.HOME = savedHome;
     if (savedEnvKey !== undefined) process.env.OPENAI_API_KEY = savedEnvKey;
-    fs.rmSync(home, { recursive: true, force: true });
-    fs.rmSync(project, { recursive: true, force: true });
+    fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(project, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   const noBulk = async () => { throw new Error('bulk index must not run on a refusal'); };

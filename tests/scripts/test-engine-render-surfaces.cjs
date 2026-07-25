@@ -14,7 +14,7 @@ function setup() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'render-surfaces-'));
 }
 function teardown(dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 function writeManifest(dir, name, data) {
   const mdir = path.join(dir, '.workflows', name);

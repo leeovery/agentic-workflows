@@ -1167,7 +1167,7 @@ describe('engine commit', () => {
     fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
     writeFile(dir, '.tick/tasks-auth.jsonl', '{"id":"auth-1-1"}\n');
     commitAll(dir, 'seed tick storage');
-    fs.rmSync(path.join(dir, '.tick'), { recursive: true, force: true });
+    fs.rmSync(path.join(dir, '.tick'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): restart plan', '--plan', 'auth']);
     assert.strictEqual(res.committed, shortHead(dir));
@@ -1231,7 +1231,7 @@ describe('knowledge store rides along on every engine commit', () => {
   });
 
   it('exists-guarded: no .knowledge directory, no pathspec, no git error', () => {
-    fs.rmSync(path.join(dir, '.workflows/.knowledge'), { recursive: true, force: true });
+    fs.rmSync(path.join(dir, '.workflows/.knowledge'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     git(dir, ['add', '-A']);
     git(dir, ['commit', '-q', '-m', 'drop store']);
     writeFile(dir, '.workflows/payments/discussion/auth.md', '# Auth\n');

@@ -147,7 +147,7 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
   });
 
   after(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('exposes the expected surface on the built bundle', () => {

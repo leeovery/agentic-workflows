@@ -141,7 +141,7 @@ const ISO_SECONDS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 describe('engine workunit create — happy path', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('epic with imports and seeds: one transaction — manifest, files, log, marker, commit', () => {
     writeFile(fix.project, 'notes/My Design DOC.txt', 'design notes\n');
@@ -251,7 +251,7 @@ describe('engine workunit create — happy path', () => {
 describe('engine workunit create — the canonical on-disk documents', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('writes byte-exact manifest and project-manifest documents', () => {
     engine(fix, createArgs('payments', 'feature'));
@@ -276,7 +276,7 @@ describe('engine workunit create — the canonical on-disk documents', () => {
 describe('engine workunit create — existing manifest reuse', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('reuses an existing manifest as-is: created false, fields preserved, landing still runs', () => {
     writeFile(fix.project, '.workflows/payments/manifest.json', JSON.stringify({
@@ -313,7 +313,7 @@ describe('engine workunit create — existing manifest reuse', () => {
 describe('engine workunit create — import filename normalisation', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** @param {string[]} sources */
   function landImports(sources) {
@@ -388,7 +388,7 @@ describe('engine workunit create — import filename normalisation', () => {
 describe('engine workunit create — seeds', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('derives the source tag from each inbox folder', () => {
     const res = engine(fix, createArgs('payments', 'epic', [
@@ -429,7 +429,7 @@ describe('engine workunit create — seeds', () => {
 describe('engine workunit create — missing imports fail fast', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('reports every missing path in missing_imports — nothing touched', () => {
     writeFile(fix.project, 'notes/good.md', 'fine\n');
@@ -453,7 +453,7 @@ describe('engine workunit create — missing imports fail fast', () => {
 describe('engine workunit create — knowledge base is warn-don\'t-block', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('per-file indexing failures land in warnings; the transaction still commits', () => {
     writeFile(fix.project, 'notes/design.md', 'notes\n');
@@ -475,7 +475,7 @@ describe('engine workunit create — knowledge base is warn-don\'t-block', () =>
 describe('engine workunit create — validation', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('rejects an illegal work type via the shared schema vocabulary', () => {
     const err = engineFails(fix, createArgs('payments', 'saga'));

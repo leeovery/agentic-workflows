@@ -137,7 +137,7 @@ async function main() {
   check('loaded store serves hybrid', afterLoadHyb.length > 0);
 
   console.log('\n' + (failures === 0 ? 'ALL PASSED' : failures + ' FAILURES'));
-  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   process.exit(failures === 0 ? 0 : 1);
 }
 

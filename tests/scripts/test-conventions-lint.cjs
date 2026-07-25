@@ -756,7 +756,7 @@ function withTemp(fn) {
   try {
     return fn(dir);
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }
 

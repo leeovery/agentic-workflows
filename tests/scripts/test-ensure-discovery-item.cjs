@@ -35,7 +35,7 @@ function setup() {
 }
 
 function cleanup() {
-  if (dir) fs.rmSync(dir, { recursive: true, force: true });
+  if (dir) fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   dir = null;
 }
 

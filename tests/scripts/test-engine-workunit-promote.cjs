@@ -177,7 +177,7 @@ const PROMOTE = ['workunit', 'promote', 'payments', 'caching-strategy', '--to', 
 
 describe('engine workunit promote — happy path', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('moves the spec and source discussions, completes the cc unit, marks promoted, commits all three pathspecs once', () => {
     fix = setupFixture();
@@ -339,7 +339,7 @@ describe('engine workunit promote — happy path', () => {
 
 describe('engine workunit promote — guards refuse loudly, everything pristine', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** Assert the refusal leaves every `.workflows/` byte identical, no commit, no cc unit. */
   function refusedPristine(args, pattern) {
@@ -354,11 +354,11 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
   it('refuses unknown work units, non-epics, and closed epics', () => {
     fix = setupFixture();
     refusedPristine(['workunit', 'promote', 'ghost', 'caching-strategy', '--to', 'caching', '--description', 'd'], /manifest not found/);
-    fs.rmSync(fix.root, { recursive: true, force: true });
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     fix = setupFixture({ epic: epicManifest({ work_type: 'feature' }) });
     refusedPristine(PROMOTE, /not an epic \(work_type: feature\) — only epic specifications promote/);
-    fs.rmSync(fix.root, { recursive: true, force: true });
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     fix = setupFixture({ epic: epicManifest({ status: 'completed' }) });
     refusedPristine(PROMOTE, /epic "payments" is not in-progress \(status: completed\)/);
@@ -367,13 +367,13 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
   it('refuses a missing, incomplete, or already-promoted specification item', () => {
     fix = setupFixture();
     refusedPristine(['workunit', 'promote', 'payments', 'ghost-topic', '--to', 'caching', '--description', 'd'], /no specification item "ghost-topic"/);
-    fs.rmSync(fix.root, { recursive: true, force: true });
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     const inProgress = epicManifest();
     inProgress.phases.specification.items['caching-strategy'].status = 'in-progress';
     fix = setupFixture({ epic: inProgress });
     refusedPristine(PROMOTE, /not completed \(status: in-progress\) — only a completed specification promotes/);
-    fs.rmSync(fix.root, { recursive: true, force: true });
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     const promoted = epicManifest();
     promoted.phases.specification.items['caching-strategy'].status = 'promoted';
@@ -403,7 +403,7 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'existing unit']);
     refusedPristine(PROMOTE, /work unit "caching" already exists \(\.workflows\/caching\)/);
-    fs.rmSync(fix.root, { recursive: true, force: true });
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     fix = setupFixture();
     writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({
@@ -450,7 +450,7 @@ describe('engine workunit promote — source shape guard', () => {
       assert.match(err.error, /array-shaped sources/);
       assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching-policy')), 'nothing created on refusal');
     } finally {
-      fs.rmSync(fix.root, { recursive: true, force: true });
+      fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 });
