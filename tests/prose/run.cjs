@@ -21,6 +21,7 @@ const { execFileSync } = require('child_process');
 
 const cases = require('./lib/cases.cjs');
 const worlds = require('./lib/worlds.cjs');
+const prompts = require('./lib/prompts.cjs');
 
 const ROOT = cases.ROOT;
 
@@ -113,84 +114,17 @@ function cmdPrompt(argv) {
   const c = getCase(argv[0]);
   const worldDir = c.hasFixtureState ? requireWorld(argv, c) : null;
 
-  const setting = worldDir
-    ? [
-      "You are executing this project's workflow prose exactly as a live session would.",
-      '',
-      `Project directory — your cwd for EVERY command: ${worldDir}`,
-      'The workflow skills are installed at .claude/skills/ inside that project.',
-      'Mutations are expected and safe: the project is a disposable test world.',
-    ]
-    : [
-      'You are walking workflow prose structurally: read the named files and trace the logic.',
-      'Execute nothing — no commands, no writes. This is a read-only walk.',
-      '',
-      `Repository root: ${ROOT}`,
-    ];
-
-  const answers = c.answers.length
-    ? c.answers.map((a, i) => `  ${i + 1}. ${a}`).join('\n')
-    : '  (none — the walk should reach its stop condition without user questions)';
-
-  const substitutions = c.stubs.length ? [
-    '',
-    'HARNESS SUBSTITUTIONS — these are NOT part of the process you are walking.',
-    'They stand in for steps this framework deliberately does not simulate.',
-    'Apply each only at the moment stated, then resume the prose exactly where',
-    'you left it, and record `SUBSTITUTED: <name>` in the transcript.',
-    '',
-    ...c.stubs.flatMap((s) => {
-      const stub = cases.readStub(s.name);
-      return [
-        `### ${s.name}`,
-        `WHEN: ${s.trigger}`,
-        `WHAT IT IS: ${stub.description}`,
-        'CONTENT (write these exact bytes where the substitution calls for a file):',
-        ...stub.content.split('\n').map((l) => `    ${l}`),
-        '',
-      ];
-    }),
-  ] : [];
-
-  process.stdout.write(`${[
-    ...setting,
-    ...(c.situation ? ['', 'SITUATION — where the project stands as you begin:', c.situation] : []),
-    '',
-    'TASK',
-    c.act,
-    '',
-    'SCOPE — the prose under walk:',
-    ...c.files.map((f) => `  - ${f.path}${f.anchor ? ` (start at the heading containing "${f.anchor}")` : ''}`),
-    ...substitutions,
-    '',
-    'RULES',
-    '- Follow the prose literally, step by step, arm by arm. Where it names an',
-    '  engine or knowledge call, run it from the project directory and use the',
-    '  real response to decide which arm applies.',
-    '- You also play the user, from a fixed script. When the prose presents a',
-    '  menu or question, consume the next scripted answer, in order:',
-    answers,
-    '- If the prose asks a question and the script has no next answer: STOP and',
-    '  record `UNSCRIPTED QUESTION:` with the exact question text.',
-    '- If two arms both appear to match, record `AMBIGUOUS:` naming both, then',
-    "  follow the one the prose's own ordering/guard rules select.",
-    '- If the prose cannot be followed literally — a step that contradicts the',
-    '  state, a missing file it assumes, an instruction that cannot be executed —',
-    '  record `DEVIATION:` with what you could not do, then continue as best you',
-    '  can. NEVER silently repair, reinterpret, or improve the prose. You are a',
-    '  probe, not a reviewer: a broken instruction is the finding.',
-    "- Stop at the TASK's stop condition, the end of the flow, an UNSCRIPTED",
-    '  QUESTION, or a hard error — whichever comes first.',
-    '',
-    'TRANSCRIPT — your entire final output, in order of events:',
-    '1. Every prose section/arm entered: `file.md § Heading` plus the quoted',
-    '   guard line that selected it.',
-    '2. Every command run and the first line of its output.',
-    '3. Every menu/question encountered (verbatim) and the scripted answer used.',
-    '4. Every file written or edited (path only), and every SUBSTITUTED marker.',
-    '5. Finally: `STOPPED: <reason>`.',
-    'Return nothing but the transcript.',
-  ].join('\n')}\n`);
+  process.stdout.write(prompts.walkerPrompt({
+    worldDir,
+    root: ROOT,
+    situation: c.situation,
+    task: c.act,
+    scope: c.files
+      .map((f) => `  - ${f.path}${f.anchor ? ` (start at the heading containing "${f.anchor}")` : ''}`)
+      .join('\n'),
+    stubs: c.stubs.map((s) => ({ ...s, ...cases.readStub(s.name) })),
+    answers: c.answers.map((a, i) => `  ${i + 1}. ${a}`).join('\n'),
+  }));
 }
 
 // --- diff (the facts) -----------------------------------------------------
@@ -208,47 +142,18 @@ function cmdDiff(argv) {
 
 function cmdAssert(argv) {
   const c = getCase(argv[0]);
-  const lines = [
-    'You are asserting the result of a prose-test case. You did not perform',
-    'the walk. Judge only what the evidence shows.',
-    '',
-    'WHAT THE PROSE SHOULD HAVE DONE:',
-    '',
-    c.assert,
-  ];
-
+  let world = null;
   if (c.hasFixtureState) {
     const delta = worlds.diffWorld(c.id, requireWorld(argv, c));
-    lines.push(
-      '',
-      `EXPECTED WORLD: ${delta.expecting}.`,
-      '',
-      'WORLD DELTA — the factual difference between the world after the walk and',
-      'the expected world, computed by code. Volatile values (timestamps, git',
-      'SHAs, engine-allocated ids) are NOT normalised: a difference in one of',
-      'those is expected and immaterial. A difference in shape, field presence,',
-      'status vocabulary, or content is material.',
-      '',
-      JSON.stringify({ added: delta.added, removed: delta.removed, identical: delta.identical }, null, 2),
-      ...delta.changed,
-    );
+    world = {
+      expecting: delta.expecting,
+      delta: [
+        JSON.stringify({ added: delta.added, removed: delta.removed, identical: delta.identical }, null, 2),
+        ...delta.changed,
+      ].join('\n'),
+    };
   }
-
-  lines.push(
-    '',
-    'THE TRANSCRIPT of the walk is supplied separately by the caller.',
-    '',
-    'VERDICT — return exactly this, nothing else:',
-    '1. Path: one line per expected step — PASS or FAIL, each PASS quoting the',
-    '   transcript line that shows it. A PASS with no quote is invalid.',
-    '2. World: PASS or FAIL. Enumerate EVERY difference in the delta and classify',
-    '   each as volatile (immaterial) or material. Any material difference fails.',
-    '   An empty delta passes.',
-    '3. Markers: list every UNSCRIPTED QUESTION, AMBIGUOUS, and DEVIATION in the',
-    '   transcript. Each is a finding in its own right, even if everything passed.',
-    '4. VERDICT: PASS or FAIL, then one sentence on what it means for the prose.',
-  );
-  process.stdout.write(`${lines.join('\n')}\n`);
+  process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world }));
 }
 
 // --- snap / verify --------------------------------------------------------

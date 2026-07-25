@@ -101,9 +101,23 @@ testing.
   this PR's prose changes"), by hand-picked ids, or `--all`. An
   engine-only PR intersects nothing and suggests nothing.
 - **P6 — tiered walkers.** Sonnet walks by default; any FAIL re-runs
-  on Opus before it is believed. Persistent disagreement surfaces to
-  Lee with both walks quoted — failures are findings, never
+  on Opus before it is believed (the agent definitions set the default,
+  the dispatch overrides it on retry). Persistent disagreement surfaces
+  to Lee with both walks quoted — failures are findings, never
   auto-resolved gates.
+- **P6a — a nested agent per case.** The `/prose-test` skill dispatches
+  one **prose-orchestrator** per case, which builds the world, dispatches
+  **prose-walker**, computes the delta, dispatches **prose-asserter**,
+  escalates a failure, destroys the world, and returns a verdict alone.
+  Transcripts never reach the main session — the reason the design
+  scales past a handful of cases. Standing instructions live in
+  `.claude/agents/prose-*.md`; only the per-case payload comes from
+  `tests/prose/prompts/`, so no agent ever reads words composed in code.
+- **P6b — run the test, nothing else.** Every agent in the chain is
+  forbidden from fixing anything and from working out why a case failed.
+  A failure is a finished result; diagnosing it is a separate, human-led
+  act. This is stated in prose in each definition rather than relied on
+  from tool restrictions, which an agent may hold regardless.
 - **P7 — a failing case is a finding either way.** Either the prose
   broke, or the world/design moved and the case is stale. The
   adjudication is the point; only the typo-class staleness is
@@ -141,6 +155,32 @@ testing.
    campaign into cases.
 
 ## Log
+
+- 2026-07-25 — First real runs, and the nested-agent shape. The framework
+  executed end to end for the first time: a Sonnet walker followed
+  root-cause-validation.md against a live world — real engine calls, the
+  scripted answer, the stub firing at its trigger — and a Sonnet asserter
+  graded five path steps with quoted evidence and classified the lone
+  world difference (an agent-row timestamp) as volatile. PASS, ~107k
+  tokens, 2.5 minutes.
+  **The negative test is the more valuable result.** With `agent scan`
+  deleted from the world's own copy of the prose, the run correctly
+  FAILED — the asserter quoted the missing call and raised a DEVIATION.
+  Crucially **the world delta was byte-identical to the passing run**:
+  `incorporate` sets `incorporated` from any prior status, so skipping
+  `scan` converges on the same end state. Whole-world assertion alone
+  would have passed a real defect; only the granular expected path caught
+  it. Lee's argument for granularity, proven by evidence rather than
+  reasoning.
+  Two changes came out of the runs: the walker must quote every block the
+  prose directs it to emit (a skipped emission was invisible), and the
+  agent layer moved into `.claude/agents/` as prose-orchestrator →
+  prose-walker + prose-asserter, so transcripts stay out of the main
+  session (P6a) and standing instructions stop being JS string literals
+  in the runner. Noted, not actioned: `incorporate` never requires a row
+  to have reached `pending` — forgiving by design, since recovery paths
+  close rows that never produced a report, but it is why this class of
+  skipped step is invisible to state.
 
 - 2026-07-25 — A case becomes a directory (Lee, still reviewing in the
   TUI). Three faults in the flat-markdown shape, all his: **(1)** code
