@@ -43,6 +43,14 @@ a deduplicated fixture library you have to chase across the tree.
 
 ## Writing a case
 
+**Never generate a case from a walk.** Recording what the prose did and
+calling it the expectation turns the corpus into approval testing —
+every case pins current behaviour, defects included, and a mummified bug
+passes forever. Snapshots are generated because the engine authors them
+and drift is visible; expectations are written by hand because only a
+person can say what correct means. The reading-closely part is where
+pre-existing defects surface.
+
 **The act stays coarse — one instruction.** Where to enter, what to
 follow, where to stop. Never a step-by-step script of the workflow: if
 the case tells the walker which commands to run, the walker no longer has

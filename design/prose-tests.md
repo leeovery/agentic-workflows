@@ -127,6 +127,16 @@ testing.
   broke, or the world/design moved and the case is stale. The
   adjudication is the point; only the typo-class staleness is
   pre-filtered by the perimeter (P3).
+- **P8 — cases are hand-written, never generated.** Deriving an
+  `assert.md` from a recorded walk would make authoring far faster and
+  would quietly convert the whole corpus into approval testing: every
+  case would pin what the prose *currently does*, defects included, and
+  a mummified bug passes forever. The authoring effort — reading the
+  prose closely enough to state what it *should* do — is the part that
+  finds pre-existing defects, as it did twice in the first corpus. It
+  is the point, not the overhead. Snapshots are generated because the
+  engine authors them and drift is visible; expectations are written
+  because only a person can say what correct means.
 
 ## Architecture
 
