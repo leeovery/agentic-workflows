@@ -8,33 +8,34 @@ fails, suspect the framework before the prose.
 ## case: smoke-structure-start-boot
 - origin: framework smoke — structure-only walk, no world
 - files:
-  - skills/workflow-start/SKILL.md#Step 0.2: Boot
+  - skills/workflow-start/SKILL.md#Boot
 
 ### walk
 
-Structure-only: read skills/workflow-start/SKILL.md's Step 0 and its
-sub-steps. Establish the order of Step 0's parts and what Step 0.2
-declares about the boot pipeline. Stop after Step 0 — do not trace the
-rest of the skill.
+Structure-only: read the initialisation portion of
+skills/workflow-start/SKILL.md — everything the skill does before any
+work is shown or routed. Establish what the initialisation consists of
+and in what order its parts run. Stop there — do not trace the rest of
+the skill.
 
 ### expect
 
-- routing: Step 0.1 (casing conventions) is prescribed before Step 0.2 (boot)
-- routing: Step 0.2 declares the boot pipeline mandatory — it must complete before proceeding
+- routing: casing conventions are loaded before the boot pipeline runs
+- routing: the boot pipeline is declared mandatory — the skill must complete it before proceeding
 
 ## case: smoke-world-boot
 - world: base
 - origin: framework smoke — world build, engine-in-world, state assertions
 - files:
-  - skills/workflow-start/SKILL.md#Step 0.2: Boot
+  - skills/workflow-start/SKILL.md#Boot
 
 ### walk
 
-In the project, run the boot command exactly as Step 0.2 of
-skills/workflow-start/SKILL.md prescribes (sandbox concerns do not apply
-in this world — run it directly). Capture the JSON response. Stop
-immediately after recording it — do not continue into Step 0's
-confirmation prompt or any later step.
+In the project, run the boot command exactly as the initialisation prose
+of skills/workflow-start/SKILL.md prescribes (sandbox concerns do not
+apply in this world — run it directly). Capture the JSON response. Stop
+immediately after recording it — do not continue into any confirmation
+prompt or later step.
 
 ### expect
 

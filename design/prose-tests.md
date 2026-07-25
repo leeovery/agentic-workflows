@@ -109,6 +109,22 @@ testing.
 
 ## Log
 
+- 2026-07-25 — Brittleness review (Lee, on the stage-2 smoke cases):
+  cases written in prose coordinates (step numbers, numbered headings)
+  break on cosmetic renumbering — failure for the wrong reason. Ruling:
+  **cases name behaviour, never coordinates** (the walker is an agent
+  reading prose — the binding is semantic and rename-robust; only
+  coordinate-phrased claim text rots), and anchors became substring
+  fragments matched with `includes` (`#Boot` survives a renumber, still
+  goes red token-free if the heading vanishes). Prose test hooks
+  (`data-test`-style markers in skill files) considered and **parked**:
+  the only machine consumer of anchors is the staleness check, so hooks
+  would put permanent plumbing into shipped prose to serve a consumer
+  that barely needs it — revisit on evidence if arm-level references in
+  the failure harvest (generic headings like "If valid") produce real
+  renumber noise; the grammar extends to `probe:` references without
+  breakage.
+
 - 2026-07-24 — Stage 2, the framework. `tests/prose/`: case parser and
   corpus validation (`lib/cases.cjs`), fixture recipes under a frozen
   clock with golden snapshots (`lib/fixtures.cjs`, `lib/fake-clock.cjs`

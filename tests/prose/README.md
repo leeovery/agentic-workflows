@@ -21,6 +21,14 @@ Add a `## case:` block to the flow's file (or a new file for a long
 walk). Scope `files:` tightly — diff-selection and the PR-end suggestion
 run off it. `routing:` expects are agent-graded against the walk
 transcript; `state:` expects are asserted in code and require a `world:`.
+
+**Name behaviour, never coordinates.** Step numbers, arm letters, and
+heading numbering in walk or expect text break on cosmetic renumbering —
+failure for the wrong reason. Write "casing conventions load before the
+boot pipeline", not "Step 0.1 before Step 0.2"; a behavioural claim
+fails only when the behaviour changes, which is the failure the corpus
+exists to catch. Anchors are substring fragments matched against heading
+text (`#Boot` matches "Step 0.2: Boot") — pick the number-free part.
 `npm test` validates the corpus (parse, paths, anchors, grammar) and
 rebuild-compares every fixture — both token-free; only `/prose-test`
 spends tokens.

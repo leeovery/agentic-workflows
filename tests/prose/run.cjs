@@ -139,7 +139,7 @@ function cmdPrompt(argv) {
     c.walk,
     '',
     'SCOPE — the prose under walk:',
-    ...c.files.map((f) => `  - ${f.path}${f.anchor ? ` (start at "${f.anchor}")` : ''}`),
+    ...c.files.map((f) => `  - ${f.path}${f.anchor ? ` (start at the heading containing "${f.anchor}")` : ''}`),
     '',
     'RULES',
     '- Follow the prose literally, step by step, arm by arm. Where it names an',

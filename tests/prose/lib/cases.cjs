@@ -9,7 +9,14 @@
 //   - world: {fixture-name}            (optional; required by state expects)
 //   - origin: {free text}
 //   - files:
-//     - {repo-relative path}[#Heading text]
+//     - {repo-relative path}[#heading fragment]
+//
+// Anchors are substring fragments, matched against heading text with
+// `includes` — `#Boot` matches "Step 0.2: Boot" and survives a
+// renumber. Authoring rule (see README): cases name BEHAVIOUR, never
+// coordinates — step numbers, arm letters, and heading numbering in
+// walk or expect text rot on cosmetic edits and fail for the wrong
+// reason.
 //   ### walk
 //   {free text: entry point, what to do, stop condition}
 //   ### user
@@ -148,7 +155,7 @@ function headingExists(absPath, anchor) {
   const content = fs.readFileSync(absPath, 'utf8');
   return content.split('\n').some((line) => {
     const h = line.match(/^#{1,6}\s+(.*?)\s*$/);
-    return h && h[1] === anchor;
+    return h && h[1].includes(anchor);
   });
 }
 
