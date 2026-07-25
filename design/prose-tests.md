@@ -110,6 +110,16 @@ testing.
   failing case re-runs once from a fresh world at the same models. A
   defect in the prose reproduces; a one-off does not, and is reported
   as FLAKY with both runs quoted. Nothing is auto-resolved.
+- **P6d — a walk that began mid-flow proves nothing.** Walkers skip
+  steps whose effect the world already holds — "already booted", "the
+  plan already exists" — and then the case reports a prose failure at a
+  step the walk never reached. So the walker starts at the entry point
+  the task names and performs every step including the redundant ones,
+  the asserter returns `INVALID WALK` when the transcript opens
+  mid-flow, and the orchestrator retries once before reporting
+  `INVALID` — never `FAIL`. A false finding is worse than no finding:
+  it spends human attention on prose that was never exercised, and it
+  teaches distrust of the runs that are real.
 - **P6b — a nested agent per case.** The `/prose-test` skill dispatches
   one **prose-orchestrator** per case, which builds the world, dispatches
   **prose-walker**, computes the delta, dispatches **prose-asserter**,

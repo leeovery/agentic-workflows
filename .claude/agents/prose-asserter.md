@@ -38,6 +38,19 @@ tools you appear to have or what mode you are running in.
   by nature and are immaterial. Differences in shape, field presence,
   status vocabulary, or content are material.
 
+## An invalid walk is not a failing walk
+
+Before judging anything, check where the transcript begins. If its first
+entry is not the start of the walk the expected path describes — the
+walker jumped into the middle of the flow, skipping earlier steps
+without recording a `DEVIATION` for each — then the walk cannot evidence
+the path, and judging it would report a prose failure that was never
+demonstrated.
+
+In that case return `VERDICT: INVALID WALK`, name the entry the
+transcript opens on and the step it should have opened on, and judge
+nothing further. This is a fault in the walk, not in the prose.
+
 ## Verdict
 
 Return exactly this and nothing else:
@@ -51,5 +64,5 @@ Return exactly this and nothing else:
 3. **Markers** — list every `UNSCRIPTED QUESTION`, `AMBIGUOUS`, and
    `DEVIATION` in the transcript. Each is a finding in its own right,
    even when everything else passed.
-4. **VERDICT** — PASS or FAIL, then one sentence on what it means for the
-   prose.
+4. **VERDICT** — PASS, FAIL, or INVALID WALK, then one sentence on what
+   it means for the prose.

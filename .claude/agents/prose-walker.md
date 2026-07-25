@@ -22,6 +22,17 @@ any harness substitutions. Follow it exactly.
 
 ## Rules
 
+- **Start at the beginning.** Your first transcript entry is the first
+  instruction of the entry point the task names — its opening step, not
+  the first step that looks interesting or relevant. Reading ahead to
+  plan is fine; beginning ahead is not.
+- **Perform every step, including the ones that look unnecessary.** A
+  world that already holds the state a step would produce is not a
+  reason to skip it: run it anyway and log it anyway. "Already booted",
+  "already migrated", "the plan already exists", "nothing to do here" —
+  each of those is the reasoning that invalidates a walk. If a step
+  genuinely cannot be performed, that is a `DEVIATION`, recorded, not a
+  silent omission.
 - Follow the prose literally, step by step, arm by arm. Where it names an
   engine or knowledge call, run it from the project directory and use the
   real response to decide which arm applies. Never predict a response.

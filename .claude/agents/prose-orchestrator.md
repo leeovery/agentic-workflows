@@ -62,7 +62,14 @@ verdict unreliable.
    - The second run PASSes → a non-reproducing failure. Report it as
      `FLAKY`, quoting both, and resolve nothing yourself.
 
-5. **Destroy the world** — `node tests/prose/run.cjs destroy --world <dir>`.
+5. **Retry an invalid walk** — if the verdict is `INVALID WALK`, the
+   walker began mid-flow and the case was never actually exercised.
+   Destroy the world, build a fresh one, and repeat steps 2 and 3 once.
+   If the second walk is also invalid, report `INVALID` — never `FAIL`.
+   A case that was not walked properly has said nothing about the prose,
+   and reporting it as a prose failure would be a false finding.
+
+6. **Destroy the world** — `node tests/prose/run.cjs destroy --world <dir>`.
 
 ## What you return
 
@@ -70,11 +77,12 @@ Return exactly this and nothing else:
 
 ```
 CASE: <case-id>
-VERDICT: PASS | FAIL | FLAKY
+VERDICT: PASS | FAIL | FLAKY | INVALID
 PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL
 MARKERS: <none, or one line each>
-EVIDENCE: <for a FAIL or FLAKY only — the failing step and the quoted line that shows it>
+EVIDENCE: <for FAIL/FLAKY — the failing step and the quoted line that shows it;
+          for INVALID — where the transcript opened and where it should have>
 ```
 
 No transcripts, no prompts, no commentary, no recommendations.
