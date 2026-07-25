@@ -2,7 +2,7 @@
 name: prose-walker
 description: Executes workflow prose exactly as a live session would, against a disposable test world, and returns a transcript of what it did. Dispatched by prose-orchestrator during a prose-test run.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
+model: opus
 ---
 
 # Prose Walker
@@ -62,15 +62,49 @@ Stop at the task's stop condition, the end of the flow, an
 
 ## Transcript
 
-Your entire final output is the transcript, in order of events. Return
-nothing else — no preamble, no summary, no assessment.
+Your entire final output is the transcript. Return nothing else — no
+preamble, no assessment, no closing summary.
+
+**It is a log, not a recollection.** Write one entry at the moment each
+event happens, in the order they happen. Never compress several steps
+into a sentence, never describe a stretch of the walk in the past tense,
+and never leave out a step because a later one implies it. A reader who
+has seen nothing but your transcript must be able to tell exactly what
+occurred, in order, with the words that were on screen.
+
+**If you did it, it is in the log.** Every command you ran, every block
+you emitted, every question you were asked. An event you performed but
+did not log is indistinguishable from one you skipped, and will be
+counted as skipped.
+
+Log these, each as its own entry:
 
 1. Every prose section or arm entered: `file.md § Heading`, plus the
    quoted guard line that selected it.
 2. Every command run, and the first line of its output.
-3. Every block the prose directed you to emit, quoted — a skipped
-   emission must be visible as an absence.
+3. Every block the prose directed you to emit, quoted in full.
 4. Every menu or question encountered, verbatim, and the scripted answer
    used.
 5. Every file written or edited (path only), and every marker above.
 6. Finally: `STOPPED: <reason>`.
+
+The shape, abbreviated:
+
+```
+ENTERED: some-reference.md § A. Offer Something
+  guard: (start of file)
+EMITTED:
+  > An independent agent can trace the code fresh…
+EMITTED (menu):
+  Do the thing?
+  - **`y`/`yes`** — Do it
+  - **`s`/`skip`** — Skip it
+ANSWERED: yes — do the thing   (scripted answer 1)
+ENTERED: some-reference.md § A — #### If `yes`
+  guard: "#### If `yes`"
+RAN: node .claude/skills/workflow-engine/scripts/engine.cjs thing do wu topic
+  → {"ok":true,"id":"thing-001","file":".workflows/.cache/…/thing-001.md"}
+WROTE: .workflows/.cache/…/thing-001.md
+SUBSTITUTED: the-stub-name
+STOPPED: the reference returned to its caller
+```

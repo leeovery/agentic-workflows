@@ -50,12 +50,17 @@ a walk.
    the walk transcript under a `=== TRANSCRIPT ===` line. Keep its
    verdict.
 
-4. **Escalate a failure** — if the verdict is FAIL, destroy the world,
-   build a fresh one, and repeat steps 2 and 3 with **model: opus** on
-   both agents. Two outcomes:
-   - Opus also FAILs → a confirmed finding.
-   - Opus PASSes → a disagreement. Report both, quoting the lines where
-     they diverge. Never resolve it yourself.
+Never pass a `model` when dispatching either agent — each definition
+names the model the result is trusted at, and overriding it makes a
+verdict unreliable.
+
+4. **Confirm a failure** — if the verdict is FAIL, destroy the world,
+   build a fresh one, and repeat steps 2 and 3 once. A defect in the
+   prose reproduces; a one-off does not. Two outcomes:
+   - The second run also FAILs → a confirmed finding. Report the
+     evidence from the second run.
+   - The second run PASSes → a non-reproducing failure. Report it as
+     `FLAKY`, quoting both, and resolve nothing yourself.
 
 5. **Destroy the world** — `node tests/prose/run.cjs destroy --world <dir>`.
 
@@ -65,11 +70,11 @@ Return exactly this and nothing else:
 
 ```
 CASE: <case-id>
-VERDICT: PASS | FAIL | DISAGREEMENT
+VERDICT: PASS | FAIL | FLAKY
 PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL
 MARKERS: <none, or one line each>
-EVIDENCE: <for a FAIL only — the failing step and the quoted line that shows it>
+EVIDENCE: <for a FAIL or FLAKY only — the failing step and the quoted line that shows it>
 ```
 
 No transcripts, no prompts, no commentary, no recommendations.

@@ -41,8 +41,8 @@ Report a verdict table from what the orchestrators returned: case id,
 verdict, path steps passed, world, markers. Quote the evidence line for
 every failure.
 
-A `DISAGREEMENT` verdict means Sonnet and Opus reached different
-conclusions on the same case — surface both, resolve neither.
+A `FLAKY` verdict means a failure did not reproduce on a second run from
+a fresh world — surface both runs, resolve neither.
 
 `UNSCRIPTED QUESTION`, `AMBIGUOUS` and `DEVIATION` markers are findings
 in their own right; carry them into the report even when every case

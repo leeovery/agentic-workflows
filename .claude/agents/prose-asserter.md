@@ -1,7 +1,7 @@
 ---
 name: prose-asserter
 description: Judges a prose-test walk against the case's expected path and the code-computed world delta, returning a four-part verdict. Dispatched by prose-orchestrator.
-model: sonnet
+model: opus
 ---
 
 # Prose Asserter

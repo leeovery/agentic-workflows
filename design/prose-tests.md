@@ -47,9 +47,6 @@ testing.
   the prose's behaviour changes. Worlds are per-case; duplication is
   accepted, because a case readable in one directory beats a
   deduplicated fixture library chased across the tree.
-  **Then**: `world_after` (a fixture, or `unchanged`), a granular
-  `trace` of the path the prose should have taken, and any further
-  `notes`.
 - **P1b — coarse act, granular assertion.** `act.md` never scripts the
   workflow's own steps: if the case says which commands to run, the
   walker stops deriving the path from the prose and the case would pass
@@ -81,11 +78,11 @@ testing.
   (so a world the engine moved goes red at the gate and lands as a
   reviewable snapshot diff in the PR that moved it), and every case's
   paths, anchors, worlds, stubs, and trace resolve.
-- **P4 — walker/asserter separation.** The walking agent never sees the
-  `then` block; an agent that knows the expected answer will find it.
+- **P4 — walker/asserter separation.** The walking agent never sees
+  `assert.md`; an agent that knows the expected answer will find it.
   The walker gets the world, the coarse instruction, the answer script
   and the stubs, and returns a transcript. The asserter sees the
-  transcript, the expected trace, and the world delta — never the
+  transcript, the expected path, and the world delta — never the
   reverse.
 - **P4a — substitutions are declared and marked.** A stub is named
   content; the case arming it owns the trigger, so one stub serves
@@ -100,12 +97,20 @@ testing.
   computation powers the PR-end suggestion — "these N cases intersect
   this PR's prose changes"), by hand-picked ids, or `--all`. An
   engine-only PR intersects nothing and suggests nothing.
-- **P6 — tiered walkers.** Sonnet walks by default; any FAIL re-runs
-  on Opus before it is believed (the agent definitions set the default,
-  the dispatch overrides it on retry). Persistent disagreement surfaces
-  to Lee with both walks quoted — failures are findings, never
-  auto-resolved gates.
-- **P6a — a nested agent per case.** The `/prose-test` skill dispatches
+- **P6 — one model, chosen for trust.** Walker and asserter both run on
+  **Opus**. Measured, not assumed: across three runs a Sonnet walker
+  performed the walk correctly every time but narrated it in summary,
+  omitting the quoted evidence the asserter requires — even with a
+  worked transcript example in front of it. A tiered arrangement then
+  produces a disagreement on every case, which is noise, not a signal.
+  A result you cannot rely on is worth nothing, so the cheaper tier is
+  a false economy. The orchestrator never overrides the model: each
+  definition names the model its result is trusted at.
+- **P6a — a FAIL is confirmed by repetition, not by promotion.** A
+  failing case re-runs once from a fresh world at the same models. A
+  defect in the prose reproduces; a one-off does not, and is reported
+  as FLAKY with both runs quoted. Nothing is auto-resolved.
+- **P6b — a nested agent per case.** The `/prose-test` skill dispatches
   one **prose-orchestrator** per case, which builds the world, dispatches
   **prose-walker**, computes the delta, dispatches **prose-asserter**,
   escalates a failure, destroys the world, and returns a verdict alone.
@@ -113,7 +118,7 @@ testing.
   scales past a handful of cases. Standing instructions live in
   `.claude/agents/prose-*.md`; only the per-case payload comes from
   `tests/prose/prompts/`, so no agent ever reads words composed in code.
-- **P6b — run the test, nothing else.** Every agent in the chain is
+- **P6c — run the test, nothing else.** Every agent in the chain is
   forbidden from fixing anything and from working out why a case failed.
   A failure is a finished result; diagnosing it is a separate, human-led
   act. This is stated in prose in each definition rather than relied on
