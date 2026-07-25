@@ -132,6 +132,11 @@ function cmdPrompt(argv) {
       `Repository root: ${ROOT}`,
     ];
 
+  const stubs = c.stub
+    ? ['', 'STUBS — where the prose dispatches a background agent, do NOT dispatch one.',
+      'Play the agent yourself exactly as described, then continue the prose:', '', c.stub]
+    : [];
+
   const prompt = [
     ...setting,
     '',
@@ -140,6 +145,7 @@ function cmdPrompt(argv) {
     '',
     'SCOPE — the prose under walk:',
     ...c.files.map((f) => `  - ${f.path}${f.anchor ? ` (start at the heading containing "${f.anchor}")` : ''}`),
+    ...stubs,
     '',
     'RULES',
     '- Follow the prose literally, step by step, arm by arm. Where it names an',
@@ -184,6 +190,21 @@ function runStateAssertion(worldDir, assertion) {
     const present = fs.existsSync(path.join(worldDir, a.path));
     const want = a.kind === 'file-exists';
     return { assertion, pass: present === want, actual: present ? 'present' : 'absent' };
+  }
+  if (a.kind === 'json-equals') {
+    const full = path.join(worldDir, a.path);
+    if (!fs.existsSync(full)) return { assertion, pass: false, actual: 'file absent' };
+    let doc;
+    try {
+      doc = JSON.parse(fs.readFileSync(full, 'utf8'));
+    } catch (e) {
+      return { assertion, pass: false, actual: `unparseable JSON: ${e.message}` };
+    }
+    const found = a.pointer.split('.').reduce((node, key) => (
+      node === undefined || node === null ? undefined : node[key]
+    ), doc);
+    const actual = found === undefined ? '<undefined>' : String(found);
+    return { assertion, pass: actual === a.value, actual };
   }
   if (a.kind === 'manifest-exists' || a.kind === 'manifest-absent') {
     const res = engineInWorld(worldDir, ['manifest', 'exists', a.dotpath, a.field]);

@@ -109,6 +109,22 @@ testing.
 
 ## Log
 
+- 2026-07-25 — Stage 3b, the bugfix corpus. Three fixtures along
+  `crash-fix` (created / investigating / investigated) and four cases
+  covering only what bugfix does differently: continue-bugfix routing a
+  fresh bug to investigation, investigation entry seeding from the
+  carrier without re-asking, the root-cause validation agent's full
+  lifecycle, and a specification sourced from the investigation rather
+  than a discussion. Two framework extensions the corpus demanded,
+  both small: a free-text **`stub:` section** — prose that dispatches a
+  background agent is walked with the walker playing the agent (writes
+  the report at the engine-allocated path, returns the stated result),
+  because the case tests the lifecycle around the agent, never the
+  agent's judgment; and a **`json` state assertion** so the agent row's
+  closing status is checked deterministically in the cache store rather
+  than read out of a transcript. Both proven by hand-walking the
+  lifecycle in a live world before the cases shipped.
+
 - 2026-07-25 — Stage 3a, the feature corpus. Five stop-point fixtures
   along the canonical feature mainline (`pay` — created / discussed /
   specified / planned / implemented), composed from staged builders in

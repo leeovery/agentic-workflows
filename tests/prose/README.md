@@ -22,6 +22,14 @@ walk). Scope `files:` tightly — diff-selection and the PR-end suggestion
 run off it. `routing:` expects are agent-graded against the walk
 transcript; `state:` expects are asserted in code and require a `world:`.
 
+**Stub the agents, walk the lifecycle.** Prose that dispatches a
+background agent gets a `### stub` section: free text telling the walker
+to play the agent itself — write the report at the path the engine's
+dispatch returned, return the stated result — instead of spending a real
+sub-agent analysing fixture content. What the case tests is the
+lifecycle around the agent (dispatch, scan, incorporate, how the verdict
+routes), never the agent's own judgment.
+
 **Name behaviour, never coordinates.** Step numbers, arm letters, and
 heading numbering in walk or expect text break on cosmetic renumbering —
 failure for the wrong reason. Write "casing conventions load before the

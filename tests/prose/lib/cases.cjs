@@ -21,9 +21,19 @@
 //   {free text: entry point, what to do, stop condition}
 //   ### user
 //   1. {scripted answer, consumed in order}
+//   ### stub
+//   {free text: what to do INSTEAD of dispatching a real sub-agent}
 //   ### expect
 //   - routing: {claim graded by an agent against the walk transcript}
 //   - state: {deterministic assertion — see parseStateAssertion}
+//
+// `stub` is optional and free-form. Prose that dispatches background
+// agents is walked with those agents stubbed: the walker plays the
+// agent (writes the report the prose expects at the path the engine
+// allocated, returns the stated result) instead of spending a real
+// sub-agent on analysis of fixture content. The lifecycle around the
+// agent — dispatch, scan, incorporate, the verdict's routing — is what
+// the case tests; the agent's own judgment is not.
 //
 // State assertion grammar (executed by the runner, zero model judgment):
 //   file exists {rel}
@@ -31,6 +41,7 @@
 //   manifest exists {dotpath} {field}
 //   manifest absent {dotpath} {field}
 //   manifest equals {dotpath} {field} {expected printed value}
+//   json {rel} {dot.path} {expected value}
 
 const fs = require('fs');
 const path = require('path');
@@ -68,6 +79,10 @@ function parseStateAssertion(text) {
   if (mEquals) {
     return { kind: 'manifest-equals', dotpath: mEquals[1], field: mEquals[2], value: mEquals[3] };
   }
+  const json = text.match(/^json (\S+) (\S+) (.+)$/);
+  if (json) {
+    return { kind: 'json-equals', path: json[1], pointer: json[2], value: json[3] };
+  }
   return { error: `unparseable state assertion: "${text}"` };
 }
 
@@ -81,6 +96,7 @@ function parseCaseFile(file, flow) {
   const push = () => {
     if (current) {
       current.walk = current.walk.join('\n').trim();
+      current.stub = current.stub.join('\n').trim();
       cases.push(current);
     }
   };
@@ -92,7 +108,7 @@ function parseCaseFile(file, flow) {
       current = {
         id: caseStart[1], flow, file: path.relative(ROOT, file),
         world: null, origin: null, files: [],
-        walk: [], user: [], expect: [],
+        walk: [], user: [], stub: [], expect: [],
       };
       section = null;
       inFiles = false;
@@ -100,7 +116,7 @@ function parseCaseFile(file, flow) {
     }
     if (!current) continue;
 
-    const sub = line.match(/^### (walk|user|expect)\s*$/);
+    const sub = line.match(/^### (walk|user|stub|expect)\s*$/);
     if (sub) {
       section = sub[1];
       inFiles = false;
@@ -135,6 +151,8 @@ function parseCaseFile(file, flow) {
       if (line.trim() !== '') inFiles = false;
     } else if (section === 'walk') {
       current.walk.push(line);
+    } else if (section === 'stub') {
+      current.stub.push(line);
     } else if (section === 'user') {
       const answer = line.match(/^\d+\.\s+(.*)$/);
       if (answer) current.user.push(answer[1].trim());
