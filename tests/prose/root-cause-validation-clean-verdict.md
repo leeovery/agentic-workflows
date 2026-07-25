@@ -6,8 +6,6 @@
 ### given
 
 world_before: bugfix-investigating
-stubs:
-  - root-cause-validated: when the prose dispatches the validation agent
 
 ### when
 
@@ -18,6 +16,9 @@ Stop when the reference returns to its caller.
 
 answers:
 1. yes — run root cause validation
+
+stubs:
+  - root-cause-validated: when the prose dispatches the validation agent
 
 ### then
 

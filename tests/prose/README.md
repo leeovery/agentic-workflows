@@ -47,11 +47,17 @@ off it.
 
 Prose that dispatches a background agent, or that runs an unscripted
 conversation, is walked with that part substituted. A stub is named
-content; the case that arms it declares the moment:
+content; the case that arms it declares the moment. Stubs sit in `when`
+beside `answers:` — both are harness input consumed *during* the act,
+and `given` is the world and nothing else:
 
 ```
-### given
-world_before: bugfix-investigating
+### when
+{the walk instruction}
+
+answers:
+1. yes — run root cause validation
+
 stubs:
   - root-cause-validated: when the prose dispatches the validation agent
 ```

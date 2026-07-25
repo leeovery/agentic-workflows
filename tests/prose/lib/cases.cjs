@@ -14,13 +14,17 @@
 //
 //   ### given
 //   world_before: {fixture name}
-//   stubs:
-//     - {stub name}: {when it fires — the case owns the trigger}
 //
 //   ### when
 //   {free text: where to enter, what to follow, where to stop}
 //   answers:
 //   1. {scripted user response, consumed in order}
+//   stubs:
+//     - {stub name}: {the moment it fires — the case owns the trigger}
+//
+// `given` is the world and nothing else. Everything the harness feeds
+// in *during* the act — the user's answers, the agent substitutions —
+// belongs in `when`, beside the instruction they happen during.
 //
 //   ### then
 //   world_after: {fixture name | unchanged}
@@ -100,21 +104,18 @@ function parseCaseFile(file) {
 
     if (section === 'given') {
       const wb = line.match(/^world_before:\s*(\S+)\s*$/);
-      if (wb) { c.worldBefore = wb[1]; list = null; continue; }
-      if (/^stubs:\s*$/.test(line)) { list = 'stubs'; continue; }
-      const stub = line.match(/^\s+- ([a-z0-9][a-z0-9-]*):\s*(.+)$/);
-      if (list === 'stubs' && stub) {
-        c.stubs.push({ name: stub[1], trigger: stub[2].trim() });
-        continue;
-      }
+      if (wb) c.worldBefore = wb[1];
       continue;
     }
 
     if (section === 'when') {
       if (/^answers:\s*$/.test(line)) { list = 'answers'; continue; }
+      if (/^stubs:\s*$/.test(line)) { list = 'stubs'; continue; }
       const answer = line.match(/^\d+\.\s+(.*)$/);
       if (list === 'answers' && answer) { c.answers.push(answer[1].trim()); continue; }
-      if (list !== 'answers') c.when.push(line);
+      const stub = line.match(/^\s+- ([a-z0-9][a-z0-9-]*):\s*(.+)$/);
+      if (list === 'stubs' && stub) { c.stubs.push({ name: stub[1], trigger: stub[2].trim() }); continue; }
+      if (list === null) c.when.push(line);
       continue;
     }
 

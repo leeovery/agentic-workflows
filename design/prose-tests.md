@@ -32,11 +32,13 @@ testing.
 - **P1 — cases are Given-When-Then.** One case per file, flat:
   `tests/prose/{case-id}.md`, filename equal to the id and validated as
   such. Nothing groups cases but their `files:` scope, which is what
-  selection runs on. **Given**: `world_before` (a fixture) plus any
-  `stubs` armed, each with the moment it fires. **When**: one coarse
+  selection runs on. **Given**: `world_before` (a fixture) and nothing
+  else — the world before anything happens. **When**: one coarse
   instruction — where to enter, what to follow, where to stop — plus
-  `answers`, the scripted user responses (an unscripted question is a
-  finding: the prose asked something the case didn't predict).
+  everything the harness feeds in *during* the act: `answers` (the
+  scripted user responses; an unscripted question is a finding, the
+  prose asked something the case didn't predict) and `stubs`, each with
+  the moment it fires.
   **Then**: `world_after` (a fixture, or `unchanged`), a granular
   `trace` of the path the prose should have taken, and any further
   `notes`.

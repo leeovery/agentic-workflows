@@ -3,10 +3,6 @@
 - files:
   - skills/workflow-start/SKILL.md#Boot
 
-### given
-
-world_after is unchanged because this case executes nothing.
-
 ### when
 
 Structure-only: read the initialisation portion of
