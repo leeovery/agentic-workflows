@@ -1,13 +1,15 @@
 ---
 name: prose-test
-description: Run prose-logic test cases — walker agents execute workflow prose against materialised fixture worlds, graders check the transcripts, deterministic state assertions run in code. Scope by diff (default), case ids, or --all.
+description: Run prose-logic test cases — a walker agent executes workflow prose against a materialised fixture world, an asserting agent judges the trace and the world delta. Scope by diff (default), case ids, or --all.
 ---
 
 # Prose Test
 
 Run prose-test cases (design: `design/prose-tests.md`; runner:
-`tests/prose/run.cjs`). Walks cost tokens — this skill runs on command
-only, never as part of a routine gate.
+`tests/prose/run.cjs`). Cases are Given-When-Then: a world is arranged
+from a committed fixture, an agent acts by walking the real prose, and a
+second agent asserts the resulting trace and world. Walks cost tokens —
+this skill runs on command only, never as part of a routine gate.
 
 ## Step 1: Select
 
@@ -21,32 +23,42 @@ Parse the arguments:
 If the selection is empty: report that no cases intersect and stop.
 Otherwise show the selected case ids and proceed.
 
-## Step 2: Walk and grade each case
+## Step 2: Arrange and act
 
 Cases are independent — run up to 4 concurrently. Per case:
 
-1. **World** (skip for `world=null` cases): `node tests/prose/run.cjs world <id>` — note the returned path.
-2. **Walker**: `node tests/prose/run.cjs prompt <id> [--world <dir>]`, then dispatch a subagent (model: **sonnet**) with that prompt **verbatim and unmodified**. Never hand-assemble a walker prompt and never mention any expectation to the walker — the `prompt` command's output is the whole contract. Save the returned transcript to a scratch file.
-3. **Deterministic grade**: `node tests/prose/run.cjs grade <id> [--world <dir>]` — state assertions pass/fail in code; the output also lists the routing claims.
-4. **Grader**: dispatch a second subagent (model: **sonnet**) with: the transcript, the routing claims, and the case's scoped prose files. Instructions: verdict per claim, PASS only with a quoted line from the transcript (and prose where relevant) that satisfies it; FAIL must state what is missing or contradicting. A PASS without a quote is invalid — treat as FAIL and re-grade.
+1. **World** (skip when the case has no world): `node tests/prose/run.cjs world <id>` — note the returned path.
+2. **Walk**: `node tests/prose/run.cjs prompt <id> [--world <dir>]`, then dispatch a subagent (model: **sonnet**) with that prompt **verbatim and unmodified**. Never hand-assemble a walker prompt, and never mention any expectation — the `prompt` command's output is the whole contract, and it cannot contain the case's `then`. Save the returned transcript to a scratch file.
 
-A walker that returns `UNSCRIPTED QUESTION` or `AMBIGUOUS` is a finding
-in itself — carry it into the report even if claims pass.
+## Step 3: Assert
 
-## Step 3: Escalate failures
+`node tests/prose/run.cjs assert <id> [--world <dir>]` produces the
+asserting agent's prompt: the expected trace, any further claims, and the
+code-computed world delta. Dispatch a second subagent (model: **sonnet**)
+with that prompt plus the walk transcript.
 
-Any failed claim (state or routing):
+It returns a verdict in four parts: trace (per step, each PASS quoting the
+transcript line that shows it), world (every difference in the delta
+enumerated and classified volatile or material), markers, and the overall
+verdict. A trace PASS without a quote is invalid — treat as FAIL.
 
-1. Build a **fresh** world and re-run the walker on model: **opus**, then re-grade.
+`UNSCRIPTED QUESTION`, `AMBIGUOUS`, or `DEVIATION` markers in a transcript
+are findings in their own right — carry them into the report even when
+every claim passed.
+
+## Step 4: Escalate failures
+
+Any FAIL:
+
+1. Build a **fresh** world and re-run the walk on model: **opus**, then re-assert.
 2. Both fail → confirmed finding.
 3. Sonnet-fail / Opus-pass → disagreement: report both walks with the divergent lines quoted. Never auto-resolve.
 
-## Step 4: Report and clean up
+## Step 5: Report and clean up
 
-Report a verdict table: case id, state assertions passed/total, routing
-claims passed/total, escalations, findings. Quote the evidence for every
-failure. Findings are findings — never edit prose or cases mid-run;
-report and stop.
+Report a verdict table: case id, trace passed/total, world verdict,
+markers, escalations. Quote the evidence for every failure. Findings are
+findings — never edit prose, cases, or fixtures mid-run; report and stop.
 
 Destroy every world (`node tests/prose/run.cjs destroy --world <dir>`)
 except one you are actively citing in a failure report; name any world
@@ -54,6 +66,6 @@ kept so it can be removed later.
 
 ## Rules
 
-- The walker never sees `expect:` claims — only the `prompt` command's output reaches it.
-- A failing case is a finding either way: broken prose or a stale case. The report says which is suspected, the user decides.
+- The walker never sees the `then` block — only the `prompt` command's output reaches it.
+- A failing case is a finding either way: broken prose, or a stale case. The report says which is suspected; the user decides.
 - Never regenerate fixtures or edit cases to make a run pass.

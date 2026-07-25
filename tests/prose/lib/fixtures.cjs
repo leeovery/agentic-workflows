@@ -101,6 +101,11 @@ function excluded(rel) {
   if (parts.includes('.git')) return true;
   if (rel === path.join('.workflows', '.knowledge')) return true;
   if (rel.startsWith(path.join('.workflows', '.knowledge') + path.sep)) return true;
+  // Installed skills/agents: copied into live worlds by the world builder,
+  // never part of a snapshot. Excluding them lets an acted world be
+  // compared against an expected snapshot on equal terms.
+  if (rel.startsWith(path.join('.claude', 'skills') + path.sep)) return true;
+  if (rel.startsWith(path.join('.claude', 'agents') + path.sep)) return true;
   return false;
 }
 
@@ -189,8 +194,48 @@ function materialiseSnapshot(name, destDir) {
   }
 }
 
+/** Unified diff of two buffers, via git — no diff algorithm of our own. */
+function unifiedDiff(label, expectedBuf, actualBuf) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-diff-'));
+  try {
+    const a = path.join(dir, 'expected');
+    const b = path.join(dir, 'actual');
+    fs.writeFileSync(a, expectedBuf);
+    fs.writeFileSync(b, actualBuf);
+    const res = spawnSync('git', ['diff', '--no-index', '--unified=3', '--no-color', a, b],
+      { encoding: 'utf8', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' } });
+    const body = (res.stdout || '').split('\n').slice(4).join('\n').trimEnd();
+    return `--- ${label}\n${body}`;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Compare a live (acted) world against a committed snapshot. Returns the
+ * factual delta — what a walk actually did to the world — for the
+ * asserting agent to classify. No normalisation: volatile fields (times,
+ * SHAs) surface as ordinary differences and the agent rules on them.
+ */
+function diffWorldAgainstSnapshot(worldDir, snapshotName) {
+  const expected = readSnapshot(snapshotName);
+  if (expected === null) throw new Error(`fixture "${snapshotName}" has no committed snapshot`);
+  const actual = collectTree(worldDir);
+
+  const added = [];
+  const removed = [];
+  const changed = [];
+  for (const [rel, buf] of actual) {
+    if (!expected.has(rel)) added.push(rel);
+    else if (!expected.get(rel).equals(buf)) changed.push(unifiedDiff(rel, expected.get(rel), buf));
+  }
+  for (const rel of expected.keys()) if (!actual.has(rel)) removed.push(rel);
+
+  return { snapshot: snapshotName, added, removed, changed, identical: !added.length && !removed.length && !changed.length };
+}
+
 module.exports = {
   ROOT, ENGINE, KNOWLEDGE, FIXTURES_DIR,
   listFixtures, runRecipe, collectTree, readSnapshot,
-  writeSnapshot, compareSnapshot, materialiseSnapshot,
+  writeSnapshot, compareSnapshot, materialiseSnapshot, diffWorldAgainstSnapshot,
 };

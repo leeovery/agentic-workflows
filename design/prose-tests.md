@@ -29,18 +29,24 @@ testing.
 
 ## The contract
 
-- **P1 — cases are structured natural language.** A case declares
-  `id`, `files:` (prose scope, drives diff-selection), `world:` (the
-  fixture it starts from, or none for pure prose-structure claims),
-  `walk:` (entry point + termination), `user:` (scripted answers for
-  the menus the walk hits; an unscripted question is a FAIL — the
-  prose asked something the case didn't predict), `expect:` (concrete
-  checkable claims: routing assertions graded by the agent with quoted
-  line evidence, end-state assertions diffed by code), `origin:` (the
-  finding or flow it pins). **One case per file**:
-  `tests/prose/{flow}/{case-id}.md`, filename equal to the id and
-  validated as such. A case runs as long or short as it needs to —
-  length never justifies bundling two into one file.
+- **P1 — cases are Given-When-Then.** One case per file, flat:
+  `tests/prose/{case-id}.md`, filename equal to the id and validated as
+  such. Nothing groups cases but their `files:` scope, which is what
+  selection runs on. **Given**: `world_before` (a fixture) plus any
+  `stubs` armed, each with the moment it fires. **When**: one coarse
+  instruction — where to enter, what to follow, where to stop — plus
+  `answers`, the scripted user responses (an unscripted question is a
+  finding: the prose asked something the case didn't predict).
+  **Then**: `world_after` (a fixture, or `unchanged`), a granular
+  `trace` of the path the prose should have taken, and any further
+  `notes`.
+- **P1a — coarse When, granular Then.** The When never scripts the
+  workflow's own steps: if the case says which commands to run, the
+  walker stops deriving the path from the prose and the case would pass
+  with the skill file deleted. Granularity belongs in the Then, where a
+  step-by-step expected trace catches the real threat — a walker that
+  silently course-corrects around broken prose instead of surfacing it.
+  Claims name behaviour, never coordinates.
 - **P2 — worlds are real, never imagined.** A fixture is authored by a
   **recipe** (a node script running real engine calls + perturbations
   against a scratch project) and committed as a **golden snapshot**
@@ -52,20 +58,31 @@ testing.
   project; engine reads answer for real; prescribed mutations execute
   for real, in the sandbox. Hand-typed fixture JSON is forbidden — a
   hand-faked state can be a state the engine could never produce.
-- **P3 — deterministic wherever possible.** The model supplies only
-  the walk; the facts come from code. Engine responses are real,
-  end-state expectations are verified by a deterministic diff, worlds
-  are byte-frozen snapshots. CI (`npm test`, zero tokens) holds the
-  deterministic perimeter: every snapshot rebuilds from its recipe
-  byte-identical (drift red-flags in the PR that moved the world, as
-  a reviewable snapshot diff), and every case's `files:` paths and
-  section anchors resolve. Recipes run deterministic — pinned clock
-  or normalised volatile fields, same constraint the simulation
-  already lives with.
-- **P4 — walker/grader separation.** The walking agent never sees the
-  `expect:` block; an agent that knows the expected answer will find
-  it. The walker gets world + walk + user script only and returns a
-  transcript; grading happens after, against the transcript.
+- **P3 — code states the facts, the agent judges them.** Expectations
+  are whole worlds, not literals: code computes the factual delta
+  between the acted world and the expected fixture, and the asserting
+  agent classifies each difference as volatile (timestamps, SHAs,
+  allocated ids) or material. No normalisation table to maintain, no
+  hand-written per-field assertions, and nothing goes unchecked
+  because nobody thought to assert it. Engine responses during the
+  walk are real. CI (`npm test`, zero tokens) holds the deterministic
+  perimeter: every snapshot rebuilds from its recipe byte-identical
+  (drift red-flags in the PR that moved the world, as a reviewable
+  snapshot diff), and every case's paths, anchors, worlds, stubs, and
+  trace resolve.
+- **P4 — walker/asserter separation.** The walking agent never sees the
+  `then` block; an agent that knows the expected answer will find it.
+  The walker gets the world, the coarse instruction, the answer script
+  and the stubs, and returns a transcript. The asserter sees the
+  transcript, the expected trace, and the world delta — never the
+  reverse.
+- **P4a — substitutions are declared and marked.** A stub is named
+  content; the case arming it owns the trigger, so one stub serves
+  many moments. The walker records `SUBSTITUTED:` for each, and the
+  prompt labels them as harness mechanics, so the asserter never
+  credits the walk for what the framework supplied. Whatever a stub
+  covers is not under test in that case — some other case must walk it
+  unstubbed.
 - **P5 — run on command, never in CI.** Walks cost tokens. The runner
   is invoked deliberately: scoped by diff-intersection (the same
   computation powers the PR-end suggestion — "these N cases intersect
@@ -82,16 +99,17 @@ testing.
 
 ## Architecture
 
-- `tests/prose/{flow}/` — case files per flow (research, discussion,
-  planning, implementation, review, discovery, …).
+- `tests/prose/{case-id}.md` — the cases, flat.
+- `tests/prose/stubs/{name}.md` — named substitutions: description
+  above a `---` fence, exact bytes below.
 - `tests/prose/fixtures/{name}/recipe.cjs` + `snapshot/` — the world
-  library. One canonical fake project (same name, same topics
-  throughout) so fixtures stay comparable and cases read familiarly.
-- Runner (node): case parsing, diff-selection, world building,
-  walker-prompt assembly, end-state diffing, verdict table. Owns
-  everything deterministic.
-- `/prose-test` skill (thin): dispatch and grading discipline —
-  invokes the runner, sends walkers, grades transcripts, escalates
+  library, holding both start and expected-end worlds. One canonical
+  fake project per work type so cases read familiarly.
+- Runner (node): case parsing and validation, diff-selection, world
+  building, walker-prompt assembly, world diffing, asserter-prompt
+  assembly, snapshot regeneration. Owns everything deterministic.
+- `/prose-test` skill (thin): dispatch and verdict discipline —
+  invokes the runner, sends the walker, sends the asserter, escalates
   failures, reports.
 
 ## Stages
@@ -109,6 +127,32 @@ testing.
    campaign into cases.
 
 ## Log
+
+- 2026-07-25 — The Given-When-Then reshape (Lee, reviewing the corpus in
+  the TUI). Four corrections, all his: **(1)** cases are flat, one per
+  file, filename equal to the id — grouping by work type organised the
+  corpus around the build sequence rather than the prose under test, and
+  any single-parent taxonomy lies about cases spanning skills.
+  **(2)** The hand-written assertion DSL is gone. The world is a
+  directory that changed; the expectation is another committed world;
+  code diffs them and the asserting agent classifies each difference.
+  That deleted the grammar *and* closed the gap where anything nobody
+  thought to assert went unchecked — no normalisation table, no
+  engine-written-versus-model-written split to adjudicate.
+  **(3)** Stub triggers belong to the case, not the stub: binding a
+  substitution to a moment is what *prevents* reuse, and the same
+  content is wanted at different moments (first dispatch vs re-dispatch,
+  gaps-found vs validated). A stub is named content; the case says when.
+  A trigger-less stub is arrange in disguise and fails validation.
+  **(4)** Granularity belongs in the Then. Lee's argument, which holds:
+  coarse assertions let an agent silently course-correct around broken
+  prose — good in production, fatal in a test. The When stays coarse
+  (else the walker stops deriving the path and the case passes with the
+  skill deleted); the Then carries a step-by-step expected trace, so a
+  silent repair shows as a trace mismatch. Also added: a `DEVIATION:`
+  marker for prose that cannot be followed literally, findings in their
+  own right. Sections renamed given/when/then after BDD, which reads
+  closer to a specification than arrange/act/assert.
 
 - 2026-07-25 — Stage 3b, the bugfix corpus. Three fixtures along
   `crash-fix` (created / investigating / investigated) and four cases
