@@ -29,24 +29,32 @@ testing.
 
 ## The contract
 
-- **P1 — cases are Given-When-Then.** One case per file, flat:
-  `tests/prose/{case-id}.md`, filename equal to the id and validated as
-  such. Nothing groups cases but their `files:` scope, which is what
-  selection runs on. **Given**: `world_before` (a fixture) and nothing
-  else — the world before anything happens. **When**: one coarse
-  instruction — where to enter, what to follow, where to stop — plus
-  everything the harness feeds in *during* the act: `answers` (the
-  scripted user responses; an unscripted question is a finding, the
-  prose asked something the case didn't predict) and `stubs`, each with
-  the moment it fires.
+- **P1 — a case is a directory, one file per element.**
+  `tests/prose/cases/{case-id}/`: `case.json` (the values code branches
+  on — origin, scoped files, scripted answers, stub bindings),
+  `fixture.md` + `fixture-state.cjs` (the starting world in prose and in
+  engine calls), `act.md` (the coarse instruction), `assert.md` (the
+  expected path), `assertion-state.cjs` (the world the walk should
+  produce; absent means "unchanged"), and the two generated snapshots.
+  Nothing is parsed: JSON is JSON, prose files are read whole, recipes
+  are required as modules. Prose and code never share a file.
+- **P1a — the file boundaries are load-bearing.** `act.md` and
+  `assert.md` are separate because that is the P4 boundary — the walker
+  must never see the expected path, and a file boundary enforces it
+  structurally rather than by convention. `fixture-state.cjs` and
+  `assertion-state.cjs` are separate because they change for different
+  reasons: the fixture when the precondition changes, the assertion when
+  the prose's behaviour changes. Worlds are per-case; duplication is
+  accepted, because a case readable in one directory beats a
+  deduplicated fixture library chased across the tree.
   **Then**: `world_after` (a fixture, or `unchanged`), a granular
   `trace` of the path the prose should have taken, and any further
   `notes`.
-- **P1a — coarse When, granular Then.** The When never scripts the
+- **P1b — coarse act, granular assertion.** `act.md` never scripts the
   workflow's own steps: if the case says which commands to run, the
   walker stops deriving the path from the prose and the case would pass
-  with the skill file deleted. Granularity belongs in the Then, where a
-  step-by-step expected trace catches the real threat — a walker that
+  with the skill file deleted. Granularity belongs in `assert.md`, where
+  a step-by-step expected path catches the real threat — a walker that
   silently course-corrects around broken prose instead of surfacing it.
   Claims name behaviour, never coordinates.
 - **P2 — worlds are real, never imagined.** A fixture is authored by a
@@ -103,15 +111,17 @@ testing.
 
 ## Architecture
 
-- `tests/prose/{case-id}.md` — the cases, flat.
+- `tests/prose/cases/{case-id}/` — the cases, one directory each.
+- `tests/prose/mainlines/{work-type}.cjs` — shared pipeline stages, so
+  a case's state recipes are a few lines of composition. This is where
+  reuse lives: as functions, not as deduplicated snapshots.
 - `tests/prose/stubs/{name}.md` — named substitutions: description
   above a `---` fence, exact bytes below.
-- `tests/prose/fixtures/{name}/recipe.cjs` + `snapshot/` — the world
-  library, holding both start and expected-end worlds. One canonical
-  fake project per work type so cases read familiarly.
-- Runner (node): case parsing and validation, diff-selection, world
-  building, walker-prompt assembly, world diffing, asserter-prompt
-  assembly, snapshot regeneration. Owns everything deterministic.
+- `tests/prose/lib/` — `cases.cjs` (load and validate a case
+  directory), `worlds.cjs` (run recipes, snapshot, hash-skip, diff,
+  materialise), `fake-clock.cjs`.
+- `run.cjs` — the deterministic CLI: `list · select · world · prompt ·
+  diff · assert · snap · verify · destroy`.
 - `/prose-test` skill (thin): dispatch and verdict discipline —
   invokes the runner, sends the walker, sends the asserter, escalates
   failures, reports.
@@ -131,6 +141,24 @@ testing.
    campaign into cases.
 
 ## Log
+
+- 2026-07-25 — A case becomes a directory (Lee, still reviewing in the
+  TUI). Three faults in the flat-markdown shape, all his: **(1)** code
+  regex-parsed values out of markdown — the exact pattern this project
+  spent the analysis-state campaign eliminating. Now `case.json` holds
+  what code branches on, prose files are read whole, recipes are
+  modules; nothing is parsed and prose never shares a file with code.
+  **(2)** `world_before`/`world_after` named foreign fixtures the case
+  merely pointed at, and the scatter was real — six locations for one
+  test. A case now owns its worlds: `fixture-state.cjs` and
+  `assertion-state.cjs`, split because they change for different
+  reasons, with their snapshots beside them. Duplication accepted;
+  reuse moved to `mainlines/` as functions. **(3)** The naming follows
+  the stage it serves — fixture, act, assert — so `assert.md` and
+  `assertion-state.cjs` sit together by design. Added with it: a
+  recipe-hash skip, without which per-case worlds would make the gate
+  grow linearly (proven: 0.09s when nothing moved, full rebuild and
+  DRIFT when a mainline's content changed).
 
 - 2026-07-25 — The Given-When-Then reshape (Lee, reviewing the corpus in
   the TUI). Four corrections, all his: **(1)** cases are flat, one per

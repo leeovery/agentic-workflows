@@ -1,0 +1,11 @@
+{
+  "origin": "bugfix mainline — a fresh bug routes to investigation, not discussion",
+  "files": [
+    "skills/workflow-continue-bugfix/SKILL.md",
+    "skills/workflow-continue-bugfix/references/select-bugfix.md",
+    "skills/workflow-continue-bugfix/references/bugfix-display-and-menu.md"
+  ],
+  "answers": [
+    "the number listed against `crash-fix`"
+  ]
+}

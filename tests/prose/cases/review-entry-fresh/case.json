@@ -1,0 +1,7 @@
+{
+  "origin": "feature mainline — review refuses to start until delivery is complete",
+  "files": [
+    "skills/workflow-review-entry/SKILL.md",
+    "skills/workflow-review-entry/references/validate-phase.md"
+  ]
+}

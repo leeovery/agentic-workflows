@@ -1,153 +1,121 @@
 'use strict';
 
-// Case corpus: parsing and validation.
+// Case corpus: loading and validation.
 //
-// One case per file, flat: tests/prose/{case-id}.md, where the filename
-// IS the id (validated, so a rename can never drift from the heading).
-// Cases are Given-When-Then; nothing groups them but their `files:`
-// scope, which is what selection actually runs on.
+// A case is a directory, tests/prose/cases/{case-id}/, holding one file
+// per element of the test. Nothing is parsed: JSON is JSON, prose files
+// are read whole and relayed into prompts, recipes are required as
+// modules.
 //
-//   ## case: {kebab-id}
-//   - origin: {why this case exists}
-//   - files:
-//     - {repo-relative path}[#heading fragment]
+//   case.json            the values code branches on:
+//                          { origin, files[], answers[], stubs{name: trigger} }
+//   fixture.md           optional. Prose describing the starting world —
+//                        what has already happened, where the session
+//                        stands. Given to the walker.
+//   fixture-state.cjs    exports build(h): the starting world, in engine
+//                        calls. Composed from tests/prose/mainlines/.
+//   act.md               the coarse instruction: where to enter, what to
+//                        follow, where to stop. Given to the walker.
+//   assert.md            the expected trace, step by step, plus any
+//                        further claims. Given ONLY to the asserter.
+//   assertion-state.cjs  optional. exports build(h): the world the walk
+//                        should produce. Absent means "unchanged" — the
+//                        walk should leave the fixture state untouched.
+//   fixture/             generated snapshot of the starting world
+//   assertion/           generated snapshot of the expected world
 //
-//   ### given
-//   world_before: {fixture name}
-//   {free text: what that world represents — what has already happened,
-//    where the session stands. Context for the walker, never an
-//    instruction.}
+// act.md and assert.md are separate files because that is the P4
+// boundary: the walker must never see the expected trace, and a file
+// boundary enforces it structurally rather than by convention.
 //
-//   ### when
-//   {free text: where to enter, what to follow, where to stop}
-//   answers:
-//   1. {scripted user response, consumed in order}
-//   stubs:
-//     - {stub name}: {the moment it fires — the case owns the trigger}
-//
-// `given` is the world and nothing else. Everything the harness feeds
-// in *during* the act — the user's answers, the agent substitutions —
-// belongs in `when`, beside the instruction they happen during.
-//
-//   ### then
-//   world_after: {fixture name | unchanged}
-//   trace:
-//   1. {behavioural step the walk should have taken}
-//   notes:
-//   - {any further claim about the walk}
-//
-// The `when` stays coarse on purpose — one instruction, never a
-// step-by-step script. The walker must DERIVE the path from the prose;
-// that derivation is the thing under test. Granularity lives in `then`,
-// where a step-by-step expected trace catches a walker that silently
-// course-corrected around broken prose.
-//
-// Anchors are substring fragments matched against heading text
-// (`#Boot` matches "Step 0.2: Boot") so a renumber can't break a case.
-// Claims name BEHAVIOUR, never coordinates — step numbers and arm
-// letters rot on cosmetic edits and fail for the wrong reason.
+// The act stays coarse on purpose — the walker must DERIVE the path from
+// the prose, and that derivation is the thing under test. Granularity
+// lives in assert.md, where a step-by-step expected trace catches a
+// walker that silently course-corrected around broken prose.
 
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '../../..');
 const PROSE_DIR = path.join(ROOT, 'tests/prose');
-const FIXTURES_DIR = path.join(PROSE_DIR, 'fixtures');
+const CASES_DIR = path.join(PROSE_DIR, 'cases');
 const STUBS_DIR = path.join(PROSE_DIR, 'stubs');
-const UNCHANGED = 'unchanged';
 
-function listCaseFiles() {
-  if (!fs.existsSync(PROSE_DIR)) return [];
-  return fs.readdirSync(PROSE_DIR, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith('.md') && e.name !== 'README.md')
-    .map((e) => path.join(PROSE_DIR, e.name));
+const FILES = {
+  meta: 'case.json',
+  situation: 'fixture.md',
+  fixtureState: 'fixture-state.cjs',
+  act: 'act.md',
+  assert: 'assert.md',
+  assertionState: 'assertion-state.cjs',
+};
+const SNAPSHOTS = { fixture: 'fixture', assertion: 'assertion' };
+
+function listCaseIds() {
+  if (!fs.existsSync(CASES_DIR)) return [];
+  return fs.readdirSync(CASES_DIR, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('_'))
+    .map((e) => e.name)
+    .sort();
 }
 
-function parseCaseFile(file) {
-  const lines = fs.readFileSync(file, 'utf8').split('\n');
-  const c = {
-    id: null, file: path.relative(ROOT, file), origin: null, files: [],
-    worldBefore: null, situation: [], stubs: [], when: [], answers: [],
-    worldAfter: null, trace: [], notes: [],
-  };
-  let section = null;   // null | given | when | then
-  let list = null;      // files | stubs | answers | trace | notes
+function readIf(dir, name) {
+  const file = path.join(dir, name);
+  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : null;
+}
 
-  for (const line of lines) {
-    const head = line.match(/^## case:\s*(\S+)\s*$/);
-    if (head) {
-      c.id = head[1];
-      section = null;
-      list = null;
-      continue;
-    }
-    const sub = line.match(/^### (given|when|then)\s*$/);
-    if (sub) {
-      section = sub[1];
-      list = null;
-      continue;
-    }
+function loadCase(id) {
+  const dir = path.join(CASES_DIR, id);
+  if (!fs.existsSync(dir)) throw new Error(`no case "${id}" in tests/prose/cases`);
 
-    if (section === null) {
-      const origin = line.match(/^- origin:\s*(.*)$/);
-      if (origin) { c.origin = origin[1].trim(); list = null; continue; }
-      if (/^- files:\s*$/.test(line)) { list = 'files'; continue; }
-      const item = line.match(/^\s+- (.+)$/);
-      if (list === 'files' && item) {
-        const spec = item[1].trim();
-        const hash = spec.indexOf('#');
-        c.files.push(hash === -1
-          ? { path: spec, anchor: null }
-          : { path: spec.slice(0, hash).trim(), anchor: spec.slice(hash + 1).trim() });
-        continue;
-      }
-      if (line.trim() !== '') list = null;
-      continue;
-    }
-
-    if (section === 'given') {
-      const wb = line.match(/^world_before:\s*(\S+)\s*$/);
-      if (wb) c.worldBefore = wb[1];
-      else c.situation.push(line);
-      continue;
-    }
-
-    if (section === 'when') {
-      if (/^answers:\s*$/.test(line)) { list = 'answers'; continue; }
-      if (/^stubs:\s*$/.test(line)) { list = 'stubs'; continue; }
-      const answer = line.match(/^\d+\.\s+(.*)$/);
-      if (list === 'answers' && answer) { c.answers.push(answer[1].trim()); continue; }
-      const stub = line.match(/^\s+- ([a-z0-9][a-z0-9-]*):\s*(.+)$/);
-      if (list === 'stubs' && stub) { c.stubs.push({ name: stub[1], trigger: stub[2].trim() }); continue; }
-      if (list === null) c.when.push(line);
-      continue;
-    }
-
-    // then
-    const wa = line.match(/^world_after:\s*(\S+)\s*$/);
-    if (wa) { c.worldAfter = wa[1]; list = null; continue; }
-    if (/^trace:\s*$/.test(line)) { list = 'trace'; continue; }
-    if (/^notes:\s*$/.test(line)) { list = 'notes'; continue; }
-    const step = line.match(/^\d+\.\s+(.*)$/);
-    if (list === 'trace' && step) { c.trace.push(step[1].trim()); continue; }
-    if (list === 'trace' && /^\s+\S/.test(line) && c.trace.length) {
-      c.trace[c.trace.length - 1] += ` ${line.trim()}`;
-      continue;
-    }
-    const note = line.match(/^- (.*)$/);
-    if (list === 'notes' && note) { c.notes.push(note[1].trim()); continue; }
-    if (list === 'notes' && /^\s+\S/.test(line) && c.notes.length) {
-      c.notes[c.notes.length - 1] += ` ${line.trim()}`;
+  const metaPath = path.join(dir, FILES.meta);
+  let meta = {};
+  let metaError = null;
+  if (!fs.existsSync(metaPath)) metaError = `missing ${FILES.meta}`;
+  else {
+    try {
+      meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    } catch (e) {
+      metaError = `${FILES.meta} does not parse: ${e.message}`;
     }
   }
 
-  c.when = c.when.join('\n').trim();
-  c.situation = c.situation.join('\n').trim();
-  return c;
+  return {
+    id,
+    dir,
+    rel: path.relative(ROOT, dir),
+    metaError,
+    origin: meta.origin || null,
+    files: (meta.files || []).map((spec) => {
+      const hash = spec.indexOf('#');
+      return hash === -1
+        ? { path: spec, anchor: null }
+        : { path: spec.slice(0, hash).trim(), anchor: spec.slice(hash + 1).trim() };
+    }),
+    answers: meta.answers || [],
+    stubs: Object.entries(meta.stubs || {}).map(([name, trigger]) => ({ name, trigger })),
+    situation: readIf(dir, FILES.situation),
+    act: readIf(dir, FILES.act),
+    assert: readIf(dir, FILES.assert),
+    hasFixtureState: fs.existsSync(path.join(dir, FILES.fixtureState)),
+    hasAssertionState: fs.existsSync(path.join(dir, FILES.assertionState)),
+  };
 }
 
 function loadAllCases() {
-  return listCaseFiles().map(parseCaseFile);
+  return listCaseIds().map(loadCase);
+}
+
+/** A world builder module: exports build(h). */
+function requireState(caseId, which) {
+  const file = path.join(CASES_DIR, caseId, FILES[which]);
+  if (!fs.existsSync(file)) return null;
+  delete require.cache[require.resolve(file)];
+  const mod = require(file);
+  if (typeof mod.build !== 'function') {
+    throw new Error(`${caseId}/${FILES[which]} must export build(h)`);
+  }
+  return mod;
 }
 
 function listStubs() {
@@ -166,7 +134,7 @@ function readStub(name) {
   if (fence === -1) throw new Error(`stub "${name}" has no --- fence separating description from content`);
   return {
     name,
-    description: raw.slice(0, fence).trim(),
+    description: raw.slice(0, fence).replace(/^#.*\n/, '').trim(),
     content: raw.slice(fence + 5).replace(/^\n+/, ''),
   };
 }
@@ -178,27 +146,17 @@ function headingExists(absPath, anchor) {
   });
 }
 
-function fixtureExists(name) {
-  return fs.existsSync(path.join(FIXTURES_DIR, name, 'recipe.cjs'));
-}
-
 function validateCorpus(cases) {
   const errors = [];
-  const seen = new Set();
   const stubs = new Set(listStubs());
 
   for (const c of cases) {
-    const at = c.file;
-    if (!c.id) { errors.push(`${at}: no "## case:" heading`); continue; }
-    if (!/^[a-z0-9][a-z0-9-]*$/.test(c.id)) errors.push(`${at}: id is not kebab-case`);
-    if (seen.has(c.id)) errors.push(`${at}: duplicate case id "${c.id}"`);
-    seen.add(c.id);
-    if (path.basename(c.file, '.md') !== c.id) {
-      errors.push(`${at}: filename must equal the case id (expected ${c.id}.md)`);
-    }
+    const at = c.rel;
+    if (c.metaError) { errors.push(`${at}: ${c.metaError}`); continue; }
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(c.id)) errors.push(`${at}: case directory is not kebab-case`);
+    if (!c.origin) errors.push(`${at}: ${FILES.meta} has no origin`);
 
-    if (!c.origin) errors.push(`${at}: no origin`);
-    if (c.files.length === 0) errors.push(`${at}: no files: scope`);
+    if (c.files.length === 0) errors.push(`${at}: ${FILES.meta} scopes no files`);
     for (const f of c.files) {
       const abs = path.join(ROOT, f.path);
       if (!fs.existsSync(abs)) errors.push(`${at}: scoped file missing: ${f.path}`);
@@ -207,31 +165,35 @@ function validateCorpus(cases) {
       }
     }
 
-    if (c.worldBefore && !fixtureExists(c.worldBefore)) {
-      errors.push(`${at}: world_before "${c.worldBefore}" has no fixture recipe`);
+    if (!c.act) errors.push(`${at}: no ${FILES.act}`);
+    if (!c.assert) errors.push(`${at}: no ${FILES.assert} — the expected trace is what catches a silent repair`);
+
+    if (c.hasAssertionState && !c.hasFixtureState) {
+      errors.push(`${at}: ${FILES.assertionState} without ${FILES.fixtureState} — nothing to act on`);
     }
-    if (!c.worldAfter) {
-      errors.push(`${at}: no world_after (use "unchanged" when the walk mutates nothing)`);
-    } else if (c.worldAfter !== UNCHANGED) {
-      if (!c.worldBefore) errors.push(`${at}: world_after names a fixture but there is no world_before`);
-      if (!fixtureExists(c.worldAfter)) {
-        errors.push(`${at}: world_after "${c.worldAfter}" has no fixture recipe`);
+    if (c.situation && !c.hasFixtureState) {
+      errors.push(`${at}: ${FILES.situation} describes a world this case does not build`);
+    }
+    for (const which of ['fixtureState', 'assertionState']) {
+      try {
+        requireState(c.id, which);
+      } catch (e) {
+        errors.push(`${at}: ${e.message}`);
       }
     }
 
     for (const s of c.stubs) {
       if (!stubs.has(s.name)) errors.push(`${at}: no stub "${s.name}" in tests/prose/stubs`);
-      if (!s.trigger) errors.push(`${at}: stub "${s.name}" declares no trigger — the case owns the moment`);
-      if (!c.worldBefore) errors.push(`${at}: stub "${s.name}" needs a world to fire in`);
+      if (!s.trigger || !s.trigger.trim()) {
+        errors.push(`${at}: stub "${s.name}" declares no trigger — the case owns the moment`);
+      }
+      if (!c.hasFixtureState) errors.push(`${at}: stub "${s.name}" needs a world to fire in`);
     }
-
-    if (!c.when) errors.push(`${at}: empty when`);
-    if (c.trace.length === 0) errors.push(`${at}: no trace — then must state the expected path step by step`);
   }
   return errors;
 }
 
 module.exports = {
-  ROOT, PROSE_DIR, FIXTURES_DIR, STUBS_DIR, UNCHANGED,
-  listCaseFiles, parseCaseFile, loadAllCases, listStubs, readStub, validateCorpus,
+  ROOT, PROSE_DIR, CASES_DIR, STUBS_DIR, FILES, SNAPSHOTS,
+  listCaseIds, loadCase, loadAllCases, requireState, listStubs, readStub, validateCorpus,
 };

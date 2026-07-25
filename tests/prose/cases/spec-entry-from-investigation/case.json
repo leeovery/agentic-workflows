@@ -1,0 +1,8 @@
+{
+  "origin": "bugfix mainline — the same entry skill, sourced from an investigation",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md"
+  ]
+}

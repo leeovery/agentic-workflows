@@ -1,0 +1,12 @@
+{
+  "origin": "feature mainline — planning offers a last chance to add context",
+  "files": [
+    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-planning-entry/references/validate-spec.md",
+    "skills/workflow-planning-entry/references/validate-phase.md",
+    "skills/workflow-planning-entry/references/cross-cutting-context.md"
+  ],
+  "answers": [
+    "continue — nothing has changed since the specification"
+  ]
+}

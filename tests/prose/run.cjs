@@ -7,12 +7,12 @@
 //
 //   list                          corpus table
 //   select [--diff <ref>|--all|--cases a,b]   cases to run, as JSON
-//   world <case-id>               materialise world_before, print path
-//   prompt <case-id> --world <d>  walker prompt (NEVER contains `then`)
-//   diff <case-id> --world <d>    acted world vs world_after, as facts
-//   assert <case-id> --world <d>  the asserting agent's prompt (diff + then)
-//   snap <fixture>                (re)generate a fixture's golden snapshot
-//   verify [fixture]              rebuild-compare fixture(s)
+//   world <case-id>               materialise the fixture state, print path
+//   prompt <case-id> --world <d>  walker prompt (NEVER contains assert.md)
+//   diff <case-id> --world <d>    acted world vs expected world, as facts
+//   assert <case-id> --world <d>  the asserting agent's prompt
+//   snap <case-id>                (re)generate a case's snapshots
+//   verify [case-id]              rebuild-compare snapshot(s)
 //   destroy --world <dir>         remove a world
 
 const fs = require('fs');
@@ -20,8 +20,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const cases = require('./lib/cases.cjs');
-const fixtures = require('./lib/fixtures.cjs');
-const world = require('./lib/world.cjs');
+const worlds = require('./lib/worlds.cjs');
 
 const ROOT = cases.ROOT;
 
@@ -30,10 +29,10 @@ function die(msg) {
   process.exit(1);
 }
 
-function loadCase(id) {
-  const found = cases.loadAllCases().find((c) => c.id === id);
-  if (!found) die(`no case "${id}" in the corpus`);
-  return found;
+function getCase(id) {
+  if (!id) die('a case id is required');
+  if (!cases.listCaseIds().includes(id)) die(`no case "${id}" in tests/prose/cases`);
+  return cases.loadCase(id);
 }
 
 function flag(argv, name) {
@@ -70,23 +69,23 @@ function cmdSelect(argv) {
   } else if (flag(argv, '--cases')) {
     mode = 'ids';
     const ids = flag(argv, '--cases').split(',').map((s) => s.trim());
-    const byId = new Map(all.map((c) => [c.id, c]));
-    for (const id of ids) if (!byId.has(id)) die(`no case "${id}" in the corpus`);
-    selected = ids.map((id) => byId.get(id));
+    for (const id of ids) getCase(id);
+    selected = all.filter((c) => ids.includes(c.id));
   } else {
     const ref = flag(argv, '--diff') || 'main';
     mode = `diff:${ref}`;
     const changed = changedFiles(ref);
-    selected = all.filter((c) => changed.has(c.file)
-      || c.files.some((f) => changed.has(f.path))
-      || [c.worldBefore, c.worldAfter].filter(Boolean).some((w) =>
-        [...changed].some((p) => p.startsWith(`tests/prose/fixtures/${w}/`)))
-      || c.stubs.some((s) => changed.has(`tests/prose/stubs/${s.name}.md`)));
+    selected = all.filter((c) => c.files.some((f) => changed.has(f.path))
+      || [...changed].some((p) => p.startsWith(`${c.rel}/`))
+      || c.stubs.some((s) => changed.has(`tests/prose/stubs/${s.name}.md`))
+      || [...changed].some((p) => p.startsWith('tests/prose/mainlines/')));
   }
   process.stdout.write(`${JSON.stringify({
     mode,
     cases: selected.map((c) => ({
-      id: c.id, file: c.file, world_before: c.worldBefore, world_after: c.worldAfter,
+      id: c.id,
+      dir: c.rel,
+      expects: c.hasAssertionState ? 'assertion state' : 'fixture state unchanged',
     })),
   }, null, 2)}\n`);
 }
@@ -94,26 +93,25 @@ function cmdSelect(argv) {
 // --- world / destroy ------------------------------------------------------
 
 function cmdWorld(argv) {
-  const c = loadCase(argv[0] || die('usage: world <case-id>'));
-  if (!c.worldBefore) {
+  const c = getCase(argv[0]);
+  if (!c.hasFixtureState) {
     process.stdout.write(`${JSON.stringify({ world: null, note: 'structure-only case — no world' })}\n`);
     return;
   }
-  const dir = world.buildWorld(c.worldBefore);
-  process.stdout.write(`${JSON.stringify({ world: dir, fixture: c.worldBefore })}\n`);
+  process.stdout.write(`${JSON.stringify({ world: worlds.buildWorld(c.id), case: c.id })}\n`);
 }
 
 function cmdDestroy(argv) {
   const dir = flag(argv, '--world') || die('usage: destroy --world <dir>');
-  world.destroyWorld(dir);
+  worlds.destroyWorld(dir);
   process.stdout.write(`destroyed ${dir}\n`);
 }
 
 // --- prompt (the walker) --------------------------------------------------
 
 function cmdPrompt(argv) {
-  const c = loadCase(argv[0] || die('usage: prompt <case-id> [--world <dir>]'));
-  const worldDir = c.worldBefore ? requireWorld(argv, c) : null;
+  const c = getCase(argv[0]);
+  const worldDir = c.hasFixtureState ? requireWorld(argv, c) : null;
 
   const setting = worldDir
     ? [
@@ -146,7 +144,7 @@ function cmdPrompt(argv) {
       return [
         `### ${s.name}`,
         `WHEN: ${s.trigger}`,
-        `WHAT IT IS: ${stub.description.replace(/^#.*\n/, '').trim()}`,
+        `WHAT IT IS: ${stub.description}`,
         'CONTENT (write these exact bytes where the substitution calls for a file):',
         ...stub.content.split('\n').map((l) => `    ${l}`),
         '',
@@ -154,14 +152,12 @@ function cmdPrompt(argv) {
     }),
   ] : [];
 
-  const situation = c.situation ? ['', 'SITUATION — where the project stands as you begin:', c.situation] : [];
-
   process.stdout.write(`${[
     ...setting,
-    ...situation,
+    ...(c.situation ? ['', 'SITUATION — where the project stands as you begin:', c.situation] : []),
     '',
     'TASK',
-    c.when,
+    c.act,
     '',
     'SCOPE — the prose under walk:',
     ...c.files.map((f) => `  - ${f.path}${f.anchor ? ` (start at the heading containing "${f.anchor}")` : ''}`),
@@ -183,7 +179,7 @@ function cmdPrompt(argv) {
     '  record `DEVIATION:` with what you could not do, then continue as best you',
     '  can. NEVER silently repair, reinterpret, or improve the prose. You are a',
     '  probe, not a reviewer: a broken instruction is the finding.',
-    '- Stop at the TASK\'s stop condition, the end of the flow, an UNSCRIPTED',
+    "- Stop at the TASK's stop condition, the end of the flow, an UNSCRIPTED",
     '  QUESTION, or a hard error — whichever comes first.',
     '',
     'TRANSCRIPT — your entire final output, in order of events:',
@@ -199,42 +195,33 @@ function cmdPrompt(argv) {
 
 // --- diff (the facts) -----------------------------------------------------
 
-function worldDelta(c, worldDir) {
-  const target = c.worldAfter === cases.UNCHANGED ? c.worldBefore : c.worldAfter;
-  return fixtures.diffWorldAgainstSnapshot(worldDir, target);
-}
-
 function cmdDiff(argv) {
-  const c = loadCase(argv[0] || die('usage: diff <case-id> --world <dir>'));
-  if (!c.worldBefore) {
+  const c = getCase(argv[0]);
+  if (!c.hasFixtureState) {
     process.stdout.write(`${JSON.stringify({ note: 'structure-only case — no world to diff' }, null, 2)}\n`);
     return;
   }
-  process.stdout.write(`${JSON.stringify(worldDelta(c, requireWorld(argv, c)), null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify(worlds.diffWorld(c.id, requireWorld(argv, c)), null, 2)}\n`);
 }
 
 // --- assert (the judging agent) -------------------------------------------
 
 function cmdAssert(argv) {
-  const c = loadCase(argv[0] || die('usage: assert <case-id> [--world <dir>]'));
+  const c = getCase(argv[0]);
   const lines = [
     'You are asserting the result of a prose-test case. You did not perform',
     'the walk. Judge only what the evidence shows.',
     '',
-    'EXPECTED TRACE — the path the prose should have taken:',
-    ...c.trace.map((t, i) => `  ${i + 1}. ${t}`),
+    'WHAT THE PROSE SHOULD HAVE DONE:',
+    '',
+    c.assert,
   ];
-  if (c.notes.length) {
-    lines.push('', 'FURTHER CLAIMS:', ...c.notes.map((n) => `  - ${n}`));
-  }
 
-  if (c.worldBefore) {
-    const delta = worldDelta(c, requireWorld(argv, c));
+  if (c.hasFixtureState) {
+    const delta = worlds.diffWorld(c.id, requireWorld(argv, c));
     lines.push(
       '',
-      c.worldAfter === cases.UNCHANGED
-        ? 'EXPECTED WORLD: unchanged — the walk should have left the project exactly as it found it.'
-        : `EXPECTED WORLD: the committed fixture "${c.worldAfter}".`,
+      `EXPECTED WORLD: ${delta.expecting}.`,
       '',
       'WORLD DELTA — the factual difference between the world after the walk and',
       'the expected world, computed by code. Volatile values (timestamps, git',
@@ -252,7 +239,7 @@ function cmdAssert(argv) {
     'THE TRANSCRIPT of the walk is supplied separately by the caller.',
     '',
     'VERDICT — return exactly this, nothing else:',
-    '1. Trace: one line per expected step — PASS or FAIL, each PASS quoting the',
+    '1. Path: one line per expected step — PASS or FAIL, each PASS quoting the',
     '   transcript line that shows it. A PASS with no quote is invalid.',
     '2. World: PASS or FAIL. Enumerate EVERY difference in the delta and classify',
     '   each as volatile (immaterial) or material. Any material difference fails.',
@@ -266,36 +253,43 @@ function cmdAssert(argv) {
 
 // --- snap / verify --------------------------------------------------------
 
+function statesOf(c) {
+  return [
+    c.hasFixtureState ? 'fixture' : null,
+    c.hasAssertionState ? 'assertion' : null,
+  ].filter(Boolean);
+}
+
 function cmdSnap(argv) {
-  const name = argv[0] || die('usage: snap <fixture>');
-  const scratch = fixtures.runRecipe(name);
-  try {
-    const count = fixtures.writeSnapshot(name, scratch);
-    process.stdout.write(`snapshot ${name}: ${count} files written — review the diff before committing\n`);
-  } finally {
-    fs.rmSync(scratch, { recursive: true, force: true });
+  const ids = argv[0] ? [getCase(argv[0]).id] : cases.listCaseIds();
+  for (const id of ids) {
+    const c = cases.loadCase(id);
+    for (const which of statesOf(c)) {
+      const count = worlds.writeSnapshot(id, which);
+      process.stdout.write(`${id}/${which}: ${count} files — review the diff before committing\n`);
+    }
   }
 }
 
 function cmdVerify(argv) {
-  const names = argv[0] ? [argv[0]] : fixtures.listFixtures();
+  const ids = argv[0] ? [getCase(argv[0]).id] : cases.listCaseIds();
   let failed = false;
-  for (const name of names) {
-    const scratch = fixtures.runRecipe(name);
-    try {
-      const d = fixtures.compareSnapshot(name, scratch);
-      if (!d.missing.length && !d.extra.length && !d.changed.length) {
-        process.stdout.write(`${name}: snapshot current\n`);
+  for (const id of ids) {
+    const c = cases.loadCase(id);
+    for (const which of statesOf(c)) {
+      const d = worlds.verifySnapshot(id, which);
+      if (d.skipped) {
+        process.stdout.write(`${id}/${which}: unchanged since last build\n`);
+      } else if (!d.missing.length && !d.extra.length && !d.changed.length) {
+        process.stdout.write(`${id}/${which}: snapshot current\n`);
       } else {
         failed = true;
-        process.stdout.write(`${name}: DRIFT — the recipe no longer rebuilds the snapshot\n`);
+        process.stdout.write(`${id}/${which}: DRIFT — the recipe no longer rebuilds the snapshot\n`);
         for (const f of d.changed) process.stdout.write(`  changed: ${f}\n`);
         for (const f of d.extra) process.stdout.write(`  extra (rebuilt, not in snapshot): ${f}\n`);
         for (const f of d.missing) process.stdout.write(`  missing (in snapshot, not rebuilt): ${f}\n`);
-        process.stdout.write(`  regenerate: node tests/prose/run.cjs snap ${name}\n`);
+        process.stdout.write(`  regenerate: node tests/prose/run.cjs snap ${id}\n`);
       }
-    } finally {
-      fs.rmSync(scratch, { recursive: true, force: true });
     }
   }
   process.exit(failed ? 1 : 0);
@@ -307,11 +301,11 @@ function cmdList() {
   const all = cases.loadAllCases();
   const errors = cases.validateCorpus(all);
   for (const c of all) {
-    const stubs = c.stubs.length ? ` stubs=${c.stubs.map((s) => s.name).join(',')}` : '';
-    process.stdout.write(
-      `${c.id}\n    ${c.worldBefore || '(no world)'} → ${c.worldAfter}  trace=${c.trace.length}${stubs}\n`);
+    const stubs = c.stubs.length ? `  stubs=${c.stubs.map((s) => s.name).join(',')}` : '';
+    const expects = c.hasAssertionState ? 'assertion state' : 'no change';
+    process.stdout.write(`${c.id}\n    ${c.hasFixtureState ? 'fixture' : 'no world'} → ${expects}${stubs}\n`);
   }
-  process.stdout.write(`\n${all.length} cases, ${fixtures.listFixtures().length} fixtures, ${cases.listStubs().length} stubs`);
+  process.stdout.write(`\n${all.length} cases, ${cases.listStubs().length} stubs`);
   process.stdout.write(errors.length ? `, ${errors.length} VALIDATION ERRORS:\n` : ', corpus valid\n');
   for (const e of errors) process.stdout.write(`  - ${e}\n`);
   process.exit(errors.length ? 1 : 0);

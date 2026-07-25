@@ -1,0 +1,12 @@
+{
+  "origin": "bugfix mainline — the validation agent's lifecycle on a clean verdict",
+  "files": [
+    "skills/workflow-investigation-process/references/root-cause-validation.md"
+  ],
+  "answers": [
+    "yes — run root cause validation"
+  ],
+  "stubs": {
+    "root-cause-validated": "when the engine records a dispatch of kind root-cause-validation"
+  }
+}
