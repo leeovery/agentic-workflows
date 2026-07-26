@@ -2,7 +2,7 @@
 name: prose-walker
 description: Executes workflow prose exactly as a live session would, against a disposable test world, and returns a transcript of what it did. Dispatched by prose-orchestrator during a prose-test run.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: opus
+model: sonnet
 hooks:
   PreToolUse:
     - matcher: "Bash|Write|Edit|Read|Glob|Grep"
