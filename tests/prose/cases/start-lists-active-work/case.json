@@ -1,5 +1,6 @@
 {
   "origin": "feature mainline \u2014 the entry skill surfaces work without touching it",
+  "entry": "workflow-start",
   "files": [
     "skills/workflow-start/SKILL.md"
   ],

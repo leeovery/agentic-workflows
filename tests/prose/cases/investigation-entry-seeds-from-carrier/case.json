@@ -1,5 +1,6 @@
 {
   "origin": "bugfix mainline \u2014 a bug shaped in discovery is never re-interrogated",
+  "entry": "workflow-investigation-entry",
   "files": [
     "skills/workflow-investigation-entry/SKILL.md",
     "skills/workflow-investigation-entry/references/invoke-skill.md"

@@ -170,6 +170,30 @@ testing.
   A failure is a finished result; diagnosing it is a separate, human-led
   act. This is stated in prose in each definition rather than relied on
   from tool restrictions, which an agent may hold regardless.
+- **P9 — a case starts where a session starts, and runs until state
+  lands.** The only real openings are `workflow-start` (the user's), a
+  `workflow-*-entry` skill (what a bridge plan file invokes after a
+  context clear), and `workflow-discovery` (epic continuation). Navigation
+  and processing skills are always reached mid-session; a reference is
+  never entered directly. A walk carries only the context it accumulates,
+  so one begun in the middle is judged under conditions the prose was
+  never written for, and its verdict means nothing in either direction.
+  Enforced in `lib/cases.cjs` by the required `entry` field, not left to
+  authoring discipline. The same rule ends a case: stop at a gate and the
+  delta is empty, the claims turn into descriptions of a display, and the
+  asserter is left comparing the walker's account of what it showed
+  against the case's account of what it should have shown — with no
+  independent ground truth anywhere in the loop.
+
+- **P10 — what code can decide, code decides.** A case declares
+  invariants over the recorded actions (`lib/invariants.cjs`) that run
+  before the asserter sees anything, and whose verdicts it may not
+  overturn. They exist because the world delta proves the outcome but not
+  that it was earned — a walk that ignored every instruction and wrote
+  the expected files lands the same state. Not a pinned call sequence:
+  recording and replaying one would freeze whatever the walker happened
+  to do, certifying broken prose instead of catching it.
+
 - **P7 — a failing case is a finding either way.** Either the prose
   broke, or the world/design moved and the case is stale. The
   adjudication is the point; only the typo-class staleness is
@@ -217,6 +241,29 @@ testing.
    campaign into cases.
 
 ## Log
+
+- 2026-07-26 — Two findings that dissolved a long-running mystery, and
+  the rules that follow from them. First: we were judging a walk by the
+  single message an agent returns, while the walk itself happens across
+  dozens of turns. Every step narrated at the time and compressed out of
+  the closing summary read as a step never taken — the "under-reporting"
+  blamed first on the walker, then on the model, was ours. A Sonnet walk
+  of continue-feature was marked down for skipping the selection menu;
+  its transcript shows it emitted the display, emitted the menu verbatim,
+  stopped, consumed the scripted answer and validated the selection. An
+  Opus walk of the same case made byte-identical tool calls. The runtime
+  writes every turn already and the stop payload names the file, so the
+  hook now lifts them into the world (P6e). Second, and underneath it:
+  four cases started where no session ever starts — two at navigation
+  skills, one at a processing skill, one inside a reference. They are
+  retired, and the rule is enforced rather than remembered (P9). The
+  residue is now decided in code where it can be (P10). Along the way the
+  recorder was found to have been reading `tool_output` when the field is
+  `tool_response`, so every successful call had recorded its status and
+  nothing else, and the stop hook had never once fired — its world is
+  resolved from the transcript now, which also stamps the model on every
+  verdict, since an unreloaded definition can otherwise run a walk on a
+  model nobody chose.
 
 - 2026-07-26 — The first round that found more prose than instrument.
   Recording finally live (the blocker was `hasTrustDialogAccepted`, which

@@ -1,5 +1,6 @@
 {
   "origin": "feature mainline \u2014 planning offers a last chance to add context",
+  "entry": "workflow-planning-entry",
   "files": [
     "skills/workflow-planning-entry/SKILL.md",
     "skills/workflow-planning-entry/references/validate-spec.md",

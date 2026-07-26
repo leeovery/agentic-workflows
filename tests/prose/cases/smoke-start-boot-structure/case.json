@@ -1,5 +1,6 @@
 {
-  "origin": "framework smoke — a structure-only walk, no world",
+  "origin": "framework smoke \u2014 a structure-only walk, no world",
+  "entry": "workflow-start",
   "files": [
     "skills/workflow-start/SKILL.md#Boot"
   ]

@@ -189,3 +189,45 @@ describe('declaration validation', () => {
     assert.match(invariants.declarationErrors(['engine_before_write'])[0], /must be an object/);
   });
 });
+
+describe('entry points — where a walk may begin', () => {
+  const cases = require('../prose/lib/cases.cjs');
+
+  it('accepts the user entry point', () => {
+    assert.deepEqual(cases.entryErrors('workflow-start'), []);
+  });
+
+  it('accepts an entry skill, which a bridge plan invokes after a context clear', () => {
+    assert.deepEqual(cases.entryErrors('workflow-implementation-entry'), []);
+    assert.deepEqual(cases.entryErrors('workflow-specification-entry'), []);
+  });
+
+  it('accepts discovery, the one continuation that is not an entry skill', () => {
+    assert.deepEqual(cases.entryErrors('workflow-discovery'), []);
+  });
+
+  it('rejects a navigation skill — always invoked by workflow-start, never cold', () => {
+    const [error] = cases.entryErrors('workflow-continue-feature');
+    assert.match(error, /not somewhere a session starts/);
+  });
+
+  it('rejects a processing skill — always invoked by its entry skill', () => {
+    assert.match(cases.entryErrors('workflow-discussion-process')[0], /not somewhere a session starts/);
+  });
+
+  it('rejects a reference, which is never entered directly', () => {
+    assert.match(cases.entryErrors('root-cause-validation.md')[0], /not somewhere a session starts/);
+  });
+
+  it('rejects a plausible name that is not a skill on disk', () => {
+    assert.match(cases.entryErrors('workflow-imaginary-entry')[0], /not a skill in skills\//);
+  });
+
+  it('requires one at all', () => {
+    assert.match(cases.entryErrors(null)[0], /has no entry/);
+  });
+
+  it('holds for the live corpus', () => {
+    assert.deepEqual(cases.validateCorpus(cases.loadAllCases()), []);
+  });
+});
