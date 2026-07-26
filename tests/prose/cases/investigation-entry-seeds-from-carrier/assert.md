@@ -6,8 +6,8 @@ The prose should have taken this path:
 3. finds a discovery session log, so seeds the bug context from the
    manifest description and that log — the context-gathering questions
    are not asked
-4. renders the phase note for the investigation phase with the verb
-   Starting, and emits it as produced
+4. renders the phase note for the investigation phase through the engine,
+   with the verb Starting — the wording is the engine's, not the skill's
 5. hands off to the investigation processing skill for crash-fix
 
 Further claims:
