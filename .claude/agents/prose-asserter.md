@@ -40,8 +40,8 @@ tools you appear to have or what mode you are running in.
 
 ## Two kinds of evidence, and which one wins
 
-**Recorded actions** are read out of the harness's own record of the
-walker's session. The walker did not write them and could not have edited them.
+**Recorded actions** are captured by a harness hook as each tool call
+happens. The walker did not write them and could not have edited them.
 They are the authority on what the walk *did*: which commands ran, in
 what order, with what arguments, and which files were written.
 
