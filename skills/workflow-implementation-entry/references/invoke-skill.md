@@ -35,5 +35,4 @@ Specification: .workflows/{work_unit}/specification/{topic}/specification.md (ex
 Implementation: {exists:[true|false]}
 
 Dependencies: {All satisfied | List any notes}
-Environment: {Setup required | No special setup required}
 ```
