@@ -3,6 +3,12 @@ name: prose-walker
 description: Executes workflow prose exactly as a live session would, against a disposable test world, and returns a transcript of what it did. Dispatched by prose-orchestrator during a prose-test run.
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: opus
+hooks:
+  PostToolUse:
+    - matcher: "Bash|Write|Edit|Read"
+      hooks:
+        - type: command
+          command: "node tests/prose/lib/record-action.cjs"
 ---
 
 # Prose Walker

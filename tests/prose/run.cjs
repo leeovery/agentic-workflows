@@ -143,8 +143,10 @@ function cmdDiff(argv) {
 function cmdAssert(argv) {
   const c = getCase(argv[0]);
   let world = null;
+  let actions = null;
   if (c.hasFixtureState) {
-    const delta = worlds.diffWorld(c.id, requireWorld(argv, c));
+    const dir = requireWorld(argv, c);
+    const delta = worlds.diffWorld(c.id, dir);
     world = {
       expecting: delta.expecting,
       delta: [
@@ -152,8 +154,12 @@ function cmdAssert(argv) {
         ...delta.changed,
       ].join('\n'),
     };
+    actions = worlds.readActionLog(dir)
+      || '(no actions recorded — the walker made no tool calls in this world, '
+        + 'or its PostToolUse hook did not fire. Treat an empty record as evidence '
+        + 'of nothing done, and say so rather than inferring from the narrative.)';
   }
-  process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world }));
+  process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world, actions }));
 }
 
 // --- snap / verify --------------------------------------------------------
