@@ -1,0 +1,156 @@
+'use strict';
+
+// Deterministic checks over a walk's recorded actions.
+//
+// These are the assertions no agent makes, so they are the ones that
+// cannot drift between runs. What they mainly buy is skip-detection: a
+// walker that ignored the prose and wrote the expected files directly
+// produces the right world, and only the order of what it did gives it
+// away.
+
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
+
+const invariants = require('../prose/lib/invariants.cjs');
+
+const ENGINE = 'cd . && node .claude/skills/workflow-engine/scripts/engine.cjs';
+
+/** Rows in the shape worlds.readActionRows produces. */
+const bash = (detail) => ({ event: 'PreToolUse', tool: 'Bash', detail });
+const wrote = (detail) => ({ event: 'PreToolUse', tool: 'Write', detail });
+const read = (detail) => ({ event: 'PreToolUse', tool: 'Read', detail });
+
+const verdicts = (results) => Object.fromEntries(results.map((r) => [r.name, r.ok]));
+
+describe('engine_before_write — the skip-to-the-end detector', () => {
+  const declared = { engine_before_write: true };
+
+  it('passes a walk that consulted the engine before writing state', () => {
+    const rows = [
+      read('./.claude/skills/workflow-implementation-process/SKILL.md'),
+      bash(`${ENGINE} task init pay pay`),
+      wrote('./.workflows/.state/environment-setup.md'),
+    ];
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
+  });
+
+  it('fails a walk that wrote workflow state having never called the engine', () => {
+    const rows = [
+      read('./.claude/skills/workflow-implementation-process/SKILL.md'),
+      wrote('./.workflows/pay/discussion/pay.md'),
+    ];
+    const [result] = invariants.check(rows, declared);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /never called the engine/);
+  });
+
+  it('fails a walk that wrote first and called the engine afterwards', () => {
+    const rows = [
+      wrote('./.workflows/pay/discussion/pay.md'),
+      bash(`${ENGINE} discussion-map set pay pay x decided`),
+    ];
+    const [result] = invariants.check(rows, declared);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /before any engine call/);
+  });
+
+  it('passes a read-only walk, which writes no state to justify', () => {
+    const rows = [read('./.claude/skills/workflow-start/SKILL.md'), bash(`${ENGINE} boot`)];
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
+  });
+
+  it('ignores writes outside .workflows — a walk may touch a scratch file', () => {
+    const rows = [wrote('./notes.txt')];
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
+  });
+
+  it('counts a gateway call as consulting state, as the prose does', () => {
+    const rows = [
+      bash('cd . && node .claude/skills/workflow-start/scripts/gateway.cjs view'),
+      wrote('./.workflows/pay/manifest.json'),
+    ];
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
+  });
+});
+
+describe('calls_include / calls_exclude', () => {
+  it('fails when a command the case requires never ran', () => {
+    const rows = [bash(`${ENGINE} boot`)];
+    const [result] = invariants.check(rows, { calls_include: ['task init', 'boot'] });
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /never ran: task init/);
+    assert.ok(!result.detail.includes('boot,'), 'and names only what is missing');
+  });
+
+  it('passes when every required command ran', () => {
+    const rows = [bash(`${ENGINE} task init pay pay`), bash(`${ENGINE} boot`)];
+    assert.equal(invariants.check(rows, { calls_include: ['task init', 'boot'] })[0].ok, true);
+  });
+
+  it('fails when a forbidden command ran — the walk went too far', () => {
+    const rows = [bash(`${ENGINE} task init pay pay`), bash(`${ENGINE} task start pay pay`)];
+    const [result] = invariants.check(rows, { calls_exclude: ['task start'] });
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /task start/);
+  });
+
+  it('passes when no forbidden command ran', () => {
+    const rows = [bash(`${ENGINE} task init pay pay`)];
+    assert.equal(invariants.check(rows, { calls_exclude: ['task start'] })[0].ok, true);
+  });
+
+  it('reads commands only — a file whose name matches is not a call', () => {
+    const rows = [read('./.claude/skills/workflow-engine/task-start-notes.md')];
+    assert.equal(invariants.check(rows, { calls_exclude: ['task start'] })[0].ok, true);
+    assert.equal(invariants.check(rows, { calls_include: ['task start'] })[0].ok, false);
+  });
+});
+
+describe('declaration', () => {
+  it('runs every declared check, and only those', () => {
+    const rows = [bash(`${ENGINE} boot`)];
+    const results = invariants.check(rows, { engine_before_write: true, calls_include: ['boot'] });
+    assert.deepEqual(verdicts(results), { engine_before_write: true, calls_include: true });
+  });
+
+  it('runs nothing when a case declares nothing', () => {
+    assert.deepEqual(invariants.check([bash('x')], null), []);
+    assert.deepEqual(invariants.check([bash('x')], {}), []);
+  });
+
+  it('skips a check switched off rather than treating it as declared', () => {
+    assert.deepEqual(invariants.check([bash('x')], { engine_before_write: false }), []);
+  });
+
+  it('formats verdicts computed-first, so they read as facts', () => {
+    const out = invariants.format(invariants.check([wrote('./.workflows/a.md')], { engine_before_write: true }));
+    assert.match(out, /^FAIL {2}engine_before_write — /);
+  });
+
+  it('formats nothing when there is nothing to report', () => {
+    assert.equal(invariants.format([]), null);
+  });
+});
+
+describe('declaration validation', () => {
+  it('accepts an absent declaration', () => {
+    assert.deepEqual(invariants.declarationErrors(undefined), []);
+    assert.deepEqual(invariants.declarationErrors(null), []);
+  });
+
+  it('rejects an unknown check, which would otherwise pass silently', () => {
+    const errors = invariants.declarationErrors({ calls_includes: ['x'] });
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /unknown invariant "calls_includes"/);
+  });
+
+  it('rejects the wrong type for each known check', () => {
+    assert.match(invariants.declarationErrors({ engine_before_write: 'yes' })[0], /true or false/);
+    assert.match(invariants.declarationErrors({ calls_include: 'task init' })[0], /array of non-empty strings/);
+    assert.match(invariants.declarationErrors({ calls_exclude: [''] })[0], /array of non-empty strings/);
+  });
+
+  it('rejects a declaration that is not an object', () => {
+    assert.match(invariants.declarationErrors(['engine_before_write'])[0], /must be an object/);
+  });
+});

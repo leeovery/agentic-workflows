@@ -36,6 +36,23 @@ wins and the discrepancy is itself worth reporting.
 
 {{actions}}
 
+=== checks ===
+
+DETERMINISTIC CHECKS — run by code over the recorded actions, before you
+saw this case. The verdicts below are computed, not judged.
+
+They exist because a world can be reached without following the prose: a
+walk that ignored the instructions and wrote the expected files directly
+lands the same state as one that earned it. Only the order of what was
+done separates them.
+
+Take each verdict as given. A FAIL here is a failure of the case, and you
+may not overturn it, explain it away, or weigh it against the walk — the
+walk is the walker's account, and these are not. Report every one in your
+verdict.
+
+{{checks}}
+
 === substitutions ===
 
 HARNESS SUBSTITUTIONS the case armed for this walk. Where the recorded

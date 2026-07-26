@@ -331,6 +331,19 @@ function destroyWorld(dir) {
   fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
+/** The recorded actions as rows, for checks that run in code. */
+function readActionRows(worldDir) {
+  const file = path.join(worldDir, ACTION_LOG);
+  if (!fs.existsSync(file)) return [];
+  return fs.readFileSync(file, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => {
+      const [event, tool, detail = '', outcome = null, output = null] = l.split('\t');
+      return { event, tool, detail, outcome, output };
+    });
+}
+
 /** What the walk actually did, as recorded by the walker's hook. */
 function readActionLog(worldDir) {
   const file = path.join(worldDir, ACTION_LOG);
@@ -356,7 +369,7 @@ function readWalkLog(worldDir) {
 
 module.exports = {
   ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX,
-  ACTION_LOG, readActionLog, WALK_LOG, readWalkLog,
+  ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog,
   runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
   writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld,
 };

@@ -16,4 +16,3 @@ The prose should have taken this path:
 Further claims:
 
 - the setup document is written once, by the setup step and nowhere else
-- no task is started: the walk stops before any task is picked up

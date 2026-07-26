@@ -9,7 +9,8 @@
 //
 //   case.json            the values code branches on:
 //                          { origin, files[], answers[], stubs{name: trigger},
-//                            world: "claims" (optional) }
+//                            world: "claims" (optional),
+//                            invariants{} (optional) — see lib/invariants.cjs }
 //   fixture.md           optional. Prose describing the starting world —
 //                        what has already happened, where the session
 //                        stands. Given to the walker.
@@ -45,6 +46,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const invariants = require('./invariants.cjs');
 
 const ROOT = path.join(__dirname, '../../..');
 const PROSE_DIR = path.join(ROOT, 'tests/prose');
@@ -104,6 +106,7 @@ function loadCase(id) {
     }),
     answers: meta.answers || [],
     worldMode: meta.world || null,
+    invariants: meta.invariants || null,
     stubs: Object.entries(meta.stubs || {}).map(([name, trigger]) => ({ name, trigger })),
     situation: readIf(dir, FILES.situation),
     act: readIf(dir, FILES.act),
@@ -188,6 +191,12 @@ function validateCorpus(cases) {
     }
     if (c.worldMode === 'claims' && !c.hasFixtureState) {
       errors.push(`${at}: world "claims" needs a world to mutate`);
+    }
+    for (const e of invariants.declarationErrors(c.invariants)) {
+      errors.push(`${at}: ${FILES.meta} ${e}`);
+    }
+    if (c.invariants && !c.hasFixtureState) {
+      errors.push(`${at}: invariants without ${FILES.fixtureState} — no walk to check`);
     }
     if (c.hasAssertionState && !c.hasFixtureState) {
       errors.push(`${at}: ${FILES.assertionState} without ${FILES.fixtureState} — nothing to act on`);
