@@ -35,6 +35,8 @@ Bug context:
 
 #### If source is `continue`
 
+Invoke the **workflow-investigation-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+
 ```
 Investigation session for: {work_unit}
 
