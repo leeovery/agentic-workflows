@@ -134,7 +134,9 @@ The [full documentation](docs/README.md) covers every phase in detail, the engin
 
 ## Contributing
 
-Contributions are welcome! Whether it's bug fixes, workflow improvements, or new ideas — please open an issue first to discuss significant changes.
+Contributions are welcome — bug fixes, workflow improvements, or new ideas. Please open an issue first to discuss anything significant.
+
+See [docs/contributing.md](docs/contributing.md) for getting set up, the test gates, and the setup gotchas worth knowing before they cost you an afternoon.
 
 ## Related Packages
 
