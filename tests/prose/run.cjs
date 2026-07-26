@@ -146,7 +146,7 @@ function cmdAssert(argv) {
   let actions = null;
   if (c.hasFixtureState) {
     const dir = requireWorld(argv, c);
-    const delta = worlds.diffWorld(c.id, dir);
+    const delta = worlds.diffWorld(c.id, dir, c.worldMode === 'claims');
     world = {
       expecting: delta.expecting,
       delta: [

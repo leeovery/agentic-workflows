@@ -8,7 +8,8 @@
 // modules.
 //
 //   case.json            the values code branches on:
-//                          { origin, files[], answers[], stubs{name: trigger} }
+//                          { origin, files[], answers[], stubs{name: trigger},
+//                            world: "claims" (optional) }
 //   fixture.md           optional. Prose describing the starting world —
 //                        what has already happened, where the session
 //                        stands. Given to the walker.
@@ -20,9 +21,18 @@
 //                        further claims. Given ONLY to the asserter.
 //   assertion-state.cjs  optional. exports build(h): the world the walk
 //                        should produce. Absent means "unchanged" — the
-//                        walk should leave the fixture state untouched.
+//                        walk should leave the fixture state untouched,
+//                        unless case.json sets world: "claims".
 //   fixture/             generated snapshot of the starting world
 //   assertion/           generated snapshot of the expected world
+//
+// `world: "claims"` is the third case of a walk's end state: it mutates,
+// but into a shape no recipe can pin because prose the model authors is
+// part of it — derived subtopic names, written artifact text. The delta
+// is then computed against the fixture and judged against the case's
+// stated claims rather than byte-compared. Reach for it only when the
+// variability is genuinely the model's to decide; a world a recipe can
+// build must be built.
 //
 // act.md and assert.md are separate files because that is the P4
 // boundary: the walker must never see the expected trace, and a file
@@ -93,6 +103,7 @@ function loadCase(id) {
         : { path: spec.slice(0, hash).trim(), anchor: spec.slice(hash + 1).trim() };
     }),
     answers: meta.answers || [],
+    worldMode: meta.world || null,
     stubs: Object.entries(meta.stubs || {}).map(([name, trigger]) => ({ name, trigger })),
     situation: readIf(dir, FILES.situation),
     act: readIf(dir, FILES.act),
@@ -168,6 +179,16 @@ function validateCorpus(cases) {
     if (!c.act) errors.push(`${at}: no ${FILES.act}`);
     if (!c.assert) errors.push(`${at}: no ${FILES.assert} — the expected trace is what catches a silent repair`);
 
+    if (c.worldMode && c.worldMode !== 'claims') {
+      errors.push(`${at}: ${FILES.meta} world must be "claims" when set, not "${c.worldMode}"`);
+    }
+    if (c.worldMode === 'claims' && c.hasAssertionState) {
+      errors.push(`${at}: world "claims" and ${FILES.assertionState} are exclusive — `
+        + 'a world a recipe can build must be built');
+    }
+    if (c.worldMode === 'claims' && !c.hasFixtureState) {
+      errors.push(`${at}: world "claims" needs a world to mutate`);
+    }
     if (c.hasAssertionState && !c.hasFixtureState) {
       errors.push(`${at}: ${FILES.assertionState} without ${FILES.fixtureState} — nothing to act on`);
     }

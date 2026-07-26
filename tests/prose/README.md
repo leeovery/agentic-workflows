@@ -29,6 +29,14 @@ blob code merely relays lives in markdown.
 walker/asserter boundary — the walker must never see the expected path,
 and a file boundary enforces that structurally rather than by convention.
 
+A case whose end state only prose can describe sets `"world": "claims"`
+in `case.json` and carries no `assertion-state.cjs`. The delta is then
+computed against the **fixture** — expected to be non-empty — and judged
+against the case's stated claims. Reach for it only where the
+variability is genuinely the model's to decide: a discussion's subtopic
+names are derived from context and differ run to run, so no recipe can
+pin them. A world a recipe *can* build must be built.
+
 `fixture-state.cjs` and `assertion-state.cjs` are separate because they
 change for different reasons: the fixture when the precondition changes,
 the assertion when the prose's *behaviour* changes. The assertion state
