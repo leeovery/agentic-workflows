@@ -28,6 +28,18 @@
 const ENGINE_CALL = /\/(engine|gateway)\.cjs\b/;
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
 const WORKFLOWS = '.workflows/';
+// A file is not only written through the write tools. A walker reaches
+// for the shell as readily — `printf … > .workflows/…` creates state
+// just as surely, and an Opus walk was observed doing exactly that while
+// a tool-only check reported that nothing had been written at all.
+// Segment separators bound the match so a redirect elsewhere in a
+// compound command is not mistaken for one into the workflow directory.
+const SHELL_WRITE = /(>>?|\btee\b|\bcp\b|\bmv\b|\binstall\b)[^|;&]*\.workflows\//;
+
+function isWrite(row) {
+  if (WRITE_TOOLS.has(row.tool)) return row.detail.includes(WORKFLOWS);
+  return row.tool === 'Bash' && SHELL_WRITE.test(row.detail);
+}
 
 const NAMES = ['engine_before_write', 'calls_include', 'calls_exclude'];
 
@@ -46,9 +58,7 @@ function engineBeforeWrite(rows) {
   const firstEngine = rows.findIndex(
     (r) => r.tool === 'Bash' && ENGINE_CALL.test(r.detail),
   );
-  const firstWrite = rows.findIndex(
-    (r) => WRITE_TOOLS.has(r.tool) && r.detail.includes(WORKFLOWS),
-  );
+  const firstWrite = rows.findIndex(isWrite);
   if (firstWrite === -1) {
     return { ok: true, detail: 'no workflow state was written' };
   }

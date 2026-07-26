@@ -64,6 +64,41 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
     assert.equal(invariants.check(rows, declared)[0].ok, true);
   });
 
+  it('counts a shell redirect as a write — a walker reaches for it readily', () => {
+    // Observed live: an Opus walk created the setup document with printf
+    // rather than the Write tool, and a tool-only check reported that
+    // nothing had been written at all.
+    const rows = [
+      bash("cd . && mkdir -p .workflows/.state && printf 'No special setup required.\n' > .workflows/.state/environment-setup.md"),
+    ];
+    const [result] = invariants.check(rows, declared);
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /never called the engine/);
+  });
+
+  it('counts tee, cp and mv into the workflow directory', () => {
+    for (const command of [
+      'cd . && echo x | tee .workflows/a.md',
+      'cd . && cp /tmp/a.md .workflows/a.md',
+      'cd . && mv /tmp/a.md .workflows/a.md',
+    ]) {
+      assert.equal(invariants.check([bash(command)], declared)[0].ok, false, command);
+    }
+  });
+
+  it('does not mistake reading workflow state for writing it', () => {
+    const rows = [
+      bash('cd . && cat .workflows/pay/manifest.json 2>&1'),
+      bash('cd . && grep -r pay .workflows/ | head -5'),
+    ];
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
+  });
+
+  it('does not let a redirect elsewhere in a compound command count', () => {
+    const rows = [bash('cd . && cat notes.md > /tmp/out.txt && ls .workflows/')];
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
+  });
+
   it('counts a gateway call as consulting state, as the prose does', () => {
     const rows = [
       bash('cd . && node .claude/skills/workflow-start/scripts/gateway.cjs view'),
