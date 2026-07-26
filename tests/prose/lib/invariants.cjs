@@ -18,8 +18,13 @@
 //   "invariants": {
 //     "engine_before_write": true,      // no .workflows write out of nowhere
 //     "calls_include": ["task init"],   // these commands must have run
-//     "calls_exclude": ["task start"]   // these must not have
+//     "calls_exclude": ["task start"],  // these must not have
+//     "calls_in_order": ["a", "b"]      // and these in this sequence
 //   }
+//
+// A check that could not have failed reports N/A rather than PASS. A
+// green tick for "there was nothing to examine" is how a corpus comes to
+// look covered while enforcing nothing.
 //
 // Deliberately not a pinned call sequence. A recorded-and-replayed
 // sequence would freeze whatever the walker happened to do, which is how
@@ -41,7 +46,7 @@ function isWrite(row) {
   return row.tool === 'Bash' && SHELL_WRITE.test(row.detail);
 }
 
-const NAMES = ['engine_before_write', 'calls_include', 'calls_exclude'];
+const NAMES = ['engine_before_write', 'calls_include', 'calls_exclude', 'calls_in_order'];
 
 /** The commands the walk ran, in order. */
 function commands(rows) {
@@ -60,7 +65,11 @@ function engineBeforeWrite(rows) {
   );
   const firstWrite = rows.findIndex(isWrite);
   if (firstWrite === -1) {
-    return { ok: true, detail: 'no workflow state was written' };
+    // Nothing was written, so there was nothing for this check to catch.
+    // Reporting that as a pass would dress absence of coverage up as
+    // coverage — which is exactly how a corpus of read-only cases came to
+    // look green while enforcing nothing at all.
+    return { ok: true, vacuous: true, detail: 'no workflow state was written' };
   }
   if (firstEngine === -1) {
     return { ok: false, detail: `wrote ${rows[firstWrite].detail} having never called the engine` };
@@ -91,6 +100,31 @@ function callsExclude(rows, forbidden) {
 }
 
 /**
+ * Order carries meaning a presence check cannot: a gate read after the arm
+ * it was supposed to select proves the arm was chosen some other way. The
+ * declared commands must appear as a subsequence — other calls may fall
+ * between them, but never out of sequence.
+ */
+function callsInOrder(rows, sequence) {
+  const ran = commands(rows);
+  let at = 0;
+  for (const wanted of sequence) {
+    const found = ran.findIndex((c, i) => i >= at && c.includes(wanted));
+    if (found === -1) {
+      const seen = sequence.slice(0, sequence.indexOf(wanted));
+      return {
+        ok: false,
+        detail: seen.length
+          ? `"${wanted}" never ran after ${seen.map((s) => `"${s}"`).join(' → ')}`
+          : `"${wanted}" never ran`,
+      };
+    }
+    at = found + 1;
+  }
+  return { ok: true, detail: `ran in order: ${sequence.join(' → ')}` };
+}
+
+/**
  * Run a case's declared invariants against its recorded actions.
  * Returns one result per declared check, in declaration order.
  */
@@ -106,6 +140,9 @@ function check(rows, declared) {
   if (declared.calls_exclude && declared.calls_exclude.length) {
     results.push({ name: 'calls_exclude', ...callsExclude(rows, declared.calls_exclude) });
   }
+  if (declared.calls_in_order && declared.calls_in_order.length) {
+    results.push({ name: 'calls_in_order', ...callsInOrder(rows, declared.calls_in_order) });
+  }
   return results;
 }
 
@@ -113,7 +150,10 @@ function check(rows, declared) {
 function format(results) {
   if (!results.length) return null;
   return results
-    .map((r) => `${r.ok ? 'PASS' : 'FAIL'}  ${r.name} — ${r.detail}`)
+    .map((r) => {
+      const verdict = r.ok ? (r.vacuous ? 'N/A ' : 'PASS') : 'FAIL';
+      return `${verdict}  ${r.name} — ${r.detail}`;
+    })
     .join('\n');
 }
 
@@ -130,11 +170,15 @@ function declarationErrors(declared) {
   if ('engine_before_write' in declared && typeof declared.engine_before_write !== 'boolean') {
     errors.push('engine_before_write must be true or false');
   }
-  for (const key of ['calls_include', 'calls_exclude']) {
+  for (const key of ['calls_include', 'calls_exclude', 'calls_in_order']) {
     if (!(key in declared)) continue;
     const value = declared[key];
     if (!Array.isArray(value) || value.some((v) => typeof v !== 'string' || !v.trim())) {
       errors.push(`${key} must be an array of non-empty strings`);
+      continue;
+    }
+    if (key === 'calls_in_order' && value.length < 2) {
+      errors.push('calls_in_order needs at least two commands — one has no order');
     }
   }
   return errors;

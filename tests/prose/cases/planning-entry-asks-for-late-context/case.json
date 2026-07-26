@@ -11,6 +11,20 @@
     "continue \u2014 nothing has changed since the specification"
   ],
   "invariants": {
-    "engine_before_write": true
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.planning.pay",
+      "manifest list",
+      "knowledge.cjs query"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.planning.pay",
+      "knowledge.cjs query"
+    ],
+    "calls_exclude": [
+      "knowledge.cjs index",
+      "knowledge.cjs remove",
+      "topic reopen"
+    ]
   }
 }

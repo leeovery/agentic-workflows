@@ -174,20 +174,28 @@ testing.
   A failure is a finished result; diagnosing it is a separate, human-led
   act. This is stated in prose in each definition rather than relied on
   from tool restrictions, which an agent may hold regardless.
-- **P9 — a case starts where a session starts, and runs until state
-  lands.** The only real openings are `workflow-start` (the user's), a
-  `workflow-*-entry` skill (what a bridge plan file invokes after a
-  context clear), and `workflow-discovery` (epic continuation). Navigation
-  and processing skills are always reached mid-session; a reference is
-  never entered directly. A walk carries only the context it accumulates,
-  so one begun in the middle is judged under conditions the prose was
-  never written for, and its verdict means nothing in either direction.
-  Enforced in `lib/cases.cjs` by the required `entry` field, not left to
-  authoring discipline. The same rule ends a case: stop at a gate and the
-  delta is empty, the claims turn into descriptions of a display, and the
-  asserter is left comparing the walker's account of what it showed
-  against the case's account of what it should have shown — with no
-  independent ground truth anywhere in the loop.
+- **P9 — a case starts where a session starts, and stops where its
+  claims can be answered.** The only real openings are `workflow-start`
+  (the user's), a `workflow-*-entry` skill (what a bridge plan file
+  invokes after a context clear), and `workflow-discovery` (epic
+  continuation). Navigation and processing skills are always reached
+  mid-session; a reference is never entered directly. A walk carries only
+  the context it accumulates, so one begun in the middle is judged under
+  conditions the prose was never written for, and its verdict means
+  nothing in either direction. Enforced in `lib/cases.cjs` by the required
+  `entry` field, not left to authoring discipline.
+
+  The far end is governed by the claims, not by the clock or by state. A
+  handoff is a perfectly good ending: the recorded actions are as
+  deterministic as a world delta, so which gates were read, what they
+  returned, and what was never called are all hard facts at that point.
+  What is *not* allowed is a claim with no deterministic answer — a claim
+  about text put on screen rests on the walker's account alone, since no
+  hook observes an emission. Regulate the claims and the stop point falls
+  out of them. (An earlier draft demanded every case run until state
+  landed. That was wrong twice over: it treated file changes as the only
+  hard evidence, and it would have pushed short entry walks into needing
+  conversation stubs, trading live prose for hand-written fiction.)
 
 - **P10 — what code can decide, code decides.** A case declares
   invariants over the recorded actions (`lib/invariants.cjs`) that run

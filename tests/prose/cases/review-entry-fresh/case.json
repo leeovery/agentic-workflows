@@ -6,6 +6,13 @@
     "skills/workflow-review-entry/references/validate-phase.md"
   ],
   "invariants": {
-    "engine_before_write": true
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.review.pay"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic start"
+    ]
   }
 }

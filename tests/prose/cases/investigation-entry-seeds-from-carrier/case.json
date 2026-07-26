@@ -6,6 +6,18 @@
     "skills/workflow-investigation-entry/references/invoke-skill.md"
   ],
   "invariants": {
-    "engine_before_write": true
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "render phase-note"
+    ],
+    "calls_in_order": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "render phase-note"
+    ],
+    "calls_exclude": [
+      "topic start",
+      "topic reopen"
+    ]
   }
 }

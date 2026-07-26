@@ -7,6 +7,15 @@
     "skills/workflow-specification-entry/references/invoke-skill.md"
   ],
   "invariants": {
-    "engine_before_write": true
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate crash-fix.specification.crash-fix"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic supersede",
+      "manifest set",
+      "manifest apply"
+    ]
   }
 }
