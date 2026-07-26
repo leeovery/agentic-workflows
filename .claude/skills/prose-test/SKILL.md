@@ -61,6 +61,18 @@ passed.
 
 ## Rules
 
-- Findings are findings. Never edit prose, cases, or snapshots to make a run pass — report and stop.
+- **Never fix anything during or after a run.** Not the prose, not a
+  case, not a snapshot, not the harness — however small, however obvious,
+  however certain you are. Every failure, every flake, and every pass
+  carrying notes is surfaced to the user, and what to do about it is
+  decided together. A test that repairs what it finds destroys the record
+  of what it found, and the first fix reached for is regularly aimed at
+  the wrong layer: correct prose has been called defective, and a case
+  has been blamed for a fault in the judging.
+- **A pass with notes is not a clean pass.** Markers are findings in
+  their own right and always warrant a look. A walker that wandered and
+  corrected itself did not fail the prose — but the same wander recurring
+  on the same step is prose that reads misleadingly however correct it
+  is, and that is only ever visible if every one is surfaced.
 - A failing case is a finding either way: broken prose, or a stale case. Say which is suspected; the user decides.
 - Never regenerate a snapshot as part of a run.
