@@ -24,8 +24,15 @@ the expected world, computed by code:
 === actions ===
 
 RECORDED ACTIONS — every tool call the walker made, in order, captured by a
-harness hook as it happened. The walker did not write this and could
-not have edited or omitted from it. This is what the walk *did*.
+harness hook as it happened: the intent before each call, the result
+after it (`→ ok:` with the output, truncated), and any failure. The
+walker did not write this and could not have edited or omitted from it.
+This is what the walk *did*, and what each command actually returned.
+
+A claim about what a command produced — that a gate rendered empty, that
+a menu was absent — is settled here, not by the walker's account of it.
+Where the account describes an output the record contradicts, the record
+wins and the discrepancy is itself worth reporting.
 
 {{actions}}
 

@@ -4,9 +4,23 @@ description: Executes workflow prose exactly as a live session would, against a 
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: opus
 hooks:
-  PostToolUse:
-    - matcher: "Bash|Write|Edit|Read"
+  PreToolUse:
+    - matcher: "Bash|Write|Edit|Read|Glob|Grep"
       hooks:
+        - type: command
+          command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/record-action.cjs\""
+  PostToolUse:
+    - matcher: "Bash|Write|Edit|Read|Glob|Grep"
+      hooks:
+        - type: command
+          command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/record-action.cjs\""
+  PostToolUseFailure:
+    - matcher: "Bash|Write|Edit|Read|Glob|Grep"
+      hooks:
+        - type: command
+          command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/record-action.cjs\""
+  Stop:
+    - hooks:
         - type: command
           command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/record-action.cjs\""
 ---
