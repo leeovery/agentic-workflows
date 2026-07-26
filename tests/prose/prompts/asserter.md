@@ -29,6 +29,16 @@ not have edited or omitted from it. This is what the walk *did*.
 
 {{actions}}
 
+=== substitutions ===
+
+HARNESS SUBSTITUTIONS the case armed for this walk. Where the recorded
+actions show the walker doing one of these itself — writing a report an
+agent would have produced, for instance — that IS the substitution, and
+it is expected. The absence of a real agent dispatch alongside it is not
+a missing step.
+
+{{substitutions}}
+
 === transcript ===
 
 The walk's own account follows under `=== TRANSCRIPT ===`. It is the

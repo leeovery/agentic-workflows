@@ -68,6 +68,16 @@ reason. Write "casing conventions load before the boot pipeline", not
 "Step 0.1 before Step 0.2". Anchors in `case.json` are substring
 fragments matched against heading text (`#Boot` matches "Step 0.2: Boot").
 
+**Assert what actions and state can prove.** A claim about something
+*displayed* — "offers the choice and waits", "emits the summary block" —
+can never be evidenced by the action log, because emitting text is not a
+tool call. Those claims rest on the walker's narrative, which is the one
+piece of evidence it authors itself. Most have a consequence that can be
+asserted instead: the answer that was consumed, the arm that was taken,
+the state that resulted. Prefer the consequence; keep display claims for
+where the display genuinely is the behaviour under test, and expect them
+to be the weakest line in the case.
+
 **Scope `files` tightly** — selection and the PR-end suggestion run off it.
 
 ## Stubs
