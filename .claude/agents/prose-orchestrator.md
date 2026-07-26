@@ -1,6 +1,6 @@
 ---
 name: prose-orchestrator
-description: Runs one prose-test case end to end — builds the world, dispatches the walker, computes the delta, dispatches the asserter, escalates a failure to Opus, destroys the world — and returns just the verdict. Dispatched by the /prose-test skill, one per case.
+description: Runs one prose-test case end to end — builds the world, dispatches the walker, computes the delta, dispatches the asserter, reruns a failure from a fresh world to confirm it, destroys the world — and returns just the verdict. Dispatched by the /prose-test skill, one per case.
 tools: Bash, Read, Agent
 model: sonnet
 hooks:
@@ -90,6 +90,7 @@ Return exactly this and nothing else:
 
 ```
 CASE: <case-id>
+MODEL: <the model the asserter reported, or `unrecorded`>
 VERDICT: PASS | FAIL | FLAKY | INVALID | HARNESS ERROR
 PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL

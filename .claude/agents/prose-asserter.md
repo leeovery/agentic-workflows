@@ -83,6 +83,10 @@ the actions.
 
 Return exactly this and nothing else:
 
+0. **Model** — the model named on the recorded `SubagentStop` line, quoted
+   as recorded. If no such line exists, say `unrecorded`. A verdict is
+   only as trustworthy as the model that produced the walk, so it is
+   stated before anything is judged, never inferred, and never omitted.
 1. **Path** — one line per expected step: PASS or FAIL, each PASS quoting
    the transcript line that shows it, each FAIL stating what is missing
    or contradicting.
