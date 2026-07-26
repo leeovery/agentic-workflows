@@ -213,6 +213,35 @@ describe('prose recorder — the stop event', () => {
     assert.equal(logLines()[0].split('\t')[2], 'claude-sonnet-5');
   });
 
+  it('lifts the walk out turn by turn, not just the message returned', () => {
+    const transcript = writeTranscript([
+      { message: { model: 'claude-sonnet-5', content: [{ type: 'text', text: 'ENTERED: a.md § Step 1' }] }, cwd: world },
+      { message: { content: [{ type: 'tool_use', name: 'Bash' }] } },
+      { message: { content: [{ type: 'text', text: 'EMITTED (menu):\n  Which feature?' }] } },
+      { message: { content: [{ type: 'text', text: 'STOPPED: end of flow' }] } },
+    ]);
+    fire({
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: transcript,
+      last_assistant_message: 'STOPPED: end of flow',
+    });
+    const walk = fs.readFileSync(path.join(world, '.walk-transcript.log'), 'utf8');
+    assert.ok(walk.includes('ENTERED: a.md § Step 1'), 'an early turn survives');
+    assert.ok(walk.includes('Which feature?'), 'and what it emitted mid-walk');
+    assert.ok(walk.includes('STOPPED: end of flow'));
+    assert.ok(walk.indexOf('ENTERED') < walk.indexOf('Which feature?'), 'in the order they happened');
+  });
+
+  it('writes no walk file when the transcript holds no turns', () => {
+    fire({
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: writeTranscript([{ message: { model: 'x' }, cwd: world }]),
+    });
+    assert.equal(fs.existsSync(path.join(world, '.walk-transcript.log')), false);
+  });
+
   it('stays silent when a stop names no readable transcript', () => {
     // A real transcript lives outside the world, so an unreadable one
     // leaves nothing anywhere in the payload to scope the record to.

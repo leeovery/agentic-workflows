@@ -40,6 +40,10 @@ const HASH_FILE = '.recipe-hash';
 // Written by the walker's PostToolUse hook (lib/record-action.cjs) —
 // observation of the walk, not part of the world it acted on.
 const ACTION_LOG = '.walk-actions.log';
+// Written by the same hook at SubagentStop: the walk as it was told,
+// turn by turn, lifted from the runtime's own transcript. An agent
+// returns one final message; the walk happens across dozens of turns.
+const WALK_LOG = '.walk-transcript.log';
 
 // --- the recipe harness ---------------------------------------------------
 
@@ -104,7 +108,7 @@ function runRecipe(caseId, which) {
 function excluded(rel) {
   const parts = rel.split(path.sep);
   if (parts.includes('.git')) return true;
-  if (rel === HASH_FILE || rel === ACTION_LOG) return true;
+  if (rel === HASH_FILE || rel === ACTION_LOG || rel === WALK_LOG) return true;
   if (rel === path.join('.workflows', '.knowledge')) return true;
   if (rel.startsWith(path.join('.workflows', '.knowledge') + path.sep)) return true;
   if (rel.startsWith(path.join('.claude', 'skills') + path.sep)) return true;
@@ -343,8 +347,16 @@ function readActionLog(worldDir) {
     .join('\n');
 }
 
+/** The walk as it was told, turn by turn — not the summary it returned. */
+function readWalkLog(worldDir) {
+  const file = path.join(worldDir, WALK_LOG);
+  if (!fs.existsSync(file)) return null;
+  return fs.readFileSync(file, 'utf8').trim() || null;
+}
+
 module.exports = {
-  ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX, ACTION_LOG, readActionLog,
+  ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX,
+  ACTION_LOG, readActionLog, WALK_LOG, readWalkLog,
   runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
   writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld,
 };

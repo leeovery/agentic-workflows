@@ -46,9 +46,16 @@ a missing step.
 
 {{substitutions}}
 
-=== transcript ===
+=== walk ===
 
-The walk's own account follows under `=== TRANSCRIPT ===`. It is the
-walker's narrative: evidence of reasoning — which arm it entered, which
-guard it read, what it emitted — and nothing more. Where it disagrees
-with the recorded actions about what was done, the recorded actions win.
+THE WALK, TURN BY TURN — the walker's own account as it was told at the
+time, lifted from the runtime's transcript by the harness. It was not
+summarised, and the walker had no chance to edit it after the fact.
+
+Read it for what only it can show: which section or arm was entered and
+the guard line that selected it, the blocks emitted to the user, the
+questions asked and the scripted answers consumed. What a command ran and
+returned is settled by the recorded actions above, not here.
+
+{{walk}}
+

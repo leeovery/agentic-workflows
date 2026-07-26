@@ -91,33 +91,27 @@ Record these inline, exactly as named, the moment they occur:
 Stop at the task's stop condition, the end of the flow, an
 `UNSCRIPTED QUESTION`, or a hard error — whichever comes first.
 
-## Transcript
+## Narrate as you go
 
-Your entire final output is the transcript. Return nothing else — no
-preamble, no assessment, no closing summary.
+**Write each entry as it happens, not afterwards.** The harness captures
+every turn you take, so the account it keeps is built from what you say
+along the way. Your final message is not the record and does not need to
+recap the walk — a summary written at the end is worth less than the
+entries written at the time.
 
-**It is a log, not a recollection.** Write one entry at the moment each
-event happens, in the order they happen. Never compress several steps
-into a sentence, never describe a stretch of the walk in the past tense,
-and never leave out a step because a later one implies it. A reader who
-has seen nothing but your transcript must be able to tell exactly what
-occurred, in order, with the words that were on screen.
+Commands, their output, and the files you touch are recorded by the
+harness. Do not restate them. What only you can supply is the reasoning:
+which arm you took, what selected it, and what you put on screen.
 
-**If you did it, it is in the log.** Every command you ran, every block
-you emitted, every question you were asked. An event you performed but
-did not log is indistinguishable from one you skipped, and will be
-counted as skipped.
-
-Log these, each as its own entry:
+Narrate these, each as its own entry, the moment it happens:
 
 1. Every prose section or arm entered: `file.md § Heading`, plus the
    quoted guard line that selected it.
-2. Every command run, and the first line of its output.
-3. Every block the prose directed you to emit, quoted in full.
-4. Every menu or question encountered, verbatim, and the scripted answer
+2. Every block the prose directed you to emit, quoted in full.
+3. Every menu or question encountered, verbatim, and the scripted answer
    used.
-5. Every file written or edited (path only), and every marker above.
-6. Finally: `STOPPED: <reason>`.
+4. Every marker above.
+5. Finally: `STOPPED: <reason>`.
 
 The shape, abbreviated:
 
@@ -133,9 +127,6 @@ EMITTED (menu):
 ANSWERED: yes — do the thing   (scripted answer 1)
 ENTERED: some-reference.md § A — #### If `yes`
   guard: "#### If `yes`"
-RAN: node .claude/skills/workflow-engine/scripts/engine.cjs thing do wu topic
-  → {"ok":true,"id":"thing-001","file":".workflows/.cache/…/thing-001.md"}
-WROTE: .workflows/.cache/…/thing-001.md
 SUBSTITUTED: the-stub-name
 STOPPED: the reference returned to its caller
 ```
