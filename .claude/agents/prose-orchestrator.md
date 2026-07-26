@@ -44,8 +44,7 @@ a walk.
 ## Steps
 
 1. **Build the world** — `node tests/prose/run.cjs world <case-id>`. The
-   response carries the path, or `world: null` for a structure-only case
-   (skip `--world` everywhere below when so).
+   response carries the path to the world it built.
 
 2. **Walk** — `node tests/prose/run.cjs prompt <case-id> --world <dir>`.
    Dispatch the **prose-walker** agent with that output as its prompt,
@@ -104,6 +103,10 @@ CASE: <case-id>
 MODEL: <the model the asserter reported, or `unrecorded`. On a confirmed or
        flaky failure, both — the first walk's and the escalated rerun's>
 VERDICT: PASS | FAIL | FLAKY | INVALID | HARNESS ERROR
+CHECKS: <every deterministic check the asserter reported, verdict and name,
+        one per line — or `none declared`. Never summarised, never inferred
+        from the overall verdict: these were decided in code, and dropping
+        them turns a fact back into an assumption.>
 PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL
 MARKERS: <none, or one line each>

@@ -38,8 +38,13 @@ about an expected result can leak into a later dispatch.
 ## Step 3: Collate
 
 Report a verdict table from what the orchestrators returned: case id,
-model, verdict, path steps passed, world, markers. Quote the evidence
-line for every failure.
+model, verdict, deterministic checks, path steps passed, world, markers.
+Quote the evidence line for every failure.
+
+Carry the checks through as reported. They were decided in code before
+any agent saw the case, so they are the one part of a verdict that rests
+on nothing's judgement — summarising them, or taking a green overall
+verdict as proof they passed, puts an assumption back where a fact was.
 
 The model column comes from the harness record, not from any agent's
 say-so. An edited agent definition does not reach a running session until

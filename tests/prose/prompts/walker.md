@@ -15,12 +15,6 @@ Project directory — your cwd for EVERY command: {{world_dir}}
 The workflow skills are installed at .claude/skills/ inside that project.
 Mutations are expected and safe: the project is a disposable test world.
 
-=== structural ===
-Structure-only walk: read the named prose and trace the logic. Execute
-nothing — no commands, no writes.
-
-Repository root: {{root}}
-
 === situation ===
 
 SITUATION — where the project stands as you begin:

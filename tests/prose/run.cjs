@@ -96,10 +96,6 @@ function cmdSelect(argv) {
 
 function cmdWorld(argv) {
   const c = getCase(argv[0]);
-  if (!c.hasFixtureState) {
-    process.stdout.write(`${JSON.stringify({ world: null, note: 'structure-only case — no world' })}\n`);
-    return;
-  }
   process.stdout.write(`${JSON.stringify({ world: worlds.buildWorld(c.id), case: c.id })}\n`);
 }
 
@@ -113,11 +109,10 @@ function cmdDestroy(argv) {
 
 function cmdPrompt(argv) {
   const c = getCase(argv[0]);
-  const worldDir = c.hasFixtureState ? requireWorld(argv, c) : null;
+  const worldDir = requireWorld(argv, c);
 
   process.stdout.write(prompts.walkerPrompt({
     worldDir,
-    root: ROOT,
     situation: c.situation,
     task: c.act,
     scope: c.files
@@ -132,10 +127,6 @@ function cmdPrompt(argv) {
 
 function cmdDiff(argv) {
   const c = getCase(argv[0]);
-  if (!c.hasFixtureState) {
-    process.stdout.write(`${JSON.stringify({ note: 'structure-only case — no world to diff' }, null, 2)}\n`);
-    return;
-  }
   process.stdout.write(`${JSON.stringify(worlds.diffWorld(c.id, requireWorld(argv, c)), null, 2)}\n`);
 }
 
@@ -143,45 +134,40 @@ function cmdDiff(argv) {
 
 function cmdAssert(argv) {
   const c = getCase(argv[0]);
-  let world = null;
-  let actions = null;
-  let walk = null;
-  let checks = null;
-  if (c.hasFixtureState) {
-    const dir = requireWorld(argv, c);
-    const delta = worlds.diffWorld(c.id, dir, c.worldMode === 'claims');
-    world = {
-      expecting: delta.expecting,
-      delta: [
-        JSON.stringify({ added: delta.added, removed: delta.removed, identical: delta.identical }, null, 2),
-        ...delta.changed,
-      ].join('\n'),
-    };
-    actions = worlds.readActionLog(dir);
-    // No log is the harness failing, not the walk: a walk in a world
-    // always runs commands, and the walker's hook records every one.
-    // Refuse loudly rather than let an agent judge on the narrative
-    // alone — which is the thing the recording exists to replace.
-    if (!actions) {
-      die(`no action log at ${path.join(dir, worlds.ACTION_LOG)} — the prose-walker `
-        + 'PostToolUse hook did not fire, so there is no record of what the walk did.\n'
-        + 'Check the hooks block in .claude/agents/prose-walker.md, that the agent '
-        + 'registry has reloaded since it changed, and that this project is trusted '
-        + '(hasTrustDialogAccepted). Do not judge this run.');
-    }
-    checks = invariants.format(invariants.check(worlds.readActionRows(dir), c.invariants));
-    walk = worlds.readWalkLog(dir);
-    // Same stance as the action log: the walk is harness-captured, so its
-    // absence is a broken hook, not a quiet walk. Judging without it would
-    // fall back to whatever the walker chose to say at the end — the very
-    // summary this record exists to replace.
-    if (!walk) {
-      die(`no walk log at ${path.join(dir, worlds.WALK_LOG)} — the prose-walker `
-        + 'SubagentStop hook did not fire, so there is no turn-by-turn record of '
-        + 'the walk.\nCheck the hooks block in .claude/agents/prose-walker.md and '
-        + 'that the agent registry has reloaded since it changed. Do not judge this run.');
-    }
+  const dir = requireWorld(argv, c);
+  const delta = worlds.diffWorld(c.id, dir, c.worldMode === 'claims');
+  const world = {
+    expecting: delta.expecting,
+    delta: [
+      JSON.stringify({ added: delta.added, removed: delta.removed, identical: delta.identical }, null, 2),
+      ...delta.changed,
+    ].join('\n'),
+  };
+  const actions = worlds.readActionLog(dir);
+  // No log is the harness failing, not the walk: a walk in a world
+  // always runs commands, and the walker's hook records every one.
+  // Refuse loudly rather than let an agent judge on the narrative
+  // alone — which is the thing the recording exists to replace.
+  if (!actions) {
+    die(`no action log at ${path.join(dir, worlds.ACTION_LOG)} — the prose-walker `
+      + 'PostToolUse hook did not fire, so there is no record of what the walk did.\n'
+      + 'Check the hooks block in .claude/agents/prose-walker.md, that the agent '
+      + 'registry has reloaded since it changed, and that this project is trusted '
+      + '(hasTrustDialogAccepted). Do not judge this run.');
   }
+  const checks = invariants.format(invariants.check(worlds.readActionRows(dir), c.invariants));
+  const walk = worlds.readWalkLog(dir);
+  // Same stance as the action log: the walk is harness-captured, so its
+  // absence is a broken hook, not a quiet walk. Judging without it would
+  // fall back to whatever the walker chose to say at the end — the very
+  // summary this record exists to replace.
+  if (!walk) {
+    die(`no walk log at ${path.join(dir, worlds.WALK_LOG)} — the prose-walker `
+      + 'SubagentStop hook did not fire, so there is no turn-by-turn record of '
+      + 'the walk.\nCheck the hooks block in .claude/agents/prose-walker.md and '
+      + 'that the agent registry has reloaded since it changed. Do not judge this run.');
+  }
+
   const substitutions = c.stubs.length
     ? c.stubs.map((s) => {
       const stub = cases.readStub(s.name);
@@ -197,7 +183,7 @@ function cmdAssert(argv) {
 
 function statesOf(c) {
   return [
-    c.hasFixtureState ? 'fixture' : null,
+    'fixture',
     c.hasAssertionState ? 'assertion' : null,
   ].filter(Boolean);
 }
@@ -245,7 +231,7 @@ function cmdList() {
   for (const c of all) {
     const stubs = c.stubs.length ? `  stubs=${c.stubs.map((s) => s.name).join(',')}` : '';
     const expects = c.hasAssertionState ? 'assertion state' : 'no change';
-    process.stdout.write(`${c.id}\n    ${c.hasFixtureState ? 'fixture' : 'no world'} → ${expects}${stubs}\n`);
+    process.stdout.write(`${c.id}\n    fixture → ${expects}${stubs}\n`);
   }
   process.stdout.write(`\n${all.length} cases, ${cases.listStubs().length} stubs`);
   process.stdout.write(errors.length ? `, ${errors.length} VALIDATION ERRORS:\n` : ', corpus valid\n');
