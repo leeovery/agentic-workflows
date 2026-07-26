@@ -11,10 +11,7 @@ The prose should have taken this path:
    resuming-from-a-previous-session note
 5. environment setup records the answer as a setup document and commits
    it, so the question is not asked again in a later session
-6. reads the plan through the format's own reading procedure and finds
-   pay-1-1 next: phase one, first task, nothing completed
-7. starts pay-1-1 and stops where the prose hands over to building
 
 Further claims:
 
-- the second task is neither started nor touched
+- no task is started: the walk stops before any task is picked up
