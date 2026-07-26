@@ -23,8 +23,8 @@ the expected world, computed by code:
 
 === actions ===
 
-RECORDED ACTIONS — every tool call the walker made, in order, captured by
-a harness hook as it happened. The walker did not write this and could
+RECORDED ACTIONS — every tool call the walker made, in order, read out of
+the harness's own session record. The walker did not write this and could
 not have edited or omitted from it. This is what the walk *did*.
 
 {{actions}}

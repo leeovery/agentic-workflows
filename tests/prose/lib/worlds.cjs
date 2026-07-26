@@ -37,9 +37,6 @@ const CLOCK = path.join(__dirname, 'fake-clock.cjs');
 const GITIGNORE = '.gitignore';
 const GITIGNORE_ESCAPED = '_gitignore.fixture';
 const HASH_FILE = '.recipe-hash';
-// Written by the walker's PostToolUse hook (lib/record-action.cjs) —
-// observation of the walk, not part of the world it acted on.
-const ACTION_LOG = '.walk-actions.log';
 
 // --- the recipe harness ---------------------------------------------------
 
@@ -104,7 +101,7 @@ function runRecipe(caseId, which) {
 function excluded(rel) {
   const parts = rel.split(path.sep);
   if (parts.includes('.git')) return true;
-  if (rel === HASH_FILE || rel === ACTION_LOG) return true;
+  if (rel === HASH_FILE) return true;
   if (rel === path.join('.workflows', '.knowledge')) return true;
   if (rel.startsWith(path.join('.workflows', '.knowledge') + path.sep)) return true;
   if (rel.startsWith(path.join('.claude', 'skills') + path.sep)) return true;
@@ -322,22 +319,8 @@ function destroyWorld(dir) {
   fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
-/** What the walker actually did, as recorded by its PostToolUse hook. */
-function readActionLog(worldDir) {
-  const file = path.join(worldDir, ACTION_LOG);
-  if (!fs.existsSync(file)) return null;
-  return fs.readFileSync(file, 'utf8')
-    .split('\n')
-    .filter(Boolean)
-    .map((l, i) => {
-      const [tool, detail = ''] = l.split('\t');
-      return `${String(i + 1).padStart(3)}. ${tool.padEnd(12)} ${detail}`;
-    })
-    .join('\n');
-}
-
 module.exports = {
-  ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX, ACTION_LOG, readActionLog,
+  ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX,
   runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
   writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld,
 };

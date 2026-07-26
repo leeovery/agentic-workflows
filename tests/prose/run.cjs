@@ -10,7 +10,7 @@
 //   world <case-id>               materialise the fixture state, print path
 //   prompt <case-id> --world <d>  walker prompt (NEVER contains assert.md)
 //   diff <case-id> --world <d>    acted world vs expected world, as facts
-//   assert <case-id> --world <d>  the asserting agent's prompt
+//   assert <case-id> --world <d> --transcript <f>   the asserter's prompt
 //   snap <case-id>                (re)generate a case's snapshots
 //   verify [case-id]              rebuild-compare snapshot(s)
 //   destroy --world <dir>         remove a world
@@ -21,6 +21,7 @@ const { execFileSync } = require('child_process');
 
 const cases = require('./lib/cases.cjs');
 const worlds = require('./lib/worlds.cjs');
+const actionsLib = require('./lib/actions.cjs');
 const prompts = require('./lib/prompts.cjs');
 
 const ROOT = cases.ROOT;
@@ -154,17 +155,19 @@ function cmdAssert(argv) {
         ...delta.changed,
       ].join('\n'),
     };
-    actions = worlds.readActionLog(dir);
-    // No log at all is the harness failing, not the walk failing. A walk
-    // in a world always runs commands, so an empty record means the
-    // walker's PostToolUse hook never fired — and judging on the
-    // narrative alone is exactly what the hook exists to prevent. Refuse
-    // loudly here rather than let an agent report a verdict on nothing.
+    const transcript = flag(argv, '--transcript');
+    if (!transcript) {
+      die('--transcript <file> is required: the walker\'s session transcript is the '
+        + 'record of what the walk actually did, and a verdict without it rests on the '
+        + "walker's own account — which is the thing this harness exists to distrust.");
+    }
+    actions = actionsLib.formatActions(actionsLib.extractActions(transcript, dir));
+    // No tool calls at all is the harness failing, not the walk failing:
+    // a walk in a world always runs commands. Refuse loudly rather than
+    // let an agent reach a verdict with no record of what was done.
     if (!actions) {
-      die(`no action log at ${path.join(dir, worlds.ACTION_LOG)} — the prose-walker `
-        + "PostToolUse hook did not fire, so there is no record of what the walk did.\n"
-        + 'Check the hooks block in .claude/agents/prose-walker.md, and that the agent '
-        + 'registry has been reloaded since it last changed. Do not judge this run.');
+      die(`no tool calls found in ${transcript} — either that is not the walker's `
+        + 'transcript, or the walk made no calls at all. Do not judge this run.');
     }
   }
   process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world, actions }));
