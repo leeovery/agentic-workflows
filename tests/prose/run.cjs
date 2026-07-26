@@ -154,10 +154,18 @@ function cmdAssert(argv) {
         ...delta.changed,
       ].join('\n'),
     };
-    actions = worlds.readActionLog(dir)
-      || '(no actions recorded — the walker made no tool calls in this world, '
-        + 'or its PostToolUse hook did not fire. Treat an empty record as evidence '
-        + 'of nothing done, and say so rather than inferring from the narrative.)';
+    actions = worlds.readActionLog(dir);
+    // No log at all is the harness failing, not the walk failing. A walk
+    // in a world always runs commands, so an empty record means the
+    // walker's PostToolUse hook never fired — and judging on the
+    // narrative alone is exactly what the hook exists to prevent. Refuse
+    // loudly here rather than let an agent report a verdict on nothing.
+    if (!actions) {
+      die(`no action log at ${path.join(dir, worlds.ACTION_LOG)} — the prose-walker `
+        + "PostToolUse hook did not fire, so there is no record of what the walk did.\n"
+        + 'Check the hooks block in .claude/agents/prose-walker.md, and that the agent '
+        + 'registry has been reloaded since it last changed. Do not judge this run.');
+    }
   }
   process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world, actions }));
 }

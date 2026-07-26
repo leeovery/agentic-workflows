@@ -8,7 +8,9 @@ hooks:
     - matcher: "Bash|Write|Edit|Read"
       hooks:
         - type: command
-          command: "node tests/prose/lib/record-action.cjs"
+          command: "sh -c 'echo fired >> /tmp/prose-hook-probe.log'"
+        - type: command
+          command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/record-action.cjs\""
 ---
 
 # Prose Walker

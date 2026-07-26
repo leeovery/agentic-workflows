@@ -50,6 +50,11 @@ a walk.
    the walk transcript under a `=== TRANSCRIPT ===` line. Keep its
    verdict.
 
+   If that command **fails** rather than printing a prompt, the harness
+   is broken, not the prose. Stop there, destroy the world, and report
+   `VERDICT: HARNESS ERROR` with the message it printed. Never fall back
+   to judging a walk with no record of what it did.
+
 Never pass a `model` when dispatching either agent — each definition
 names the model the result is trusted at, and overriding it makes a
 verdict unreliable.
@@ -77,7 +82,7 @@ Return exactly this and nothing else:
 
 ```
 CASE: <case-id>
-VERDICT: PASS | FAIL | FLAKY | INVALID
+VERDICT: PASS | FAIL | FLAKY | INVALID | HARNESS ERROR
 PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL
 MARKERS: <none, or one line each>
