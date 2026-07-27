@@ -109,6 +109,26 @@ testing.
 
 ## Log
 
+- 2026-07-25 — Stage 3a, the feature corpus. Five stop-point fixtures
+  along the canonical feature mainline (`pay` — created / discussed /
+  specified / planned / implemented), composed from staged builders in
+  `_shared/feature-mainline.cjs`: engine calls mirror the sim's pinned
+  sequences, content files carry the artifacts the prose actually reads
+  (template-shaped session log with backfilled Exploration; real
+  local-markdown task files per the format's authoring contract). Seven
+  cases: workflow-start surfacing, continue-feature selection and
+  forward routing, each phase entry's validation-and-handoff, and the
+  implementation pickup through to the first task start. Every claim
+  verified against the prose at authoring time — the reads surfaced
+  and fixed a fixture bug before it shipped (an invented session-log
+  shape that would have misrouted discussion entry into
+  gather-context), and pinned two authoring-relevant facts:
+  ensure-discovery-item no-ops for non-epics (entry walks are
+  mutation-free until the process skill starts the topic — hence the
+  "restraint" state assertions), and continue-feature never
+  auto-selects, even with a single feature. All six fixtures proven
+  byte-deterministic; full gate green.
+
 - 2026-07-25 — Brittleness review (Lee, on the stage-2 smoke cases):
   cases written in prose coordinates (step numbers, numbered headings)
   break on cosmetic renumbering — failure for the wrong reason. Ruling:
