@@ -44,14 +44,19 @@ const VIOLATIONS = 'tests/prose/.agent-tool-use.log';
 const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
 // These caps exist to protect the asserter's prompt, never to save disk —
 // every recorded action is read into it, and a walk makes twenty-odd file
-// reads whose bodies are whole skill files. They apply only where the
-// content is incidental. A file a walker read back is incidental: no claim
-// ever rests on those bytes. A command's output is not — it settles what
-// the prose was shown, whether a gate rendered empty, whether a menu had
-// entries — so it gets a ceiling generous enough that real evidence is
-// never trimmed, bounding only a runaway that would swamp the prompt.
+// reads whose bodies are whole skill files.
+//
+// Only a read is incidental. Nothing is ever claimed about the bytes a
+// walker read back out of a file, so those are trimmed hard. Everything a
+// walk *produces* is evidence and is kept: what a command returned settles
+// whether a gate rendered empty or a menu had entries, and what a write
+// put in a file settles every claim about the artifact a phase leaves
+// behind. Trimming a write was a read's rule applied to the wrong thing —
+// it left a claim about a written file unprovable, because the only copy
+// of that content lived in the response being cut.
 const MAX_OUTPUT = 400;
-const MAX_COMMAND_OUTPUT = 10000;
+const MAX_PRODUCED_OUTPUT = 10000;
+const WRITE_RESPONSE_TOOLS = new Set(['Bash', 'Write', 'Edit', 'NotebookEdit']);
 
 function read() {
   try {
@@ -213,14 +218,16 @@ function main() {
     // instead — so reaching this point is itself the success signal.
     parts.push('ok');
     parts.push(
-      responseText(payload.tool_response, tool === 'Bash' ? MAX_COMMAND_OUTPUT : MAX_OUTPUT)
-        .split(world).join('.'),
+      responseText(
+        payload.tool_response,
+        WRITE_RESPONSE_TOOLS.has(tool) ? MAX_PRODUCED_OUTPUT : MAX_OUTPUT,
+      ).split(world).join('.'),
     );
   } else if (event === 'PostToolUseFailure') {
     parts.push('FAILED');
     parts.push(
       responseText(payload.tool_response ?? payload.tool_output ?? payload.error,
-        MAX_COMMAND_OUTPUT).split(world).join('.'),
+        MAX_PRODUCED_OUTPUT).split(world).join('.'),
     );
   } else if (stop) {
     parts.push(flatten(payload.last_assistant_message, MAX_OUTPUT).split(world).join('.'));

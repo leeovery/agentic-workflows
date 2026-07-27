@@ -89,6 +89,35 @@ describe('prose recorder — tool events', () => {
     assert.ok(row.includes('warning: store is stale'));
   });
 
+  it('keeps what a write put in a file — claims rest on it', () => {
+    // A read is incidental; a write is the artifact a phase leaves behind.
+    // Trimming this left a claim about a written file unprovable, because
+    // the response was the only copy of that content.
+    const written = `## Symptoms\n${'detail '.repeat(400)}`;
+    fire({
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Edit',
+      agent_type: 'prose-walker',
+      tool_input: { file_path: `${world}/.workflows/crash-fix/investigation/crash-fix.md` },
+      tool_response: { filePath: 'crash-fix.md', newString: written },
+    });
+    const [row] = logLines();
+    assert.ok(!row.includes('[truncated]'), 'the written content survives');
+    assert.ok(row.includes('detail detail'), 'and is legible in the record');
+  });
+
+  it('keeps a Write the same way', () => {
+    const written = 'x'.repeat(3000);
+    fire({
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Write',
+      agent_type: 'prose-walker',
+      tool_input: { file_path: `${world}/.workflows/notes.md` },
+      tool_response: { type: 'create', content: written },
+    });
+    assert.ok(!logLines()[0].includes('[truncated]'));
+  });
+
   it('gives a command far more room than a file read', () => {
     const long = 'x'.repeat(1800);
     fire({
