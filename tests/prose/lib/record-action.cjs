@@ -39,6 +39,7 @@ const fs = require('fs');
 const path = require('path');
 
 const LOG = '.walk-actions.log';
+const WALK = '.walk-transcript.log';
 const VIOLATIONS = 'tests/prose/.agent-tool-use.log';
 const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
 const MAX_OUTPUT = 400;
@@ -94,7 +95,7 @@ function responseText(response, limit) {
  * neither of which a stop payload states.
  */
 function fromTranscript(transcriptPath) {
-  const blank = { world: null, model: '' };
+  const blank = { world: null, model: '', turns: [] };
   if (!transcriptPath) return blank;
   let raw;
   try {
@@ -103,17 +104,47 @@ function fromTranscript(transcriptPath) {
     return blank;
   }
   const models = new Set();
+  const turns = [];
   for (const line of raw.split('\n')) {
+    let entry;
     try {
-      const model = JSON.parse(line)?.message?.model;
-      if (model) models.add(model);
-    } catch { /* a partial line is not worth failing the record over */ }
+      entry = JSON.parse(line);
+    } catch { continue; /* a partial line is not worth failing the record over */ }
+    const message = entry && entry.message;
+    if (!message) continue;
+    if (message.model) models.add(message.model);
+    if (!Array.isArray(message.content)) continue;
+    for (const block of message.content) {
+      if (block && block.type === 'text' && block.text.trim()) turns.push(block.text.trim());
+    }
   }
   const found = raw.match(WORLD);
   return {
     world: found ? found[2].replace(/\\+/g, '') : null,
     model: [...models].join(',') || '',
+    turns,
   };
+}
+
+/**
+ * The walk as it was actually told, turn by turn.
+ *
+ * An agent returns one final message, and a walk runs across dozens of
+ * turns — so a caller who reads only the return value sees a summary the
+ * walker wrote after the fact, and every step compressed out of it looks
+ * like a step never taken. The turns are all in the runtime's transcript
+ * already; this lifts them into the world beside the action log, where
+ * the judging is done. Nothing is asked of the walker, which is what
+ * makes it dependable.
+ */
+function writeWalk(world, turns) {
+  if (!turns || !turns.length) return;
+  try {
+    fs.writeFileSync(
+      path.join(world, WALK),
+      `${turns.join('\n\n---\n\n').split(world).join('.')}\n`,
+    );
+  } catch { /* a hook must never break what it observes */ }
 }
 
 function main() {
@@ -172,6 +203,7 @@ function main() {
     );
   } else if (stop) {
     parts.push(flatten(payload.last_assistant_message, MAX_OUTPUT).split(world).join('.'));
+    writeWalk(world, traced.turns);
   }
 
   try {

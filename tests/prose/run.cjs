@@ -144,6 +144,7 @@ function cmdAssert(argv) {
   const c = getCase(argv[0]);
   let world = null;
   let actions = null;
+  let walk = null;
   if (c.hasFixtureState) {
     const dir = requireWorld(argv, c);
     const delta = worlds.diffWorld(c.id, dir, c.worldMode === 'claims');
@@ -166,6 +167,17 @@ function cmdAssert(argv) {
         + 'registry has reloaded since it changed, and that this project is trusted '
         + '(hasTrustDialogAccepted). Do not judge this run.');
     }
+    walk = worlds.readWalkLog(dir);
+    // Same stance as the action log: the walk is harness-captured, so its
+    // absence is a broken hook, not a quiet walk. Judging without it would
+    // fall back to whatever the walker chose to say at the end — the very
+    // summary this record exists to replace.
+    if (!walk) {
+      die(`no walk log at ${path.join(dir, worlds.WALK_LOG)} — the prose-walker `
+        + 'SubagentStop hook did not fire, so there is no turn-by-turn record of '
+        + 'the walk.\nCheck the hooks block in .claude/agents/prose-walker.md and '
+        + 'that the agent registry has reloaded since it changed. Do not judge this run.');
+    }
   }
   const substitutions = c.stubs.length
     ? c.stubs.map((s) => {
@@ -173,7 +185,9 @@ function cmdAssert(argv) {
       return `- ${s.name} — fires ${s.trigger}\n  ${stub.description.replace(/\n/g, '\n  ')}`;
     }).join('\n')
     : null;
-  process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world, actions, substitutions }));
+  process.stdout.write(
+    prompts.asserterPrompt({ expected: c.assert, world, actions, walk, substitutions }),
+  );
 }
 
 // --- snap / verify --------------------------------------------------------
