@@ -42,6 +42,11 @@ const LOG = '.walk-actions.log';
 const VIOLATIONS = 'tests/prose/.agent-tool-use.log';
 const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
 const MAX_OUTPUT = 400;
+// A command's output is the evidence that settles what the prose was
+// shown — whether a gate rendered empty, whether a menu had entries. It
+// gets the room a whole rendered section needs; a file read does not,
+// since no claim turns on the bytes a walker read back.
+const MAX_COMMAND_OUTPUT = 2000;
 
 function read() {
   try {
@@ -63,6 +68,24 @@ function summarise(input) {
   if (!input || typeof input !== 'object') return '';
   const raw = input.command || input.file_path || input.pattern || input.path || '';
   return flatten(raw, 200);
+}
+
+/**
+ * What a tool actually gave back. The payload field is `tool_response`,
+ * and its shape is the tool's own: a shell reports `{stdout, stderr}`,
+ * everything else answers in whatever form suits it. Reading a shell's
+ * streams directly keeps a command's output legible as output rather
+ * than as a JSON envelope around it.
+ */
+function responseText(response, limit) {
+  if (response === null || response === undefined) return '';
+  if (typeof response === 'object') {
+    const { stdout, stderr } = response;
+    if (typeof stdout === 'string' || typeof stderr === 'string') {
+      return flatten([stdout, stderr].filter(Boolean).join('\n'), limit);
+    }
+  }
+  return flatten(response, limit);
 }
 
 /**
@@ -134,11 +157,19 @@ function main() {
   ];
 
   if (event === 'PostToolUse') {
-    parts.push(payload.tool_output_is_error ? 'ERROR' : 'ok');
-    parts.push(flatten(payload.tool_output, MAX_OUTPUT).split(world).join('.'));
+    // A call that failed never arrives here — it raises PostToolUseFailure
+    // instead — so reaching this point is itself the success signal.
+    parts.push('ok');
+    parts.push(
+      responseText(payload.tool_response, tool === 'Bash' ? MAX_COMMAND_OUTPUT : MAX_OUTPUT)
+        .split(world).join('.'),
+    );
   } else if (event === 'PostToolUseFailure') {
     parts.push('FAILED');
-    parts.push(flatten(payload.tool_output ?? payload.error, MAX_OUTPUT));
+    parts.push(
+      responseText(payload.tool_response ?? payload.tool_output ?? payload.error,
+        MAX_COMMAND_OUTPUT).split(world).join('.'),
+    );
   } else if (stop) {
     parts.push(flatten(payload.last_assistant_message, MAX_OUTPUT).split(world).join('.'));
   }

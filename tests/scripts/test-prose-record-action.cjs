@@ -63,29 +63,76 @@ describe('prose recorder — tool events', () => {
     assert.match(row, /^PreToolUse\tBash\t/);
   });
 
-  it('records the output of a call, so a claim about it can be checked', () => {
+  it('records a command output, so a claim about it can be checked', () => {
     fire({
       hook_event_name: 'PostToolUse',
       tool_name: 'Bash',
       agent_type: 'prose-walker',
       tool_input: { command: `cd ${world} && engine view` },
-      tool_output: 'MENU: 1. Continue "Pay"',
+      tool_response: { stdout: 'MENU: 1. Continue "Pay"', stderr: '' },
     });
     const [row] = logLines();
     assert.ok(row.includes('\tok\t'), 'a successful call is marked ok');
-    assert.ok(row.includes('MENU: 1. Continue "Pay"'), 'output is recorded verbatim');
+    assert.ok(row.includes('MENU: 1. Continue "Pay"'), 'output is recorded, not just its status');
   });
 
-  it('marks a failing call so a walk cannot look cleaner than it was', () => {
+  it('keeps stderr, where a command often says what went wrong', () => {
     fire({
       hook_event_name: 'PostToolUse',
       tool_name: 'Bash',
       agent_type: 'prose-walker',
-      tool_input: { command: `cd ${world} && engine nope` },
-      tool_output: 'unknown command',
-      tool_output_is_error: true,
+      tool_input: { command: `cd ${world} && engine view` },
+      tool_response: { stdout: 'partial output', stderr: 'warning: store is stale' },
     });
-    assert.ok(logLines()[0].includes('\tERROR\t'));
+    const [row] = logLines();
+    assert.ok(row.includes('partial output'));
+    assert.ok(row.includes('warning: store is stale'));
+  });
+
+  it('gives a command far more room than a file read', () => {
+    const long = 'x'.repeat(1800);
+    fire({
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      agent_type: 'prose-walker',
+      tool_input: { command: `cd ${world} && engine view` },
+      tool_response: { stdout: long },
+    });
+    assert.ok(!logLines()[0].includes('[truncated]'), 'a rendered section survives whole');
+
+    fs.rmSync(path.join(world, LOG));
+    fire({
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Read',
+      agent_type: 'prose-walker',
+      tool_input: { file_path: `${world}/big.md` },
+      tool_response: { file: { content: long } },
+    });
+    assert.ok(logLines()[0].includes('[truncated]'), 'a file read is trimmed — no claim rests on it');
+  });
+
+  it('records a tool that answers in its own shape, not a shell’s', () => {
+    fire({
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Read',
+      agent_type: 'prose-walker',
+      tool_input: { file_path: `${world}/notes.md` },
+      tool_response: { file: { filePath: 'notes.md', numLines: 3 } },
+    });
+    assert.ok(logLines()[0].includes('numLines'));
+  });
+
+  it('marks a failing call so a walk cannot look cleaner than it was', () => {
+    fire({
+      hook_event_name: 'PostToolUseFailure',
+      tool_name: 'Bash',
+      agent_type: 'prose-walker',
+      tool_input: { command: `cd ${world} && engine nope` },
+      tool_response: { stdout: 'Exit code 1\nUsage: engine <command>', stderr: '' },
+    });
+    const [row] = logLines();
+    assert.ok(row.includes('\tFAILED\t'));
+    assert.ok(row.includes('Usage: engine <command>'), 'and says what came back');
   });
 
   it('ignores anything happening outside a world', () => {
