@@ -79,6 +79,12 @@ exception is the confirmation rerun in step 4, below.
      stronger walker is a fact about the walk, not about the prose.
    - The second run returns `INVALID WALK` → follow step 5.
 
+   When two runs happened, report both runs' deterministic checks,
+   labelled per run — never one run's block standing for both. Checks
+   that pass on one walk and fail on the other are not a property of the
+   prose; they are the two walks behaving differently, and that variance
+   is a finding in its own right. Name it as one.
+
 5. **Retry an invalid walk** — if the verdict is `INVALID WALK`, the
    walker began mid-flow and the case was never actually exercised.
    Destroy the world, build a fresh one, and repeat steps 2 and 3 once.
@@ -103,7 +109,9 @@ VERDICT: PASS | FAIL | FLAKY | INVALID | HARNESS ERROR
 CHECKS: <every deterministic check the asserter reported, verdict and name,
         one per line — or `none declared`. Never summarised, never inferred
         from the overall verdict: these were decided in code, and dropping
-        them turns a fact back into an assumption.>
+        them turns a fact back into an assumption. When two runs happened,
+        both runs' blocks, labelled — `first walk:` / `confirmation:` —
+        and a line naming any divergence between them as walk variance.>
 PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL
 MARKERS: <none, or one line each>
