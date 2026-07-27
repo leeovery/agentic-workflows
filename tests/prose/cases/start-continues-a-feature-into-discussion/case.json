@@ -1,0 +1,54 @@
+{
+  "origin": "restores the continue-* coverage retired when mid-session entries were outlawed — the whole spine from the dashboard through feature navigation and discussion entry to the phase's first commit",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-feature/SKILL.md",
+    "skills/workflow-continue-feature/references/validate-selection.md",
+    "skills/workflow-continue-feature/references/feature-display-and-menu.md",
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/template.md"
+  ],
+  "answers": [
+    "1 — continue the Pay feature"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-feature/scripts/gateway.cjs",
+      "manifest get pay.discussion.pay status",
+      "manifest get pay description",
+      "pay.research.*",
+      "topic start pay discussion pay",
+      "discussion-map add pay pay",
+      "discussion(pay): initialize pay discussion"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-feature/scripts/gateway.cjs",
+      "manifest get pay.discussion.pay status",
+      "topic start pay discussion pay",
+      "discussion-map add pay pay",
+      "discussion(pay): initialize pay discussion"
+    ],
+    "calls_exclude": [
+      "topic complete",
+      "topic reopen",
+      "discovery-map add",
+      "manifest set",
+      "knowledge.cjs index"
+    ]
+  }
+}
