@@ -14,7 +14,9 @@ Gather targeted context about the mechanical change. Read the work's seed and th
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
 ```
 
-#### If the seed and description already capture what, where, and why
+Read the latest discovery session log's **Exploration** when one exists (`.workflows/{work_unit}/discovery/sessions/session-NNN.md`, highest-numbered) — discovery's shaped context is the carrier's second half. A logless quick-fix has none.
+
+#### If the carrier — seed, description, and exploration — already captures what, where, and why
 
 → Return to caller.
 
@@ -23,6 +25,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 → Proceed to **B. Targeted Questions**.
 
 ## B. Targeted Questions
+
+The carrier has already answered some of these. Emit only the questions it leaves open, dropping any bullet it already covers — a question the user has already answered reads as not having listened.
 
 > *Output the next fenced block as a code block:*
 
