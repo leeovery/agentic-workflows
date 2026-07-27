@@ -55,11 +55,9 @@ function indent(text, by = '    ') {
   return text.split('\n').map((l) => (l.length ? by + l : l)).join('\n');
 }
 
-function walkerPrompt({ worldDir, root, situation, task, scope, stubs, answers }) {
+function walkerPrompt({ worldDir, situation, task, scope, stubs, answers }) {
   const t = loadTemplate('walker');
-  const parts = [
-    worldDir ? fill(t.world, { world_dir: worldDir }) : fill(t.structural, { root }),
-  ];
+  const parts = [fill(t.world, { world_dir: worldDir })];
   if (situation) parts.push(fill(t.situation, { situation }));
   parts.push(fill(t.task, { task, scope }));
   if (answers) parts.push(fill(t.answers, { answers }));

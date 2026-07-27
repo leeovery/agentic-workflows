@@ -216,6 +216,10 @@ function validateCorpus(cases) {
       }
     }
 
+    if (!c.hasFixtureState) {
+      errors.push(`${at}: no ${FILES.fixtureState} — a case with no world records no `
+        + 'actions and produces no delta, so nothing it claims can be answered');
+    }
     if (!c.act) errors.push(`${at}: no ${FILES.act}`);
     if (!c.assert) errors.push(`${at}: no ${FILES.assert} — the expected trace is what catches a silent repair`);
 
@@ -226,20 +230,8 @@ function validateCorpus(cases) {
       errors.push(`${at}: world "claims" and ${FILES.assertionState} are exclusive — `
         + 'a world a recipe can build must be built');
     }
-    if (c.worldMode === 'claims' && !c.hasFixtureState) {
-      errors.push(`${at}: world "claims" needs a world to mutate`);
-    }
     for (const e of invariants.declarationErrors(c.invariants)) {
       errors.push(`${at}: ${FILES.meta} ${e}`);
-    }
-    if (c.invariants && !c.hasFixtureState) {
-      errors.push(`${at}: invariants without ${FILES.fixtureState} — no walk to check`);
-    }
-    if (c.hasAssertionState && !c.hasFixtureState) {
-      errors.push(`${at}: ${FILES.assertionState} without ${FILES.fixtureState} — nothing to act on`);
-    }
-    if (c.situation && !c.hasFixtureState) {
-      errors.push(`${at}: ${FILES.situation} describes a world this case does not build`);
     }
     for (const which of ['fixtureState', 'assertionState']) {
       try {
@@ -254,7 +246,6 @@ function validateCorpus(cases) {
       if (!s.trigger || !s.trigger.trim()) {
         errors.push(`${at}: stub "${s.name}" declares no trigger — the case owns the moment`);
       }
-      if (!c.hasFixtureState) errors.push(`${at}: stub "${s.name}" needs a world to fire in`);
     }
   }
   return errors;
