@@ -1,0 +1,16 @@
+{
+  "agents": {
+    "root-cause-validation-001": {
+      "id": "root-cause-validation-001",
+      "kind": "root-cause-validation",
+      "phase": "investigation",
+      "topic": "crash-fix",
+      "set": "001",
+      "status": "incorporated",
+      "announced": false,
+      "findings": [],
+      "surfaced": [],
+      "created": "2026-01-01T00:00:00.000Z"
+    }
+  }
+}

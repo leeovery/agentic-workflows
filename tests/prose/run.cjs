@@ -2,26 +2,26 @@
 'use strict';
 
 // Prose-test runner — everything deterministic about a prose-test run.
-// The /prose-test skill drives this CLI and supplies the model layer
-// (walker and grader agents). See design/prose-tests.md.
+// The /prose-test skill drives this CLI and supplies the two agents: one
+// walks the prose, one asserts the result. See design/prose-tests.md.
 //
 //   list                          corpus table
 //   select [--diff <ref>|--all|--cases a,b]   cases to run, as JSON
-//   world <case-id>               materialise the case's world, print path
-//   prompt <case-id> [--world <dir>]   walker prompt (NEVER contains expects)
-//   grade <case-id> [--world <dir>]    run state assertions; emit routing
-//                                      claims for the grader agent
-//   snap <fixture>                (re)generate a fixture's golden snapshot
-//   verify [fixture]              rebuild-compare fixture(s) against snapshot
+//   world <case-id>               materialise the fixture state, print path
+//   prompt <case-id> --world <d>  walker prompt (NEVER contains assert.md)
+//   diff <case-id> --world <d>    acted world vs expected world, as facts
+//   assert <case-id> --world <d>  the asserting agent's prompt
+//   snap <case-id>                (re)generate a case's snapshots
+//   verify [case-id]              rebuild-compare snapshot(s)
 //   destroy --world <dir>         remove a world
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync, execFileSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const cases = require('./lib/cases.cjs');
-const fixtures = require('./lib/fixtures.cjs');
-const world = require('./lib/world.cjs');
+const worlds = require('./lib/worlds.cjs');
+const prompts = require('./lib/prompts.cjs');
 
 const ROOT = cases.ROOT;
 
@@ -30,11 +30,10 @@ function die(msg) {
   process.exit(1);
 }
 
-function loadCase(id) {
-  const all = cases.loadAllCases();
-  const found = all.find((c) => c.id === id);
-  if (!found) die(`no case "${id}" in the corpus`);
-  return found;
+function getCase(id) {
+  if (!id) die('a case id is required');
+  if (!cases.listCaseIds().includes(id)) die(`no case "${id}" in tests/prose/cases`);
+  return cases.loadCase(id);
 }
 
 function flag(argv, name) {
@@ -44,14 +43,21 @@ function flag(argv, name) {
   return argv[i + 1];
 }
 
+function requireWorld(argv, c) {
+  const dir = flag(argv, '--world');
+  if (!dir) die(`case "${c.id}" needs --world (build one: run.cjs world ${c.id})`);
+  return dir;
+}
+
 // --- select ---------------------------------------------------------------
 
 function changedFiles(ref) {
   const run = (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' })
     .split('\n').map((l) => l.trim()).filter(Boolean);
-  const diff = run(['diff', '--name-only', ref]);
-  const status = run(['status', '--porcelain']).map((l) => l.slice(3).trim());
-  return new Set([...diff, ...status]);
+  return new Set([
+    ...run(['diff', '--name-only', ref]),
+    ...run(['status', '--porcelain']).map((l) => l.slice(3).trim()),
+  ]);
 }
 
 function cmdSelect(argv) {
@@ -64,193 +70,131 @@ function cmdSelect(argv) {
   } else if (flag(argv, '--cases')) {
     mode = 'ids';
     const ids = flag(argv, '--cases').split(',').map((s) => s.trim());
-    const byId = new Map(all.map((c) => [c.id, c]));
-    for (const id of ids) if (!byId.has(id)) die(`no case "${id}" in the corpus`);
-    selected = ids.map((id) => byId.get(id));
+    for (const id of ids) getCase(id);
+    selected = all.filter((c) => ids.includes(c.id));
   } else {
     const ref = flag(argv, '--diff') || 'main';
     mode = `diff:${ref}`;
     const changed = changedFiles(ref);
-    const touches = (c) => {
-      if (changed.has(c.file)) return true;
-      if (c.files.some((f) => changed.has(f.path))) return true;
-      if (c.world !== null) {
-        const prefix = path.posix.join('tests/prose/fixtures', c.world) + '/';
-        for (const p of changed) if (p.startsWith(prefix)) return true;
-      }
-      return false;
-    };
-    selected = all.filter(touches);
+    selected = all.filter((c) => c.files.some((f) => changed.has(f.path))
+      || [...changed].some((p) => p.startsWith(`${c.rel}/`))
+      || c.stubs.some((s) => changed.has(`tests/prose/stubs/${s.name}.md`))
+      || [...changed].some((p) => p.startsWith('tests/prose/mainlines/')));
   }
-  process.stdout.write(JSON.stringify({
+  process.stdout.write(`${JSON.stringify({
     mode,
-    cases: selected.map((c) => ({ id: c.id, flow: c.flow, file: c.file, world: c.world })),
-  }, null, 2) + '\n');
+    cases: selected.map((c) => ({
+      id: c.id,
+      dir: c.rel,
+      expects: c.hasAssertionState ? 'assertion state' : 'fixture state unchanged',
+    })),
+  }, null, 2)}\n`);
 }
 
 // --- world / destroy ------------------------------------------------------
 
 function cmdWorld(argv) {
-  const c = loadCase(argv[0] || die('usage: world <case-id>'));
-  if (c.world === null) {
-    process.stdout.write(JSON.stringify({ world: null, note: 'structure-only case — no world' }) + '\n');
+  const c = getCase(argv[0]);
+  if (!c.hasFixtureState) {
+    process.stdout.write(`${JSON.stringify({ world: null, note: 'structure-only case — no world' })}\n`);
     return;
   }
-  const dir = world.buildWorld(c.world);
-  process.stdout.write(JSON.stringify({ world: dir, fixture: c.world }) + '\n');
+  process.stdout.write(`${JSON.stringify({ world: worlds.buildWorld(c.id), case: c.id })}\n`);
 }
 
 function cmdDestroy(argv) {
   const dir = flag(argv, '--world') || die('usage: destroy --world <dir>');
-  world.destroyWorld(dir);
+  worlds.destroyWorld(dir);
   process.stdout.write(`destroyed ${dir}\n`);
 }
 
-// --- prompt ---------------------------------------------------------------
+// --- prompt (the walker) --------------------------------------------------
 
 function cmdPrompt(argv) {
-  const c = loadCase(argv[0] || die('usage: prompt <case-id> [--world <dir>]'));
-  const worldDir = flag(argv, '--world');
-  if (c.world !== null && !worldDir) die(`case "${c.id}" needs --world (build one: run.cjs world ${c.id})`);
+  const c = getCase(argv[0]);
+  const worldDir = c.hasFixtureState ? requireWorld(argv, c) : null;
 
-  const userScript = c.user.length
-    ? c.user.map((a, i) => `  ${i + 1}. ${a}`).join('\n')
-    : '  (none — the walk should reach its stop condition without user questions)';
-
-  const setting = c.world !== null
-    ? [
-      'You are executing this project\'s workflow prose exactly as a live session would.',
-      '',
-      `Project directory — your cwd for EVERY command: ${worldDir}`,
-      'The workflow skills are installed at .claude/skills/ inside that project.',
-      'Mutations are expected and safe: the project is a disposable test world.',
-    ]
-    : [
-      'You are walking workflow prose structurally: read the named files and trace the logic.',
-      'Execute nothing — no commands, no writes. This is a read-only walk of the repository.',
-      '',
-      `Repository root: ${ROOT}`,
-    ];
-
-  const prompt = [
-    ...setting,
-    '',
-    'TASK',
-    c.walk,
-    '',
-    'SCOPE — the prose under walk:',
-    ...c.files.map((f) => `  - ${f.path}${f.anchor ? ` (start at the heading containing "${f.anchor}")` : ''}`),
-    '',
-    'RULES',
-    '- Follow the prose literally, step by step, arm by arm. Where it names an',
-    '  engine or knowledge call, run it (node .claude/skills/workflow-engine/',
-    '  scripts/engine.cjs …) from the project directory and use the real response.',
-    '- You also play the user, from a fixed script. When the prose presents a',
-    '  menu or question, consume the next scripted answer, in order:',
-    userScript,
-    '- If the prose asks a question and the script has no next answer: STOP and',
-    '  record `UNSCRIPTED QUESTION:` with the exact question text.',
-    '- If two arms both appear to match, record `AMBIGUOUS:` naming both, then',
-    '  follow the one the prose\'s own ordering/guard rules select.',
-    '- Never repair, reinterpret, or improve the prose. Execute what is written,',
-    '  even where it looks wrong. You are a probe, not a reviewer.',
-    '- Stop at the TASK\'s stop condition, the end of the flow, an UNSCRIPTED',
-    '  QUESTION, or a hard error — whichever comes first.',
-    '',
-    'TRANSCRIPT — your entire final output, in order of events:',
-    '1. Every prose section/arm entered: `file.md § Heading` plus the quoted',
-    '   guard line that selected it.',
-    '2. Every command run and the first line of its output.',
-    '3. Every menu/question encountered (verbatim) and the scripted answer used.',
-    '4. Every file written or edited (path only).',
-    '5. Finally: `STOPPED: <reason>`.',
-    'Return nothing but the transcript.',
-  ].join('\n');
-
-  process.stdout.write(prompt + '\n');
+  process.stdout.write(prompts.walkerPrompt({
+    worldDir,
+    root: ROOT,
+    situation: c.situation,
+    task: c.act,
+    scope: c.files
+      .map((f) => `  - ${f.path}${f.anchor ? ` (start at the heading containing "${f.anchor}")` : ''}`)
+      .join('\n'),
+    stubs: c.stubs.map((s) => ({ ...s, ...cases.readStub(s.name) })),
+    answers: c.answers.map((a, i) => `  ${i + 1}. ${a}`).join('\n'),
+  }));
 }
 
-// --- grade ----------------------------------------------------------------
+// --- diff (the facts) -----------------------------------------------------
 
-function engineInWorld(worldDir, args) {
-  const engine = path.join(worldDir, '.claude/skills/workflow-engine/scripts/engine.cjs');
-  return spawnSync('node', [engine, ...args], { cwd: worldDir, encoding: 'utf8' });
-}
-
-function runStateAssertion(worldDir, assertion) {
-  const a = cases.parseStateAssertion(assertion);
-  if (a.error) return { assertion, pass: false, actual: a.error };
-  if (a.kind === 'file-exists' || a.kind === 'file-absent') {
-    const present = fs.existsSync(path.join(worldDir, a.path));
-    const want = a.kind === 'file-exists';
-    return { assertion, pass: present === want, actual: present ? 'present' : 'absent' };
+function cmdDiff(argv) {
+  const c = getCase(argv[0]);
+  if (!c.hasFixtureState) {
+    process.stdout.write(`${JSON.stringify({ note: 'structure-only case — no world to diff' }, null, 2)}\n`);
+    return;
   }
-  if (a.kind === 'manifest-exists' || a.kind === 'manifest-absent') {
-    const res = engineInWorld(worldDir, ['manifest', 'exists', a.dotpath, a.field]);
-    if (res.status !== 0) return { assertion, pass: false, actual: `engine refused: ${res.stderr.trim()}` };
-    const present = res.stdout.trim() === 'true';
-    const want = a.kind === 'manifest-exists';
-    return { assertion, pass: present === want, actual: present ? 'present' : 'absent' };
-  }
-  // manifest-equals
-  const res = engineInWorld(worldDir, ['manifest', 'get', a.dotpath, a.field]);
-  if (res.status !== 0) return { assertion, pass: false, actual: `engine refused: ${res.stderr.trim()}` };
-  const actual = res.stdout.trim();
-  return { assertion, pass: actual === a.value, actual };
+  process.stdout.write(`${JSON.stringify(worlds.diffWorld(c.id, requireWorld(argv, c)), null, 2)}\n`);
 }
 
-function cmdGrade(argv) {
-  const c = loadCase(argv[0] || die('usage: grade <case-id> [--world <dir>]'));
-  const worldDir = flag(argv, '--world');
-  const stateExpects = c.expect.filter((e) => e.kind === 'state');
-  if (stateExpects.length > 0 && !worldDir) die(`case "${c.id}" has state expects — --world required`);
+// --- assert (the judging agent) -------------------------------------------
 
-  const state = stateExpects.map((e) => runStateAssertion(worldDir, e.text));
-  const routing = c.expect.filter((e) => e.kind === 'routing').map((e) => e.text);
-  process.stdout.write(JSON.stringify({
-    id: c.id,
-    state,
-    statePass: state.every((s) => s.pass),
-    routing,
-    note: routing.length
-      ? 'routing claims are graded by an agent against the walk transcript — PASS requires quoted evidence'
-      : 'no routing claims',
-  }, null, 2) + '\n');
+function cmdAssert(argv) {
+  const c = getCase(argv[0]);
+  let world = null;
+  if (c.hasFixtureState) {
+    const delta = worlds.diffWorld(c.id, requireWorld(argv, c));
+    world = {
+      expecting: delta.expecting,
+      delta: [
+        JSON.stringify({ added: delta.added, removed: delta.removed, identical: delta.identical }, null, 2),
+        ...delta.changed,
+      ].join('\n'),
+    };
+  }
+  process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world }));
 }
 
 // --- snap / verify --------------------------------------------------------
 
+function statesOf(c) {
+  return [
+    c.hasFixtureState ? 'fixture' : null,
+    c.hasAssertionState ? 'assertion' : null,
+  ].filter(Boolean);
+}
+
 function cmdSnap(argv) {
-  const name = argv[0] || die('usage: snap <fixture>');
-  const scratch = fixtures.runRecipe(name);
-  try {
-    const count = fixtures.writeSnapshot(name, scratch);
-    process.stdout.write(`snapshot ${name}: ${count} files written — review the diff before committing\n`);
-  } finally {
-    fs.rmSync(scratch, { recursive: true, force: true });
+  const ids = argv[0] ? [getCase(argv[0]).id] : cases.listCaseIds();
+  for (const id of ids) {
+    const c = cases.loadCase(id);
+    for (const which of statesOf(c)) {
+      const count = worlds.writeSnapshot(id, which);
+      process.stdout.write(`${id}/${which}: ${count} files — review the diff before committing\n`);
+    }
   }
 }
 
 function cmdVerify(argv) {
-  const names = argv[0] ? [argv[0]] : fixtures.listFixtures();
+  const ids = argv[0] ? [getCase(argv[0]).id] : cases.listCaseIds();
   let failed = false;
-  for (const name of names) {
-    const scratch = fixtures.runRecipe(name);
-    try {
-      const diff = fixtures.compareSnapshot(name, scratch);
-      const clean = !diff.missing.length && !diff.extra.length && !diff.changed.length;
-      if (clean) {
-        process.stdout.write(`${name}: snapshot current\n`);
+  for (const id of ids) {
+    const c = cases.loadCase(id);
+    for (const which of statesOf(c)) {
+      const d = worlds.verifySnapshot(id, which);
+      if (d.skipped) {
+        process.stdout.write(`${id}/${which}: unchanged since last build\n`);
+      } else if (!d.missing.length && !d.extra.length && !d.changed.length) {
+        process.stdout.write(`${id}/${which}: snapshot current\n`);
       } else {
         failed = true;
-        process.stdout.write(`${name}: DRIFT — the recipe no longer rebuilds the snapshot\n`);
-        for (const f of diff.changed) process.stdout.write(`  changed: ${f}\n`);
-        for (const f of diff.extra) process.stdout.write(`  extra (rebuilt, not in snapshot): ${f}\n`);
-        for (const f of diff.missing) process.stdout.write(`  missing (in snapshot, not rebuilt): ${f}\n`);
-        process.stdout.write(`  regenerate: node tests/prose/run.cjs snap ${name}\n`);
+        process.stdout.write(`${id}/${which}: DRIFT — the recipe no longer rebuilds the snapshot\n`);
+        for (const f of d.changed) process.stdout.write(`  changed: ${f}\n`);
+        for (const f of d.extra) process.stdout.write(`  extra (rebuilt, not in snapshot): ${f}\n`);
+        for (const f of d.missing) process.stdout.write(`  missing (in snapshot, not rebuilt): ${f}\n`);
+        process.stdout.write(`  regenerate: node tests/prose/run.cjs snap ${id}\n`);
       }
-    } finally {
-      fs.rmSync(scratch, { recursive: true, force: true });
     }
   }
   process.exit(failed ? 1 : 0);
@@ -262,10 +206,11 @@ function cmdList() {
   const all = cases.loadAllCases();
   const errors = cases.validateCorpus(all);
   for (const c of all) {
-    const expects = `${c.expect.filter((e) => e.kind === 'routing').length}r/${c.expect.filter((e) => e.kind === 'state').length}s`;
-    process.stdout.write(`${c.id}  [${c.flow}]  world=${c.world || '-'}  expects=${expects}\n`);
+    const stubs = c.stubs.length ? `  stubs=${c.stubs.map((s) => s.name).join(',')}` : '';
+    const expects = c.hasAssertionState ? 'assertion state' : 'no change';
+    process.stdout.write(`${c.id}\n    ${c.hasFixtureState ? 'fixture' : 'no world'} → ${expects}${stubs}\n`);
   }
-  process.stdout.write(`\n${all.length} cases, ${fixtures.listFixtures().length} fixtures`);
+  process.stdout.write(`\n${all.length} cases, ${cases.listStubs().length} stubs`);
   process.stdout.write(errors.length ? `, ${errors.length} VALIDATION ERRORS:\n` : ', corpus valid\n');
   for (const e of errors) process.stdout.write(`  - ${e}\n`);
   process.exit(errors.length ? 1 : 0);
@@ -276,9 +221,9 @@ function cmdList() {
 const [, , command, ...rest] = process.argv;
 const commands = {
   list: cmdList, select: cmdSelect, world: cmdWorld, prompt: cmdPrompt,
-  grade: cmdGrade, snap: cmdSnap, verify: cmdVerify, destroy: cmdDestroy,
+  diff: cmdDiff, assert: cmdAssert, snap: cmdSnap, verify: cmdVerify, destroy: cmdDestroy,
 };
 if (!commands[command]) {
-  die('usage: run.cjs <list|select|world|prompt|grade|snap|verify|destroy> …');
+  die('usage: run.cjs <list|select|world|prompt|diff|assert|snap|verify|destroy> …');
 }
 commands[command](rest);

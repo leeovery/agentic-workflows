@@ -1,13 +1,17 @@
 ---
 name: prose-test
-description: Run prose-logic test cases — walker agents execute workflow prose against materialised fixture worlds, graders check the transcripts, deterministic state assertions run in code. Scope by diff (default), case ids, or --all.
+description: Run prose-logic test cases — one orchestrator agent per case walks the real prose against a materialised world and asserts the result, reporting back a verdict. Scope by diff (default), case ids, or --all.
 ---
 
 # Prose Test
 
 Run prose-test cases (design: `design/prose-tests.md`; runner:
-`tests/prose/run.cjs`). Walks cost tokens — this skill runs on command
-only, never as part of a routine gate.
+`tests/prose/run.cjs`). Each case is dispatched to a **prose-orchestrator**
+agent that owns the whole run — world, walk, delta, assertion, cleanup —
+and returns only a verdict. Transcripts never enter this session.
+
+Walks cost tokens: this skill runs on command only, never as part of a
+routine gate.
 
 ## Step 1: Select
 
@@ -21,39 +25,31 @@ Parse the arguments:
 If the selection is empty: report that no cases intersect and stop.
 Otherwise show the selected case ids and proceed.
 
-## Step 2: Walk and grade each case
+## Step 2: Dispatch one orchestrator per case
 
-Cases are independent — run up to 4 concurrently. Per case:
+Cases are independent — dispatch up to 4 concurrently, each a
+**prose-orchestrator** agent whose prompt is the case id and the
+instruction to run it end to end.
 
-1. **World** (skip for `world=null` cases): `node tests/prose/run.cjs world <id>` — note the returned path.
-2. **Walker**: `node tests/prose/run.cjs prompt <id> [--world <dir>]`, then dispatch a subagent (model: **sonnet**) with that prompt **verbatim and unmodified**. Never hand-assemble a walker prompt and never mention any expectation to the walker — the `prompt` command's output is the whole contract. Save the returned transcript to a scratch file.
-3. **Deterministic grade**: `node tests/prose/run.cjs grade <id> [--world <dir>]` — state assertions pass/fail in code; the output also lists the routing claims.
-4. **Grader**: dispatch a second subagent (model: **sonnet**) with: the transcript, the routing claims, and the case's scoped prose files. Instructions: verdict per claim, PASS only with a quoted line from the transcript (and prose where relevant) that satisfies it; FAIL must state what is missing or contradicting. A PASS without a quote is invalid — treat as FAIL and re-grade.
+Never run the walker or asserter yourself, and never read a case's
+`assert.md` — the orchestrator owns that boundary, and anything you learn
+about an expected result can leak into a later dispatch.
 
-A walker that returns `UNSCRIPTED QUESTION` or `AMBIGUOUS` is a finding
-in itself — carry it into the report even if claims pass.
+## Step 3: Collate
 
-## Step 3: Escalate failures
+Report a verdict table from what the orchestrators returned: case id,
+verdict, path steps passed, world, markers. Quote the evidence line for
+every failure.
 
-Any failed claim (state or routing):
+A `FLAKY` verdict means a failure did not reproduce on a second run from
+a fresh world — surface both runs, resolve neither.
 
-1. Build a **fresh** world and re-run the walker on model: **opus**, then re-grade.
-2. Both fail → confirmed finding.
-3. Sonnet-fail / Opus-pass → disagreement: report both walks with the divergent lines quoted. Never auto-resolve.
-
-## Step 4: Report and clean up
-
-Report a verdict table: case id, state assertions passed/total, routing
-claims passed/total, escalations, findings. Quote the evidence for every
-failure. Findings are findings — never edit prose or cases mid-run;
-report and stop.
-
-Destroy every world (`node tests/prose/run.cjs destroy --world <dir>`)
-except one you are actively citing in a failure report; name any world
-kept so it can be removed later.
+`UNSCRIPTED QUESTION`, `AMBIGUOUS` and `DEVIATION` markers are findings
+in their own right; carry them into the report even when every case
+passed.
 
 ## Rules
 
-- The walker never sees `expect:` claims — only the `prompt` command's output reaches it.
-- A failing case is a finding either way: broken prose or a stale case. The report says which is suspected, the user decides.
-- Never regenerate fixtures or edit cases to make a run pass.
+- Findings are findings. Never edit prose, cases, or snapshots to make a run pass — report and stop.
+- A failing case is a finding either way: broken prose, or a stale case. Say which is suspected; the user decides.
+- Never regenerate a snapshot as part of a run.

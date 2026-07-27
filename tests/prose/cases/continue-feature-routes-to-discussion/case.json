@@ -1,0 +1,11 @@
+{
+  "origin": "feature mainline — navigation shows state and routes to the next phase",
+  "files": [
+    "skills/workflow-continue-feature/SKILL.md",
+    "skills/workflow-continue-feature/references/select-feature.md",
+    "skills/workflow-continue-feature/references/feature-display-and-menu.md"
+  ],
+  "answers": [
+    "the number listed against `pay`"
+  ]
+}

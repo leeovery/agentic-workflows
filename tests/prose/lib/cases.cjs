@@ -1,159 +1,146 @@
 'use strict';
 
-// Case corpus: parsing and validation.
+// Case corpus: loading and validation.
 //
-// A case file is markdown under tests/prose/{flow}/ (any name, .md).
-// Grammar, deterministic to parse:
+// A case is a directory, tests/prose/cases/{case-id}/, holding one file
+// per element of the test. Nothing is parsed: JSON is JSON, prose files
+// are read whole and relayed into prompts, recipes are required as
+// modules.
 //
-//   ## case: {kebab-id}
-//   - world: {fixture-name}            (optional; required by state expects)
-//   - origin: {free text}
-//   - files:
-//     - {repo-relative path}[#heading fragment]
+//   case.json            the values code branches on:
+//                          { origin, files[], answers[], stubs{name: trigger} }
+//   fixture.md           optional. Prose describing the starting world —
+//                        what has already happened, where the session
+//                        stands. Given to the walker.
+//   fixture-state.cjs    exports build(h): the starting world, in engine
+//                        calls. Composed from tests/prose/mainlines/.
+//   act.md               the coarse instruction: where to enter, what to
+//                        follow, where to stop. Given to the walker.
+//   assert.md            the expected trace, step by step, plus any
+//                        further claims. Given ONLY to the asserter.
+//   assertion-state.cjs  optional. exports build(h): the world the walk
+//                        should produce. Absent means "unchanged" — the
+//                        walk should leave the fixture state untouched.
+//   fixture/             generated snapshot of the starting world
+//   assertion/           generated snapshot of the expected world
 //
-// Anchors are substring fragments, matched against heading text with
-// `includes` — `#Boot` matches "Step 0.2: Boot" and survives a
-// renumber. Authoring rule (see README): cases name BEHAVIOUR, never
-// coordinates — step numbers, arm letters, and heading numbering in
-// walk or expect text rot on cosmetic edits and fail for the wrong
-// reason.
-//   ### walk
-//   {free text: entry point, what to do, stop condition}
-//   ### user
-//   1. {scripted answer, consumed in order}
-//   ### expect
-//   - routing: {claim graded by an agent against the walk transcript}
-//   - state: {deterministic assertion — see parseStateAssertion}
+// act.md and assert.md are separate files because that is the P4
+// boundary: the walker must never see the expected trace, and a file
+// boundary enforces it structurally rather than by convention.
 //
-// State assertion grammar (executed by the runner, zero model judgment):
-//   file exists {rel}
-//   file absent {rel}
-//   manifest exists {dotpath} {field}
-//   manifest absent {dotpath} {field}
-//   manifest equals {dotpath} {field} {expected printed value}
+// The act stays coarse on purpose — the walker must DERIVE the path from
+// the prose, and that derivation is the thing under test. Granularity
+// lives in assert.md, where a step-by-step expected trace catches a
+// walker that silently course-corrected around broken prose.
 
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '../../..');
 const PROSE_DIR = path.join(ROOT, 'tests/prose');
-const FIXTURES_DIR = path.join(PROSE_DIR, 'fixtures');
-const RESERVED_DIRS = new Set(['lib', 'fixtures']);
+const CASES_DIR = path.join(PROSE_DIR, 'cases');
+const STUBS_DIR = path.join(PROSE_DIR, 'stubs');
 
-function listCaseFiles() {
-  if (!fs.existsSync(PROSE_DIR)) return [];
-  const files = [];
-  for (const flow of fs.readdirSync(PROSE_DIR, { withFileTypes: true })) {
-    if (!flow.isDirectory() || RESERVED_DIRS.has(flow.name)) continue;
-    const flowDir = path.join(PROSE_DIR, flow.name);
-    for (const entry of fs.readdirSync(flowDir)) {
-      if (entry.endsWith('.md') && entry !== 'README.md') {
-        files.push({ flow: flow.name, file: path.join(flowDir, entry) });
-      }
-    }
-  }
-  return files;
+const FILES = {
+  meta: 'case.json',
+  situation: 'fixture.md',
+  fixtureState: 'fixture-state.cjs',
+  act: 'act.md',
+  assert: 'assert.md',
+  assertionState: 'assertion-state.cjs',
+};
+const SNAPSHOTS = { fixture: 'fixture', assertion: 'assertion' };
+
+function listCaseIds() {
+  if (!fs.existsSync(CASES_DIR)) return [];
+  return fs.readdirSync(CASES_DIR, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('_'))
+    .map((e) => e.name)
+    .sort();
 }
 
-function parseStateAssertion(text) {
-  const fileMatch = text.match(/^file (exists|absent) (\S+)$/);
-  if (fileMatch) {
-    return { kind: `file-${fileMatch[1]}`, path: fileMatch[2] };
-  }
-  const mExists = text.match(/^manifest (exists|absent) (\S+) (\S+)$/);
-  if (mExists) {
-    return { kind: `manifest-${mExists[1]}`, dotpath: mExists[2], field: mExists[3] };
-  }
-  const mEquals = text.match(/^manifest equals (\S+) (\S+) (.+)$/);
-  if (mEquals) {
-    return { kind: 'manifest-equals', dotpath: mEquals[1], field: mEquals[2], value: mEquals[3] };
-  }
-  return { error: `unparseable state assertion: "${text}"` };
+function readIf(dir, name) {
+  const file = path.join(dir, name);
+  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : null;
 }
 
-function parseCaseFile(file, flow) {
-  const lines = fs.readFileSync(file, 'utf8').split('\n');
-  const cases = [];
-  let current = null;
-  let section = null; // null | 'walk' | 'user' | 'expect'
-  let inFiles = false;
+function loadCase(id) {
+  const dir = path.join(CASES_DIR, id);
+  if (!fs.existsSync(dir)) throw new Error(`no case "${id}" in tests/prose/cases`);
 
-  const push = () => {
-    if (current) {
-      current.walk = current.walk.join('\n').trim();
-      cases.push(current);
+  const metaPath = path.join(dir, FILES.meta);
+  let meta = {};
+  let metaError = null;
+  if (!fs.existsSync(metaPath)) metaError = `missing ${FILES.meta}`;
+  else {
+    try {
+      meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    } catch (e) {
+      metaError = `${FILES.meta} does not parse: ${e.message}`;
     }
+  }
+
+  return {
+    id,
+    dir,
+    rel: path.relative(ROOT, dir),
+    metaError,
+    origin: meta.origin || null,
+    files: (meta.files || []).map((spec) => {
+      const hash = spec.indexOf('#');
+      return hash === -1
+        ? { path: spec, anchor: null }
+        : { path: spec.slice(0, hash).trim(), anchor: spec.slice(hash + 1).trim() };
+    }),
+    answers: meta.answers || [],
+    stubs: Object.entries(meta.stubs || {}).map(([name, trigger]) => ({ name, trigger })),
+    situation: readIf(dir, FILES.situation),
+    act: readIf(dir, FILES.act),
+    assert: readIf(dir, FILES.assert),
+    hasFixtureState: fs.existsSync(path.join(dir, FILES.fixtureState)),
+    hasAssertionState: fs.existsSync(path.join(dir, FILES.assertionState)),
   };
-
-  for (const line of lines) {
-    const caseStart = line.match(/^## case:\s*(\S+)\s*$/);
-    if (caseStart) {
-      push();
-      current = {
-        id: caseStart[1], flow, file: path.relative(ROOT, file),
-        world: null, origin: null, files: [],
-        walk: [], user: [], expect: [],
-      };
-      section = null;
-      inFiles = false;
-      continue;
-    }
-    if (!current) continue;
-
-    const sub = line.match(/^### (walk|user|expect)\s*$/);
-    if (sub) {
-      section = sub[1];
-      inFiles = false;
-      continue;
-    }
-    if (/^#/.test(line)) { // any other heading ends the current case
-      push();
-      current = null;
-      continue;
-    }
-
-    if (section === null) {
-      const field = line.match(/^- (world|origin):\s*(.*)$/);
-      if (field) {
-        current[field[1]] = field[2].trim();
-        inFiles = false;
-        continue;
-      }
-      if (/^- files:\s*$/.test(line)) {
-        inFiles = true;
-        continue;
-      }
-      const fileEntry = line.match(/^\s+- (.+)$/);
-      if (inFiles && fileEntry) {
-        const [, spec] = fileEntry;
-        const hash = spec.indexOf('#');
-        current.files.push(hash === -1
-          ? { path: spec.trim(), anchor: null }
-          : { path: spec.slice(0, hash).trim(), anchor: spec.slice(hash + 1).trim() });
-        continue;
-      }
-      if (line.trim() !== '') inFiles = false;
-    } else if (section === 'walk') {
-      current.walk.push(line);
-    } else if (section === 'user') {
-      const answer = line.match(/^\d+\.\s+(.*)$/);
-      if (answer) current.user.push(answer[1].trim());
-    } else if (section === 'expect') {
-      const claim = line.match(/^- (routing|state):\s*(.*)$/);
-      if (claim) current.expect.push({ kind: claim[1], text: claim[2].trim() });
-    }
-  }
-  push();
-  return cases;
 }
 
 function loadAllCases() {
-  return listCaseFiles().flatMap(({ flow, file }) => parseCaseFile(file, flow));
+  return listCaseIds().map(loadCase);
+}
+
+/** A world builder module: exports build(h). */
+function requireState(caseId, which) {
+  const file = path.join(CASES_DIR, caseId, FILES[which]);
+  if (!fs.existsSync(file)) return null;
+  delete require.cache[require.resolve(file)];
+  const mod = require(file);
+  if (typeof mod.build !== 'function') {
+    throw new Error(`${caseId}/${FILES[which]} must export build(h)`);
+  }
+  return mod;
+}
+
+function listStubs() {
+  if (!fs.existsSync(STUBS_DIR)) return [];
+  return fs.readdirSync(STUBS_DIR)
+    .filter((f) => f.endsWith('.md') && f !== 'README.md')
+    .map((f) => path.basename(f, '.md'));
+}
+
+/** A stub file is description above a `---` fence, exact bytes below. */
+function readStub(name) {
+  const file = path.join(STUBS_DIR, `${name}.md`);
+  if (!fs.existsSync(file)) throw new Error(`no stub "${name}" in tests/prose/stubs`);
+  const raw = fs.readFileSync(file, 'utf8');
+  const fence = raw.indexOf('\n---\n');
+  if (fence === -1) throw new Error(`stub "${name}" has no --- fence separating description from content`);
+  return {
+    name,
+    description: raw.slice(0, fence).replace(/^#.*\n/, '').trim(),
+    content: raw.slice(fence + 5).replace(/^\n+/, ''),
+  };
 }
 
 function headingExists(absPath, anchor) {
-  const content = fs.readFileSync(absPath, 'utf8');
-  return content.split('\n').some((line) => {
+  return fs.readFileSync(absPath, 'utf8').split('\n').some((line) => {
     const h = line.match(/^#{1,6}\s+(.*?)\s*$/);
     return h && h[1].includes(anchor);
   });
@@ -161,46 +148,52 @@ function headingExists(absPath, anchor) {
 
 function validateCorpus(cases) {
   const errors = [];
-  const seen = new Set();
-  for (const c of cases) {
-    const at = `${c.file} :: ${c.id}`;
-    if (!/^[a-z0-9][a-z0-9-]*$/.test(c.id)) errors.push(`${at}: id is not kebab-case`);
-    if (seen.has(c.id)) errors.push(`${at}: duplicate case id`);
-    seen.add(c.id);
+  const stubs = new Set(listStubs());
 
-    if (c.files.length === 0) errors.push(`${at}: no files: scope`);
+  for (const c of cases) {
+    const at = c.rel;
+    if (c.metaError) { errors.push(`${at}: ${c.metaError}`); continue; }
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(c.id)) errors.push(`${at}: case directory is not kebab-case`);
+    if (!c.origin) errors.push(`${at}: ${FILES.meta} has no origin`);
+
+    if (c.files.length === 0) errors.push(`${at}: ${FILES.meta} scopes no files`);
     for (const f of c.files) {
       const abs = path.join(ROOT, f.path);
-      if (!fs.existsSync(abs)) {
-        errors.push(`${at}: scoped file missing: ${f.path}`);
-      } else if (f.anchor && !headingExists(abs, f.anchor)) {
+      if (!fs.existsSync(abs)) errors.push(`${at}: scoped file missing: ${f.path}`);
+      else if (f.anchor && !headingExists(abs, f.anchor)) {
         errors.push(`${at}: anchor "#${f.anchor}" not a heading in ${f.path}`);
       }
     }
 
-    if (c.world !== null) {
-      if (!fs.existsSync(path.join(FIXTURES_DIR, c.world, 'recipe.cjs'))) {
-        errors.push(`${at}: world "${c.world}" has no fixture recipe`);
+    if (!c.act) errors.push(`${at}: no ${FILES.act}`);
+    if (!c.assert) errors.push(`${at}: no ${FILES.assert} — the expected trace is what catches a silent repair`);
+
+    if (c.hasAssertionState && !c.hasFixtureState) {
+      errors.push(`${at}: ${FILES.assertionState} without ${FILES.fixtureState} — nothing to act on`);
+    }
+    if (c.situation && !c.hasFixtureState) {
+      errors.push(`${at}: ${FILES.situation} describes a world this case does not build`);
+    }
+    for (const which of ['fixtureState', 'assertionState']) {
+      try {
+        requireState(c.id, which);
+      } catch (e) {
+        errors.push(`${at}: ${e.message}`);
       }
     }
 
-    if (!c.walk) errors.push(`${at}: empty walk`);
-    if (c.expect.length === 0) errors.push(`${at}: no expects`);
-    for (const e of c.expect) {
-      if (!e.text) errors.push(`${at}: empty ${e.kind} expect`);
-      if (e.kind === 'state') {
-        if (c.world === null) {
-          errors.push(`${at}: state expect requires a world`);
-        }
-        const parsed = parseStateAssertion(e.text);
-        if (parsed.error) errors.push(`${at}: ${parsed.error}`);
+    for (const s of c.stubs) {
+      if (!stubs.has(s.name)) errors.push(`${at}: no stub "${s.name}" in tests/prose/stubs`);
+      if (!s.trigger || !s.trigger.trim()) {
+        errors.push(`${at}: stub "${s.name}" declares no trigger — the case owns the moment`);
       }
+      if (!c.hasFixtureState) errors.push(`${at}: stub "${s.name}" needs a world to fire in`);
     }
   }
   return errors;
 }
 
 module.exports = {
-  ROOT, PROSE_DIR, FIXTURES_DIR,
-  listCaseFiles, parseCaseFile, loadAllCases, parseStateAssertion, validateCorpus,
+  ROOT, PROSE_DIR, CASES_DIR, STUBS_DIR, FILES, SNAPSHOTS,
+  listCaseIds, loadCase, loadAllCases, requireState, listStubs, readStub, validateCorpus,
 };

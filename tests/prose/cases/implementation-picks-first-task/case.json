@@ -1,0 +1,16 @@
+{
+  "origin": "feature mainline — entry through resume detection to the first task",
+  "files": [
+    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-implementation-entry/references/validate-phase.md",
+    "skills/workflow-implementation-entry/references/validate-dependencies.md",
+    "skills/workflow-implementation-entry/references/environment-check.md",
+    "skills/workflow-implementation-process/SKILL.md",
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-process/references/task-loop.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md"
+  ],
+  "answers": [
+    "none — no special setup is needed"
+  ]
+}
