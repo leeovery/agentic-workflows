@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.11] - 2026-07-27
+
+✨ Added
+- Prose tests — a new end-to-end test layer that walks skill prose against real materialised project states, with a `/prose-test` skill to run cases on demand.
+- Discussion, research, and investigation now close each session with a narrative recap of what was explored, decided, and how the work shaped up.
+- Contributing guide added (`docs/contributing.md`) covering setup, test gates, prose tests, and known gotchas.
+
+🔧 Changed
+- Discussion's final gap review now explains why it's needed and offers to proceed or keep going, instead of forcing a review dispatch silently.
+- Discussion no longer requires a review cycle to have already run before it can conclude — the closing probe decides whether one is owed.
+- Investigation's symptom gathering skips re-asking questions the carrier already answered, and only prompts for what's genuinely missing.
+- Quick-fix scoping now reads the discovery session's Exploration notes before asking its context questions, avoiding redundant asks.
+- Discussion Map and epic dashboard rows now render decided/settled items first, with active and not-yet-started items following.
+- README and docs reorganised to point new contributors at the contributing guide.
+
+🐛 Fixed
+- Removed a redundant environment-setup check from implementation entry that could silently no-op against the processing skill's own setup handling.
+- Fixed several phase-entry skills that gathered context but never actually invoked the next processing skill.
+- Discussion entry now passes through the actual session source instead of always hardcoding "fresh".
+
 ## [0.6.10] - 2026-07-24
 
 ✨ Added
