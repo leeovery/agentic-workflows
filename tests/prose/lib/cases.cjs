@@ -8,8 +8,8 @@
 // modules.
 //
 //   case.json            the values code branches on:
-//                          { origin, files[], answers[], stubs{name: trigger},
-//                            world: "claims" (optional),
+//                          { origin, entry, files[], answers[],
+//                            stubs{name: trigger}, world: "claims" (optional),
 //                            invariants{} (optional) — see lib/invariants.cjs }
 //   fixture.md           optional. Prose describing the starting world —
 //                        what has already happened, where the session
@@ -34,6 +34,20 @@
 // stated claims rather than byte-compared. Reach for it only when the
 // variability is genuinely the model's to decide; a world a recipe can
 // build must be built.
+//
+// `entry` names where the walk starts, and it may only be somewhere a
+// real session starts: `workflow-start` (the user's way in), a
+// `workflow-*-entry` skill (what the bridge's plan file invokes after a
+// context clear), or `workflow-discovery` (epic continuation). Nothing
+// else is a legitimate opening — navigation and processing skills are
+// always invoked mid-session, and a reference is never entered directly.
+//
+// This matters because a walk carries only the context it accumulates.
+// Start one in the middle and the world may be right while the reading
+// that got there is missing, so the prose is judged under conditions it
+// was never written for and the verdict means nothing either way. The
+// cases that broke this rule were the ones producing findings that
+// dissolved on inspection.
 //
 // act.md and assert.md are separate files because that is the P4
 // boundary: the walker must never see the expected trace, and a file
@@ -98,6 +112,7 @@ function loadCase(id) {
     rel: path.relative(ROOT, dir),
     metaError,
     origin: meta.origin || null,
+    entry: meta.entry || null,
     files: (meta.files || []).map((spec) => {
       const hash = spec.indexOf('#');
       return hash === -1
@@ -160,6 +175,27 @@ function headingExists(absPath, anchor) {
   });
 }
 
+/**
+ * Where a walk may begin. A session starts at workflow-start, or at the
+ * entry skill a bridge plan file names after a context clear, or at
+ * discovery for an epic continuation — never anywhere else.
+ */
+function entryErrors(entry) {
+  if (!entry) return ['has no entry — name the skill the walk starts at'];
+  const allowed = entry === 'workflow-start'
+    || entry === 'workflow-discovery'
+    || /^workflow-[a-z-]+-entry$/.test(entry);
+  if (!allowed) {
+    return [`entry "${entry}" is not somewhere a session starts — use workflow-start, `
+      + 'a workflow-*-entry skill, or workflow-discovery. Navigation and processing '
+      + 'skills are only ever reached mid-session, and a reference never directly'];
+  }
+  if (!fs.existsSync(path.join(ROOT, 'skills', entry, 'SKILL.md'))) {
+    return [`entry "${entry}" is not a skill in skills/`];
+  }
+  return [];
+}
+
 function validateCorpus(cases) {
   const errors = [];
   const stubs = new Set(listStubs());
@@ -169,6 +205,7 @@ function validateCorpus(cases) {
     if (c.metaError) { errors.push(`${at}: ${c.metaError}`); continue; }
     if (!/^[a-z0-9][a-z0-9-]*$/.test(c.id)) errors.push(`${at}: case directory is not kebab-case`);
     if (!c.origin) errors.push(`${at}: ${FILES.meta} has no origin`);
+    for (const e of entryErrors(c.entry)) errors.push(`${at}: ${FILES.meta} ${e}`);
 
     if (c.files.length === 0) errors.push(`${at}: ${FILES.meta} scopes no files`);
     for (const f of c.files) {
@@ -225,5 +262,6 @@ function validateCorpus(cases) {
 
 module.exports = {
   ROOT, PROSE_DIR, CASES_DIR, STUBS_DIR, FILES, SNAPSHOTS,
-  listCaseIds, loadCase, loadAllCases, requireState, listStubs, readStub, validateCorpus,
+  listCaseIds, loadCase, loadAllCases, requireState, listStubs, readStub,
+  validateCorpus, entryErrors,
 };

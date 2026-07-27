@@ -1,5 +1,6 @@
 {
   "origin": "bugfix mainline \u2014 the same entry skill, sourced from an investigation",
+  "entry": "workflow-specification-entry",
   "files": [
     "skills/workflow-specification-entry/SKILL.md",
     "skills/workflow-specification-entry/references/validate-source.md",

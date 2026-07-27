@@ -1,8 +1,0 @@
-{
-  "name": "crash-fix",
-  "work_type": "bugfix",
-  "status": "in-progress",
-  "created": "2026-01-01",
-  "description": "Checkout crashes when an order has no shipping address",
-  "phases": {}
-}

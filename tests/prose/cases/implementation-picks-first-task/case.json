@@ -1,5 +1,6 @@
 {
   "origin": "feature mainline \u2014 entry through resume detection to the first task",
+  "entry": "workflow-implementation-entry",
   "files": [
     "skills/workflow-implementation-entry/SKILL.md",
     "skills/workflow-implementation-entry/references/validate-phase.md",

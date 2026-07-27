@@ -1,5 +1,6 @@
 {
   "origin": "feature mainline \u2014 single-phase work seeds from its durable carrier",
+  "entry": "workflow-discussion-entry",
   "files": [
     "skills/workflow-discussion-entry/SKILL.md",
     "skills/workflow-shared/references/ensure-discovery-item.md"
