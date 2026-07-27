@@ -8,10 +8,10 @@ Concretely:
 
 - Spec re-completion sets no flag when a `planning.{topic}` (or beyond) item already exists.
 - `workflow-planning-entry/references/validate-phase.md` does no staleness check — it only reads the plan's own status.
-- Planning *does* re-read the spec fresh on re-entry (the handoff in `invoke-skill.md` always carries the spec path), so reconciliation works — but only if someone re-enters. Nothing prompts re-entry.
-- The reopened spec itself resurfaces fine (status flips to `in-progress`, phase aggregation and menus show it). The stale plan sitting downstream still reads `completed` and looks done.
+- Detection *at plan re-entry* is already solved, and well: planning stamps a `spec_commit` baseline at plan initialization, re-stamps it at conclusion, and on any resume — including a reopened completed plan — `spec-change-detection.md` git-diffs the spec and cross-cutting inputs against that baseline and reports unreconciled changes into the session. So the moment someone re-enters planning, drift is caught mechanically.
+- But nothing prompts re-entry. The reopened spec itself resurfaces fine (status flips to `in-progress`, phase aggregation and menus show it); the stale plan sitting downstream still reads `completed` and looks done. The detection layer exists with no arrival layer in front of it.
 
-So the failure mode: spec corrected mid-pipeline, plan authored against the old spec silently retains its `completed` status, implementation executes the stale plan. Fixing forward works — plans can be reopened, tasks added, code rewritten — but only when the drift is *seen*.
+So the failure mode: spec corrected mid-pipeline, plan authored against the old spec silently retains its `completed` status, implementation executes the stale plan. Fixing forward works — plans can be reopened, tasks added, code rewritten, and spec-change detection reconciles the diff the moment planning resumes — but only if someone knows to resume. The whole gap is the nudge.
 
 ## The Model That Already Works: Discussion Triage
 
@@ -38,7 +38,7 @@ The idea should settle a routing rule (or at least a stated default) for which p
 1. **The trigger.** Spec re-completion (`topic complete` on a spec item) when downstream phase items exist for the same topic — engine-owned, like the KB re-index already is? Or prose-owned at spec-completion time? Engine-owned can't be forgotten, which is the whole lesson of #22.
 2. **The flag and its home.** A `reconcile_needed`-style field on the downstream item(s) (`planning.{topic}`, possibly `implementation.{topic}`). Does it cascade one hop (spec→plan only, and a reconciled plan then flags implementation) or mark everything downstream at once?
 3. **Surfacing.** Which render surfaces carry it — epic menu, `workflow-continue-*` dashboards, planning-entry's validate step? Non-destructive advisory per the brief precedent.
-4. **Clearing semantics.** Cleared on downstream re-entry? On downstream re-completion? Explicit user dismissal ("the change doesn't affect the plan")?
+4. **Clearing semantics.** Cleared on downstream re-entry? On downstream re-completion? Explicit user dismissal ("the change doesn't affect the plan")? Note the existing rhythm to align with: `spec_commit` is re-stamped only at plan conclusion, so unreconciled changes keep re-reporting on every resume — the flag's clear point should probably match the re-stamp, with the flag's *surface* point (menus) sitting in front of the re-entry that detection already owns.
 5. **The routing rule** for the upstream chain (edit the discussion vs edit the spec vs fix forward) — see above. Where is it stated, and does the spec-entry flow actively offer the triage-into-discussion path when the user shows up wanting to change a spec whose sources are discussions?
 6. **Cross-unit entry.** You're in unit B when you notice unit A's live spec is wrong. The corrigendum protocol (idea #22, narrowed) redirects you to unit A's own flow — where exactly does that redirect land, and does this idea's surfacing make the hand-off self-evident once you get there?
 7. **Family with #26.** The remaining half of idea #26 (auto-route back to review after a reopened implementation re-completes) is the same pattern: *a phase re-ran; adjacent state is now stale; nothing points at it.* A shared mechanism (or at least a shared design) may close both.
@@ -55,6 +55,7 @@ Split out of idea #22 (*Editing Historical Phase Artefacts*) during its 2026-07-
 
 - `skills/workflow-engine/scripts/domain/transitions.cjs` — `topic complete` / `topic reopen` / `topic triage`; where an engine-owned trigger would live.
 - `skills/workflow-planning-entry/references/validate-phase.md` — where a staleness check / advisory would surface on re-entry.
+- `skills/workflow-planning-process/references/spec-change-detection.md` + `conclude-plan.md` — the existing detection layer (`spec_commit` baseline, diffed on every resume, re-stamped at conclusion) the new flag routes into.
 - `skills/workflow-shared/references/reconcile-advisory.md` — the non-destructive advisory pattern to reuse.
 - `skills/workflow-shared/references/drain-triage.md`, `triage-landing.md` — the discussion triage mechanism this idea generalises.
 - `skills/workflow-specification-process/references/spec-completion.md` — prose-side completion; where a prose-owned trigger would live instead.
