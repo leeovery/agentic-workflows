@@ -100,8 +100,11 @@ Return exactly this and nothing else:
 
 ```
 CASE: <case-id>
-MODEL: <the model the asserter reported, or `unrecorded`. On a confirmed or
-       flaky failure, both — the first walk's and the escalated rerun's>
+MODEL: <the walking model, exactly as the asserter read it off the recorded
+       `SubagentStop` line, or `unrecorded`. On a confirmed or flaky failure,
+       both walks'. Never any other agent's — nothing in the record names the
+       model you or the asserter ran on, so stating one is a guess in a slot
+       reserved for facts.>
 VERDICT: PASS | FAIL | FLAKY | INVALID | HARNESS ERROR
 CHECKS: <every deterministic check the asserter reported, verdict and name,
         one per line — or `none declared`. Never summarised, never inferred
