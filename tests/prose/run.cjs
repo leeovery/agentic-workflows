@@ -22,6 +22,7 @@ const { execFileSync } = require('child_process');
 const cases = require('./lib/cases.cjs');
 const worlds = require('./lib/worlds.cjs');
 const prompts = require('./lib/prompts.cjs');
+const invariants = require('./lib/invariants.cjs');
 
 const ROOT = cases.ROOT;
 
@@ -145,6 +146,7 @@ function cmdAssert(argv) {
   let world = null;
   let actions = null;
   let walk = null;
+  let checks = null;
   if (c.hasFixtureState) {
     const dir = requireWorld(argv, c);
     const delta = worlds.diffWorld(c.id, dir, c.worldMode === 'claims');
@@ -167,6 +169,7 @@ function cmdAssert(argv) {
         + 'registry has reloaded since it changed, and that this project is trusted '
         + '(hasTrustDialogAccepted). Do not judge this run.');
     }
+    checks = invariants.format(invariants.check(worlds.readActionRows(dir), c.invariants));
     walk = worlds.readWalkLog(dir);
     // Same stance as the action log: the walk is harness-captured, so its
     // absence is a broken hook, not a quiet walk. Judging without it would
@@ -186,7 +189,7 @@ function cmdAssert(argv) {
     }).join('\n')
     : null;
   process.stdout.write(
-    prompts.asserterPrompt({ expected: c.assert, world, actions, walk, substitutions }),
+    prompts.asserterPrompt({ expected: c.assert, world, actions, checks, walk, substitutions }),
   );
 }
 

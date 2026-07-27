@@ -87,6 +87,10 @@ Return exactly this and nothing else:
    as recorded. If no such line exists, say `unrecorded`. A verdict is
    only as trustworthy as the model that produced the walk, so it is
    stated before anything is judged, never inferred, and never omitted.
+0b. **Checks** — every deterministic check and its computed verdict,
+   repeated as given. Omit the section only when the prompt carried none.
+   A FAILing check fails the case on its own, whatever the path and world
+   show; it was decided in code and is not yours to revisit.
 1. **Path** — one line per expected step: PASS or FAIL, each PASS quoting
    the line of the walk that shows it, each FAIL stating what is missing
    or contradicting.
@@ -97,4 +101,5 @@ Return exactly this and nothing else:
    `DEVIATION` in the walk. Each is a finding in its own right,
    even when everything else passed.
 4. **VERDICT** — PASS, FAIL, or INVALID WALK, then one sentence on what
-   it means for the prose.
+   it means for the prose. Any FAILing deterministic check makes this
+   FAIL.

@@ -1,9 +1,12 @@
 {
-  "origin": "feature mainline — a feature's spec draws on its discussion",
+  "origin": "feature mainline \u2014 a feature's spec draws on its discussion",
   "files": [
     "skills/workflow-specification-entry/SKILL.md",
     "skills/workflow-specification-entry/references/validate-source.md",
     "skills/workflow-specification-entry/references/validate-phase.md",
     "skills/workflow-specification-entry/references/invoke-skill.md"
-  ]
+  ],
+  "invariants": {
+    "engine_before_write": true
+  }
 }
