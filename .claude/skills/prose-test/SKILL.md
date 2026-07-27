@@ -38,8 +38,14 @@ about an expected result can leak into a later dispatch.
 ## Step 3: Collate
 
 Report a verdict table from what the orchestrators returned: case id,
-verdict, path steps passed, world, markers. Quote the evidence line for
-every failure.
+model, verdict, path steps passed, world, markers. Quote the evidence
+line for every failure.
+
+The model column comes from the harness record, not from any agent's
+say-so. An edited agent definition does not reach a running session until
+its plugins are reloaded, so a run can silently use the previous model —
+if the column disagrees with what the agent definitions declare, say so
+and treat every verdict in the run as unproven.
 
 A `FLAKY` verdict means a failure did not reproduce on a second run from
 a fresh world — surface both runs, resolve neither.
