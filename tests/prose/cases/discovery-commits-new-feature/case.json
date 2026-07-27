@@ -1,0 +1,38 @@
+{
+  "origin": "discovery — the universal first phase, walked to its durability boundary: the work-type commit, where a work unit first exists on disk",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-start/references/empty-state.md",
+    "skills/workflow-start/references/route-to-discovery.md",
+    "skills/workflow-discovery/SKILL.md",
+    "skills/workflow-discovery/references/opener-pattern.md",
+    "skills/workflow-discovery/references/shape-and-confirm.md",
+    "skills/workflow-discovery/references/confirm-trigger.md",
+    "skills/workflow-discovery/references/name-resolution.md",
+    "skills/workflow-discovery/references/template.md"
+  ],
+  "answers": [
+    "f — start a new feature",
+    "Saved search filters on the orders list. A user picks the filters they use often — status, date range, customer — names the combination, and it appears in a dropdown above the list so they can apply it in one click. Filters are per-user, not shared. Nothing else about the orders list changes.",
+    "y — that's the right shape, set it up",
+    "search-filters"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest exists search-filters",
+      "workunit create search-filters feature"
+    ],
+    "calls_in_order": [
+      "manifest exists search-filters",
+      "workunit create search-filters feature"
+    ],
+    "calls_exclude": [
+      "discovery-map",
+      "discovery-session close",
+      "topic start"
+    ]
+  }
+}
