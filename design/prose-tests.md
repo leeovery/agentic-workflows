@@ -84,6 +84,15 @@ testing.
   and the stubs, and returns a transcript. The asserter sees the
   transcript, the expected path, and the world delta — never the
   reverse.
+- **P3a — three shapes of end state.** A walk either produces a world a
+  recipe can build (`assertion-state.cjs`, byte-compared), leaves the
+  fixture untouched (no assertion state — most entry-skill cases), or
+  mutates into a shape only prose can describe (`world: "claims"`). The
+  third exists because parts of some worlds are authored by the model:
+  a discussion's subtopic names are derived from context and differ run
+  to run. There the delta is taken against the fixture and judged
+  against the case's claims. It is the weakest of the three and is
+  reached for last: a world a recipe can build must be built.
 - **P4b — the asserter is told which substitutions were armed.** The
   recorded actions show a stub as the walker writing a file an agent
   would have produced; without knowing the stub exists, an asserter

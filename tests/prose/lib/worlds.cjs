@@ -246,8 +246,8 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
  * volatile values surface as ordinary differences and the agent rules on
  * them. A case with no assertion-state expects its fixture back unchanged.
  */
-function diffWorld(caseId, worldDir) {
-  const which = fs.existsSync(snapshotDir(caseId, 'assertion')) ? 'assertion' : 'fixture';
+function diffWorld(caseId, worldDir, claimsMode = false) {
+  const which = !claimsMode && fs.existsSync(snapshotDir(caseId, 'assertion')) ? 'assertion' : 'fixture';
   const expected = readSnapshot(caseId, which);
   if (expected === null) throw new Error(`case "${caseId}" has no committed ${which} snapshot`);
   const actual = collectTree(worldDir);
@@ -262,7 +262,12 @@ function diffWorld(caseId, worldDir) {
   for (const rel of expected.keys()) if (!actual.has(rel)) removed.push(rel);
 
   return {
-    expecting: which === 'assertion' ? 'the assertion state' : 'the fixture state, unchanged',
+    expecting: which === 'assertion'
+      ? 'the assertion state'
+      : (claimsMode
+        ? 'no fixed world — the delta below is against the STARTING state, is expected to be '
+          + "non-empty, and must be judged against the case's stated claims"
+        : 'the fixture state, unchanged'),
     added,
     removed,
     changed,
