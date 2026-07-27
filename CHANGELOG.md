@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.12] - 2026-07-27
+
+🔧 Changed
+- Knowledge-base corrections to a completed work unit's artifacts now follow a standard protocol — in-place edit, corrigendum note, and re-index, gated by confirmation and the owning unit's status.
+- Planning and scoping tasks that edit another work unit's completed files now fold the correction protocol into their steps and acceptance criteria automatically.
+
 ## [0.6.11] - 2026-07-27
 
 ✨ Added
