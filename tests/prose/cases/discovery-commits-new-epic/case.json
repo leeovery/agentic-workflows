@@ -13,7 +13,8 @@
     "skills/workflow-discovery/references/name-resolution.md",
     "skills/workflow-discovery/references/template.md",
     "skills/workflow-shared/references/casing-conventions.md",
-    "skills/workflow-discovery/references/detection-core.md"
+    "skills/workflow-discovery/references/detection-core.md",
+    "skills/workflow-discovery/references/resume-detection.md"
   ],
   "answers": [
     "e — start a new epic",

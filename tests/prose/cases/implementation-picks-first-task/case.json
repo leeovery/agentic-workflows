@@ -6,7 +6,8 @@
     "skills/workflow-implementation-entry/references/validate-phase.md",
     "skills/workflow-implementation-entry/references/validate-dependencies.md",
     "skills/workflow-implementation-process/SKILL.md",
-    "skills/workflow-implementation-process/references/environment-setup.md"
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-entry/references/invoke-skill.md"
   ],
   "answers": [
     "none — no special setup is needed"
