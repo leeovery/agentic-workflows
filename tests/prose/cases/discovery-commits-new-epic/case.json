@@ -1,0 +1,41 @@
+{
+  "origin": "discovery — the epic arm of the same commit the feature case walks: the work unit is created, then the work continues into topic territory instead of concluding",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-start/references/empty-state.md",
+    "skills/workflow-start/references/route-to-discovery.md",
+    "skills/workflow-discovery/SKILL.md",
+    "skills/workflow-discovery/references/opener-pattern.md",
+    "skills/workflow-discovery/references/shape-and-confirm.md",
+    "skills/workflow-discovery/references/confirm-trigger.md",
+    "skills/workflow-discovery/references/name-resolution.md",
+    "skills/workflow-discovery/references/template.md"
+  ],
+  "answers": [
+    "e — start a new epic",
+    "Search relevance across the catalogue is poor and it is several problems at once. Ranking barely uses behavioural signals. Synonyms and misspellings are handled by a hand-maintained list nobody trusts. And we have no way to tell whether a change made results better or worse, so every tweak is an argument. I want to take the whole thing on rather than patch one piece.",
+    "y — that's the right shape, set it up",
+    "search-relevance"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest exists search-relevance",
+      "workunit create search-relevance epic",
+      "workflow-discovery/scripts/gateway.cjs search-relevance"
+    ],
+    "calls_in_order": [
+      "manifest exists search-relevance",
+      "workunit create search-relevance epic",
+      "workflow-discovery/scripts/gateway.cjs search-relevance"
+    ],
+    "calls_exclude": [
+      "topic start",
+      "discussion-map",
+      "workflow-discussion-entry",
+      "workflow-research-entry"
+    ]
+  }
+}
