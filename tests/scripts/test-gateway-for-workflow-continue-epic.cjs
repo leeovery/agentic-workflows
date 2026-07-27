@@ -812,7 +812,7 @@ describe('workflow-continue-epic discovery', () => {
       assert.strictEqual(d.convergence_state, 'in-progress');
     });
 
-    it('tier ordering: → ◐ ✓ ○ ⊘ with alphabetical within tier', () => {
+    it('tier ordering: ✓ → ◐ ○ ⊘ with alphabetical within tier', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -844,9 +844,9 @@ describe('workflow-continue-epic discovery', () => {
       const r = discover(dir);
       const tiers = r.epics[0].detail.discovery_map.map(t => `${t.tier} ${t.name}`);
       assert.deepStrictEqual(tiers, [
+        '✓ decided-topic',
         '→ ready-topic',
         '◐ in-flight',
-        '✓ decided-topic',
         '○ alpha-fresh',
         '○ zeta-fresh',
         '⊘ cancelled-topic',

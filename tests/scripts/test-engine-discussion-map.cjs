@@ -147,10 +147,89 @@ describe('discussion-map projection: golden renders', () => {
       '  ├─ → Info Line Shape [converging]',
       '  │  ├─ ✓ Field Order [decided]',
       '  │  └─ ◐ Truncation Rules [exploring]',
-      '  ├─ ⊙ Context Preservation [deferred]',
-      '  └─ ○ Rollout Sequencing [pending]',
+      '  ├─ ○ Rollout Sequencing [pending]',
+      '  └─ ⊙ Context Preservation [deferred]',
       '',
     ].join('\n'));
+  });
+
+  it('floats decided to the top and sinks deferred to the bottom', () => {
+    const m = manifestWith({
+      'rollout-sequencing': { status: 'pending', parent: null },
+      'context-preservation': { status: 'deferred', parent: null },
+      'truncation-rules': { status: 'exploring', parent: null },
+      'subsystem-prefix-taxonomy': { status: 'decided', parent: null },
+      'info-line-shape': { status: 'converging', parent: null },
+    });
+    assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2), [
+      '  ├─ ✓ Subsystem Prefix Taxonomy [decided]',
+      '  ├─ → Info Line Shape [converging]',
+      '  ├─ ◐ Truncation Rules [exploring]',
+      '  ├─ ○ Rollout Sequencing [pending]',
+      '  └─ ⊙ Context Preservation [deferred]',
+      '',
+    ]);
+  });
+
+  it('preserves insertion order within a rank', () => {
+    const m = manifestWith({
+      zulu: { status: 'decided', parent: null },
+      alpha: { status: 'decided', parent: null },
+      mike: { status: 'pending', parent: null },
+      bravo: { status: 'decided', parent: null },
+      charlie: { status: 'pending', parent: null },
+    });
+    assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2, -1), [
+      '  ├─ ✓ Zulu [decided]',
+      '  ├─ ✓ Alpha [decided]',
+      '  ├─ ✓ Bravo [decided]',
+      '  ├─ ○ Mike [pending]',
+      '  └─ ○ Charlie [pending]',
+    ]);
+  });
+
+  it('re-ranks children inside their parent', () => {
+    const m = manifestWith({
+      'info-line-shape': { status: 'exploring', parent: null },
+      'truncation-rules': { status: 'pending', parent: 'info-line-shape' },
+      'context-preservation': { status: 'deferred', parent: 'info-line-shape' },
+      'field-order': { status: 'decided', parent: 'info-line-shape' },
+    });
+    assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2, -1), [
+      '  └─ ◐ Info Line Shape [exploring]',
+      '     ├─ ✓ Field Order [decided]',
+      '     ├─ ○ Truncation Rules [pending]',
+      '     └─ ⊙ Context Preservation [deferred]',
+    ]);
+  });
+
+  it('a decided parent carries its unfinished children up with it', () => {
+    const m = manifestWith({
+      'rollout-sequencing': { status: 'pending', parent: null },
+      'info-line-shape': { status: 'decided', parent: null },
+      'field-order': { status: 'pending', parent: 'info-line-shape' },
+    });
+    assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2, -1), [
+      '  ├─ ✓ Info Line Shape [decided]',
+      '  │  └─ ○ Field Order [pending]',
+      '  └─ ○ Rollout Sequencing [pending]',
+    ]);
+  });
+
+  it('nests a child stored before its parent', () => {
+    const m = manifestWith({
+      'field-order': { status: 'decided', parent: 'info-line-shape' },
+      'info-line-shape': { status: 'exploring', parent: null },
+    });
+    assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2, -1), [
+      '  └─ ◐ Info Line Shape [exploring]',
+      '     └─ ✓ Field Order [decided]',
+    ]);
+  });
+
+  it('throws when a subtopic references a parent that does not exist', () => {
+    const m = manifestWith({ 'field-order': { status: 'pending', parent: 'ghost' } });
+    assert.throws(() => discussionMap('auth-flow', m), /subtopic "field-order" references missing parent "ghost"/);
   });
 
   it('omits the breakdown when only one category is non-zero', () => {
@@ -298,8 +377,8 @@ describe('discussion adapter: map verb', () => {
       '=== DISPLAY (emit verbatim as a code block) ===',
       '  Discussion Map — Auth Flow (2 subtopics — 1 decided · 1',
       '  exploring)',
-      '  ├─ ◐ Token Refresh [exploring]',
-      '  └─ ✓ Session Storage [decided]',
+      '  ├─ ✓ Session Storage [decided]',
+      '  └─ ◐ Token Refresh [exploring]',
       '',
     ].join('\n'));
   });

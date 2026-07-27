@@ -430,6 +430,43 @@ describe('epic projections: menu', () => {
     assert.ok(!rendered.includes('Dropped'), 'cancelled row has no menu entry');
   });
 
+  it('a decided row floating to the top of the map changes no menu numbering', () => {
+    // Same actionable rows either side; the only difference is a decided topic
+    // present on the map, which now sorts above them all.
+    const actionable = {
+      ready: { routing: 'research', source: 'discovery', order: 1 },
+      inflight: { routing: 'research', source: 'discovery', order: 2 },
+      fresh: { routing: 'discussion', source: 'discovery', order: 3 },
+    };
+    const research = { ready: { status: 'completed' }, inflight: { status: 'in-progress' } };
+
+    const without = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discovery: { items: { ...actionable } }, research: { items: { ...research } } },
+    });
+    const with_ = detailFor(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { ...actionable, settled: { routing: 'discussion', source: 'discovery', order: 4 } } },
+        research: { items: { ...research } },
+        discussion: { items: { settled: { status: 'completed' } } },
+      },
+    });
+
+    assert.strictEqual(with_.discovery_map[0].name, 'settled', 'the decided row leads the map');
+    assert.strictEqual(with_.discovery_map[0].tier, '✓');
+
+    const numbered = (d, wu) => epicMenu(wu, d).keys
+      .filter((k) => /^\d+$/.test(k.key))
+      .map((k) => [k.key, k.action, k.topic]);
+    assert.deepStrictEqual(numbered(with_, 'v2'), numbered(without, 'v1'));
+    assert.deepStrictEqual(numbered(with_, 'v2'), [
+      ['1', 'start_discussion_after_research', 'ready'],
+      ['2', 'continue_research', 'inflight'],
+      ['3', 'start_discussion', 'fresh'],
+    ]);
+  });
+
   it('superseded research renders as superseded in the discussion entry label, never as completed', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',

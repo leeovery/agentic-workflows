@@ -533,8 +533,9 @@ function pickRecommendation(detail, numbered, options, hasMap) {
 
   if (hasMap) {
     if (detail.convergence_state === 'in-progress') {
-      // Top of the map — the first discovery entry mirrors the first map row
-      // with a non-null next_action (tier order: → first, then ◐, then ○).
+      // Top of the actionable map — the first discovery entry mirrors the
+      // first map row with a non-null next_action. Decided rows lead the map
+      // but carry no action, so the actionable order is → then ◐ then ○.
       const discoveryActions = ['start_research', 'start_discussion', 'continue_research', 'continue_discussion', 'start_discussion_after_research'];
       return numbered.find((e) => discoveryActions.includes(e.action)) || null;
     }

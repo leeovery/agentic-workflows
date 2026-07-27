@@ -971,13 +971,19 @@ describe('reads + derivations', () => {
   });
 
   describe('TIER_RANK', () => {
-    it('orders tiers from ready → in-flight → decided → fresh → handled → cancelled', () => {
-      assert.strictEqual(TIER_RANK['→'], 0);
-      assert.strictEqual(TIER_RANK['◐'], 1);
-      assert.strictEqual(TIER_RANK['✓'], 2);
+    it('orders tiers from decided → ready → in-flight → fresh → handled → cancelled', () => {
+      assert.strictEqual(TIER_RANK['✓'], 0);
+      assert.strictEqual(TIER_RANK['→'], 1);
+      assert.strictEqual(TIER_RANK['◐'], 2);
       assert.strictEqual(TIER_RANK['○'], 3);
       assert.strictEqual(TIER_RANK['⊙'], 4);
       assert.strictEqual(TIER_RANK['⊘'], 5);
+    });
+
+    it('ranks decided above every unsettled tier (the map leads with what is agreed)', () => {
+      assert.ok(TIER_RANK['✓'] < TIER_RANK['→']);
+      assert.ok(TIER_RANK['✓'] < TIER_RANK['◐']);
+      assert.ok(TIER_RANK['✓'] < TIER_RANK['○']);
     });
 
     it('ranks handled just before cancelled (both non-actionable)', () => {
@@ -1321,6 +1327,25 @@ describe('reads + derivations', () => {
         { name: 'inflight', tier: '◐', order: 5 },
       ];
       assert.deepStrictEqual(sorted(items), ['ready', 'inflight', 'fresh']);
+    });
+
+    it('floats decided above ready and in-flight regardless of order value', () => {
+      const items = [
+        { name: 'ready', tier: '→', order: 1 },
+        { name: 'inflight', tier: '◐', order: 2 },
+        { name: 'decided', tier: '✓', order: 9 },
+        { name: 'fresh', tier: '○', order: 3 },
+      ];
+      assert.deepStrictEqual(sorted(items), ['decided', 'ready', 'inflight', 'fresh']);
+    });
+
+    it('keeps handled and cancelled below decided at the bottom', () => {
+      const items = [
+        { name: 'cancelled', tier: '⊘', order: null },
+        { name: 'handled', tier: '⊙', order: null },
+        { name: 'decided', tier: '✓', order: null },
+      ];
+      assert.deepStrictEqual(sorted(items), ['decided', 'handled', 'cancelled']);
     });
 
     it('orders by order ascending within the same tier', () => {

@@ -269,10 +269,12 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   };
 }
 
-const TIER_RANK = { '→': 0, '◐': 1, '✓': 2, '○': 3, '⊙': 4, '⊘': 5 };
+const TIER_RANK = { '✓': 0, '→': 1, '◐': 2, '○': 3, '⊙': 4, '⊘': 5 };
 
-// Shared row comparator for the discovery map: tier rank first, then suggested
-// execution order ascending (null orders sort last), then name as final fallback.
+// Shared row comparator for the discovery map: tier rank first — decided
+// leads, then ready, in-flight, fresh, with handled/cancelled trailing — then
+// suggested execution order ascending (null orders sort last), then name as
+// final fallback.
 function compareMapRows(a, b) {
   const ra = TIER_RANK[a.tier] != null ? TIER_RANK[a.tier] : 99;
   const rb = TIER_RANK[b.tier] != null ? TIER_RANK[b.tier] : 99;

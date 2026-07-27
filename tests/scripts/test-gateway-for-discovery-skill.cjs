@@ -303,7 +303,7 @@ describe('workflow-discovery discovery', () => {
 
   // --- Sorting ---
 
-  it('sorts by tier rank → first, then ◐, ✓, ○, ⊘', () => {
+  it('sorts by tier rank ✓ first, then →, ◐, ○, ⊘', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
@@ -322,7 +322,7 @@ describe('workflow-discovery discovery', () => {
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(
       r.discovery_map.map(t => t.name),
-      ['ready-item', 'inflight-item', 'decided-item', 'fresh-item'],
+      ['decided-item', 'ready-item', 'inflight-item', 'fresh-item'],
     );
   });
 
