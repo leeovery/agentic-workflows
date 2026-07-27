@@ -120,6 +120,7 @@ function cmdPrompt(argv) {
       .join('\n'),
     stubs: c.stubs.map((s) => ({ ...s, ...cases.readStub(s.name) })),
     answers: c.answers.map((a, i) => `  ${i + 1}. ${a}`).join('\n'),
+    conduct: c.conduct,
   }));
 }
 

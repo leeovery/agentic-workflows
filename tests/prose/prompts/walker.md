@@ -33,6 +33,23 @@ SCOPE — the prose under walk:
 SCRIPTED USER ANSWERS — consume in order, one per question the prose asks:
 {{answers}}
 
+=== conduct ===
+
+PLAYING THE USER — how they behave where the prose stops being scripted.
+
+A scripted answer covers a question with one right response. Some prose
+does not work that way: it explores, and keeps exploring until it judges
+it has enough. There is no fixed number of turns to script, so this says
+what kind of person is on the other side instead. Answer as they would,
+in their words, for as long as the prose keeps asking.
+
+It describes the user, never the walk. It does not tell you which arm to
+take, when to stop, or what the prose ought to do — those are yours to
+derive as always, and nothing here relieves you of following the prose
+literally.
+
+{{conduct}}
+
 === stubs ===
 
 HARNESS SUBSTITUTIONS — these are NOT part of the process you are walking.

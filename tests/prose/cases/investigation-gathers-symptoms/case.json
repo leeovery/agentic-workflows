@@ -1,0 +1,32 @@
+{
+  "origin": "the interview the carrier was suppressing — symptom gathering must run even though initialisation has already written into the section its guard reads",
+  "entry": "workflow-investigation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-investigation-entry/SKILL.md",
+    "skills/workflow-investigation-entry/references/invoke-skill.md",
+    "skills/workflow-investigation-process/SKILL.md",
+    "skills/workflow-investigation-process/references/initialize-investigation.md",
+    "skills/workflow-investigation-process/references/template.md",
+    "skills/workflow-investigation-process/references/symptom-gathering.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md"
+  ],
+  "conduct": "The user is relaying this bug rather than living it. Two customers hit it last week and they reproduced it once on staging with a digital-only basket; beyond that they are working from the report. They answer concretely about what they have actually seen, and say plainly when they do not know — they have no error-tracking link, no logs to hand, and nothing better than \"sometime last week\" for when it started. They do not volunteer detail past the question asked, and they do not speculate about the cause; that is what they think the investigation is for.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "topic start crash-fix investigation crash-fix"
+    ],
+    "calls_in_order": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "topic start crash-fix investigation crash-fix"
+    ],
+    "calls_exclude": [
+      "topic complete",
+      "knowledge.cjs index",
+      "topic reopen"
+    ]
+  }
+}
