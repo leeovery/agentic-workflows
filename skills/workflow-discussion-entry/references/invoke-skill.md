@@ -72,7 +72,7 @@ Invoke the **workflow-discussion-process** skill (Skill tool) with the next fenc
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
-Source: fresh
+Source: {source}
 Output: {output_path}
 
 Description:
