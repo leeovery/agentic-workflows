@@ -3,8 +3,8 @@
 
 // The hook that records what prose-test agents actually do.
 //
-// Declared in the frontmatter of prose-walker, prose-orchestrator and
-// prose-asserter, so it fires only while one of them is active. The
+// Declared in the frontmatter of prose-walker and prose-asserter, so it
+// fires only while one of them is active. The
 // agents play no part in it: they cannot forget an entry, summarise one
 // away, or write it late — which is the whole point. Walkers were
 // repeatedly found doing a full walk and reporting only its tail, and
@@ -201,6 +201,13 @@ function main() {
   // every other event is absent from it — resolve it from the transcript.
   const stop = event === 'Stop' || event === 'SubagentStop';
   const traced = stop ? fromTranscript(payload.agent_transcript_path) : null;
+  // The world log is the walker's record. The orchestrator shares this
+  // hook, and its own commands carry world paths in their payloads — the
+  // world it just built, the prompt it just emitted — so without this
+  // gate its rows land in the walker's log ahead of the walk itself,
+  // padding the record and handing the checks substrings no walk ran.
+  if (!agent.includes('walker')) return;
+
   const found = JSON.stringify(payload).match(WORLD);
   const world = found ? found[2].replace(/\\+/g, '') : traced && traced.world;
   if (!world || !fs.existsSync(world)) return;
