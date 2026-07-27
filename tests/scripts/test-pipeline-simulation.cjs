@@ -270,8 +270,10 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
     'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
     `task_map.${topic}-1-1=${topic}-1-1`, 'storage_paths=[]']);
   sim.run(['topic', 'complete', wu, 'planning', topic]);
-  sim.run(['topic', 'start', wu, 'implementation', topic]);
-  sim.run(['task', 'init', wu, topic]);
+  // Implementation is the one phase whose prose never issues `topic start`:
+  // task init owns creation (implementation-process Step 0, created arm).
+  const init = sim.run(['task', 'init', wu, topic]);
+  assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -318,10 +320,10 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', topic]);
   sim.run(['topic', 'complete', wu, 'planning', topic]);
 
-  // Implementation.
+  // Implementation — no `topic start` in prose; task init creates.
   sim.render(['entry-gate', `${wu}.implementation.${topic}`], { expect: 'empty' });
-  sim.run(['topic', 'start', wu, 'implementation', topic]);
-  sim.run(['task', 'init', wu, topic]);
+  const implInit = sim.run(['task', 'init', wu, topic]);
+  assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -427,9 +429,9 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `scoping(${wu}): register plan`, '--plan', wu]);
     sim.render(['phase-completed', wu, '--phase', 'scoping', '--paths'], { expect: 'content' });
 
-    // Implementation (verification workflow) + review.
-    sim.run(['topic', 'start', wu, 'implementation', wu]);
-    sim.run(['task', 'init', wu, wu]);
+    // Implementation (verification workflow) + review — task init creates.
+    const init = sim.run(['task', 'init', wu, wu]);
+    assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--next-task', '~', '--phase-complete']);
     sim.run(['topic', 'complete', wu, 'implementation', wu]);
@@ -707,8 +709,9 @@ describe('pipeline simulation', () => {
       `task_map.${wu}-1-1=${wu}-1-1`, `task_map.${wu}-1-2=${wu}-1-2`, 'storage_paths=[]']);
     sim.run(['topic', 'complete', wu, 'planning', wu]);
 
-    sim.run(['topic', 'start', wu, 'implementation', wu]);
+    // No `topic start` — task init creates, per implementation-process Step 0.
     const init = sim.run(['task', 'init', wu, wu]);
+    assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     const findings = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/findings.json`,
@@ -729,6 +732,7 @@ describe('pipeline simulation', () => {
     // A resumed session resets gate modes to gated (session-scoped auto).
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode', 'auto']);
     const resumed = sim.run(['task', 'init', wu, wu]);
+    assert.strictEqual(resumed.mode, 'resumed', 'second init is a genuine resume');
     assert.strictEqual(resumed.gates.task_gate_mode, 'gated', 'resume resets auto to gated');
     const completed = sim.manifest(wu).phases.implementation.items[wu].completed_tasks;
     assert.deepStrictEqual([...new Set(completed)].sort(), [`${wu}-1-1`, `${wu}-1-2`],
