@@ -110,6 +110,21 @@ testing.
   failing case re-runs once from a fresh world at the same models. A
   defect in the prose reproduces; a one-off does not, and is reported
   as FLAKY with both runs quoted. Nothing is auto-resolved.
+- **P6e — what the walk did is recorded by the harness, not reported by
+  the walker.** A `PostToolUse` hook declared in the walker's own agent
+  frontmatter (so it fires for walkers and nothing else) appends every
+  tool call — command, path, error flag — to `.walk-actions.log` in the
+  world, excluded from the diff. Evidence then splits by kind: the
+  **recorded actions** are the authority on what was *done*, the
+  walker's transcript on what was *reasoned* (which arm, which guard,
+  what was emitted), and where they disagree the recording wins.
+  Measured, not assumed: a diagnostic walker's world held the agent row
+  at `incorporated` and the report file — it had run dispatch, stub,
+  scan and incorporate — while its transcript began at the fifth step.
+  Two attempts to fix that with wording (a stricter log format, then
+  Opus) both failed, because a narrative an agent composes at the end
+  is a recollection however it is instructed. Asking it to write a log
+  as it goes would have relocated the same trust, not removed it.
 - **P6d — a walk that began mid-flow proves nothing.** Walkers skip
   steps whose effect the world already holds — "already booted", "the
   plan already exists" — and then the case reports a prose failure at a

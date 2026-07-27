@@ -22,6 +22,7 @@ Source material:
 
 Work unit: {work_unit}
 Action: {verb} specification
+```
 
 #### If `work_type` is `bugfix`
 
@@ -33,6 +34,7 @@ Source material:
 
 Work unit: {work_unit}
 Action: {verb} specification
+```
 
 #### If `work_type` is `epic`
 
@@ -51,6 +53,7 @@ Source material:
 Work unit: {work_unit}
 Topic: {topic}
 Action: {verb} specification
+```
 
 #### If `work_type` is `cross-cutting`
 
@@ -65,3 +68,4 @@ Source material:
 
 Work unit: {work_unit}
 Action: {verb} specification
+```

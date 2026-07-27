@@ -21,6 +21,17 @@ the expected world, computed by code:
 
 {{delta}}
 
+=== actions ===
+
+RECORDED ACTIONS — every tool call the walker made, in order, captured by a
+harness hook as it happened. The walker did not write this and could
+not have edited or omitted from it. This is what the walk *did*.
+
+{{actions}}
+
 === transcript ===
 
-The walk's transcript follows under `=== TRANSCRIPT ===`.
+The walk's own account follows under `=== TRANSCRIPT ===`. It is the
+walker's narrative: evidence of reasoning — which arm it entered, which
+guard it read, what it emitted — and nothing more. Where it disagrees
+with the recorded actions about what was done, the recorded actions win.

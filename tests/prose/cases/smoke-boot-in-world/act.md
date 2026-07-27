@@ -1,4 +1,4 @@
-In the project, run the boot command exactly as the initialisation prose
-of skills/workflow-start/SKILL.md prescribes — sandbox concerns do not
-apply in this world, so run it directly. Capture the JSON response, then
-stop; do not continue into any confirmation or later step.
+Execute the initialisation portion of skills/workflow-start/SKILL.md
+from its first step — sandbox concerns do not apply in this world, so
+run any command it prescribes directly. Stop once initialisation is
+complete and the skill would move on to showing the user's work.

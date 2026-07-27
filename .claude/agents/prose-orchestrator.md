@@ -43,12 +43,19 @@ a walk.
 
 2. **Walk** — `node tests/prose/run.cjs prompt <case-id> --world <dir>`.
    Dispatch the **prose-walker** agent with that output as its prompt,
-   verbatim and unmodified. Keep the transcript it returns.
+   verbatim and unmodified. Keep the account it returns. Its tool calls
+   are recorded into the world by its own hook — you do nothing to
+   collect them.
 
 3. **Assert** — `node tests/prose/run.cjs assert <case-id> --world <dir>`.
    Dispatch the **prose-asserter** agent with that output, followed by
-   the walk transcript under a `=== TRANSCRIPT ===` line. Keep its
+   the walker's account under a `=== TRANSCRIPT ===` line. Keep its
    verdict.
+
+   If that command **fails** rather than printing a prompt, the harness
+   is broken, not the prose. Stop there, destroy the world, and report
+   `VERDICT: HARNESS ERROR` with the message it printed. Never fall back
+   to judging a walk with no record of what it did.
 
 Never pass a `model` when dispatching either agent — each definition
 names the model the result is trusted at, and overriding it makes a
@@ -77,7 +84,7 @@ Return exactly this and nothing else:
 
 ```
 CASE: <case-id>
-VERDICT: PASS | FAIL | FLAKY | INVALID
+VERDICT: PASS | FAIL | FLAKY | INVALID | HARNESS ERROR
 PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL
 MARKERS: <none, or one line each>

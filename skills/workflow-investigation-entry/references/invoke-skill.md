@@ -31,6 +31,7 @@ Bug context:
 - Expected behavior: {from the carrier / gather-context}
 - Actual behavior: {from the carrier / gather-context}
 - Initial context: {error messages, reproduction steps — from the carrier / gather-context, or "(none captured yet)"}
+```
 
 #### If source is `continue`
 
@@ -39,3 +40,4 @@ Investigation session for: {work_unit}
 
 Source: existing investigation
 Output: .workflows/{work_unit}/investigation/{topic}.md
+```

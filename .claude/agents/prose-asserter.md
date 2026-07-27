@@ -38,18 +38,38 @@ tools you appear to have or what mode you are running in.
   by nature and are immaterial. Differences in shape, field presence,
   status vocabulary, or content are material.
 
+## Two kinds of evidence, and which one wins
+
+**Recorded actions** are captured by a harness hook as each tool call
+happens. The walker did not write them and could not have edited them.
+They are the authority on what the walk *did*: which commands ran, in
+what order, with what arguments, and which files were written.
+
+**The transcript** is the walker's own account. It is the authority on
+*reasoning* — which arm it entered, which guard line selected it, what
+it emitted to the user — because none of that appears in a tool call.
+
+Judge each expected step against the right one. A step about an action
+("records the dispatch through the engine", "promotes with a scan then
+closes with an incorporate") is evidenced from the recorded actions,
+even when the transcript omits it — walkers routinely under-report, and
+a thin narrative is not a missing step. A step about reasoning or
+output is evidenced from the transcript. Where the two disagree about
+what was done, the recorded actions win.
+
 ## An invalid walk is not a failing walk
 
-Before judging anything, check where the transcript begins. If its first
-entry is not the start of the walk the expected path describes — the
-walker jumped into the middle of the flow, skipping earlier steps
-without recording a `DEVIATION` for each — then the walk cannot evidence
-the path, and judging it would report a prose failure that was never
-demonstrated.
+Check the **recorded actions**, not the transcript, for where the walk
+began. If the actions show it starting mid-flow — the earlier steps
+never attempted, and no `DEVIATION` recorded for them — then the walk
+cannot evidence the path, and judging it would report a prose failure
+that was never demonstrated.
 
-In that case return `VERDICT: INVALID WALK`, name the entry the
-transcript opens on and the step it should have opened on, and judge
-nothing further. This is a fault in the walk, not in the prose.
+In that case return `VERDICT: INVALID WALK`, name the action it opens
+on and the step it should have opened on, and judge nothing further.
+This is a fault in the walk, not in the prose. A walk that *did* the
+work and merely described it poorly is **not** invalid — judge it from
+the actions.
 
 ## Verdict
 

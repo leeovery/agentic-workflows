@@ -143,8 +143,10 @@ function cmdDiff(argv) {
 function cmdAssert(argv) {
   const c = getCase(argv[0]);
   let world = null;
+  let actions = null;
   if (c.hasFixtureState) {
-    const delta = worlds.diffWorld(c.id, requireWorld(argv, c));
+    const dir = requireWorld(argv, c);
+    const delta = worlds.diffWorld(c.id, dir);
     world = {
       expecting: delta.expecting,
       delta: [
@@ -152,8 +154,20 @@ function cmdAssert(argv) {
         ...delta.changed,
       ].join('\n'),
     };
+    actions = worlds.readActionLog(dir);
+    // No log is the harness failing, not the walk: a walk in a world
+    // always runs commands, and the walker's hook records every one.
+    // Refuse loudly rather than let an agent judge on the narrative
+    // alone — which is the thing the recording exists to replace.
+    if (!actions) {
+      die(`no action log at ${path.join(dir, worlds.ACTION_LOG)} — the prose-walker `
+        + 'PostToolUse hook did not fire, so there is no record of what the walk did.\n'
+        + 'Check the hooks block in .claude/agents/prose-walker.md, that the agent '
+        + 'registry has reloaded since it changed, and that this project is trusted '
+        + '(hasTrustDialogAccepted). Do not judge this run.');
+    }
   }
-  process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world }));
+  process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world, actions }));
 }
 
 // --- snap / verify --------------------------------------------------------

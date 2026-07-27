@@ -2,9 +2,8 @@
 
 // The fixture state plus what the walk should have done: resume
 // detection initialised tracking and committed the start of
-// implementation, the environment answer was recorded so it is never
-// asked again, and the first task was started. No task work — the walk
-// stops where the prose hands over to building.
+// implementation, and the environment answer recorded so it is never
+// asked again. No task is started — the walk stops before pickup.
 
 const fixture = require('./fixture-state.cjs');
 const m = require('../../mainlines/feature.cjs');
@@ -17,6 +16,5 @@ module.exports = {
     h.engine('commit', m.WU, '-m', `impl(${m.WU}): start implementation`);
     h.write('.workflows/.state/environment-setup.md', 'No special setup required.\n');
     h.engine('commit', '--workflows', '-m', `impl(${m.WU}): record environment setup`);
-    h.engine('task', 'start', m.WU, m.WU, `${m.WU}-1-1`);
   },
 };
