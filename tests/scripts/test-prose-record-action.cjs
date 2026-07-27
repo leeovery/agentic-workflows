@@ -164,6 +164,21 @@ describe('prose recorder — tool events', () => {
     assert.ok(row.includes('Usage: engine <command>'), 'and says what came back');
   });
 
+  it('keeps the orchestrator out of the walker\'s record', () => {
+    // The orchestrator's own commands carry world paths — the world it
+    // just built, the prompt it just emitted — and its rows were landing
+    // in the walker's log ahead of the walk itself, padding the record
+    // and handing the checks substrings no walk ran.
+    fire({
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      agent_type: 'prose-orchestrator',
+      tool_input: { command: 'node tests/prose/run.cjs world some-case' },
+      tool_response: { stdout: `{"world":"${world}","case":"some-case"}` },
+    });
+    assert.deepEqual(logLines(), [], 'no orchestrator row reaches the world log');
+  });
+
   it('ignores anything happening outside a world', () => {
     fire({
       hook_event_name: 'PreToolUse',
