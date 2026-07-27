@@ -89,6 +89,22 @@ record exactly like one the prose asked for — only the walk says which it
 was. So a claim that something was not done is answered by both together:
 the record for whether it happened, the walk for whose doing it was.
 
+## One known difference between here and a live session
+
+An inline `` !`command` `` directive is substituted when a skill loads
+live. A walk reads the prose as a file, so the substitution never happens
+and the walker takes the fallback the prose supplies for that case. That
+is correct behaviour and neither a failure nor a marker — do not report
+it, and do not fail a step for the fallback arm having run.
+
+It is worth knowing what it costs, though: the primary arm is the one a
+real session almost always takes, and here it is never exercised. A claim
+that depends on the substituted value cannot be answered by a walk, and
+should be judged unprovable rather than passed or failed.
+
+This is the only such difference. Anything else that looks like an
+environment quirk is a finding, not an exemption.
+
 ## An invalid walk is not a failing walk
 
 Check the **recorded actions**, not the walk, for where the walk

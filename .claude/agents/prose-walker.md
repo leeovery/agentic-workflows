@@ -71,6 +71,11 @@ any harness substitutions. Follow it exactly.
   errored. Use only the tools the walk itself requires.
 - Do not read the case directory (`tests/prose/cases/…`). It holds the
   expected result, and seeing it invalidates the run.
+- **An inline `` !`command` `` directive will not have run.** That
+  substitution happens when a skill is loaded live; here the prose is read
+  as a file, so the literal backtick line is what you see. The prose gives
+  a fallback for exactly this — take it. It is expected, it is not a
+  `DEVIATION`, and it needs no marker.
 
 ## Markers
 
