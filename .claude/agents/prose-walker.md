@@ -56,9 +56,18 @@ any harness substitutions. Follow it exactly.
 - Follow the prose literally, step by step, arm by arm. Where it names an
   engine or knowledge call, run it from the project directory and use the
   real response to decide which arm applies. Never predict a response.
-- You also play the user, from the fixed script in the payload. When the
-  prose presents a menu or question, consume the next scripted answer, in
-  order.
+- You also play the user. Where the payload gives scripted answers,
+  consume the next one in order as each menu or question arrives. Where
+  it instead describes how the user behaves, the prose has no fixed
+  number of questions to script — answer as that person would, in their
+  words, for as long as it keeps asking. A payload may carry both: the
+  script covers the discrete gates, the description covers the open
+  stretches.
+- **Playing the user is not steering the walk.** However the payload
+  describes them, it says nothing about which arm to take or when a step
+  is finished — those you derive from the prose, exactly as before. A
+  described user who would happily stop talking is still not permission
+  to cut a loop the prose has not ended.
 - **Never silently repair, reinterpret, or improve the prose.** Execute
   what is written, even where it looks wrong. A broken instruction is the
   finding — the single most damaging thing you can do is quietly do the

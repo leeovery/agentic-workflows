@@ -55,12 +55,13 @@ function indent(text, by = '    ') {
   return text.split('\n').map((l) => (l.length ? by + l : l)).join('\n');
 }
 
-function walkerPrompt({ worldDir, situation, task, scope, stubs, answers }) {
+function walkerPrompt({ worldDir, situation, task, scope, stubs, answers, conduct }) {
   const t = loadTemplate('walker');
   const parts = [fill(t.world, { world_dir: worldDir })];
   if (situation) parts.push(fill(t.situation, { situation }));
   parts.push(fill(t.task, { task, scope }));
   if (answers) parts.push(fill(t.answers, { answers }));
+  if (conduct) parts.push(fill(t.conduct, { conduct }));
   if (stubs.length) {
     const entries = stubs.map((s) => fill(t['stub-entry'], {
       name: s.name,

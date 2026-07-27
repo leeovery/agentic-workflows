@@ -9,7 +9,8 @@
 //
 //   case.json            the values code branches on:
 //                          { origin, entry, files[], answers[],
-//                            stubs{name: trigger}, world: "claims" (optional),
+//                            conduct (optional), stubs{name: trigger},
+//                            world: "claims" (optional),
 //                            invariants{} (optional) — see lib/invariants.cjs }
 //   fixture.md           optional. Prose describing the starting world —
 //                        what has already happened, where the session
@@ -111,6 +112,7 @@ function loadCase(id) {
     dir,
     rel: path.relative(ROOT, dir),
     metaError,
+    rawMeta: meta,
     origin: meta.origin || null,
     entry: meta.entry || null,
     files: (meta.files || []).map((spec) => {
@@ -120,6 +122,7 @@ function loadCase(id) {
         : { path: spec.slice(0, hash).trim(), anchor: spec.slice(hash + 1).trim() };
     }),
     answers: meta.answers || [],
+    conduct: meta.conduct || null,
     worldMode: meta.world || null,
     invariants: meta.invariants || null,
     stubs: Object.entries(meta.stubs || {}).map(([name, trigger]) => ({ name, trigger })),
@@ -219,6 +222,9 @@ function validateCorpus(cases) {
     if (!c.hasFixtureState) {
       errors.push(`${at}: no ${FILES.fixtureState} — a case with no world records no `
         + 'actions and produces no delta, so nothing it claims can be answered');
+    }
+    if ('conduct' in (c.rawMeta || {}) && !c.conduct) {
+      errors.push(`${at}: ${FILES.meta} conduct is empty — describe the user or omit it`);
     }
     if (!c.act) errors.push(`${at}: no ${FILES.act}`);
     if (!c.assert) errors.push(`${at}: no ${FILES.assert} — the expected trace is what catches a silent repair`);
