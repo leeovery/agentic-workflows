@@ -151,6 +151,8 @@ An earlier session already interviewed the user — don't re-interview. Fold in 
 > messages, affected areas, and environmental context.
 ```
 
+Read what the Symptoms section already holds — initialisation seeded it from the carrier, and that is the user's own account. Ask what it does not answer, and confirm rather than re-ask where it is thin. Putting a question they have already answered back to them reads as not having listened.
+
 Load **[symptom-gathering.md](references/symptom-gathering.md)** and use its questions to gather symptoms from the user.
 
 Document symptoms in the investigation file as you gather them. Commit after each significant addition.
