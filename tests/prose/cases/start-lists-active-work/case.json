@@ -5,6 +5,14 @@
     "skills/workflow-start/SKILL.md"
   ],
   "invariants": {
-    "engine_before_write": true
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "gateway.cjs"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "gateway.cjs"
+    ]
   }
 }

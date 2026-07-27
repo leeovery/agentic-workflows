@@ -141,6 +141,64 @@ describe('calls_include / calls_exclude', () => {
   });
 });
 
+describe('calls_in_order — presence is not sequence', () => {
+  it('passes when the declared calls appear in sequence', () => {
+    const rows = [
+      bash(`${ENGINE} render entry-gate pay.planning.pay`),
+      bash(`${ENGINE} manifest list`),
+      bash('cd . && node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query x'),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['render entry-gate pay.planning.pay', 'knowledge.cjs query'],
+    });
+    assert.equal(result.ok, true);
+  });
+
+  it('fails when they ran in the wrong order — the arm was chosen some other way', () => {
+    const rows = [
+      bash('cd . && node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query x'),
+      bash(`${ENGINE} render entry-gate pay.planning.pay`),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['render entry-gate pay.planning.pay', 'knowledge.cjs query'],
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /"knowledge.cjs query" never ran after "render entry-gate/);
+  });
+
+  it('tolerates other calls falling between them', () => {
+    const rows = [bash(`${ENGINE} a`), bash(`${ENGINE} unrelated`), bash(`${ENGINE} b`)];
+    assert.equal(invariants.check(rows, { calls_in_order: ['a', 'b'] })[0].ok, true);
+  });
+
+  it('fails when a declared call never ran at all', () => {
+    const rows = [bash(`${ENGINE} a`)];
+    const [result] = invariants.check(rows, { calls_in_order: ['a', 'b'] });
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /"b" never ran after "a"/);
+  });
+
+  it('needs two commands to mean anything', () => {
+    assert.match(invariants.declarationErrors({ calls_in_order: ['a'] })[0], /at least two/);
+  });
+});
+
+describe('a check that could not fail says so', () => {
+  it('reports N/A, not PASS, when nothing was written to examine', () => {
+    const out = invariants.format(
+      invariants.check([bash(`${ENGINE} boot`)], { engine_before_write: true }),
+    );
+    assert.match(out, /^N\/A {3}engine_before_write/);  // padded to align with PASS/FAIL
+    assert.ok(!out.includes('PASS'), 'absence of coverage must not read as coverage');
+  });
+
+  it('still reports PASS when it genuinely had something to check', () => {
+    const rows = [bash(`${ENGINE} task init pay pay`), wrote('./.workflows/a.md')];
+    const out = invariants.format(invariants.check(rows, { engine_before_write: true }));
+    assert.match(out, /^PASS {2}engine_before_write/);
+  });
+});
+
 describe('declaration', () => {
   it('runs every declared check, and only those', () => {
     const rows = [bash(`${ENGINE} boot`)];
