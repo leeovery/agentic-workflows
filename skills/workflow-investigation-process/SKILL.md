@@ -85,6 +85,8 @@ Check if the investigation file exists at `.workflows/{work_unit}/investigation/
 
 #### If no file exists
 
+Set `resumed` = `false`.
+
 → Proceed to **Step 1**.
 
 #### If file exists
@@ -103,6 +105,10 @@ Check if the investigation file exists at `.workflows/{work_unit}/investigation/
 ```
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/investigation/{topic}/ — content and agent state together)`, commit = `investigation({work_unit}): restart investigation`.
+
+Set `resumed` from where the reference returns: `true` for **Step 2**, the earlier session's symptoms still standing; `false` for **Step 1**, its file deleted and rebuilt.
+
+→ On return, proceed as the reference directed.
 
 ---
 
@@ -124,9 +130,9 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 ## Step 3: Symptom Gathering
 
-#### If the Symptoms section is already populated
+#### If `resumed` is `true`
 
-Resuming — don't re-interview. Fold in anything new the user has mentioned this session (commit if the file changed).
+An earlier session already interviewed the user — don't re-interview. Fold in anything new they have mentioned this session (commit if the file changed).
 
 → Proceed to **Step 4**.
 
