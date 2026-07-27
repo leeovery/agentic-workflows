@@ -25,6 +25,8 @@ Cross-cutting references: {list of applicable cross-cutting specs with brief sum
 
 #### If continuing or reviewing existing plan
 
+Invoke the **workflow-planning-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+
 ```
 Planning session for: {topic}
 Work unit: {work_unit}
