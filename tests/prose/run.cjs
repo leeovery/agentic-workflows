@@ -155,7 +155,9 @@ function cmdAssert(argv) {
       + 'registry has reloaded since it changed, and that this project is trusted '
       + '(hasTrustDialogAccepted). Do not judge this run.');
   }
-  const checks = invariants.format(invariants.check(worlds.readActionRows(dir), c.invariants));
+  const rows = worlds.readActionRows(dir);
+  const checks = invariants.format(invariants.check(rows, c.invariants));
+  const undeclared = invariants.undeclaredProse(rows, c.files.map((f) => f.path));
   const walk = worlds.readWalkLog(dir);
   // Same stance as the action log: the walk is harness-captured, so its
   // absence is a broken hook, not a quiet walk. Judging without it would
@@ -175,7 +177,10 @@ function cmdAssert(argv) {
     }).join('\n')
     : null;
   process.stdout.write(
-    prompts.asserterPrompt({ expected: c.assert, world, actions, checks, walk, substitutions }),
+    prompts.asserterPrompt({
+      expected: c.assert, world, actions, checks, walk, substitutions,
+      scope: undeclared.length ? undeclared.map((f) => `- ${f}`).join('\n') : null,
+    }),
   );
 }
 

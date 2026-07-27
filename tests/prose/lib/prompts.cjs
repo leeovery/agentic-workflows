@@ -73,12 +73,13 @@ function walkerPrompt({ worldDir, situation, task, scope, stubs, answers }) {
   return `${parts.join('\n\n')}\n`;
 }
 
-function asserterPrompt({ expected, world, actions, checks, walk, substitutions }) {
+function asserterPrompt({ expected, world, actions, checks, walk, substitutions, scope }) {
   const t = loadTemplate('asserter');
   const parts = [fill(t.main, { expected })];
   if (world) parts.push(fill(t.world, { expecting: world.expecting, delta: world.delta }));
   if (actions) parts.push(fill(t.actions, { actions }));
   if (checks) parts.push(fill(t.checks, { checks }));
+  if (scope) parts.push(fill(t.scope, { scope }));
   if (substitutions) parts.push(fill(t.substitutions, { substitutions }));
   if (walk) parts.push(fill(t.walk, { walk }));
   return `${parts.join('\n\n')}\n`;
