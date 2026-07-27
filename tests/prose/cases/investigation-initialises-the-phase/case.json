@@ -1,0 +1,31 @@
+{
+  "origin": "the first case to walk past a handoff into a processing skill — investigation's initialisation, where the phase's artifact first exists on disk",
+  "entry": "workflow-investigation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-investigation-entry/SKILL.md",
+    "skills/workflow-investigation-entry/references/invoke-skill.md",
+    "skills/workflow-investigation-process/SKILL.md",
+    "skills/workflow-investigation-process/references/initialize-investigation.md",
+    "skills/workflow-investigation-process/references/template.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "manifest get crash-fix seeds",
+      "topic start crash-fix investigation crash-fix"
+    ],
+    "calls_in_order": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "topic start crash-fix investigation crash-fix"
+    ],
+    "calls_exclude": [
+      "topic complete",
+      "knowledge.cjs index",
+      "topic reopen"
+    ]
+  }
+}
