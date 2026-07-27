@@ -3,6 +3,12 @@ name: prose-orchestrator
 description: Runs one prose-test case end to end — builds the world, dispatches the walker, computes the delta, dispatches the asserter, escalates a failure to Opus, destroys the world — and returns just the verdict. Dispatched by the /prose-test skill, one per case.
 tools: Bash, Read, Agent
 model: sonnet
+hooks:
+  PostToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/record-action.cjs\""
 ---
 
 # Prose Orchestrator

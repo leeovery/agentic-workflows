@@ -2,6 +2,11 @@
 name: prose-asserter
 description: Judges a prose-test walk against the case's expected path and the code-computed world delta, returning a four-part verdict. Dispatched by prose-orchestrator.
 model: opus
+hooks:
+  PreToolUse:
+    - hooks:
+        - type: command
+          command: "node \"$CLAUDE_PROJECT_DIR/tests/prose/lib/record-action.cjs\""
 ---
 
 # Prose Asserter
@@ -43,7 +48,10 @@ tools you appear to have or what mode you are running in.
 **Recorded actions** are captured by a harness hook as each tool call
 happens. The walker did not write them and could not have edited them.
 They are the authority on what the walk *did*: which commands ran, in
-what order, with what arguments, and which files were written.
+what order, with what arguments, what each returned, and which files
+were written. A walker has been known to describe a command's output
+inaccurately; where its account and the record disagree about what came
+back, the record is right and the disagreement is a finding.
 
 **The transcript** is the walker's own account. It is the authority on
 *reasoning* — which arm it entered, which guard line selected it, what

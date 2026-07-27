@@ -1,29 +1,38 @@
 #!/usr/bin/env node
 'use strict';
 
-// PostToolUse hook for the prose-walker agent: records what the walker
-// ACTUALLY did, as the harness sees it.
+// The hook that records what prose-test agents actually do.
 //
-// Declared in .claude/agents/prose-walker.md frontmatter, so it fires
-// only while a walker is active. The walker plays no part in it — it
-// cannot forget an entry, summarise one away, or write the log late,
-// which is exactly why the log exists. Walkers were repeatedly found
-// doing a full walk and then reporting only its tail; the narrative is
-// now evidence of reasoning alone, and this file is the evidence of
-// action.
+// Declared in the frontmatter of prose-walker, prose-orchestrator and
+// prose-asserter, so it fires only while one of them is active. The
+// agents play no part in it: they cannot forget an entry, summarise one
+// away, or write it late — which is the whole point. Walkers were
+// repeatedly found doing a full walk and reporting only its tail, and
+// once produced a specific, plausible, false claim about what a command
+// had returned. A narrative can do that; a record cannot.
 //
-// Self-scoping: every prose world lives at a temp path containing
-// `prose-world-`. The payload is scanned for that path, and anything
-// happening outside a world is ignored. Nothing is configured per run.
+// Every event is captured, not just the call: the intent before it
+// (PreToolUse), the result after it (PostToolUse, with output), the
+// failures (PostToolUseFailure), and the finish (Stop). Logs are
+// throwaway — they live in the disposable world and die with it — so
+// there is no reason to record less than everything.
 //
-// The log lands at <world>/.walk-actions.log, which collectTree()
+// Self-scoping: a prose world lives at a temp path containing
+// `prose-world-`. The payload is scanned for one, and anything happening
+// outside a world is ignored. The asserter is the exception: it is
+// contracted to use NO tools, so any tool call it makes is a contract
+// violation and lands in a repo-local log instead of a world.
+//
+// The log is written to <world>/.walk-actions.log, which collectTree()
 // excludes, so recording never shows up as a world difference.
 
 const fs = require('fs');
 const path = require('path');
 
 const LOG = '.walk-actions.log';
+const VIOLATIONS = 'tests/prose/.agent-tool-use.log';
 const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
+const MAX_OUTPUT = 400;
 
 function read() {
   try {
@@ -33,35 +42,60 @@ function read() {
   }
 }
 
-/** The salient argument, per tool — what the claim will be about. */
-function summarise(tool, input) {
+function flatten(value, limit) {
+  if (value === undefined || value === null) return '';
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  const oneLine = text.replace(/\s+/g, ' ').trim();
+  return oneLine.length > limit ? `${oneLine.slice(0, limit)}…[truncated]` : oneLine;
+}
+
+/** The salient argument, per tool — what a claim will be about. */
+function summarise(input) {
   if (!input || typeof input !== 'object') return '';
   const raw = input.command || input.file_path || input.pattern || input.path || '';
-  return String(raw).replace(/\s+/g, ' ').trim();
+  return flatten(raw, 200);
 }
 
 function main() {
   const payload = read();
   if (!payload) return;
 
-  const probe = JSON.stringify(payload);
-  const found = probe.match(WORLD);
-  // Not a prose world: this hook has nothing to say.
+  const event = payload.hook_event_name || '?';
+  const tool = payload.tool_name || '-';
+  const agent = payload.agent_type || 'main';
+
+  // The asserter judges from its prompt alone. A tool call from it is a
+  // breach of that contract and must be visible even though it happens
+  // nowhere near a world.
+  if (agent.includes('asserter') && event !== 'Stop' && event !== 'SubagentStop') {
+    const projectDir = process.env.CLAUDE_PROJECT_DIR;
+    if (projectDir) {
+      try {
+        fs.appendFileSync(path.join(projectDir, VIOLATIONS),
+          `${agent}\t${event}\t${tool}\t${summarise(payload.tool_input)}\n`);
+      } catch { /* a hook must never break what it observes */ }
+    }
+    return;
+  }
+
+  const found = JSON.stringify(payload).match(WORLD);
   if (!found) return;
   const world = found[2].replace(/\\+/g, '');
-
   if (!fs.existsSync(world)) return;
 
-  const tool = payload.tool_name || '?';
-  const detail = summarise(tool, payload.tool_input);
-  const failed = payload.tool_output_is_error ? ' [ERROR]' : '';
-  const line = `${tool}${failed}\t${detail.replace(world, '.')}\n`;
+  const parts = [event, tool, summarise(payload.tool_input).split(world).join('.')];
+
+  if (event === 'PostToolUse') {
+    parts.push(payload.tool_output_is_error ? 'ERROR' : 'ok');
+    parts.push(flatten(payload.tool_output, MAX_OUTPUT).split(world).join('.'));
+  } else if (event === 'PostToolUseFailure') {
+    parts.push('FAILED');
+    parts.push(flatten(payload.tool_output ?? payload.error, MAX_OUTPUT));
+  }
 
   try {
-    fs.appendFileSync(path.join(world, LOG), line);
-  } catch {
-    // A hook must never break the walk it is observing.
-  }
+    fs.appendFileSync(path.join(world, LOG), `${parts.join('\t')}\n`);
+  } catch { /* a hook must never break what it observes */ }
 }
 
 main();

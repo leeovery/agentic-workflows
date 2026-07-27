@@ -335,8 +335,10 @@ function readActionLog(worldDir) {
     .split('\n')
     .filter(Boolean)
     .map((l, i) => {
-      const [tool, detail = ''] = l.split('\t');
-      return `${String(i + 1).padStart(3)}. ${tool.padEnd(10)} ${detail}`;
+      const [event, tool, detail = '', outcome, output] = l.split('\t');
+      const head = `${String(i + 1).padStart(3)}. ${event.padEnd(19)} ${(tool || '').padEnd(6)} ${detail}`;
+      if (!outcome) return head;
+      return `${head}\n     → ${outcome}${output ? `: ${output}` : ''}`;
     })
     .join('\n');
 }
