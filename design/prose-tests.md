@@ -119,15 +119,19 @@ testing.
   computation powers the PR-end suggestion — "these N cases intersect
   this PR's prose changes"), by hand-picked ids, or `--all`. An
   engine-only PR intersects nothing and suggests nothing.
-- **P6 — one model, chosen for trust.** Walker and asserter both run on
-  **Opus**. Measured, not assumed: across three runs a Sonnet walker
-  performed the walk correctly every time but narrated it in summary,
-  omitting the quoted evidence the asserter requires — even with a
-  worked transcript example in front of it. A tiered arrangement then
-  produces a disagreement on every case, which is noise, not a signal.
-  A result you cannot rely on is worth nothing, so the cheaper tier is
-  a false economy. The orchestrator never overrides the model: each
-  definition names the model its result is trusted at.
+- **P6 — the walker walks on Sonnet, the asserter judges on Opus, and a
+  failure escalates.** Both ran on Opus while the harness was reading only
+  an agent's closing message and mistaking a compressed summary for a
+  skipped step; with the walk captured turn by turn (P6e) that gap closed,
+  and a Sonnet walk of implementation-picks-first-task passed every step
+  with quoted evidence, matching an Opus walk of the same case action for
+  action. Judging stays on Opus — it is the cheap half and the half a
+  verdict rests on. A FAIL is reran once on Opus by the orchestrator,
+  because a failure is where spending more is worth it and a defect a
+  stronger walker also hits is a defect; the model of every walk is
+  recorded and reported, so an escalated rerun is never mistaken for a
+  like-for-like one. Escalation happens in the moment, never by editing
+  the definition.
 - **P6a — a FAIL is confirmed by repetition, not by promotion.** A
   failing case re-runs once from a fresh world at the same models. A
   defect in the prose reproduces; a one-off does not, and is reported

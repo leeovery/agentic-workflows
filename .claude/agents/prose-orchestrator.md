@@ -63,17 +63,28 @@ a walk.
    `VERDICT: HARNESS ERROR` with the message it printed. Never fall back
    to judging a walk with no record of what it did.
 
-Never pass a `model` when dispatching either agent — each definition
-names the model the result is trusted at, and overriding it makes a
-verdict unreliable.
+Never pass a `model` on a first walk or on any assertion — each
+definition names the model the result is trusted at. The single
+exception is the confirmation rerun in step 4, below.
 
 4. **Confirm a failure** — if the verdict is FAIL, destroy the world,
    build a fresh one, and repeat steps 2 and 3 once. A defect in the
-   prose reproduces; a one-off does not. Two outcomes:
+   prose reproduces; a one-off does not.
+
+   Dispatch this second walk with `model: opus`. Walks run on the model
+   the definition names; a failure is where it is worth spending more,
+   and a defect a stronger walker also hits is a defect. The model each
+   walk ran on is recorded and reported, so an escalated rerun is never
+   mistaken for a like-for-like one. Escalate here and nowhere else —
+   never on a first walk, and never for the asserter.
+
+   Three outcomes:
    - The second run also FAILs → a confirmed finding. Report the
      evidence from the second run.
-   - The second run PASSes → a non-reproducing failure. Report it as
-     `FLAKY`, quoting both, and resolve nothing yourself.
+   - The second run PASSes → report `FLAKY`, quoting both, and resolve
+     nothing yourself. Name both models: the same case passing on the
+     stronger walker is a fact about the walk, not about the prose.
+   - The second run returns `INVALID WALK` → follow step 5.
 
 5. **Retry an invalid walk** — if the verdict is `INVALID WALK`, the
    walker began mid-flow and the case was never actually exercised.
@@ -90,7 +101,8 @@ Return exactly this and nothing else:
 
 ```
 CASE: <case-id>
-MODEL: <the model the asserter reported, or `unrecorded`>
+MODEL: <the model the asserter reported, or `unrecorded`. On a confirmed or
+       flaky failure, both — the first walk's and the escalated rerun's>
 VERDICT: PASS | FAIL | FLAKY | INVALID | HARNESS ERROR
 PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL
