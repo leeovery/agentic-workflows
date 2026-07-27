@@ -48,6 +48,38 @@ function isWrite(row) {
 
 const NAMES = ['engine_before_write', 'calls_include', 'calls_exclude', 'calls_in_order'];
 
+/**
+ * Prose the walk actually opened, as repo-relative paths.
+ *
+ * A world holds the skills at `.claude/skills/`; the corpus names them at
+ * `skills/`. Same file, two addresses, so one is translated to the other.
+ */
+function proseRead(rows) {
+  const seen = new Set();
+  for (const row of rows) {
+    if (row.tool !== 'Read') continue;
+    const m = row.detail.match(/\.claude\/skills\/(.+\.md)$/);
+    if (m) seen.add(`skills/${m[1]}`);
+  }
+  return seen;
+}
+
+/**
+ * Prose a walk went through but the case never declared.
+ *
+ * `files` is not documentation: it decides whether a change to a file
+ * selects this case for a run. A file the walk traverses and the case
+ * omits is prose that can be edited without ever re-running the test that
+ * covers it. Reported, never corrected — which files belong is an
+ * authoring judgement, and the reachable set is far wider than the walked
+ * one, so a list assembled by following every link would select this case
+ * for branches it deliberately stops before.
+ */
+function undeclaredProse(rows, declared) {
+  const listed = new Set(declared || []);
+  return [...proseRead(rows)].filter((f) => !listed.has(f)).sort();
+}
+
 /** The commands the walk ran, in order. */
 function commands(rows) {
   return rows.filter((r) => r.tool === 'Bash' && r.event === 'PreToolUse').map((r) => r.detail);
@@ -184,4 +216,4 @@ function declarationErrors(declared) {
   return errors;
 }
 
-module.exports = { check, format, declarationErrors, NAMES };
+module.exports = { check, format, declarationErrors, undeclaredProse, NAMES };

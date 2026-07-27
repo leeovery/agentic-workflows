@@ -83,6 +83,23 @@ closes with an incorporate") is evidenced from the recorded actions. A
 step about reasoning or output is evidenced from the walk. Where the two
 disagree about what was done, the recorded actions win.
 
+**Read them against each other, always, before ruling on anything.** Two
+divergences matter and both are reported under markers:
+
+- **Narrated but not recorded** — the walk claims a command or a file
+  write the record does not contain. Treat the record as right. A step
+  resting on that claim fails, and the discrepancy is a finding in its
+  own right, because it means the walker described something it did not
+  do.
+- **Recorded but not narrated** — the record holds a call the walk never
+  mentions. Usually harmless orientation, and not a failure by itself.
+  Report it anyway: a call that touched state and went unmentioned is the
+  shape a silent repair takes.
+
+This comparison is required, not a courtesy. The two streams exist so
+that neither has to be taken on trust, and that only holds if they are
+actually set against each other every time.
+
 The record settles *that* a call was made, never *why*. A call the walker
 made during a wrong turn of its own, and then abandoned, appears in the
 record exactly like one the prose asked for — only the walk says which it

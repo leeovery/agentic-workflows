@@ -53,6 +53,19 @@ verdict.
 
 {{checks}}
 
+=== scope ===
+
+UNDECLARED PROSE — files this walk opened that the case does not list,
+computed from the record.
+
+The case's file list decides whether editing a file selects this case for
+a run, so prose missing from it can be changed without the test that
+covers it ever running again. This is a finding about the case, never
+about the prose or the walk: report it under markers and let it affect
+nothing else.
+
+{{scope}}
+
 === substitutions ===
 
 HARNESS SUBSTITUTIONS the case armed for this walk. Where the recorded

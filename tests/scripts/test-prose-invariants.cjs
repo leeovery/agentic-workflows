@@ -289,3 +289,39 @@ describe('entry points — where a walk may begin', () => {
     assert.deepEqual(cases.validateCorpus(cases.loadAllCases()), []);
   });
 });
+
+describe('undeclared prose — the case list against what the walk opened', () => {
+  const rd = (detail) => ({ event: 'PreToolUse', tool: 'Read', detail });
+
+  it('names prose the walk opened that the case never declared', () => {
+    const rows = [
+      rd('./.claude/skills/workflow-specification-entry/SKILL.md'),
+      rd('./.claude/skills/workflow-specification-entry/references/validate-phase.md'),
+    ];
+    assert.deepEqual(
+      invariants.undeclaredProse(rows, ['skills/workflow-specification-entry/SKILL.md']),
+      ['skills/workflow-specification-entry/references/validate-phase.md'],
+    );
+  });
+
+  it('is quiet when the list already covers the walk', () => {
+    const rows = [rd('./.claude/skills/workflow-review-entry/SKILL.md')];
+    assert.deepEqual(invariants.undeclaredProse(rows, ['skills/workflow-review-entry/SKILL.md']), []);
+  });
+
+  it('ignores files that are not prose — a walk reads world state too', () => {
+    const rows = [rd('./.workflows/pay/manifest.json'), rd('./.workflows/pay/discussion/pay.md')];
+    assert.deepEqual(invariants.undeclaredProse(rows, []), []);
+  });
+
+  it('ignores commands — only what was opened counts', () => {
+    const rows = [bash('cd . && cat .claude/skills/workflow-start/SKILL.md')];
+    assert.deepEqual(invariants.undeclaredProse(rows, []), []);
+  });
+
+  it('reports each file once however often it was reopened', () => {
+    const f = './.claude/skills/workflow-start/references/active-work.md';
+    assert.deepEqual(invariants.undeclaredProse([rd(f), rd(f)], []),
+      ['skills/workflow-start/references/active-work.md']);
+  });
+});

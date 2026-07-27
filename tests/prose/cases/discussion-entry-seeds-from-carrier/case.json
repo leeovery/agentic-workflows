@@ -6,7 +6,6 @@
     "skills/workflow-shared/references/ensure-discovery-item.md"
   ],
   "invariants": {
-    "engine_before_write": true,
     "calls_include": [
       "manifest get pay.discussion.pay status"
     ],
