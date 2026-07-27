@@ -39,3 +39,7 @@ How the system works beneath the conversation — described, not as anything you
 - [Capture and the inbox](capture-and-inbox.md) — logging ideas, bugs, and quick-fixes without stopping, then triaging them into real work.
 - [Lifecycle operations](lifecycle-operations.md) — pivot, absorb, cancel, reactivate, and promote: reshaping work as your understanding of it changes.
 - [Configuration](configuration.md) — installing and updating, the settings that fill themselves in, and where each one lives.
+
+## Working on the system
+
+- [Contributing](contributing.md) — for changing this repository rather than using it: the gates, the prose tests, and the setup hiccups worth knowing before they cost you an afternoon.
