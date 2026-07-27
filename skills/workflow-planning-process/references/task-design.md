@@ -28,6 +28,12 @@ Cross-cutting references are context, not scope. They shape how tasks are writte
 
 ---
 
+## Tasks That Edit Historical Artifacts
+
+A task whose edits land on another work unit's files under `.workflows/` corrects a historical artifact. Fold the completed-unit protocol from **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** into the task itself — in-place edit, corrigendum block, knowledge re-index, scoped commit — as **Do** steps and **Acceptance Criteria**. The re-index is part of the task, never an afterthought.
+
+---
+
 ## Vertical Slicing
 
 Prefer **vertical slices** that deliver complete, testable functionality over horizontal slices that separate by technical layer.

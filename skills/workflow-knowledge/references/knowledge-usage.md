@@ -77,7 +77,13 @@ Note in the current phase's working file that the knowledge query was skipped. E
 
 → Return to caller.
 
-## E. Phase-specific notes
+## E. When a surfaced artifact is wrong
+
+A chunk (or its source file) can carry a claim you have verified is wrong or has shifted since it was written. Never leave it standing — completed work units keep their chunks live at full confidence, so every future query re-serves the error as validated context.
+
+→ Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** and follow its instructions.
+
+## F. Phase-specific notes
 
 - **Research** — query at the start of the phase (via the contextual query step) and throughout. Early phases have the highest chance of overlapping with prior work — research is often where the same ground gets explored twice if we don't check.
 - **Discussion** — query at the start and throughout. Decisions being made now often echo or contradict decisions made elsewhere. Check before committing to a direction.

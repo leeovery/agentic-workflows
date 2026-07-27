@@ -59,6 +59,8 @@ Load the chosen format's **[authoring.md](../../workflow-planning-process/refere
 
 **Do not include acceptance criteria.** Mechanical changes are verified by test baselines and completeness checks, not acceptance criteria.
 
+**If a task edits another work unit's completed artifact** (files under `.workflows/{other work unit}/`): fold the protocol from **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** into its Implementation Steps and Verification — in-place edit, corrigendum block, knowledge re-index, scoped commit.
+
 ## C. Register Plan in Manifest
 
 Commit the scoping work on disk first — the baseline hash must name a commit that contains the specification:
