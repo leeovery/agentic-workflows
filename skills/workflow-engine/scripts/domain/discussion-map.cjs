@@ -7,8 +7,9 @@
 // Judgment decides, code records: the conversation makes every state call;
 // these transitions validate and write it. Two levels max — a subtopic's
 // `parent` names another subtopic that is itself top-level. Subtopic keys are
-// kebab-case slugs (display titlecases them); insertion order is render
-// order. All errors throw loud and specific. The CLI transactions
+// kebab-case slugs (display titlecases them); storage is insertion-ordered and
+// the projection ranks rows for render. All errors throw loud and specific.
+// The CLI transactions
 // (recordSubtopicAdd / recordSubtopicState) run load→apply→save under the
 // work unit's manifest lock (the same lock every manifest writer honours)
 // with NO git commit — the calling session's commit cadence picks the
