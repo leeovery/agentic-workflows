@@ -301,34 +301,40 @@ function computeNeedsSequencing(mapItems) {
 // (parked rerouted concerns, no session yet). It is a rider, not a lifecycle
 // — a triaged stub renders as `fresh` by fall-through, and the rider survives
 // on every branch (a `discussing` topic can still hold a parked research
-// stub, which never drains from the discussion side).
+// stub, which never drains from the discussion side). `spec_amended` is the
+// third rider: the topic's plan carries `spec_reconcile_needed`, set when a
+// corrigendum landed on the specification the plan was built from. Also
+// lifecycle-independent — the map row is where a topic whose research and
+// discussion are long finished is still visible.
 function computeTopicLifecycle(manifest, topicName) {
   const discovery = phaseItems(manifest, 'discovery').find(i => i.name === topicName);
   const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
   const discussion = phaseItems(manifest, 'discussion').find(i => i.name === topicName);
+  const planning = phaseItems(manifest, 'planning').find(i => i.name === topicName);
 
   const rs = research ? research.status ?? null : null;
   const ds = discussion ? discussion.status : null;
   const triage_parked = rs === 'triaged' || ds === 'triaged';
+  const spec_amended = Boolean(planning && planning.spec_reconcile_needed);
 
   // Stored marker wins over name-matching: a research topic that fanned out
   // into differently-named discussions is terminal, with no next action. Read
   // only the item's own field — never inspect siblings or provenance.
   if (discovery && discovery.handled === true) {
-    return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, triage_parked };
+    return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, triage_parked, spec_amended };
   }
 
   if (ds === 'completed') {
-    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs, triage_parked };
+    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs, triage_parked, spec_amended };
   }
   if (ds === 'in-progress') {
-    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: rs, triage_parked };
+    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: rs, triage_parked, spec_amended };
   }
   if (rs === 'completed') {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked, spec_amended };
   }
   if (rs === 'in-progress') {
-    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, triage_parked };
+    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, triage_parked, spec_amended };
   }
   // Every attempted phase item is cancelled (and at least one was attempted):
   // the topic is cancelled-tier. A dual-attempt topic with one live item never
@@ -341,15 +347,15 @@ function computeTopicLifecycle(manifest, topicName) {
   // falling through to fresh (the stub is startable).
   const attempted = [rs, ds].filter((s) => s != null);
   if (attempted.length > 0 && attempted.every((s) => s === 'cancelled')) {
-    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, triage_parked };
+    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, triage_parked, spec_amended };
   }
   // Superseded research with no discussion: the topic's research lineage is
   // closed but a discussion path remains open. Render as ready-for-discussion
   // — the next available action is to discuss.
   if (rs === 'superseded' && !ds) {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked, spec_amended };
   }
-  return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, triage_parked };
+  return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, triage_parked, spec_amended };
 }
 
 function computeNextAction(routing, lifecycle) {
@@ -412,6 +418,7 @@ function computeSourceProvenance(source) {
  * @property {string|null} current_phase
  * @property {string|null} research_state
  * @property {boolean} triage_parked       a `triaged` stub (parked rerouted concerns) exists in either phase
+ * @property {boolean} spec_amended        the topic's plan was built from a specification since corrected
  * @property {string|null} next_action
  */
 
@@ -433,7 +440,7 @@ function computeSourceProvenance(source) {
 function buildDiscoveryMap(manifest) {
   const discoveryItems = phaseItems(manifest, 'discovery');
   const map = discoveryItems.map((item) => {
-    const { lifecycle, tier, current_phase, research_state, triage_parked } = computeTopicLifecycle(manifest, item.name);
+    const { lifecycle, tier, current_phase, research_state, triage_parked, spec_amended } = computeTopicLifecycle(manifest, item.name);
     const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
     const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
     return {
@@ -451,6 +458,7 @@ function buildDiscoveryMap(manifest) {
       current_phase,
       research_state,
       triage_parked,
+      spec_amended,
       next_action: computeNextAction(item.routing, lifecycle),
     };
   });

@@ -723,6 +723,46 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(m.phases.specification.items[target].amended_by.map((a) => a.work_unit), [finder]);
     assert.strictEqual(m.phases.planning.items[target].spec_reconcile_needed, true);
     assert.strictEqual(m.phases.review.items[target].status, 'completed', 'downstream phases keep their own state');
+
+    // The flag reaches the user without them entering anything: the cue rides
+    // the work unit's own detail row.
+    const detail = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/workunit-detail.cjs'));
+    const proj = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
+    // Reactivate so the unit is active again — a completed unit is off the
+    // active dashboard, and the cue's audience is whoever picks the work up.
+    sim.run(['workunit', 'reactivate', target]);
+    const units = detail.workUnitDetail(sim.dir, 'feature').features;
+    const unit = units.find((u) => u.name === target);
+    assert.strictEqual(unit.spec_amended, true);
+    assert.match(proj.workUnitStatus('feature', unit), /Planning \[completed\] · spec amended/);
+    assert.match(proj.workUnitData('feature', unit, proj.workUnitMenu('feature', unit)), /^spec_amended: true$/m);
+  });
+
+  it('corrigendum: an epic topic\'s amended plan surfaces on the dashboard map row', () => {
+    const wu = 'ledger';
+    const finder = 'audit-trail';
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Ledger rules', '--session-log-file', sessionLog(sim, wu)]);
+    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
+      [{ name: 'postings', routing: 'discussion', summary: 'How postings settle' }]);
+    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): one topic`]);
+    sim.run(['topic', 'start', wu, 'discussion', 'postings']);
+    sim.write(`.workflows/${wu}/discussion/postings.md`, '# Discussion — Postings\n');
+    sim.run(['topic', 'complete', wu, 'discussion', 'postings']);
+    walkDeliveryPhases(sim, wu, 'postings', { sources: ['postings'] });
+
+    sim.run(['workunit', 'create', finder, 'feature', '--description', 'Audit trail', '--session-log-file', sessionLog(sim, finder)]);
+    sim.write(`.workflows/${wu}/specification/postings/specification.md`,
+      '# Spec — Postings\n\n## Corrigendum — 2026-07-27\n*From: audit-trail*\n\nOriginal: "postings are immutable". Correction: reversals rewrite them.\n');
+    sim.run(['topic', 'amend', wu, 'specification', 'postings', '--from', finder]);
+
+    const epicDetail = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/epic-detail.cjs'));
+    const epicProj = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+    const d = epicDetail.epicDetail(sim.dir, sim.manifest(wu));
+    const row = d.discovery_map.find((r) => r.name === 'postings');
+    assert.strictEqual(row.spec_amended, true);
+    assert.strictEqual(row.lifecycle, 'decided', 'the amendment reopens nothing');
+    assert.match(epicProj.epicDashboard(wu, d), /Postings \[decided · spec amended\]/);
   });
 
   it('implementation loop: fix cycles, analysis cycles, and gate-mode bookkeeping survive resume', () => {

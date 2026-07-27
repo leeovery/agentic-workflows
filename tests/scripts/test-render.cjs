@@ -323,4 +323,18 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null, false), 'fresh · routed to research');
     assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null), 'fresh · routed to research');
   });
+
+  it('discoveryLifecycleLabel appends the spec amended cue when a corrigendum landed', () => {
+    // The topic's early phases are long finished — the cue is why the row is
+    // still worth looking at.
+    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, true), 'decided · spec amended');
+    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'completed', false, true), 'handled · research fanned out · spec amended');
+    // Both cues compose, triage first — the parked concern is the older debt.
+    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', 'triaged', true, true), 'decided · triage waiting · spec amended');
+  });
+
+  it('discoveryLifecycleLabel renders no spec cue when specAmended is false or omitted', () => {
+    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, false), 'decided');
+    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false), 'decided');
+  });
 });

@@ -84,6 +84,7 @@ const EPIC_DETAIL_PHASES = ['discovery', 'research', 'discussion', 'specificatio
  * @property {string|null} current_phase
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {boolean} triage_parked  a `triaged` stub (parked rerouted concerns) exists in either phase
+ * @property {boolean} spec_amended   the topic's plan was built from a specification since corrected
  * @property {string|null} next_action
  */
 

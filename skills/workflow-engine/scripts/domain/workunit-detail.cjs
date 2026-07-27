@@ -80,6 +80,7 @@ const WORK_UNIT_TYPES = {
  *                                     complete` never ran
  * @property {string[]} completed_phases
  * @property {string[]} in_progress_phases  pipeline phases in flight (a reopened phase mid-revisit)
+ * @property {boolean} spec_amended    the plan was built from a specification a corrigendum has since corrected
  * @property {number} [imports_count]  types with surfacesSeeds only
  * @property {number} [seeds_count]    types with surfacesSeeds only
  */
@@ -126,6 +127,16 @@ function completedPhases(cfg, manifest) {
   return cfg.pipeline.filter((phase) => phaseStatus(manifest, phase) === 'completed');
 }
 
+// The plan's own reconcile flag, set when a corrigendum landed on the
+// specification it was built from. Topic = work unit for every single-topic
+// type, so the item is addressed by the unit's own name.
+/** @param {object} manifest @returns {boolean} */
+function specAmended(manifest) {
+  const items = ((manifest.phases || {}).planning || {}).items;
+  const item = items && typeof items === 'object' ? items[manifest.name] : undefined;
+  return Boolean(item && item.spec_reconcile_needed);
+}
+
 /**
  * Build the work-unit detail for one single-topic type: active units with
  * next-phase state, plus the completed/cancelled sets.
@@ -149,6 +160,7 @@ function workUnitDetail(cwd, type) {
       finalising: state.finalising,
       completed_phases: completedPhases(cfg, m),
       in_progress_phases: state.in_progress_phases,
+      spec_amended: specAmended(m),
     };
     if (cfg.surfacesSeeds) {
       unit.imports_count = Array.isArray(m.imports) ? m.imports.length : 0;

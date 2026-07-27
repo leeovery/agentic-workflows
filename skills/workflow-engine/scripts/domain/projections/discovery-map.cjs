@@ -23,6 +23,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, discoveryGlyph, discoveryLifec
  * @property {string|null} [routing]
  * @property {string|null} [research_state]  the research item's raw status, null when none exists
  * @property {boolean} [triage_parked]  a `triaged` stub (parked rerouted concerns) exists in either phase
+ * @property {boolean} [spec_amended]   the topic's plan was built from a specification since corrected
  * @property {string|null} [summary]
  */
 
@@ -68,7 +69,7 @@ function mapNodes(rows) {
     title: title({
       glyph: discoveryGlyph(row.lifecycle),
       label: titlecase(row.name),
-      tag: discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null, row.triage_parked ?? false),
+      tag: discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null, row.triage_parked ?? false, row.spec_amended ?? false),
     }),
   }));
 }

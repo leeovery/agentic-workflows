@@ -162,6 +162,40 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
+  it('feature: a corrigendum on the spec cues the planning row, and nothing else', () => {
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'completed', spec_reconcile_needed: true } } },
+        implementation: { items: { 'auth-flow': { status: 'in-progress' } } },
+      },
+    });
+    const unit = unitOf(dir, 'feature', 'auth-flow');
+    assert.strictEqual(unit.spec_amended, true);
+    assert.strictEqual(workUnitStatus('feature', unit), [
+      ...boxOf('Auth Flow'),
+      '  PIPELINE (feature)',
+      '  ├─ ✓ Discussion [completed]',
+      '  ├─ ✓ Specification [completed]',
+      '  ├─ ✓ Planning [completed] · spec amended',
+      '  └─ ◐ Implementation [in-progress]',
+      '',
+    ].join('\n'));
+  });
+
+  it('feature: an unflagged plan renders no cue', () => {
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'in-progress' } } },
+      },
+    });
+    const unit = unitOf(dir, 'feature', 'auth-flow');
+    assert.strictEqual(unit.spec_amended, false);
+    assert.ok(!workUnitStatus('feature', unit).includes('spec amended'));
+  });
+
   it('feature: every in-flight phase row renders, even beside the next one', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
@@ -395,6 +429,7 @@ describe('workunit projections: data body', () => {
       'phase_label: specification (in-progress)',
       'finalising: false',
       'completed_phases: discussion',
+      'spec_amended: false',
       'revisit_available: true',
       'seeds_count: 1',
       'imports_count: 0',
@@ -416,6 +451,7 @@ describe('workunit projections: data body', () => {
       'phase_label: ready for investigation',
       'finalising: false',
       'completed_phases: (none)',
+      'spec_amended: false',
       'revisit_available: false',
       'ACTIONS (key  action  topic  → route):',
       '  y  continue  login-crash  → /workflow-investigation-entry bugfix login-crash',
@@ -440,6 +476,7 @@ describe('workunit projections: data body', () => {
       'phase_label: pipeline complete',
       'finalising: true',
       'completed_phases: scoping, implementation, review',
+      'spec_amended: false',
       'revisit_available: true',
       'ACTIONS (key  action  topic  → route):',
       '  y  finalise  hotfix-logs  → (internal)',

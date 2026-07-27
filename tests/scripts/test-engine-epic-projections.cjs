@@ -156,6 +156,35 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.ok(out.includes('  RESEARCH & DISCUSSION (1 topics · 1 fresh)'), out);
     assert.ok(out.includes('  └─ ○ Parked [fresh · routed to research · triage waiting]'), out);
   });
+
+  it('a plan flagged by a corrigendum carries the spec amended cue on its map row', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'completed', spec_reconcile_needed: true } } },
+      },
+    });
+    // The row's lifecycle is untouched — an amendment reopens nothing.
+    assert.strictEqual(d.discovery_map[0].lifecycle, 'decided');
+    assert.strictEqual(d.discovery_map[0].spec_amended, true);
+    assert.ok(epicDashboard('v1', d).includes('└─ ✓ Auth Flow [decided · spec amended]'), epicDashboard('v1', d));
+  });
+
+  it('an unflagged plan carries no cue', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    assert.strictEqual(d.discovery_map[0].spec_amended, false);
+    assert.ok(!epicDashboard('v1', d).includes('spec amended'));
+  });
 });
 
 describe('epic projections: dashboard (no-map and brand-new branches)', () => {

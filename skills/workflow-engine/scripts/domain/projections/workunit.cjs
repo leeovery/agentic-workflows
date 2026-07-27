@@ -54,12 +54,20 @@ function nextPhaseStarted(unit) {
   return unit.phase_label.endsWith('(in-progress)');
 }
 
+// The plan's `spec amended` cue — the single-topic mirror of the epic map
+// row's suffix. It hangs on the planning row because that is where the
+// reconcile happens; downstream phases inherit it through the plan.
+/** @param {string} phase @param {WorkUnitEntry} unit */
+function phaseCue(phase, unit) {
+  return phase === 'planning' && unit.spec_amended ? ' · spec amended' : '';
+}
+
 /** Pipeline rows: completed phases, the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped). @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
 function pipelineNodes(cfg, unit) {
   const nodes = [];
   for (const phase of cfg.pipeline) {
     if (unit.completed_phases.includes(phase)) {
-      nodes.push({ title: title({ glyph: '✓', label: titlecase(phase), tag: 'completed' }) });
+      nodes.push({ title: title({ glyph: '✓', label: titlecase(phase), tag: 'completed' }) + phaseCue(phase, unit) });
     } else if (phase === unit.next_phase) {
       const started = nextPhaseStarted(unit);
       nodes.push({
@@ -67,10 +75,10 @@ function pipelineNodes(cfg, unit) {
           glyph: started ? '◐' : '→',
           label: titlecase(phase),
           tag: started ? 'in-progress' : 'ready',
-        }),
+        }) + phaseCue(phase, unit),
       });
     } else if ((unit.in_progress_phases || []).includes(phase)) {
-      nodes.push({ title: title({ glyph: '◐', label: titlecase(phase), tag: 'in-progress' }) });
+      nodes.push({ title: title({ glyph: '◐', label: titlecase(phase), tag: 'in-progress' }) + phaseCue(phase, unit) });
     }
   }
   return nodes;
@@ -168,6 +176,7 @@ function workUnitData(type, unit, menu) {
   lines.push(`phase_label: ${unit.phase_label}`);
   lines.push(`finalising: ${unit.finalising === true}`);
   lines.push(`completed_phases: ${unit.completed_phases.join(', ') || '(none)'}`);
+  lines.push(`spec_amended: ${unit.spec_amended === true}`);
   lines.push(`revisit_available: ${menu.keys.some((k) => k.action === 'revisit')}`);
   if (cfg.surfacesSeeds) {
     lines.push(`seeds_count: ${unit.seeds_count || 0}`);

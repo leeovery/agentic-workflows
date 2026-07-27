@@ -53,10 +53,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_u
 
 Set source="existing".
 
+→ Load **[spec-amendment-advisory.md](../../workflow-shared/references/spec-amendment-advisory.md)**.
+
 → Return to caller.
 
 #### If status is `in-progress`
 
 Set source="existing".
+
+→ Load **[spec-amendment-advisory.md](../../workflow-shared/references/spec-amendment-advisory.md)**.
 
 → Return to caller.
