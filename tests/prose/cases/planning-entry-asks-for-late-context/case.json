@@ -1,14 +1,15 @@
 {
-  "origin": "feature mainline \u2014 planning offers a last chance to add context",
+  "origin": "feature mainline — planning offers a last chance to add context",
   "entry": "workflow-planning-entry",
   "files": [
     "skills/workflow-planning-entry/SKILL.md",
     "skills/workflow-planning-entry/references/validate-spec.md",
     "skills/workflow-planning-entry/references/validate-phase.md",
-    "skills/workflow-planning-entry/references/cross-cutting-context.md"
+    "skills/workflow-planning-entry/references/cross-cutting-context.md",
+    "skills/workflow-planning-entry/references/invoke-skill.md"
   ],
   "answers": [
-    "continue \u2014 nothing has changed since the specification"
+    "continue — nothing has changed since the specification"
   ],
   "invariants": {
     "calls_include": [

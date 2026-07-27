@@ -1,5 +1,5 @@
 {
-  "origin": "feature mainline \u2014 entry through resume detection to the first task",
+  "origin": "feature mainline — entry through resume detection to the first task",
   "entry": "workflow-implementation-entry",
   "files": [
     "skills/workflow-implementation-entry/SKILL.md",
@@ -9,7 +9,7 @@
     "skills/workflow-implementation-process/references/environment-setup.md"
   ],
   "answers": [
-    "none \u2014 no special setup is needed"
+    "none — no special setup is needed"
   ],
   "invariants": {
     "engine_before_write": true,
