@@ -150,6 +150,8 @@ Load **[shape-and-confirm.md](references/shape-and-confirm.md)** and follow its 
 
 Load **[confirm-trigger.md](references/confirm-trigger.md)** and follow its instructions as written.
 
+→ On return, proceed as the reference directed.
+
 ---
 
 ## Step 6: Resume Detection

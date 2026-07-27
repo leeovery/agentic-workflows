@@ -692,6 +692,7 @@ Rules:
 - `→ On return, proceed to` is the footer after a Load directive, separated by a blank line — the loaded reference runs to completion (its STOP gates and loops included) before the proceed applies. A bare `→ Proceed to` here reads as the immediate next action and overshoots the reference
 - When a `**STOP.**` gate or a bold conditional sits between the Load directive and the routing line, the routing is keyed to the user's response or the branch, not the return — those use the bare `→ Proceed to`
 - The final step has no routing footer (it's terminal)
+- A footer governs only the reference's bare `→ Return to caller.` exits — never the branches the reference routes itself (see Navigation & Return Patterns → backbone escape). Where every exit routes to a named step, no branch is left for a footer to serve and naming one would name a step that never runs: the footer instead defers, `→ On return, proceed as the reference directed.` A step is never left with no footer at all — silence reads as the end of the step, and the next heading gets treated as the fall-through
 - Within reference files routing to other reference files, use `→` before Load (it IS a routing instruction in that context)
 
 **Parameter passing**: When a shared reference needs context from the caller, append `with` followed by named assignments. String literals and variable values are both backtick-wrapped; variables use curly brace placeholders:
