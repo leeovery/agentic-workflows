@@ -695,6 +695,36 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'supersede', wu, 'specification', 'logging', '--by', 'other'], /promoted|not found/);
   });
 
+  it('corrigendum: a finished unit\'s spec is amended from another unit, and nothing reopens', () => {
+    const target = 'billing';
+    const finder = 'refunds';
+    sim.run(['workunit', 'create', target, 'feature', '--description', 'Billing rules', '--session-log-file', sessionLog(sim, target)]);
+    sim.run(['topic', 'start', target, 'discussion', target]);
+    sim.write(`.workflows/${target}/discussion/${target}.md`, '# Discussion — Billing\n');
+    sim.run(['topic', 'complete', target, 'discussion', target]);
+    walkDeliveryPhases(sim, target, target, { sources: [target] });
+    sim.run(['workunit', 'complete', target, '-m', `workflow(${target}): pipeline complete`, '--pipeline']);
+
+    // The later work unit that finds the wrong claim — the spec reaches it
+    // through the knowledge base, never through its own pipeline.
+    sim.run(['workunit', 'create', finder, 'feature', '--description', 'Refund handling', '--session-log-file', sessionLog(sim, finder)]);
+
+    // The corrigendum is authored first; the verb records an edit on disk.
+    sim.refuses(['topic', 'amend', target, 'specification', target, '--from', finder], /unchanged against HEAD/);
+    sim.refuses(['topic', 'amend', target, 'discussion', target, '--from', finder], /specification-only/);
+    sim.write(`.workflows/${target}/specification/${target}/specification.md`,
+      `# Spec — ${target}\n\n## Corrigendum — 2026-07-27 (${finder})\n\nOriginal: "refunds are instant". Correction: refunds settle in 3 days.\n`);
+    const res = sim.run(['topic', 'amend', target, 'specification', target, '--from', finder]);
+    assert.strictEqual(res.spec_reconcile_needed, true, 'the plan built on the old text is flagged');
+
+    const m = sim.manifest(target);
+    assert.strictEqual(m.status, 'completed', 'annotation is not a reopening — the unit stays finished');
+    assert.strictEqual(m.phases.specification.items[target].status, 'completed');
+    assert.deepStrictEqual(m.phases.specification.items[target].amended_by.map((a) => a.work_unit), [finder]);
+    assert.strictEqual(m.phases.planning.items[target].spec_reconcile_needed, true);
+    assert.strictEqual(m.phases.review.items[target].status, 'completed', 'downstream phases keep their own state');
+  });
+
   it('implementation loop: fix cycles, analysis cycles, and gate-mode bookkeeping survive resume', () => {
     const wu = 'loop';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Task loop', '--session-log-file', sessionLog(sim, wu)]);

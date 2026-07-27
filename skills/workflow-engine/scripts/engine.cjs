@@ -23,7 +23,7 @@ const { commitScopedWithKb } = require('./domain/commit.cjs');
 const { recordSubtopicAdd, recordSubtopicState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
-const { startTopic, triageTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, triageTopic, completeTopic, reopenTopic, supersedeTopic, amendTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const taskSections = require('./domain/projections/tasks.cjs');
 const txSections = require('./domain/projections/transactions.cjs');
@@ -143,6 +143,7 @@ Commands:
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
+  topic amend <work-unit> specification <topic> --from <source-work-unit>
   topic cancel <work-unit> <phase> <topic>
   topic reactivate <work-unit> <phase> <topic>
   task init <work-unit> <topic>
@@ -491,10 +492,10 @@ function runDiscoverySession(argv) {
 // manifest-side lifecycle bookkeeping (KB sync where the phase is indexed:
 // index on complete, remove on supersede; reopen syncs nothing —
 // warn-don't-block) with no git commit — the calling session's commit
-// cadence picks the change up. cancel/reactivate are
-// one transaction per call: manifest write, knowledge-base sync
-// (warn-don't-block), scoped git commit. The JSON response reports what
-// happened — no follow-up read needed.
+// cadence picks the change up. amend (specification only) and
+// cancel/reactivate are one transaction per call: manifest write,
+// knowledge-base sync (warn-don't-block), scoped git commit. The JSON
+// response reports what happened — no follow-up read needed.
 // ---------------------------------------------------------------------------
 
 const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
@@ -512,8 +513,19 @@ function runTopic(argv) {
       respond(supersedeTopic(process.cwd(), workUnit, phase, topic, { by: opts.by }));
       return;
     }
+    if (command === 'amend') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, phase, topic] = positional;
+      if (!workUnit || !phase || !topic || positional.length !== 3 || !opts.from) {
+        throw new Error('Usage: engine topic amend <work-unit> specification <topic> --from <source-work-unit>');
+      }
+      const amended = amendTopic(process.cwd(), workUnit, phase, topic, { from: opts.from });
+      respond(amended);
+      respondSections(txSections.topicAmendSections(amended));
+      return;
+    }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|amend|cancel|reactivate> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;

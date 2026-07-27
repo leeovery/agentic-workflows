@@ -41,6 +41,19 @@ function hasStagedChanges(cwd) {
 }
 
 /**
+ * Whether the working tree or index holds changes under `pathspec`. Uses
+ * `status --porcelain` rather than `diff HEAD` so a never-committed file
+ * counts — an untracked artifact is a change against HEAD too.
+ * @param {string} cwd
+ * @param {string|string[]} pathspec
+ * @returns {boolean}
+ */
+function hasUncommittedChanges(cwd, pathspec) {
+  const specs = Array.isArray(pathspec) ? pathspec : [pathspec];
+  return git(cwd, ['status', '--porcelain', '--', ...specs]).trim() !== '';
+}
+
+/**
  * Stage one or more pathspecs and commit with the given message.
  * @param {string} cwd      project root
  * @param {string|string[]} pathspec e.g. `.workflows/{wu}` or `.workflows/.inbox`
@@ -65,4 +78,4 @@ function removeFiles(cwd, paths) {
   git(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, commitScoped, hasStagedChanges, removeFiles };
+module.exports = { git, commitScoped, hasStagedChanges, hasUncommittedChanges, removeFiles };

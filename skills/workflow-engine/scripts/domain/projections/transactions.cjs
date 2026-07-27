@@ -108,6 +108,21 @@ function topicLifecycleSections(verb, result) {
 }
 
 /**
+ * topic amend — the non-blocking indexing warning alone. The corrigendum is
+ * written and committed either way; the calling flow owns its own
+ * confirmation to the user.
+ * @param {{warnings?: string[]}} result
+ * @returns {string}
+ */
+function topicAmendSections(result) {
+  return joined([
+    warningBlock('Knowledge indexing warning', result.warnings,
+      'The corrigendum is committed. Until indexing succeeds the knowledge base still serves the old text — retry with `knowledge index`.',
+      'emit verbatim as a code block'),
+  ]);
+}
+
+/**
  * workunit absorb — the post-absorption summary.
  * @param {{feature: string, epic: string, topic: string, research?: unknown[], seeds?: unknown[], imports?: unknown[], warnings?: string[]}} result
  * @returns {string}
@@ -194,4 +209,4 @@ function discoverySessionCloseSections(result) {
   ]);
 }
 
-module.exports = { workunitLifecycleSections, topicLifecycleSections, absorbSections, promoteSections, pivotSections, discoverySessionCloseSections };
+module.exports = { workunitLifecycleSections, topicLifecycleSections, topicAmendSections, absorbSections, promoteSections, pivotSections, discoverySessionCloseSections };

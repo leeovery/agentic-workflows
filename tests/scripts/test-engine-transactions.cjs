@@ -264,7 +264,7 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|cancel\|reactivate>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|amend\|cancel\|reactivate>/);
   });
 
   it('flips a triaged stub to in-progress — the one exit from triaged', () => {
@@ -653,6 +653,234 @@ describe('engine topic supersede', () => {
     assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow']).error, /Usage: engine topic supersede/);
     assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'specification']).error, /Usage: engine topic supersede/);
     assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'nonsense', 'auth-flow', '--by', 'unified']).error, /unknown or non-lifecycle phase "nonsense"/);
+  });
+});
+
+describe('engine topic amend', () => {
+  let dir;
+
+  const MANIFEST = '.workflows/payments/manifest.json';
+  const SPEC = '.workflows/payments/specification/auth-flow/specification.md';
+
+  /** An epic with a completed spec, a plan built on it, and every refusable spec status. */
+  function amendManifest() {
+    return {
+      name: 'payments',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        specification: {
+          items: {
+            'auth-flow': { status: 'completed' },
+            unified: { status: 'completed' },
+            'no-file': { status: 'completed' },
+            'fee-model': { status: 'in-progress' },
+            'refund-policy': { status: 'proposed' },
+            legacy: { status: 'superseded', superseded_by: 'unified' },
+            'split-out': { status: 'promoted', promoted_to: 'caching' },
+            'session-model': { status: 'cancelled', previous_status: 'completed' },
+          },
+        },
+        // Only auth-flow's spec was ever planned from.
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    };
+  }
+
+  /** Write the corrigendum the verb records — the model's job, done before the call. */
+  function writeCorrigendum(topic = 'auth-flow') {
+    writeFile(dir, `.workflows/payments/specification/${topic}/specification.md`,
+      '# Spec\n\n## Corrigendum — 2026-07-27 (checkout)\n\nOriginal: "tokens never expire". Correction: tokens expire after 30 days.\n');
+  }
+
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeFile(dir, MANIFEST, JSON.stringify(amendManifest(), null, 2) + '\n');
+    // Every spec on disk but `no-file` — the absent-artifact refusal.
+    for (const topic of ['auth-flow', 'unified', 'fee-model', 'refund-policy', 'legacy', 'split-out', 'session-model']) {
+      writeFile(dir, `.workflows/payments/specification/${topic}/specification.md`, `# ${topic}\n\nTokens never expire.\n`);
+    }
+    writeFile(dir, '.workflows/payments/discussion/auth-flow.md', '# Discussion\n');
+    // The work unit that found the wrong claim.
+    writeFile(dir, '.workflows/checkout/manifest.json', JSON.stringify({
+      name: 'checkout', work_type: 'feature', status: 'in-progress',
+    }, null, 2) + '\n');
+    // A plain file where the knowledge store's directory belongs: the re-index
+    // spawn fails deterministically, so warn-don't-block is provable. The
+    // real-store path has its own test below.
+    writeFile(dir, '.workflows/.knowledge', 'not a directory\n');
+    commitAll(dir, 'init');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('records provenance, flags the plan, re-indexes, and commits — the spec item\'s status is untouched', () => {
+    writeCorrigendum();
+    const res = engine(dir, ['topic', 'amend', 'payments', 'specification', 'auth-flow', '--from', 'checkout']);
+
+    const today = new Date().toISOString().slice(0, 10);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.work_unit, 'payments');
+    assert.strictEqual(res.topic, 'auth-flow');
+    assert.deepStrictEqual(res.amended_by, [{ work_unit: 'checkout', date: today }]);
+    assert.strictEqual(res.spec_reconcile_needed, true);
+    assert.strictEqual(res.committed, shortHead(dir));
+    // Sabotaged store — warn-don't-block: the corrigendum still landed.
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /knowledge index failed/);
+    assert.match(engine.lastSections, /=== DISPLAY: kb warning \(emit verbatim as a code block\) ===\n {2}⚑ Knowledge indexing warning\n( {4}.+\n)+ {4}The corrigendum is committed\./);
+    assert.ok(!engine.lastSections.includes('confirmation'), 'amend folds the warning only — the flow owns its own confirmation');
+
+    const m = readManifest(dir, 'payments');
+    // Annotation, not revision: the pipeline is over and nothing reopens.
+    assert.deepStrictEqual(m.phases.specification.items['auth-flow'], {
+      status: 'completed',
+      amended_by: [{ work_unit: 'checkout', date: today }],
+    });
+    assert.deepStrictEqual(m.phases.planning.items['auth-flow'], {
+      status: 'completed',
+      spec_reconcile_needed: true,
+    });
+    assert.strictEqual(lastMessage(dir), 'spec(payments): corrigendum from checkout');
+    // The corrected file rides the same commit — nothing left dirty.
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '');
+    assert.match(git(dir, ['show', '--stat', '--format=', 'HEAD']), /specification\/auth-flow\/specification\.md/);
+  });
+
+  it('re-indexes the corrected file — the knowledge base stops serving the old claim', () => {
+    // A real keyword-only store: HOME points at an empty dir so a developer's
+    // system provider config cannot leak in and make this reach the network.
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-tx-home-'));
+    const env = { ...process.env, HOME: home };
+    delete env.OPENAI_API_KEY;
+    const knowledge = (args) => execFileSync(
+      'node', [path.join(__dirname, '../../skills/workflow-knowledge/scripts/knowledge.cjs'), ...args],
+      { cwd: dir, encoding: 'utf8', env },
+    );
+    try {
+      fs.rmSync(path.join(dir, '.workflows/.knowledge'), { force: true });
+      knowledge(['index', SPEC]);
+      assert.match(knowledge(['query', 'tokens expire']), /Tokens never expire/, 'the wrong claim is served');
+
+      writeCorrigendum();
+      const res = execFileSync('node', [ENGINE, 'topic', 'amend', 'payments', 'specification', 'auth-flow', '--from', 'checkout'],
+        { cwd: dir, encoding: 'utf8', env });
+      assert.deepStrictEqual(JSON.parse(res.split('\n')[0]).warnings, []);
+
+      const after = knowledge(['query', 'tokens expire']);
+      assert.match(after, /Corrigendum/, 'the corrected text is served');
+      assert.ok(!after.includes('Tokens never expire.'), 'the old chunk is gone, not duplicated');
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it('flags nothing when no plan was built on the spec', () => {
+    writeCorrigendum('unified');
+    const res = engine(dir, ['topic', 'amend', 'payments', 'specification', 'unified', '--from', 'checkout']);
+
+    assert.strictEqual(res.spec_reconcile_needed, false);
+    const m = readManifest(dir, 'payments');
+    assert.deepStrictEqual(Object.keys(m.phases.planning.items), ['auth-flow']);
+    assert.strictEqual(m.phases.planning.items['auth-flow'].spec_reconcile_needed, undefined);
+  });
+
+  it('appends a second corrigendum to the record, newest last', () => {
+    writeCorrigendum();
+    engine(dir, ['topic', 'amend', 'payments', 'specification', 'auth-flow', '--from', 'checkout']);
+    writeFile(dir, SPEC, '# Spec\n\nA second correction.\n');
+    const res = engine(dir, ['topic', 'amend', 'payments', 'specification', 'auth-flow', '--from', 'payments']);
+
+    const today = new Date().toISOString().slice(0, 10);
+    assert.deepStrictEqual(res.amended_by, [
+      { work_unit: 'checkout', date: today },
+      { work_unit: 'payments', date: today },
+    ]);
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.specification.items['auth-flow'].amended_by, res.amended_by);
+  });
+
+  it('refuses every phase but specification — records are never corrected', () => {
+    const before = fs.readFileSync(path.join(dir, MANIFEST));
+    for (const phase of ['discussion', 'research', 'investigation', 'planning']) {
+      const err = engineFails(dir, ['topic', 'amend', 'payments', phase, 'auth-flow', '--from', 'checkout']).error;
+      assert.match(err, new RegExp(`amend is specification-only — "${phase}" is a record`));
+      assert.match(err, /decay out of the knowledge base on their own/);
+    }
+    assert.deepStrictEqual(fs.readFileSync(path.join(dir, MANIFEST)), before, 'a refusal leaves the target byte-pristine');
+  });
+
+  it('refuses an unfinished, proposed, superseded, promoted, or cancelled spec item', () => {
+    const before = fs.readFileSync(path.join(dir, MANIFEST));
+    const cases = [
+      ['fee-model', /is in progress — the topic is live; correct the claim in the work itself/],
+      ['refund-policy', /is not completed \(status: proposed\)/],
+      ['legacy', /is superseded \(by "unified"\) — its content moved; amend the absorbing topic instead/],
+      ['split-out', /is promoted \(to "caching"\) — its content moved; amend it from the cross-cutting work unit/],
+      ['session-model', /is not completed \(status: cancelled\)/],
+    ];
+    for (const [topic, pattern] of cases) {
+      writeCorrigendum(topic);
+      assert.match(engineFails(dir, ['topic', 'amend', 'payments', 'specification', topic, '--from', 'checkout']).error, pattern);
+    }
+    assert.deepStrictEqual(fs.readFileSync(path.join(dir, MANIFEST)), before);
+  });
+
+  it('refuses a cancelled work unit — cancelling removed its chunks', () => {
+    const m = amendManifest();
+    m.status = 'cancelled';
+    writeFile(dir, MANIFEST, JSON.stringify(m, null, 2) + '\n');
+    commitAll(dir, 'cancel the unit');
+    writeCorrigendum();
+
+    assert.match(
+      engineFails(dir, ['topic', 'amend', 'payments', 'specification', 'auth-flow', '--from', 'checkout']).error,
+      /work unit "payments" is cancelled — cancelling removed its knowledge-base chunks/);
+  });
+
+  it('refuses a completed spec with no file on disk — nothing to index', () => {
+    assert.match(
+      engineFails(dir, ['topic', 'amend', 'payments', 'specification', 'no-file', '--from', 'checkout']).error,
+      /no specification on disk at \.workflows\/payments\/specification\/no-file\/specification\.md/);
+  });
+
+  it('refuses a spec unchanged against HEAD — the verb records an edit, it does not author one', () => {
+    const before = fs.readFileSync(path.join(dir, MANIFEST));
+    assert.match(
+      engineFails(dir, ['topic', 'amend', 'payments', 'specification', 'auth-flow', '--from', 'checkout']).error,
+      /specification\.md is unchanged against HEAD — write the corrigendum and correct the affected lines first/);
+    assert.deepStrictEqual(fs.readFileSync(path.join(dir, MANIFEST)), before);
+    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1', 'nothing committed');
+  });
+
+  it('refuses an unknown --from work unit — provenance must name a real one', () => {
+    writeCorrigendum();
+    assert.match(
+      engineFails(dir, ['topic', 'amend', 'payments', 'specification', 'auth-flow', '--from', 'ghost']).error,
+      /unknown --from work unit "ghost" — the corrigendum's provenance must name a real work unit/);
+  });
+
+  it('refuses a tampered amended_by rather than discarding the record', () => {
+    const m = amendManifest();
+    m.phases.specification.items['auth-flow'].amended_by = 'checkout';
+    writeFile(dir, MANIFEST, JSON.stringify(m, null, 2) + '\n');
+    commitAll(dir, 'tamper');
+    writeCorrigendum();
+
+    assert.match(
+      engineFails(dir, ['topic', 'amend', 'payments', 'specification', 'auth-flow', '--from', 'checkout']).error,
+      /"phases\.specification\.items\.auth-flow\.amended_by" is not an array/);
+  });
+
+  it('rejects missing args, an unknown work unit, and a missing item — loud and specific', () => {
+    for (const args of [
+      ['topic', 'amend', 'payments', 'specification', 'auth-flow'],
+      ['topic', 'amend', 'payments', 'specification', '--from', 'checkout'],
+      ['topic', 'amend', 'payments', 'specification', 'auth-flow', 'extra', '--from', 'checkout'],
+    ]) {
+      assert.match(engineFails(dir, args).error, /Usage: engine topic amend <work-unit> specification <topic> --from <source-work-unit>/);
+    }
+    assert.match(engineFails(dir, ['topic', 'amend', 'ghost', 'specification', 'auth-flow', '--from', 'checkout']).error, /manifest not found/);
+    assert.match(engineFails(dir, ['topic', 'amend', 'payments', 'specification', 'ghost', '--from', 'checkout']).error, /no specification item "ghost" in the manifest/);
   });
 });
 
@@ -1282,6 +1510,7 @@ describe('engine usage banner', () => {
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',
+      'topic amend <work-unit> specification <topic> --from <source-work-unit>',
       'topic cancel <work-unit> <phase> <topic>',
       'topic reactivate <work-unit> <phase> <topic>',
     ]) {

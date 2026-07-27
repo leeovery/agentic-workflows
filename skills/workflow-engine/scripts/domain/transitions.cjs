@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: topic transitions — start, triage, complete, reopen,
-// supersede, cancel, and reactivate, each a single transaction from the
+// supersede, amend, cancel, and reactivate, each a single transaction from the
 // caller's perspective.
 //
 // start/complete/reopen/supersede are phase-item lifecycle bookkeeping:
@@ -14,6 +14,15 @@
 // sources, then commits once). cancel/reactivate are the epic transactions:
 // manifest write, knowledge-base sync, scoped git commit.
 //
+// amend is the corrigendum transaction — specification only, because every
+// other phase decays out of the knowledge base on its own while a spec is
+// indexed forever, so a wrong claim in one is served authoritatively until
+// somebody corrects it. It records provenance, flags the plan built on the
+// old text, re-indexes, and commits; it never touches the item's status —
+// the target's pipeline is over, and an annotation is not a reopening. Its
+// disk and git checks run inside the lock alongside the manifest reads, so
+// the whole validation is one consistent observation.
+//
 // The manifest write is the source of truth and lands first; the knowledge
 // base is a derived index, so its failures are recorded as warnings, never
 // blocks. Validation throws loud and specific before anything is touched.
@@ -22,9 +31,14 @@
 // release — the lock protects the manifest read-modify-write, nothing else.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
+const path = require('path');
+
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
+const { hasUncommittedChanges } = require('../kernel/git.cjs');
 const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { todayStamp } = require('./dates.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../kernel/manifest-schema.cjs');
 
@@ -60,7 +74,7 @@ function assertLegalWrite(phase, status) {
 /**
  * The phase item for `topic`, or a loud error.
  * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string, superseded_by?: string}}
+ * @returns {{status?: string, previous_status?: string, superseded_by?: string, amended_by?: unknown}}
  */
 function phaseItem(manifest, phase, topic) {
   assertLegalWrite(phase, 'cancelled');
@@ -356,6 +370,126 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
 }
 
 /**
+ * @typedef {object} AmendmentRecord
+ * @property {string} work_unit  the work unit that found the wrong claim
+ * @property {string} date       ISO date, UTC
+ */
+
+/**
+ * @typedef {object} TopicAmendResult
+ * @property {string} work_unit
+ * @property {string} topic
+ * @property {AmendmentRecord[]} amended_by  the item's full amendment record, newest last
+ * @property {boolean} spec_reconcile_needed  true when a planning item was flagged
+ * @property {string|null} committed  short commit sha, or null when nothing was staged
+ * @property {string} [note]     set when committed is null
+ * @property {string[]} warnings non-blocking failures (knowledge-base index)
+ */
+
+/**
+ * Amend a completed specification: record the corrigendum's provenance on the
+ * spec item, flag the plan built on the old text, re-index the corrected file,
+ * and commit — one transaction over an edit the caller has already written to
+ * disk. The item's status is never touched: the target's pipeline is over, and
+ * an annotation is not a reopening.
+ *
+ * Specification only. Research, discussion, and investigation are records of
+ * what was said and found — they decay out of the knowledge base on their own
+ * and are never corrected. Everything is validated before anything is mutated,
+ * so a refusal leaves the target byte-pristine.
+ * @param {string} cwd project root
+ * @param {string} workUnit  the work unit whose spec is being corrected
+ * @param {string} phase     must be `specification` — positional so the rule can refuse loudly
+ * @param {string} topic
+ * @param {{from: string}} opts  the work unit that found the wrong claim
+ * @returns {TopicAmendResult}
+ */
+function amendTopic(cwd, workUnit, phase, topic, { from }) {
+  if (phase !== 'specification') {
+    throw new Error(
+      `amend is specification-only — "${phase}" is a record of what was said or found, not a claim about the system; ` +
+      'records are never corrected, and they decay out of the knowledge base on their own'
+    );
+  }
+  if (!fs.existsSync(path.join(cwd, '.workflows', from))) {
+    throw new Error(`unknown --from work unit "${from}" — the corrigendum's provenance must name a real work unit`);
+  }
+
+  const specPath = INDEXED_ARTIFACTS.specification(workUnit, topic);
+  const stamp = todayStamp();
+
+  const applied = withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (manifest.status === 'cancelled') {
+      throw new Error(
+        `work unit "${workUnit}" is cancelled — cancelling removed its knowledge-base chunks; ` +
+        're-indexing behind that would resurrect them. Reactivate it first if the spec should still be served'
+      );
+    }
+    const item = phaseItem(manifest, phase, topic);
+    if (item.status === 'superseded') {
+      const by = 'superseded_by' in item ? ` (by "${item.superseded_by}")` : '';
+      throw new Error(`specification item "${topic}" is superseded${by} — its content moved; amend the absorbing topic instead`);
+    }
+    if (item.status === 'promoted') {
+      const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
+      throw new Error(`specification item "${topic}" is promoted${to} — its content moved; amend it from the cross-cutting work unit instead`);
+    }
+    if (item.status === 'in-progress') {
+      throw new Error(`specification item "${topic}" is in progress — the topic is live; correct the claim in the work itself, not by corrigendum`);
+    }
+    if (item.status !== 'completed') {
+      throw new Error(`specification item "${topic}" is not completed (status: ${item.status ?? 'none'}) — there is no concluded specification to amend`);
+    }
+    if (!fs.existsSync(path.join(cwd, specPath))) {
+      throw new Error(`no specification on disk at ${specPath} — there is nothing to correct or index`);
+    }
+    if (!hasUncommittedChanges(cwd, specPath)) {
+      throw new Error(
+        `${specPath} is unchanged against HEAD — write the corrigendum and correct the affected lines first; ` +
+        'amend records and re-indexes an edit that already exists, it does not author one'
+      );
+    }
+    if ('amended_by' in item && item.amended_by !== undefined && !Array.isArray(item.amended_by)) {
+      throw new Error(`manifest field "phases.specification.items.${topic}.amended_by" is not an array — fix the manifest by hand`);
+    }
+
+    /** @type {AmendmentRecord[]} */
+    const amendedBy = Array.isArray(item.amended_by) ? item.amended_by : [];
+    amendedBy.push({ work_unit: from, date: stamp });
+    item.amended_by = amendedBy;
+
+    // Planning is the spec's first consumer — everything downstream flows from
+    // the plan, so one flag there reaches implementation and review too. No
+    // planning item means nothing downstream was ever built on the old text.
+    const planning = manifest.phases && manifest.phases.planning;
+    const planItem = planning && planning.items ? planning.items[topic] : undefined;
+    const flagged = Boolean(planItem && typeof planItem === 'object');
+    if (flagged) planItem.spec_reconcile_needed = true;
+
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { amended_by: amendedBy, spec_reconcile_needed: flagged };
+  });
+
+  /** @type {string[]} */
+  const warnings = [];
+  knowledge(cwd, ['index', specPath], 'knowledge index', warnings);
+
+  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `spec(${workUnit}): corrigendum from ${from}`);
+  /** @type {TopicAmendResult} */
+  const result = {
+    work_unit: workUnit,
+    topic,
+    amended_by: applied.amended_by,
+    spec_reconcile_needed: applied.spec_reconcile_needed,
+    committed,
+    warnings,
+  };
+  noteIfNothingCommitted(result, committed);
+  return result;
+}
+
+/**
  * Cancel an epic topic: stash the current status into `previous_status`, set
  * `status: cancelled`, drop the topic's discovery-map `order`, remove its
  * knowledge-base chunks (warn-don't-block), commit scoped to the work unit.
@@ -449,4 +583,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic };
+module.exports = { startTopic, triageTopic, completeTopic, reopenTopic, supersedeTopic, amendTopic, cancelTopic, reactivateTopic };
