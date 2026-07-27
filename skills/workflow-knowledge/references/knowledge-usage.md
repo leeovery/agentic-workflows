@@ -77,7 +77,80 @@ Note in the current phase's working file that the knowledge query was skipped. E
 
 → Return to caller.
 
-## E. Phase-specific notes
+## E. Correcting a wrong claim in a specification
+
+A completed specification is the one artifact the knowledge base never decays — it stays indexed at `high` confidence for the life of the project, so a wrong claim in one is served authoritatively to every future query until somebody corrects it.
+
+This applies **only** to a retrieved `specification` chunk whose claim you can *demonstrate* is wrong — the code, the test, or a later decision is in front of you and shows it. A claim you merely doubt is not this. Research, discussion, and investigation chunks are never corrected: they record what was said and found at the time, they stay true as records however wrong the thinking was, and they decay out of the store on their own.
+
+The target is another work unit's completed spec — the knowledge base is how you meet one. This is not for your own live work: a wrong claim in the artefact you are currently writing gets fixed in the writing.
+
+**Never autonomous.** Editing another work unit's artefact is proposed and confirmed before anything is written.
+
+Tell the user which work unit and topic the spec belongs to (the chunk header's second field is `{work-unit}/{topic}`), the claim as the spec states it, what demonstrates it is wrong, and the correction you would write. Then:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Amend that specification?
+
+- **`y`/`yes`** — Write the corrigendum and reindex
+- **`n`/`no`** — Leave it as it stands
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `no`
+
+Nothing is written. Carry the correct understanding into the current work yourself.
+
+→ Return to caller.
+
+#### If `yes`
+
+`{spec_wu}` and `{spec_topic}` come from the chunk header; `{current_wu}` is the work unit you are working in. Resolve the file:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest resolve {spec_wu}.specification.{spec_topic}
+```
+
+Read it in full, then make both edits in one pass:
+
+1. **Correct the affected lines in place** — the spec must read correctly to someone who never reaches the corrigendum.
+2. **Add the corrigendum** directly beneath the H1, above any earlier corrigendum so the newest reads first. Pin this exact shape:
+
+```
+## Corrigendum — {YYYY-MM-DD}
+*From: {current_wu}*
+
+Original: "{the claim as the spec stated it}"
+
+Correction: {what is true, and what demonstrates it}
+```
+
+Then record it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic amend {spec_wu} specification {spec_topic} --from {current_wu}
+```
+
+The verb records the amendment, flags the plan built on the old text, re-indexes, and commits. It touches no status — the target's pipeline stays finished.
+
+**If the response is `ok: false`:**
+
+Surface the engine's error verbatim — it names the reason and the recovery path. Your edits are still on disk, uncommitted; leave them for the user to decide on.
+
+→ Return to caller.
+
+**Otherwise:**
+
+The correction is committed and the knowledge base now serves it. Carry on with the current work.
+
+→ Return to caller.
+
+## F. Phase-specific notes
 
 - **Research** — query at the start of the phase (via the contextual query step) and throughout. Early phases have the highest chance of overlapping with prior work — research is often where the same ground gets explored twice if we don't check.
 - **Discussion** — query at the start and throughout. Decisions being made now often echo or contradict decisions made elsewhere. Check before committing to a direction.
