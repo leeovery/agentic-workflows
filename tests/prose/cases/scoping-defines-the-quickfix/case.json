@@ -1,0 +1,53 @@
+{
+  "origin": "quick-fix had no coverage anywhere — this walks its whole definition stage: entry, context, spec, format, tasks, conclusion, in the single pass scoping is",
+  "entry": "workflow-scoping-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-scoping-entry/SKILL.md",
+    "skills/workflow-scoping-entry/references/validate-phase.md",
+    "skills/workflow-scoping-entry/references/invoke-skill.md",
+    "skills/workflow-scoping-process/SKILL.md",
+    "skills/workflow-scoping-process/references/gather-context.md",
+    "skills/workflow-scoping-process/references/complexity-check.md",
+    "skills/workflow-scoping-process/references/write-specification.md",
+    "skills/workflow-scoping-process/references/select-format.md",
+    "skills/workflow-scoping-process/references/write-tasks.md",
+    "skills/workflow-scoping-process/references/conclude-scoping.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-planning-process/references/output-formats.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md"
+  ],
+  "conduct": "The user knows exactly what the change is and why: the support@ mailbox is being retired at the end of the month and mail to it already bounces, so everything should say help@ instead. Asked where it appears, they are sure about the checkout footer and the contact page, think it may also be in a transactional email template, and do not know any file names. They have no exceptions or exclusions to name. When offered tooling or format choices they take the simplest option that adds no external dependencies — plain files in the repo. They answer the question asked, concretely, and say plainly when they do not know.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get support-email.scoping.support-email status",
+      "manifest get support-email description",
+      "topic start support-email specification support-email",
+      "topic complete support-email specification support-email",
+      "topic start support-email planning support-email",
+      "topic complete support-email planning support-email",
+      "topic complete support-email scoping support-email",
+      "project.defaults.plan_format local-markdown",
+      "render phase-completed support-email --phase scoping"
+    ],
+    "calls_in_order": [
+      "manifest get support-email.scoping.support-email status",
+      "topic start support-email specification support-email",
+      "topic complete support-email specification support-email",
+      "topic start support-email planning support-email",
+      "topic complete support-email planning support-email",
+      "topic complete support-email scoping support-email",
+      "render phase-completed support-email --phase scoping"
+    ],
+    "calls_exclude": [
+      "task start",
+      "task next",
+      "topic reopen",
+      "workflow-bridge"
+    ]
+  }
+}
