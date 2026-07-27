@@ -12,6 +12,14 @@ Agentic Engineering Workflows for Claude Code. Installed via `npx agntc add leeo
 
 Always create a feature branch **before** the first commit. Never commit to main and move commits after. The only exception is when explicitly told to commit to main.
 
+## Ideas
+
+Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`.
+
+**When you complete an idea from the index, mark it done in the same PR as the work** — strike the title (`~~[Title](file.md)~~`) and append a `✅ Done` cell. Shipping the fix and leaving the row open is how the index stops being trustworthy; an entry that reads open when the work landed sends the next reader to re-do it.
+
+**A done idea's own file is a historical record — never edit it.** It captures what was true when the work shipped. Later corrections, caveats, or status nuance belong in the index row or a new idea, never in the closed one.
+
 ## Workflow Phases
 
 The phases group into three stages (the **three D's**), used as the top-level grouping in the epic dashboard (`workflow-continue-epic/references/epic-display-and-menu.md`): **Discovery** (Discovery, Research, Discussion, Investigation) — explore and decide; **Definition** (Scoping, Specification, Planning) — specify and plan; **Delivery** (Implementation, Review) — build and verify. The dashboard renders each stage as a `── STAGE ──` divider with the phases beneath it.
