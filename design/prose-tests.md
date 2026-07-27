@@ -84,6 +84,19 @@ testing.
   and the stubs, and returns a transcript. The asserter sees the
   transcript, the expected path, and the world delta — never the
   reverse.
+- **P4b — the asserter is told which substitutions were armed.** The
+  recorded actions show a stub as the walker writing a file an agent
+  would have produced; without knowing the stub exists, an asserter
+  reads that as a missing dispatch and fails a walk that behaved
+  correctly. Measured: it did exactly that on the first round with
+  recording live. Armed stubs now reach the asserter with their
+  triggers.
+- **P4c — assert what actions and state can prove.** A claim about
+  something *displayed* cannot be evidenced by the action log, because
+  emitting text is not a tool call — it rests on the walker's
+  narrative, the one piece of evidence it authors itself. Most display
+  claims have a consequence that can be asserted instead: the answer
+  consumed, the arm taken, the state produced. Prefer the consequence.
 - **P4a — substitutions are declared and marked.** A stub is named
   content; the case arming it owns the trigger, so one stub serves
   many moments. The walker records `SUBSTITUTED:` for each, and the
@@ -195,6 +208,22 @@ testing.
    campaign into cases.
 
 ## Log
+
+- 2026-07-26 — The first round that found more prose than instrument.
+  Recording finally live (the blocker was `hasTrustDialogAccepted`, which
+  gates frontmatter hooks in project subagents and fails silently), five
+  cases run: one clean PASS, **two confirmed prose defects**, one case of
+  mine at fault, one framework gap. The defects: every handoff arm was
+  meant to say "invoke the skill" and four across three entry skills did
+  not — the walker found one, enumeration found the rest; and
+  `environment-check.md` opened with "information gathering only" then
+  told the entry to write and commit the setup document the processing
+  skill also writes, so whichever ran first won and the other silently
+  no-opped. Neither is visible to a unit test or the simulation, because
+  neither reads prose. The framework gap was mine and is closed (P4b):
+  the asserter saw a stub's Write as a missing agent dispatch. The
+  residual limit is P4c — display claims have no machine evidence, and
+  that is a property of the medium rather than a bug.
 
 - 2026-07-25 — First real runs, and the nested-agent shape. The framework
   executed end to end for the first time: a Sonnet walker followed

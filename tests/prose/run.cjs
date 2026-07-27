@@ -167,7 +167,13 @@ function cmdAssert(argv) {
         + '(hasTrustDialogAccepted). Do not judge this run.');
     }
   }
-  process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world, actions }));
+  const substitutions = c.stubs.length
+    ? c.stubs.map((s) => {
+      const stub = cases.readStub(s.name);
+      return `- ${s.name} — fires ${s.trigger}\n  ${stub.description.replace(/\n/g, '\n  ')}`;
+    }).join('\n')
+    : null;
+  process.stdout.write(prompts.asserterPrompt({ expected: c.assert, world, actions, substitutions }));
 }
 
 // --- snap / verify --------------------------------------------------------
