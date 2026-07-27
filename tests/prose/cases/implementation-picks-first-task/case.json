@@ -1,15 +1,16 @@
 {
-  "origin": "feature mainline \u2014 entry through resume detection to the first task",
+  "origin": "feature mainline — entry through resume detection to the first task",
   "entry": "workflow-implementation-entry",
   "files": [
     "skills/workflow-implementation-entry/SKILL.md",
     "skills/workflow-implementation-entry/references/validate-phase.md",
     "skills/workflow-implementation-entry/references/validate-dependencies.md",
     "skills/workflow-implementation-process/SKILL.md",
-    "skills/workflow-implementation-process/references/environment-setup.md"
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-entry/references/invoke-skill.md"
   ],
   "answers": [
-    "none \u2014 no special setup is needed"
+    "none — no special setup is needed"
   ],
   "invariants": {
     "engine_before_write": true,

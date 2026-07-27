@@ -1,8 +1,10 @@
 {
-  "origin": "feature mainline \u2014 the entry skill surfaces work without touching it",
+  "origin": "feature mainline — the entry skill surfaces work without touching it",
   "entry": "workflow-start",
   "files": [
-    "skills/workflow-start/SKILL.md"
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-start/references/active-work.md"
   ],
   "invariants": {
     "calls_include": [

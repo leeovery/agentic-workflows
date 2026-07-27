@@ -1,9 +1,10 @@
 {
-  "origin": "feature mainline \u2014 review refuses to start until delivery is complete",
+  "origin": "feature mainline — review refuses to start until delivery is complete",
   "entry": "workflow-review-entry",
   "files": [
     "skills/workflow-review-entry/SKILL.md",
-    "skills/workflow-review-entry/references/validate-phase.md"
+    "skills/workflow-review-entry/references/validate-phase.md",
+    "skills/workflow-review-entry/references/invoke-skill.md"
   ],
   "invariants": {
     "calls_include": [
