@@ -86,7 +86,46 @@ the state that resulted. Prefer the consequence; keep display claims for
 where the display genuinely is the behaviour under test, and expect them
 to be the weakest line in the case.
 
-**Scope `files` tightly** — selection and the PR-end suggestion run off it.
+**Scope `files` tightly** — selection and the PR-end suggestion run off
+it. It names the prose the walk actually traverses, not everything
+reachable: harvest it from a real run's scope-lint markers rather than
+following Load links (a crawl includes branches the case deliberately
+stops before), and treat it as a ratchet — walks vary between runs, so a
+later run may surface a file the first did not. The lint reports files
+*opened*; a file read only to decide a branch that was not taken is not
+walked, and stays off the list.
+
+## Playing the user
+
+The walker plays the user, two ways, declared in `case.json`:
+
+**`answers`** is a queue — one entry per question, consumed in arrival
+order at discrete gates (menus, yes/no prompts, named questions). Use it
+where each question has one right response.
+
+**`conduct`** is a description of the *person* — used where the prose
+explores open-endedly (interviews, shaping conversations) and there is no
+fixed number of turns to script. The walker answers as that person would,
+in their words, for as long as the prose keeps asking. Give them concrete
+knowledge, honest gaps ("they do not know the file names"), and
+dispositions ("takes the simplest option that adds no external
+dependencies") — a disposition can carry a menu choice, but pin any
+outcome the case depends on with an invariant rather than trusting the
+roleplay.
+
+**Never mix them when an open stretch precedes a scripted gate.** The
+queue is consumed in arrival order, so an interview before a menu eats
+the menu's answer. Prefer conduct-only in such cases.
+
+**Conduct describes the user, never the walk.** It must not name an arm,
+end a step, or hint at what the prose ought to do — that is the same
+boundary that keeps `assert.md` away from the walker. A described user
+who would happily stop talking is not permission for the walker to cut a
+loop the prose has not ended.
+
+A stub *replaces* prose, so what it covers goes untested in that case;
+conduct keeps the prose live. Where the prose can genuinely run against a
+played user, prefer conduct.
 
 ## Stubs
 

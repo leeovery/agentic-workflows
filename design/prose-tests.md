@@ -206,6 +206,21 @@ testing.
   recording and replaying one would freeze whatever the walker happened
   to do, certifying broken prose instead of catching it.
 
+- **P11 — the user is played two ways, and neither steers.** Scripted
+  `answers` cover discrete gates, one right response each, consumed in
+  arrival order. Where the prose explores open-endedly — an interview, a
+  shaping conversation — no turn count can be scripted, so `conduct`
+  describes the person instead and the walker answers as they would for
+  as long as the prose keeps asking. Conduct describes the user, never
+  the walk: it names no arm, ends no step, leaks no expectation — the
+  P4 boundary extended to roleplay — and any outcome a case depends on
+  (a menu choice carried as a disposition) is pinned by an invariant,
+  never trusted to the performance. The two modes never mix where an
+  open stretch precedes a scripted gate, because the queue is consumed
+  in arrival order and the interview would eat the menu's answer. A stub
+  replaces prose and untests it; conduct keeps prose live — where the
+  prose can genuinely run against a played user, conduct wins.
+
 - **P7 — a failing case is a finding either way.** Either the prose
   broke, or the world/design moved and the case is stale. The
   adjudication is the point; only the typo-class staleness is
@@ -253,6 +268,35 @@ testing.
    campaign into cases.
 
 ## Log
+
+- 2026-07-27 — Day two: the evidence pipeline completed, conduct built,
+  three more shipped defects fixed, and the whole programme landed. The
+  walk's closing turn was being lost to a race — the stop hook reads the
+  transcript while the runtime is still appending the final message — and
+  that turn is where closing emissions live; the payload's own copy now
+  closes the walk log. Write and Edit responses were being trimmed by a
+  read's rule, leaving claims about written artifacts unprovable; a write
+  is evidence and is kept whole. `conduct` (P11) shipped with its first
+  two cases: investigation's symptom interview, and quick-fix scoping
+  walked entry-to-conclusion — the first whole-phase case, every user
+  interaction played from a description, the format choice pinned by
+  invariant. Those two cases found defects five through seven: a guard
+  keyed on the Symptoms content that initialisation itself writes (the
+  interview never ran for discovery-shaped work), the interview re-asking
+  the carrier, and scoping's gather-context blind to the carrier's
+  Exploration half with a static question fence — the recurring pattern
+  named: a guard keyed on artifact content an earlier step writes is
+  suspect; key on session facts or engine state. The harness grew teeth
+  the same day: vacuous checks report N/A rather than PASS,
+  `calls_in_order` covers what presence cannot, the scope lint ratchets
+  `files[]` from real walks (a link-crawl over-reports; one walk
+  undersamples), the world log is gated to walker events, a confirmed
+  failure reports both runs' checks labelled (divergence is walk
+  variance, not a prose property), and the walker is told a prescribed
+  command runs as written after an escalated walk skipped two calls yet
+  converged on a passing world — caught only by `calls_include`. All
+  forty PRs squash-landed to main across three rate-limit windows, every
+  ref audited intact; the full gate holds at 135/135.
 
 - 2026-07-26 — Two findings that dissolved a long-running mystery, and
   the rules that follow from them. First: we were judging a walk by the
