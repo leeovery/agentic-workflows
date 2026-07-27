@@ -1,0 +1,12 @@
+{
+  "name": "search-relevance",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Overhaul search relevance across the catalogue",
+  "phases": {
+    "discovery": {
+      "active_session": "001"
+    }
+  }
+}
