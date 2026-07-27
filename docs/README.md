@@ -21,7 +21,7 @@ The phases in order — the journey from a rough idea to landed, reviewed code. 
 
 ## How the system holds together
 
-- [The knowledge base](knowledge-base.md) — the system's memory: what it remembers, what it deliberately forgets, how the past resurfaces, why old material fades, and how the record is corrected when it turns out to be wrong.
+- [The knowledge base](knowledge-base.md) — the system's memory: what it remembers, what it deliberately forgets, how the past resurfaces, and why old material fades.
 - [The collaboration model](collaboration.md) — why your involvement is widest at the start and narrows toward delivery, and how the approval gates work.
 - [How it stays reliable](reliability.md) — why the system does not drift, in terms of the guarantees you feel rather than the machinery beneath them.
 

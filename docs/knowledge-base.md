@@ -26,16 +26,6 @@ Left alone, the memory would grow forever and stale thinking would crowd the res
 
 Two protections sit on top of this. Specifications are exempt — validated decisions of record are never auto-pruned. And the behaviour can be dialled down or switched off entirely. The intent is a memory that keeps recent, still-relevant thinking near the surface and quietly lets the distant past recede, without ever discarding the decisions the project was built on.
 
-## When the memory turns out to be wrong
-
-Sometimes a remembered claim is later proven false — work on a bug traces it back to a specification from a finished piece of work, and the false claim is still sitting there, served at high confidence to every future search. This is the one place an untended memory is worse than none: a wrong claim wearing a validated-decision label crowds out the skepticism that would have caught it. So there is a correction path, and its shape depends on whether the work that owns the document is finished.
-
-If the owning work is still in progress, the correction is routed to it rather than made from outside — the document's own phase reopens, the fix happens at the source, and the memory refreshes itself when that phase completes again. If the wrong claim traces back to a decision rather than a factual slip, it belongs even further upstream, in that work's discussion.
-
-If the owning work is finished, the document is corrected in place — with your explicit go-ahead, never silently. The wrong text is replaced rather than merely annotated, because search ranks by what the body actually says; a dated correction note at the top records what was claimed, what is true now, and which piece of work made the correction; and the memory is refreshed in the same breath, so the next search serves the corrected text instead of the old claim. Nothing is lost — the note preserves the story, and version history preserves the original wording. A discussion gets gentler treatment: it is the record of a conversation, so when rewriting it would falsify that record, the memory can simply stop serving it and the text stays as history.
-
-And when a plan knowingly includes such a correction — a quick-fix amending the very specification that caused the bug, say — the correction steps are written into the task itself, so refreshing the memory is part of the work rather than something to remember afterwards.
-
 ## Turning it on
 
 The memory needs to be switched on once per project, and this is the single moment where you may be asked to do something by name. If it has not been set up, you will be guided to run `knowledge setup`. This step is human-only and interactive by design — it walks you through choosing how the memory should work, and if a cloud embedding service is involved it collects the API key through a private terminal prompt that never travels through the chat. The assistant genuinely cannot do this part for you.
