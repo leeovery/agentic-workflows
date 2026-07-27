@@ -233,6 +233,70 @@ describe('prose recorder — the stop event', () => {
     assert.ok(walk.indexOf('ENTERED') < walk.indexOf('Which feature?'), 'in the order they happened');
   });
 
+  it('appends the closing turn the stop race leaves out of the transcript', () => {
+    // The hook runs inside the stop sequence: the agent's last message is
+    // still being appended as it reads. That turn is where a closing
+    // emission lives, so the payload's copy stands in for it.
+    const transcript = writeTranscript([
+      { message: { model: 'claude-sonnet-5', content: [{ type: 'text', text: 'ENTERED: § Step 4' }] }, cwd: world },
+    ]);
+    fire({
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: transcript,
+      last_assistant_message: 'EMITTED (handoff block):\n  Source: .workflows/pay/discussion/pay.md',
+    });
+    const walk = fs.readFileSync(path.join(world, '.walk-transcript.log'), 'utf8');
+    assert.ok(walk.includes('ENTERED: § Step 4'), 'the transcript turns survive');
+    assert.ok(walk.includes('Source: .workflows/pay/discussion/pay.md'), 'and the closing turn arrives');
+    assert.ok(walk.indexOf('Step 4') < walk.indexOf('Source:'), 'in that order');
+  });
+
+  it('does not double-record a closing turn the transcript already caught', () => {
+    const closing = 'STOPPED: end of flow';
+    const transcript = writeTranscript([
+      { message: { model: 'x', content: [{ type: 'text', text: 'ENTERED: § Step 4' }] }, cwd: world },
+      { message: { content: [{ type: 'text', text: closing }] } },
+    ]);
+    fire({
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: transcript,
+      last_assistant_message: closing,
+    });
+    const walk = fs.readFileSync(path.join(world, '.walk-transcript.log'), 'utf8');
+    assert.equal(walk.split(closing).length - 1, 1, 'recorded once, not twice');
+  });
+
+  it('keeps a genuine repeat — a step that ran twice must stay visible', () => {
+    const twice = 'ENTERED: § Step 4';
+    const transcript = writeTranscript([
+      { message: { model: 'x', content: [{ type: 'text', text: twice }] }, cwd: world },
+      { message: { content: [{ type: 'text', text: twice }] } },
+    ]);
+    fire({
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: transcript,
+      last_assistant_message: 'STOPPED: done',
+    });
+    const walk = fs.readFileSync(path.join(world, '.walk-transcript.log'), 'utf8');
+    assert.equal(walk.split(twice).length - 1, 2, 'both occurrences survive');
+  });
+
+  it('records the closing turn whole — a final emission is evidence', () => {
+    const long = `EMITTED:\n${'x'.repeat(3000)}`;
+    fire({
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: writeTranscript([{ message: { model: 'x' }, cwd: world }]),
+      last_assistant_message: long,
+    });
+    const walk = fs.readFileSync(path.join(world, '.walk-transcript.log'), 'utf8');
+    assert.ok(!walk.includes('[truncated]'), 'the walk log caps nothing');
+    assert.ok(walk.includes('x'.repeat(3000)));
+  });
+
   it('writes no walk file when the transcript holds no turns', () => {
     fire({
       hook_event_name: 'SubagentStop',

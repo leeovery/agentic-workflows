@@ -42,12 +42,16 @@ const LOG = '.walk-actions.log';
 const WALK = '.walk-transcript.log';
 const VIOLATIONS = 'tests/prose/.agent-tool-use.log';
 const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
+// These caps exist to protect the asserter's prompt, never to save disk —
+// every recorded action is read into it, and a walk makes twenty-odd file
+// reads whose bodies are whole skill files. They apply only where the
+// content is incidental. A file a walker read back is incidental: no claim
+// ever rests on those bytes. A command's output is not — it settles what
+// the prose was shown, whether a gate rendered empty, whether a menu had
+// entries — so it gets a ceiling generous enough that real evidence is
+// never trimmed, bounding only a runaway that would swamp the prompt.
 const MAX_OUTPUT = 400;
-// A command's output is the evidence that settles what the prose was
-// shown — whether a gate rendered empty, whether a menu had entries. It
-// gets the room a whole rendered section needs; a file read does not,
-// since no claim turns on the bytes a walker read back.
-const MAX_COMMAND_OUTPUT = 2000;
+const MAX_COMMAND_OUTPUT = 10000;
 
 function read() {
   try {
@@ -136,13 +140,30 @@ function fromTranscript(transcriptPath) {
  * already; this lifts them into the world beside the action log, where
  * the judging is done. Nothing is asked of the walker, which is what
  * makes it dependable.
+ *
+ * The final turn comes from the payload rather than the transcript. This
+ * hook runs inside the stop sequence, not after it, and the last thing
+ * the agent said is still being appended to the transcript as we read it
+ * — verified: the same extraction over the settled file returns the turn
+ * this misses. That turn is where a flow's closing emission lives, a
+ * handoff block among them, so losing it costs exactly the evidence a
+ * final claim rests on. `last_assistant_message` is the runtime handing
+ * it over directly, at the one moment it is not yet on disk.
+ *
+ * It is appended only when it is not already the closing turn — the race
+ * does not always fire. That is not deduplication: two identical turns
+ * genuinely in the transcript still both appear, because a step that ran
+ * twice is something the asserter must see.
  */
-function writeWalk(world, turns) {
-  if (!turns || !turns.length) return;
+function writeWalk(world, turns, closing) {
+  const all = turns ? turns.slice() : [];
+  const tail = (closing || '').trim();
+  if (tail && all[all.length - 1] !== tail) all.push(tail);
+  if (!all.length) return;
   try {
     fs.writeFileSync(
       path.join(world, WALK),
-      `${turns.join('\n\n---\n\n').split(world).join('.')}\n`,
+      `${all.join('\n\n---\n\n').split(world).join('.')}\n`,
     );
   } catch { /* a hook must never break what it observes */ }
 }
@@ -203,7 +224,7 @@ function main() {
     );
   } else if (stop) {
     parts.push(flatten(payload.last_assistant_message, MAX_OUTPUT).split(world).join('.'));
-    writeWalk(world, traced.turns);
+    writeWalk(world, traced.turns, payload.last_assistant_message);
   }
 
   try {
