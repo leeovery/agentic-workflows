@@ -56,6 +56,12 @@ any harness substitutions. Follow it exactly.
 - Follow the prose literally, step by step, arm by arm. Where it names an
   engine or knowledge call, run it from the project directory and use the
   real response to decide which arm applies. Never predict a response.
+- **Run each prescribed command as written — one call per fence.** Never
+  batch adjacent commands into one invocation, merge them, reorder them,
+  or substitute an equivalent that lands the same state. A walk that
+  reaches the right end by different calls has not tested the calls the
+  prose prescribes, and the record it leaves says the prose does
+  something it does not.
 - You also play the user. Where the payload gives scripted answers,
   consume the next one in order as each menu or question arrives. Where
   it instead describes how the user behaves, the prose has no fixed
