@@ -22,7 +22,7 @@ function setup() {
   return dir;
 }
 function teardown(dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 function runMigration(dir) {
   MIGRATION.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });

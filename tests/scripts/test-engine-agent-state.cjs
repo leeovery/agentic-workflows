@@ -228,7 +228,7 @@ describe('engine agent — lifecycle store', () => {
   it('deleting the topic cache dir is a complete cleanse — state is colocated', () => {
     runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'review']);
-    fs.rmSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha'), { recursive: true, force: true });
+    fs.rmSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).in_flight, [],
       'the restart rm -rf removes rows with the content');
     assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'beta']).in_flight.map((r) => r.id), ['review-001'],

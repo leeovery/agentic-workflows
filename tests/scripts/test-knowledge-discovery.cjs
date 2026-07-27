@@ -178,7 +178,7 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
 
   after(() => {
     process.chdir(cwd0);
-    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('discovers exactly the expected identity + target set', () => {

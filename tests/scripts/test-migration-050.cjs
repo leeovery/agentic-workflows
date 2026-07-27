@@ -44,7 +44,7 @@ describe('migration 050: purge closed work-unit caches', () => {
     updates = 0;
     skips = 0;
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
   it('purges completed and cancelled caches, keeps in-progress, one update per purged unit', () => {
     unit('done-feature', 'completed'); cache('done-feature');

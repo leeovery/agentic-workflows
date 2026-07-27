@@ -20,7 +20,7 @@ function setup() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'migration-047-'));
 }
 function teardown(dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 function runMigration(dir) {
   let updates = 0;

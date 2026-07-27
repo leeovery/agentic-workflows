@@ -175,7 +175,7 @@ const ABSORB = ['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topi
 
 describe('engine workunit absorb — happy path', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', () => {
     fix = setupFixture();
@@ -305,7 +305,7 @@ describe('engine workunit absorb — happy path', () => {
 
 describe('engine workunit absorb — guards refuse loudly, both work units pristine', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** Assert the refusal leaves every `.workflows/` byte identical, no commit. */
   function refusedPristine(args, pattern) {
@@ -335,7 +335,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     const feature = featureManifest({ phases: { research: { items: { exploration: { status: 'completed' } } } } });
     fix = setupFixture({ feature });
     refusedPristine(ABSORB, /has no discussion — absorb moves the discussion in/);
-    fs.rmSync(fix.root, { recursive: true, force: true });
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     fix = setupFixture();
     fs.rmSync(path.join(fix.project, '.workflows/auth-flow/discussion/auth-flow.md'));
@@ -349,7 +349,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     withSpec.phases.specification = { items: { 'auth-flow': { status: 'in-progress' } } };
     fix = setupFixture({ feature: withSpec });
     refusedPristine(ABSORB, /has specification work — absorb is only for features before specification/);
-    fs.rmSync(fix.root, { recursive: true, force: true });
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     const withPlan = featureManifest();
     withPlan.phases.planning = { items: {} };

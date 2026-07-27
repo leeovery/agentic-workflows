@@ -146,7 +146,7 @@ function snapshot(fix) {
 
 describe('engine workunit pivot — happy path', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('flips work_type in BOTH manifests, registers the backfill map item, re-indexes, commits', () => {
     fix = setupFixture();
@@ -233,7 +233,7 @@ describe('engine workunit pivot — happy path', () => {
 
 describe('engine workunit pivot — guards refuse loudly, nothing touched', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('refuses a non-feature work unit', () => {
     fix = setupFixture(featureManifest({ work_type: 'epic' }));

@@ -85,7 +85,7 @@ function sleep(ms) {
 describe('manifest-io — shared lock constants and IO contract', () => {
   let dir;
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-io-')); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('carries the shared lock discipline: 30s stale, 50ms retry, 10s timeout, 60s tmp orphan', () => {
     assert.strictEqual(io.LOCK_STALE_MS, 30000);
@@ -205,7 +205,7 @@ describe('stale-lock break is atomic — one winner, mutual exclusion holds', ()
   const IO_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
   let dir;
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lock-break-')); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** Spawn a node child running `script` with argv, resolving with its exit code. */
   function child(script, args) {
@@ -289,7 +289,7 @@ describe('structurally corrupt manifests refuse writes', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-root-'));
     fs.mkdirSync(path.join(dir, '.workflows/unit'), { recursive: true });
   });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** Run the engine expecting `{ok:false}` exit 1; returns the parsed stderr JSON. */
   function engineFail(args) {
@@ -376,7 +376,7 @@ describe('structurally corrupt manifests refuse writes', () => {
 describe('engine writes take the work-unit lock', () => {
   let dir;
   beforeEach(() => { dir = setupGitFixture(); writeEpicFixture(dir); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('a stale .lock is broken per the constants: the write proceeds, the lock is cleaned up', () => {
     const lock = path.join(dir, '.workflows/payments/.lock');
@@ -436,7 +436,7 @@ describe('engine project-manifest writes take the project lock', () => {
     git(dir, ['add', '-A']);
     git(dir, ['commit', '-q', '-m', 'init']);
   });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('a stale .project-lock is broken: create registers and cleans up', () => {
     const lock = path.join(dir, '.workflows/.project-lock');

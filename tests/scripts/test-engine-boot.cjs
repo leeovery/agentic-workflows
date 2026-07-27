@@ -153,7 +153,7 @@ function knowledgeCalls(project) {
 describe('engine boot', () => {
   let fix;
   beforeEach(() => { fix = setupSkillsFixture(); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('happy path: no pending migrations, knowledge ready — compact runs', () => {
     const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
@@ -297,7 +297,7 @@ describe('engine boot system-config detection', () => {
     home = path.join(fix.root, 'home');
     fs.mkdirSync(home, { recursive: true });
   });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   function writeSystemConfig(content) {
     writeFile(home, '.config/workflows/config.json', content);
@@ -368,7 +368,7 @@ describe('engine boot (real scripts)', () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-real-'));
     project = setupProject(root);
   });
-  afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('runs the real migrate.cjs and knowledge CLI against an isolated project', async () => {
     const first = runEngine(REAL_ENGINE, project, ['boot']);
@@ -418,7 +418,7 @@ describe('engine commit --workflows', () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-commit-'));
     project = setupProject(root);
   });
-  afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('stages the whole .workflows tree — many work units plus .state — and commits', () => {
     writeFile(project, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');

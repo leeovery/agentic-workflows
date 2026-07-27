@@ -76,7 +76,7 @@ function readWorkUnit(dir, name) {
 describe('engine manifest — reads keep the CLI stdout contract', () => {
   let dir;
   beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('get: scalar raw, subtree pretty JSON, missing path empty exit 0', () => {
     writeWorkUnit(dir, 'auth', 'feature');
@@ -164,7 +164,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
 describe('engine manifest — mutations answer with the engine JSON contract', () => {
   let dir;
   beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('set: one-line JSON listing what was written', () => {
     writeWorkUnit(dir, 'auth', 'feature');
@@ -323,7 +323,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
 describe('engine manifest — the batched set holds the work-unit lock', () => {
   let dir;
   beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -367,7 +367,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
       },
     });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
   function payload(ops) {
     const p = path.join(dir, 'ops.json');
@@ -443,7 +443,7 @@ describe('engine manifest set — two grammars, never mixed', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-grammar-'));
     writeWorkUnit(dir, 'auth', 'feature');
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
   it('uniform batch: every pair assigned, first pair included', () => {
     const res = runJson(dir, ['set', 'auth', 'status=completed', 'note=hello']);
@@ -481,7 +481,7 @@ describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
       discovery: { items: {} },
     } });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
   it('staging task decisions take only the gate vocabulary', () => {
     runJson(dir, ['set', 'pay.review.pay', 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
@@ -536,7 +536,7 @@ describe('work-unit-level fields never shadow the phases tree', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shadow-guard-'));
     writeWorkUnit(dir, 'pay', 'feature');
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
   it('set refuses a phase-name-headed field in both grammars', () => {
     const err = runFails(dir, ['set', 'pay', 'specification.foo', 'bar']);
@@ -582,7 +582,7 @@ describe('storage_paths is guarded at write time — set and apply', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storage-paths-'));
     writeWorkUnit(dir, 'pay', 'feature', { phases: { planning: { items: { pay: { status: 'in-progress' } } } } });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
   it('set refuses traversal, absolute, dot, and non-array values; a legal array lands', () => {
     for (const bad of ['\'["../evil"]\'', '\'["/abs"]\'', '\'["."]\'', '\'[""]\'', '"nope"']) {

@@ -537,7 +537,7 @@ describe('knowledge store — persistence and locking', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('saves the store to disk as a non-empty file', async () => {
@@ -678,7 +678,7 @@ describe('knowledge store — metadata', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('writes metadata.json with all 5 fields', () => {

@@ -153,7 +153,7 @@ const CLOSE = ['discovery-session', 'close', 'payments', '-m', 'discovery(paymen
 
 describe('engine discovery-session close — happy path', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('clears the marker, indexes the closed log, and commits the session dirt with the caller message', () => {
     fix = setupFixture();
@@ -225,7 +225,7 @@ describe('engine discovery-session close — happy path', () => {
 
 describe('engine discovery-session close — guards refuse loudly, everything pristine', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** Assert the refusal leaves every `.workflows/` byte identical, no commit, no KB call. */
   function refusedPristine(args, pattern) {
@@ -279,7 +279,7 @@ function closedEpicManifest() {
 
 describe('engine discovery-session open — happy path', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('allocates past the highest on-disk log, moves the draft into place, sets the marker, and does NOT commit', () => {
     fix = setupFixture({ epic: closedEpicManifest() });
@@ -356,7 +356,7 @@ describe('engine discovery-session open — happy path', () => {
 
 describe('engine discovery-session open — guards refuse loudly, everything pristine', () => {
   let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** Assert the refusal leaves every `.workflows/` byte identical (the draft included), no commit, no KB call. */
   function refusedPristine(args, pattern) {
