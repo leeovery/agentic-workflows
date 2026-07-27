@@ -14,10 +14,6 @@
 - **Tentative grouping.** Mirror a surface boundary back so the user can confirm or correct it. *"Sounds like the offline-mode bits all live together — agree?"* — a surface boundary, not a topic.
 - **Coarseness check.** When a pile of small operational items lands, note that most will get absorbed into bigger topics later. *"That's a lot of small operational things — most will fall out inside bigger topics; leave them off for now?"*
 
-→ Load **[topic-granularity.md](../../workflow-shared/references/topic-granularity.md)** and follow its instructions as written. The rules apply at the harvest, not during exploration — but having them in context helps you avoid pre-emptively splitting things you don't yet need to.
-
-→ Load **[routing-inference.md](routing-inference.md)** and follow its instructions as written. Routing is proposed at the harvest based on cues from how each surface was framed.
-
 ## B. The Exploration Stance — How
 
 Deep discovery is substantive: you explore the whole shape **and** work through the decisions that shape forces — breadth and depth together. The register is **collaborative challenge** — opinionated, willing to disagree, ready to counter-frame and propose alternatives. Two senior engineers throwing an idea around: not an interviewer running a checklist, not a lecturer delivering a monologue.
