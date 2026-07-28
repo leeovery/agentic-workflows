@@ -165,8 +165,11 @@ This section runs once per invocation and then exits. It never waits in-protocol
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}
    ```
-3. Digest the finding from the content file. Do NOT read it out verbatim. Reframe it as one concrete concern tied to the current context, phrased as a single question.
-4. Raise it in the current turn. One question, no lists, no bundled follow-ups, no menu.
+3. Digest the finding from the content file — never read it out — and compose the raise as conversational prose in three beats:
+   - **Present** — orientation before any assessment. Say where it came from (the background {agent_type}) and what it observed — for a synthesis, the two positions in tension — in plain, self-contained terms a user returning after hours can follow. Restate any term borrowed from another subtopic or an earlier decision; never reference it bare. Depth follows the conversation: a clause when the finding set was visible moments ago, full orientation when the conversation has moved on since it was last visible. When earlier findings from this set have been raised, open with a one-line bridge: what the previous one settled — or simply that it was raised, when that engagement predates this session — and how many follow this one (the surface response's `remaining`; `findings` is the full set).
+   - **Position** — your read, only where you genuinely have one: verified it holds, narrower than framed, already covered by a decision made since the report. Skip the beat rather than manufacture a verdict.
+   - **Move** — sized to how settled the finding is: a clear resolution — propose it; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
+4. Raise it in the current turn, ending in a single question. One finding, one question, no bundled follow-ups, no menu.
 
 After this, control belongs to the conversation. The user will engage (or deflect, or redirect) naturally. Handle their response as normal discussion — not as protocol-driven routing.
 
@@ -178,9 +181,9 @@ After this, control belongs to the conversation. The user will engage (or deflec
 
 Before producing any surfacing output, verify:
 
-- □ Raising AT MOST one finding this turn
+- □ Raising AT MOST one finding this turn — the rest of the set appears as a count, never as content
 - □ Asking AT MOST one question this turn
-- □ No bulleted list of gaps
+- □ The finding itself is stated, self-contained, before any position or proposal
 - □ Not reading the content file verbatim
 
 If any box is unchecked, stop and reframe.

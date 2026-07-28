@@ -1,0 +1,30 @@
+{
+  "name": "pay",
+  "work_type": "feature",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Accept card payments at checkout",
+  "phases": {
+    "discussion": {
+      "items": {
+        "pay": {
+          "status": "in-progress",
+          "subtopics": {
+            "capture-confirmation": {
+              "status": "decided",
+              "parent": null
+            },
+            "failed-payment-retries": {
+              "status": "pending",
+              "parent": null
+            },
+            "card-data-handling": {
+              "status": "pending",
+              "parent": null
+            }
+          }
+        }
+      }
+    }
+  }
+}
