@@ -1,0 +1,65 @@
+{
+  "origin": "the topic-curation stretch had no coverage — an interrupted first sketch resumed from the dashboard, explored to convergence, and harvested into map items",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-discovery/SKILL.md",
+    "skills/workflow-discovery/references/resume-detection.md",
+    "skills/workflow-discovery/references/initialize-discovery.md",
+    "skills/workflow-discovery/references/discovery-guidelines.md",
+    "skills/workflow-discovery/references/session-loop.md",
+    "skills/workflow-discovery/references/continuity-load.md",
+    "skills/workflow-discovery/references/harvest-nudge.md",
+    "skills/workflow-discovery/references/topic-synthesis.md",
+    "skills/workflow-shared/references/topic-granularity.md",
+    "skills/workflow-discovery/references/routing-inference.md",
+    "skills/workflow-discovery/references/brief-synthesis.md",
+    "skills/workflow-discovery/references/template.md",
+    "skills/workflow-discovery/references/document-review.md",
+    "skills/workflow-discovery/references/confirm-and-persist.md"
+  ],
+  "answers": [
+    "1 — continue the search relevance epic",
+    "i — resume the in-progress discovery session",
+    "c — pick up where we left off"
+  ],
+  "conduct": "The user is coming back to an epic they shaped recently: overhauling search relevance across the catalogue. They have three distinct concerns they want worked through, and they raise them one at a time as the conversation gives them room. First, ranking barely uses behavioural signals — click and purchase events land in the events pipeline but nothing feeds them back into the ranker, and they want that loop closed. Second, synonyms and misspellings are handled by a hand-maintained list nobody trusts — they suspect it should be replaced rather than cleaned up, but they do not know what with. Third, there is no way to tell whether a relevance change makes results better or worse — no evaluation set, no metrics, every tweak decided by argument. They answer questions concretely from what they know: the events pipeline exists and is reliable, the search stack is Elasticsearch, two engineers own search part-time. They say plainly when they do not know something — they have never built an evaluation harness and do not know what a good one looks like, and they hold that the measurement problem is the one they understand least. Once the conversation has given them a working position on each of the three and nothing new is coming up, they are satisfied, say the ground is covered, and ask to pull the topics together and save them. Presented with a proposal, they accept it when it reflects what was discussed and correct it when it does not.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-epic/scripts/gateway.cjs",
+      "workflow-legacy-research-split/scripts/detect.cjs search-relevance",
+      "manifest get search-relevance.discovery active_session",
+      "render resume-gate search-relevance --variant session",
+      "workflow-discovery/scripts/gateway.cjs search-relevance",
+      "map-view search-relevance --proposed-file",
+      "discovery-map add-batch search-relevance",
+      "discovery-session close search-relevance"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-continue-epic/scripts/gateway.cjs",
+      "manifest get search-relevance.discovery active_session",
+      "workflow-discovery/scripts/gateway.cjs search-relevance",
+      "map-view search-relevance --proposed-file",
+      "discovery-map add-batch search-relevance",
+      "discovery-session close search-relevance"
+    ],
+    "calls_exclude": [
+      "topic start",
+      "workunit create",
+      "discovery-session open",
+      "restart interrupted session",
+      "knowledge.cjs index"
+    ]
+  }
+}
