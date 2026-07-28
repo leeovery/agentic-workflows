@@ -1,0 +1,72 @@
+{
+  "origin": "planning had entry coverage only — this walks initialisation and construction to the first approved task list: format choice recorded as the project default, phase structure designed and approved, tasks designed and approved, authoring never started",
+  "entry": "workflow-planning-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-planning-entry/references/validate-spec.md",
+    "skills/workflow-planning-entry/references/validate-phase.md",
+    "skills/workflow-planning-entry/references/cross-cutting-context.md",
+    "skills/workflow-planning-entry/references/invoke-skill.md",
+    "skills/workflow-planning-process/SKILL.md",
+    "skills/workflow-planning-process/references/initialize-plan.md",
+    "skills/workflow-planning-process/references/output-formats.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-planning-process/references/session-setup.md",
+    "skills/workflow-planning-process/references/planning-principles.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-planning-process/references/verify-source-material.md",
+    "skills/workflow-planning-process/references/plan-construction.md",
+    "skills/workflow-planning-process/references/define-phases.md",
+    "skills/workflow-planning-process/references/define-tasks.md"
+  ],
+  "answers": [
+    "c — continue with the specification as-is",
+    "2 — local markdown, no external tools",
+    "y — the phase structure matches the spec",
+    "y — the task list is right"
+  ],
+  "stubs": {
+    "plan-phases-designed": "when the prose invokes the phase-designer agent — the agent returns the content below for the prose to write into the planning file",
+    "plan-tasks-designed-p1": "when the prose invokes the task-designer agent for Phase 1 — the agent returns the content below for the prose to write under the phase"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "manifest list --work-type cross-cutting",
+      "knowledge.cjs query",
+      "--work-type cross-cutting --phase specification",
+      "manifest get project.defaults.plan_format",
+      "topic start pay planning pay",
+      "format=local-markdown",
+      "manifest set project.defaults.plan_format local-markdown",
+      "planning(pay): initialize plan",
+      "planning(pay): draft phase structure",
+      "render phase-tree pay.planning.pay",
+      "approvals.structure",
+      "render task-list pay.planning.pay",
+      "approvals.tasks.p1"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "knowledge.cjs query",
+      "manifest get project.defaults.plan_format",
+      "topic start pay planning pay",
+      "planning(pay): draft phase structure",
+      "approvals.structure",
+      "approvals.tasks.p1"
+    ],
+    "calls_exclude": [
+      "task init",
+      "task start",
+      "staging.author",
+      "topic complete",
+      "topic reopen",
+      "knowledge.cjs index"
+    ]
+  }
+}
