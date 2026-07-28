@@ -151,7 +151,7 @@ Run the map call:
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Its DATA section carries `all_decided` and `unresolved`. The DISPLAY section is emitted only where a branch below says so.
+Its DATA section carries `all_decided` and `unresolved`; while undecided subtopics remain the snapshot also carries a `MENU: defer gate` section. Rendered sections are emitted only where a branch below says so.
 
 #### If `all_decided` is true
 
@@ -167,18 +167,7 @@ Load **[closing-gates.md](closing-gates.md)** and follow its instructions as wri
 
 #### If `all_decided` is false and the user signalled conclusion
 
-Emit the map call's DISPLAY section verbatim as a code block, then ({N} = the length of `unresolved`):
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-There are still {N} subtopics not yet decided — shown on the map above.
-
-- **`y`/`yes`** — Defer them and move toward concluding
-- **`n`/`no`** — Continue discussing
-· · · · · · · · · · · ·
-```
+Emit the map call's DISPLAY section, then its `MENU: defer gate` section — each verbatim per its marker.
 
 **STOP.** Wait for user response.
 

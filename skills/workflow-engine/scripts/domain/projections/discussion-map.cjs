@@ -14,6 +14,7 @@
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, discussionGlyph } = require('../conventions.cjs');
 const { mapState, subtopicsOf } = require('../discussion-map.cjs');
+const { section, dotFrame, cmdOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
 /** @typedef {import('../discussion-map.cjs').SubtopicCounts} SubtopicCounts */
@@ -85,4 +86,27 @@ function discussionMap(topic, manifest) {
   return header + '\n' + renderTree(top.sort(byRank).map((t) => t.node), { width: TREE_WIDTH });
 }
 
-module.exports = { discussionMap };
+/**
+ * The defer gate — the map snapshot appends it while undecided subtopics
+ * remain; the concluding flow is the only prescribed emission point. The
+ * undecided subtopics themselves are on the DISPLAY map above the menu.
+ * @param {number} unresolvedCount  length of mapState().unresolved, > 0
+ * @returns {string} one labelled MENU section
+ */
+function discussionDeferGate(unresolvedCount) {
+  const one = unresolvedCount === 1;
+  return section(
+    'MENU: defer gate',
+    "emit verbatim as markdown only at the concluding step, then STOP for the user's response",
+    dotFrame([
+      one
+        ? 'There is still 1 subtopic not yet decided — shown on the map above.'
+        : `There are still ${unresolvedCount} subtopics not yet decided — shown on the map above.`,
+      '',
+      cmdOption('y', 'yes', one ? 'Defer it and move toward concluding' : 'Defer them and move toward concluding'),
+      cmdOption('n', 'no', 'Continue discussing'),
+    ]),
+  );
+}
+
+module.exports = { discussionMap, discussionDeferGate };

@@ -426,7 +426,29 @@ describe('discussion adapter: map verb', () => {
       '  ├─ ✓ Session Storage [decided]',
       '  └─ ◐ Token Refresh [exploring]',
       '',
+      "=== MENU: defer gate (emit verbatim as markdown only at the concluding step, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      'There is still 1 subtopic not yet decided — shown on the map above.',
+      '',
+      '- **`y`/`yes`** — Defer it and move toward concluding',
+      '- **`n`/`no`** — Continue discussing',
+      '· · · · · · · · · · · ·',
+      '',
     ].join('\n'));
+  });
+
+  it('defer gate pluralises and is absent once every subtopic is settled', () => {
+    createManifest(dir, 'auth', manifestWith({
+      a: { status: 'pending', parent: null },
+      b: { status: 'exploring', parent: null },
+    }));
+    const plural = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
+    assert.match(plural, /There are still 2 subtopics not yet decided — shown on the map above\./);
+    assert.match(plural, /Defer them and move toward concluding/);
+
+    execFileSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'b=deferred'], { cwd: dir, encoding: 'utf8' });
+    const settled = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
+    assert.ok(!settled.includes('MENU: defer gate'), 'no defer gate once all subtopics are settled');
   });
 
   it('review_cycles is 0 when the cache directory does not exist', () => {
