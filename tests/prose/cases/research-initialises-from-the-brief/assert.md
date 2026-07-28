@@ -10,8 +10,10 @@ The prose should have taken this path:
    rather than direct-start, and reads the discovery brief in full as
    the starting context — recording the read on the map item without a
    commit; the gather-context interview never runs
-5. the handoff is constructed with the map item's description appended,
-   and the processing skill's instructions are followed
+5. the handoff is constructed on the carrier-seeded shape — the work
+   type named, the map item's description appended, and no
+   interview-shaped context fields — and the processing skill's
+   instructions are followed
 6. the process re-reads the research status and finds no research file
    — a fresh start, no resume choice
 7. initialisation reads the work's seed and no-ops — an epic's seed
