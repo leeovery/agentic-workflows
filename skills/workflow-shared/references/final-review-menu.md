@@ -92,8 +92,11 @@ Apply the raise-one-finding step inline this turn (do not re-prompt):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}
    ```
-3. Reframe the finding as one concrete concern tied to the current context, phrased as a single question. Do not read it out verbatim.
-4. Raise it in the current turn. One question, no lists, no bundled follow-ups, no menu.
+3. Digest the finding from the content file — never read it out — and compose the raise as conversational prose in three beats:
+   - **Present** — orientation before any assessment. Say where it came from (the background review) and what it observed in plain, self-contained terms a user returning after hours can follow. Restate any term borrowed from another subtopic or an earlier decision; never reference it bare. Depth follows the conversation: a clause when the finding set was visible moments ago, full orientation when the conversation has moved on since it was last visible. When earlier findings from this set have been raised, open with a one-line bridge: what the previous one settled — or simply that it was raised, when that engagement predates this session.
+   - **Position** — your read, only where you genuinely have one: verified it holds, narrower than framed, already covered by a decision made since the report. Skip the beat rather than manufacture a verdict.
+   - **Move** — sized to how settled the finding is: a clear resolution — propose it; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
+4. Raise it in the current turn, ending in a single question. One finding, one question, no bundled follow-ups, no menu.
 
 → Return to caller.
 
@@ -111,9 +114,9 @@ The declined ids stay recorded unsurfaced, and the content file is preserved on 
 
 Before producing any surfacing output, verify:
 
-- □ Raising AT MOST one finding this turn
+- □ Raising AT MOST one finding this turn — the rest of the set appears as a count, never as content
 - □ Asking AT MOST one question this turn
-- □ No bulleted list of gaps
+- □ The finding itself is stated, self-contained, before any position or proposal
 - □ Not reading the content file verbatim
 
 If any box is unchecked, stop and reframe.
