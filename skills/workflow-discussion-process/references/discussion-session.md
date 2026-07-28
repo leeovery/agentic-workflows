@@ -158,7 +158,7 @@ Its DATA section carries `all_decided` and `unresolved`; while undecided subtopi
 > *Output the next fenced block as a code block:*
 
 ```
-All subtopics on the Discussion Map are decided.
+Every subtopic on the Discussion Map is settled — decided or deferred.
 ```
 
 Load **[closing-gates.md](closing-gates.md)** and follow its instructions as written.
