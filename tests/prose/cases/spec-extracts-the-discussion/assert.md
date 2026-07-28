@@ -22,10 +22,12 @@ The prose should have taken this path:
 6. when the discussion's relevant content is exhausted, its source row
    flips to incorporated
 7. review cycle 1 initialises through the engine; the input-review
-   agent is dispatched first and returns clean through the harness stub
-   — no tracking file exists, so the no-findings result is announced —
-   and only then is gap analysis dispatched, with the same clean
-   return; the two are never dispatched in parallel
+   agent is dispatched first — against the discussion file as its
+   source material, never against the specification itself — and
+   returns clean through the harness stub, with no tracking file, so
+   the no-findings result is announced; only then is gap analysis
+   dispatched, with the same clean return; the two are never dispatched
+   in parallel
 8. with both phases clean the review completes — no findings menus, no
    second cycle — and the review state commits
 9. the compliance self-check re-reads the session's instructions;

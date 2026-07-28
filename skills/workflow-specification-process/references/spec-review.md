@@ -98,7 +98,7 @@ Dispatch the `workflow-specification-review-input` agent via the Task tool:
   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
   ```
   Sources returns an object keyed by source name (e.g., `{"auth-design": {"status": "incorporated"}}`). Resolve each source name to its artifact — sources can be incorporated specifications or research files, not only discussions:
-  - If a specification item named `{source-name}` exists in the manifest (an incorporated source spec): `.workflows/{work_unit}/specification/{source-name}/specification.md`
+  - If `{source-name}` is not `{topic}` and a specification item named `{source-name}` exists in the manifest (an incorporated source spec): `.workflows/{work_unit}/specification/{source-name}/specification.md` — the item sharing this topic's name is the spec under construction, never a source
   - Else if `.workflows/{work_unit}/research/{source-name}.md` exists: that research file
   - Else, when work type is `bugfix`: `.workflows/{work_unit}/investigation/{source-name}.md`
   - Else: `.workflows/{work_unit}/discussion/{source-name}.md`
