@@ -56,6 +56,13 @@ const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
 // of that content lived in the response being cut.
 const MAX_OUTPUT = 400;
 const MAX_PRODUCED_OUTPUT = 10000;
+// The detail column is the substrate the deterministic checks match
+// against — a call that ran must be findable in it. It is truncated only
+// after the world path collapses to `.`, and generously: a cap that bit
+// into real commands made four includes report never-ran on calls the
+// walk performed (the world prefix ate the budget and the field name
+// fell off the end).
+const MAX_DETAIL = 600;
 const WRITE_RESPONSE_TOOLS = new Set(['Bash', 'Write', 'Edit', 'NotebookEdit']);
 
 function read() {
@@ -73,11 +80,10 @@ function flatten(value, limit) {
   return oneLine.length > limit ? `${oneLine.slice(0, limit)}…[truncated]` : oneLine;
 }
 
-/** The salient argument, per tool — what a claim will be about. */
+/** The salient argument, per tool, untruncated — callers flatten it. */
 function summarise(input) {
   if (!input || typeof input !== 'object') return '';
-  const raw = input.command || input.file_path || input.pattern || input.path || '';
-  return flatten(raw, 200);
+  return input.command || input.file_path || input.pattern || input.path || '';
 }
 
 /**
@@ -191,7 +197,7 @@ function main() {
         const file = path.join(projectDir, VIOLATIONS);
         fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.appendFileSync(file,
-          `${agent}\t${event}\t${tool}\t${summarise(payload.tool_input)}\n`);
+          `${agent}\t${event}\t${tool}\t${flatten(summarise(payload.tool_input), MAX_DETAIL)}\n`);
       } catch { /* a hook must never break what it observes */ }
     }
     return;
@@ -217,7 +223,7 @@ function main() {
     tool,
     stop
       ? traced.model || 'model-unknown'
-      : summarise(payload.tool_input).split(world).join('.'),
+      : flatten(summarise(payload.tool_input).split(world).join('.'), MAX_DETAIL),
   ];
 
   if (event === 'PostToolUse') {

@@ -63,6 +63,24 @@ describe('prose recorder — tool events', () => {
     assert.match(row, /^PreToolUse\tBash\t/);
   });
 
+  it('keeps a long command whole once the world path collapses — the checks match against it', () => {
+    // Measured failure mode: the world prefix ate the truncation budget
+    // and the trailing field name fell off, so calls_include reported
+    // never-ran on a call the walk performed.
+    const command = `cd ${world} && node .claude/skills/workflow-engine/scripts/engine.cjs `
+      + 'manifest set search-relevance.discovery.relevance-measurement brief_incorporated true';
+    fire({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      agent_type: 'prose-walker',
+      tool_input: { command },
+    });
+    const [row] = logLines();
+    const detail = row.split('\t')[2];
+    assert.ok(detail.includes('brief_incorporated true'), 'the field and value survive');
+    assert.ok(!detail.includes('…[truncated]'), 'nothing was cut');
+  });
+
   it('records a command output, so a claim about it can be checked', () => {
     fire({
       hook_event_name: 'PostToolUse',
