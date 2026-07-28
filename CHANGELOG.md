@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.14] - 2026-07-28
+
+🔧 Changed
+- Discussion and research session handoffs now carry the work type through, so off-topic concerns reroute between topics on epics but log or pivot on single-topic work instead.
+- Research entry now clearly separates the interview-gathered and carrier-seeded (brief/seed) context paths when priming a new session, so the Starting Point section fills correctly either way.
+
 ## [0.6.13] - 2026-07-28
 
 ✨ Added
