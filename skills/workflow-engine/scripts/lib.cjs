@@ -105,6 +105,7 @@ module.exports = {
     discoveryMapView: discoveryProjections.discoveryMapView,
     discoverySynthesisView: discoveryProjections.discoverySynthesisView,
     discussionMap: discussionProjections.discussionMap,
+    discussionDeferGate: discussionProjections.discussionDeferGate,
     startOverview: startProjections.startOverview,
     startMenu: startProjections.startMenu,
     emptyOverview: startProjections.emptyOverview,

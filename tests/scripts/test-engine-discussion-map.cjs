@@ -329,6 +329,52 @@ describe('engine CLI: discussion-map round-trip', () => {
     });
   });
 
+  it('set batch: uniform pairs land in one write, decision-ready JSON once', () => {
+    createManifest(dir, 'auth', manifestWith({
+      a: { status: 'exploring', parent: null },
+      b: { status: 'pending', parent: null },
+      c: { status: 'decided', parent: null },
+    }));
+
+    assert.deepStrictEqual(engineDiscussionMap(['set', 'auth', 'auth-flow', 'a=decided', 'b=deferred']), {
+      ok: true, set: { a: 'decided', b: 'deferred' }, all_decided: true, unresolved_count: 0,
+    });
+
+    const saved = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'));
+    assert.deepStrictEqual(saved.phases.discussion.items['auth-flow'].subtopics, {
+      a: { status: 'decided', parent: null },
+      b: { status: 'deferred', parent: null },
+      c: { status: 'decided', parent: null },
+    });
+  });
+
+  it('set batch is atomic — a failing entry means nothing was written', () => {
+    createManifest(dir, 'auth', manifestWith({
+      a: { status: 'exploring', parent: null },
+    }));
+    const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
+
+    const ghost = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'ghost=deferred'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(ghost.status, 1);
+    assert.match(JSON.parse(ghost.stderr.trim()).error, /subtopic "ghost" not found/);
+
+    const badState = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a=done'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(badState.status, 1);
+    assert.match(JSON.parse(badState.stderr.trim()).error, /unknown subtopic state "done"/);
+
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'), before);
+  });
+
+  it('set refuses mixing the positional and batch forms', () => {
+    createManifest(dir, 'auth', manifestWith({
+      a: { status: 'pending', parent: null },
+      b: { status: 'pending', parent: null },
+    }));
+    const mixed = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a', 'b=decided'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(mixed.status, 1);
+    assert.match(JSON.parse(mixed.stderr.trim()).error, /never mixed/);
+  });
+
   it('errors print {ok:false} JSON to stderr and exit 1, manifest untouched', () => {
     createManifest(dir, 'auth', manifestWith());
     const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
@@ -380,7 +426,29 @@ describe('discussion adapter: map verb', () => {
       '  ├─ ✓ Session Storage [decided]',
       '  └─ ◐ Token Refresh [exploring]',
       '',
+      "=== MENU: defer gate (emit verbatim as markdown only at the concluding step, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      'There is still 1 subtopic not yet decided — shown on the map above.',
+      '',
+      '- **`y`/`yes`** — Defer it and move toward concluding',
+      '- **`n`/`no`** — Continue discussing',
+      '· · · · · · · · · · · ·',
+      '',
     ].join('\n'));
+  });
+
+  it('defer gate pluralises and is absent once every subtopic is settled', () => {
+    createManifest(dir, 'auth', manifestWith({
+      a: { status: 'pending', parent: null },
+      b: { status: 'exploring', parent: null },
+    }));
+    const plural = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
+    assert.match(plural, /There are still 2 subtopics not yet decided — shown on the map above\./);
+    assert.match(plural, /Defer them and move toward concluding/);
+
+    execFileSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'b=deferred'], { cwd: dir, encoding: 'utf8' });
+    const settled = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
+    assert.ok(!settled.includes('MENU: defer gate'), 'no defer gate once all subtopics are settled');
   });
 
   it('review_cycles is 0 when the cache directory does not exist', () => {

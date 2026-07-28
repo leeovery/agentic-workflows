@@ -30,14 +30,16 @@ The prose should have taken this path:
    menu is rendered, no finding is ever surfaced
 9. the unpaid-order expiry window is raised as a concern of this topic,
    held open at the user's insistence rather than decided; on their
-   wrap-up the conclusion gate reads the map through the gateway, lists
-   the unresolved subtopic, classifies the pending closing work, and on
-   their confirmation defers it — noted under the Summary's open
-   threads — then runs the in-flight agent check and the prose turns to
-   the final gap review
-10. the walk stops there — the final review never runs, document review
-    and the compliance check never load, and the discussion is not
-    completed
+   wrap-up the concluding flow reads the map through the gateway, shows
+   the undecided count, and on their confirmation defers the unresolved
+   subtopic(s) in one engine write — the batch form, not a per-subtopic
+   loop — noted under the Summary's open threads
+10. the closing gates then hold: the pending closing work is classified
+    from the agent store; a fresh review, where offered, is declined —
+    and the conclude ask is answered yes; the in-flight agent check
+    runs, and the walk stops there — the final review step never
+    executes, document review and the compliance check never load, and
+    the discussion is not completed
 
 Further claims:
 

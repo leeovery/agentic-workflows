@@ -61,6 +61,11 @@ passed.
 
 ## Rules
 
+- **Never run cases against prose that is still under review.** While a
+  PR's diff is moving — the author iterating, the reviewer commenting — a
+  walk certifies bytes that may not survive the review, and each further
+  change invalidates the verdict and forces a paid re-run. Runs come
+  after the review settles: verify once, on the shape that will land.
 - **Never fix anything during or after a run.** Not the prose, not a
   case, not a snapshot, not the harness — however small, however obvious,
   however certain you are. Every failure, every flake, and every pass

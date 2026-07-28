@@ -7,7 +7,7 @@ the agent returns to its caller.
 
 ---
 
-# Discussion Review — review-001
+# Discussion Review
 
 ## Summary
 

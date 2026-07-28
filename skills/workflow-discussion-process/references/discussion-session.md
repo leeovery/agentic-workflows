@@ -28,6 +28,8 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
    ```
+
+   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**.
 3. **Navigate** — When a subtopic feels explored or a decision lands, record the transition and guide the user to what's still open:
 
    ```bash
@@ -59,7 +61,7 @@ Subtopics move through states as the conversation progresses. The judgment call 
 
 **decided** → Decision reached with rationale. The subtopic section gets written up with the full Context → Options → Journey → Decision structure. This is the terminal state.
 
-**deferred** → Deliberately set aside. Applied when concluding with unresolved subtopics (see **H**) — each is also noted in Summary → Open Threads.
+**deferred** → Deliberately set aside. Applied when concluding with unresolved subtopics (see **G. Concluding**) — each is also noted in Summary → Open Threads.
 
 **State transitions are judgement calls.** Move a subtopic to `converging` when the viable options are narrowed and the discussion is heading toward resolution. Move to `decided` when there's a clear outcome with rationale — even if provisional. Don't wait for absolute certainty. Any state can move to any other — judgment may revisit.
 
@@ -114,314 +116,81 @@ Don't render the map after every exchange — do it at meaningful transitions. I
 
 ## F. Off-Topic Concerns
 
-During organic discussion a concern may surface that doesn't belong under the current topic — it belongs to a *different* topic entirely.
+During organic discussion a concern may surface that doesn't belong under the current topic. The heuristic: a detail that informs a decision *within* the current topic is a subtopic — keep it here (session loop step 2). A concern whose home is a *different* topic — one that exists, or one that should — isn't this discussion's to resolve. Example: "How do we handle token refresh?" within an auth discussion is a subtopic (keep). "What's our caching strategy?" surfacing during auth because tokens need caching belongs elsewhere.
 
-**Heuristic**: If a concern is a detail that informs a decision within the current topic, it's a subtopic — keep it here. If it belongs to a *different* topic (one that exists, or one that should), it isn't this discussion's to resolve — reroute it to that topic, which picks it up later. Example: "How do we handle token refresh?" within an auth discussion = subtopic (keep). "What's our caching strategy?" surfacing during auth because tokens need caching = different topic (reroute).
+When a concern reads as off-topic, hold it with the full context discussed about it, and resolve the work type deterministically:
 
-#### If work type is not `epic`
-
-Single-topic work types (feature, cross-cutting) have no other topic to route to — the topic *is* the work unit.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**{concern}** is beyond this topic's scope.
-
-- **`l`/`log`** — Capture it as an idea in the inbox for later
-@if(work_type == 'feature')
-- **`p`/`pivot`** — Convert this work to an epic so it can hold the concern as its own topic
-@endif
-- **`i`/`ignore`** — Note it in the Summary and move on
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-**STOP.** Wait for user response.
+#### If `work_type` is `epic`
 
-**If `log`:**
+→ Load **[off-topic-epic.md](off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, concern = `{the concern, with its discussed context}`.
 
-Capture the concern via the `workflow-log-idea` skill so it lands in the inbox for later triage.
-
-→ Return to **B. Session Loop**.
-
-**If `pivot`:**
-
-1. Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic (conversion committed) with this topic on its discovery map.
-
-2. From the context you already have, derive two values: `proposed_name` — a kebab-case topic name for the concern; and `concern` — the concern with the full context discussed about it.
-
-3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the concern in the Summary so it isn't lost; otherwise the concern landed as the `{landed_topic}` topic.
-
-4. Commit the landing:
-
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}/{topic}): reroute concern to {landed_topic}"
-   ```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> This work is now an epic — continuing here with the current topic.
-> The concern is preserved for its own handling later.
-```
-
-→ Return to **B. Session Loop**.
-
-**If `ignore`:**
-
-Note the concern in the Summary section for the user to consider separately, and continue.
-
-→ Return to **B. Session Loop**.
+→ On return, proceed as the reference directed.
 
 #### Otherwise
 
-> *Output the next fenced block as markdown (not a code block):*
+→ Load **[off-topic-non-epic.md](off-topic-non-epic.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, concern = `{the concern, with its discussed context}`.
 
-```
-· · · · · · · · · · · ·
-**{concern}** belongs to a different topic, not this one.
-
-- **`r`/`reroute`** — Send it to the topic it belongs to; it picks it up later
-- **`k`/`keep`** — Keep it here as a subtopic
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If `reroute`:**
-
-1. Identify the topic the concern belongs to. Read the live map:
-
-   ```bash
-   node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
-   ```
-
-   Resolve the target. If one topic clearly matches, propose it and confirm with the user. If nothing fits, propose a new kebab-case name and confirm. If several plausible candidates exist — or a near-match you're unsure of — present them and let the user choose:
-
-   > *Output the next fenced block as markdown (not a code block):*
-
-   ```
-   · · · · · · · · · · · ·
-   Where should "{concern}" land?
-
-   - **`1`** — {candidate} [{state}]
-   - **`2`** — {candidate} [{state}]
-   - **`n`/`new`** — Create a new topic for it
-   · · · · · · · · · · · ·
-   ```
-
-   **STOP.** Wait for user response.
-
-   A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. If the resolved target is the current topic (`{topic}`), it's a detail of this discussion, not a reroute — record it as a `pending` subtopic (`discussion-map add`, session loop step 2) and → Return to **B. Session Loop**.
-
-2. Record the concern with the full context discussed about it as `concern` — the target topic picks it up cold.
-
-3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `## Triage`.
-
-4. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it. Commit:
-
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}/{topic}): reroute concern to {landed_topic}"
-   ```
-
-→ Return to **B. Session Loop**.
-
-**If `keep`:**
-
-Leave it as a subtopic on the map.
-
-→ Return to **B. Session Loop**.
+→ On return, proceed as the reference directed.
 
 ---
 
-## G. Convergence
+## G. Concluding
 
-Convergence is the natural end state — not a forced conclusion. The discussion converges when:
+One ceremony, two ways in — enter when either, or both at once, holds:
 
-- All subtopics on the Discussion Map are `decided` (or `deferred`)
-- Neither you nor the user can identify new subtopics without breaking scope
+- **Convergence read** — every subtopic on the Discussion Map is `decided` (or `deferred`), and neither you nor the user can identify new subtopics without breaking scope. Convergence is the natural end state, never a forced conclusion.
+- **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
 
-**Before rendering the convergence menu**, run the map call:
+Run the map call:
 
 ```bash
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Its DATA section carries `all_decided`. The DISPLAY section isn't emitted here — this flow reads DATA only.
+Its DATA section carries `all_decided` and `unresolved`; while undecided subtopics remain the snapshot also carries a `MENU: defer gate` section. Rendered sections are emitted only where a branch below says so.
 
-Classify the pending closing work by following **J. Closing Probe**, then announce:
+#### If `all_decided` is true
 
 > *Output the next fenced block as a code block:*
 
 ```
-All subtopics on the Discussion Map are decided.
+Every subtopic on the Discussion Map is settled — decided or deferred.
 ```
 
-#### If the probe classified `due`
+Load **[closing-gates.md](closing-gates.md)** and follow its instructions as written.
 
-> *Output the next fenced block as markdown (not a code block):*
+→ On return, proceed as the reference directed.
 
-```
-· · · · · · · · · · · ·
-Next: a final gap review before concluding — {reason}.
-Proceed?
+#### If `all_decided` is false and the user signalled conclusion
 
-- **`y`/`yes`** — Run the final review
-- **Keep going** — Tell me what else to explore
-· · · · · · · · · · · ·
-```
+Emit the map call's DISPLAY section, then its `MENU: defer gate` section — each verbatim per its marker.
 
 **STOP.** Wait for user response.
 
 **If `yes`:**
 
-→ Proceed to **I. In-Flight Agent Check**.
-
-**If keep going:**
-
-Continue the discussion. The user may want to revisit a decision, explore an edge case further, or probe for gaps. If new subtopics emerge, add them to the map and continue.
-
-→ Return to **B. Session Loop**.
-
-#### If the probe classified `satisfied`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-The final review is up to date. Begin wrap-up? I'll reconcile the
-document against our conversation, then confirm before marking
-complete.
-
-- **`y`/`yes`** — Begin wrap-up
-- **Keep going** — Tell me what else to explore
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
-
-→ Proceed to **I. In-Flight Agent Check**.
-
-**If keep going:**
-
-Continue the discussion — revisit decisions, explore edge cases, probe for gaps. If new subtopics emerge, add them to the map and continue.
-
-→ Return to **B. Session Loop**.
-
----
-
-## H. When the User Signals Conclusion
-
-When the user indicates they want to conclude the discussion (e.g., "that covers it", "let's wrap up", "I think we're done") before natural convergence:
-
-**First**, run the map call:
+Defer every `unresolved` subtopic in one write — the batch form takes uniform pairs:
 
 ```bash
-node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
-```
-
-Its DATA section carries everything this flow needs: `all_decided` and `unresolved`.
-
-#### If `all_decided` is false
-
-Classify the pending closing work by following **J. Closing Probe**.
-
-Emit the map call's DISPLAY section verbatim as a code block, then ({N} = the length of `unresolved`):
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-There are still {N} subtopics not yet decided:
-
-@foreach(name in unresolved)
-- {name:(titlecase)}
-@endforeach
-
-@if(review_due)
-Next: a final gap review before concluding — {reason}.
-@endif
-
-- **`y`/`yes`** — Defer them and @if(review_due) run the final review @else begin wrap-up @endif
-- **`n`/`no`** — Continue discussing
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
-
-Set each `unresolved` subtopic to `deferred`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} deferred
+node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic}=deferred [{subtopic}=deferred …]
 ```
 
 Note them in the Summary → Open Threads section of the discussion file. Commit.
 
-→ Proceed to **I. In-Flight Agent Check**.
+Load **[closing-gates.md](closing-gates.md)** and follow its instructions as written.
+
+→ On return, proceed as the reference directed.
 
 **If `no`:**
 
 → Return to **B. Session Loop**.
 
-#### If `all_decided` is true
+#### If `all_decided` is false and you read convergence
 
-→ Proceed to **I. In-Flight Agent Check**.
-
----
-
-## I. In-Flight Agent Check
-
-The last gate before conclusion, whichever path led here. Run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}` and read the response's `in_flight` list (agents dispatched but not yet returned). An agent dispatched by an earlier session cannot still be running — each row's `created` timestamp tells you which those are; close each (`agent incorporate`), re-scan, and count only this session's. A dead `synthesis` row is the exception: handle it per **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)** — closed *and* re-dispatched, so the council's tensions aren't lost.
-
-#### If no agents are in flight
-
-→ Return to caller.
-
-#### If agents are still running
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-There are still {N} background agents working.
-
-- **`w`/`wait`** — Wait for results before concluding
-- **`p`/`proceed`** — Conclude now (results will persist in cache for reference)
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If `wait`:**
-
-Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, delegate surfacing to the shared protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
+It isn't convergence — undecided subtopics remain. Keep exploring.
 
 → Return to **B. Session Loop**.
-
-**If `proceed`:**
-
-→ Return to caller.
-
----
-
-## J. Closing Probe
-
-A read-only classification for the conclusion gates — is final-review work still owed (`due`, with a reason) or is the gate `satisfied`? Step 6 (Final Gap Review) is the executor and re-derives state itself — a probe mismatch is cosmetic, never state-corrupting. In-flight rows keep their wait-or-proceed decision at **I. In-Flight Agent Check**.
-
-Read the store:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}
-```
-
-Classify — first match wins:
-
-1. Any `review`, `synthesis`, or `perspective` row is `pending` or `acknowledged` → `due`: "background findings are still to be walked through"
-2. Any `review` row is `in-flight` → `due`: "a dispatched review is still running"
-3. No `review` row exists → `due`: "no review has run yet"
-4. The highest-numbered `review` row is `incorporated` and a meaningful discussion commit landed after its dispatch (`git log --oneline -- .workflows/{work_unit}/discussion/{topic}.md` — a decision documented, a subtopic explored, not typo fixes) → `due`: "the discussion has moved since the last review"
-5. Otherwise → `satisfied`

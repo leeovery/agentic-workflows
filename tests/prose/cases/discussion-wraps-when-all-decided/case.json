@@ -1,5 +1,5 @@
 {
-  "origin": "the session loop itself had no coverage — an organic discussion driven to convergence, its subtopic lifecycle recorded through the engine and its review checkpoint fired live",
+  "origin": "the gap the closing-gates fix closes — a wrap-up on a fully decided map slipped silently into the final review with no classification and no gate; this walk pins the ceremony",
   "entry": "workflow-discussion-entry",
   "world": "claims",
   "files": [
@@ -24,7 +24,7 @@
     "skills/workflow-shared/references/background-agent-surfacing.md",
     "skills/workflow-shared/references/natural-breaks.md"
   ],
-  "conduct": "The user is settling how card payments at checkout should work, using the existing gateway account. Card-only for v1 is already agreed and not up for discussion — if wallets or other payment methods come up they wave them off briskly: cards only for v1, that was settled when the work was shaped. They know their domain and decide confidently: capture should be confirmed by the gateway's webhooks rather than polling, because the webhook is guaranteed and polling would be slow or hammer the gateway; a failed payment should leave the order open for retry rather than cancelling it, with a small bounded number of attempts; and card details must never touch their own servers — the gateway's hosted fields keep them out of PCI scope, which they hold as non-negotiable. One thing they will not settle today: how long an unpaid order is held before it expires. They need to check retention rules with their ops team first — it is part of this feature and they want it kept on the record here, but explicitly left open, and they decline to guess at a number. They engage with challenges on the merits, answer concretely with reasons, and correct any summary that drifts from what they said. When everything else has landed and nothing new is being raised, they say that covers it and they want to wrap up; asked about the unresolved item, they confirm setting it aside. On the way out, offered a further gap review they decline it — the reviews already came back clean — and asked whether to conclude they say yes. They are decisive throughout — they never ask which option is better, and offered extra explorations mid-session they decline: they want this settled and documented.",
+  "conduct": "The user is settling how card payments at checkout should work, using the existing gateway account — card-only for v1 was agreed when the work was shaped and is settled background. They have two things they want landed and they land them decisively: capture is confirmed by the gateway's webhooks rather than polling, because the webhook is guaranteed and polling would be slow or hammer the gateway; and card details never touch their own servers — the gateway's hosted fields keep them out of PCI scope, non-negotiable. They engage with challenges on the merits, answer concretely with reasons, and leave nothing hanging: any thread the conversation opens, they drive to a clear decision rather than parking it. Before wrapping up they ask to see the map and settle anything still open on it, however minor — they decide, they don't park. Only with everything settled do they say that covers it and ask to wrap up. On the way out they are agreeable — offered a next step, they take it; they want the wrap-up to proceed, not to reopen the conversation. They never ask which option is better, and offered extra explorations mid-session they decline.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   },
@@ -32,9 +32,7 @@
     "engine_before_write": true,
     "calls_include": [
       "manifest get pay.discussion.pay status",
-      "manifest get pay description",
       "topic start pay discussion pay",
-      "discussion-map add pay pay",
       "discussion(pay): initialize pay discussion",
       "knowledge.cjs query",
       "discussion-map set pay pay",
@@ -55,7 +53,6 @@
     "calls_exclude": [
       "--kind perspective",
       "agent surface",
-      "agent incorporate",
       "topic complete",
       "topic reopen",
       "discovery-map add",

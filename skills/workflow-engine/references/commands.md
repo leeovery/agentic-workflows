@@ -80,11 +80,12 @@ engine workunit absorb <feature> --into <epic> --topic <name>
 engine workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
 ```
 
-**`discussion-map`** — Discussion Map subtopic writes. `add` and `set` each load the work unit's manifest, apply the transition, save atomically, and print one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed, and no git commit (the calling session's commit cadence picks the manifest change up).
+**`discussion-map`** — Discussion Map subtopic writes. `add` and `set` each load the work unit's manifest, apply the transition, save atomically, and print one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed, and no git commit (the calling session's commit cadence picks the manifest change up). `set` takes one positional pair or a uniform `<subtopic>=<state>` batch (never mixed) in one locked write — the batch is atomic (a failing entry means nothing was written) and answers once: `{"ok": true, "set": {"…": "…"}, "all_decided": true, "unresolved_count": 0}`.
 
 ```bash
 engine discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]   # new subtopic, starts pending
 engine discussion-map set <work-unit> <topic> <subtopic> <state>                 # pending|exploring|converging|decided|deferred
+engine discussion-map set <work-unit> <topic> <subtopic>=<state> [<subtopic>=<state> …]   # uniform batch, one atomic write
 ```
 
 Subtopic names are kebab-case slugs; `--parent` nests under an existing top-level subtopic (two levels max).
