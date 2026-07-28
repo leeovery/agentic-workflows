@@ -36,7 +36,9 @@ Further claims:
 - no subtopic is deferred — the user drove everything they raised to a
   decision, and the map ends with no pending, exploring, or deferred
   entries
-- no perspective agents are offered or dispatched
+- no perspective agent is ever dispatched — an offer, if the walker
+  reads genuine ambiguity somewhere, is legitimate, and the user
+  declines it
 - the Discussion Map lives in the manifest only — the file never
   contains a map section
 - cache files under `.workflows/.cache/` — agent reports and agent

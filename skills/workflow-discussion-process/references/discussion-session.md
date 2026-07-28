@@ -140,7 +140,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 ## G. Concluding
 
-One ceremony, two ways in — enter when either holds:
+One ceremony, two ways in — enter when either, or both at once, holds:
 
 - **Convergence read** — every subtopic on the Discussion Map is `decided` (or `deferred`), and neither you nor the user can identify new subtopics without breaking scope. Convergence is the natural end state, never a forced conclusion.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
