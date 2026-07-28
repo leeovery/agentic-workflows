@@ -1,0 +1,64 @@
+{
+  "origin": "the session loop itself had no coverage — an organic discussion driven to convergence, its subtopic lifecycle recorded through the engine and its review checkpoint fired live",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/drain-triage.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "conduct": "The user is settling how card payments at checkout should work, using the existing gateway account. Card-only for v1 is already agreed and not up for discussion — if wallets or other payment methods come up they wave them off briskly: cards only for v1, that was settled when the work was shaped. They know their domain and decide confidently: capture should be confirmed by the gateway's webhooks rather than polling, because the webhook is guaranteed and polling would be slow or hammer the gateway; a failed payment should leave the order open for retry rather than cancelling it, with a small bounded number of attempts; and card details must never touch their own servers — the gateway's hosted fields keep them out of PCI scope, which they hold as non-negotiable. One thing they will not settle today: how long an unpaid order is held before it expires. They need to check retention rules with their ops team first — it is part of this feature and they want it kept on the record here, but explicitly left open, and they decline to guess at a number. They engage with challenges on the merits, answer concretely with reasons, and correct any summary that drifts from what they said. When everything else has landed and nothing new is being raised, they say that covers it and they want to wrap up; asked about the unresolved item, they confirm setting it aside. They are decisive throughout — they never ask which option is better, and offered extra explorations they decline: they want this settled and documented.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "manifest get pay description",
+      "topic start pay discussion pay",
+      "discussion-map add pay pay",
+      "discussion(pay): initialize pay discussion",
+      "knowledge.cjs query",
+      "discussion-map set pay pay",
+      "agent dispatch pay discussion pay --kind review",
+      "agent scan pay discussion pay",
+      "agent ack pay discussion pay",
+      "--clean",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "topic start pay discussion pay",
+      "discussion(pay): initialize pay discussion",
+      "knowledge.cjs query",
+      "agent dispatch pay discussion pay --kind review",
+      "agent scan pay discussion pay"
+    ],
+    "calls_exclude": [
+      "--kind perspective",
+      "agent surface",
+      "agent incorporate",
+      "topic complete",
+      "topic reopen",
+      "discovery-map add",
+      "knowledge.cjs index"
+    ]
+  }
+}
