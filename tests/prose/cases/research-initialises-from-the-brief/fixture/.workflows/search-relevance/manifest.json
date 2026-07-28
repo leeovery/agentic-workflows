@@ -1,0 +1,34 @@
+{
+  "name": "search-relevance",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Overhaul search relevance across the catalogue",
+  "phases": {
+    "discovery": {
+      "items": {
+        "behavioural-ranking": {
+          "routing": "discussion",
+          "source": "discovery",
+          "summary": "Close the loop from click and purchase events into the ranker.",
+          "description": "Click and purchase events land in the events pipeline but nothing feeds them back into ranking. The pipeline is reliable; the work is deciding what signals feed the ranker and how.",
+          "brief_path": "discovery/briefs/behavioural-ranking.md"
+        },
+        "synonym-handling": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "Replace the hand-maintained synonym and misspelling list.",
+          "description": "Synonyms and misspellings are handled by a hand-maintained list nobody trusts. The leaning is to replace it rather than clean it, but with what is unknown.",
+          "brief_path": "discovery/briefs/synonym-handling.md"
+        },
+        "relevance-measurement": {
+          "routing": "research",
+          "source": "discovery",
+          "summary": "How to tell whether a relevance change makes results better or worse.",
+          "description": "There is no evaluation set and no metrics — every ranking tweak is decided by argument. The area the user understands least; they have never built an evaluation harness.",
+          "brief_path": "discovery/briefs/relevance-measurement.md"
+        }
+      }
+    }
+  }
+}
