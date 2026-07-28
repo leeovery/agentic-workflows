@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { commitScopedWithKb } = require('./domain/commit.cjs');
-const { recordSubtopicAdd, recordSubtopicState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
+const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { startTopic, triageTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
@@ -125,6 +125,7 @@ Commands:
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
+  discussion-map set <work-unit> <topic> <subtopic>=<state> [<subtopic>=<state> …]
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map add <work-unit> <name> <research|discussion>
                 (--summary <text> [--description <text>] | --backfill)
@@ -329,10 +330,23 @@ function runDiscussionMap(argv) {
       }
       respond(recordSubtopicAdd(cwd, workUnit, topic, subtopic, { parent: opts.parent ?? null }));
     } else if (command === 'set') {
-      if (!workUnit || !topic || !subtopic || !state) {
-        throw new Error(`Usage: engine discussion-map set <work-unit> <topic> <subtopic> <${SUBTOPIC_STATES.join('|')}>`);
+      const pairs = positional.slice(2);
+      if (pairs.some((p) => p.includes('='))) {
+        // Uniform batch — every argument a <subtopic>=<state> pair, never
+        // mixed with the positional form (the manifest set grammar).
+        if (!workUnit || !topic || !pairs.length || !pairs.every((p) => /^[^=]+=[^=]+$/.test(p))) {
+          throw new Error(`Usage: engine discussion-map set <work-unit> <topic> <subtopic>=<state> [<subtopic>=<state> …] — uniform pairs, never mixed with the positional form`);
+        }
+        respond(recordSubtopicStates(cwd, workUnit, topic, pairs.map((p) => {
+          const i = p.indexOf('=');
+          return [p.slice(0, i), p.slice(i + 1)];
+        })));
+      } else {
+        if (!workUnit || !topic || !subtopic || !state) {
+          throw new Error(`Usage: engine discussion-map set <work-unit> <topic> <subtopic> <${SUBTOPIC_STATES.join('|')}> — or a uniform <subtopic>=<state> batch`);
+        }
+        respond(recordSubtopicState(cwd, workUnit, topic, subtopic, state));
       }
-      respond(recordSubtopicState(cwd, workUnit, topic, subtopic, state));
     } else {
       throw new Error('Usage: engine discussion-map <add|set> …');
     }

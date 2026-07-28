@@ -215,4 +215,30 @@ function recordSubtopicState(cwd, workUnit, topic, name, state) {
   return subtopicWriteResult(manifest, topic, name, sub.status);
 }
 
-module.exports = { SUBTOPIC_STATES, addSubtopic, setSubtopicState, mapState, subtopicsOf, recordSubtopicAdd, recordSubtopicState };
+/**
+ * The batch form of `discussion-map set`: several subtopic states in one
+ * load → apply → save under the work unit's manifest lock. Every entry
+ * validates as it applies and a throw aborts before save — a failing entry
+ * means nothing was written. No git commit.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} topic
+ * @param {Array<[string, string]>} entries  [name, state] pairs
+ * @returns {{set: Record<string, string>, all_decided: boolean, unresolved_count: number}}
+ */
+function recordSubtopicStates(cwd, workUnit, topic, entries) {
+  const { manifest } = withWorkUnitLock(cwd, workUnit, () => {
+    const loaded = loadWorkUnitManifest(cwd, workUnit);
+    for (const [name, state] of entries) setSubtopicState(loaded, topic, name, state);
+    saveWorkUnitManifest(cwd, workUnit, loaded);
+    return { manifest: loaded };
+  });
+  const state = mapState(manifest, topic);
+  return {
+    set: Object.fromEntries(entries),
+    all_decided: state.all_decided,
+    unresolved_count: state.unresolved.length,
+  };
+}
+
+module.exports = { SUBTOPIC_STATES, addSubtopic, setSubtopicState, mapState, subtopicsOf, recordSubtopicAdd, recordSubtopicState, recordSubtopicStates };

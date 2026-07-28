@@ -329,6 +329,52 @@ describe('engine CLI: discussion-map round-trip', () => {
     });
   });
 
+  it('set batch: uniform pairs land in one write, decision-ready JSON once', () => {
+    createManifest(dir, 'auth', manifestWith({
+      a: { status: 'exploring', parent: null },
+      b: { status: 'pending', parent: null },
+      c: { status: 'decided', parent: null },
+    }));
+
+    assert.deepStrictEqual(engineDiscussionMap(['set', 'auth', 'auth-flow', 'a=decided', 'b=deferred']), {
+      ok: true, set: { a: 'decided', b: 'deferred' }, all_decided: true, unresolved_count: 0,
+    });
+
+    const saved = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'));
+    assert.deepStrictEqual(saved.phases.discussion.items['auth-flow'].subtopics, {
+      a: { status: 'decided', parent: null },
+      b: { status: 'deferred', parent: null },
+      c: { status: 'decided', parent: null },
+    });
+  });
+
+  it('set batch is atomic — a failing entry means nothing was written', () => {
+    createManifest(dir, 'auth', manifestWith({
+      a: { status: 'exploring', parent: null },
+    }));
+    const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
+
+    const ghost = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'ghost=deferred'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(ghost.status, 1);
+    assert.match(JSON.parse(ghost.stderr.trim()).error, /subtopic "ghost" not found/);
+
+    const badState = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a=done'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(badState.status, 1);
+    assert.match(JSON.parse(badState.stderr.trim()).error, /unknown subtopic state "done"/);
+
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'), before);
+  });
+
+  it('set refuses mixing the positional and batch forms', () => {
+    createManifest(dir, 'auth', manifestWith({
+      a: { status: 'pending', parent: null },
+      b: { status: 'pending', parent: null },
+    }));
+    const mixed = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'a', 'b=decided'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(mixed.status, 1);
+    assert.match(JSON.parse(mixed.stderr.trim()).error, /never mixed/);
+  });
+
   it('errors print {ok:false} JSON to stderr and exit 1, manifest untouched', () => {
     createManifest(dir, 'auth', manifestWith());
     const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');

@@ -839,6 +839,15 @@ describe('pipeline simulation', () => {
     assert.strictEqual(probe.in_flight.length + probe.pending.length + probe.acknowledged.length, 0,
       'probe: nothing owed — the satisfied classification');
     assert.strictEqual(reviewRows(probe)[0].status, 'incorporated');
+
+    // The defer batch the closing gates use: one uniform write settles the
+    // stragglers and answers with the map's convergence state once.
+    sim.run(['discussion-map', 'add', wu, 'alpha', 'edge-a']);
+    sim.run(['discussion-map', 'add', wu, 'alpha', 'edge-b']);
+    const deferredBatch = sim.run(['discussion-map', 'set', wu, 'alpha', 'edge-a=deferred', 'edge-b=deferred']);
+    assert.deepStrictEqual(deferredBatch.set, { 'edge-a': 'deferred', 'edge-b': 'deferred' });
+    assert.strictEqual(deferredBatch.all_decided, true, 'the batch response carries convergence — no follow-up read');
+
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
   });
