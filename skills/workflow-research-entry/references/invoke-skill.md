@@ -34,25 +34,27 @@ When the read returns non-empty, append the Description block shown in each sour
 
 No description load for `continue` — resuming an existing session, no need to re-prime.
 
-The `Description:` block is omitted when `description` is null or empty.
-
 Invoke the **workflow-research-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
 ```
 Research session for: {topic}
 Work unit: {work_unit}
+Work type: {work_type}
 
 Source: existing research
 Output: .workflows/{work_unit}/research/{resolved_filename}
 ```
 
-#### Otherwise
+#### If the context was gathered by interview
+
+gather-context ran at Step 4 — its answers fill the Context block. The `Description:` block is omitted when `description` is null or empty.
 
 Invoke the **workflow-research-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
 ```
 Research session for: {topic}
 Work unit: {work_unit}
+Work type: {work_type}
 
 Output: .workflows/{work_unit}/research/{resolved_filename}
 
@@ -61,6 +63,23 @@ Context:
 - Already knows: {any initial thoughts or research, or "starting fresh"}
 - Starting point: {technical feasibility, market, business model, or general direction}
 - Constraints: {any constraints mentioned, or "none"}
+
+Description:
+{description text — paragraph or two, preserved as-is}
+```
+
+#### Otherwise
+
+The carrier seeded the context — a feature's discovery record, or an epic topic's brief. No interview ran, so there are no gathered answers to relay: the process re-reads the carrier itself at initialisation, and the description carries the record. The `Description:` block is omitted when `description` is null or empty.
+
+Invoke the **workflow-research-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+
+```
+Research session for: {topic}
+Work unit: {work_unit}
+Work type: {work_type}
+
+Output: .workflows/{work_unit}/research/{resolved_filename}
 
 Description:
 {description text — paragraph or two, preserved as-is}

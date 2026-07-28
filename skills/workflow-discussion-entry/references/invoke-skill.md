@@ -41,6 +41,7 @@ Invoke the **workflow-discussion-process** skill (Skill tool) with the next fenc
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
+Work type: {work_type}
 Output: {output_path}
 
 Research files:
@@ -61,6 +62,7 @@ Invoke the **workflow-discussion-process** skill (Skill tool) with the next fenc
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
+Work type: {work_type}
 Source: existing discussion
 Output: {output_path}
 ```
@@ -72,6 +74,7 @@ Invoke the **workflow-discussion-process** skill (Skill tool) with the next fenc
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
+Work type: {work_type}
 Source: {source}
 Output: {output_path}
 
