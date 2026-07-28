@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.13] - 2026-07-28
+
+✨ Added
+- Off-topic concerns raised mid-discussion on an epic can now be rerouted to an existing or brand-new sibling topic, with the target resolved automatically and only surfaced to you when genuinely ambiguous.
+
+🔧 Changed
+- Discussion conclusion now runs through a single unified closing flow regardless of whether it's triggered by natural convergence or by you saying you're done, so the review and wrap-up prompts behave consistently either way.
+- Declining a final gap review at the closing gate now sticks for that conclusion attempt instead of being re-offered immediately.
+- Deferring multiple undecided subtopics when wrapping up a discussion now happens in a single batched write instead of one call per subtopic.
+
 ## [0.6.12] - 2026-07-27
 
 🔧 Changed
