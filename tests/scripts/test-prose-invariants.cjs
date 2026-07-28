@@ -139,6 +139,31 @@ describe('calls_include / calls_exclude', () => {
     assert.equal(invariants.check(rows, { calls_exclude: ['task start'] })[0].ok, true);
     assert.equal(invariants.check(rows, { calls_include: ['task start'] })[0].ok, false);
   });
+
+  it('matches through quotes — quoting a dotpath is style, not a different call', () => {
+    const rows = [
+      bash(`${ENGINE} manifest get 'wu.discovery.topic' brief_path`),
+      bash(`${ENGINE} manifest set "wu.discovery.topic" brief_incorporated true`),
+    ];
+    const declared = {
+      calls_include: [
+        'manifest get wu.discovery.topic brief_path',
+        'manifest set wu.discovery.topic brief_incorporated true',
+      ],
+    };
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
+  });
+
+  it('a quoted needle matches an unquoted command the same way', () => {
+    const rows = [bash(`${ENGINE} manifest get wu.research.* status`)];
+    assert.equal(invariants.check(rows, { calls_include: ["manifest get 'wu.research.*' status"] })[0].ok, true);
+  });
+
+  it('quoting cannot hide a forbidden command from exclude', () => {
+    const rows = [bash(`${ENGINE} topic start 'wu' research 'topic'`)];
+    const [result] = invariants.check(rows, { calls_exclude: ['topic start wu research topic'] });
+    assert.equal(result.ok, false);
+  });
 });
 
 describe('calls_in_order — presence is not sequence', () => {
@@ -164,6 +189,15 @@ describe('calls_in_order — presence is not sequence', () => {
     });
     assert.equal(result.ok, false);
     assert.match(result.detail, /"knowledge.cjs query" never ran after "render entry-gate/);
+  });
+
+  it('matches the sequence through quoting differences', () => {
+    const rows = [
+      bash(`${ENGINE} manifest get 'wu.research.topic' status`),
+      bash(`${ENGINE} topic start wu research topic`),
+    ];
+    const declared = { calls_in_order: ['manifest get wu.research.topic status', 'topic start wu research topic'] };
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
   });
 
   it('tolerates other calls falling between them', () => {

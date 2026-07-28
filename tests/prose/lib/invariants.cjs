@@ -86,6 +86,23 @@ function commands(rows) {
 }
 
 /**
+ * Quotes are shell syntax, not command identity. The repo's own
+ * conventions tell a walker to quote dotpath arguments, so
+ * `manifest get 'wu.phase.topic' field` and the unquoted form are the
+ * same call — but a needle written from the prose's literal text spans
+ * the spot where the quote lands, and a whole case failed on exactly
+ * that. Both sides of every match drop quote characters first, so
+ * quoting style can never decide a verdict.
+ */
+function bare(s) {
+  return s.replace(/['"]/g, '');
+}
+
+function ranMatch(command, needle) {
+  return bare(command).includes(bare(needle));
+}
+
+/**
  * A write the prose could only have reached by consulting state first.
  * Reading a file is not enough — the engine is how a workflow skill
  * learns anything, so a walk that writes workflow state having never
@@ -117,7 +134,7 @@ function engineBeforeWrite(rows) {
 
 function callsInclude(rows, wanted) {
   const ran = commands(rows);
-  const missing = wanted.filter((w) => !ran.some((c) => c.includes(w)));
+  const missing = wanted.filter((w) => !ran.some((c) => ranMatch(c, w)));
   return missing.length
     ? { ok: false, detail: `never ran: ${missing.join(', ')}` }
     : { ok: true, detail: `ran all of: ${wanted.join(', ')}` };
@@ -125,7 +142,7 @@ function callsInclude(rows, wanted) {
 
 function callsExclude(rows, forbidden) {
   const ran = commands(rows);
-  const found = forbidden.filter((f) => ran.some((c) => c.includes(f)));
+  const found = forbidden.filter((f) => ran.some((c) => ranMatch(c, f)));
   return found.length
     ? { ok: false, detail: `ran what it should not have: ${found.join(', ')}` }
     : { ok: true, detail: `ran none of: ${forbidden.join(', ')}` };
@@ -141,7 +158,7 @@ function callsInOrder(rows, sequence) {
   const ran = commands(rows);
   let at = 0;
   for (const wanted of sequence) {
-    const found = ran.findIndex((c, i) => i >= at && c.includes(wanted));
+    const found = ran.findIndex((c, i) => i >= at && ranMatch(c, wanted));
     if (found === -1) {
       const seen = sequence.slice(0, sequence.indexOf(wanted));
       return {
