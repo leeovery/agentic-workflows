@@ -62,7 +62,17 @@ Take the highest-numbered `review` row from the **A** scan and branch on its sta
 
 #### If it is `incorporated`
 
-The prior review was fully drained. A fresh one is warranted only when the discussion moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (the row's `created` timestamp, on every scan row) — and discount commits the drain itself produced (same session, your memory of raising its findings; the engagement writes are not new work):
+The prior review was fully drained. A fresh one is warranted only when the discussion moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close.
+
+**If the user declined the fresh review at this conclusion attempt's closing gate:**
+
+The decline stands — do not re-litigate it. A later conclusion attempt classifies afresh and offers again.
+
+→ Return to caller.
+
+**If no decline was given:**
+
+Check what landed after that review's dispatch (the row's `created` timestamp, on every scan row) — and discount commits the drain itself produced (same session, your memory of raising its findings; the engagement writes are not new work):
 
 ```bash
 git log --format='%h %cI %s' -- .workflows/{work_unit}/discussion/{topic}.md

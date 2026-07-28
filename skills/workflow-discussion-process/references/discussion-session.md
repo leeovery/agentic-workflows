@@ -267,6 +267,9 @@ Next: a final gap review before concluding — {reason}.
 Proceed?
 
 - **`y`/`yes`** — Run the final review
+@if(re-review)
+- **`s`/`skip`** — Skip the fresh review and move to wrap-up
+@endif
 - **Keep going** — Tell me what else to explore
 · · · · · · · · · · · ·
 ```
@@ -274,6 +277,12 @@ Proceed?
 **STOP.** Wait for user response.
 
 **If `yes`:**
+
+→ Proceed to **I. In-Flight Agent Check**.
+
+**If `skip`:**
+
+The fresh review is declined for this conclusion attempt — a prior review has already run and drained, so declining forfeits nothing owed. Step 6 honours the decline and re-derives everything else.
 
 → Proceed to **I. In-Flight Agent Check**.
 
@@ -345,6 +354,9 @@ Next: a final gap review before concluding — {reason}.
 @endif
 
 - **`y`/`yes`** — Defer them and @if(review_due) run the final review @else begin wrap-up @endif
+@if(re-review)
+- **`s`/`skip`** — Defer them and skip the fresh review
+@endif
 - **`n`/`no`** — Continue discussing
 · · · · · · · · · · · ·
 ```
@@ -363,13 +375,27 @@ Note them in the Summary → Open Threads section of the discussion file. Commit
 
 → Proceed to **I. In-Flight Agent Check**.
 
+**If `skip`:**
+
+Set each `unresolved` subtopic to `deferred`:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} deferred
+```
+
+Note them in the Summary → Open Threads section of the discussion file. Commit. The fresh review is declined for this conclusion attempt — Step 6 honours the decline.
+
+→ Proceed to **I. In-Flight Agent Check**.
+
 **If `no`:**
 
 → Return to **B. Session Loop**.
 
 #### If `all_decided` is true
 
-→ Proceed to **I. In-Flight Agent Check**.
+The map is already settled — the user's signal is convergence arriving by their hand, and the ceremony is the same: classification, then the gate. Nothing proceeds silently.
+
+→ Return to **G. Convergence**.
 
 ---
 
@@ -423,5 +449,5 @@ Classify — first match wins:
 1. Any `review`, `synthesis`, or `perspective` row is `pending` or `acknowledged` → `due`: "background findings are still to be walked through"
 2. Any `review` row is `in-flight` → `due`: "a dispatched review is still running"
 3. No `review` row exists → `due`: "no review has run yet"
-4. The highest-numbered `review` row is `incorporated` and a meaningful discussion commit landed after its dispatch (`git log --oneline -- .workflows/{work_unit}/discussion/{topic}.md` — a decision documented, a subtopic explored, not typo fixes) → `due`: "the discussion has moved since the last review"
+4. The highest-numbered `review` row is `incorporated` and a meaningful discussion commit landed after its dispatch (`git log --oneline -- .workflows/{work_unit}/discussion/{topic}.md` — a decision documented, a subtopic explored, not typo fixes; discount commits the drain itself produced — engagement writes are not new work) → `due`: "the discussion has moved since the last review". This is the **re-review** classification — the only `due` whose gate offers a skip: a prior review has run and drained, so the user may decline the fresh one.
 5. Otherwise → `satisfied`

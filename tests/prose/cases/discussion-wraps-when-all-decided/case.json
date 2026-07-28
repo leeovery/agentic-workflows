@@ -1,0 +1,61 @@
+{
+  "origin": "the gap the closing-gates fix closes — a wrap-up on a fully decided map slipped silently into the final review with no classification and no gate; this walk pins the ceremony",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/drain-triage.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "conduct": "The user is settling how card payments at checkout should work, using the existing gateway account — card-only for v1 was agreed when the work was shaped and is settled background. They have two things they want landed and they land them decisively: capture is confirmed by the gateway's webhooks rather than polling, because the webhook is guaranteed and polling would be slow or hammer the gateway; and card details never touch their own servers — the gateway's hosted fields keep them out of PCI scope, non-negotiable. They engage with challenges on the merits, answer concretely with reasons, and leave nothing hanging: any thread the conversation opens, they drive to a clear decision rather than parking it. When both concerns have landed and nothing new is being raised, they say that covers it and they want to wrap up. On the way out they are agreeable — offered a next step, they take it; they want the wrap-up to proceed, not to reopen the conversation. They never ask which option is better, and offered extra explorations mid-session they decline.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "topic start pay discussion pay",
+      "discussion(pay): initialize pay discussion",
+      "knowledge.cjs query",
+      "discussion-map set pay pay",
+      "agent dispatch pay discussion pay --kind review",
+      "agent scan pay discussion pay",
+      "agent ack pay discussion pay",
+      "--clean",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "topic start pay discussion pay",
+      "discussion(pay): initialize pay discussion",
+      "knowledge.cjs query",
+      "agent dispatch pay discussion pay --kind review",
+      "agent scan pay discussion pay"
+    ],
+    "calls_exclude": [
+      "--kind perspective",
+      "agent surface",
+      "topic complete",
+      "topic reopen",
+      "discovery-map add",
+      "knowledge.cjs index"
+    ]
+  }
+}
