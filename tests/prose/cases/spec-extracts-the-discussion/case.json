@@ -1,0 +1,61 @@
+{
+  "origin": "the specification pass had entry coverage only — this walks the whole phase: gated extraction from a completed discussion, the two-phase review run clean through stubs, and the engine-completed conclusion",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-shared/references/compliance-check.md"
+  ],
+  "conduct": "The user is turning their completed card-payments discussion into the specification. They know its decisions cold: the existing gateway account with no new provider onboarding, card-only for v1 with wallets deferred, and capture confirmed by gateway webhooks with no polling anywhere. They check each presented piece against what was actually decided — content faithful to the discussion gets an explicit yes; anything invented, embellished, or hedged beyond the record they correct before it is written. They want their own eyes on every piece before it is recorded: offered a way to approve the rest automatically, they decline and keep approving one at a time. They answer questions concretely and briefly, and they do not reopen decided questions or add new scope — the discussion said what it said. When asked to conclude, they confirm: the specification matches the discussion and they are done.",
+  "stubs": {
+    "spec-review-clean": "each time the prose dispatches a specification review agent via the Task tool — both the input review and the gap analysis return the content below and write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.specification.pay",
+      "manifest get pay.specification.pay status",
+      "topic start pay specification pay",
+      "sources.pay.status pending",
+      "sources.pay.status incorporated",
+      "review_cycle=0",
+      "finding_gate_mode=gated",
+      "spec(pay): initialize specification",
+      "manifest set pay.specification.pay review_cycle 1",
+      "topic complete pay specification pay",
+      "spec(pay): conclude specification"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.specification.pay",
+      "manifest get pay.specification.pay status",
+      "topic start pay specification pay",
+      "sources.pay.status incorporated",
+      "review_cycle 1",
+      "topic complete pay specification pay",
+      "spec(pay): conclude specification"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic supersede",
+      "construction_gate_mode auto",
+      "finding_gate_mode auto",
+      "knowledge.cjs",
+      "workunit create"
+    ]
+  }
+}
