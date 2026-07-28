@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.15] - 2026-07-28
+
+🔧 Changed
+- Background finding raises now open with plain-language context before any assessment, and end in a single proposal or option sketch sized to how settled the finding is — easier to follow when returning to a session after a break.
+
 ## [0.6.14] - 2026-07-28
 
 🔧 Changed
