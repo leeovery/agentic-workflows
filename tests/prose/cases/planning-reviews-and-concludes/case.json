@@ -1,0 +1,74 @@
+{
+  "origin": "planning's tail had no coverage — a graphed plan resumed against a real spec baseline, the two-part review run clean in order, and the conclusion re-stamping the baseline before the engine completes the plan",
+  "entry": "workflow-planning-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-planning-entry/references/validate-spec.md",
+    "skills/workflow-planning-entry/references/validate-phase.md",
+    "skills/workflow-planning-entry/references/invoke-skill.md",
+    "skills/workflow-planning-process/SKILL.md",
+    "skills/workflow-planning-process/references/spec-change-detection.md",
+    "skills/workflow-planning-process/references/session-setup.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/graph.md",
+    "skills/workflow-planning-process/references/planning-principles.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-planning-process/references/verify-source-material.md",
+    "skills/workflow-planning-process/references/plan-construction.md",
+    "skills/workflow-planning-process/references/define-phases.md",
+    "skills/workflow-planning-process/references/analyze-task-graph.md",
+    "skills/workflow-planning-process/references/plan-review.md",
+    "skills/workflow-planning-process/references/invoke-review-traceability.md",
+    "skills/workflow-planning-process/references/invoke-review-integrity.md",
+    "skills/workflow-planning-process/references/process-review-findings.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-planning-process/references/conclude-plan.md"
+  ],
+  "answers": [
+    "c — pick the plan up where it left off",
+    "y — the structure still matches",
+    "y — the graph is right",
+    "y — conclude the plan"
+  ],
+  "stubs": {
+    "plan-graph-applied": "when the prose invokes the dependency-grapher agent — apply the graph to the task files as the stub's description states (already-present values reapply unchanged), then return the content below as the agent's summary",
+    "plan-review-clean": "each time the prose invokes a planning review agent via the Task tool — both the traceability and the integrity review return the content below and write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "render resume-gate pay.planning.pay --variant plan",
+      "-- .workflows/pay/specification/pay/specification.md",
+      "render phase-tree pay.planning.pay",
+      "manifest set pay.planning.pay review_cycle 1",
+      "planning(pay): complete plan review",
+      "manifest set pay.planning.pay spec_commit",
+      "topic complete pay planning pay",
+      "planning(pay): complete plan"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "render resume-gate pay.planning.pay --variant plan",
+      "render phase-tree pay.planning.pay",
+      "manifest set pay.planning.pay review_cycle 1",
+      "planning(pay): complete plan review",
+      "manifest set pay.planning.pay spec_commit",
+      "topic complete pay planning pay"
+    ],
+    "calls_exclude": [
+      "staging.author",
+      "render author-task-gate",
+      "topic reopen",
+      "restart planning",
+      "finding_gate_mode auto",
+      "workunit create",
+      "knowledge.cjs index"
+    ]
+  }
+}
