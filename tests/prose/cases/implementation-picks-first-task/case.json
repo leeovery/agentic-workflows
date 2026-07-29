@@ -15,7 +15,9 @@
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
-      "task init"
+      "task init",
+      "engine.cjs commit pay -m impl(pay): start implementation",
+      "engine.cjs commit --workflows -m chore(workflows): record environment setup"
     ],
     "calls_exclude": [
       "task start",

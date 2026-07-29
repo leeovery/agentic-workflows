@@ -40,7 +40,7 @@
       "manifest get pay.implementation.pay status",
       "manifest exists pay.implementation.pay",
       "task init pay pay",
-      "impl(pay): start implementation",
+      "engine.cjs commit pay -m impl(pay): start implementation",
       "manifest get pay.planning.pay format",
       "manifest get pay.implementation.pay project_skills",
       "manifest exists project.defaults.project_skills",
@@ -73,7 +73,9 @@
       "topic reopen",
       "task_gate_mode auto",
       "fix_gate_mode auto",
-      "engine.cjs commit pay -m impl(pay): T"
+      "engine.cjs commit pay -m impl(pay): T",
+      "git add -A",
+      "git add --all"
     ]
   }
 }
