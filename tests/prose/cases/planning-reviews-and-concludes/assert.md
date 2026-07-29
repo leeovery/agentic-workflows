@@ -22,10 +22,11 @@ The prose should have taken this path:
 7. with no findings surfaced this cycle the review completes: the
    tracking subtree is verified trivially, the completion commits, and
    no re-loop prompt is put to the user
-8. the compliance self-check re-reads the session's instructions; the
-   conclusion gate is put to the user and, on their yes, the spec
-   baseline is re-stamped from the current commit, the plan completes
-   through the engine, and the final commit lands
+8. the compliance self-check refreshes the session's instructions —
+   attempting the re-reads and standing on any the tool confirms
+   unchanged — then the conclusion gate is put to the user and, on
+   their yes, the spec baseline is re-stamped from the current commit,
+   the plan completes through the engine, and the final commit lands
 9. the walk stops at the pipeline continuation — the bridge is never
    invoked
 
