@@ -131,7 +131,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 → Proceed to **F. Completion**.
 
-#### If `finding_gate_mode` is `auto` and `review_cycle` < 5
+#### If findings were surfaced and `finding_gate_mode` is `auto` and `review_cycle` < 5
 
 > *Output the next fenced block as a code block:*
 
@@ -141,7 +141,7 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 
 → Return to **A. Cycle Initialization**.
 
-#### If `finding_gate_mode` is `auto` and `review_cycle` >= 5
+#### If findings were surfaced and `finding_gate_mode` is `auto` and `review_cycle` >= 5
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
 
@@ -174,7 +174,7 @@ Run another review round?
 
 → Proceed to **F. Completion**.
 
-#### If `finding_gate_mode` is `gated`
+#### If findings were surfaced and `finding_gate_mode` is `gated`
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
 
