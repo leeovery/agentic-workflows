@@ -1,0 +1,16 @@
+[
+  {
+    "message": "impl(pay): Tpay-1-1 — create payment intent",
+    "files": [
+      "src/checkout/payment-intent.js",
+      "tests/checkout/payment-intent.test.js"
+    ]
+  },
+  {
+    "message": "impl(pay): Tpay-1-2 — handle capture webhooks",
+    "files": [
+      "src/webhooks/capture.js",
+      "tests/webhooks/capture.test.js"
+    ]
+  }
+]

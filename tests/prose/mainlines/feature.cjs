@@ -274,15 +274,53 @@ function planGraphed(h) {
 function implement(h) {
   // No `topic start` here: implementation is the one phase whose prose
   // never issues it — `task init` owns creation (process Step 0, the
-  // created arm), and only that arm writes the full field set.
+  // created arm), and only that arm writes the full field set. The
+  // code commits are declared as world history (per-task messages in
+  // the task-loop's convention) so a materialised world's git log
+  // carries what the review scope-grep reads.
   h.engine('task', 'init', WU, WU);
   h.engine('task', 'start', WU, WU, `${WU}-1-1`);
+  h.write('src/checkout/payment-intent.js', [
+    "// Create a gateway payment intent when checkout begins. Card-only",
+    "// is enforced at creation; gateway rejection surfaces as a checkout",
+    "// error and a duplicate start reuses the existing intent.",
+    "export function createPaymentIntent(order) {",
+    "  return gateway.intents.create({ order: order.id, methods: ['card'] });",
+    "}",
+    "",
+  ].join('\n'));
+  h.write('tests/checkout/payment-intent.test.js', [
+    "// Intent created on checkout start; card-only enforced; rejection",
+    "// surfaces; duplicate start does not mint a second intent.",
+    "test('creates a card-only intent on checkout start', () => {});",
+    "",
+  ].join('\n'));
   h.write(`.workflows/${WU}/planning/${WU}/tasks/${WU}-1-1.md`, taskFile(TASKS[0], 'completed'));
   h.engine('task', 'complete', WU, WU, `${WU}-1-1`, '--next-task', `${WU}-1-2`);
   h.engine('task', 'start', WU, WU, `${WU}-1-2`);
+  h.write('src/webhooks/capture.js', [
+    "// Consume gateway capture webhooks and mark the order paid. There",
+    "// is no polling path; duplicate deliveries are idempotent.",
+    "export function handleCaptureWebhook(event) {",
+    "  return orders.markPaid(event.intentId);",
+    "}",
+    "",
+  ].join('\n'));
+  h.write('tests/webhooks/capture.test.js', [
+    "// Webhook marks the order paid; duplicates are idempotent; an",
+    "// unknown intent is logged and ignored.",
+    "test('marks the order paid on capture webhook', () => {});",
+    "",
+  ].join('\n'));
   h.write(`.workflows/${WU}/planning/${WU}/tasks/${WU}-1-2.md`, taskFile(TASKS[1], 'completed'));
   h.engine('task', 'complete', WU, WU, `${WU}-1-2`, '--next-task', '~', '--phase-complete');
-  h.engine('commit', WU, '-m', `impl(${WU}): phase 1 complete`);
+  h.write('.world-history.json', JSON.stringify([
+    { message: `impl(${WU}): T${WU}-1-1 — create payment intent`,
+      files: ['src/checkout/payment-intent.js', 'tests/checkout/payment-intent.test.js'] },
+    { message: `impl(${WU}): T${WU}-1-2 — handle capture webhooks`,
+      files: ['src/webhooks/capture.js', 'tests/webhooks/capture.test.js'] },
+  ], null, 2));
+  h.engine('commit', WU, '-m', `impl(${WU}): complete implementation`);
   h.engine('topic', 'complete', WU, 'implementation', WU);
 }
 
