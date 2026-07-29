@@ -252,6 +252,25 @@ function planAuthored(h) {
   h.engine('commit', WU, '-m', `plan(${WU}): author all phases`, '--plan', WU);
 }
 
+// The graph applied on top of planAuthored: dependencies and
+// priorities in the task files' frontmatter, as the grapher leaves
+// them, with the analyze commit recorded.
+function planGraphed(h) {
+  const graphed = [
+    { id: `${WU}-1-1`, title: 'Create Payment Intent', description: 'Create a gateway payment intent when checkout begins, card-only enforced.', extra: ['priority: 1'] },
+    { id: `${WU}-1-2`, title: 'Attach Intent To Order', description: 'Persist the intent id on the order for later capture confirmation.', extra: ['priority: 2', 'depends_on:', `  - ${WU}-1-1`] },
+    { id: `${WU}-2-1`, title: 'Handle Capture Webhooks', description: 'Consume gateway capture webhooks and mark the order paid; no polling path.', extra: ['depends_on:', `  - ${WU}-1-2`] },
+  ];
+  for (const t of graphed) {
+    const phase = t.id.split('-')[1];
+    h.write(`.workflows/${WU}/planning/${WU}/tasks/${t.id}.md`, [
+      '---', `id: ${t.id}`, `phase: ${phase}`, 'status: pending', 'created: 2026-01-01', ...t.extra, '---',
+      '', `# ${t.title}`, '', t.description, '',
+    ].join('\n'));
+  }
+  h.engine('commit', WU, '-m', `planning(${WU}): analyze task dependencies and priorities`, '--plan', WU);
+}
+
 function implement(h) {
   // No `topic start` here: implementation is the one phase whose prose
   // never issues it — `task init` owns creation (process Step 0, the
@@ -267,4 +286,4 @@ function implement(h) {
   h.engine('topic', 'complete', WU, 'implementation', WU);
 }
 
-module.exports = { WU, TASKS, P2_TASK, init, create, discuss, specify, plan, planAuthored, implement };
+module.exports = { WU, TASKS, P2_TASK, init, create, discuss, specify, plan, planAuthored, planGraphed, implement };

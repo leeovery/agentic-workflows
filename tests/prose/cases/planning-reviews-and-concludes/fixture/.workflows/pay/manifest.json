@@ -1,0 +1,59 @@
+{
+  "name": "pay",
+  "work_type": "feature",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Accept card payments at checkout",
+  "phases": {
+    "discussion": {
+      "items": {
+        "pay": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "pay": {
+          "status": "completed",
+          "sources": {
+            "pay": {
+              "status": "incorporated"
+            }
+          }
+        }
+      }
+    },
+    "planning": {
+      "items": {
+        "pay": {
+          "status": "in-progress",
+          "format": "local-markdown",
+          "spec_commit": "@WORLD_COMMIT@",
+          "task_list_gate_mode": "gated",
+          "author_gate_mode": "gated",
+          "finding_gate_mode": "gated",
+          "review_cycle": 0,
+          "phase": 3,
+          "task": null,
+          "external_id": "pay",
+          "task_map": {
+            "pay-1": "pay-1",
+            "pay-1-1": "pay-1-1",
+            "pay-1-2": "pay-1-2",
+            "pay-2": "pay-2",
+            "pay-2-1": "pay-2-1"
+          },
+          "storage_paths": [],
+          "approvals": {
+            "structure": "2026-01-01",
+            "tasks": {
+              "p1": "2026-01-01",
+              "p2": "2026-01-01"
+            }
+          }
+        }
+      }
+    }
+  }
+}
