@@ -4,14 +4,14 @@
 
 ---
 
-Before concluding this phase, verify that the skill instructions were followed correctly throughout this session. This check exists because context drift is real — after a long session, the original instructions may be buried under pages of conversation. Re-reading pulls them fresh into attention so the audit is actually effective.
+Before concluding this phase, verify that the skill instructions were followed correctly throughout this session. This check exists because context drift is real — after a long session, the original instructions may be buried under pages of conversation. The audit runs against the instructions as written, never a recollection of them.
 
 ## A. Re-Read Skill Instructions
 
-1. **Re-read the processing skill's SKILL.md** — the top-level file of the current processing skill (the backbone that loaded this reference, or its parent backbone if loaded from within a reference file). Read it completely.
-2. **Re-read every reference file that was loaded during this session.** The SKILL.md's step directives list them. Re-read each one.
+1. **Re-read the processing skill's SKILL.md** — the top-level file of the current processing skill (the backbone that loaded this reference, or its parent backbone if loaded from within a reference file).
+2. **Re-read every reference file that was loaded during this session.** The SKILL.md's step directives list them.
 
-This is non-negotiable. Do not skip this step or rely on your memory of what the instructions said. The re-read IS the mechanism.
+Attempt each read. Where the tool answers that a file is unchanged since your last read, that earlier read is current and still in context — audit from it, not from a memory of it; the refusal is confirmation, not an obstacle, and never a reason to claim a read that was not attempted. Where a read is served fresh, the content had left your context — take it in fully before auditing.
 
 → Proceed to **B. Audit the Session**.
 
