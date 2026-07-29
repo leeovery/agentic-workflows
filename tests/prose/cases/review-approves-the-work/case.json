@@ -52,7 +52,8 @@
     ],
     "calls_exclude": [
       "topic reopen",
-      "staging",
+      "set pay.review.pay staging",
+      "render proposed-task",
       "restart review",
       "workunit create",
       "knowledge.cjs index",

@@ -36,8 +36,8 @@ Further claims:
 - the work unit's manifest ends with status completed and a
   completed_at stamp; the review item is completed with both internal
   ids in reviewed_tasks
-- the work unit's cache directory (`.workflows/.cache/pay/`) is purged
-  by the completion
+- no cache directory for the work unit remains at
+  `.workflows/.cache/pay/` after the completion
 - the review report at `.workflows/pay/review/pay/report.md` holds an
   Approve verdict; one per-task report file exists per task suffix
 - the plan, tasks, specification, and source files are untouched; no
