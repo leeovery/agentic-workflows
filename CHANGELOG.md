@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.18] - 2026-07-29
+
+🔧 Changed
+- Planning and spec review re-loop steps (auto follow-up and gated confirmation) now only trigger when findings were actually surfaced, preventing an empty-findings pass from re-looping.
+- Planning review integrity and traceability agents skip writing a tracking file when the review is clean.
+- The compliance self-check now treats an "unchanged since last read" response as confirmation the earlier read is still valid, rather than forcing a re-read.
+
 ## [0.6.17] - 2026-07-29
 
 🔧 Changed
