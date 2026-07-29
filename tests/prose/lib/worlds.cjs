@@ -347,6 +347,27 @@ function destroyWorld(dir) {
   fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
+// Worlds die with their logs — and a failed run's logs are exactly the
+// evidence a human wants afterwards. Archiving copies the record (both
+// logs) and the workflow state out of a world before it is destroyed,
+// to a directory that outlives the run. Never the skills layer — that
+// is the repo's copy, not the walk's.
+const ARCHIVE_PREFIX = 'prose-failed-';
+
+function archiveWorld(dir, caseId) {
+  if (!path.basename(dir).startsWith(WORLD_PREFIX)) {
+    throw new Error(`refusing to archive non-world directory: ${dir}`);
+  }
+  const dest = fs.mkdtempSync(path.join(os.tmpdir(), `${ARCHIVE_PREFIX}${caseId}-`));
+  for (const name of [ACTION_LOG, WALK_LOG]) {
+    const src = path.join(dir, name);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dest, name));
+  }
+  const state = path.join(dir, '.workflows');
+  if (fs.existsSync(state)) fs.cpSync(state, path.join(dest, '.workflows'), { recursive: true });
+  return dest;
+}
+
 /** The recorded actions as rows, for checks that run in code. */
 function readActionRows(worldDir) {
   const file = path.join(worldDir, ACTION_LOG);
@@ -387,5 +408,5 @@ module.exports = {
   ROOT, ENGINE, KNOWLEDGE, MAINLINES_DIR, WORLD_PREFIX,
   ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog,
   runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
-  writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld,
+  writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld, archiveWorld,
 };

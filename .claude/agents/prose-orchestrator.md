@@ -32,8 +32,11 @@ a walk.
 - **Never investigate a failure.** Do not read the skill or engine source
   to explain a verdict, and do not add your own analysis to what the
   asserter returned. Pass the verdict through as given.
-- Destroy every world you build. On a failure, destroy it too but report
-  the case id so it can be rebuilt for inspection.
+- Destroy every world you build. On a FAIL, FLAKY, or INVALID, first
+  archive its evidence — `node tests/prose/run.cjs archive <case-id>
+  --world <dir>` — and carry the printed path into the verdict's
+  ARCHIVE line; then destroy as normal. A failed world's logs are the
+  only copy of what happened.
 
 ## Steps
 
@@ -117,6 +120,9 @@ WORLD: PASS | FAIL
 MARKERS: <none, or one line each>
 EVIDENCE: <for FAIL/FLAKY — the failing step and the quoted line that shows it;
           for INVALID — where the transcript opened and where it should have>
+ARCHIVE: <for FAIL/FLAKY/INVALID — the archived-evidence path each such run's
+         `archive` command printed, labelled per run when there were two;
+         omit the line entirely on PASS>
 ```
 
 No transcripts, no prompts, no commentary, no recommendations.

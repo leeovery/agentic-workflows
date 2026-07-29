@@ -13,6 +13,7 @@
 //   assert <case-id> --world <d>  the asserting agent's prompt
 //   snap <case-id>                (re)generate a case's snapshots
 //   verify [case-id]              rebuild-compare snapshot(s)
+//   archive <case-id> --world <d> lift a failed world's evidence out before destroy
 //   destroy --world <dir>         remove a world
 
 const fs = require('fs');
@@ -103,6 +104,15 @@ function cmdDestroy(argv) {
   const dir = flag(argv, '--world') || die('usage: destroy --world <dir>');
   worlds.destroyWorld(dir);
   process.stdout.write(`destroyed ${dir}\n`);
+}
+
+// A failed run's world holds the only copy of its evidence. Archiving
+// lifts the recorded logs and the workflow state to a directory that
+// outlives the run, so a failure can be inspected without re-walking.
+function cmdArchive(argv) {
+  const c = getCase(argv[0]);
+  const dir = requireWorld(argv, c);
+  process.stdout.write(`${JSON.stringify({ archived: worlds.archiveWorld(dir, c.id) })}\n`);
 }
 
 // --- prompt (the walker) --------------------------------------------------
@@ -250,9 +260,10 @@ function cmdList() {
 const [, , command, ...rest] = process.argv;
 const commands = {
   list: cmdList, select: cmdSelect, world: cmdWorld, prompt: cmdPrompt,
-  diff: cmdDiff, assert: cmdAssert, snap: cmdSnap, verify: cmdVerify, destroy: cmdDestroy,
+  diff: cmdDiff, assert: cmdAssert, snap: cmdSnap, verify: cmdVerify,
+  destroy: cmdDestroy, archive: cmdArchive,
 };
 if (!commands[command]) {
-  die('usage: run.cjs <list|select|world|prompt|diff|assert|snap|verify|destroy> …');
+  die('usage: run.cjs <list|select|world|prompt|diff|assert|snap|verify|archive|destroy> …');
 }
 commands[command](rest);
