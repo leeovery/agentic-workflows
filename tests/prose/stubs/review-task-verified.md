@@ -4,8 +4,10 @@ A task verifier's report for one task, everything in order: implemented
 where the plan says, adequately tested, no blocking issues, no notes.
 Write the content below to the report file for the dispatched task's
 suffix (`report-{phase_id}-{task_id}.md` in the review directory), with
-the TASK line filled from that task; the STATUS block is also what the
-agent returns to its caller.
+the TASK line filled from that task — via the agent contract's own
+mechanism: write the `.txt` path with the Write tool, then `mv` it to
+`.md` (the harness refuses report-shaped `.md` writes directly). The
+STATUS block is also what the agent returns to its caller.
 
 ---
 
