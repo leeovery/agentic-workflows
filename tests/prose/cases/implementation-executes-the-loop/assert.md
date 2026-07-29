@@ -6,8 +6,8 @@ The prose should have taken this path:
 2. the entry hands off into the processing skill carrying the
    local-markdown format read from the planning item
 3. resume detection initialises tracking and reports the created mode,
-   which commits the start of implementation — never the
-   resuming-from-a-previous-session note
+   which commits the start of implementation through the engine's
+   scoped commit — never the resuming-from-a-previous-session note
 4. environment setup finds the existing document stating no setup is
    required and returns without asking anything and without writing it
    again

@@ -274,6 +274,7 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   // task init owns creation (implementation-process Step 0, created arm).
   const init = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
+  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -324,6 +325,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.render(['entry-gate', `${wu}.implementation.${topic}`], { expect: 'empty' });
   const implInit = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
+  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -432,6 +434,7 @@ describe('pipeline simulation', () => {
     // Implementation (verification workflow) + review — task init creates.
     const init = sim.run(['task', 'init', wu, wu]);
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
+    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--next-task', '~', '--phase-complete']);
     sim.run(['topic', 'complete', wu, 'implementation', wu]);
@@ -713,6 +716,7 @@ describe('pipeline simulation', () => {
     const init = sim.run(['task', 'init', wu, wu]);
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
+    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     const findings = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/findings.json`,
       { findings: [{ title: 'Loose end', severity: 'minor' }] });

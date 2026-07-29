@@ -346,13 +346,13 @@ The response also carries the `MENU: blocked tasks` section that **A. Retrieve N
 
 **If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`).
 
-**Commit all changes** with raw git — stage the task's code and tests, the plan's `storage_paths` (recorded on the planning item), the work unit's manifest, and the task's fix-tracking file when one exists (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`), then commit:
+**Commit all changes** with raw git — stage the task's code and tests, the plan's task state (the files the format's **updating.md** touched, plus the `storage_paths` pathspecs recorded on the planning item for storage outside the work unit), the work unit's manifest, and the task's fix-tracking file when one exists (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`), then commit:
 
 ```
 impl({work_unit}): T{internal_id} — {brief description}
 ```
 
-One commit per approved task. Never `engine commit` here — its scopes cover `.workflows` only, never code or the plan format's storage.
+One commit per approved task, staging the listed paths explicitly — never `git add -A` or `git add .`. The subject is exactly as fenced — `T` immediately followed by the internal id; review's scope-grep finds task commits by this token. Never `engine commit` here — its scopes cover `.workflows` only, never code or the plan format's storage.
 
 → Return to **A. Retrieve Next Task**.
 

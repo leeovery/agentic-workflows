@@ -75,7 +75,11 @@ The response's `MENU: blocked tasks` section serves the task loop's blocked-task
 
 #### If the response's `mode` is `created`
 
-Commit: `impl({work_unit}): start implementation`
+Commit the tracking (the scoped commit covers the manifest):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): start implementation"
+```
 
 → Proceed to **Step 1**.
 
