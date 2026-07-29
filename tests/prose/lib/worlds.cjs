@@ -322,6 +322,10 @@ function buildWorld(caseId) {
   git('config', 'user.email', 'prose@example.com');
   git('config', 'user.name', 'Prose World');
   git('config', 'commit.gpgsign', 'false');
+  // The harness's logs live inside the world but are not world state — a
+  // walker staging broadly must never commit them. info/exclude keeps the
+  // rule out of the working tree, so snapshots and deltas never see it.
+  fs.writeFileSync(path.join(dir, '.git', 'info', 'exclude'), '.walk-actions.log\n.walk-transcript.log\n');
   git('add', '-A');
   git('commit', '-q', '-m', `world: ${caseId}`);
 
