@@ -118,7 +118,12 @@ CHECKS: <every deterministic check the asserter reported, verdict and name,
         and a line naming any divergence between them as walk variance.>
 PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL
-MARKERS: <none, or one line each>
+SCOPE: <the asserter's scope line, verbatim — `none undeclared`, or the
+       undeclared file list. Never omitted: an absent line is silence
+       where the file ratchet needs a statement>
+MARKERS: <none, or the asserter's typed entries (`WALK:`/`WANDER:`/
+         `INERT:`/`NOTE:`) one per line, verbatim — never retyped or
+         summarised>
 EVIDENCE: <for FAIL/FLAKY — the failing step and the quoted line that shows it;
           for INVALID — where the walk opened or died, and where it should have>
 ARCHIVE: <for FAIL/FLAKY/INVALID — the archived-evidence path each such run's

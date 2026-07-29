@@ -173,15 +173,26 @@ Return exactly this and nothing else:
 2. **World** — PASS or FAIL. Enumerate EVERY difference in the delta and
    classify each volatile or material. Any material difference fails. An
    empty delta passes.
-3. **Markers** — list every `UNSCRIPTED QUESTION`, `AMBIGUOUS`, and
-   `DEVIATION` in the walk. Each is a finding in its own right,
-   even when everything else passed.
-
-   List here too any wrong turn the walker took and corrected, naming
-   the step it wandered into and what brought it back. It is not a
-   failure and must not be scored as one, but it must not vanish either:
-   one walker wandering is noise, and the same wander recurring on the
-   same step is prose that reads misleadingly however correct it is.
+2b. **Scope** — always present. When the prompt carried an UNDECLARED
+   PROSE section, repeat its file list; when it carried none, write
+   `SCOPE: none undeclared`. Silence is not a statement, and this line
+   is how the case's file ratchet learns what a walk actually opened.
+3. **Markers** — always present; `MARKERS: none` when there are none.
+   Type every entry with one of these prefixes so nothing rests on
+   phrasing:
+   - `WALK:` — the walker's own markers (`UNSCRIPTED QUESTION`,
+     `AMBIGUOUS`, `DEVIATION`), each a finding in its own right even
+     when everything else passed.
+   - `WANDER:` — a wrong turn the walker took and corrected, naming
+     the step it wandered into and what brought it back. Not a failure
+     and never scored as one, but never vanished either: one walker
+     wandering is noise; the same wander recurring on the same step is
+     prose that reads misleadingly however correct it is.
+   - `INERT:` — recorded-but-unnarrated activity that touched no
+     workflow state (orientation reads, `ls`, `mkdir`, re-reads).
+     Group these into one line; they are hygiene, not findings.
+   - `NOTE:` — anything else worth a human's eye that fits none of
+     the above (record-internal discrepancies, fixture observations).
 4. **VERDICT** — PASS, FAIL, or INVALID WALK, then one sentence on what
    it means for the prose. Any FAILing deterministic check makes this
    FAIL.
