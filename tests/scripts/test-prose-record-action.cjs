@@ -81,6 +81,61 @@ describe('prose recorder — tool events', () => {
     assert.ok(!detail.includes('…[truncated]'), 'nothing was cut');
   });
 
+  it('flattens a multiline command to one log line — the record is line-oriented', () => {
+    fire({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      agent_type: 'prose-walker',
+      tool_input: { command: `cd ${world} && node engine.cjs \\\n  manifest set pay.planning.pay \\\n  approvals.structure 2026-01-01` },
+    });
+    const [row] = logLines();
+    const detail = row.split('\t')[2];
+    assert.ok(!detail.includes('\n'), 'one line');
+    assert.ok(detail.includes('approvals.structure 2026-01-01'), 'the tail survives the reflow');
+  });
+
+  it('keeps unicode command text intact — names are not always ascii', () => {
+    fire({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      agent_type: 'prose-walker',
+      tool_input: { command: `cd ${world} && node engine.cjs commit pay -m "discussion(pay): café — naïve 支付 ✓"` },
+    });
+    const [row] = logLines();
+    assert.ok(row.split('\t')[2].includes('café — naïve 支付 ✓'), 'unicode survives verbatim');
+  });
+
+  it('truncates a genuinely enormous command with the marker, after the world collapses', () => {
+    const filler = 'x'.repeat(2000);
+    fire({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      agent_type: 'prose-walker',
+      tool_input: { command: `cd ${world} && echo ${filler}` },
+    });
+    const [row] = logLines();
+    const detail = row.split('\t')[2];
+    assert.ok(detail.endsWith('…[truncated]'), 'oversize is marked, never silently cut');
+    assert.ok(detail.startsWith('cd . && echo'), 'the world path collapsed before the cap applied');
+    assert.ok(detail.length <= 600 + '…[truncated]'.length, 'the cap holds');
+  });
+
+  it('a command exactly at the cap is kept whole with no marker', () => {
+    const prefix = `cd ${world} && echo `;
+    const collapsed = 'cd . && echo ';
+    const payload = 'y'.repeat(600 - collapsed.length);
+    fire({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      agent_type: 'prose-walker',
+      tool_input: { command: prefix + payload },
+    });
+    const [row] = logLines();
+    const detail = row.split('\t')[2];
+    assert.equal(detail.length, 600, 'exactly the cap');
+    assert.ok(!detail.includes('…[truncated]'), 'no marker at the boundary');
+  });
+
   it('records a command output, so a claim about it can be checked', () => {
     fire({
       hook_event_name: 'PostToolUse',
