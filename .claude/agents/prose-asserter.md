@@ -106,7 +106,7 @@ record exactly like one the prose asked for — only the walk says which it
 was. So a claim that something was not done is answered by both together:
 the record for whether it happened, the walk for whose doing it was.
 
-## One known difference between here and a live session
+## Two known differences between here and a live session
 
 An inline `` !`command` `` directive is substituted when a skill loads
 live. A walk reads the prose as a file, so the substitution never happens
@@ -119,7 +119,15 @@ real session almost always takes, and here it is never exercised. A claim
 that depends on the substituted value cannot be answered by a walk, and
 should be judged unprovable rather than passed or failed.
 
-This is the only such difference. Anything else that looks like an
+The second: a live session crosses a skill boundary through the Skill
+tool, which the walker does not have. Where the prose invokes another
+skill and the task sanctions continuing, the walker reads the named
+skill's file and follows it with the stated arguments — the same
+instructions a live invocation loads. That is correct behaviour, not a
+`DEVIATION` and not a missing step; do not fail a handoff for having
+been read rather than invoked.
+
+These are the only such differences. Anything else that looks like an
 environment quirk is a finding, not an exemption.
 
 ## An invalid walk is not a failing walk
@@ -135,6 +143,17 @@ on and the step it should have opened on, and judge nothing further.
 This is a fault in the walk, not in the prose. A walk that *did* the
 work and merely described it poorly is **not** invalid — judge it from
 the actions.
+
+The same holds at the other end. A walk that simply stops — its
+recorded actions ending before the task's stop condition, with no
+hard error, no `UNSCRIPTED QUESTION`, and no terminal arm of the
+prose reached — died mid-walk. The prose beyond that point was never
+exercised, so its steps are not failures and the expected world was
+never something this walk could have produced. Return
+`VERDICT: INVALID WALK`, name the last action taken and the stop
+condition it never reached, and judge nothing further. A walk the
+prose itself halted — a terminal STOP, a blocker arm — is **not**
+invalid: reaching that halt is the behaviour under judgment.
 
 ## Verdict
 
