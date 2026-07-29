@@ -40,6 +40,10 @@ every stage.
 
 Work through each phase in order. Check the current phase's state.
 
+#### If the manifest position is past the last phase
+
+→ Proceed to **E. Loop Complete**.
+
 #### If the phase has no task table in the planning file
 
 → Load **[define-tasks.md](define-tasks.md)** and follow its instructions as written.
