@@ -5,6 +5,6 @@ status: pending
 created: 2026-01-01
 ---
 
-# Handle Capture Webhooks
+# Attach Intent To Order
 
-Consume gateway capture webhooks and mark the order paid; no polling path.
+Persist the intent id on the order for later capture confirmation.

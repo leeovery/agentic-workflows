@@ -227,7 +227,12 @@ function planAuthored(h) {
     '**Outcome**: Paid orders reflect capture with no polling anywhere.',
     '',
   ].join('\n'));
-  for (const t of [...TASKS, P2_TASK]) {
+  const AUTHORED = [
+    TASKS[0],
+    { id: `${WU}-1-2`, title: 'Attach Intent To Order', description: 'Persist the intent id on the order for later capture confirmation.' },
+    P2_TASK,
+  ];
+  for (const t of AUTHORED) {
     const phase = t.id.split('-')[1];
     h.write(`.workflows/${WU}/planning/${WU}/tasks/${t.id}.md`, [
       '---', `id: ${t.id}`, `phase: ${phase}`, 'status: pending', 'created: 2026-01-01', '---',
