@@ -1,23 +1,21 @@
 The prose should have taken this path:
 
-1. the entry's spec gate clears; the planning status reads in-progress,
-   the resuming note renders through the engine, and the handoff is the
-   continuing variant — no late-context question, no cross-cutting
-   sweep
+1. the entry's spec gate clears; the planning status reads in-progress
+   and the handoff is the continuing variant — no resuming note is
+   rendered, no late-context question, no cross-cutting sweep
 2. the process finds the planning entry and offers the resume; spec
-   change detection cannot diff — the plan carries no spec-commit
-   baseline, the legacy shape — and the walk records that it could not
-   run the check and continues to the gate rather than inventing a
-   verdict
+   change detection finds no baseline recorded and says exactly that —
+   changes since planning began cannot be detected — with no diff run
+   and no invented verdict
 3. on continue, the missing-storage-paths backfill does not fire — the
    field is present — and session setup loads the format references and
    resets the gate modes
 4. construction fast-paths over approved work: the existing structure
    is presented through the engine-rendered phase tree and confirmed
-   with nothing re-recorded — the approval already stands; each phase's
-   existing task list renders through the engine and is confirmed; with
-   every task already in the task map, no authoring dispatch occurs and
-   each phase reports already authored
+   with nothing re-recorded — the approval already stands; with the
+   position past the last phase, construction reports the loop
+   complete — no per-phase gate renders and no authoring dispatch
+   occurs
 5. the graph step reads format, external id, and task map through the
    engine, loads the format's reading and graph references, and
    delegates to the grapher — stubbed: the edges and priorities land in

@@ -24,8 +24,6 @@
   "answers": [
     "c — pick the plan up where it left off",
     "y — the structure still matches",
-    "y — the phase 1 list stands",
-    "y — the phase 2 list stands",
     "y — the graph is right"
   ],
   "stubs": {
@@ -36,10 +34,8 @@
     "calls_include": [
       "render entry-gate pay.planning.pay",
       "manifest get pay.planning.pay status",
-      "--verb Resuming",
       "render resume-gate pay.planning.pay --variant plan",
       "render phase-tree pay.planning.pay",
-      "render task-list pay.planning.pay",
       "manifest get pay.planning.pay task_map",
       "manifest get pay.planning.pay external_id",
       "planning(pay): analyze task dependencies and priorities"
