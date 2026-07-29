@@ -10,6 +10,19 @@ The manifest stores `spec_commit` — the git commit hash of the spec baseline t
 
 ## Detection
 
+#### If the planning item carries no `spec_commit`
+
+> *Output the next fenced block as a code block:*
+
+```
+No specification baseline is recorded on this plan — changes since
+planning began cannot be detected.
+```
+
+→ Return to caller.
+
+#### Otherwise
+
 Run a git diff against the stored commit for all input files:
 
 ```bash
@@ -17,6 +30,8 @@ git diff {spec_commit} -- {specification-path} {cross-cutting-spec-paths...}
 ```
 
 Also check for new cross-cutting specification files that didn't exist at that commit.
+
+→ Proceed to **Reporting**.
 
 ## Reporting
 
