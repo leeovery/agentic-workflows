@@ -89,7 +89,8 @@ exception is the confirmation rerun in step 4, below.
    is a finding in its own right. Name it as one.
 
 5. **Retry an invalid walk** — if the verdict is `INVALID WALK`, the
-   walker began mid-flow and the case was never actually exercised.
+   walker began mid-flow or died before the task's stop condition, and
+   the case was never actually exercised.
    Destroy the world, build a fresh one, and repeat steps 2 and 3 once.
    If the second walk is also invalid, report `INVALID` — never `FAIL`.
    A case that was not walked properly has said nothing about the prose,
@@ -119,7 +120,7 @@ PATH: <n>/<total> steps passed
 WORLD: PASS | FAIL
 MARKERS: <none, or one line each>
 EVIDENCE: <for FAIL/FLAKY — the failing step and the quoted line that shows it;
-          for INVALID — where the transcript opened and where it should have>
+          for INVALID — where the walk opened or died, and where it should have>
 ARCHIVE: <for FAIL/FLAKY/INVALID — the archived-evidence path each such run's
          `archive` command printed, labelled per run when there were two;
          omit the line entirely on PASS>

@@ -86,6 +86,14 @@ any harness substitutions. Follow it exactly.
   errored. Use only the tools the walk itself requires.
 - Do not read the case directory (`tests/prose/cases/…`). It holds the
   expected result, and seeing it invalidates the run.
+- **Crossing a skill boundary is done by reading.** Where the prose
+  invokes another skill — "Invoke the X skill", a stored route like
+  `/workflow-y …` — there is no Skill tool here: when the task
+  sanctions continuing, read the named skill's file under
+  `.claude/skills/` and follow it with the stated arguments, exactly
+  as a live invocation would have loaded it. Expected, not a
+  `DEVIATION`, no marker. Where the task says to stop at the handoff,
+  stop there.
 - **An inline `` !`command` `` directive will not have run.** That
   substitution happens when a skill is loaded live; here the prose is read
   as a file, so the literal backtick line is what you see. The prose gives
