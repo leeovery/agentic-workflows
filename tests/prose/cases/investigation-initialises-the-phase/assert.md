@@ -21,8 +21,7 @@ Further claims:
 EXPECTED WORLD — from a work unit whose investigation had not begun:
 
 - an investigation file at `.workflows/crash-fix/investigation/crash-fix.md`,
-  carrying the template's section structure — Symptoms, Analysis, Fix
-  Direction, Notes
+  holding Symptoms, Analysis, Fix Direction, and Notes sections
 - its Symptoms section seeded from what discovery already captured about
   the checkout crash, not left as template placeholders
 - its Analysis and Fix Direction sections still unwritten: nothing has

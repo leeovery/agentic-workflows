@@ -61,8 +61,8 @@ sketch:
   rationale; a Conclusion that is no longer `(none)` and states the
   topics added and the map size
 - the active-session marker cleared
-- one brief per topic under `discovery/briefs/`, shaped by the brief
-  template — soft decisions, rejected paths, open questions
+- one brief per topic under `discovery/briefs/`, each holding its
+  soft-decisions, rejected-paths, and open-questions sections
 - no research, discussion, specification, planning, implementation, or
   review artifacts anywhere; the work-unit description unchanged; no
   second work unit

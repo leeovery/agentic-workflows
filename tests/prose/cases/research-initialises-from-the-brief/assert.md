@@ -38,7 +38,7 @@ EXPECTED WORLD — from a harvested epic with no per-topic work:
 
 - a research file at
   `.workflows/search-relevance/research/relevance-measurement.md`
-  shaped by the template, its Starting Point reflecting the brief — the
+  holding a Starting Point that reflects the brief — the
   measurement problem, no evaluation set, the user never having built a
   harness — with a terminal `## Triage` holding `(none)` and no
   findings recorded yet
