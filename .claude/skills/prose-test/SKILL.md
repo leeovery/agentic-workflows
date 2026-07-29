@@ -38,8 +38,12 @@ about an expected result can leak into a later dispatch.
 ## Step 3: Collate
 
 Report a verdict table from what the orchestrators returned: case id,
-model, verdict, deterministic checks, path steps passed, world, markers.
-Quote the evidence line for every failure.
+model, verdict, deterministic checks, path steps passed, world, scope,
+markers. Quote the evidence line for every failure, and the archive
+path for every FAIL, FLAKY, or INVALID. Carry the scope line even when
+it is `none undeclared` — it feeds the case's file ratchet — and carry
+markers with their type prefixes intact (`WALK:`/`WANDER:`/`INERT:`/
+`NOTE:`); `INERT:` entries may be collapsed to a count in the table.
 
 Carry the checks through as reported. They were decided in code before
 any agent saw the case, so they are the one part of a verdict that rests
