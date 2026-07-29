@@ -21,14 +21,14 @@ Further claims:
   question — the carrier is read, not re-asked
 - the user's ignorance is recorded as such: where they had no error
   tracking, no logs, and no better date than last week, the file says so
-  rather than leaving those parts of the template as placeholders
+  rather than leaving those sections as placeholders
 - the analysis is untouched: no hypothesis, no code trace, no root cause.
   Nothing has been investigated yet, only described
 
 EXPECTED WORLD — from a work unit whose investigation had not begun:
 
 - an investigation file at `.workflows/crash-fix/investigation/crash-fix.md`
-  carrying the template's structure
+  holding Symptoms, Analysis, and Fix Direction sections
 - its Symptoms section holding both what discovery captured and what the
   interview added — the digital-only basket, the staging reproduction,
   the absence of logs or a tracking link

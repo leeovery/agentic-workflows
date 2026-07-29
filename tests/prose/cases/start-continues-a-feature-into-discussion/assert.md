@@ -41,8 +41,8 @@ Further claims:
 
 EXPECTED WORLD — from a feature holding only its discovery carrier:
 
-- a discussion file at `.workflows/pay/discussion/pay.md` shaped by the
-  template: a Context section reflecting card payments at checkout via
+- a discussion file at `.workflows/pay/discussion/pay.md` holding a
+  Context section reflecting card payments at checkout via
   the existing gateway account, and a terminal `## Triage` section
   holding `(none)`
 - no decisions recorded in it — nothing has been discussed yet

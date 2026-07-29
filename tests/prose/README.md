@@ -76,6 +76,16 @@ reason. Write "casing conventions load before the boot pipeline", not
 "Step 0.1 before Step 0.2". Anchors in `case.json` are substring
 fragments matched against heading text (`#Boot` matches "Step 0.2: Boot").
 
+**Claims state the expected shape — they never defer to a file.** "The
+file is shaped by the template" outsources the expectation to a document
+the asserter cannot fully see: file *reads* are truncated in the record
+(writes are kept whole), so template-equivalence is unanswerable from
+the evidence. Enumerate the shape instead — "holding Symptoms, Analysis,
+and Fix Direction sections, with a terminal `## Triage` holding
+`(none)`" — which the write record answers completely. Naming which
+reference *fed* a step ("created from the template") is fine in the
+path; it is the world claims that must carry their own expectations.
+
 **Assert what actions and state can prove.** A claim about something
 *displayed* — "offers the choice and waits", "emits the summary block" —
 can never be evidenced by the action log, because emitting text is not a
