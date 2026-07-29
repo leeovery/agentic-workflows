@@ -1,0 +1,79 @@
+{
+  "origin": "the task loop had no coverage — entry stopped at environment setup. This walks the loop itself: two tasks retrieved in reading-order, executed and reviewed through stubs, approved at gated task gates, and closed out with per-task commits and a phase completion",
+  "entry": "workflow-implementation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-implementation-entry/references/validate-phase.md",
+    "skills/workflow-implementation-entry/references/validate-dependencies.md",
+    "skills/workflow-implementation-entry/references/invoke-skill.md",
+    "skills/workflow-implementation-process/SKILL.md",
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-process/references/load-plan-adapter.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/updating.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-implementation-process/references/project-skills-discovery.md",
+    "skills/workflow-implementation-process/references/linter-setup.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-implementation-process/references/task-loop.md",
+    "skills/workflow-shared/references/product-lens.md",
+    "skills/workflow-implementation-process/references/task-normalisation.md",
+    "skills/workflow-implementation-process/references/invoke-executor.md",
+    "skills/workflow-implementation-process/references/invoke-reviewer.md"
+  ],
+  "answers": [
+    "y — skip project skills again",
+    "y — skip linters again",
+    "y — approve the task",
+    "y — approve the task"
+  ],
+  "stubs": {
+    "executor-task-complete": "each time the workflow-implementation-task-executor agent is dispatched — create the dispatched task's source and test files as the stub gives them and return that task's STATUS block; one firing per task",
+    "reviewer-task-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — return the stub's verdict with the TASK line filled from the dispatched task; write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.implementation.pay",
+      "manifest get pay.implementation.pay status",
+      "manifest exists pay.implementation.pay",
+      "task init pay pay",
+      "impl(pay): start implementation",
+      "manifest get pay.planning.pay format",
+      "manifest get pay.implementation.pay project_skills",
+      "manifest exists project.defaults.project_skills",
+      "manifest get pay.implementation.pay linters",
+      "manifest get project.defaults.linters",
+      "manifest get pay work_type",
+      "manifest get pay.planning.pay external_id",
+      "task start pay pay pay-1-1",
+      "task start pay pay pay-1-2",
+      "task complete pay pay pay-1-1 --phase 1 --next-task pay-1-2",
+      "task complete pay pay pay-1-2 --phase 1 --next-task ~",
+      "--phase-complete",
+      "impl(pay): Tpay-1-1",
+      "impl(pay): Tpay-1-2"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "task start pay pay pay-1-1",
+      "task complete pay pay pay-1-1",
+      "impl(pay): Tpay-1-1",
+      "task start pay pay pay-1-2",
+      "task complete pay pay pay-1-2",
+      "impl(pay): Tpay-1-2"
+    ],
+    "calls_exclude": [
+      "task fix-attempt",
+      "analysis-cycle",
+      "topic complete pay implementation",
+      "topic reopen",
+      "task_gate_mode auto",
+      "fix_gate_mode auto",
+      "engine.cjs commit pay -m impl(pay): T"
+    ]
+  }
+}
