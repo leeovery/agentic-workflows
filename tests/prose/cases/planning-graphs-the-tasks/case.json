@@ -1,0 +1,61 @@
+{
+  "origin": "the task graph had no coverage — a fully authored plan resumed mid-flow, construction fast-pathing over approved work, the grapher applying edges and priorities through the format, and the approval committed",
+  "entry": "workflow-planning-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-planning-entry/references/validate-spec.md",
+    "skills/workflow-planning-entry/references/validate-phase.md",
+    "skills/workflow-planning-entry/references/invoke-skill.md",
+    "skills/workflow-planning-process/SKILL.md",
+    "skills/workflow-planning-process/references/spec-change-detection.md",
+    "skills/workflow-planning-process/references/session-setup.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/graph.md",
+    "skills/workflow-planning-process/references/planning-principles.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-planning-process/references/verify-source-material.md",
+    "skills/workflow-planning-process/references/plan-construction.md",
+    "skills/workflow-planning-process/references/define-phases.md",
+    "skills/workflow-planning-process/references/analyze-task-graph.md"
+  ],
+  "answers": [
+    "c — pick the plan up where it left off",
+    "y — the structure still matches",
+    "y — the graph is right"
+  ],
+  "stubs": {
+    "plan-graph-applied": "when the prose invokes the dependency-grapher agent — apply the graph to the task files as the stub's description states, then return the content below as the agent's summary"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "render resume-gate pay.planning.pay --variant plan",
+      "render phase-tree pay.planning.pay",
+      "manifest get pay.planning.pay task_map",
+      "manifest get pay.planning.pay external_id",
+      "planning(pay): analyze task dependencies and priorities"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "render resume-gate pay.planning.pay --variant plan",
+      "render phase-tree pay.planning.pay",
+      "manifest get pay.planning.pay task_map",
+      "planning(pay): analyze task dependencies and priorities"
+    ],
+    "calls_exclude": [
+      "topic start pay planning pay",
+      "staging.author",
+      "render author-task-gate",
+      "topic complete",
+      "topic reopen",
+      "restart planning",
+      "knowledge.cjs index"
+    ]
+  }
+}

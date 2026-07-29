@@ -161,6 +161,97 @@ function plan(h) {
   h.engine('topic', 'complete', WU, 'planning', WU);
 }
 
+// A plan authored to the end of construction — structure and task
+// tables approved, every task written to local-markdown — but not yet
+// graphed, reviewed, or concluded. spec_commit carries the world
+// builder's `@WORLD_COMMIT@` placeholder: a recipe cannot know a SHA,
+// and materialise resolves it to the world's baseline commit.
+const P2_TASK = { id: `${WU}-2-1`, title: 'Handle Capture Webhooks', description: 'Consume gateway capture webhooks and mark the order paid; no polling path.' };
+
+function planAuthored(h) {
+  h.engine('topic', 'start', WU, 'planning', WU);
+  h.write(`.workflows/${WU}/planning/${WU}/planning.md`, [
+    `# Plan: Pay`,
+    '',
+    '## Phase 1: Payment Intent Core',
+    '',
+    '**Goal**: Checkout creates a gateway payment intent and attaches it to the order.',
+    '',
+    '**Acceptance criteria**: An intent is created when checkout begins; the order carries the intent id; card-only is enforced.',
+    '',
+    '| Task | Summary | Edge cases |',
+    '|------|---------|------------|',
+    '| Create Payment Intent | Create a gateway payment intent when checkout begins, card-only enforced. | Gateway rejects the intent; duplicate checkout start |',
+    '| Attach Intent To Order | Persist the intent id on the order for later capture confirmation. | Order abandoned before payment; intent id missing on retry |',
+    '',
+    '## Phase 2: Webhook Capture',
+    '',
+    '**Goal**: Capture is confirmed exclusively by gateway webhooks.',
+    '',
+    '**Acceptance criteria**: The webhook consumer marks orders paid; no polling path exists anywhere.',
+    '',
+    '| Task | Summary | Edge cases |',
+    '|------|---------|------------|',
+    '| Handle Capture Webhooks | Consume gateway capture webhooks and mark the order paid. | Duplicate webhook delivery; webhook for an unknown intent |',
+    '',
+  ].join('\n'));
+  h.write(`.workflows/${WU}/planning/${WU}/phase-1-tasks.md`, [
+    '# Phase 1: Payment Intent Core — 2 tasks',
+    '',
+    `## ${WU}-1-1`,
+    '',
+    '### Task 1: Create Payment Intent',
+    '',
+    '**Problem**: Checkout has no way to open a payment against the gateway.',
+    '**Solution**: Create a gateway payment intent when checkout begins, card-only enforced.',
+    '**Outcome**: Every checkout start yields exactly one intent.',
+    '',
+    `## ${WU}-1-2`,
+    '',
+    '### Task 2: Attach Intent To Order',
+    '',
+    '**Problem**: Capture confirmation cannot find the payment without a link from the order.',
+    '**Solution**: Persist the intent id on the order at creation time.',
+    '**Outcome**: Every order carries its intent id.',
+    '',
+  ].join('\n'));
+  h.write(`.workflows/${WU}/planning/${WU}/phase-2-tasks.md`, [
+    '# Phase 2: Webhook Capture — 1 task',
+    '',
+    `## ${WU}-2-1`,
+    '',
+    '### Task 1: Handle Capture Webhooks',
+    '',
+    '**Problem**: Orders are never marked paid without a confirmation path.',
+    '**Solution**: Consume gateway capture webhooks and mark the order paid.',
+    '**Outcome**: Paid orders reflect capture with no polling anywhere.',
+    '',
+  ].join('\n'));
+  const AUTHORED = [
+    TASKS[0],
+    { id: `${WU}-1-2`, title: 'Attach Intent To Order', description: 'Persist the intent id on the order for later capture confirmation.' },
+    P2_TASK,
+  ];
+  for (const t of AUTHORED) {
+    const phase = t.id.split('-')[1];
+    h.write(`.workflows/${WU}/planning/${WU}/tasks/${t.id}.md`, [
+      '---', `id: ${t.id}`, `phase: ${phase}`, 'status: pending', 'created: 2026-01-01', '---',
+      '', `# ${t.title}`, '', t.description, '',
+    ].join('\n'));
+  }
+  h.engine('manifest', 'set', `${WU}.planning.${WU}`,
+    'format=local-markdown', 'spec_commit=@WORLD_COMMIT@',
+    'task_list_gate_mode=gated', 'author_gate_mode=gated',
+    'finding_gate_mode=gated', 'review_cycle=0', 'phase=3', 'task=~', `external_id=${WU}`,
+    `task_map.${WU}-1=${WU}-1`, `task_map.${WU}-1-1=${WU}-1-1`, `task_map.${WU}-1-2=${WU}-1-2`,
+    `task_map.${WU}-2=${WU}-2`, `task_map.${WU}-2-1=${WU}-2-1`,
+    'storage_paths=[]');
+  h.engine('manifest', 'set', `${WU}.planning.${WU}`, 'approvals.structure', '2026-01-01');
+  h.engine('manifest', 'set', `${WU}.planning.${WU}`, 'approvals.tasks.p1', '2026-01-01');
+  h.engine('manifest', 'set', `${WU}.planning.${WU}`, 'approvals.tasks.p2', '2026-01-01');
+  h.engine('commit', WU, '-m', `plan(${WU}): author all phases`, '--plan', WU);
+}
+
 function implement(h) {
   // No `topic start` here: implementation is the one phase whose prose
   // never issues it — `task init` owns creation (process Step 0, the
@@ -176,4 +267,4 @@ function implement(h) {
   h.engine('topic', 'complete', WU, 'implementation', WU);
 }
 
-module.exports = { WU, TASKS, init, create, discuss, specify, plan, implement };
+module.exports = { WU, TASKS, P2_TASK, init, create, discuss, specify, plan, planAuthored, implement };
