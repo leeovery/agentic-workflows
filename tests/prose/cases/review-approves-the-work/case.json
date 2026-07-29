@@ -1,0 +1,62 @@
+{
+  "origin": "the review phase had entry coverage only — this walks verification to approval: per-task verifiers over a real implementation history, the report produced and presented, and the approve arm completing the phase",
+  "entry": "workflow-review-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-review-entry/SKILL.md",
+    "skills/workflow-review-entry/references/validate-phase.md",
+    "skills/workflow-review-entry/references/invoke-skill.md",
+    "skills/workflow-review-process/SKILL.md",
+    "skills/workflow-review-process/references/read-plans.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-review-process/references/load-project-skills.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-review-process/references/invoke-task-verifiers.md",
+    "skills/workflow-review-process/references/review-checklist.md",
+    "skills/workflow-review-process/references/produce-review.md",
+    "skills/workflow-review-process/references/template.md",
+    "skills/workflow-review-process/references/present-review.md",
+    "skills/workflow-shared/references/product-lens.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-review-process/references/review-actions-loop.md"
+  ],
+  "answers": [
+    "c — continue to review actions"
+  ],
+  "stubs": {
+    "review-task-verified": "each time a task verifier is dispatched via the Task tool — write the content below to that task's report file and return the STATUS block; one firing per task"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.review.pay",
+      "manifest get pay.review.pay status",
+      "topic start pay review pay",
+      "manifest get pay.planning",
+      "impl(pay): T",
+      "manifest get pay.implementation.pay project_skills",
+      "push pay.review.pay reviewed_tasks",
+      "review(pay): complete review",
+      "topic complete pay review pay",
+      "review(pay): complete review phase"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.review.pay",
+      "manifest get pay.review.pay status",
+      "topic start pay review pay",
+      "impl(pay): T",
+      "push pay.review.pay reviewed_tasks",
+      "review(pay): complete review",
+      "topic complete pay review pay",
+      "review(pay): complete review phase"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "staging",
+      "restart review",
+      "workunit create",
+      "knowledge.cjs index",
+      "task start"
+    ]
+  }
+}

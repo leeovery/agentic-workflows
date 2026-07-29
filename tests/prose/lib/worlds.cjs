@@ -45,6 +45,13 @@ const ACTION_LOG = '.walk-actions.log';
 // returns one final message; the walk happens across dozens of turns.
 const WALK_LOG = '.walk-transcript.log';
 
+// A recipe's git history dies at the world's fresh init, so a fixture
+// that needs one (implementation commits the review scope-grep reads)
+// declares it: the recipe writes this sidecar — [{"message", "files"}]
+// — the snapshot carries it, and materialise turns it into real
+// layered commits. The sidecar itself never lands in the world.
+const WORLD_HISTORY = '.world-history.json';
+
 // --- the recipe harness ---------------------------------------------------
 
 function recipeEnv() {
@@ -263,7 +270,10 @@ function diffWorld(caseId, worldDir, claimsMode = false) {
     if (!expected.has(rel)) added.push(rel);
     else if (!expected.get(rel).equals(buf)) changed.push(unifiedDiff(rel, expected.get(rel), buf));
   }
-  for (const rel of expected.keys()) if (!actual.has(rel)) removed.push(rel);
+  for (const rel of expected.keys()) {
+    if (rel === WORLD_HISTORY) continue;
+    if (!actual.has(rel)) removed.push(rel);
+  }
 
   return {
     expecting: which === 'assertion'
@@ -292,7 +302,10 @@ function buildWorld(caseId) {
   const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' };
   const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', env });
 
+  const history = snap.has(WORLD_HISTORY) ? JSON.parse(snap.get(WORLD_HISTORY).toString('utf8')) : [];
+  const layered = new Set(history.flatMap((g) => g.files));
   for (const [rel, buf] of snap) {
+    if (rel === WORLD_HISTORY || layered.has(rel)) continue;
     const real = path.basename(rel) === GITIGNORE_ESCAPED
       ? path.join(path.dirname(rel), GITIGNORE)
       : rel;
@@ -311,6 +324,19 @@ function buildWorld(caseId) {
   git('config', 'commit.gpgsign', 'false');
   git('add', '-A');
   git('commit', '-q', '-m', `world: ${caseId}`);
+
+  // Layer the declared history: one real commit per group, in order,
+  // each carrying exactly its declared files — the shape the walk's
+  // git-history reads (scope greps, baselines) expect of a real run.
+  for (const group of history) {
+    for (const rel of group.files) {
+      const dest = path.join(dir, rel);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, snap.get(rel));
+    }
+    git('add', '-A');
+    git('commit', '-q', '-m', group.message);
+  }
 
   // A recipe cannot know a commit hash — every world re-inits git — so a
   // fixture that must hold one (a plan's spec_commit baseline) writes
