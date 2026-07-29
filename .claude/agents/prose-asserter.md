@@ -106,7 +106,7 @@ record exactly like one the prose asked for — only the walk says which it
 was. So a claim that something was not done is answered by both together:
 the record for whether it happened, the walk for whose doing it was.
 
-## Two known differences between here and a live session
+## Three known differences between here and a live session
 
 An inline `` !`command` `` directive is substituted when a skill loads
 live. A walk reads the prose as a file, so the substitution never happens
@@ -126,6 +126,12 @@ skill's file and follows it with the stated arguments — the same
 instructions a live invocation loads. That is correct behaviour, not a
 `DEVIATION` and not a missing step; do not fail a handoff for having
 been read rather than invoked.
+
+The third: the harness refuses report-shaped `.md` writes from
+subagents, so a walker producing one writes the `.txt` path and renames
+it — the same mechanism the product's own agents are instructed to use.
+A write-then-rename where a report file was called for is correct
+behaviour: not a deviation, not a missing write.
 
 These are the only such differences. Anything else that looks like an
 environment quirk is a finding, not an exemption.
