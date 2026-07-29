@@ -1,5 +1,5 @@
 {
-  "origin": "the review phase had entry coverage only — this walks verification to approval: per-task verifiers over a real implementation history, the report produced and presented, and the approve arm completing the phase",
+  "origin": "the bridge had no coverage — every prior walk stopped at the pipeline continuation. This crosses it: the review's approve arm invokes the bridge, the gateway derives done, and the feature continuation's terminal arm completes the work unit — the pipeline-completion lifecycle edge",
   "entry": "workflow-review-entry",
   "world": "claims",
   "files": [
@@ -18,7 +18,9 @@
     "skills/workflow-review-process/references/present-review.md",
     "skills/workflow-shared/references/product-lens.md",
     "skills/workflow-shared/references/compliance-check.md",
-    "skills/workflow-review-process/references/review-actions-loop.md"
+    "skills/workflow-review-process/references/review-actions-loop.md",
+    "skills/workflow-bridge/SKILL.md",
+    "skills/workflow-bridge/references/feature-continuation.md"
   ],
   "answers": [
     "c — continue to review actions"
@@ -32,23 +34,25 @@
       "render entry-gate pay.review.pay",
       "manifest get pay.review.pay status",
       "topic start pay review pay",
-      "manifest get pay.planning",
       "impl(pay): T",
-      "manifest get pay.implementation.pay project_skills",
       "push pay.review.pay reviewed_tasks",
       "review(pay): complete review",
       "topic complete pay review pay",
-      "review(pay): complete review phase"
+      "review(pay): complete review phase",
+      "manifest get pay work_type",
+      "workflow-bridge/scripts/gateway.cjs pay",
+      "workunit complete pay -m workflow(pay): complete feature pipeline --pipeline"
     ],
     "calls_in_order": [
       "render entry-gate pay.review.pay",
-      "manifest get pay.review.pay status",
       "topic start pay review pay",
       "impl(pay): T",
       "push pay.review.pay reviewed_tasks",
       "review(pay): complete review",
       "topic complete pay review pay",
-      "review(pay): complete review phase"
+      "review(pay): complete review phase",
+      "workflow-bridge/scripts/gateway.cjs pay",
+      "workunit complete pay"
     ],
     "calls_exclude": [
       "topic reopen",
@@ -57,7 +61,11 @@
       "restart review",
       "workunit create",
       "knowledge.cjs index",
-      "task start"
+      "task start",
+      "render early-completion-gate",
+      "render revisit-gate",
+      "--skipped-review",
+      "workunit cancel"
     ]
   }
 }
