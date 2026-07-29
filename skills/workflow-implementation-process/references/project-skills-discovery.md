@@ -122,7 +122,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 ## C. Discovery
 
-#### If `.claude/skills/` does not exist or is empty
+Scan `.claude/skills/` for project-specific skill directories — skills carrying this project's own conventions and patterns (e.g. golang-pro, react-patterns). The workflow system's own skills (`workflow-*`) are never project skills. A missing or empty `.claude/skills/` finds nothing.
+
+#### If the scan finds no project skills
 
 > *Output the next fenced block as a code block:*
 
@@ -138,9 +140,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defa
 
 → Return to caller.
 
-#### If project skills exist
+#### If the scan finds project skills
 
-Scan `.claude/skills/` for project-specific skill directories. Present findings:
+Present findings:
 
 > *Output the next fenced block as a code block:*
 

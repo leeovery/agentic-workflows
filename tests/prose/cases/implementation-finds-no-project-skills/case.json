@@ -1,0 +1,49 @@
+{
+  "origin": "the project-skills discovery §C had no arm for the state every real install is in — .claude/skills/ populated with the workflow system and nothing project-specific. This walks first-time discovery through the scan-finds-none arm and linter discovery's skip, the path a first implementation takes in a real project",
+  "entry": "workflow-implementation-entry",
+  "files": [
+    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-implementation-entry/references/validate-phase.md",
+    "skills/workflow-implementation-entry/references/validate-dependencies.md",
+    "skills/workflow-implementation-entry/references/invoke-skill.md",
+    "skills/workflow-implementation-process/SKILL.md",
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-process/references/load-plan-adapter.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/updating.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-implementation-process/references/project-skills-discovery.md",
+    "skills/workflow-implementation-process/references/linter-setup.md"
+  ],
+  "answers": [
+    "s — skip linter setup"
+  ],
+  "invariants": {
+    "calls_include": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "engine.cjs commit pay -m impl(pay): start implementation",
+      "manifest get pay.implementation.pay project_skills",
+      "manifest exists project.defaults.project_skills",
+      "manifest set pay.implementation.pay project_skills []",
+      "manifest set project.defaults.project_skills []",
+      "manifest get pay.implementation.pay linters",
+      "manifest get project.defaults.linters",
+      "manifest set pay.implementation.pay linters []",
+      "manifest set project.defaults.linters []"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "manifest set pay.implementation.pay project_skills []",
+      "manifest set pay.implementation.pay linters []"
+    ],
+    "calls_exclude": [
+      "manifest push pay.implementation.pay project_skills",
+      "task start",
+      "task complete",
+      "knowledge.cjs query"
+    ]
+  }
+}
