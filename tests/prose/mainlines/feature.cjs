@@ -163,9 +163,9 @@ function plan(h) {
 
 // A plan authored to the end of construction — structure and task
 // tables approved, every task written to local-markdown — but not yet
-// graphed, reviewed, or concluded. No spec_commit: the legacy shape a
-// world can hold, since a recipe-time SHA cannot survive the fresh
-// `git init` at materialise.
+// graphed, reviewed, or concluded. spec_commit carries the world
+// builder's `@WORLD_COMMIT@` placeholder: a recipe cannot know a SHA,
+// and materialise resolves it to the world's baseline commit.
 const P2_TASK = { id: `${WU}-2-1`, title: 'Handle Capture Webhooks', description: 'Consume gateway capture webhooks and mark the order paid; no polling path.' };
 
 function planAuthored(h) {
@@ -240,7 +240,8 @@ function planAuthored(h) {
     ].join('\n'));
   }
   h.engine('manifest', 'set', `${WU}.planning.${WU}`,
-    'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
+    'format=local-markdown', 'spec_commit=@WORLD_COMMIT@',
+    'task_list_gate_mode=gated', 'author_gate_mode=gated',
     'finding_gate_mode=gated', 'review_cycle=0', 'phase=3', 'task=~', `external_id=${WU}`,
     `task_map.${WU}-1=${WU}-1`, `task_map.${WU}-1-1=${WU}-1-1`, `task_map.${WU}-1-2=${WU}-1-2`,
     `task_map.${WU}-2=${WU}-2`, `task_map.${WU}-2-1=${WU}-2-1`,

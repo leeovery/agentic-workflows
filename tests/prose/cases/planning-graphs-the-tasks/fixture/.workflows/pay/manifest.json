@@ -29,6 +29,7 @@
         "pay": {
           "status": "in-progress",
           "format": "local-markdown",
+          "spec_commit": "@WORLD_COMMIT@",
           "task_list_gate_mode": "gated",
           "author_gate_mode": "gated",
           "finding_gate_mode": "gated",

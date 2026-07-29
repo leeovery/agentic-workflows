@@ -4,9 +4,8 @@ The prose should have taken this path:
    and the handoff is the continuing variant — no resuming note is
    rendered, no late-context question, no cross-cutting sweep
 2. the process finds the planning entry and offers the resume; spec
-   change detection finds no baseline recorded and says exactly that —
-   changes since planning began cannot be detected — with no diff run
-   and no invented verdict
+   change detection diffs the specification against the plan's recorded
+   baseline commit and reports it unchanged
 3. on continue, the missing-storage-paths backfill does not fire — the
    field is present — and session setup loads the format references and
    resets the gate modes

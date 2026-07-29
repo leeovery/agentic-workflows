@@ -312,6 +312,22 @@ function buildWorld(caseId) {
   git('add', '-A');
   git('commit', '-q', '-m', `world: ${caseId}`);
 
+  // A recipe cannot know a commit hash — every world re-inits git — so a
+  // fixture that must hold one (a plan's spec_commit baseline) writes
+  // `@WORLD_COMMIT@` instead, and it resolves here to the world's own
+  // baseline commit: a real SHA whose tree holds the fixture's files,
+  // the same shape initialisation stamps on a real plan. The snapshot
+  // keeps the placeholder, so rebuilds stay byte-deterministic.
+  const baseline = git('rev-parse', 'HEAD').trim();
+  for (const [rel] of snap) {
+    if (path.basename(rel) !== 'manifest.json') continue;
+    const dest = path.join(dir, rel);
+    const text = fs.readFileSync(dest, 'utf8');
+    if (text.includes('@WORLD_COMMIT@')) {
+      fs.writeFileSync(dest, text.split('@WORLD_COMMIT@').join(baseline));
+    }
+  }
+
   const knowledge = path.join(dir, '.claude/skills/workflow-knowledge/scripts/knowledge.cjs');
   const setup = spawnSync('node', [knowledge, 'setup', '--keyword-only'], { cwd: dir, encoding: 'utf8', env });
   if (setup.status !== 0) {
