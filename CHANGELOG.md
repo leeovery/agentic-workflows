@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.20] - 2026-07-29
+
+🔧 Changed
+- Implementation's task-start and environment-setup commits now go through `engine commit` instead of raw git, keeping their scope limited to `.workflows`.
+- Project-skills discovery scans `.claude/skills/` for project-specific directories up front rather than branching purely on empty/non-empty, so the found/not-found messaging is clearer.
+- Per-task implementation commits now explicitly stage the plan format's task-state files (not just `storage_paths`) and must list paths explicitly rather than using `git add -A`/`git add .`.
+
 ## [0.6.19] - 2026-07-29
 
 Maintenance release — no notable source changes
