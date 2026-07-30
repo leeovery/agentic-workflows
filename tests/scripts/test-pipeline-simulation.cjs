@@ -506,8 +506,11 @@ describe('pipeline simulation', () => {
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
-    // Beta discussed; gamma-prime cancelled mid-flight and reactivated later.
+    // Beta discussed to a decided map; gamma-prime cancelled mid-flight and
+    // reactivated later.
     sim.run(['topic', 'start', wu, 'discussion', 'beta']);
+    sim.run(['discussion-map', 'add', wu, 'beta', 'retry-policy']);
+    sim.run(['discussion-map', 'set', wu, 'beta', 'retry-policy', 'decided']);
     sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
     sim.run(['topic', 'start', wu, 'research', 'gamma-prime']);
@@ -537,10 +540,18 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'complete', wu, 'research', 'delta'], /triaged/);
     sim.refuses(['topic', 'supersede', wu, 'research', 'delta', '--by', 'alpha'], /triaged/);
     sim.refuses(['topic', 'supersede', wu, 'research', 'alpha', '--by', 'delta'], /cannot absorb/);
-    // Landing on a completed discussion reopens it to receive the entry.
+    // Landing on a completed discussion reopens it to receive the entry. The
+    // drain's fold-into-existing branch: the concern collides with a decided
+    // subtopic, so the fold flips it back to exploring — re-arming the
+    // conclusion gate — and the session re-decides before re-completing.
     const reopened = sim.run(['topic', 'triage', wu, 'discussion', 'beta']);
     assert.strictEqual(reopened.reopened, true);
     assert.strictEqual(reopened.status, 'in-progress');
+    sim.refuses(['discussion-map', 'add', wu, 'beta', 'retry-policy'], /already exists/);
+    const rearmed = sim.run(['discussion-map', 'set', wu, 'beta', 'retry-policy', 'exploring']);
+    assert.strictEqual(rearmed.all_decided, false, 'the fold re-arms the conclusion gate');
+    const redecided = sim.run(['discussion-map', 'set', wu, 'beta', 'retry-policy', 'decided']);
+    assert.strictEqual(redecided.all_decided, true);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     // Coherence: two completed discussions arm the analysis. The stamp
