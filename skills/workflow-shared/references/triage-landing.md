@@ -1,6 +1,6 @@
 # Triage Landing
 
-*Shared reference. Loaded by `workflow-discussion-process` (off-topic concerns) and `workflow-research-process` (topic awareness) when a concern must be rerouted to a different topic.*
+*Shared reference. Loaded by `workflow-discussion-process` (off-topic concerns), `workflow-research-process` (topic awareness), and `workflow-shared/references/coherence-findings-gate.md` (approved coherence findings) when a concern must be rerouted to a different topic.*
 
 ---
 

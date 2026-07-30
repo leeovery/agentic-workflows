@@ -52,7 +52,7 @@ For each finding, record:
 - The category (from the three above)
 - Both quotes with their file + section citations
 - The **target** — the yielding document: the one to reopen and correct (for a conflict, the document whose decision should be re-decided against the other; for a stale reference, the document carrying the outdated prose; for an ambiguity, the home document that owns the definition)
-- The **counterpart** — the other document in the pair
+- The **counterpart** — the other document in the pair. A single-document finding (both quotes from one document — stale prose beside its own changed decision) has none: record `(none)`
 - Why it matters — what breaks downstream if specification extracts both sides as-is
 
 An observation that has no owning document — an ambiguity with no clear home, a theme suggesting new work — is not a finding. Note it in the cache file (**E**) only; new topics are gap-analysis's lane.
@@ -63,17 +63,13 @@ An observation that has no owning document — an ambiguity with no clear home, 
 
 Compute each finding's fingerprint: `{docA}|{docB}|{slug}` — the two document basenames (without `.md`) sorted alphabetically, plus a short kebab-case slug naming the finding. A single-document finding uses `{doc}|{slug}`.
 
-Read the filter inputs:
+Read the filter input:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery dismissed_findings
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery analysis_staging.coherence-analysis
 ```
 
-Drop a finding when:
-
-- It matches an entry in `dismissed_findings` — match semantically against the entry's docs + slug (the same issue re-surfaced under a rephrased slug is still dismissed), not by string equality alone.
-- Its fingerprint is already `pending` in the gate state (a deferred run staged it; the gate will present it).
+Drop a finding when it matches an entry in `dismissed_findings` — match semantically against the entry's docs + slug (the same issue re-surfaced under a rephrased slug is still dismissed), not by string equality alone.
 
 Dropped findings still appear in the cache file (**E**) — filtering shapes what the gate presents, never the analysis record.
 
@@ -100,7 +96,7 @@ counterpart: {the other doc, without .md}
 {full context paragraphs — what each side decided, how they collide or drifted, and what resolving it in the target means}
 ```
 
-Carry everything the reopened session needs to resolve the finding from cold — the quotes anchor it, the context paragraphs explain it.
+Carry everything the reopened session needs to resolve the finding from cold — the quotes anchor it, the context paragraphs explain it. A single-document finding lists the one document on `docs:`, cites both quotes from it, and carries `counterpart: (none)`.
 
 Once all findings are staged, register the gate state — one batched write, one row per staged finding (skip the call when nothing was staged):
 
@@ -151,6 +147,14 @@ Stamp the manifest's coherence_analysis_cache — one command checksums the comp
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs cache stamp {work_unit} coherence-analysis
 ```
+
+**If the response is `ok: false`:**
+
+Landings reopened every completed discussion, leaving nothing to checksum. Skip the stamp — the cache re-arms on its own once the reopened discussions re-complete. Not an abort; continue.
+
+→ Return to caller.
+
+**Otherwise:**
 
 If the response carries `warnings`, surface them to the user but do not abort — the cache file is already on disk and the manifest is updated; indexing retries on the next analysis re-run.
 
