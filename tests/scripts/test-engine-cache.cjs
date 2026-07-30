@@ -230,6 +230,8 @@ describe('engine cache stamp: validation', () => {
   it('rejects unknown kinds, missing args, and missing work units — loud and specific', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     assert.match(engineFails(dir, ['cache', 'stamp', 'payments', 'nonsense']).error, /unknown cache kind "nonsense"/);
+    // Prototype property names must not slip past the kind table.
+    assert.match(engineFails(dir, ['cache', 'stamp', 'payments', 'toString']).error, /unknown cache kind "toString"/);
     assert.match(engineFails(dir, ['cache', 'stamp', 'payments']).error, /Usage: engine cache stamp/);
     assert.match(engineFails(dir, ['cache', 'nonsense', 'payments', 'gap-analysis']).error, /Usage: engine cache stamp/);
     assert.match(engineFails(dir, ['cache', 'stamp', 'ghost', 'gap-analysis']).error, /manifest not found/);

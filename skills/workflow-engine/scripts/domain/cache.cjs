@@ -82,10 +82,10 @@ function phaseObject(manifest, phase) {
  * @returns {CacheStampResult}
  */
 function stampAnalysisCache(cwd, workUnit, kind) {
-  const cfg = KIND_CONFIG[/** @type {keyof typeof KIND_CONFIG} */ (kind)];
-  if (!cfg) {
+  if (!Object.hasOwn(KIND_CONFIG, kind)) {
     throw new Error(`unknown cache kind "${kind}" (${KINDS.join('|')})`);
   }
+  const cfg = KIND_CONFIG[/** @type {keyof typeof KIND_CONFIG} */ (kind)];
   const stamped = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const inputs = collectAnalysisInputs(manifest, path.join(cwd, '.workflows'), kind);

@@ -10,7 +10,7 @@ CLI tool for querying the workflow knowledge base — a retrieval-augmented stor
 
 ## What the knowledge base is
 
-A local semantic-search index over every completed research, discussion, investigation, and specification artifact in `.workflows/`, plus user-supplied imports indexed at import time, analysis caches (research-analysis, gap-analysis) indexed when topic-discovery rewrites them, and epic discovery session logs indexed at each harvest. Content is stored at full fidelity — chunks are the actual text, not summaries — with provenance metadata attached: which work unit, which phase, which topic, and the source document's date.
+A local semantic-search index over every completed research, discussion, investigation, and specification artifact in `.workflows/`, plus user-supplied imports indexed at import time, analysis caches (research-analysis, gap-analysis, coherence-analysis) indexed when topic-discovery rewrites them, and epic discovery session logs indexed at each harvest. Content is stored at full fidelity — chunks are the actual text, not summaries — with provenance metadata attached: which work unit, which phase, which topic, and the source document's date.
 
 **Why it exists**: to surface prior context that would otherwise be lost across work units or forgotten within one. A spec written three months ago, a discussion that rejected an approach, an investigation that ruled out a cause — all remain queryable.
 
@@ -22,10 +22,10 @@ A local semantic-search index over every completed research, discussion, investi
 - `specification` (high — validated decisions, "what we decided to build")
 - `imports` (low — user-shared reference material, often loose, may contain multiple topics)
 - `seeds` (low — the work unit's origin: the promoted inbox item(s), verbatim capture)
-- `analysis` (low — research-analysis and gap-analysis caches, meta-summaries derived from low-confidence material)
+- `analysis` (low — research-analysis, gap-analysis, and coherence-analysis caches, meta-summaries derived from low-confidence material)
 - `discovery` (low — epic exploration logs: the running record, not validated decisions; topic = session, so a work unit's whole discovery is `--phase discovery --work-unit {wu}`)
 
-**What is NOT indexed**: planning, implementation, review. These phases describe execution, not knowledge. Searching them would surface task IDs and code fragments, not insight. Operational `.state/` files (migrations, environment-setup) are also excluded — only the two analysis cache filenames are accepted from `.state/`.
+**What is NOT indexed**: planning, implementation, review. These phases describe execution, not knowledge. Searching them would surface task IDs and code fragments, not insight. Operational `.state/` files (migrations, environment-setup) are also excluded — only the three analysis cache filenames are accepted from `.state/`.
 
 ---
 
@@ -167,7 +167,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index <path/to/arti
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index
 ```
 
-- **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension. For analysis caches, the path is `.workflows/{work_unit}/.state/{research-analysis,discovery-gap-analysis}.md`; the phase is `analysis` and the topic is `research-analysis` or `gap-analysis`.
+- **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension. For analysis caches, the path is `.workflows/{work_unit}/.state/{research-analysis,discovery-gap-analysis,coherence-analysis}.md`; the phase is `analysis` and the topic is `research-analysis`, `gap-analysis`, or `coherence-analysis`.
 - **Without args**: discovers every completed artifact across all work units and indexes anything missing. Used by setup and manual catch-up.
 - Failures are retried (exponential backoff). Files that still fail are pushed to a pending queue and retried on the next `index` call.
 - Exits non-zero if the file doesn't exist or the path can't be parsed.
