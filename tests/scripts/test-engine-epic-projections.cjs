@@ -65,6 +65,7 @@ describe('epic projections: dashboard (map branch)', () => {
     '  · seeded from the inbox',
     '  · 1 import',
     '  ⚑ 1 new topic(s) added to the map from research-analysis.',
+    '  ⚑ 1 discussion(s) reopened by coherence review.',
     '',
     '  RESEARCH & DISCUSSION (2 topics · 1 ready · 1 fresh)',
     '  ├─ → Kitchen Hardware [research complete · ready for discussion]',
@@ -96,7 +97,7 @@ describe('epic projections: dashboard (map branch)', () => {
 
   it('renders the map-branch dashboard byte-for-byte (callouts, stages, trees)', () => {
     const out = epicDashboard('quiz-competition-v1', mapDetail(), {
-      newArrivals: { research_analysis: ['menu-admin'], gap_analysis: [] },
+      newArrivals: { research_analysis: ['menu-admin'], gap_analysis: [], coherence_analysis: ['kitchen-hardware'] },
     });
     assert.strictEqual(out, EXPECTED_DASHBOARD);
   });

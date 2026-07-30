@@ -1765,7 +1765,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('view {work_unit} still answers the sectioned snapshot, with and without new arrivals', () => {
     epicFixture();
-    for (const args of [['view', 'v1'], ['view', 'v1', '{"research_analysis":[],"gap_analysis":[]}']]) {
+    for (const args of [['view', 'v1'], ['view', 'v1', '{"research_analysis":[],"gap_analysis":[],"coherence_analysis":[]}']]) {
       const res = run(args);
       assert.strictEqual(res.status, 0, res.stderr);
       assert.ok(res.stdout.includes('=== DATA'));

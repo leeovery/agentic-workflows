@@ -824,3 +824,91 @@ describe('specification adapter: gateway verbs', () => {
     }
   });
 });
+
+describe('specification projections: coherence advisory', () => {
+  const { filesChecksum } = require('../../skills/workflow-engine/scripts/domain/reads.cjs');
+
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  // Two completed discussions with files on disk — the coherence input floor
+  // is met, so the advisory state is live.
+  function coherenceFixture(dir, discoveryPhase) {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { 'auth-design': { status: 'completed' }, 'session-model': { status: 'completed' } } },
+        ...(discoveryPhase ? { discovery: discoveryPhase } : {}),
+      },
+    });
+    createFile(dir, '.workflows/v1/discussion/auth-design.md', '# Auth\n');
+    createFile(dir, '.workflows/v1/discussion/session-model.md', '# Session\n');
+  }
+
+  it('stale coherence cache surfaces the advisory on the analyze display', () => {
+    coherenceFixture(dir);
+    const detail = detailOf(dir, 'v1');
+    assert.strictEqual(detail.scenario, 'analyze');
+    assert.strictEqual(detail.coherence_status, 'stale');
+    assert.strictEqual(detail.coherence_pending, 0);
+    const out = specificationDisplay(detail);
+    assert.ok(out.includes('⚑ Discussions have changed since decisions were last checked'));
+    assert.ok(out.includes('Continue the epic to re-run the coherence check'));
+  });
+
+  it('pending findings outrank the stale message and carry the count', () => {
+    coherenceFixture(dir, {
+      analysis_staging: {
+        'coherence-analysis': {
+          gate_mode: 'gated',
+          candidates: {
+            'auth-vs-session': { status: 'pending' },
+            'token-shape': { status: 'pending' },
+            'settled-one': { status: 'approved' },
+          },
+        },
+      },
+    });
+    const detail = detailOf(dir, 'v1');
+    assert.strictEqual(detail.coherence_pending, 2);
+    const out = specificationDisplay(detail);
+    assert.ok(out.includes('⚑ 2 coherence finding(s) awaiting review'));
+    assert.ok(!out.includes('Discussions have changed since decisions were last checked'));
+  });
+
+  it('a valid coherence cache renders no advisory', () => {
+    createFile(dir, '.workflows/v1/discussion/auth-design.md', '# Auth\n');
+    createFile(dir, '.workflows/v1/discussion/session-model.md', '# Session\n');
+    const checksum = filesChecksum([
+      path.join(dir, '.workflows/v1/discussion/auth-design.md'),
+      path.join(dir, '.workflows/v1/discussion/session-model.md'),
+    ]);
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { 'auth-design': { status: 'completed' }, 'session-model': { status: 'completed' } } },
+        discovery: { coherence_analysis_cache: { checksum, generated: '2026-07-30', input_files: ['auth-design.md', 'session-model.md'] } },
+      },
+    });
+    const detail = detailOf(dir, 'v1');
+    assert.strictEqual(detail.coherence_status, 'valid');
+    const out = specificationDisplay(detail);
+    assert.ok(!out.includes('coherence'));
+    assert.ok(!out.includes('Discussions have changed since decisions were last checked'));
+  });
+
+  it('a single completed discussion stays clean — the input floor keeps features advisory-free', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'feature',
+      phases: { discussion: { items: { v1: { status: 'completed' } } } },
+    });
+    createFile(dir, '.workflows/v1/discussion/v1.md', '# Discussion\n');
+    const detail = detailOf(dir, 'v1');
+    assert.strictEqual(detail.coherence_status, 'absent');
+    assert.strictEqual(detail.coherence_pending, 0);
+    const out = specificationDisplay(detail);
+    assert.ok(!out.includes('coherence'));
+    assert.ok(!out.includes('Discussions have changed since decisions were last checked'));
+  });
+});

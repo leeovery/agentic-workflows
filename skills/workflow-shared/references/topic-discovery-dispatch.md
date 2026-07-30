@@ -11,7 +11,7 @@ Wraps the cache-status check and conditional dispatch around [topic-discovery.md
 The caller provides these via context before loading:
 
 - `work_unit` — the epic's work unit name. Always present.
-- `analysis_caches` — the `analysis_caches` line from the caller's prior `workflow-continue-epic/scripts/gateway.cjs` invocation: `research_analysis=<status>, gap_analysis=<status>`.
+- `analysis_caches` — the `analysis_caches` line from the caller's prior `workflow-continue-epic/scripts/gateway.cjs` invocation: `research_analysis=<status>, gap_analysis=<status>, coherence_analysis=<status>`.
 
 The caller is also responsible for surfacing `new_arrivals` afterwards (e.g. as a callout above the discovery map).
 
@@ -20,7 +20,7 @@ The caller is also responsible for surfacing `new_arrivals` afterwards (e.g. as 
 Initialise an in-conversation tracker:
 
 ```
-new_arrivals = { research_analysis: [], gap_analysis: [] }
+new_arrivals = { research_analysis: [], gap_analysis: [], coherence_analysis: [] }
 ```
 
 This tracker is populated by `topic-discovery.md` when analyses fire below. The caller reads it after this reference returns — the keys exist even when no analysis fires.
@@ -33,8 +33,9 @@ Read the statuses from the caller's `analysis_caches` line:
 
 - `research_analysis` — `valid` | `stale` | `absent`
 - `gap_analysis` — same
+- `coherence_analysis` — same
 
-#### If both caches are `valid` or `absent`
+#### If all caches are `valid` or `absent`
 
 No analyses to run. `new_arrivals` stays empty.
 
