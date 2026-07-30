@@ -23,8 +23,9 @@ const { dotFrame, cmdOption, callout } = require('./surfaces.cjs');
 
 /**
  * @typedef {object} NewArrivals
- * @property {string[]} [research_analysis]  topic names added by research-analysis this boot-up
- * @property {string[]} [gap_analysis]       topic names added by gap-analysis this boot-up
+ * @property {string[]} [research_analysis]   topic names added by research-analysis this boot-up
+ * @property {string[]} [gap_analysis]        topic names added by gap-analysis this boot-up
+ * @property {string[]} [coherence_analysis]  topic names reopened by coherence findings this boot-up
  */
 
 /**
@@ -184,6 +185,10 @@ function stageMetaCallouts(detail, newArrivals) {
     if (Array.isArray(names) && names.length > 0) {
       lines.push(`  ⚑ ${names.length} new topic(s) added to the map from ${label}.`);
     }
+  }
+  const reopened = newArrivals.coherence_analysis;
+  if (Array.isArray(reopened) && reopened.length > 0) {
+    lines.push(`  ⚑ ${reopened.length} discussion(s) reopened by coherence review.`);
   }
   return lines;
 }
