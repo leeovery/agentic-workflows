@@ -28,7 +28,7 @@ Read `.workflows/{work_unit}/discussion/{name}.md` for each `completed_discussio
 
 For each discussion, note:
 - The subtopic map — final states live in the work unit manifest under `phases.discussion.items.{name}.subtopics` (`decided` / `deferred` for completed discussions; legacy files may instead carry a Discussion Map section inline)
-- Every decision made, with the section it lives in and any qualifiers or conditions attached
+- Every decision made, with the section it lives in and any qualifiers or conditions attached — where a Decision block holds dated timeline entries, the top entry is the current decision and earlier entries are lineage
 - References to other topics' decisions — citations, assumptions, "as decided in …" prose
 - Terms and assumptions the document relies on without defining
 
@@ -42,7 +42,7 @@ Discussions document the journey to a decision — false paths, reversals, posit
 
 Analyse the artifacts from A to identify findings across three categories:
 
-1. **Unacknowledged conflict** — two documents decide incompatibly and neither cites the other. Decisions only: a position explored and walked back in journey or options prose is not a side of a conflict, however flatly it contradicts the other document. Distinguish deliberate supersession: when the newer document acknowledges it is changing an earlier decision, the conflict is acknowledged — any prose still citing the old decision is a stale reference (category 2), not a conflict.
+1. **Unacknowledged conflict** — two documents decide incompatibly and neither cites the other. Decisions only: a position explored and walked back in journey or options prose is not a side of a conflict, however flatly it contradicts the other document. Distinguish deliberate supersession: when the newer document acknowledges it is changing an earlier decision, the conflict is acknowledged — any prose still citing the old decision is a stale reference (category 2), not a conflict. A timeline block's earlier entries are acknowledged supersession *within* the document; prose elsewhere still citing a superseded entry as current is a stale reference.
 
 2. **Stale reference** — prose (cross-document, or within one document) that relies, as current, on a decision that has since changed, where the newer document acknowledges the change. The decision record is coherent; the citing prose is out of date. Narration of what was believed at the time is history, not staleness.
 

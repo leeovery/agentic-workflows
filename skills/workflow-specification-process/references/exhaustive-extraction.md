@@ -25,6 +25,7 @@ For each topic or subtopic, perform exhaustive extraction:
    - Exclude ideas that were explored but rejected
    - Exclude "maybes" that weren't confirmed
    - Include only what the user has decided to build
+   - Where a Decision block holds dated timeline entries, the top entry is the validated decision — earlier entries are superseded lineage: context, never extracted as live decisions
 
 **Why this matters:** The specification is the single source of truth for planning. Planning will not reference prior source material — only this document. Missing a detail here means that detail doesn't get implemented.
 

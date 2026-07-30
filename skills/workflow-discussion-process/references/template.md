@@ -104,6 +104,23 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - **Journey**: The exploration — what we thought, what changed, false paths, debates, insights
 - **Decision**: What we chose, why, the deciding factor
 
+**Decision revisions**: A Decision block written in an earlier sitting is never rewritten in place — when a later sitting re-decides it, the block becomes a dated timeline. On the first revision, wrap the block's existing prose verbatim under `#### Initial` (use `#### {YYYY-MM-DD}` instead when the original date is known) and place the new decision above it:
+
+```markdown
+#### {YYYY-MM-DD} — revised
+*Trigger: {substance — e.g. triage from {origin}: "{concern title}" / review finding: {one-line substance} / user reversal}*
+
+{the current decision — what we now choose, why, what changed from the entry below}
+
+#### Initial
+{the block's original prose, wrapped verbatim — never edited again}
+```
+
+- Entries land only on revision — a block decided once and never revisited stays a plain block
+- The latest entry sits directly under the decision heading: the text there is always the current truth. Same-day revisions stack latest-first
+- Earlier entries are never edited
+- The trigger line carries the substance of what prompted the revision, never a bare cache id — cache files are purged; ids like `review-003 F5` may appear alongside the substance
+
 **Discussion Map**:
 - Subtopic states (`pending`, `exploring`, `converging`, `decided`, `deferred`) live in the manifest — the file holds the knowledge, the map holds the live state
 - New child subtopics can be added under top-level parents (two levels max)

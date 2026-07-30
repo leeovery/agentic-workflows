@@ -37,7 +37,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    ```
 
    The command's JSON response carries `all_decided` and `unresolved_count` — no follow-up read needed. Don't force transitions — suggest them. The user can follow your suggestion or go wherever they want.
-4. **Document** — At natural pauses, update the discussion file — it holds the knowledge. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision); keep the Summary current. Capture provisional thinking for subtopics still in progress if context compaction is a risk. The live map state lives in the manifest only — never write a map section into the file.
+4. **Document** — At natural pauses, update the discussion file — it holds the knowledge. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision); keep the Summary current. When the session re-decides a decision recorded in an *earlier sitting* — a drained triage concern, a review finding, a user reversal — the new decision lands as a dated entry on that block per the template's revision convention, wrapping a plain block first; refining an entry still being written this session edits it in place, no entry. Capture provisional thinking for subtopics still in progress if context compaction is a risk. The live map state lives in the manifest only — never write a map section into the file.
 5. **Commit & dispatch check** — Commit after each write. Don't batch. When the write documents an agent finding's engagement, the subject carries `({id} {finding})` — e.g. `discussion({work_unit}/{topic}): decided webhook reconciliation (review-003 F2)` — and the commit carries only the engagement's write; unrelated substance commits separately:
 
    ```bash
@@ -59,7 +59,7 @@ Subtopics move through states as the conversation progresses. The judgment call 
 
 **converging** → Narrowing toward a decision. The options are clear, the trade-offs are understood, and the discussion is honing in on a choice. This signals to both you and the user that a decision is close.
 
-**decided** → Decision reached with rationale. The subtopic section gets written up with the full Context → Options → Journey → Decision structure. This is the terminal state.
+**decided** → Decision reached with rationale. The subtopic section gets written up with the full Context → Options → Journey → Decision structure. Terminal for the map, though a later sitting may re-decide — the re-decision lands as a dated entry on the block's timeline (template revision convention).
 
 **deferred** → Deliberately set aside. Applied when concluding with unresolved subtopics (see **G. Concluding**) — each is also noted in Summary → Open Threads.
 

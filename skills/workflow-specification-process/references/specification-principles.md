@@ -85,7 +85,7 @@ The specification is the **golden document** — planning uses only this. If inf
 
 **Trust nothing without validation**: Synthesize and present, but never assume source material is correct.
 
-**Surface conflicts**: When sources contain conflicting decisions, flag the conflict to the user. Don't silently pick one — let the user decide what makes it into the specification.
+**Surface conflicts**: When sources contain conflicting decisions, flag the conflict to the user. Don't silently pick one — let the user decide what makes it into the specification. Dated supersession inside one Decision block's timeline is not a conflict — the top entry governs.
 
 ## Self-Check: Are You Following the Rules?
 

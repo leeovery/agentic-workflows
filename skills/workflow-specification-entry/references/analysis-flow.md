@@ -32,7 +32,7 @@ Your context (or 'none'):
 
 For each completed discussion:
 1. Read the ENTIRE document using the Read tool (not just the header)
-2. Understand the decisions, systems, and concepts it defines
+2. Understand the decisions, systems, and concepts it defines — where a Decision block holds dated timeline entries, the top entry is the current decision and earlier entries are lineage
 3. Note dependencies on or references to other discussions
 4. Identify shared data structures, entities, or behaviors
 
@@ -64,6 +64,7 @@ A discussion can belong wholly in one grouping yet still impose corrections on a
 While grouping, for each discussion check whether it hands work to another grouping:
 - Harvest any `## Spec hand-offs` section or "reconciliation owed by {spec}" note in the discussion, if present
 - Note cross-grouping corrections you observe even when no such section exists
+- A dated revision entry in a Decision timeline whose trigger names a sibling grouping's ground is a natural consult-reference candidate
 
 Record each as a consult reference on the **receiving** grouping (never as a source), capturing which slice/decisions and why.
 
