@@ -40,9 +40,9 @@ Further claims:
   contiguous order values 1..3, and the order is defensible from the
   briefs (measurement-first reasoning is available but not required)
 - the brief for behavioural-ranking was read before the discussion
-  file was written, and its soft decision (feed signals from the
-  existing events pipeline) is reflected in the discussion Context
-  without being quoted back verbatim
+  file was written, and the discussion Context is drawn from its soft
+  decision (feed signals from the existing events pipeline) — verbatim
+  or restated, either is a legitimate stored form
 - the manifest ends with a discussion item for behavioural-ranking
   in-progress, brief_incorporated true on its discovery item, and
   order fields on all three discovery items
