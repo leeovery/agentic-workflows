@@ -38,14 +38,19 @@ For each `### {title}` subsection under `## Triage`, carry its **full body** (ev
 
 **If `phase` is `discussion`:**
 
-- Add `{title}` to the Discussion Map as a `pending` subtopic:
+Attempt to add `{title}` to the Discussion Map:
 
-  ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {title:(kebabcase)}
-  ```
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {title:(kebabcase)}
+```
 
-  If the add refuses because the subtopic already exists, the concern names ground this discussion already covers — skip the map write and fold the entry body into that existing subtopic's section instead of creating a new one.
-- Create a `## {title}` subtopic section with the entry body written in as its `### Context`, so the session explores it from there.
+**If the add succeeds** — the concern is new ground: create a `## {title}` subtopic section with the entry body written in as its `### Context`, so the session explores it from there.
+
+**If the add refuses because the subtopic already exists** — the concern names ground this discussion already covers: fold the entry body into that existing subtopic's section, and flip the subtopic back to open so the conclusion gate re-arms and the session must re-decide with the concern in hand:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {title:(kebabcase)} exploring
+```
 
 **If `phase` is `research`:**
 
