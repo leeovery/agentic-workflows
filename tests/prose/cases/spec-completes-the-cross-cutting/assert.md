@@ -35,8 +35,8 @@ Further claims:
   .workflows/error-handling/specification/error-handling/specification.md
   is faithful to the discussion: the envelope fields, the code-range
   retry classification, and boundary-only logging all present; the
-  SDK helper library appears only as deferred/out of scope, never as
-  a requirement
+  SDK helper library never appears as a requirement — it is either
+  absent entirely or expressly recorded as deferred/out of scope
 - the manifest ends with the specification item completed, the source
   incorporated, work_type cross-cutting, status completed, and a
   completed_at stamp
