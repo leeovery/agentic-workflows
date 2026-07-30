@@ -106,7 +106,7 @@ record exactly like one the prose asked for — only the walk says which it
 was. So a claim that something was not done is answered by both together:
 the record for whether it happened, the walk for whose doing it was.
 
-## Three known differences between here and a live session
+## Four known differences between here and a live session
 
 An inline `` !`command` `` directive is substituted when a skill loads
 live. A walk reads the prose as a file, so the substitution never happens
@@ -132,6 +132,16 @@ subagents, so a walker producing one writes the `.txt` path and renames
 it — the same mechanism the product's own agents are instructed to use.
 A write-then-rename where a report file was called for is correct
 behaviour: not a deviation, not a missing write.
+
+The fourth: plan mode does not exist in a walk. Where the prose calls
+`EnterPlanMode` and writes plan content, the walker resolves the
+content as the prose directs and writes it to `.plan-handoff.md` at
+the project root — the world's stand-in for the plan file, which lands
+in the delta where its content is judged like any other artifact — and
+where the prose calls `ExitPlanMode` to present the plan, the walk
+stops at that presentation as its terminal handoff. The capture write
+and the stop are correct behaviour: not a deviation, not a missing
+tool call, and not a walk that died early.
 
 These are the only such differences. Anything else that looks like an
 environment quirk is a finding, not an exemption.
