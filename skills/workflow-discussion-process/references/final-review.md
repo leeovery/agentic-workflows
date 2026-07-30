@@ -72,10 +72,10 @@ The decline stands — do not re-litigate it. A later conclusion attempt classif
 
 **If no decline was given:**
 
-List what landed after that review's dispatch (the row's `created` timestamp, on every scan row), keep only commits after it, then drop those whose subject carries a drain marker — `(review-NNN …)` or `(synthesis-NNN …)` — engagement writes are not new work:
+List what landed after that review's dispatch — `{created}` is the row's `created` timestamp, on every scan row; git does the time comparison — then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) — engagement writes are not new work:
 
 ```bash
-git log --format='%h %cI %s' -- .workflows/{work_unit}/discussion/{topic}.md
+git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/discussion/{topic}.md
 ```
 
 **If no commits remain:**

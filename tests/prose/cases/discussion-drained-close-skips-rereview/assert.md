@@ -20,13 +20,15 @@ The prose should have taken this path:
    load
 7. the classification is mechanical: the store's highest-numbered
    review row is incorporated, so the movement filter runs — git log
-   over the discussion file, commits after the row's `created`
-   timestamp kept, drain-tagged commits dropped. The file's only
-   commit carries the review-001 drain marker, so the residue is empty
-   and the classification is satisfied — deterministically, with no
+   since the row's `created` timestamp over the discussion file,
+   drain-tagged commits dropped. The file's only commit carries the
+   review-001 drain marker, so the residue is empty and the
+   classification is satisfied — deterministically, with no
    meaningfulness judgment
 8. no fresh review is offered: the close goes straight to the conclude
-   gate — the "discussion has moved" menu never renders
+   gate — the "discussion has moved" menu never renders. (Had it been
+   offered, this user would have accepted — the absence of any
+   dispatch is the classification holding, not the user declining)
 9. the user confirms conclusion; the in-flight check finds no running
    agents and routes to the final gap review step — and the walk stops
    there, before that step runs

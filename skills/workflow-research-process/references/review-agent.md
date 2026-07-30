@@ -8,7 +8,7 @@ These instructions are loaded into context at the start of the research session.
 
 **Trigger checklist** — evaluate after every commit as part of the session loop's dispatch check:
 
-- □ Meaningful content committed? (new findings documented, threads explored, open questions captured — not a typo fix or reformatting; a commit whose subject carries a drain marker — `({id} {finding})`, e.g. `(review-003 F2)` — doesn't tick this box)
+- □ Meaningful content committed? (new findings documented, threads explored, open questions captured — not a typo fix or reformatting; a commit whose subject carries a `review-` drain marker — e.g. `(review-003 F2)` — doesn't tick this box, though a `deep-dive-` fold does)
 - □ All prior reviews drained? (`agent scan` shows no `review` row in flight, pending, or acknowledged — or no review row exists yet; an in-flight row an earlier session dispatched is dead, not running — incorporate it and count it drained)
 - □ Not the first commit? (the research needs enough content to review)
 - □ At least 2-3 conversational exchanges since the last review dispatch?

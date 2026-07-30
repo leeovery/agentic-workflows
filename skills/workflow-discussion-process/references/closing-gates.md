@@ -19,12 +19,10 @@ Classify what the final-review step still owes — first match wins:
 1. Any `review`, `synthesis`, or `perspective` row is `pending` or `acknowledged` → **findings-owed**: "background findings are still to be walked through"
 2. Any `review` row is `in-flight` → **review-running**: "a dispatched review is still running"
 3. No `review` row exists → **never-reviewed**: "no review has run yet"
-4. The highest-numbered `review` row is `incorporated` → filter the movement since its dispatch, first match wins:
-   1. `git log --format='%h %cI %s' -- .workflows/{work_unit}/discussion/{topic}.md` — keep commits after the row's `created`, then drop those whose subject carries a drain marker (`(review-NNN …)` or `(synthesis-NNN …)`) — engagement writes are not new work
-   2. No commits remain → **satisfied**: the final review is up to date — deterministic, no judgment
-   3. A remaining commit is meaningful — a decision documented, a subtopic explored; not typo fixes, not bookkeeping (document-review reconciliation, drain triage, deferral notes) → **re-review**: the discussion has moved since the last review
-   4. Otherwise → **satisfied** — doubt resolves here; declining forfeits nothing, a later attempt reclassifies
-5. Otherwise → **satisfied**: the final review is up to date
+4. Otherwise the highest-numbered `review` row is `incorporated` — classify by movement. Run `git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/discussion/{topic}.md` (`{created}` = the row's `created` timestamp; git does the time comparison), then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) — engagement writes are not new work. Classify the residue:
+   1. No commits remain → **satisfied**: the final review is up to date — no judgment
+   2. A remaining commit is meaningful — a decision documented, a subtopic explored; not typo fixes, not bookkeeping (document-review reconciliation, drain triage, deferral notes) → **re-review**: the discussion has moved since the last review
+   3. Otherwise → **satisfied** — doubt resolves here; declining forfeits nothing, a later attempt reclassifies
 
 Step 6 (Final Gap Review) is the executor and re-derives state itself — a classification mismatch here is cosmetic, never state-corrupting.
 
