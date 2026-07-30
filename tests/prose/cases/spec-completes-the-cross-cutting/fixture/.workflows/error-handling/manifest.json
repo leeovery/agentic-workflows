@@ -1,0 +1,16 @@
+{
+  "name": "error-handling",
+  "work_type": "cross-cutting",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Standardise error handling across services",
+  "phases": {
+    "discussion": {
+      "items": {
+        "error-handling": {
+          "status": "completed"
+        }
+      }
+    }
+  }
+}
