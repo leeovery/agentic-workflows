@@ -34,7 +34,10 @@ The prose should have taken this path:
    findings triaged" — covers the landing
 9. the orchestrator re-enters the analysis at its cache section: the
    cache file lands at `.state/coherence-analysis.md` and the
-   coherence cache is stamped over the two discussion files
+   coherence cache is stamped over the one still-completed discussion
+   file — the reopened target has already left the completed set, so
+   the stamp covers behavioural-ranking.md alone and the cache reads
+   absent until synonym-handling re-completes
 10. dedupe no-ops for coherence, the dispatch re-runs discovery, the
     sequencing step is skipped (every live topic already ordered), and
     the epic dashboard renders with the reopened-by-coherence callout
@@ -51,10 +54,14 @@ Further claims:
   otherwise untouched
 - `analysis_staging.coherence-analysis` is absent from the manifest
 - `phases.discovery.coherence_analysis_cache` exists with a checksum,
-  a generated timestamp, and input_files naming both discussion files
-- the gap-analysis cache is untouched and still valid; the discovery
-  map gained no items and lost none; no discussion or research session
-  was opened with the user
+  a generated timestamp, and input_files naming only
+  behavioural-ranking.md — the reopened target left the completed set
+  before the stamp
+- the gap-analysis cache object is untouched (never restamped), though
+  it now derives stale — the reopen shrank its input set out from
+  under its stored checksum; the discovery map gained no items and
+  lost none; no discussion or research session was opened with the
+  user
 - if the analysis staged any finding beyond the seeded conflict, it
   was skipped and its fingerprint pushed to
   `phases.discovery.dismissed_findings` — otherwise that field was

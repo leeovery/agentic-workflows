@@ -284,8 +284,8 @@ function completeDiscussions(h) {
   h.engine('discussion-map', 'add', WU, 'behavioural-ranking', 'signal-ingestion');
   h.engine('commit', WU, '-m', `discussion(${WU}): initialize behavioural-ranking discussion`);
   h.engine('discussion-map', 'set', WU, 'behavioural-ranking', 'signal-ingestion', 'decided');
-  h.engine('commit', WU, '-m', `discussion(${WU}): conclude behavioural-ranking`);
   h.engine('topic', 'complete', WU, 'discussion', 'behavioural-ranking');
+  h.engine('commit', WU, '-m', `discussion(${WU}): complete behavioural-ranking discussion`);
 
   h.engine('topic', 'start', WU, 'discussion', 'synonym-handling');
   h.write(`.workflows/${WU}/discussion/synonym-handling.md`, [
@@ -347,8 +347,8 @@ function completeDiscussions(h) {
   h.engine('discussion-map', 'add', WU, 'synonym-handling', 'expansion-source');
   h.engine('commit', WU, '-m', `discussion(${WU}): initialize synonym-handling discussion`);
   h.engine('discussion-map', 'set', WU, 'synonym-handling', 'expansion-source', 'decided');
-  h.engine('commit', WU, '-m', `discussion(${WU}): conclude synonym-handling`);
   h.engine('topic', 'complete', WU, 'discussion', 'synonym-handling');
+  h.engine('commit', WU, '-m', `discussion(${WU}): complete synonym-handling discussion`);
 
   h.write(`.workflows/${WU}/.state/discovery-gap-analysis.md`, [
     '# Discovery Gap Analysis Cache',
