@@ -569,25 +569,41 @@ describe('pipeline simulation', () => {
     assert.strictEqual(specAdvisory.coherence_status, 'stale');
     assert.strictEqual(specAdvisory.coherence_pending, 1);
 
-    // Approve arm: triage reopens the yielding discussion, the drain
-    // re-concludes it, and the gate's completion clears the spent state
-    // under one commit.
-    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-auth.status', 'approved']);
+    // Approve arm, in the gate's prescribed order: triage-landing reopens
+    // the yielding discussion FIRST; approval is recorded only on a landed
+    // result. Completion clears the spent state under one commit.
     const coherenceReopen = sim.run(['topic', 'triage', wu, 'discussion', 'alpha']);
     assert.strictEqual(coherenceReopen.reopened, true);
     assert.strictEqual(coherenceReopen.status, 'in-progress');
     sim.write(`.workflows/${wu}/discussion/alpha.md`,
       '# Discussion — Alpha\n\n## Triage\n\n### Alpha vs beta auth\n*From: beta · discussion · 2026-07-30*\n\nBeta now contradicts the alpha auth decision.\n');
+    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-auth.status', 'approved']);
     sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.coherence-analysis']);
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.discovery`, 'analysis_staging.coherence-analysis']).trim(), 'false');
     sim.run(['commit', wu, '-m', `discovery(${wu}): coherence findings triaged`]);
+
+    // The boot-time stamp fires immediately after the gate, while the
+    // reopened target is still in-progress: it covers the one remaining
+    // completed discussion, and the read side reports absent (below the
+    // 2-input floor) until the target re-completes.
+    const partialStamp = sim.run(['cache', 'stamp', wu, 'coherence-analysis']);
+    assert.strictEqual(partialStamp.files, 1);
+    specAdvisory = specDetail(sim.dir, wu);
+    assert.strictEqual(specAdvisory.coherence_status, 'absent');
+    assert.strictEqual(specAdvisory.coherence_pending, 0);
+
+    // The drain re-concludes the reopened discussion; the corpus is back
+    // above the floor and the 1-file stamp reads stale.
     sim.write(`.workflows/${wu}/discussion/alpha.md`,
       '# Discussion — Alpha\n\nRe-decided: aligned with beta.\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
+    specAdvisory = specDetail(sim.dir, wu);
+    assert.strictEqual(specAdvisory.coherence_status, 'stale');
 
-    // The loop closes: inputs changed since the stamp, so the analysis
-    // re-arms; a clean pass re-stamps and the spec advisory goes quiet.
-    sim.run(['cache', 'stamp', wu, 'coherence-analysis']);
+    // The loop closes: a clean pass re-stamps over both files and the
+    // spec advisory goes quiet.
+    const fullStamp = sim.run(['cache', 'stamp', wu, 'coherence-analysis']);
+    assert.strictEqual(fullStamp.files, 2);
     specAdvisory = specDetail(sim.dir, wu);
     assert.strictEqual(specAdvisory.coherence_status, 'valid');
     assert.strictEqual(specAdvisory.coherence_pending, 0);

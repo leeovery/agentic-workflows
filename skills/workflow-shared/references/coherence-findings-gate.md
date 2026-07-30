@@ -161,20 +161,26 @@ Revise this block's `target`, `summary`, or context in the staging file per the 
 
 ## C. Land Approved Finding
 
-Deliver through the shared triage landing — the finding's title, quotes, and full context paragraphs travel as the concern so the reopened session can resolve it from cold:
+Deliver through the shared triage landing — the finding's title, quotes, and full context paragraphs travel as the concern so the reopened session can resolve it from cold. `origin` is the block's `counterpart`; for a single-document finding (`counterpart: (none)`) pass the literal `coherence-review` instead — the entry's provenance line then names the check, not a topic:
 
-→ Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{finding title + both quotes with citations + the block's full context paragraphs}`, origin = `{counterpart}`, phase = `discussion`, date = `{today}`.
+→ Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{finding title + both quotes with citations + the block's full context paragraphs}`, origin = `{counterpart, or coherence-review}`, phase = `discussion`, date = `{today}`.
 
 On return, read `result`.
 
 **If `result` is `landed`:**
 
-Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.coherence-analysis.candidates.{slug}.status approved`) and append `landed_topic` to the caller's `tracker`.
+Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.coherence-analysis.candidates.{slug}.status approved`) and append `landed_topic` to the caller's `tracker` unless already present — several findings can land in one discussion, and the callout counts topics, not findings.
 
 → Return to **B. Gate Each Finding**.
 
-**If `result` is `cancelled`:**
+**If `result` is `cancelled` and `gate_mode` is `gated`:**
 
 The landing was dropped or blocked — nothing was written. The finding stays `pending`; re-present it.
+
+→ Return to **B. Gate Each Finding**.
+
+**If `result` is `cancelled` and `gate_mode` is `auto`:**
+
+Never loop a failing landing without the user. Record the finding `skipped` (same write as the skip arm) but push **no** dismissed fingerprint — the next stale run re-stages it with the user present.
 
 → Return to **B. Gate Each Finding**.
