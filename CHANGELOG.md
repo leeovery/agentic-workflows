@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.22] - 2026-07-30
+
+✨ Added
+- Coherence analysis — epics now scan completed discussions for contradictory or stale decisions and route confirmed findings back into the affected discussion for re-decision.
+- Discussion decisions can now be revised over time — re-deciding a prior call adds a dated entry to its history instead of overwriting it, so the reasoning trail survives.
+- The specification menu now flags when discussions have changed since the last coherence check or when coherence findings are still awaiting review.
+
+🔧 Changed
+- Commits that resolve a background review finding now tag the finding's ID in the commit subject, making it easier to trace which commit addressed which finding.
+- Discussion and research conclusion checks are more lenient about what counts as "nothing new since the last review" — bookkeeping commits (reconciliation, triage draining, deferral notes) no longer force an unnecessary re-review.
+- Undrained triage entries found during document review are now left in place for the normal conclude-and-drain flow instead of being folded in early.
+- A rerouted concern that lands on ground a discussion already resolved now reopens that decision for reconsideration instead of being silently merged in.
+
 ## [0.6.21] - 2026-07-30
 
 🐛 Fixed
