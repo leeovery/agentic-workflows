@@ -193,7 +193,7 @@ MD
 }
 
 # Create an analysis cache file under .state/.
-# Filename arg must be one of: research-analysis | gap-analysis.
+# Filename arg must be one of: research-analysis | discovery-gap-analysis | coherence-analysis.
 create_analysis_cache() {
   local wu="$1" filename="$2"
   mkdir -p "$TEST_ROOT/.workflows/$wu/.state"
@@ -2189,6 +2189,19 @@ output=$(run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md 2>&1
 exit_code=0
 run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "indexes gap-analysis cache" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
+assert_eq "exits 0" "0" "$exit_code"
+teardown_project
+
+# --- Test 89b: Index coherence-analysis cache ---
+echo "Test 89b: Index coherence-analysis cache"
+setup_project
+create_work_unit "auth-flow" "epic" "Auth"
+write_stub_config
+create_analysis_cache "auth-flow" "coherence-analysis"
+output=$(run_kb index .workflows/auth-flow/.state/coherence-analysis.md 2>&1)
+exit_code=0
+run_kb index .workflows/auth-flow/.state/coherence-analysis.md >/dev/null 2>&1 || exit_code=$?
+assert_eq "indexes coherence-analysis cache" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
 

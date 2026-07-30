@@ -336,6 +336,7 @@ describe('epic projections: menu', () => {
       analysis_caches: {
         research_analysis: { status: 'absent', generated: null, files: [] },
         gap_analysis: { status: 'absent', generated: null, files: [] },
+        coherence_analysis: { status: 'absent', generated: null, files: [] },
       },
       gating: {
         can_start_specification: true,

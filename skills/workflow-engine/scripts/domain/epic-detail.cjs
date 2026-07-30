@@ -122,7 +122,7 @@ const EPIC_DETAIL_PHASES = ['discovery', 'research', 'discussion', 'specificatio
  * @property {MapSummary|null} map_summary
  * @property {number} imports_count
  * @property {number} seeds_count
- * @property {{research_analysis: AnalysisCache, gap_analysis: AnalysisCache}} analysis_caches
+ * @property {{research_analysis: AnalysisCache, gap_analysis: AnalysisCache, coherence_analysis: AnalysisCache}} analysis_caches
  * @property {{can_start_specification: boolean, can_start_planning: boolean, can_start_implementation: boolean, can_start_review: boolean}} gating
  */
 
@@ -169,13 +169,14 @@ function resolveDeps(manifest, planItem) {
 /**
  * @param {string} cwd
  * @param {object} manifest
- * @returns {{research_analysis: AnalysisCache, gap_analysis: AnalysisCache}}
+ * @returns {{research_analysis: AnalysisCache, gap_analysis: AnalysisCache, coherence_analysis: AnalysisCache}}
  */
 function buildAnalysisCaches(cwd, manifest) {
   const workflowsDir = path.join(cwd, '.workflows');
   return {
     research_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'research-analysis'),
     gap_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'gap-analysis'),
+    coherence_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'coherence-analysis'),
   };
 }
 

@@ -20,18 +20,39 @@ const { collectAnalysisInputs } = require('./derivations.cjs');
 const { filesChecksum } = require('./reads.cjs');
 const { knowledge } = require('./kb.cjs');
 
-const KINDS = ['research-analysis', 'gap-analysis'];
-
-// The kind's model-authored cache file under `.state/` — the analysis output
-// the stamp checksums the inputs of, and the artifact the KB index covers.
-const CACHE_FILES = {
-  'research-analysis': 'research-analysis.md',
-  'gap-analysis': 'discovery-gap-analysis.md',
+// Per-kind config: the model-authored cache file under `.state/` (the
+// analysis output the stamp checksums the inputs of, and the artifact the KB
+// index covers), the cache object's manifest home (`phases.{phase}.{field}`),
+// the field naming the checksummed inputs, and the nothing-to-stamp error.
+const KIND_CONFIG = {
+  'research-analysis': {
+    cacheFile: 'research-analysis.md',
+    phase: 'research',
+    field: 'analysis_cache',
+    filesField: 'files',
+    emptyError: 'nothing to stamp: no completed research files',
+  },
+  'gap-analysis': {
+    cacheFile: 'discovery-gap-analysis.md',
+    phase: 'discovery',
+    field: 'gap_analysis_cache',
+    filesField: 'input_files',
+    emptyError: 'nothing to stamp: no completed research or discussion files',
+  },
+  'coherence-analysis': {
+    cacheFile: 'coherence-analysis.md',
+    phase: 'discovery',
+    field: 'coherence_analysis_cache',
+    filesField: 'input_files',
+    emptyError: 'nothing to stamp: no completed discussion files',
+  },
 };
+
+const KINDS = Object.keys(KIND_CONFIG);
 
 /**
  * @typedef {object} CacheStampResult
- * @property {string} kind      `research-analysis` | `gap-analysis`
+ * @property {string} kind      `research-analysis` | `gap-analysis` | `coherence-analysis`
  * @property {string} checksum
  * @property {number} files     how many input files the checksum covers
  * @property {string[]} warnings non-blocking failures (knowledge-base index)
@@ -50,37 +71,33 @@ function phaseObject(manifest, phase) {
  * Stamp one analysis cache: checksum the current completed inputs (exactly as
  * the read side collects them), write the cache object to its manifest home —
  * `phases.research.analysis_cache` (`files`) for research-analysis,
- * `phases.discovery.gap_analysis_cache` (`input_files`) for gap-analysis —
- * then index the kind's `.state/` cache file into the knowledge base
- * (warn-don't-block). Throws when there is nothing to stamp — the analyses'
- * preconditions skip the stamp when no qualifying inputs exist.
+ * `phases.discovery.gap_analysis_cache` (`input_files`) for gap-analysis,
+ * `phases.discovery.coherence_analysis_cache` (`input_files`) for
+ * coherence-analysis — then index the kind's `.state/` cache file into the
+ * knowledge base (warn-don't-block). Throws when there is nothing to stamp —
+ * the analyses' preconditions skip the stamp when no qualifying inputs exist.
  * @param {string} cwd project root
  * @param {string} workUnit
- * @param {string} kind  `research-analysis` | `gap-analysis`
+ * @param {string} kind  `research-analysis` | `gap-analysis` | `coherence-analysis`
  * @returns {CacheStampResult}
  */
 function stampAnalysisCache(cwd, workUnit, kind) {
-  if (!KINDS.includes(kind)) {
+  const cfg = KIND_CONFIG[/** @type {keyof typeof KIND_CONFIG} */ (kind)];
+  if (!cfg) {
     throw new Error(`unknown cache kind "${kind}" (${KINDS.join('|')})`);
   }
   const stamped = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const inputs = collectAnalysisInputs(manifest, path.join(cwd, '.workflows'), kind);
     if (inputs.length === 0) {
-      throw new Error(kind === 'research-analysis'
-        ? 'nothing to stamp: no completed research files'
-        : 'nothing to stamp: no completed research or discussion files');
+      throw new Error(cfg.emptyError);
     }
 
     const checksum = /** @type {string} */ (filesChecksum(inputs));
     const generated = new Date().toISOString();
     const names = inputs.map((p) => path.basename(p));
 
-    if (kind === 'research-analysis') {
-      phaseObject(manifest, 'research').analysis_cache = { checksum, generated, files: names };
-    } else {
-      phaseObject(manifest, 'discovery').gap_analysis_cache = { checksum, generated, input_files: names };
-    }
+    phaseObject(manifest, cfg.phase)[cfg.field] = { checksum, generated, [cfg.filesField]: names };
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return { kind, checksum, files: inputs.length };
@@ -88,8 +105,7 @@ function stampAnalysisCache(cwd, workUnit, kind) {
 
   /** @type {string[]} */
   const warnings = [];
-  const cacheFile = CACHE_FILES[/** @type {keyof typeof CACHE_FILES} */ (kind)];
-  knowledge(cwd, ['index', `.workflows/${workUnit}/.state/${cacheFile}`], `knowledge index (.state/${cacheFile})`, warnings);
+  knowledge(cwd, ['index', `.workflows/${workUnit}/.state/${cfg.cacheFile}`], `knowledge index (.state/${cfg.cacheFile})`, warnings);
 
   return { ...stamped, warnings };
 }

@@ -534,6 +534,22 @@ describe('pipeline simulation', () => {
     assert.strictEqual(reopened.reopened, true);
     assert.strictEqual(reopened.status, 'in-progress');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+
+    // Coherence: two completed discussions arm the analysis. The stamp
+    // checksums discussion files only; gate state and the dismissed
+    // fingerprints walk the manifest with validated vocabulary throughout.
+    const coherence = sim.run(['cache', 'stamp', wu, 'coherence-analysis']);
+    assert.strictEqual(coherence.kind, 'coherence-analysis');
+    assert.strictEqual(coherence.files, 2);
+    assert.ok(sim.manifest(wu).phases.discovery.coherence_analysis_cache.checksum);
+    sim.run(['manifest', 'set', `${wu}.discovery`,
+      'analysis_staging.coherence-analysis.gate_mode=gated',
+      'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-retry.status=pending']);
+    sim.refuses(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-retry.status', 'maybe'], /Invalid candidate status/);
+    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-retry.status', 'approved']);
+    sim.run(['manifest', 'push', `${wu}.discovery`, 'dismissed_findings', 'alpha|beta|retry-policy']);
+    sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.coherence-analysis']);
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.discovery`, 'analysis_staging.coherence-analysis']).trim(), 'false');
     // Cancel/reactivate round-trips the stub; start is the one exit from triaged.
     sim.run(['topic', 'cancel', wu, 'research', 'delta']);
     assert.strictEqual(sim.manifest(wu).phases.research.items.delta.previous_status, 'triaged');

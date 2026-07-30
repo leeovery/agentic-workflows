@@ -491,10 +491,31 @@ describe('workflow-discovery discovery', () => {
       assert.strictEqual(r.analysis_caches.gap_analysis.status, 'stale');
     });
 
+    it('returns absent for coherence-analysis with a single completed discussion — below the input floor', () => {
+      createManifest(dir, 'payments', {
+        work_type: 'epic',
+        phases: { discussion: { items: { auth: { status: 'completed' } } } },
+      });
+      createFile(dir, '.workflows/payments/discussion/auth.md', 'content');
+      const r = discover(dir, 'payments');
+      assert.strictEqual(r.analysis_caches.coherence_analysis.status, 'absent');
+    });
+
+    it('returns stale for coherence-analysis when 2 completed discussions exist but no cache', () => {
+      createManifest(dir, 'payments', {
+        work_type: 'epic',
+        phases: { discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } } },
+      });
+      createFile(dir, '.workflows/payments/discussion/auth.md', 'content');
+      createFile(dir, '.workflows/payments/discussion/billing.md', 'content');
+      const r = discover(dir, 'payments');
+      assert.strictEqual(r.analysis_caches.coherence_analysis.status, 'stale');
+    });
+
     it('format() renders analysis_caches statuses on one line', () => {
       createManifest(dir, 'payments', { work_type: 'epic' });
       const out = format(discover(dir, 'payments'));
-      assert.match(out, /analysis_caches: research_analysis=absent, gap_analysis=absent/);
+      assert.match(out, /analysis_caches: research_analysis=absent, gap_analysis=absent, coherence_analysis=absent/);
     });
   });
 
@@ -850,7 +871,7 @@ describe('workflow-discovery format', () => {
       '  (none)',
       'session_logs (0):',
       '  (none)',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent, coherence_analysis=absent',
       'next_session_number: 001',
       '',
     ].join('\n'));
@@ -889,7 +910,7 @@ describe('workflow-discovery format', () => {
       'session_logs (2):',
       '  - 001 .workflows/payments/discovery/sessions/session-001.md',
       '  - 002 .workflows/payments/discovery/sessions/session-002.md',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent, coherence_analysis=absent',
       'next_session_number: 003',
       '',
     ].join('\n'));

@@ -155,7 +155,7 @@ Commands:
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
-  cache stamp <work-unit> (research-analysis|gap-analysis)
+  cache stamp <work-unit> (research-analysis|gap-analysis|coherence-analysis)
   agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>]
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
@@ -646,7 +646,7 @@ function runCache(argv) {
   const [command, workUnit, kind] = argv;
   try {
     if (command !== 'stamp' || !workUnit || !kind) {
-      throw new Error('Usage: engine cache stamp <work-unit> <research-analysis|gap-analysis>');
+      throw new Error('Usage: engine cache stamp <work-unit> <research-analysis|gap-analysis|coherence-analysis>');
     }
     respond(stampAnalysisCache(process.cwd(), workUnit, kind));
   } catch (err) {
