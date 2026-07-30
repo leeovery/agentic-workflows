@@ -108,7 +108,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 
 ```markdown
 #### {YYYY-MM-DD} — revised
-*Trigger: {substance — e.g. triage from {origin}: "{concern title}" / review finding: {one-line substance} / user reversal}*
+*Trigger: {substance — e.g. triage from {origin}: "{concern title}" — {one-line substance} / review finding: {one-line substance} / user reversal: {what changed}}*
 
 {the current decision — what we now choose, why, what changed from the entry below}
 
