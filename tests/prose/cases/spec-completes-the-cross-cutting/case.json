@@ -1,0 +1,67 @@
+{
+  "origin": "cross-cutting — the terminal work type — had no coverage. This walks its defining property end to end: the specification pass over a completed discussion, the terminal signpost at the pipeline continuation, and the bridge's cross-cutting done arm completing the work unit at specification",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-bridge/SKILL.md",
+    "skills/workflow-bridge/references/cross-cutting-continuation.md"
+  ],
+  "conduct": "The user is turning their completed error-handling discussion into the specification for a project-wide standard. They know its decisions cold: one error envelope for every service (code, message, correlation_id), retryable versus terminal carried by the code range alone, and errors logged once at the service boundary with the correlation id while inner layers rethrow. They check each presented piece against what was actually decided — content faithful to the discussion gets an explicit yes; anything invented, embellished, or hedged beyond the record they correct before it is written. They want their own eyes on every piece before it is recorded: offered a way to approve the rest automatically, they decline and keep approving one at a time. They answer questions concretely and briefly, and they do not reopen decided questions or add new scope — the SDK helper library stays deferred. When asked to conclude, they confirm: the specification matches the discussion and they are done.",
+  "stubs": {
+    "spec-review-clean": "each time the prose dispatches a specification review agent via the Task tool — both the input review and the gap analysis return the content below and write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate error-handling.specification.error-handling",
+      "manifest get error-handling.specification.error-handling status",
+      "topic start error-handling specification error-handling",
+      "sources.error-handling.status pending",
+      "sources.error-handling.status incorporated",
+      "spec(error-handling): initialize specification",
+      "review_cycle 1",
+      "topic complete error-handling specification error-handling",
+      "spec(error-handling): conclude specification",
+      "manifest get error-handling work_type",
+      "workflow-bridge/scripts/gateway.cjs error-handling",
+      "workunit complete error-handling -m workflow(error-handling): complete cross-cutting pipeline --pipeline"
+    ],
+    "calls_in_order": [
+      "render entry-gate error-handling.specification.error-handling",
+      "topic start error-handling specification error-handling",
+      "sources.error-handling.status incorporated",
+      "topic complete error-handling specification error-handling",
+      "spec(error-handling): conclude specification",
+      "workflow-bridge/scripts/gateway.cjs error-handling",
+      "workunit complete error-handling"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic supersede",
+      "construction_gate_mode auto",
+      "finding_gate_mode auto",
+      "workunit create",
+      "render early-completion-gate",
+      "render revisit-gate",
+      "workunit promote",
+      "topic start error-handling planning"
+    ]
+  }
+}
