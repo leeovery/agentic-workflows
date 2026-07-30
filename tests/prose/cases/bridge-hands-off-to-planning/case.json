@@ -1,0 +1,62 @@
+{
+  "origin": "the bridge's plan-mode arms were unreachable until the plan-capture mechanism landed — this proves it: a specification concludes, the bridge derives planning, the revisit gate is offered and declined, and the resolved plan template lands as the world's plan-handoff artifact",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-bridge/SKILL.md",
+    "skills/workflow-bridge/references/feature-continuation.md"
+  ],
+  "conduct": "The user is turning their completed card-payments discussion into the specification. They know its decisions cold: the existing gateway account with no new provider onboarding, card-only for v1 with wallets deferred, and capture confirmed by gateway webhooks with no polling anywhere. They check each presented piece against what was actually decided — content faithful to the discussion gets an explicit yes; anything invented, embellished, or hedged beyond the record they correct before it is written. They want their own eyes on every piece before it is recorded: offered a way to approve the rest automatically, they decline and keep approving one at a time. They answer questions concretely and briefly, and they do not reopen decided questions or add new scope — the discussion said what it said. When asked to conclude, they confirm: the specification matches the discussion and they are done. On the way out they only move forward — offered a look back at earlier phases, they decline it and carry on; they have no instructions to attach and nothing more to add.",
+  "stubs": {
+    "spec-review-clean": "each time the prose dispatches a specification review agent via the Task tool — both the input review and the gap analysis return the content below and write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.specification.pay",
+      "topic start pay specification pay",
+      "sources.pay.status incorporated",
+      "topic complete pay specification pay",
+      "spec(pay): conclude specification",
+      "manifest get pay work_type",
+      "workflow-bridge/scripts/gateway.cjs pay",
+      "render revisit-gate pay --prev specification --next planning"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.specification.pay",
+      "topic start pay specification pay",
+      "sources.pay.status incorporated",
+      "topic complete pay specification pay",
+      "spec(pay): conclude specification",
+      "workflow-bridge/scripts/gateway.cjs pay",
+      "render revisit-gate pay --prev specification --next planning"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic supersede",
+      "construction_gate_mode auto",
+      "finding_gate_mode auto",
+      "workunit create",
+      "workunit complete",
+      "render early-completion-gate",
+      "topic start pay planning"
+    ]
+  }
+}
