@@ -1,0 +1,51 @@
+{
+  "origin": "live failure — six re-review offers in one session with nothing new discussed: the drain discount had no durable anchor and decayed from conversation memory; this walk pins the mechanical filter at the closing gates — a drain-tagged commit is not movement, and an empty residue classifies satisfied without judgment",
+  "entry": "workflow-discussion-entry",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/drain-triage.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": ["c — continue"],
+  "conduct": "The user settled how card payments at checkout should work in earlier sessions and is returning only to close the discussion out. Everything they cared about is already decided and documented — capture confirmed by gateway webhooks, hosted fields keeping card data off their servers, a pinned retry cap, a reconciliation sweep for orders a missed webhook would strand — and they add nothing new: picking the session back up they confirm in a sentence that nothing has changed for them, say that covers it, and ask to wrap up. On the way out they are agreeable — asked whether to conclude, they say yes; offered anything optional, they take whatever moves the wrap-up along rather than anything that reopens the conversation. They never introduce new material, never ask to explore, and decline any offered tangent.",
+  "invariants": {
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "knowledge.cjs query",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "agent scan pay discussion pay",
+      "git log --format=%h %cI %s -- .workflows/pay/discussion/pay.md"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "agent scan pay discussion pay"
+    ],
+    "calls_exclude": [
+      "agent dispatch",
+      "--kind review",
+      "agent ack",
+      "agent surface",
+      "topic complete",
+      "knowledge.cjs index"
+    ]
+  }
+}

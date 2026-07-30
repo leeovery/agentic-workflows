@@ -22,7 +22,7 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
 5. **Document** — At natural pauses, update the research file with insights, open questions, and emerging themes. Capture the substance, not a transcript. The research file is freeform — let structure emerge from the content rather than imposing it.
 
-6. **Commit & dispatch check** — Commit after each write. Don't batch — the commit history is your safety net across context compaction:
+6. **Commit & dispatch check** — Commit after each write. Don't batch — the commit history is your safety net across context compaction. When the write documents an agent finding's engagement, the subject carries `({id} {finding})` — e.g. `research({work_unit}/{topic}): pinned retry bound (review-003 F2)`:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}/{topic}): {what changed}"

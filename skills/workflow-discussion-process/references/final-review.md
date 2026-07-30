@@ -72,19 +72,25 @@ The decline stands — do not re-litigate it. A later conclusion attempt classif
 
 **If no decline was given:**
 
-Check what landed after that review's dispatch (the row's `created` timestamp, on every scan row) — and discount commits the drain itself produced (same session, your memory of raising its findings; the engagement writes are not new work):
+List what landed after that review's dispatch (the row's `created` timestamp, on every scan row), keep only commits after it, then drop those whose subject carries a drain marker — `(review-NNN …)` or `(synthesis-NNN …)` — engagement writes are not new work:
 
 ```bash
 git log --format='%h %cI %s' -- .workflows/{work_unit}/discussion/{topic}.md
 ```
 
-**If a meaningful discussion commit landed after the prior review was dispatched** (a decision documented, a subtopic explored — not typo fixes):
+**If no commits remain:**
+
+Nothing new for a fresh review to see — the final-review gate is satisfied. Deterministic — no judgment.
+
+→ Return to caller.
+
+**If a remaining commit is meaningful** (a decision documented, a subtopic explored — not typo fixes, not bookkeeping: document-review reconciliation, drain triage, deferral notes):
 
 → Proceed to **C. Dispatch Final Review**.
 
 **Otherwise:**
 
-Nothing new for a fresh review to see — the final-review gate is satisfied.
+Doubt resolves to satisfied — declining forfeits nothing; a later attempt reclassifies.
 
 → Return to caller.
 

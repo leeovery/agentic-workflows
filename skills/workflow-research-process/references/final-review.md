@@ -56,19 +56,25 @@ Take the highest-numbered `review` row from the **A** scan and branch on its sta
 
 #### If it is `incorporated`
 
-The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (the row's `created` timestamp, on every scan row) — and discount commits the drain itself produced (same session, your memory of raising its findings; the engagement writes are not new work):
+The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. List what landed after that review's dispatch (the row's `created` timestamp, on every scan row), keep only commits after it, then drop those whose subject carries a `(review-NNN …)` drain marker — engagement writes are not new work. `(deep-dive-NNN …)` commits are kept: they fold agent-researched substance the review never saw:
 
 ```bash
 git log --format='%h %cI %s' -- .workflows/{work_unit}/research/{topic}.md
 ```
 
-**If a meaningful research commit landed after the prior review was dispatched** (new findings, folded threads — not typo fixes):
+**If no commits remain:**
+
+Nothing new for a fresh review to see — the final-review gate is satisfied. Deterministic — no judgment.
+
+→ Return to caller.
+
+**If a remaining commit is meaningful** (new findings, folded threads — not typo fixes, not bookkeeping: document-review reconciliation, drain triage, deferral notes):
 
 → Proceed to **C. Dispatch Final Review**.
 
 **Otherwise:**
 
-Nothing new for a fresh review to see — the final-review gate is satisfied.
+Doubt resolves to satisfied — declining forfeits nothing; a later attempt reclassifies.
 
 → Return to caller.
 
