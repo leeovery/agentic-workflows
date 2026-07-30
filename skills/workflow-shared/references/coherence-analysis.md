@@ -38,11 +38,13 @@ Cross-reference across all documents — pairs of decisions that interact, prose
 
 ## B. Identify Findings
 
+Discussions document the journey to a decision — false paths, reversals, positions later abandoned. That record is supposed to disagree, with itself and with other documents; coherence is a property of the **settled decisions**, never the prose around them. Findings target the decision layer only.
+
 Analyse the artifacts from A to identify findings across three categories:
 
-1. **Unacknowledged conflict** — two documents decide incompatibly and neither cites the other. Distinguish this from deliberate supersession: when the newer document acknowledges it is changing an earlier decision, the conflict is acknowledged — any prose still citing the old decision is a stale reference (category 2), not a conflict.
+1. **Unacknowledged conflict** — two documents decide incompatibly and neither cites the other. Decisions only: a position explored and walked back in journey or options prose is not a side of a conflict, however flatly it contradicts the other document. Distinguish deliberate supersession: when the newer document acknowledges it is changing an earlier decision, the conflict is acknowledged — any prose still citing the old decision is a stale reference (category 2), not a conflict.
 
-2. **Stale reference** — prose (cross-document, or within one document) citing a decision that has since changed, where the newer document acknowledges the change. The decision record is coherent; the citing prose is out of date.
+2. **Stale reference** — prose (cross-document, or within one document) that relies, as current, on a decision that has since changed, where the newer document acknowledges the change. The decision record is coherent; the citing prose is out of date. Narration of what was believed at the time is history, not staleness.
 
 3. **Owned ambiguity** — a term or assumption used inconsistently across documents, with a clear home document that owns the definition. The inconsistency would propagate into specification if left unresolved.
 
