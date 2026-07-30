@@ -1,0 +1,66 @@
+{
+  "origin": "continue-epic had no coverage — the epic navigation spine from the dashboard through validation, the skipped one-time recoveries, the first-visit map sequencing, and the epic dashboard into a topic's discussion entry with its brief read in full",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-shared/references/sequence-discovery-map.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/template.md"
+  ],
+  "answers": [
+    "1 — continue the Search Relevance epic",
+    "start the discussion for behavioural-ranking — whichever entry that is"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "legacy-research-split/scripts/detect.cjs search-relevance",
+      "discovery-map sequence search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "manifest get search-relevance.discussion.behavioural-ranking status",
+      "manifest get search-relevance.discovery.behavioural-ranking brief_path",
+      "manifest set search-relevance.discovery.behavioural-ranking brief_incorporated true",
+      "topic start search-relevance discussion behavioural-ranking",
+      "discussion-map add search-relevance behavioural-ranking",
+      "discussion(search-relevance): initialize behavioural-ranking discussion"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "discovery-map sequence search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "manifest get search-relevance.discovery.behavioural-ranking brief_path",
+      "topic start search-relevance discussion behavioural-ranking",
+      "discussion-map add search-relevance behavioural-ranking",
+      "discussion(search-relevance): initialize behavioural-ranking discussion"
+    ],
+    "calls_exclude": [
+      "discovery-map add",
+      "discovery-session",
+      "topic cancel",
+      "topic reactivate",
+      "topic complete",
+      "topic reopen",
+      "workunit create",
+      "knowledge.cjs index",
+      "legacy-research-split/scripts/apply"
+    ]
+  }
+}
