@@ -43,7 +43,7 @@ Don't rely on your memory of what you wrote earlier. Pay particular attention to
 
 ## B. Compare and Reconcile
 
-Walk the conversation against the document and check four dimensions:
+Walk the conversation against the document and check five dimensions:
 
 1. **Undocumented substance** — threads, tangents, trade-offs, edge cases, provisional positions, or concerns that came up in conversation but never made it into a subtopic section or the Summary. Not verbatim — the *substance* of what was explored. This is the most common failure mode as sessions grow long and later exchanges crowd out earlier ones. Journey sections are especially vulnerable: they're supposed to capture the arc of how a decision was reached, and it's easy to write them tersely after the fact in a way that skips the actual back-and-forth.
 
@@ -53,12 +53,15 @@ Walk the conversation against the document and check four dimensions:
 
 4. **Triage consistency** — `## Triage` must hold either `(none)` or real `### {title}` entries. A real entry is not yours to fold — leave it in place: the conclude gate checks the section and routes back through the session drain, which folds it and opens it for exploration. Clearing it here would let the discussion conclude without the concern ever being explored. If the `(none)` placeholder drifted (missing, or replaced by stray text with no real entry), restore it.
 
+5. **Revision landing** — a decision changed this session that was recorded in an earlier sitting must carry a dated timeline entry with a substance-bearing trigger line (the template's revision convention); earlier entries and the wrapped `#### Initial` must be unedited. A plain Decision block is fine when nothing recorded earlier was re-decided.
+
 **Apply the reconciliation.** For each finding:
 
 - Gap → add the missing substance to the discussion file at the appropriate place (subtopic section, Journey, or Summary)
 - Hallucination → remove or correct to match what was discussed
 - Drift → rewrite to faithfully reflect the conversation; correct Discussion Map states where needed (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}`)
 - Triage placeholder drift → restore `(none)`; real entries stay untouched for the conclude gate
+- Mislanded re-decision → restructure the block into the timeline shape (wrap the original prose as `#### Initial`, place the dated entry above it); restore any edited earlier entry from git
 
 Commit the changes with a descriptive message (e.g., `docs(discussion): capture undocumented trade-off thread`, `docs(discussion): correct drift on caching decision`, `docs(discussion): soften Map state to converging`).
 

@@ -1,0 +1,66 @@
+{
+  "origin": "the decision timeline had no prose coverage — a triaged coherence concern colliding with a decided subtopic must drain into the existing section (the map add refuses), flip the subtopic back to exploring so the conclusion gate re-arms, and land the re-decision as a dated timeline entry wrapping the original prose; this walk pins the fold-into-existing branch and the revision landing end to end",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/drain-triage.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": ["c — continue"],
+  "conduct": "The user decided synonym expansion in an earlier sitting — behaviour-driven, reading the live click-signal stream at query time — and returns because a coherence concern from behavioural-ranking landed in this topic's triage: the live stream will never be built. They accept the challenge on the merits rather than defending the old decision. Pressed on what expansion actually needs, they land decisively on behaviour-driven expansion computed from the nightly batch aggregates — expansions refresh daily rather than within the session, because in-session freshness was a nice-to-have and the reformulation-and-click derivation is the part that mattered. They engage concretely, decide rather than park, and add nothing beyond resolving the drained concern. When the resolution feels settled they confirm it rounds out the subtopic, say that covers it, and ask to wrap up. On the way out they are agreeable to required steps — asked to proceed into a mandatory review or the conclusion, they say yes — but they decline optional extras: offered an optional fresh gap review they skip it, and offered new threads or explorations they decline. They never introduce new material.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.synonym-handling status",
+      "discussion-map add search-relevance synonym-handling expansion-source",
+      "discussion-map set search-relevance synonym-handling expansion-source exploring",
+      "discussion(search-relevance/synonym-handling): drain triage",
+      "discussion-map set search-relevance synonym-handling expansion-source decided",
+      "workflow-discussion-process/scripts/gateway.cjs map search-relevance synonym-handling",
+      "topic complete search-relevance discussion synonym-handling"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.synonym-handling status",
+      "discussion-map add search-relevance synonym-handling expansion-source",
+      "discussion-map set search-relevance synonym-handling expansion-source exploring",
+      "discussion(search-relevance/synonym-handling): drain triage",
+      "discussion-map set search-relevance synonym-handling expansion-source decided",
+      "topic complete search-relevance discussion synonym-handling"
+    ],
+    "calls_exclude": [
+      "--kind perspective",
+      "topic reopen",
+      "topic start search-relevance discussion synonym-handling",
+      "discovery-map add",
+      "knowledge.cjs index"
+    ]
+  }
+}

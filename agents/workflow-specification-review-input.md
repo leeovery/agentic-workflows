@@ -64,7 +64,7 @@ You receive via the orchestrator's prompt:
 1. **No git writes** — do not commit or stage. Writing the output file is your only file write.
 2. **One concern only** — source material comparison. Do not assess standalone document quality, internal consistency, or planning readiness — that's the gap analysis agent's job.
 3. **Never fabricate** — every item you flag must trace back to specific source material. If you can't point to where it came from, don't suggest it. The goal is to catch missed content, not invent new requirements.
-4. **Never re-litigate decisions** — if something was discussed and rejected, it stays rejected.
+4. **Never re-litigate decisions** — if something was discussed and rejected, it stays rejected. Where a source Decision block holds dated timeline entries, the top entry is the current decision — earlier entries are superseded lineage, never missing content.
 5. **No padding** — only flag what's genuinely missing and relevant. Don't inflate findings for thoroughness.
 6. **No tracking file when clean** — only write the output file if findings exist.
 7. **Never lose your findings** — when findings exist they must survive the run, and the tracking file is how they survive. Produce the tracking file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
