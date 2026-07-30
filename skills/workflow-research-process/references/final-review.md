@@ -56,10 +56,10 @@ Take the highest-numbered `review` row from the **A** scan and branch on its sta
 
 #### If it is `incorporated`
 
-The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. List what landed after that review's dispatch (the row's `created` timestamp, on every scan row), keep only commits after it, then drop those whose subject carries a `(review-NNN …)` drain marker — engagement writes are not new work. `(deep-dive-NNN …)` commits are kept: they fold agent-researched substance the review never saw:
+The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. List what landed after that review's dispatch — `{created}` is the row's `created` timestamp, on every scan row; git does the time comparison — then drop commits whose subject carries a `review-` drain marker (e.g. `(review-003 F2)`) — engagement writes are not new work. Commits carrying a `deep-dive-` prefixed id are kept: they fold agent-researched substance the review never saw:
 
 ```bash
-git log --format='%h %cI %s' -- .workflows/{work_unit}/research/{topic}.md
+git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/research/{topic}.md
 ```
 
 **If no commits remain:**
