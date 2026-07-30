@@ -48,6 +48,7 @@ function discover(cwd, workUnit) {
   const analysisCaches = {
     research_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'research-analysis'),
     gap_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'gap-analysis'),
+    coherence_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'coherence-analysis'),
   };
   return {
     work_unit: workUnit,
@@ -137,7 +138,7 @@ function format(result) {
 
   const caches = result.analysis_caches || {};
   const cacheStatus = (kind) => ((caches[kind] || { status: 'absent' }).status);
-  lines.push(`analysis_caches: research_analysis=${cacheStatus('research_analysis')}, gap_analysis=${cacheStatus('gap_analysis')}`);
+  lines.push(`analysis_caches: research_analysis=${cacheStatus('research_analysis')}, gap_analysis=${cacheStatus('gap_analysis')}, coherence_analysis=${cacheStatus('coherence_analysis')}`);
 
   lines.push(`next_session_number: ${String(result.next_session_number).padStart(3, '0')}`);
 

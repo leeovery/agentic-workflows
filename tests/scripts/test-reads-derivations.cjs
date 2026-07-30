@@ -957,6 +957,89 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.status, 'stale');
     });
 
+    it('coherence-analysis: returns absent when no completed discussions and no cache', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'coherence-analysis');
+      assert.strictEqual(r.status, 'absent');
+    });
+
+    it('coherence-analysis: returns absent with a single completed discussion — below the minInputs floor', () => {
+      // Coherence is cross-document: with one discussion there is nothing to
+      // conflict, so the analysis never fires (and features never see it).
+      createManifest(dir, 'alpha', {
+        phases: { discussion: { items: { auth: { status: 'completed' } } } },
+      });
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content');
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'coherence-analysis');
+      assert.strictEqual(r.status, 'absent');
+    });
+
+    it('coherence-analysis: returns stale when 2 completed discussions exist but no cache', () => {
+      createManifest(dir, 'alpha', {
+        phases: { discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } } },
+      });
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-a');
+      createFile(dir, '.workflows/alpha/discussion/billing.md', 'content-b');
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'coherence-analysis');
+      assert.strictEqual(r.status, 'stale');
+    });
+
+    it('coherence-analysis: returns valid when checksum matches completed discussion files only', () => {
+      // A completed research file exists too — it must not feed the checksum.
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-a');
+      createFile(dir, '.workflows/alpha/discussion/billing.md', 'content-b');
+      createFile(dir, '.workflows/alpha/research/auth.md', 'content-r');
+      const checksum = filesChecksum([
+        path.join(dir, '.workflows/alpha/discussion/auth.md'),
+        path.join(dir, '.workflows/alpha/discussion/billing.md'),
+      ]);
+      createManifest(dir, 'alpha', {
+        phases: {
+          research: { items: { auth: { status: 'completed' } } },
+          discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+          discovery: { coherence_analysis_cache: { checksum, generated: '2026-05-03', input_files: ['auth.md', 'billing.md'] } },
+        },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'coherence-analysis');
+      assert.strictEqual(r.status, 'valid');
+      assert.strictEqual(r.generated, '2026-05-03');
+      assert.deepStrictEqual(r.files, ['auth.md', 'billing.md']);
+    });
+
+    it('coherence-analysis: returns stale when a discussion changed after the stamp', () => {
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-a');
+      createFile(dir, '.workflows/alpha/discussion/billing.md', 'content-b');
+      createManifest(dir, 'alpha', {
+        phases: {
+          discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+          discovery: { coherence_analysis_cache: { checksum: 'stale-hash', generated: '2026-05-03', input_files: ['auth.md', 'billing.md'] } },
+        },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'coherence-analysis');
+      assert.strictEqual(r.status, 'stale');
+    });
+
+    it('coherence-analysis: returns absent when cache exists but completed discussions dropped below the floor', () => {
+      // Symmetry with the sibling kinds: cached file names preserved on the
+      // absent return so observability isn't lost.
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-a');
+      createManifest(dir, 'alpha', {
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          discovery: { coherence_analysis_cache: { checksum: 'old', generated: '2026-05-03', input_files: ['auth.md', 'gone.md'] } },
+        },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'coherence-analysis');
+      assert.strictEqual(r.status, 'absent');
+      assert.deepStrictEqual(r.files, ['auth.md', 'gone.md']);
+    });
+
     it('returns absent for unknown kind', () => {
       createManifest(dir, 'alpha', { phases: {} });
       const m = loadManifest(dir, 'alpha');

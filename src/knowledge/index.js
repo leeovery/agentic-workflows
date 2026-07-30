@@ -30,10 +30,11 @@ const FLAT_PHASES = new Set(['research', 'discussion', 'investigation', 'imports
 // Whitelist of indexable filenames in .workflows/{wu}/.state/, mapping each
 // on-disk basename to its KB topic identity. The .state/ directory also holds
 // operational metadata (migrations, environment-setup) that must never enter
-// the KB. Restrict to the two analysis cache files.
+// the KB. Restrict to the three analysis cache files.
 const ANALYSIS_CACHE_FILES = {
   'research-analysis': 'research-analysis',
   'discovery-gap-analysis': 'gap-analysis',
+  'coherence-analysis': 'coherence-analysis',
 };
 
 // Resolve the engine CLI path (manifest reads go through `engine manifest`).

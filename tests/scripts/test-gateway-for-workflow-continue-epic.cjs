@@ -291,8 +291,10 @@ describe('workflow-continue-epic discovery', () => {
       assert.ok(d.analysis_caches);
       assert.ok(d.analysis_caches.research_analysis);
       assert.ok(d.analysis_caches.gap_analysis);
+      assert.ok(d.analysis_caches.coherence_analysis);
       assert.strictEqual(d.analysis_caches.research_analysis.status, 'absent');
       assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
+      assert.strictEqual(d.analysis_caches.coherence_analysis.status, 'absent');
     });
 
     it('discovery_map exposes source, summary text, and presence booleans per item for legacy-recovery filter', () => {
@@ -1483,7 +1485,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
     assert.strictEqual(out, [
       '=== EPIC: v1 ===',
       'all_done: false',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent, coherence_analysis=absent',
       'needs_sequencing: true',
       'discovery_map (2):',
       '  - ◐ auth-flow [researching] routing=research summary=present description=present — OAuth vs sessions',
@@ -1501,7 +1503,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
     assert.strictEqual(out, [
       '=== EPIC: v1 ===',
       'all_done: false',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent, coherence_analysis=absent',
       'needs_sequencing: false',
       'discovery_map (0):',
       '  (empty)',

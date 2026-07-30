@@ -86,7 +86,7 @@ describe('engine cache stamp: research-analysis', () => {
     assert.ok(!Number.isNaN(Date.parse(cache.generated)), `generated is a timestamp: ${cache.generated}`);
 
     assert.strictEqual(readStatus(dir, 'research-analysis').status, 'valid');
-    // The other kind's cache is untouched.
+    // The other kinds' caches are untouched (both live under phases.discovery).
     assert.strictEqual(readManifest(dir).phases.discovery, undefined);
   });
 
@@ -137,8 +137,9 @@ describe('engine cache stamp: gap-analysis', () => {
     assert.ok(!Number.isNaN(Date.parse(cache.generated)));
 
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
-    // The research-analysis cache is untouched.
+    // The research-analysis and coherence-analysis caches are untouched.
     assert.strictEqual(readManifest(dir).phases.research.analysis_cache, undefined);
+    assert.strictEqual(readManifest(dir).phases.discovery.coherence_analysis_cache, undefined);
   });
 
   it('a discussion conclusion after the stamp makes it stale', () => {
@@ -162,6 +163,62 @@ describe('engine cache stamp: gap-analysis', () => {
     const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index \(\.state\/discovery-gap-analysis\.md\) failed/);
+  });
+});
+
+describe('engine cache stamp: coherence-analysis', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupFixture();
+    seedEpic(dir);
+    // Coherence needs a second completed discussion — complete zebra-topic.
+    const m = readManifest(dir);
+    m.phases.discussion.items['zebra-topic'].status = 'completed';
+    fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2));
+    createFile(dir, '.workflows/payments/discussion/zebra-topic.md', '# Zebra\n');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('stamps completed discussion files only under phases.discovery — read side judges valid', () => {
+    assert.strictEqual(readStatus(dir, 'coherence-analysis').status, 'stale');
+
+    const res = engine(dir, ['cache', 'stamp', 'payments', 'coherence-analysis']);
+    assert.strictEqual(res.kind, 'coherence-analysis');
+    assert.strictEqual(res.files, 2);
+
+    const cache = readManifest(dir).phases.discovery.coherence_analysis_cache;
+    assert.strictEqual(cache.checksum, res.checksum);
+    // Discussion files only — completed research never feeds coherence.
+    assert.deepStrictEqual(cache.input_files, ['auth-flow.md', 'zebra-topic.md']);
+    assert.ok(!Number.isNaN(Date.parse(cache.generated)));
+
+    assert.strictEqual(readStatus(dir, 'coherence-analysis').status, 'valid');
+    // The sibling caches are untouched.
+    assert.strictEqual(readManifest(dir).phases.research.analysis_cache, undefined);
+    assert.strictEqual(readManifest(dir).phases.discovery.gap_analysis_cache, undefined);
+  });
+
+  it('a discussion edit after the stamp makes it stale; restamping makes it valid again', () => {
+    engine(dir, ['cache', 'stamp', 'payments', 'coherence-analysis']);
+    createFile(dir, '.workflows/payments/discussion/auth-flow.md', '# Auth Flow — revised\n');
+    assert.strictEqual(readStatus(dir, 'coherence-analysis').status, 'stale');
+
+    engine(dir, ['cache', 'stamp', 'payments', 'coherence-analysis']);
+    assert.strictEqual(readStatus(dir, 'coherence-analysis').status, 'valid');
+  });
+
+  it('stamps via the library entry too, sharing the read side collection', () => {
+    const res = stampAnalysisCache(dir, 'payments', 'coherence-analysis');
+    const inputs = collectAnalysisInputs(readManifest(dir), path.join(dir, '.workflows'), 'coherence-analysis');
+    assert.strictEqual(res.files, inputs.length);
+    assert.strictEqual(readStatus(dir, 'coherence-analysis').status, 'valid');
+  });
+
+  it('indexes coherence-analysis.md in the same call — warning names the coherence cache file', () => {
+    // The cache file is absent, so the index attempt fails deterministically.
+    const res = engine(dir, ['cache', 'stamp', 'payments', 'coherence-analysis']);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /knowledge index \(\.state\/coherence-analysis\.md\) failed/);
   });
 });
 
@@ -190,6 +247,9 @@ describe('engine cache stamp: validation', () => {
     assert.match(
       engineFails(dir, ['cache', 'stamp', 'payments', 'gap-analysis']).error,
       /nothing to stamp: no completed research or discussion files/);
+    assert.match(
+      engineFails(dir, ['cache', 'stamp', 'payments', 'coherence-analysis']).error,
+      /nothing to stamp: no completed discussion files/);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'), before);
   });
 });

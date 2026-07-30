@@ -79,6 +79,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', 'seeds', 'original-idea.md'), '# Idea\n');
   writeFile(path.join(wf, 'payments', '.state', 'research-analysis.md'), '# RA\n');
   writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
+  writeFile(path.join(wf, 'payments', '.state', 'coherence-analysis.md'), '# CA\n');
   writeFile(path.join(wf, 'payments', '.state', 'environment-setup.md'), '# not indexable\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'sessions', 'session-001.md'), '# S1\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'sessions', 'session-002.md'), '# S2\n');
@@ -137,6 +138,7 @@ const EXPECTED = [
   { workUnit: 'auth-flow', phase: 'specification', topic: 'auth-flow', file: '.workflows/auth-flow/specification/auth-flow/specification.md' },
   { workUnit: 'login-timeout', phase: 'investigation', topic: 'login-timeout', file: '.workflows/login-timeout/investigation/login-timeout.md' },
   { workUnit: 'login-timeout', phase: 'seeds', topic: 'bug-report', file: '.workflows/login-timeout/seeds/bug-report.md' },
+  { workUnit: 'payments', phase: 'analysis', topic: 'coherence-analysis', file: '.workflows/payments/.state/coherence-analysis.md' },
   { workUnit: 'payments', phase: 'analysis', topic: 'gap-analysis', file: '.workflows/payments/.state/discovery-gap-analysis.md' },
   { workUnit: 'payments', phase: 'analysis', topic: 'research-analysis', file: '.workflows/payments/.state/research-analysis.md' },
   { workUnit: 'payments', phase: 'discovery', topic: 'session-001', file: '.workflows/payments/discovery/sessions/session-001.md' },
