@@ -99,6 +99,14 @@ any harness substitutions. Follow it exactly.
   armed substitution calls for one, write the same path with a `.txt`
   extension and `mv` it to `.md` — the mechanism the product's own
   agents use. Expected, not a `DEVIATION`, no marker.
+- **Plan mode does not exist here.** Where the prose calls the
+  `EnterPlanMode` tool and writes plan content: resolve the content
+  exactly as the prose directs — conditionals and placeholders, then
+  verbatim — and write it to `.plan-handoff.md` at the project root,
+  the world's stand-in for the plan file. Where the prose then calls
+  `ExitPlanMode` to present the plan for approval, that presentation
+  is the flow's terminal handoff: STOP there. Expected, not a
+  `DEVIATION`, no marker.
 - **An inline `` !`command` `` directive will not have run.** That
   substitution happens when a skill is loaded live; here the prose is read
   as a file, so the literal backtick line is what you see. The prose gives
