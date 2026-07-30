@@ -1,0 +1,63 @@
+{
+  "origin": "the coherence-analysis feature had no prose coverage — the full loop from an epic boot reading a stale coherence cache through the analysis staging a seeded conflict, the findings gate approving it, triage reopening the yielding discussion, and the stamp closing the loop",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-shared/references/topic-discovery.md",
+    "skills/workflow-shared/references/coherence-analysis.md",
+    "skills/workflow-shared/references/coherence-findings-gate.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+  ],
+  "answers": [
+    "1 — continue the Search Relevance epic",
+    "r — review the coherence findings now",
+    "y — approve; send it to synonym-handling for resolution"
+  ],
+  "conduct": "The user trusts the coherence check and wants the seeded conflict resolved where the analysis proposes — in synonym-handling, whose freshness assumption leans on infrastructure behavioural-ranking rejected. If the analysis proposes behavioural-ranking as the target instead, they comment redirecting the correction to synonym-handling and then approve. If the analysis stages any finding beyond that conflict, they skip it. At any other prompt they take whatever keeps the boot moving toward the dashboard, and once the dashboard is on screen they are done.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "workflow-discovery/scripts/gateway.cjs search-relevance",
+      "manifest get search-relevance.discovery analysis_staging.coherence-analysis",
+      "analysis_staging.coherence-analysis.gate_mode=gated",
+      "topic triage search-relevance discussion synonym-handling",
+      "manifest delete search-relevance.discovery analysis_staging.coherence-analysis",
+      "discovery(search-relevance): coherence findings triaged",
+      "cache stamp search-relevance coherence-analysis",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "analysis_staging.coherence-analysis.gate_mode=gated",
+      "topic triage search-relevance discussion synonym-handling",
+      "manifest delete search-relevance.discovery analysis_staging.coherence-analysis",
+      "discovery(search-relevance): coherence findings triaged",
+      "cache stamp search-relevance coherence-analysis",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_exclude": [
+      "cache stamp search-relevance gap-analysis",
+      "cache stamp search-relevance research-analysis",
+      "discovery-map add",
+      "discovery-map sequence",
+      "discussion-map",
+      "topic start",
+      "topic complete",
+      "topic reopen",
+      "topic cancel",
+      "workunit create"
+    ]
+  }
+}

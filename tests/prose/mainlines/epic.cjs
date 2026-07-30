@@ -208,4 +208,158 @@ function harvest(h) {
   h.engine('discovery-session', 'close', WU, '-m', `discovery(${WU}): synthesise 3 new topic(s)`);
 }
 
-module.exports = { WU, TOPICS, init, create, harvest };
+// Two concluded discussions carrying a seeded coherence conflict.
+// behavioural-ranking deliberately decides batch-only signal ingestion —
+// real-time streaming rejected, the events pipeline exposes batch
+// aggregates only. synonym-handling, discussed later (rerouted from
+// research), decides behaviour-driven expansion and in passing has its
+// freshness rest on a live click-signal stream — the capability the
+// earlier discussion settled will not exist — without citing that
+// decision. The map is sequenced, so the next boot skips sequencing.
+//
+// The prior boot's self-healing stamped gap-analysis over the concluded
+// pair (a nothing-new pass: no staging, no dismissals). No coherence
+// cache exists — the analysis postdates that boot — so the next boot
+// reads it stale over the two discussions.
+function completeDiscussions(h) {
+  h.engine('discovery-map', 'reroute', WU, 'synonym-handling', 'discussion');
+  h.engine('discovery-map', 'sequence', WU,
+    'behavioural-ranking=1', 'synonym-handling=2', 'relevance-measurement=3');
+
+  h.engine('topic', 'start', WU, 'discussion', 'behavioural-ranking');
+  h.write(`.workflows/${WU}/discussion/behavioural-ranking.md`, [
+    '# Discussion: Behavioural Ranking',
+    '',
+    '## Context',
+    '',
+    'Click and purchase events land in the events pipeline but nothing',
+    'feeds them back into ranking. This discussion settles what signals',
+    'feed the ranker and how they get there.',
+    '',
+    '---',
+    '',
+    '## Signal Ingestion',
+    '',
+    '### Context',
+    'The events pipeline reliably captures clicks and purchases. The open',
+    'question was how those signals reach ranking features.',
+    '',
+    '### Options Considered',
+    '',
+    '**Batch nightly aggregation**',
+    '- Pros: simple, replayable, fits the existing warehouse jobs',
+    '- Cons: signals lag up to a day',
+    '',
+    '**Real-time streaming**',
+    '- Pros: fresh signals',
+    '- Cons: new infrastructure and operational burden nobody has asked for',
+    '',
+    '### Journey',
+    'We started assuming fresher is better, then worked through what any',
+    'consumer actually does with sub-day freshness — nothing today. A',
+    'streaming layer would be new infrastructure for a benefit nobody',
+    'could name, so we rejected it as over-engineering.',
+    '',
+    '### Decision',
+    'Signal ingestion is a batch nightly aggregation job from the events',
+    'pipeline into ranking features. Real-time streaming is rejected as',
+    'over-engineering — the events pipeline exposes batch aggregates',
+    'only, and no live signal stream will be built.',
+    '',
+    '---',
+    '',
+    '## Summary',
+    '',
+    '### Key Insights',
+    '1. Freshness has no consumer today — batch wins on simplicity.',
+    '',
+    '### Current State',
+    '- Signal ingestion decided: batch nightly aggregation, no streaming.',
+    '',
+    '## Triage',
+    '',
+    '(none)',
+    '',
+  ].join('\n'));
+  h.engine('discussion-map', 'add', WU, 'behavioural-ranking', 'signal-ingestion');
+  h.engine('commit', WU, '-m', `discussion(${WU}): initialize behavioural-ranking discussion`);
+  h.engine('discussion-map', 'set', WU, 'behavioural-ranking', 'signal-ingestion', 'decided');
+  h.engine('commit', WU, '-m', `discussion(${WU}): conclude behavioural-ranking`);
+  h.engine('topic', 'complete', WU, 'discussion', 'behavioural-ranking');
+
+  h.engine('topic', 'start', WU, 'discussion', 'synonym-handling');
+  h.write(`.workflows/${WU}/discussion/synonym-handling.md`, [
+    '# Discussion: Synonym Handling',
+    '',
+    '## Context',
+    '',
+    'The hand-maintained synonym and misspelling list is untrusted, and',
+    'replace-rather-than-clean was settled at shaping. This discussion',
+    'settles what replaces it.',
+    '',
+    '---',
+    '',
+    '## Expansion Source',
+    '',
+    '### Context',
+    'If the list goes, something has to produce expansions at query time.',
+    '',
+    '### Options Considered',
+    '',
+    '**Curated replacement list (managed service)**',
+    '- Pros: known shape, quick to adopt',
+    '- Cons: recreates the upkeep problem that killed the current list',
+    '',
+    '**Behaviour-driven expansion**',
+    '- Pros: learns from what users actually click after reformulating',
+    '- Cons: needs behavioural signals available to the expansion service',
+    '',
+    '### Journey',
+    'A managed list just moves the upkeep somewhere else. Deriving',
+    'expansions from reformulation-and-click pairs kept winning on both',
+    'upkeep and quality. For freshness we want expansions reacting',
+    'within the session, so the expansion service reads the live',
+    'click-signal stream at query time.',
+    '',
+    '### Decision',
+    'Synonym expansion is behaviour-driven: the expansion service',
+    'consumes the live click-signal stream at query time, keyed on',
+    'reformulation-and-click pairs. The hand-maintained list is retired',
+    'once behavioural coverage matches it.',
+    '',
+    '---',
+    '',
+    '## Summary',
+    '',
+    '### Key Insights',
+    '1. Any curated list recreates the upkeep problem — derive',
+    '   expansions from behaviour instead.',
+    '',
+    '### Current State',
+    '- Expansion source decided: behaviour-driven, reading the live',
+    '  click-signal stream.',
+    '',
+    '## Triage',
+    '',
+    '(none)',
+    '',
+  ].join('\n'));
+  h.engine('discussion-map', 'add', WU, 'synonym-handling', 'expansion-source');
+  h.engine('commit', WU, '-m', `discussion(${WU}): initialize synonym-handling discussion`);
+  h.engine('discussion-map', 'set', WU, 'synonym-handling', 'expansion-source', 'decided');
+  h.engine('commit', WU, '-m', `discussion(${WU}): conclude synonym-handling`);
+  h.engine('topic', 'complete', WU, 'discussion', 'synonym-handling');
+
+  h.write(`.workflows/${WU}/.state/discovery-gap-analysis.md`, [
+    '# Discovery Gap Analysis Cache',
+    '',
+    '## Topics',
+    '',
+    '(none — the concluded discussions surfaced no new topics)',
+    '',
+  ].join('\n'));
+  h.engine('cache', 'stamp', WU, 'gap-analysis');
+  h.engine('commit', WU, '-m', `discovery(${WU}): stamp gap analysis`);
+}
+
+module.exports = { WU, TOPICS, init, create, harvest, completeDiscussions };
