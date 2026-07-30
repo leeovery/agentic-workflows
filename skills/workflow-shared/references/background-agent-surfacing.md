@@ -171,7 +171,7 @@ This section runs once per invocation and then exits. It never waits in-protocol
    - **Move** — sized to how settled the finding is: a clear resolution — propose it; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
 4. Raise it in the current turn, ending in a single question. One finding, one question, no bundled follow-ups, no menu.
 
-After this, control belongs to the conversation. The user will engage (or deflect, or redirect) naturally. Handle their response as normal discussion — not as protocol-driven routing.
+After this, control belongs to the conversation. The user will engage (or deflect, or redirect) naturally. Handle their response as normal discussion — not as protocol-driven routing. When the engagement's outcome is documented and committed — resolved or deflected — the commit subject carries `({id} {finding})`, e.g. `(review-003 F2)`.
 
 **Coverage guarantee**: the goal is natural flow during engagement AND eventual coverage of every finding. The store ensures nothing is forgotten across turns — every session-loop iteration re-enters this protocol, and at each natural break the next unsurfaced finding is raised. When all findings have been raised, the engine incorporates the row.
 

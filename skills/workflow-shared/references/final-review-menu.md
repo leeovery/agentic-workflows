@@ -98,6 +98,8 @@ Apply the raise-one-finding step inline this turn (do not re-prompt):
    - **Move** — sized to how settled the finding is: a clear resolution — propose it; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
 4. Raise it in the current turn, ending in a single question. One finding, one question, no bundled follow-ups, no menu.
 
+When the engagement's outcome is documented and committed — resolved or deflected — the commit subject carries `({id} {finding})`, e.g. `(review-003 F2)`.
+
 → Return to caller.
 
 #### If `skip`
