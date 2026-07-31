@@ -6,7 +6,7 @@
 
 Read `{file}`.
 
-**If the file has a `## Triage` section that is not `(none)`:** it holds concerns rerouted here from other topics — their origin sessions recorded them as landed, and restart destroys them. Set `{N}` = the count of `### {title}` entries and pass `--triage {N}` below; omit the flag otherwise.
+**If the topic's triage queue holds entries** (`.triage/{topic}/*.md` beside the artifact — research and discussion only): they are concerns rerouted here from other topics — their origin sessions recorded them as landed. Restart preserves the queue (it is not a restart target), but the count belongs in the gate. Set `{N}` = the count of queue files and pass `--triage {N}` below; omit the flag otherwise.
 
 Render the gate:
 

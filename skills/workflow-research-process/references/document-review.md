@@ -27,13 +27,13 @@ Read the research document(s) in full:
 - Feature: `.workflows/{work_unit}/research/{topic}.md`
 - Epic: all files in `.workflows/{work_unit}/research/` relevant to the current topic
 
-Pull the current state fresh into context — don't rely on your memory of what you wrote earlier. Include the `## Triage` section — the `(none)` placeholder intact, or real entries (the conclude gate's to route).
+Pull the current state fresh into context — don't rely on your memory of what you wrote earlier.
 
 → Proceed to **B. Compare and Reconcile**.
 
 ## B. Compare and Reconcile
 
-Walk the conversation against the document and check four dimensions:
+Walk the conversation against the document and check three dimensions:
 
 1. **Undocumented substance** — threads, insights, constraints, open questions, tradeoffs, or preliminary positions that came up in conversation but never made it into the document. Not verbatim — the *substance* of what was explored. This is the most common failure mode as sessions grow long and later exchanges crowd out earlier ones.
 
@@ -41,14 +41,11 @@ Walk the conversation against the document and check four dimensions:
 
 3. **Accuracy drift** — positions documented as firmer than they were, tentative leans written as decisions, softened user views, tradeoffs reframed beyond what the conversation supported, or context omitted that changes how a position should read.
 
-4. **Triage consistency** — `## Triage` must hold either `(none)` or real `### {title}` entries. A real entry is not yours to fold — leave it in place: the conclude gate checks the section and routes back through the session drain, which folds it and opens it for exploration. Clearing it here would let the research conclude without the concern ever being explored. If the `(none)` placeholder drifted (missing, or replaced by stray text with no real entry), restore it.
-
 **Apply the reconciliation.** For each finding:
 
 - Gap → add the missing substance to the research file at the appropriate place
 - Hallucination → remove or correct to match what was discussed
 - Drift → rewrite to faithfully reflect the conversation
-- Triage placeholder drift → restore `(none)`; real entries stay untouched for the conclude gate
 
 Commit the changes with a descriptive message (e.g., `docs(research): capture undocumented tradeoff thread`, `docs(research): correct drift on storage preference`).
 

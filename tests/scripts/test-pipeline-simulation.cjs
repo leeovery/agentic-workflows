@@ -525,14 +525,20 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'cancel', wu, 'research', 'gamma-prime']);
 
     // Delta: an off-topic concern rerouted from alpha parks on an unstarted
-    // topic — the stub is triaged, never in-progress.
+    // topic — the item is triaged, never in-progress; the delivery form is one
+    // self-committing transaction (engine-numbered queue file, scratch
+    // consumed, commit confined to concern + manifest).
     sim.run(['discovery-map', 'add', wu, 'delta', 'research', '--summary', 'Delta summary', '--source', 'reroute:alpha']);
-    const parked = sim.run(['topic', 'triage', wu, 'research', 'delta']);
+    sim.write('concern-scratch.md',
+      '### Parked concern\n*From: alpha · discussion · 2026-07-23*\n\nDetails.\n');
+    const parked = sim.run(['topic', 'triage', wu, 'research', 'delta',
+      '--concern', 'concern-scratch.md', '--slug', 'parked-concern',
+      '-m', `discussion(${wu}/alpha): reroute concern to delta`]);
     assert.strictEqual(parked.status, 'triaged');
     assert.strictEqual(parked.created, true);
-    sim.write(`.workflows/${wu}/research/delta.md`,
-      '# Research: Delta\n\n## Triage\n\n### Parked concern\n*From: alpha · discussion · 2026-07-23*\n\nDetails.\n');
-    sim.run(['commit', wu, '-m', `discussion(${wu}): reroute concern to delta`]);
+    assert.strictEqual(parked.concern_path, `.workflows/${wu}/research/.triage/delta/001-parked-concern.md`);
+    assert.ok(parked.committed, 'delivery self-commits');
+    assert.ok(!fs.existsSync(path.join(sim.dir, 'concern-scratch.md')), 'scratch consumed');
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

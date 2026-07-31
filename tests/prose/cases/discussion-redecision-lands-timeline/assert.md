@@ -12,13 +12,13 @@ The prose should have taken this path:
    addresses the knowledge base once as a contextual query
    (keyword-only store — the session proceeds), and enters the session
    step
-4. the drain reads `## Triage` and finds the Expansion Source entry.
-   The map add refuses — the subtopic already exists — so the fold
-   lands the entry body into the existing `## Expansion Source`
+4. the drain reads the triage queue and finds the Expansion Source
+   entry. The map add refuses — the subtopic already exists — so the
+   fold lands the entry body into the existing `## Expansion Source`
    section and flips the subtopic back to `exploring`: the map is no
-   longer all-decided, the conclusion gate is re-armed. The section is
-   reset to `(none)`, the drained-concern callout is surfaced, and the
-   drain commits with its drain-triage message
+   longer all-decided, the conclusion gate is re-armed. The drained
+   queue file is deleted, the drained-concern callout is surfaced, and
+   the drain commits with its drain-triage message
 5. the session explores the challenge; the user lands the changed
    decision (batch aggregates, daily refresh). Because the decision
    being re-decided was recorded in an earlier sitting, it lands as a
@@ -54,7 +54,7 @@ Further claims:
 - the `#### Initial` entry holds the block's original decision prose
   (live click-signal stream at query time) unedited — wrapped, not
   rewritten, not annotated
-- `## Triage` reads `(none)` again
+- the triage queue is empty again — the drained concern file deleted
 - the subtopic ends `decided` on the map and the discussion item ends
   `completed` in the manifest
 - no second subtopic was created for the drained concern — the fold

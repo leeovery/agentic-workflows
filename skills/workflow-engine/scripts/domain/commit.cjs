@@ -120,6 +120,23 @@ function commitTailWithKb(cwd, pathspec, message, warnings) {
 }
 
 /**
+ * `commitTailWithKb`'s pathspec-confined sibling: commit exactly the named
+ * paths at a transaction tail, degrading a git failure to a warning.
+ * @param {string} cwd @param {string|string[]} pathspec @param {string} message
+ * @param {string[]} warnings
+ * @returns {{committed: string|null, failed: boolean}}
+ */
+function commitTailPathspec(cwd, pathspec, message, warnings) {
+  try {
+    return { committed: commitPathspecScoped(cwd, pathspec, message), failed: false };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    warnings.push(`commit failed: ${detail}`);
+    return { committed: null, failed: true };
+  }
+}
+
+/**
  * Stamp a transaction result from a tail-commit outcome: a failure notes the
  * pending commit (the state is saved — only the commit is owed), a clean
  * tree notes `nothing to commit`. Mutates the result in place.
@@ -139,6 +156,7 @@ module.exports = {
   commitScopedLocked,
   commitPathspecScoped,
   commitTailWithKb,
+  commitTailPathspec,
   noteCommitOutcome,
   noteIfNothingCommitted,
   withCommitLock,

@@ -53,7 +53,7 @@ Then check if the research file exists at `.workflows/{work_unit}/research/{topi
 
 #### If status is `triaged`
 
-A first start, not a resume — no session has ever run. Initialization preserves the stub's parked `## Triage` entries.
+A first start, not a resume — no session has ever run. Parked concerns wait in the topic's triage queue, untouched by initialization — the session drain folds them.
 
 → Proceed to **Step 1**.
 
