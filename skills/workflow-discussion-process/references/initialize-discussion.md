@@ -32,7 +32,7 @@ Whatever those loads returned — a seed, a brief, the handoff's carrier descrip
    ```
 6. Commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}): initialize {topic} discussion"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}): initialize {topic} discussion"
    ```
 
 → Return to caller.

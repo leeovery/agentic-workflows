@@ -63,7 +63,7 @@ Walk the conversation against the document and check five dimensions:
 - Triage placeholder drift → restore `(none)`; real entries stay untouched for the conclude gate
 - Mislanded re-decision → restructure the block into the timeline shape (wrap the original prose as `#### Initial`, place the dated entry above it); restore any edited earlier entry from git
 
-Commit the changes with a descriptive message (e.g., `docs(discussion): capture undocumented trade-off thread`, `docs(discussion): correct drift on caching decision`, `docs(discussion): soften Map state to converging`).
+Commit the changes (`engine commit {work_unit} --topic discussion/{topic} -m "..."`) with a descriptive message (e.g., `docs(discussion): capture undocumented trade-off thread`, `docs(discussion): correct drift on caching decision`, `docs(discussion): soften Map state to converging`).
 
 → Proceed to **C. Brief the User**.
 
