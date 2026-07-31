@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.25] - 2026-07-31
+
+🔧 Changed
+- Discussions now carry decisions already reached in earlier phases (discovery briefs, seeds) forward as working ground instead of re-asking them as open questions.
+- Research sessions treat prior-phase decisions the same way — exploring adjacent territory instead of re-litigating settled scope.
+
+🐛 Fixed
+- Marking a discussion subtopic "deferred" is now restricted to the concluding step, fixing a bug where parking a topic mid-session skipped the close-out gate and silently dropped it from Open Threads.
+- Review dispatch no longer fires on the internal commit that records a deferral, avoiding a review running in flight before the conclusion step it was meant to gate.
+
 ## [0.6.24] - 2026-07-31
 
 🔧 Changed
