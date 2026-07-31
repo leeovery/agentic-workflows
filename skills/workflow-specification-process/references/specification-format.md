@@ -8,6 +8,8 @@ This file defines the canonical structure for specification files (`.workflows/{
 
 The specification is a single file per topic. Structure is **flexible** — organize around phases and subject matter, not rigid sections. This is a working document.
 
+Structure is flexible; facts are not. Every value, rule, threshold, and enumeration has exactly one section that states it — its **home**. Every other mention references the home and never restates it. Reference only to avoid restating — never to justify, compare, or note consistency: if deleting the sentence containing a reference loses no information, delete the sentence. Never state a derived fact (a count or summary of a list sitting beside it) — it drifts when the list changes.
+
 > **CHECKPOINT**: You should NOT be creating or writing to this file unless you have explicit user approval for specific content. If you're about to create this file with content you haven't presented and had approved, **STOP**. That violates the workflow.
 
 ---
