@@ -61,9 +61,9 @@ Subtopics move through states as the conversation progresses. The judgment call 
 
 **decided** → Decision reached with rationale. The subtopic section gets written up with the full Context → Options → Journey → Decision structure. Terminal for the map, though a later sitting may re-decide — the re-decision lands as a dated entry on the block's timeline (template revision convention).
 
-**deferred** → Deliberately set aside. Applied when concluding with unresolved subtopics (see **G. Concluding**) — each is also noted in Summary → Open Threads.
+**deferred** → Deliberately set aside. Written by the defer gate in **G. Concluding** and nowhere else — never set it during the session loop, however plainly the user parks something. When they say a subtopic stays open, leave it in the state the conversation reached and carry on; the defer gate sweeps it at conclusion. Setting it early makes `all_decided` true, so the gate never renders — the user is never shown what is being set aside, and the Open Threads entry the gate writes never lands.
 
-**State transitions are judgement calls.** Move a subtopic to `converging` when the viable options are narrowed and the discussion is heading toward resolution. Move to `decided` when there's a clear outcome with rationale — even if provisional. Don't wait for absolute certainty. Any state can move to any other — judgment may revisit.
+**State transitions are judgement calls.** Move a subtopic to `converging` when the viable options are narrowed and the discussion is heading toward resolution. Move to `decided` when there's a clear outcome with rationale — even if provisional. Don't wait for absolute certainty. Any state can move to any other — judgment may revisit. The one exception is `deferred`: it belongs to the defer gate, not to session judgement.
 
 Child subtopics can exist under parents. A parent might be `exploring` while one of its children is already `decided`. The parent reaches `decided` when all its meaningful children are resolved and the overall concern is addressed.
 
