@@ -34,14 +34,20 @@ The prose should have taken this path:
    the undecided count, and on their confirmation defers the unresolved
    subtopic(s) in one engine write — the batch form, not a per-subtopic
    loop — noted under the Summary's open threads
-10. the closing gates then hold: the pending closing work is classified
-    from the agent store, and with every review row incorporated the
-    movement read drops the `(deferral)` commit it just authored and
-    finds nothing left — `satisfied`, so no fresh-review offer is
-    rendered at all and the conclude ask comes straight up; it is
-    answered yes; the in-flight agent check runs, and the walk stops
-    there — the final review step never executes, document review and
-    the compliance check never load, and the discussion is not completed
+10. the closing gates then hold: with every review row incorporated, the
+    movement read drops the `(deferral)` commit the conclusion just
+    authored and classifies whatever remains. Both outcomes are correct
+    and either is a pass — `satisfied` when every subtopic write-up
+    landed before the last review dispatched, so the window comes back
+    empty; `re-review` when one landed after it, since a subtopic
+    explored since the last review is real movement, and the optional
+    fresh-review offer then renders and is declined. Nothing in the prose
+    fixes which side of the review dispatch a write-up falls on, so the
+    classification is not a property this case pins. What must hold on
+    both routes: the conclude ask is reached and answered yes, the
+    in-flight agent check runs, and the walk stops there — the final
+    review step never executes, document review and the compliance check
+    never load, and the discussion is not completed
 
 Further claims:
 
