@@ -12,6 +12,8 @@ This skill is invoked when a phase concludes — to create a plan-mode handoff t
 
 ## Instructions
 
+Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+
 This skill receives positional arguments:
 - `$0` — **work_unit**: the work unit name (directory under `.workflows/`). Held downstream as `{work_unit}`.
 - `$1` — **completed_phase**: the phase that just completed — `discovery` or any later phase. Held downstream as `{completed_phase}`.
