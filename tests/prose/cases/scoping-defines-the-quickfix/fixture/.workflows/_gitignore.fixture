@@ -1,2 +1,9 @@
 .cache/
 .manifest.json.*.tmp
+.lock
+.lock.breaking
+.project-lock
+.project-lock.breaking
+.commit-lock
+.commit-lock.breaking
+.knowledge/*.tmp
