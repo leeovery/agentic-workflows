@@ -19,10 +19,12 @@ Classify what the final-review step still owes — first match wins:
 1. Any `review`, `synthesis`, or `perspective` row is `pending` or `acknowledged` → **findings-owed**: "background findings are still to be walked through"
 2. Any `review` row is `in-flight` → **review-running**: "a dispatched review is still running"
 3. No `review` row exists → **never-reviewed**: "no review has run yet"
-4. Otherwise the highest-numbered `review` row is `incorporated` — classify by movement. Run `git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/discussion/{topic}.md` (`{created}` = the row's `created` timestamp; git does the time comparison), then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) — engagement writes are not new work. Classify the residue:
+4. Otherwise the highest-numbered `review` row is `incorporated` — classify by movement. Run `git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/discussion/{topic}.md` (`{created}` = the row's `created` timestamp; git does the time comparison), then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) or a `(deferral)` marker — engagement writes and the conclusion's own deferral write are not new work. Classify the residue:
    1. No commits remain → **satisfied**: the final review is up to date — no judgment
-   2. A remaining commit is meaningful — a decision documented, a subtopic explored; not typo fixes, not bookkeeping (document-review reconciliation, drain triage, deferral notes) → **re-review**: the discussion has moved since the last review
+   2. A remaining commit is meaningful — a decision documented, a subtopic explored; not typo fixes, not bookkeeping (document-review reconciliation, drain triage, summary maintenance) → **re-review**: the discussion has moved since the last review
    3. Otherwise → **satisfied** — doubt resolves here; declining forfeits nothing, a later attempt reclassifies
+
+   A commit carrying both — a decision documented alongside bookkeeping in one write — is meaningful; the bookkeeping it travels with does not neutralise it. Genuine doubt about whether the substance is a decision at all still resolves at 4.3.
 
 Step 6 (Final Gap Review) is the executor and re-derives state itself — a classification mismatch here is cosmetic, never state-corrupting.
 

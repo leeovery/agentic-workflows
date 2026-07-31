@@ -35,11 +35,13 @@ The prose should have taken this path:
    subtopic(s) in one engine write — the batch form, not a per-subtopic
    loop — noted under the Summary's open threads
 10. the closing gates then hold: the pending closing work is classified
-    from the agent store; a fresh review, where offered, is declined —
-    and the conclude ask is answered yes; the in-flight agent check
-    runs, and the walk stops there — the final review step never
-    executes, document review and the compliance check never load, and
-    the discussion is not completed
+    from the agent store, and with every review row incorporated the
+    movement read drops the `(deferral)` commit it just authored and
+    finds nothing left — `satisfied`, so no fresh-review offer is
+    rendered at all and the conclude ask comes straight up; it is
+    answered yes; the in-flight agent check runs, and the walk stops
+    there — the final review step never executes, document review and
+    the compliance check never load, and the discussion is not completed
 
 Further claims:
 

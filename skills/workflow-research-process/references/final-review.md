@@ -68,7 +68,7 @@ Nothing new for a fresh review to see — the final-review gate is satisfied. De
 
 → Return to caller.
 
-**If a remaining commit is meaningful** (new findings, folded threads — not typo fixes, not bookkeeping: document-review reconciliation, drain triage, deferral notes):
+**If a remaining commit is meaningful** (new findings, folded threads — not typo fixes, not bookkeeping: document-review reconciliation, drain triage). A commit carrying both — a finding recorded alongside bookkeeping in one write — is meaningful; the bookkeeping it travels with does not neutralise it:
 
 → Proceed to **C. Dispatch Final Review**.
 

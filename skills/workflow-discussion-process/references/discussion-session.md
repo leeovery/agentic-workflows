@@ -179,7 +179,7 @@ Defer every `unresolved` subtopic in one write — the batch form takes uniform 
 node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic}=deferred [{subtopic}=deferred …]
 ```
 
-Note them in the Summary → Open Threads section of the discussion file. Commit.
+Note them in the Summary → Open Threads section of the discussion file, then commit with a `(deferral)` marker in the subject — `discussion({work_unit}/{topic}): note deferred threads (deferral)`. The marker tells the classifier in **[closing-gates.md](closing-gates.md)** that this write is the conclusion's own bookkeeping, not movement it should weigh.
 
 Load **[closing-gates.md](closing-gates.md)** and follow its instructions as written.
 
