@@ -369,6 +369,7 @@ module.exports = {
   projectLockPath,
   breakStaleLockFile,
   acquireLockFile,
+  releaseLockFile,
   ensureContainer,
   readWorkUnitManifest,
   writeJsonAtomic,

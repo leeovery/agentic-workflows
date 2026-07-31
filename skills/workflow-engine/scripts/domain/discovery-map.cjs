@@ -23,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
+const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { computeTopicLifecycle, phaseItems } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
@@ -55,6 +55,7 @@ function lifecyclePhrase(lifecycle, researchState) {
  * @property {Record<string, number>} ordered  topic → order, as applied
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]          set when committed is null
+ * @property {string[]} [warnings]     set when the tail commit failed
  */
 
 /**
@@ -174,10 +175,13 @@ function sequenceMap(cwd, workUnit, orders) {
     saveWorkUnitManifest(cwd, workUnit, manifest);
   });
 
-  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `discovery(${workUnit}): sequence topic map`);
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `discovery(${workUnit}): sequence topic map`, warnings);
   /** @type {SequenceResult} */
-  const result = { ordered: orders, committed };
-  noteIfNothingCommitted(result, committed);
+  const result = { ordered: orders, committed: outcome.committed };
+  if (outcome.failed) result.warnings = warnings;
+  noteCommitOutcome(result, outcome);
   return result;
 }
 

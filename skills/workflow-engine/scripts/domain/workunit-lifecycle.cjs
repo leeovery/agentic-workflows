@@ -26,7 +26,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
+const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { knowledge } = require('./kb.cjs');
 const { addItem } = require('./discovery-map.cjs');
@@ -97,10 +97,10 @@ function completeWorkUnit(cwd, workUnit, { message }) {
   }
 
   const cacheSpec = purgeWorkUnitCache(cwd, workUnit);
-  const committed = commitScopedWithKb(cwd, cacheSpec ? [`.workflows/${workUnit}`, cacheSpec] : `.workflows/${workUnit}`, message);
+  const outcome = commitTailWithKb(cwd, cacheSpec ? [`.workflows/${workUnit}`, cacheSpec] : `.workflows/${workUnit}`, message, warnings);
   /** @type {WorkUnitLifecycleResult} */
-  const result = { work_unit: workUnit, work_type: workType, status: 'completed', completed_at: completedAt, committed, warnings };
-  noteIfNothingCommitted(result, committed);
+  const result = { work_unit: workUnit, work_type: workType, status: 'completed', completed_at: completedAt, committed: outcome.committed, warnings };
+  noteCommitOutcome(result, outcome);
   return result;
 }
 
@@ -133,10 +133,10 @@ function cancelWorkUnit(cwd, workUnit) {
   knowledge(cwd, ['remove', '--work-unit', workUnit], 'knowledge remove', warnings);
 
   const cacheSpec = purgeWorkUnitCache(cwd, workUnit);
-  const committed = commitScopedWithKb(cwd, cacheSpec ? [`.workflows/${workUnit}`, cacheSpec] : `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`);
+  const outcome = commitTailWithKb(cwd, cacheSpec ? [`.workflows/${workUnit}`, cacheSpec] : `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`, warnings);
   /** @type {WorkUnitLifecycleResult} */
-  const result = { work_unit: workUnit, status: 'cancelled', committed, warnings };
-  noteIfNothingCommitted(result, committed);
+  const result = { work_unit: workUnit, status: 'cancelled', committed: outcome.committed, warnings };
+  noteCommitOutcome(result, outcome);
   return result;
 }
 
@@ -201,10 +201,10 @@ function reactivateWorkUnit(cwd, workUnit) {
     reindexWorkUnit(cwd, workUnit, warnings);
   }
 
-  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`);
+  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`, warnings);
   /** @type {WorkUnitLifecycleResult} */
-  const result = { work_unit: workUnit, status: 'in-progress', previous_status: previous, committed, warnings };
-  noteIfNothingCommitted(result, committed);
+  const result = { work_unit: workUnit, status: 'in-progress', previous_status: previous, committed: outcome.committed, warnings };
+  noteCommitOutcome(result, outcome);
   return result;
 }
 
@@ -278,10 +278,10 @@ function pivotWorkUnit(cwd, workUnit) {
   const warnings = [];
   reindexWorkUnit(cwd, workUnit, warnings, { clearFirst: true });
 
-  const committed = commitScopedWithKb(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`);
+  const outcome = commitTailWithKb(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`, warnings);
   /** @type {WorkUnitPivotResult} */
-  const result = { work_unit: workUnit, work_type: 'epic', routing, committed, warnings };
-  noteIfNothingCommitted(result, committed);
+  const result = { work_unit: workUnit, work_type: 'epic', routing, committed: outcome.committed, warnings };
+  noteCommitOutcome(result, outcome);
   return result;
 }
 

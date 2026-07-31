@@ -28,7 +28,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
+const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
 const { todayStamp } = require('./dates.cjs');
@@ -193,10 +193,10 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
   knowledge(cwd, ['index', INDEXED_ARTIFACTS.specification(to, to)], `knowledge index (specification/${to})`, warnings);
   knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'specification', '--topic', topic], `knowledge remove (specification/${topic})`, warnings);
 
-  const committed = commitScopedWithKb(
+  const outcome = commitTailWithKb(
     cwd,
     [`.workflows/${workUnit}`, `.workflows/${to}`, '.workflows/manifest.json'],
-    `spec(${workUnit}): promote ${topic} to cross-cutting work unit`);
+    `spec(${workUnit}): promote ${topic} to cross-cutting work unit`, warnings);
 
   /** @type {WorkUnitPromoteResult} */
   const result = {
@@ -208,10 +208,10 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     specification: { path: `specification/${to}/specification.md` },
     status: 'promoted',
     promoted_to: to,
-    committed,
+    committed: outcome.committed,
     warnings,
   };
-  noteIfNothingCommitted(result, committed);
+  noteCommitOutcome(result, outcome);
   return result;
 }
 

@@ -23,7 +23,7 @@
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
+const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../kernel/manifest-schema.cjs');
@@ -391,10 +391,10 @@ function cancelTopic(cwd, workUnit, phase, topic) {
   const warnings = [];
   knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
 
-  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): cancel ${topic} (${phase})`);
+  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): cancel ${topic} (${phase})`, warnings);
   /** @type {TopicTransitionResult} */
-  const result = { topic, phase, status: 'cancelled', committed, warnings };
-  noteIfNothingCommitted(result, committed);
+  const result = { topic, phase, status: 'cancelled', committed: outcome.committed, warnings };
+  noteCommitOutcome(result, outcome);
   return result;
 }
 
@@ -442,10 +442,10 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
     knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
   }
 
-  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate ${topic} (${phase})`);
+  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate ${topic} (${phase})`, warnings);
   /** @type {TopicTransitionResult} */
-  const result = { topic, phase, status: restored, committed, warnings };
-  noteIfNothingCommitted(result, committed);
+  const result = { topic, phase, status: restored, committed: outcome.committed, warnings };
+  noteCommitOutcome(result, outcome);
   return result;
 }
 
