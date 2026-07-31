@@ -138,7 +138,7 @@ deterministically from the layout:
 - `.workflows/.knowledge` only on verbs that actually touched the KB
 
 Then, under a commit lock (`acquireLockFile` reused —
-`.workflows/.commit-lock`): `git add -- <paths>` (catches untracked
+`.git/workflows-commit.lock`): `git add -- <paths>` (catches untracked
 files), `git commit -m msg -- <paths>`. Belt-and-braces: retry on
 `index.lock` in `kernel/git.cjs` (the user can hold it too), and
 try/catch on every transaction-tail commit so a collision degrades to
@@ -241,6 +241,13 @@ Settled:
   queue is wanted on solo merits).
 - Triage self-commits (2026-07-31 — action-scoped attribution, no
   uncommitted foreign dirt).
+- The commit lock lives in the `.git` dir
+  (`.git/workflows-commit.lock` via `rev-parse --git-path`), not under
+  `.workflows/` (2026-07-31, found in PR 3 — a lock inside
+  `.workflows` is staged by the very commit it guards, turning clean
+  trees into phantom commits; the `.git` dir can never be staged, and
+  `--git-path` gives linked worktrees their own lock, matching the
+  per-worktree index it serialises).
 
 Open — settle in the owning PR:
 
