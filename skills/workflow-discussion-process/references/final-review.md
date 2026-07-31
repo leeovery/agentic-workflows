@@ -72,7 +72,7 @@ The decline stands — do not re-litigate it. A later conclusion attempt classif
 
 **If no decline was given:**
 
-List what landed after that review's dispatch — `{created}` is the row's `created` timestamp, on every scan row; git does the time comparison — then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) — engagement writes are not new work:
+List what landed after that review's dispatch — `{created}` is the row's `created` timestamp, on every scan row; git does the time comparison — then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) or a `(deferral)` marker — engagement writes and the conclusion's own deferral write are not new work:
 
 ```bash
 git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/discussion/{topic}.md
@@ -84,7 +84,7 @@ Nothing new for a fresh review to see — the final-review gate is satisfied. De
 
 → Return to caller.
 
-**If a remaining commit is meaningful** (a decision documented, a subtopic explored — not typo fixes, not bookkeeping: document-review reconciliation, drain triage, deferral notes):
+**If a remaining commit is meaningful** (a decision documented, a subtopic explored — not typo fixes, not bookkeeping: document-review reconciliation, drain triage, summary maintenance). A commit carrying both — a decision documented alongside bookkeeping in one write — is meaningful; the bookkeeping it travels with does not neutralise it:
 
 → Proceed to **C. Dispatch Final Review**.
 
