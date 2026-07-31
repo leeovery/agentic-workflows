@@ -203,28 +203,35 @@ after minutes (same discipline as the lock files). Consumers:
 
 | Hazard | Resolution | PR |
 | --- | --- | --- |
-| Whole-index, whole-WU commits steal peer work | Pathspec'd commit door, action-scoped | 3 |
-| Movement classifiers poisoned by sweep-up commits | Falls out of the commit door — peer commits stop touching the file | 3 |
+| Whole-index, whole-WU commits steal peer work | Pathspec'd commit door, action-scoped | 3+4 |
+| Movement classifiers poisoned by sweep-up commits | Falls out of the commit door — peer commits stop touching the file | 3+4 |
 | `index.lock` collision fatal in transaction tails | Commit lock + retry + try/catch tails | 3 |
 | Lock/temp files stageable | Gitignore migration | 2 |
-| Cross-topic `## Triage` append races | Sidecar queue, self-committing triage | 4 |
-| Stub creation for unstarted topics | Removed by sidecar | 4 |
-| Bridge reopens live peer topic | Presence-gated deferral | 5 |
-| `.state/` staging overwritten across sessions | Deferred with the bridge (same gate) | 5 |
-| Crash leaves uncommitted work | Presence-gated cleanup pass at conclude | 5 |
-| New-topic name race unhandled | Duplicate-refusal arm | 5 |
+| Cross-topic `## Triage` append races | Sidecar queue, self-committing triage | 5 |
+| Stub creation for unstarted topics | Removed by sidecar | 5 |
+| Bridge reopens live peer topic | Presence-gated deferral | 6 |
+| `.state/` staging overwritten across sessions | Deferred with the bridge (same gate) | 6 |
+| Crash leaves uncommitted work | Presence-gated cleanup pass at conclude | 6 |
+| New-topic name race unhandled | Duplicate-refusal arm | 6 |
 
 ## The stack
 
 1. **PR 1 — this document.** Base of the stack; keeps logging as the
    PRs land; merges at the end.
 2. **PR 2 — gitignore migration.** Tiny, standalone, useful today.
-3. **PR 3 — commit door.** The load-bearing PR: removes the dominant
-   hazard solo. Engine contract suite + pipeline simulation updates.
-4. **PR 4 — triage sidecar.** Engine verb + prose
+3. **PR 3 — commit door (engine).** The load-bearing PR: removes the
+   dominant hazard solo. Engine contract suite.
+4. **PR 4 — commit door (prose adoption).** Discussion-flow
+   session-cadence commits switch to `--topic`; the conclusion commit
+   carries `--kb`; simulation pins the call shapes. Deliberately
+   deferred to later layers: the reroute commits stay work-unit
+   scoped until the sidecar makes cross-topic delivery
+   self-committing, and restart keeps the shared resume-detection
+   semantics (residual whole-WU sweeps, covered by the cleanup pass).
+5. **PR 5 — triage sidecar.** Engine verb + prose
    (`triage-landing.md`, `drain-triage.md`, conclude gate) +
-   migration + prose test case.
-5. **PR 5 — presence, bridge deferral, cleanup pass, hygiene arms.**
+   migration + prose test case. Switches the reroute commit sites.
+6. **PR 6 — presence, bridge deferral, cleanup pass, hygiene arms.**
 
 Every PR is independently valuable in solo operation — nothing waits
 on the full set to justify itself.
@@ -241,6 +248,11 @@ Settled:
   queue is wanted on solo merits).
 - Triage self-commits (2026-07-31 — action-scoped attribution, no
   uncommitted foreign dirt).
+- The conclusion commit carries the KB dir via an explicit `--kb`
+  rider on `--topic` (2026-07-31, PR 4) — `topic complete` indexes
+  the store without committing, so the conclusion is the one
+  session-cadence moment whose own action dirtied the KB; implicit
+  KB staging stays off `--topic` everywhere else.
 - The commit lock lives in the `.git` dir
   (`.git/workflows-commit.lock` via `rev-parse --git-path`), not under
   `.workflows/` (2026-07-31, found in PR 3 — a lock inside
@@ -253,12 +265,12 @@ Open — settle in the owning PR:
 
 - Exact sidecar path shape (e.g.
   `.workflows/{wu}/{phase}/.triage/{topic}/NNN-{slug}.md`) and
-  whether the queue is KB-indexed (leaning no — transient). → PR 4
+  whether the queue is KB-indexed (leaning no — transient). → PR 5
 - Concern body transport into the verb (`--concern <file>` from
-  scratchpad vs stdin). → PR 4
+  scratchpad vs stdin). → PR 5
 - Migration for existing `## Triage` sections: one-shot convert vs a
-  transition-period drain that reads both sources. → PR 4
+  transition-period drain that reads both sources. → PR 5
 - Where presence lives (cache file vs manifest field) and the
-  staleness threshold. → PR 5
-- Whether drain gets an engine verb or stays prose. → PR 4
-- Boot serialisation: worth a lock, or accepted edge. → PR 5
+  staleness threshold. → PR 6
+- Whether drain gets an engine verb or stays prose. → PR 5
+- Boot serialisation: worth a lock, or accepted edge. → PR 6
