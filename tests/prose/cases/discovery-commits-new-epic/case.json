@@ -4,6 +4,10 @@
   "world": "claims",
   "files": [
     "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
     "skills/workflow-start/references/empty-state.md",
     "skills/workflow-start/references/route-to-discovery.md",
     "skills/workflow-discovery/SKILL.md",
@@ -12,7 +16,6 @@
     "skills/workflow-discovery/references/confirm-trigger.md",
     "skills/workflow-discovery/references/name-resolution.md",
     "skills/workflow-discovery/references/template.md",
-    "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-discovery/references/detection-core.md",
     "skills/workflow-discovery/references/resume-detection.md"
   ],

@@ -4,6 +4,10 @@
   "world": "claims",
   "files": [
     "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
@@ -32,7 +36,9 @@
     "skills/workflow-discussion-process/references/conclude-discussion.md",
     "skills/workflow-shared/references/closing-recap.md"
   ],
-  "answers": ["c — continue"],
+  "answers": [
+    "c — continue"
+  ],
   "conduct": "The user decided synonym expansion in an earlier sitting — behaviour-driven, reading the live click-signal stream at query time — and returns because a coherence concern from behavioural-ranking landed in this topic's triage: the live stream will never be built. They accept the challenge on the merits rather than defending the old decision. Pressed on what expansion actually needs, they land decisively on behaviour-driven expansion computed from the nightly batch aggregates — expansions refresh daily rather than within the session, because in-session freshness was a nice-to-have and the reformulation-and-click derivation is the part that mattered. They engage concretely, decide rather than park, and add nothing beyond resolving the drained concern. When the resolution feels settled they confirm it rounds out the subtopic, say that covers it, and ask to wrap up. On the way out they are agreeable to required steps — asked to proceed into a mandatory review or the conclusion, they say yes — but they decline optional extras: offered an optional fresh gap review they skip it, and offered new threads or explorations they decline. They never introduce new material.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"

@@ -1,6 +1,6 @@
 The prose should have taken this path:
 
-1. casing conventions load before anything else; the boot pipeline runs
+1. the shared framework loads before anything else; the boot pipeline runs
    and, with no migrations pending and the knowledge base ready, neither
    the migrations confirmation nor the knowledge gate appears
 2. workflow state comes from the start skill's gateway — never from

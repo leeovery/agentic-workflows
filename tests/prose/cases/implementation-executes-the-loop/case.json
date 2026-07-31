@@ -4,6 +4,10 @@
   "world": "claims",
   "files": [
     "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
     "skills/workflow-implementation-entry/references/validate-phase.md",
     "skills/workflow-implementation-entry/references/validate-dependencies.md",
     "skills/workflow-implementation-entry/references/invoke-skill.md",

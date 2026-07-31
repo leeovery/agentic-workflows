@@ -1,6 +1,6 @@
 The prose should have taken this path:
 
-1. casing conventions load first and the boot pipeline runs clean —
+1. the shared framework loads first and the boot pipeline runs clean —
    no migrations confirmation, no knowledge gate; state comes from the
    start skill's gateway, and the scripted selection routes the epic by
    its stored route into the epic continuation

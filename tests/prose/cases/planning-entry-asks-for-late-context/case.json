@@ -3,6 +3,10 @@
   "entry": "workflow-planning-entry",
   "files": [
     "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
     "skills/workflow-planning-entry/references/validate-spec.md",
     "skills/workflow-planning-entry/references/validate-phase.md",
     "skills/workflow-planning-entry/references/cross-cutting-context.md",

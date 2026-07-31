@@ -3,6 +3,10 @@
   "entry": "workflow-discussion-entry",
   "files": [
     "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
@@ -22,7 +26,9 @@
     "skills/workflow-shared/references/background-agent-surfacing.md",
     "skills/workflow-shared/references/natural-breaks.md"
   ],
-  "answers": ["c — continue"],
+  "answers": [
+    "c — continue"
+  ],
   "conduct": "The user settled how card payments at checkout should work in earlier sessions and is returning only to close the discussion out. Everything they cared about is already decided and documented — capture confirmed by gateway webhooks, hosted fields keeping card data off their servers, a pinned retry cap, a reconciliation sweep for orders a missed webhook would strand — and they add nothing new: picking the session back up they confirm in a sentence that nothing has changed for them, say that covers it, and ask to wrap up. On the way out they are agreeable — asked whether to conclude, they say yes. If offered a fresh gap review of the document they accept it: they never leave an offered safety net on the table, even when they doubt it will find anything. What they decline is more conversation — new threads, extra explorations, offered tangents; they never introduce new material.",
   "invariants": {
     "calls_include": [
