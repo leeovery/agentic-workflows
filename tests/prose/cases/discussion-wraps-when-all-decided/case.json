@@ -4,6 +4,10 @@
   "world": "claims",
   "files": [
     "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-discussion-entry/references/invoke-skill.md",
     "skills/workflow-discussion-process/SKILL.md",

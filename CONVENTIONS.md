@@ -438,7 +438,7 @@ Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before en
 
 - **H1** (`#`): File title — one per file, at the top. Reference files carry an H1. Processing-skill backbones open with a title H1; entry, navigation, and phase-entry SKILL.md files carry none (frontmatter and the one-liner open the backbone)
 - **H2** (`##`): Steps and major sections (`## Step N: {Name}`, `## Notes`, `## Instructions`)
-- **H3** (`###`): In flow files, sub-steps within early setup steps only (`### Step 0.1: Casing Conventions`). Non-flow reference files — templates, question banks, agent-prompt content, API documentation — may use H3 freely for content organisation
+- **H3** (`###`): In flow files, sub-steps within early setup steps only (`### Step 0.1: Boot`). Non-flow reference files — templates, question banks, agent-prompt content, API documentation — may use H3 freely for content organisation
 - **H4** (`####`): Conditional routing only (`#### If {condition}`, `#### Otherwise`)
 
 ### Step Numbering
@@ -453,37 +453,33 @@ Sequential: `## Step 0`, `## Step 1`, `## Step 2`, etc.
 
 ### Sub-Steps (Early Setup Steps Only)
 
-Early setup steps — Step 0 in particular — bundle multiple discrete pre-disclosure actions that all run unconditionally: loading shared conventions, running migrations, gating on prerequisites. These actions must execute inline (they are not progressive-disclosure work), but each needs its own routing target so conditional branches inside one action can route to the next action by name without duplicating shared content downstream.
+Early setup steps — Step 0 in particular — bundle multiple discrete pre-disclosure actions that all run unconditionally: running migrations, gating on prerequisites. These actions must execute inline (they are not progressive-disclosure work), but each needs its own routing target so conditional branches inside one action can route to the next action by name without duplicating shared content downstream.
 
 Decompose these steps into **sub-steps** using H3 decimal numbering:
 
 ```
 ## Step 0: Initialisation
 
-### Step 0.1: Casing Conventions
-Load **[casing-conventions.md](...)** and follow its instructions as written.
-→ On return, proceed to **Step 0.2**.
-
-### Step 0.2: Boot
+### Step 0.1: Boot
 
 #### If `migrations.changed` is `true`
 [diff review + summary + confirm gate]
-→ Proceed to **Step 0.3**.
+→ Proceed to **Step 0.2**.
 
 #### Otherwise
 [up-to-date display]
-→ Proceed to **Step 0.3**.
+→ Proceed to **Step 0.2**.
 
-### Step 0.3: Knowledge Gate
+### Step 0.2: Knowledge Gate
 [branch on the boot response: not-ready → terminal stop; ready → proceed]
 → Proceed to **Step 1**.
 ```
 
 Rules:
 
-- Heading format: `### Step {parent}.{sub}: {Name}` (e.g., `### Step 0.1: Casing Conventions`)
+- Heading format: `### Step {parent}.{sub}: {Name}` (e.g., `### Step 0.1: Boot`)
 - Sub-steps are **unconditional, sequential** units — they always run when the parent step runs. Use H4 `#### If` *inside* a sub-step for branching; the branches route to the next sub-step by name
-- Each sub-step is a valid routing target: `→ Proceed to **Step 0.3**`
+- Each sub-step is a valid routing target: `→ Proceed to **Step 0.2**`
 - The final sub-step routes to the parent's next top-level step: `→ Proceed to **Step 1**`
 - **Sub-steps are reserved for early setup steps** (typically Step 0) where content must run inline before progressive disclosure begins — migrations must complete before anything else, knowledge check gates the entire pipeline
 - **Later steps must use reference files and progressive disclosure instead.** `Load **[reference.md](...)**` is the mechanism for decomposing later-step content, not sub-steps
@@ -660,7 +656,7 @@ One-liner purpose statement
 Workflow context table
 "Stay in your lane" instruction
 ---
-Critical instructions (STOP/wait rules, mandatory guidance)
+## Instructions — Load directive → framework.md
 ---
 Step 0: Run Migrations (always inline)
 ---
@@ -672,7 +668,23 @@ Step 2: {Name}
 Load directive → reference file
 ```
 
-**Stays inline:** Migrations (Step 0), simple routing conditionals (a few lines), frontmatter and critical instructions.
+**Stays inline:** Migrations (Step 0), simple routing conditionals (a few lines), frontmatter.
+
+### The Framework Load
+
+Every flow skill opens its `## Instructions` section with one line and nothing else:
+
+```markdown
+## Instructions
+
+Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+```
+
+`framework.md` is pure composition — it loads the conventions that hold for every skill (`instructions.md`, `casing-conventions.md`, `voice.md`) and carries no content of its own. Anything universal joins that list rather than being copied into skill heads. Never restate a framework rule inline in a skill: a second copy is a second source of truth, and the copies drift.
+
+Skills with a `## Resuming After Context Refresh` protocol re-load `framework.md` by name in its first numbered step, alongside re-reading the skill file. A compaction summary keeps conclusions and drops the instructions that produced them, so anything held only by reference evaporates unless the recovery path names it.
+
+Capture skills (`workflow-log-*`) are exempt — they are deliberately structureless, with no steps, no references, and no gates.
 
 **Gets extracted:** User interaction sequences, display/output formatting, handoff templates, discovery parsing, analysis logic, routing logic with significant conditional content.
 

@@ -3,7 +3,7 @@ The prose should have taken this path:
 1. initialisation runs the boot pipeline — no migrations, knowledge
    ready — and the discovery dump shows one active epic, routing to
    the active-work display; the first scripted answer selects the epic
-2. continue-epic opens with its phase title, loads casing conventions,
+2. continue-epic loads the shared framework, opens with its phase title,
    and runs the scoped validation snapshot directly (the work unit
    arrived as an argument, so no selection menu renders)
 3. the backfill checks find nothing — no qualifying legacy sources, no

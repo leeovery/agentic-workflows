@@ -3,6 +3,10 @@
   "entry": "workflow-discussion-entry",
   "files": [
     "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
@@ -21,7 +25,9 @@
     "skills/workflow-shared/references/background-agent-surfacing.md",
     "skills/workflow-shared/references/natural-breaks.md"
   ],
-  "answers": ["c — continue"],
+  "answers": [
+    "c — continue"
+  ],
   "conduct": "The user is mid-way through settling how card payments at checkout should work and is returning to the discussion after most of a day away from it. They remember a background review had flagged a couple of areas and that they walked through the first one before stepping away; the details have gone fuzzy in the gap — they expect to be re-oriented, not assumed to remember. Picking the session back up, the first thing they want to know is whether anything is still waiting from that review — they ask for it directly before offering any new material of their own. They are brisk and expect plain language: shorthand from earlier subtopics means nothing to them right now unless it is restated.",
   "invariants": {
     "calls_include": [

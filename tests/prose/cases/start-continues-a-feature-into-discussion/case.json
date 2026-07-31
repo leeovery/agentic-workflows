@@ -4,7 +4,10 @@
   "world": "claims",
   "files": [
     "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
     "skills/workflow-start/references/active-work.md",
     "skills/workflow-continue-feature/SKILL.md",
     "skills/workflow-continue-feature/references/validate-selection.md",

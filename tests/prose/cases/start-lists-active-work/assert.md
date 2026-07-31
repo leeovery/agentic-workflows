@@ -1,6 +1,7 @@
 The prose should have taken this path:
 
-1. loads the shared casing conventions before any state is read
+1. loads the shared framework — instructions, casing conventions, voice —
+   before any state is read
 2. runs the boot pipeline, and since no migrations applied and the
    knowledge base is ready, raises neither the migrations confirmation
    nor the knowledge gate

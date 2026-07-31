@@ -38,11 +38,11 @@ The phases group into three stages (the **three D's**), used as the top-level gr
 
 Skills organised in tiers:
 
-**Entry skill** (`workflow-start`): the sole user-invocable entry. Shows all work; routes new work into discovery and existing work into the per-type `workflow-continue-*` skills. Also hosts the inbox pickup — a **working set** (multi-select promotion, single-type-gated) with an `.archived` lifecycle (archive · restore · delete). Hosts the full Step 0 (casing, then `engine boot` — migrations + knowledge check + compact in one call), run once.
+**Entry skill** (`workflow-start`): the sole user-invocable entry. Shows all work; routes new work into discovery and existing work into the per-type `workflow-continue-*` skills. Also hosts the inbox pickup — a **working set** (multi-select promotion, single-type-gated) with an `.archived` lifecycle (archive · restore · delete). Hosts the full Step 0 (`engine boot` — migrations + knowledge check + compact in one call — then the knowledge gate), run once.
 
 **Discovery** (`workflow-discovery`): model-only (`user-invocable: false`). The universal first phase (see Workflow Phases #1) — new work is shaped and its type settled here before the pipeline branches into the type-specific phases. Two modes — new (decide the work type, persist at the commit, route out) and existing-epic (re-shape the map, delegated from `workflow-continue-epic`).
 
-**Navigation skills** (`workflow-continue-{epic,feature,bugfix,quickfix,cross-cutting}`): model-only (`user-invocable: false`). Per-type resume/dashboard — show state and route to the right phase. `workflow-continue-epic` also delegates map refinement to discovery and triggers the analytical bridge enrichment. Step 0 is casing-only (migrations + the knowledge gate are guaranteed by `workflow-start`).
+**Navigation skills** (`workflow-continue-{epic,feature,bugfix,quickfix,cross-cutting}`): model-only (`user-invocable: false`). Per-type resume/dashboard — show state and route to the right phase. `workflow-continue-epic` also delegates map refinement to discovery and triggers the analytical bridge enrichment. Step 0 renders the phase title only (migrations + the knowledge gate are guaranteed by `workflow-start`).
 
 **Phase entry skills** (`workflow-*-entry`): internal (`user-invocable: false`). Invoked by discovery, `workflow-continue-*`, and the bridge with work_type and work_unit always provided. Handle phase-specific validation, bootstrap questions, processing skill invocation. New single-phase work seeds from the durable carrier (session log + manifest `description`).
 
@@ -51,6 +51,8 @@ Skills organised in tiers:
 **Capture skills** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`): model-invocable, lightweight, outside the pipeline. Capture ideas, bugs, or quick-fixes as markdown files in the inbox (`.workflows/.inbox/`). No manifest, no migrations, no step/reference structure — just natural-language instructions with capture-only constraints.
 
 **Shared references** (`skills/workflow-shared/references/`): loaded by multiple skills across phases. Define protocols and checks that apply uniformly regardless of the calling skill — casing conventions, compliance self-check, topic discovery and dispatch, analysis approval gates, convergence analysis, background agent surfacing, natural break detection, and more; the directory is the authoritative list.
+
+`framework.md` is the head-of-skill composition point: every flow skill's `## Instructions` section is a single load directive pointing at it, and it in turn loads `instructions.md` (the STOP-gate and step-discipline rules), `casing-conventions.md`, and `voice.md`. Skills carrying a context-refresh recovery protocol re-load it there by name — a compaction summary drops instructions held only by reference. `voice.md` governs how Claude speaks in every turn composed for the user to read; it explicitly does not touch engine-emitted `DISPLAY`/`MENU` sections or the artifact prose written to disk, which stays technical and as long as the material needs. How hard to challenge stays with each phase's own guidelines — `voice.md` owns the manner, never the frequency.
 
 ### Phase Entry Skill Routing
 
