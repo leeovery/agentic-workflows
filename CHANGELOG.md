@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.26] - 2026-07-31
+
+✨ Added
+
+- Discussion guidelines now favor leading with a concrete worked example before generalising to the abstract mechanism.
+- Background finding raises rebuild the scene with a concrete worked example, diagram, or walkthrough before asking the question, so users returning after a break can picture the problem instantly.
+- Finding raises stay within an already-reconstructed scene, exhausting related findings there before moving to a new part of the document.
+- A settled finding's raise now states a concrete proposal and its cost instead of surveying options.
+
 ## [0.6.25] - 2026-07-31
 
 🔧 Changed
