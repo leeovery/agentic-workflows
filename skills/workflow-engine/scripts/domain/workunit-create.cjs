@@ -28,7 +28,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
+const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { parseInboxPath } = require('./inbox.cjs');
 const { todayStamp } = require('./dates.cjs');
@@ -293,7 +293,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   const pathspecs = [`.workflows/${workUnit}`];
   if (seedMoves.length > 0) pathspecs.push('.workflows/.inbox');
   if (created) pathspecs.push('.workflows/manifest.json');
-  const committed = commitScopedWithKb(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`);
+  const outcome = commitTailWithKb(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`, warnings);
 
   /** @type {WorkUnitCreateResult} */
   const result = {
@@ -307,10 +307,10 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     })),
     skipped_imports: skippedImports,
     session_log: sessionLogPath,
-    committed,
+    committed: outcome.committed,
     warnings,
   };
-  noteIfNothingCommitted(result, committed);
+  noteCommitOutcome(result, outcome);
   return result;
 }
 

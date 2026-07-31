@@ -19,7 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
-const { commitScopedWithKb } = require('./domain/commit.cjs');
+const { commitScopedWithKb, commitPathspecScoped } = require('./domain/commit.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
@@ -729,26 +729,60 @@ function runBoot() {
 // fine: {committed: null}.
 // ---------------------------------------------------------------------------
 
+// Per-phase artifact pathspec for `commit --topic` — the paths a topic's
+// session writes, joined with the work-unit manifest at the call site.
+const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string>} */ ({
+  research: (wu, t) => `.workflows/${wu}/research/${t}.md`,
+  discussion: (wu, t) => `.workflows/${wu}/discussion/${t}.md`,
+  investigation: (wu, t) => `.workflows/${wu}/investigation/${t}.md`,
+  specification: (wu, t) => `.workflows/${wu}/specification/${t}`,
+  planning: (wu, t) => `.workflows/${wu}/planning/${t}`,
+  implementation: (wu, t) => `.workflows/${wu}/implementation/${t}`,
+  review: (wu, t) => `.workflows/${wu}/review/${t}`,
+});
+
+/**
+ * Keep pathspecs `git add` will accept: on disk, or holding index entries
+ * (a deleted-but-tracked path still stages its deletions).
+ * @param {string} cwd @param {string[]} specs
+ * @returns {string[]}
+ */
+function stageableSpecs(cwd, specs) {
+  const { execFileSync } = require('child_process');
+  return specs.filter((p) => {
+    if (fs.existsSync(path.join(cwd, p))) return true;
+    try {
+      return execFileSync('git', ['ls-files', '--', p], { cwd, encoding: 'utf8' }).trim() !== '';
+    } catch {
+      return false;
+    }
+  });
+}
+
 /** @param {string[]} argv */
 function runCommit(argv) {
   try {
     /** @type {string|null} */ let workUnit = null;
     /** @type {string|null} */ let message = null;
     /** @type {string|null} */ let plan = null;
+    /** @type {string|null} */ let topicSpec = null;
     let inbox = false;
     let workflows = false;
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i];
       if (a === '-m' || a === '--message') message = argv[++i];
       else if (a === '--plan') plan = argv[++i];
+      else if (a === '--topic') topicSpec = argv[++i];
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
       else if (workUnit === null) workUnit = a;
       else throw new Error(`unexpected argument "${a}"`);
     }
     const scopeCount = [inbox, workflows, workUnit !== null].filter(Boolean).length;
-    if (!message || scopeCount !== 1 || (plan !== null && workUnit === null) || plan === '' || plan === undefined) {
-      throw new Error('Usage: engine commit <work-unit> -m <message> [--plan <topic>] | engine commit --inbox -m <message> | engine commit --workflows -m <message>');
+    if (!message || scopeCount !== 1 || (plan !== null && workUnit === null) || plan === '' || plan === undefined ||
+        (topicSpec !== null && workUnit === null) || topicSpec === '' || topicSpec === undefined ||
+        (topicSpec !== null && plan !== null)) {
+      throw new Error('Usage: engine commit <work-unit> -m <message> [--plan <topic> | --topic <phase>/<topic>] | engine commit --inbox -m <message> | engine commit --workflows -m <message>');
     }
     const cwd = process.cwd();
     /** @type {string|string[]} */ let scope;
@@ -763,6 +797,31 @@ function runCommit(argv) {
         throw new Error(`no work unit directory: .workflows/${wu}`);
       }
       scope = `.workflows/${wu}`;
+      if (topicSpec !== null) {
+        // --topic: the action-scoped pathspec commit. `git commit -- <paths>`
+        // confines the commit to the topic's artifact paths plus the
+        // work-unit manifest — a concurrent session's dirty or staged files
+        // are never swept up. The KB dir does not ride: no KB-touching verb
+        // precedes a session-cadence commit, and KB-dirtying transactions
+        // commit their own store dirt.
+        const parts = topicSpec.split('/');
+        const phase = parts[0];
+        const topic = parts[1];
+        const artifact = TOPIC_COMMIT_ARTIFACTS[phase];
+        if (parts.length !== 2 || !artifact) {
+          throw new Error(`commit --topic: expected <phase>/<topic> with phase one of ${Object.keys(TOPIC_COMMIT_ARTIFACTS).join(', ')} — got "${topicSpec}"`);
+        }
+        if (topic === '' || topic.includes('..')) throw new Error(`invalid topic name "${topic}"`);
+        const specs = stageableSpecs(cwd, [`.workflows/${wu}/manifest.json`, artifact(wu, topic)]);
+        if (specs.length === 0) {
+          respond({ committed: null, note: 'nothing to commit' });
+          return;
+        }
+        const committed = commitPathspecScoped(cwd, specs, message);
+        if (committed === null) respond({ committed: null, note: 'nothing to commit' });
+        else respond({ committed });
+        return;
+      }
       if (plan !== null) {
         // --plan: the plan's declared storage pathspecs (recorded at plan
         // init from the format's authoring doc) plus the project manifest
@@ -790,16 +849,7 @@ function runCommit(argv) {
             throw new Error(`commit --plan: illegal storage_paths entry ${JSON.stringify(p)} — pathspecs are relative, never ".", "..", or absolute`);
           }
         }
-        const { execFileSync } = require('child_process');
-        const stageable = ['.workflows/manifest.json', ...declared].filter((p) => {
-          if (fs.existsSync(path.join(cwd, p))) return true;
-          try {
-            return execFileSync('git', ['ls-files', '--', p], { cwd, encoding: 'utf8' }).trim() !== '';
-          } catch {
-            return false;
-          }
-        });
-        scope = [scope, ...stageable];
+        scope = [scope, ...stageableSpecs(cwd, ['.workflows/manifest.json', ...declared])];
       }
     }
     const committed = commitScopedWithKb(cwd, scope, message);

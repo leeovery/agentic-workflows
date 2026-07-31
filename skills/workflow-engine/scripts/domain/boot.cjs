@@ -19,8 +19,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { git, commitScoped } = require('../kernel/git.cjs');
-const { KB_DIR } = require('./commit.cjs');
+const { git } = require('../kernel/git.cjs');
+const { commitScopedLocked, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
 
 // Resolved against this file so it works wherever the skill tree is installed.
@@ -126,7 +126,7 @@ function boot(cwd) {
       const configSpecs = ['.claude/settings.json', '.gitignore']
         .filter((p) => fs.existsSync(path.join(cwd, p)));
       if (configSpecs.length > 0) {
-        commitScoped(cwd, configSpecs, 'chore: apply workflow migration config changes');
+        commitScopedLocked(cwd, configSpecs, 'chore: apply workflow migration config changes');
       }
     } catch (err) {
       warnings.push(`migration config commit failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -169,7 +169,7 @@ function boot(cwd) {
         const message = status.split('\n').some((l) => l.startsWith('??'))
           ? 'chore(knowledge): initialise store'
           : 'chore(knowledge): compact store';
-        kbCommitted = commitScoped(cwd, KB_DIR, message);
+        kbCommitted = commitScopedLocked(cwd, KB_DIR, message);
       }
     } catch (err) {
       warnings.push(`knowledge store commit failed: ${err instanceof Error ? err.message : String(err)}`);
