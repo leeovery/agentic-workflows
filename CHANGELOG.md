@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.24] - 2026-07-31
+
+🔧 Changed
+- Spec review now flags duplication — the same fact restated in more than one section — not just gaps and contradictions.
+- Spec review findings renamed "Proposed Addition" → "Proposed Change" and gained a Duplication category, since findings can now revise content, not just append it.
+- Spec construction and review now enforce a one-home rule — every fact lives in exactly one section, with other mentions referencing it instead of restating it.
+- Convergence diagnostics report per-stream finding counts (e.g. input review vs gap analysis) and detect a new "churning" trend — resolved and new findings offsetting each other at the same rate, signaling the edits themselves are generating findings.
+- Specification format now defines placeholders as non-content and requires topic sections to nest under `## Specification` as `###` headings rather than sibling `##` headings.
+
 ## [0.6.23] - 2026-07-31
 
 ✨ Added
