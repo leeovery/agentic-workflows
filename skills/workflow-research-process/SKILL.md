@@ -43,7 +43,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Step 0: Resume Detection
 
-Read the phase status — file existence alone cannot distinguish a resumable session from a `triaged` stub of parked concerns:
+Read the phase status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
