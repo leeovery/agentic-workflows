@@ -261,16 +261,23 @@ Settled:
   `--git-path` gives linked worktrees their own lock, matching the
   per-worktree index it serialises).
 
+Settled in PR 5 (2026-07-31):
+
+- Sidecar path: `.workflows/{wu}/{phase}/.triage/{topic}/NNN-{slug}.md`,
+  numbered by the engine under the work-unit lock. Not KB-indexed —
+  transient by design; drained content reaches the KB inside the
+  artifact it folds into.
+- Concern transport: `--concern <file>` written to the origin topic's
+  phase cache; the engine consumes the scratch on delivery. `-m` is
+  required with it — attribution belongs to the rerouting session.
+- Migration 054 one-shot converts existing in-document sections; the
+  drain keeps a legacy fallback (folds and resets a real in-document
+  section the same way) for artifacts that predate the queue.
+- Drain stays prose — the folding is judgment work; only the delivery
+  and the commit needed engine ownership.
+
 Open — settle in the owning PR:
 
-- Exact sidecar path shape (e.g.
-  `.workflows/{wu}/{phase}/.triage/{topic}/NNN-{slug}.md`) and
-  whether the queue is KB-indexed (leaning no — transient). → PR 5
-- Concern body transport into the verb (`--concern <file>` from
-  scratchpad vs stdin). → PR 5
-- Migration for existing `## Triage` sections: one-shot convert vs a
-  transition-period drain that reads both sources. → PR 5
 - Where presence lives (cache file vs manifest field) and the
   staleness threshold. → PR 6
-- Whether drain gets an engine verb or stays prose. → PR 5
 - Boot serialisation: worth a lock, or accepted edge. → PR 6
