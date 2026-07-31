@@ -8,7 +8,7 @@ These instructions are loaded into context at the start of the discussion sessio
 
 **Trigger checklist** — evaluate after every commit as part of the session loop's dispatch check:
 
-- □ Meaningful content committed? (a decision documented, a question explored, options analysed — not a typo fix or reformatting; a commit whose subject carries a `review-` or `synthesis-` drain marker — e.g. `(review-003 F2)` — doesn't tick this box)
+- □ Meaningful content committed? (a decision documented, a question explored, options analysed — not a typo fix or reformatting; a commit whose subject carries a `review-` or `synthesis-` drain marker — e.g. `(review-003 F2)` — doesn't tick this box, nor does one carrying a `(deferral)` marker: the concluding flow's deferral write is bookkeeping, and a review dispatched on it would be in flight before the closing gates it delays)
 - □ All prior reviews drained? (`agent scan` shows no `review` row in flight, pending, or acknowledged — or no review row exists yet; an in-flight row an earlier session dispatched is dead, not running — incorporate it and count it drained)
 - □ Not the first commit? (the discussion needs enough content to review)
 - □ At least 2-3 conversational exchanges since the last review dispatch?
