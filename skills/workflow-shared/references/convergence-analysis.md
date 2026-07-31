@@ -70,6 +70,7 @@ Read tracking files for all available cycles:
 
 For each cycle, extract:
 - Each finding's title
+- Which stream it came from (traceability or integrity — by tracking file)
 - Plan Reference field (which plan area is affected)
 - Resolution (Fixed/Skipped)
 
@@ -85,6 +86,7 @@ Read tracking files for all available cycles:
 
 For each cycle, extract:
 - Each finding's title
+- Which stream it came from (input review or gap analysis — by tracking file)
 - Affects field (which specification section)
 - Category
 - Resolution (Approved/Adjusted/Skipped)
@@ -107,7 +109,9 @@ Compute:
 - `resolved_count` — findings from prior cycles no longer appearing
 - `recurring_count` — findings persisting across cycles
 - `new_count` — findings appearing for the first time in the latest cycle
-- `trend`:
+- `stream_counts` — (two-stream loop types only: `spec-review`, `planning-review`) latest-cycle finding counts per tracking stream
+- `trend` (first match wins):
+  - **churning** — recurring_count is 0 or near 0 while resolved_count and new_count are both above 0 and roughly equal (every cycle's findings are new — the edits themselves are generating them)
   - **converging** — resolved_count > new_count (progress is being made)
   - **stable** — resolved_count ≈ new_count (treading water)
   - **diverging** — new_count > resolved_count (fixes are creating new issues)
@@ -125,8 +129,11 @@ Open with one markdown sentence above the block — what the cycles show, in pla
 ```
 {loop_type_label:(titlecase)} — cycle {latest_cycle} diagnostic
 
-  Trend: {trend:[converging|stable|diverging]}
+  Trend: {trend:[churning|converging|stable|diverging]}
   Latest cycle: {finding_count} findings ({new_count} new, {recurring_count} recurring)
+  @if(loop_type is spec-review or planning-review)
+  Per stream: {stream_a_label} {stream_a_count} · {stream_b_label} {stream_b_count}
+  @endif
 
   @if(resolved_count > 0)
   Resolved:
@@ -150,6 +157,11 @@ Open with one markdown sentence above the block — what the cycles show, in pla
   @endforeach
   @endif
 
+  @if(trend = churning)
+  ⚑ Findings resolve but are replaced at the same rate — the edits are
+    likely generating new findings. Consider consolidating duplicated
+    statements rather than running another cycle.
+  @endif
   @if(trend = converging)
   ⚑ Continuing is likely to resolve remaining items.
   @endif
@@ -166,5 +178,9 @@ Where `loop_type_label` maps:
 - `analysis` → `Analysis`
 - `planning-review` → `Plan Review`
 - `spec-review` → `Spec Review`
+
+Stream labels map:
+- `spec-review` → `input review` / `gap analysis`
+- `planning-review` → `traceability` / `integrity`
 
 → Return to caller.
