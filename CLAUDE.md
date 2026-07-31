@@ -16,9 +16,7 @@ Always create a feature branch **before** the first commit. Never commit to main
 
 Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`.
 
-**When you complete an idea from the index, mark it done in the same PR as the work** — strike the title (`~~[Title](file.md)~~`) and append a `✅ Done` cell. Shipping the fix and leaving the row open is how the index stops being trustworthy; an entry that reads open when the work landed sends the next reader to re-do it.
-
-**A done idea's own file is a historical record — never edit it.** It captures what was true when the work shipped. Later corrections, caveats, or status nuance belong in the index row or a new idea, never in the closed one.
+The index holds **pending items only** — one table. **When you complete an idea, remove its row and delete its file in the same PR as the work**; git history is the record of what shipped. Shipping the fix and leaving the row in place is how the index stops being trustworthy; an entry that reads open when the work landed sends the next reader to re-do it. Status nuance on a still-pending idea (partial ship, audit notes) belongs in its index row.
 
 ## Workflow Phases
 
