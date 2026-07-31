@@ -59,6 +59,8 @@ Lifecycle `status` transitions go through the engine, not `set` — `engine topi
 [Optional - capture in-progress discussion if needed]
 ```
 
+Bracketed lines are placeholders, not content — create the file with the headings and leave the sections empty; never copy placeholder text into the file. Topic content nests beneath `## Specification` as `###` sections — never as sibling `##` headings.
+
 ---
 
 ## Sources and Incorporation Status
