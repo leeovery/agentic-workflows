@@ -63,9 +63,9 @@ Never pass a `model` on a first walk or on any assertion — each
 definition names the model the result is trusted at. The single
 exception is the confirmation rerun in step 4, below.
 
-4. **Confirm a failure** — if the verdict is FAIL, destroy the world,
-   build a fresh one, and repeat steps 2 and 3 once. A defect in the
-   prose reproduces; a one-off does not.
+4. **Confirm a failure** — if the verdict is FAIL, archive the world's
+   evidence and then destroy it, build a fresh one, and repeat steps 2
+   and 3 once. A defect in the prose reproduces; a one-off does not.
 
    Dispatch this second walk with `model: opus`. Walks run on the model
    the definition names; a failure is where it is worth spending more,
@@ -91,7 +91,8 @@ exception is the confirmation rerun in step 4, below.
 5. **Retry an invalid walk** — if the verdict is `INVALID WALK`, the
    walker began mid-flow or died before the task's stop condition, and
    the case was never actually exercised.
-   Destroy the world, build a fresh one, and repeat steps 2 and 3 once.
+   Archive the world's evidence, destroy it, build a fresh one, and
+   repeat steps 2 and 3 once.
    If the second walk is also invalid, report `INVALID` — never `FAIL`.
    A case that was not walked properly has said nothing about the prose,
    and reporting it as a prose failure would be a false finding.
