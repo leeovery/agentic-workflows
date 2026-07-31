@@ -43,7 +43,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Step 0: Resume Detection
 
-Read the phase status — a `triaged` topic's parked concerns live in its triage queue and it may have no file at all, so file existence alone cannot distinguish the cases:
+Read the phase status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} status
