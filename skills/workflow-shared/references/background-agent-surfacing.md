@@ -160,16 +160,24 @@ Do not re-ask. The user has already committed to walking through the set.
 
 This section runs once per invocation and then exits. It never waits in-protocol for the user to finish engaging — that's the conversation's job.
 
-1. Pick the single most contextually relevant finding from the row's `remaining` — never from `scan.next`, which may belong to another row. **Contextual relevance outranks the list order.** If the current conversation has just touched on a related area, prefer that finding. If nothing is particularly relevant, pick the one with the broadest implications.
+1. Pick the single most contextually relevant finding from the row's `remaining` — never from `scan.next`, which may belong to another row. **Contextual relevance outranks the list order.** When engaging the previous finding built a scene — a worked scenario, a diagram, one corner of the document — prefer remaining findings that live inside it, and exhaust them before opening a new corner: the reconstruction is already paid for. Otherwise, if the current conversation has just touched on a related area, prefer that finding; if nothing is particularly relevant, pick the one with the broadest implications.
 2. Record it — the response confirms what remains, and raising the last finding incorporates the row automatically:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}
    ```
-3. Digest the finding from the content file — never read it out — and compose the raise as conversational prose in three beats:
-   - **Present** — orientation before any assessment. Say where it came from (the background {agent_type}) and what it observed — for a synthesis, the two positions in tension — in plain, self-contained terms a user returning after hours can follow. Restate any term borrowed from another subtopic or an earlier decision; never reference it bare. Never use a bare id (`F5`, `T2`) as a label in conversational prose — name the finding by its report title on first mention, or describe it by what it is; ids belong in commit subjects (`(review-003 F5)`) and in-document markers (`(resolves review-003 F5)`), not in the conversation. Depth follows the conversation: a clause when the finding set was visible moments ago, full orientation when the conversation has moved on since it was last visible. When earlier findings from this set have been raised, open with a one-line bridge: what the previous one settled — or simply that it was raised, when that engagement predates this session — and how many follow this one (the surface response's `remaining`; `findings` is the full set).
+3. Digest the finding from the content file — never read it out — and compose the raise in three beats. A findings walk is a series of cold starts — each raise lands in a corner of the document the user last held fully hours or days ago — so the first beat rebuilds that context rather than referencing it:
+   - **Present** — scene reconstruction before any assessment: say where it came from (the background {agent_type}) and what it observed — for a synthesis, the two positions in tension — then rebuild the scene as **Setting the scene** below prescribes. Restate any term borrowed from another subtopic or an earlier decision; never reference it bare. Never use a bare id (`F5`, `T2`) as a label in conversational prose — name the finding by its report title on first mention, or describe it by what it is; ids belong in commit subjects (`(review-003 F5)`) and in-document markers (`(resolves review-003 F5)`), not in the conversation. When earlier findings from this set have been raised, open with a one-line bridge: what the previous one settled — or simply that it was raised, when that engagement predates this session — and how many follow this one (the surface response's `remaining`; `findings` is the full set).
    - **Position** — your read, only where you genuinely have one: verified it holds, narrower than framed, already covered by a decision made since the report. Skip the beat rather than manufacture a verdict.
-   - **Move** — sized to how settled the finding is: a clear resolution — propose it; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
-4. Raise it in the current turn, ending in a single question. One finding, one question, no bundled follow-ups, no menu.
+   - **Move** — sized to how open the decision is as much as how cold the context: a clear resolution — propose it and name what it costs ("this creates X and Y; I don't see another approach"), never an option survey; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
+4. Raise it in the current turn, ending in a single question — or, for a finding with one defensible resolution, a stated proposal awaiting the user's response. Either way the turn ends and control returns: one finding per invocation regardless of how settled, and the user's agreement is never licence to roll into the next. No bundled follow-ups, no menu.
+
+**Setting the scene** — an example over a description, every time. A reader who can picture the failure can judge the fix; a reader parsing a mechanism description is still building the picture when the ask arrives.
+
+- **The arc**: establish the normal scenario as a concrete instance — the topic's own terms or the product's, named actors, actual values, a real sequence — and show it resolving fine. Then adjust the scenario so it breaks: the adjustment *is* the finding. Technical depth comes after the instance lands, and only as deep as the finding needs.
+- **The devices**: a worked example grounded in the topic or the product, a small ASCII diagram where shape or flow helps, a before/after list, a short step-by-step walkthrough. Pick what fits this finding, and vary across the walk — twenty identically shaped raises read as a template, not a colleague.
+- **The weight**: structure the raise so it scans — a light heading, a short list, a diagram breaking up the prose — never an unbroken wall of text. Softly shaped, never boilerplate.
+- **The cheap path**: within a scene already rebuilt this session, or when the finding set was visible moments ago, a bridge clause replaces the reconstruction.
+- **The test**: the user can picture the problem before the ask arrives.
 
 After this, control belongs to the conversation. The user will engage (or deflect, or redirect) naturally. Handle their response as normal discussion — not as protocol-driven routing. When the engagement's outcome is documented and committed — resolved or deflected — the commit subject carries `({id} {finding})`, e.g. `(review-003 F2)`.
 
@@ -184,6 +192,7 @@ Before producing any surfacing output, verify:
 - □ Raising AT MOST one finding this turn — the rest of the set appears as a count, never as content
 - □ Asking AT MOST one question this turn
 - □ The finding itself is stated, self-contained, before any position or proposal
+- □ The user can picture the problem before the ask arrives — scene rebuilt, not referenced
 - □ No bare id (`F5`, `T2`) as a label in prose — named by report title or described
 - □ Not reading the content file verbatim
 

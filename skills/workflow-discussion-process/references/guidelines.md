@@ -12,6 +12,8 @@ Best practices for documenting discussions. For DOCUMENTATION only - no plans or
 
 **Multiple-choice preferred**: When presenting options, concrete choices are easier to reason about than open-ended questions. Present 2-3 approaches with trade-offs.
 
+**Concrete before abstract**: Lead with a worked instance, not a description of a mechanism. Show the case — specific values, named actors, an actual sequence, a small ASCII diagram or step-by-step walkthrough where shape helps — then generalise. A reader who can picture the failure can judge the fix; a reader parsing a mechanism is still building the picture when the question arrives.
+
 **YAGNI ruthlessly**: Remove unnecessary features from all designs. If not discussed, don't add it.
 
 **Explore alternatives**: Always propose 2-3 approaches before settling. Show trade-offs.
