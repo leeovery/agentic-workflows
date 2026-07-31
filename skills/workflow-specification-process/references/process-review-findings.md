@@ -52,14 +52,16 @@ Work through each finding **sequentially**. For each finding: present it, show t
 
 ### Present Finding
 
+Before presenting, check the finding's proposed content against the one-home rule (**[specification-format.md](specification-format.md)**): where it restates a fact that already has a home in the specification, revise it to reference the home and update the tracking file.
+
 Write the finding payload to `.workflows/.cache/{work_unit}/specification/{topic}/finding-current.json` with the Write tool, from the tracking file:
 
 - `n`, `total`, `title` — the finding's position and titlecased brief title.
 - `meta` — `[label, value]` pairs: Source / Category / Affects, plus Priority for Gap Analysis findings.
 - `details` — the Details field.
-- If Category is `Enhancement to existing topic` and a Current field is present: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side (Proposed Addition as the proposed lines).
-- Otherwise: `content` — `{"label": "Proposed Addition", "lines": […]}` with the content to add.
-- `apply_label`: `"Add to the specification verbatim"` · `applied_label`: `"approved. Added to specification."` · `feedback_hint`: `"Adjust before approving"`
+- If a Current field is present: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side (Proposed Change as the proposed lines).
+- Otherwise: `content` — `{"label": "Proposed Change", "lines": […]}` with the proposed content.
+- `apply_label`: `"Apply to the specification verbatim"` · `applied_label`: `"approved. Applied to specification."` · `feedback_hint`: `"Adjust before approving"`
 
 Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
 
@@ -73,7 +75,7 @@ The response carries the finding presentation plus the surface for the current g
 
 #### If the response carried `DISPLAY: finding auto-approved`
 
-1. Log the proposed content to the specification verbatim
+1. Log the proposed content to the specification verbatim — a finding with a Current field replaces that content, never appends
 2. Update the tracking file: set resolution to "Approved"
 3. Commit
 4. Emit the `DISPLAY: finding auto-approved` section now, per its marker.
@@ -92,7 +94,7 @@ The response carries the finding presentation plus the surface for the current g
 
 #### If `view full`
 
-Re-present the finding's **Current** and **Proposed Addition** content in full from the tracking file. Then re-emit the `MENU: finding gate` section.
+Re-present the finding's **Current** and **Proposed Change** content in full from the tracking file. Then re-emit the `MENU: finding gate` section.
 
 **STOP.** Wait for user response.
 
@@ -104,14 +106,14 @@ Incorporate feedback and update the tracking file with the revised content. Rewr
 
 #### If `yes`
 
-1. Log the content to the specification verbatim
+1. Log the content to the specification verbatim — a finding with a Current field replaces that content, never appends
 2. Update the tracking file: set resolution to "Approved", add any discussion notes
 3. Commit — ensures progress survives context refresh
 
 > *Output the next fenced block as a code block:*
 
 ```
-Finding {N} of {total}: {brief_title:(titlecase)} — added.
+Finding {N} of {total}: {brief_title:(titlecase)} — applied.
 ```
 
 **If pending findings remain:**

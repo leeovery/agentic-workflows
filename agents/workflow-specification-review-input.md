@@ -90,8 +90,8 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c{c
 **Current**:
 {For Enhancement findings only — copy the existing specification content in the affected section that will be modified. This enables diff presentation to the user. Omit for New topic and Gap/Ambiguity findings.}
 
-**Proposed Addition**:
-{What you would add to the specification — leave blank until discussed}
+**Proposed Change**:
+{What you would add or change in the specification — leave blank until discussed}
 
 **Resolution**: Pending
 **Notes**:
