@@ -106,6 +106,8 @@ Already-`addressed` references are skipped on later topic cycles.
 
 ## B. Synthesize and Present
 
+Check the draft against the one-home rule (**[specification-format.md](specification-format.md)**): a fact already stated in the specification is referenced at its home, never restated. If the new topic should own the fact, move it — edits to already-logged content go through **Context Resurfacing**.
+
 Present your understanding to the user **in the format it would appear in the specification** (shown in both modes):
 
 > *Output the next fenced block as markdown (not a code block):*
