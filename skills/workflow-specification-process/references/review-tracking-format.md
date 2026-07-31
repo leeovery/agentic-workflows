@@ -24,7 +24,7 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 ### 1. [Brief Title]
 
 **Source**: [Where this came from — file/section reference, or "Specification analysis" for Gap Analysis]
-**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity
+**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Duplication
 **Priority**: [Gap Analysis only — Critical | Important | Minor. Omit for Input Review.]
 **Affects**: [Which section(s) of the specification]
 
@@ -32,10 +32,10 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 [Explanation of what was found and why it matters]
 
 **Current**:
-[For Enhancement findings only — the existing specification content in the affected section that will be modified. Omit for New topic and Gap/Ambiguity findings.]
+[For findings that modify existing content (Enhancement, Duplication) — the existing specification content that will be modified. Omit for New topic and Gap/Ambiguity findings.]
 
-**Proposed Addition**:
-[What you would add to the specification — leave blank until discussed]
+**Proposed Change**:
+[What you would add or change in the specification — leave blank until discussed]
 
 **Resolution**: Pending | Approved | Adjusted | Skipped
 **Notes**: [Any discussion notes or adjustments made]
@@ -45,6 +45,8 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 ### 2. [Next Finding]
 ...
 ```
+
+Some tracking files name the **Proposed Change** field **Proposed Addition** — read both as the same field.
 
 ## Workflow with Tracking Files
 

@@ -27,6 +27,7 @@ No source material — this phase looks inward only.
 - Insufficient detail that would force implementers to guess
 - Ambiguity that could be interpreted multiple ways
 - Contradictions between sections
+- Duplication — the same fact stated in more than one section
 - Edge cases within scope boundaries
 - Planning readiness — could this be broken into clear tasks?
 
@@ -64,6 +65,13 @@ No source material — this phase looks inward only.
    - Requirements that conflict with each other
    - Behaviors defined differently in different sections
    - Constraints that make other requirements impossible
+
+   **Duplication**
+   - The same fact, value, rule, or enumeration stated in more than one section
+   - A count or summary restating a list or table that sits beside it
+   - A cross-reference that justifies, compares, or notes consistency instead of pointing at a fact's home
+
+   Flag duplication even when the copies still agree — copies drift apart under later edits and return as contradictions. One finding per restated site: name the fact's home in Details, put the site's current content in Current, and propose replacing the restatement with a reference to the home (or deleting it, where a reference adds nothing).
 
    **Edge Cases Within Scope**
    - For the behaviors specified, what happens at boundaries?
@@ -107,7 +115,7 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-track
 ### 1. {Brief Title}
 
 **Source**: Specification analysis
-**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity
+**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Duplication
 **Priority**: Critical | Important | Minor
 **Affects**: {which section(s) of the specification}
 
@@ -115,10 +123,10 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-track
 {Explanation of what was found and why it matters}
 
 **Current**:
-{For Enhancement findings only — copy the existing specification content in the affected section that will be modified. This enables diff presentation to the user. Omit for New topic and Gap/Ambiguity findings.}
+{For findings that modify existing content (Enhancement, Duplication) — copy the existing specification content that will be modified. This enables diff presentation to the user. Omit for New topic and Gap/Ambiguity findings.}
 
-**Proposed Addition**:
-{What you would add to the specification — leave blank until discussed}
+**Proposed Change**:
+{What you would add or change in the specification — leave blank until discussed}
 
 **Resolution**: Pending
 **Notes**:
