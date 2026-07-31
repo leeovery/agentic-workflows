@@ -32,7 +32,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 |__/|__/\____/_/ |_/_/ |_/_/   /_____/\____/ |__/|__//____/
 
 ●─────────────────────────────────────────────────────────────────●
-  Agentic Engineering Workflows (v0.6.22)
+  Agentic Engineering Workflows (v0.6.23)
 ●─────────────────────────────────────────────────────────────────●
 ```
 

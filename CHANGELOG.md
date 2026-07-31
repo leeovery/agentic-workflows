@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.23] - 2026-07-31
+
+✨ Added
+- Every flow skill's `## Instructions` section now loads a shared `framework.md`, which composes STOP-gate rules, casing conventions, and a new `voice.md` — a consistent, distraction-free conversational style across all workflow skills.
+
+🔧 Changed
+- STOP-gate/casing instructions and context-refresh recovery are now defined once in shared references instead of duplicated across every skill, keeping behaviour consistent as it evolves.
+- `workflow-start`'s Step 0 folds casing conventions into the boot step, dropping a redundant sub-step.
+- Discussion and research closing-gate checks now recognize a `(deferral)` commit marker so a conclusion's own bookkeeping isn't mistaken for new work needing re-review.
+- Background-agent surfacing in discussion and research sessions now skips only when no agents have actually been dispatched, rather than assuming based on iteration count — fixing incorrect skips on resumed sessions.
+
 ## [0.6.22] - 2026-07-30
 
 ✨ Added
