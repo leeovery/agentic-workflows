@@ -26,7 +26,7 @@ The conversation follows the thinking, not a checklist. Subtopics emerge, get ex
 
 **Don't force transitions**: If the user is deep in a subtopic, don't interrupt to check off progress. Let the conversation breathe. Transition when there's a natural pause or a decision lands.
 
-**Circle back**: Track what's been partially explored. When a related subtopic resolves, suggest returning to the deferred one — new context may change the thinking.
+**Circle back**: Track what's been partially explored. When a related subtopic resolves, suggest returning to the one left open — new context may change the thinking.
 
 ## Do / Don't
 
