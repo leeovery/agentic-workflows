@@ -19,7 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
-const { commitScopedWithKb, commitPathspecScoped } = require('./domain/commit.cjs');
+const { commitScopedWithKb, commitPathspecScoped, KB_DIR } = require('./domain/commit.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
@@ -768,11 +768,13 @@ function runCommit(argv) {
     /** @type {string|null} */ let topicSpec = null;
     let inbox = false;
     let workflows = false;
+    let kb = false;
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i];
       if (a === '-m' || a === '--message') message = argv[++i];
       else if (a === '--plan') plan = argv[++i];
       else if (a === '--topic') topicSpec = argv[++i];
+      else if (a === '--kb') kb = true;
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
       else if (workUnit === null) workUnit = a;
@@ -781,8 +783,8 @@ function runCommit(argv) {
     const scopeCount = [inbox, workflows, workUnit !== null].filter(Boolean).length;
     if (!message || scopeCount !== 1 || (plan !== null && workUnit === null) || plan === '' || plan === undefined ||
         (topicSpec !== null && workUnit === null) || topicSpec === '' || topicSpec === undefined ||
-        (topicSpec !== null && plan !== null)) {
-      throw new Error('Usage: engine commit <work-unit> -m <message> [--plan <topic> | --topic <phase>/<topic>] | engine commit --inbox -m <message> | engine commit --workflows -m <message>');
+        (topicSpec !== null && plan !== null) || (kb && topicSpec === null)) {
+      throw new Error('Usage: engine commit <work-unit> -m <message> [--plan <topic> | --topic <phase>/<topic> [--kb]] | engine commit --inbox -m <message> | engine commit --workflows -m <message>');
     }
     const cwd = process.cwd();
     /** @type {string|string[]} */ let scope;
@@ -812,7 +814,13 @@ function runCommit(argv) {
           throw new Error(`commit --topic: expected <phase>/<topic> with phase one of ${Object.keys(TOPIC_COMMIT_ARTIFACTS).join(', ')} — got "${topicSpec}"`);
         }
         if (topic === '' || topic.includes('..')) throw new Error(`invalid topic name "${topic}"`);
-        const specs = stageableSpecs(cwd, [`.workflows/${wu}/manifest.json`, artifact(wu, topic)]);
+        // --kb: the caller's action dirtied the store (a completion's
+        // knowledge index) — stage it with the write that produced it.
+        const specs = stageableSpecs(cwd, [
+          `.workflows/${wu}/manifest.json`,
+          artifact(wu, topic),
+          ...(kb ? [KB_DIR] : []),
+        ]);
         if (specs.length === 0) {
           respond({ committed: null, note: 'nothing to commit' });
           return;

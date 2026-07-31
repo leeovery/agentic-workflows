@@ -71,6 +71,6 @@ Surface that concerns arrived from elsewhere:
 
 ## C. Commit
 
-Commit the drained artefact with message `{phase}({work_unit}/{topic}): drain triage`.
+Commit the drained artefact: `engine commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): drain triage"`.
 
 → Return to caller.
