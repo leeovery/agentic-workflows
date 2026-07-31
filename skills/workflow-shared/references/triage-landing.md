@@ -4,9 +4,9 @@
 
 ---
 
-Lands a rerouted concern in a target topic's `## Triage` section so the target drains it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to route to; their callers ignore the concern, surface it to the inbox, or pivot to an epic, and never load this reference.
+Lands a rerouted concern in a target topic's **triage queue** — `.workflows/{work_unit}/{landing_phase}/.triage/{target}/`, one engine-numbered file per concern — so the target drains it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to route to; their callers ignore the concern, surface it to the inbox, or pivot to an epic, and never load this reference.
 
-The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a concern that belongs to the current topic is normal subtopic or thread work, not a reroute). This reference writes the manifest and artefact but does **not** commit — the caller's commit covers both. (The one exception: `topic reactivate` in **D** is an engine transaction that commits itself.)
+The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a concern that belongs to the current topic is normal subtopic or thread work, not a reroute). The delivery is a self-committing engine transaction — the concern file and manifest land action-scoped under the reroute message; the caller commits nothing for the landing itself. (`topic reactivate` in **D** likewise commits itself.)
 
 ## Parameters
 
@@ -26,7 +26,7 @@ After return, the caller reads these from conversation memory:
 
 ## Triage Entry Shape
 
-Each rerouted concern is appended to the target artefact's `## Triage` section as one subsection, replacing the `(none)` placeholder when it is the first entry. Pin this exact shape — the drain and the conclusion gate detect against it:
+Each rerouted concern is one queue file. Pin this exact content shape — the drain folds against it:
 
 ```
 ### {short title}
@@ -55,7 +55,7 @@ The target is not on the map yet.
 
 #### If the row's lifecycle is `handled` or `cancelled`
 
-The topic is closed — no future session will drain its Triage, and concluded artefacts may exist beneath it. Record the row's lifecycle as `lifecycle`.
+The topic is closed — no future session will drain its queue, and concluded artefacts may exist beneath it. Record the row's lifecycle as `lifecycle`.
 
 → Proceed to **D. Closed Target**.
 
@@ -114,10 +114,14 @@ The topic was created — `{created_topic}` holds the validated name. Set `landi
 
 ## C. Land the Concern
 
-`topic triage` owns the item-status handling in one transaction: absent → created as `triaged` (parked, not started); `triaged` or `in-progress` → untouched; `completed` → reopened to `in-progress` (never land an entry in an artefact left concluded).
+One engine transaction owns the whole delivery: `topic triage` handles the item status (absent → created as `triaged`, parked, not started; `triaged` or `in-progress` → untouched; `completed` → reopened to `in-progress`), installs the concern as the next numbered file in the target's queue, consumes the scratch file, and commits the delivery action-scoped (concern file + manifest).
+
+1. Derive `slug` — kebab-case of the concern's short title.
+2. Write the full entry (shape above) to `.workflows/.cache/{work_unit}/{phase}/{origin}/concern-{slug}.md` with the Write tool.
+3. Deliver:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {landing_phase} {target}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {landing_phase} {target} --concern .workflows/.cache/{work_unit}/{phase}/{origin}/concern-{slug}.md --slug {slug} -m "{phase}({work_unit}/{origin}): reroute concern to {target}"
 ```
 
 **If the response is `ok: false`:**
@@ -126,25 +130,11 @@ Surface the engine's error verbatim — it names the recovery path (e.g. a cance
 
 → Return to caller.
 
-**If the response has `created: true`:**
-
-Create the artefact stub at `.workflows/{work_unit}/{landing_phase}/{target}.md` from the `{landing_phase}` template — [discussion template](../../workflow-discussion-process/references/template.md) or [research template](../../workflow-research-process/references/template.md). Write the concern into its `## Triage` section using the entry shape above, replacing the `(none)` placeholder. Leave the rest of the stub as the bare template — its working sections fill in when the target is picked up.
+**Otherwise:**
 
 Set `landed_topic = {target}` and `result = landed`.
 
 → Return to caller.
-
-**If the response has `created: false` and the artefact file is unexpectedly missing:**
-
-Create the stub with the entry exactly as in the `created: true` branch. Set `landed_topic = {target}` and `result = landed`.
-
-→ Return to caller.
-
-**If the response has `created: false`:**
-
-The artefact is `.workflows/{work_unit}/{landing_phase}/{target}.md`.
-
-→ Proceed to **E. Append the Entry**.
 
 ## D. Closed Target
 
@@ -194,10 +184,3 @@ Nothing written. Set `result = cancelled`.
 
 → Return to caller.
 
-## E. Append the Entry
-
-Append the concern as a `### {short title}` subsection under `.workflows/{work_unit}/{landing_phase}/{target}.md`'s `## Triage` heading, using the entry shape above. If the section holds the `(none)` placeholder, replace it; otherwise add the entry below the existing ones. If the file has no `## Triage` heading at all — an artefact created outside the template — add the heading at end of file with the entry beneath it.
-
-Set `landed_topic = {target}` and `result = landed`.
-
-→ Return to caller.

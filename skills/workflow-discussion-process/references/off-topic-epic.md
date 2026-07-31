@@ -83,10 +83,6 @@ Nothing landed.
 
 **Otherwise:**
 
-The concern landed in `{landed_topic}`'s `## Triage`. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it. Commit:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}/{topic}): reroute concern to {landed_topic}"
-```
+The concern landed in `{landed_topic}`'s triage queue — the delivery committed itself. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it.
 
 → Return to caller for **B. Session Loop**.

@@ -4,9 +4,9 @@
 
 ---
 
-Folds the current topic's `## Triage` entries — concerns rerouted here from other topics — into its working content, then resets the section to `(none)`. Runs at every entry to the session step — the first pass of a session, and again when the conclusion gate bounces back because an entry landed mid-session. A `(none)` artefact is a no-op; a resume or reopen folds whatever landed since the topic last ran.
+Folds the current topic's triage queue — concerns rerouted here from other topics, one file each under `.workflows/{work_unit}/{phase}/.triage/{topic}/` — into its working content, then deletes the drained files. Runs at every entry to the session step — the first pass of a session, and again when the conclusion gate bounces back because a concern landed mid-session. An empty queue is a no-op; a resume or reopen folds whatever landed since the topic last ran.
 
-The fold preserves the **full** rerouted context — each entry becomes real working material the session explores, not a bare map row. The conclusion gate backstops this: a topic cannot conclude while its `## Triage` ≠ `(none)`.
+The fold preserves the **full** rerouted context — each entry becomes real working material the session explores, not a bare map row. The conclusion gate backstops this: a topic cannot conclude while its queue holds entries.
 
 ## Parameters
 
@@ -18,9 +18,9 @@ The caller provides these via context before loading:
 
 ## A. Read
 
-Read the `## Triage` section of `.workflows/{work_unit}/{phase}/{topic}.md`.
+List the topic's triage queue: `.workflows/{work_unit}/{phase}/.triage/{topic}/*.md`.
 
-#### If it holds exactly `(none)`
+#### If the directory is missing or empty
 
 Nothing landed. No-op — do not commit, surface nothing.
 
@@ -28,13 +28,13 @@ Nothing landed. No-op — do not commit, surface nothing.
 
 #### Otherwise
 
-The section holds one or more `### {title}` entries (shape pinned in [triage-landing.md](triage-landing.md)).
+Each file holds one `### {title}` entry (shape pinned in [triage-landing.md](triage-landing.md)). Read every file.
 
 → Proceed to **B. Fold Each Entry**.
 
 ## B. Fold Each Entry
 
-For each `### {title}` subsection under `## Triage`, carry its **full body** (everything below the `*From: ...*` line) into the topic's working content:
+For each queue file, carry its **full body** (everything below the `*From: ...*` line) into the topic's working content:
 
 **If `phase` is `discussion`:**
 
@@ -56,7 +56,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_
 
 - Fold the entry body into the freeform research body as a seed thread under a `### {title}` heading, so the session picks it up from there.
 
-Delete each drained `### {title}` subsection from `## Triage`. When the last entry is removed, reset the section to its `(none)` placeholder.
+Delete each drained queue file (`rm`) — the commit below stages the deletions. (A legacy artefact carrying an old in-document `## Triage` section with real entries: fold and remove those the same way, resetting the section to `(none)`.)
 
 Surface that concerns arrived from elsewhere:
 

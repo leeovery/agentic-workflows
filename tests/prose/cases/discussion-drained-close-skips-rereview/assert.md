@@ -10,7 +10,7 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty
    store — the session proceeds silently), and enters the session step
-4. the triage drain no-ops on a `(none)` section — no commit, nothing
+4. the triage drain no-ops on an empty queue — no commit, nothing
    surfaced
 5. the session loop's check-for-results runs the agent scan and finds
    only the incorporated review row — nothing pending, nothing

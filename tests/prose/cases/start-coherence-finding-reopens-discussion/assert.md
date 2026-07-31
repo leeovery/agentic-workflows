@@ -25,13 +25,14 @@ The prose should have taken this path:
    answer reviews; the finding renders with its category, both quotes,
    and the proposed target; the third scripted answer approves
 7. triage landing classifies the live target — a completed discussion
-   — and `topic triage` reopens it to in-progress; the finding lands
-   in synonym-handling.md's `## Triage` section as one entry carrying
-   the conflict's full context, replacing the `(none)` placeholder
+   — and delivers through the self-committing `topic triage`: the item
+   reopens to in-progress and the finding lands as one file in
+   synonym-handling's triage queue carrying the conflict's full
+   context, committed by the delivery itself
 8. the gate completes: the candidate recorded approved, the tracker
    carries synonym-handling, the spent `analysis_staging` subtree
-   deleted, and one commit — "discovery(search-relevance): coherence
-   findings triaged" — covers the landing
+   deleted, and the gate's commit — "discovery(search-relevance):
+   coherence findings triaged" — covers its state
 9. the orchestrator re-enters the analysis at its cache section: the
    cache file lands at `.state/coherence-analysis.md` and the
    coherence cache is stamped over the one still-completed discussion
@@ -48,10 +49,9 @@ Further claims:
 - synonym-handling's discussion item ends `in-progress` (reopened);
   behavioural-ranking's stays `completed`; relevance-measurement still
   has no per-phase work
-- synonym-handling.md's Triage section holds one entry whose body
-  carries both decisions with quotes anchored to file and section; the
-  `(none)` placeholder is gone; the document's decided sections are
-  otherwise untouched
+- synonym-handling's triage queue holds one file whose body carries
+  both decisions with quotes anchored to file and section; the
+  document itself is untouched
 - `analysis_staging.coherence-analysis` is absent from the manifest
 - `phases.discovery.coherence_analysis_cache` exists with a checksum,
   a generated timestamp, and input_files naming only

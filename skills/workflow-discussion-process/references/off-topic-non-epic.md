@@ -49,13 +49,7 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 
 2. Derive `proposed_name` — a kebab-case topic name for the concern.
 
-3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the concern in the Summary so it isn't lost; otherwise the concern landed as the `{landed_topic}` topic.
-
-4. Commit the landing:
-
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}/{topic}): reroute concern to {landed_topic}"
-   ```
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the concern in the Summary so it isn't lost; otherwise the concern landed as the `{landed_topic}` topic and the delivery committed itself.
 
 > *Output the next fenced block as markdown (not a code block):*
 
