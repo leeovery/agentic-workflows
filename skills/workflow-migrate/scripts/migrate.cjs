@@ -26,6 +26,13 @@
 //   - `*.cjs`: `module.exports = { id, description, run({ projectDir,
 //     reportUpdate, reportSkip }) }` — run in-process. Communicate only via the
 //     report callbacks; never write to stdout. A throw aborts the run.
+//     Optional verification addendum: a module-level `info` string (what the
+//     migration does, project-agnostic) and a `run()` return of
+//     `{ verify: string }` (what to check in this project — returned on skip
+//     paths too, where code may have silently missed what it couldn't
+//     recognise). Addenda from migrations executed this run are emitted as one
+//     JSON line under the VERIFY_ADDENDA marker for boot to hand to the
+//     calling flow's judgment pass. Never re-emitted for recorded migrations.
 //
 // The bash binary used for `*.sh` migrations is `bash` on PATH, overridable via
 // WORKFLOWS_MIGRATE_BASH (a test seam for pinning stock /bin/bash 3.2).
@@ -41,6 +48,10 @@ const MIGRATIONS_DIR = path.join(SCRIPT_DIR, 'migrations');
 // migrate.sh printed this marker iff files were updated — the authoritative
 // "changed" signal boot keys on. Kept byte-identical.
 const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
+
+// Marker preceding the one-line JSON array of verification addenda from
+// migrations executed this run. Boot extracts and strips it.
+const VERIFY_MARKER = '---VERIFY_ADDENDA---';
 
 // Bash used to source `*.sh` migrations. Default `bash` (PATH); the override
 // lets the orchestrator test pin stock /bin/bash 3.2 explicitly.
@@ -190,12 +201,16 @@ function runCjsMigration(scriptAbs) {
   }
   let updated = 0;
   let skipped = 0;
-  mod.run({
+  const ret = mod.run({
     projectDir: '.',
     reportUpdate: () => { updated += 1; },
     reportSkip: () => { skipped += 1; },
   });
-  return { updated, skipped };
+  const verify = ret && typeof ret === 'object' && typeof ret.verify === 'string' && ret.verify.trim() !== ''
+    ? ret.verify.trim()
+    : null;
+  const info = typeof mod.info === 'string' && mod.info.trim() !== '' ? mod.info.trim() : null;
+  return { updated, skipped, verify, info };
 }
 
 /** Abort the run: emit detail on stderr, exit non-zero, record nothing.
@@ -239,6 +254,8 @@ function main() {
 
   let filesUpdated = 0;
   let migrationsRun = 0;
+  /** @type {{id: string, description: string, info: string|null, verify: string}[]} */
+  const addenda = [];
 
   for (const script of scripts) {
     const id = migrationId(script);
@@ -256,6 +273,9 @@ function main() {
 
     if (result.stdout) process.stdout.write(result.stdout);
     filesUpdated += result.updated;
+    if ('verify' in result && result.verify) {
+      addenda.push({ id, description: require(script).description || '', info: result.info, verify: result.verify });
+    }
 
     // Re-find the tracking file (migration 011 moves it), then record the ID.
     trackingRel = findTrackingFile(cwd);
@@ -273,6 +293,11 @@ function main() {
     process.stdout.write('Follow the explicit instructions in the migration skill before proceeding.\n');
   } else {
     process.stdout.write('[SKIP] No changes needed\n');
+  }
+
+  if (addenda.length > 0) {
+    process.stdout.write(VERIFY_MARKER + '\n');
+    process.stdout.write(JSON.stringify(addenda) + '\n');
   }
 }
 

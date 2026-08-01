@@ -33,6 +33,12 @@ const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workfl
 // report drops everything from the marker down.
 const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
 
+// Marker preceding migrate.cjs's one-line JSON array of verification
+// addenda — natural-language check instructions from migrations executed
+// this run, handed to the calling flow's judgment pass and stripped from
+// the report text.
+const VERIFY_MARKER = '---VERIFY_ADDENDA---';
+
 /**
  * @typedef {object} SystemConfigReport
  * @property {'valid'|'absent'|'invalid'} status
@@ -41,8 +47,16 @@ const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
  */
 
 /**
+ * @typedef {object} VerifyAddendum
+ * @property {string} id
+ * @property {string} description
+ * @property {string|null} info   what the migration does — project-agnostic
+ * @property {string} verify      what to check in this project
+ */
+
+/**
  * @typedef {object} BootResult
- * @property {{changed: boolean, output: string}} migrations
+ * @property {{changed: boolean, output: string, verify: VerifyAddendum[]}} migrations
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} compacted
  * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
@@ -103,14 +117,32 @@ function boot(cwd) {
       : `exit ${mig.status}: ${(mig.stderr || mig.stdout || '').trim()}`;
     throw new Error(`migrate.cjs failed — migrations must never half-run silently (${detail})`);
   }
-  const stdout = mig.stdout || '';
+  let stdout = mig.stdout || '';
+  /** @type {VerifyAddendum[]} */
+  let verifyEntries = [];
+  let verifyParseFailure = null;
+  const outLines = stdout.split('\n');
+  const vIdx = outLines.findIndex((line) => line.trim() === VERIFY_MARKER);
+  if (vIdx !== -1) {
+    try {
+      const parsed = JSON.parse(outLines[vIdx + 1] || '');
+      if (Array.isArray(parsed)) verifyEntries = parsed;
+      else verifyParseFailure = 'not an array';
+    } catch (err) {
+      verifyParseFailure = err instanceof Error ? err.message : String(err);
+    }
+    outLines.splice(vIdx, 2);
+    stdout = outLines.join('\n');
+  }
   const migrations = {
     changed: stdout.includes(STOP_GATE_MARKER),
     output: trimReport(stdout),
+    verify: verifyEntries,
   };
 
   /** @type {string[]} */
   const warnings = [];
+  if (verifyParseFailure) warnings.push(`verification addenda unreadable: ${verifyParseFailure}`);
 
   // Migrations reach past .workflows: some edit .claude/settings.json
   // (permission/hook plumbing) and the repo-root .gitignore. The skill's

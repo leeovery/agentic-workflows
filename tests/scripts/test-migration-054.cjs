@@ -138,6 +138,30 @@ describe('migration 054: triage sections to queue', () => {
     teardown(dir);
   });
 
+  it('verify addendum: names converted files, fires on the no-match skip, silent on a fresh project', () => {
+    const dir = setup();
+    write(dir, '.workflows/pay/discussion/alpha.md', DOC);
+    let ret = MIGRATION.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
+    assert.match(ret.verify, /Converted entries from: pay\/discussion\/alpha\.md/);
+    assert.match(ret.verify, /malformed headings/);
+    teardown(dir);
+
+    const dir2 = setup();
+    write(dir2, '.workflows/pay/discussion/clean.md', '# D\n\n## Triage\n\n(none)\n');
+    ret = MIGRATION.run({ projectDir: dir2, reportUpdate: () => {}, reportSkip: () => {} });
+    assert.match(ret.verify, /No in-document entries matched the exact shape/, 'skip path still hands over checks');
+    teardown(dir2);
+
+    const dir3 = setup();
+    ret = MIGRATION.run({ projectDir: dir3, reportUpdate: () => {}, reportSkip: () => {} });
+    assert.strictEqual(ret, undefined, 'no artifacts, nothing to verify');
+    teardown(dir3);
+  });
+
+  it('exports info describing the migration', () => {
+    assert.match(MIGRATION.info, /triage queue/);
+  });
+
   it('research phase converts too', () => {
     const dir = setup();
     write(dir, '.workflows/pay/research/topic.md', '# R\n\n## Triage\n\n### Feasibility flag\n*From: x · discussion · d*\n\nBody.\n');
