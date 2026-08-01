@@ -539,6 +539,9 @@ describe('pipeline simulation', () => {
     assert.strictEqual(parked.concern_path, `.workflows/${wu}/research/.triage/delta/001-parked-concern.md`);
     assert.ok(parked.committed, 'delivery self-commits');
     assert.ok(!fs.existsSync(path.join(sim.dir, 'concern-scratch.md')), 'scratch consumed');
+    const queue = sim.run(['topic', 'queue', wu, 'research', 'delta']);
+    assert.strictEqual(queue.count, 1);
+    assert.deepStrictEqual(queue.files, [parked.concern_path], 'the read verb lists the delivered concern');
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

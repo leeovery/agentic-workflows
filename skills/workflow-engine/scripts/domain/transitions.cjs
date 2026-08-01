@@ -287,6 +287,40 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
 }
 
 /**
+ * @typedef {object} TopicQueueResult
+ * @property {string} work_unit
+ * @property {string} phase
+ * @property {string} topic
+ * @property {number} count
+ * @property {string[]} files  project-relative queue file paths, sorted
+ */
+
+/**
+ * Read a topic's triage queue: the engine owns the queue layout, so gates
+ * and drains ask instead of globbing. Legal only in triage-legal phases;
+ * a missing directory is an empty queue.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} phase
+ * @param {string} topic
+ * @returns {TopicQueueResult}
+ */
+function queueStatus(cwd, workUnit, phase, topic) {
+  assertLegalWrite(phase, 'triaged');
+  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
+    throw new Error(`no work unit directory: .workflows/${workUnit}`);
+  }
+  const dirRel = `.workflows/${workUnit}/${phase}/.triage/${topic}`;
+  /** @type {string[]} */
+  let names = [];
+  try {
+    names = fs.readdirSync(path.join(cwd, dirRel));
+  } catch { /* no queue yet — empty */ }
+  const files = names.filter((f) => f.endsWith('.md')).sort().map((f) => `${dirRel}/${f}`);
+  return { work_unit: workUnit, phase, topic, count: files.length, files };
+}
+
+/**
  * Complete a phase item: set `status: completed` and, when the phase's
  * artifact is knowledge-base indexed, index it (warn-don't-block). The item
  * must exist; a cancelled item must go through reactivate first. No git
@@ -532,4 +566,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic };
+module.exports = { startTopic, triageTopic, queueStatus, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic };

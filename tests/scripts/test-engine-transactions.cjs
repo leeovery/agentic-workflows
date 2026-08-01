@@ -351,6 +351,27 @@ describe('engine topic triage', () => {
     assert.ok(fs.existsSync(path.join(dir, 'c.md')), 'scratch concern preserved on refusal');
   });
 
+  it('queue read: empty for a missing directory, lists delivered concerns sorted, refuses illegal phases', () => {
+    const empty = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
+    assert.deepStrictEqual(empty, { ok: true, work_unit: 'payments', phase: 'discussion', topic: 'edge-cases', count: 0, files: [] });
+
+    for (const slug of ['first', 'second']) {
+      fs.writeFileSync(path.join(dir, 'c.md'), `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
+      engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
+        '--concern', 'c.md', '--slug', slug, '-m', 'discussion(payments/x): reroute concern to edge-cases']);
+    }
+    const two = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
+    assert.strictEqual(two.count, 2);
+    assert.deepStrictEqual(two.files, [
+      '.workflows/payments/discussion/.triage/edge-cases/001-first.md',
+      '.workflows/payments/discussion/.triage/edge-cases/002-second.md',
+    ]);
+
+    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'planning', 'edge-cases']).error, /non-lifecycle phase|Invalid status/);
+    assert.match(engineFails(dir, ['topic', 'queue', 'ghost', 'discussion', 'edge-cases']).error, /no work unit directory/);
+    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'discussion']).error, /Usage/);
+  });
+
   it('is idempotent — a second call on a triaged stub is a no-op', () => {
     engine(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases']);
     const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases']);
@@ -1336,6 +1357,7 @@ describe('engine usage banner', () => {
     for (const line of [
       'topic start <work-unit> <phase> <topic>',
       'topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]',
+      'topic queue <work-unit> <phase> <topic>',
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',

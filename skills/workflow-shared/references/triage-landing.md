@@ -4,7 +4,7 @@
 
 ---
 
-Lands a rerouted concern in a target topic's **triage queue** — `.workflows/{work_unit}/{landing_phase}/.triage/{target}/`, one engine-numbered file per concern — so the target drains it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to route to; their callers ignore the concern, surface it to the inbox, or pivot to an epic, and never load this reference.
+Lands a rerouted concern in a target topic's **triage queue** — one engine-numbered file per concern, installed and committed by the engine — so the target drains it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to route to; their callers ignore the concern, surface it to the inbox, or pivot to an epic, and never load this reference.
 
 The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a concern that belongs to the current topic is normal subtopic or thread work, not a reroute). The delivery is a self-committing engine transaction — the concern file and manifest land action-scoped under the reroute message; the caller commits nothing for the landing itself. (`topic reactivate` in **D** likewise commits itself.)
 
