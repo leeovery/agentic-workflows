@@ -283,6 +283,21 @@ Settled in PR 5 (2026-07-31):
   state-cleanliness benefit of manifest storage is had instead by the
   engine owning the layout: the `topic queue` read verb answers
   `{count, files}`, and no skill prose spells `.triage/`.
+- Mid-session triage surfacing (2026-08-01): the session loops'
+  findings check polls `topic queue`; a mid-flow landing is offered
+  at the next natural break (drain now / later), deferred offers are
+  not re-raised, and the conclusion gate remains the never-lost
+  backstop.
+- Landing phase is judged, not liveness-derived (2026-08-01): the
+  origin session judges research-vs-discussion from the concern's
+  nature and recommends at the existing reroute gate; the delivery
+  handles any target state (park / untouched / reopen). A
+  research-side landing beneath a completed discussion sets
+  `reconcile_needed: research` in the same locked write — staleness
+  begins at landing — surfaced by the reconcile advisory's research
+  arm; the lifecycle join renders the combination as `researching`
+  so the epic menu resurfaces it. New targets route at the judged
+  phase, not the origin's.
 - Verification addenda (2026-08-01, from #673's review): a migration
   over judgment-written content hands its blind spots to judgment —
   optional `info` (intent, project-agnostic) + `verify` returned from
