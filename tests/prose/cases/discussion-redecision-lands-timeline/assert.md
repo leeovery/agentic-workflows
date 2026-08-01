@@ -36,7 +36,8 @@ The prose should have taken this path:
    final gap review and document review steps run without unwinding
    the timeline — the revision landing survives reconciliation intact
 8. the conclusion marks the discussion complete (`topic complete`),
-   commits, and the walk stops at the bridge invocation
+   commits, clears the session's presence heartbeat, finds no
+   leavings to sweep, and the walk stops at the bridge invocation
 
 Further claims:
 
