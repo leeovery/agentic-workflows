@@ -275,6 +275,15 @@ Settled in PR 5 (2026-07-31):
   can never meet an in-document entry.
 - Drain stays prose — the folding is judgment work; only the delivery
   and the commit needed engine ownership.
+- Verification addenda (2026-08-01, from #673's review): a migration
+  over judgment-written content hands its blind spots to judgment —
+  optional `info` (intent, project-agnostic) + `verify` returned from
+  `run()` (project checks, returned on skip paths too: a skip can be
+  a false negative). Boot carries executed migrations' addenda as
+  `migrations.verify`; workflow-start Step 0.1 performs the checks
+  before the confirm gate, fixes riding the migration commit. Fires
+  once, never for recorded migrations. 054 opts in — straggler sweep
+  plus empty-section residue cleanup on non-completed documents.
 
 Open — settle in the owning PR:
 
