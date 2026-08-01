@@ -1,20 +1,18 @@
 # Drain Triage
 
-*Shared reference. Loaded by `workflow-discussion-process` (Step 5) and `workflow-research-process` (Step 6) at the session step, before the session loop runs. The session loops re-enter **D. Mid-Session Check** from their findings check.*
+*Shared reference. Loaded by `workflow-discussion-process` (Step 5) and `workflow-research-process` (Step 6) at the session step, before the session loop runs. The session loops re-enter **E. Mid-Session Check** from their findings check.*
 
 ---
 
-Folds the current topic's triage queue — concerns rerouted here from other topics, one file each — into its working content, then deletes the drained files. Runs at every entry to the session step — the first pass of a session, and again when the conclusion gate bounces back because a concern landed mid-session. An empty queue is a no-op; a resume or reopen folds whatever landed since the topic last ran.
-
-The fold preserves the **full** rerouted context — each entry becomes real working material the session explores, not a bare map row. The conclusion gate backstops this: a topic cannot conclude while its queue holds entries.
+Surfaces the current topic's triage queue — concerns rerouted here from other topics, one file each — **one at a time, through conversation**. A concern leaves the queue only after it has been discussed: surfaced with its full context, worked with the user, folded into the topic's content as the record of that discussion, and absorbed under its own commit. Runs at every entry to the session step and re-offers at every natural break; an empty queue is a no-op. The conclusion gate backstops the whole loop: a topic cannot conclude while its queue holds entries, so nothing is lost however freely the user moves.
 
 ## Parameters
 
 The caller provides these via context before loading:
 
 - `work_unit` — the work unit. Always present.
-- `topic` — the current topic, whose artefact is drained.
-- `phase` — `discussion` or `research`. Selects the artefact path and the fold shape.
+- `topic` — the current topic, whose queue is drained.
+- `phase` — `discussion` or `research`. Selects the artefact and the fold shape.
 
 ## A. Read
 
@@ -32,13 +30,44 @@ Nothing landed. No-op — do not commit, surface nothing.
 
 #### Otherwise
 
-Each path in `files` holds one `### {title}` entry (shape pinned in [triage-landing.md](triage-landing.md)). Read every file.
+Each path in `files` holds one `### {title}` entry (shape pinned in [triage-landing.md](triage-landing.md)). Read every file — the titles and `*From:*` lines feed the agenda; the bodies feed the surfacing.
 
-→ Proceed to **B. Fold Each Entry**.
+→ Proceed to **B. Agenda**.
 
-## B. Fold Each Entry
+## B. Agenda
 
-For each queue file, carry its **full body** (everything below the `*From: ...*` line) into the topic's working content:
+Show the user what is waiting before surfacing anything — scope first, one concern at a time after:
+
+> *Output the next fenced block as a code block:*
+
+```
+  ⚑ {count} rerouted concern(s) waiting in this topic's triage queue:
+
+  1. {title} — from {origin} ({phase}, {date})
+  2. ...
+```
+
+→ Proceed to **C. Surface One Concern**.
+
+## C. Surface One Concern
+
+Take the lowest-numbered concern still queued — or whichever the user asks for. Present it whole: name its origin in a sentence, then emit the file's full content verbatim as a code block (with a rendering instruction) — the origin session carried everything it worked out, and the user decides from the substance, never from the title.
+
+Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many.
+
+**If the discussion reaches an outcome** — a decision, a direction, or the user explicitly parking it as a deferred thread:
+
+→ Proceed to **D. Fold and Absorb**.
+
+**If the user moves on without engaging it** — they bounce to another subtopic, another concern, or the main thread:
+
+The concern stays queued, untouched. Follow them — **E. Mid-Session Check** re-offers at the next natural break, and the conclusion gate holds until the queue is empty.
+
+→ Return to caller.
+
+## D. Fold and Absorb
+
+Record the discussion in the topic's content, then absorb the concern:
 
 **If `phase` is `discussion`:**
 
@@ -48,40 +77,37 @@ Attempt to add `{title}` to the Discussion Map:
 node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {title:(kebabcase)}
 ```
 
-**If the add succeeds** — the concern is new ground: create a `## {title}` subtopic section with the entry body written in as its `### Context`, so the session explores it from there.
+**If the add succeeds** — new ground: create a `## {title}` subtopic section whose `### Context` opens with a provenance line (`*From: {origin} · {phase} · {date}*`) followed by the concern's body, then document what the discussion just concluded in the section's usual shape. Set the subtopic's map state to wherever the conversation actually got it.
 
-**If the add refuses because the subtopic already exists** — the concern names ground this discussion already covers: fold the entry body into that existing subtopic's section, and flip the subtopic back to open so the conclusion gate re-arms and the session must re-decide with the concern in hand:
+**If the add refuses because the subtopic already exists** — ground this discussion already covers: append the provenance line and the concern's body to that subtopic's existing `### Context` — never a new heading of your own — and set the map so the recorded state reflects the re-decision that just happened:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {title:(kebabcase)} exploring
+node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {title:(kebabcase)} {state}
 ```
 
 **If `phase` is `research`:**
 
-- Fold the entry body into the freeform research body as a seed thread under a `### {title}` heading, so the session picks it up from there.
+Fold the concern into the freeform body as a `### {title}` thread opening with the provenance line, followed by the body and what the discussion made of it.
 
-Delete each drained queue file (`rm`) — the commit below stages the deletions.
+Then delete the concern's queue file (`rm`) and commit it by name — one commit per absorbed concern, bracketing its life in history with the delivery commit that landed it:
 
-Surface that concerns arrived from elsewhere:
-
-> *Output the next fenced block as a code block:*
-
-```
-  ⚑ Drained {N} rerouted concern(s) into this topic:
-    {title}, {title}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
 ```
 
-→ Proceed to **C. Commit**.
+**If concerns remain queued:**
 
-## C. Commit
+→ Return to **C. Surface One Concern**.
 
-Commit the drained artefact: `engine commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): drain triage"`.
+**Otherwise:**
+
+The queue is clear.
 
 → Return to caller.
 
-## D. Mid-Session Check
+## E. Mid-Session Check
 
-Entered from the session loop's findings check — notices concerns that landed after the session-entry drain. Run **A. Read**'s queue command. When `count` is `0`, there is nothing to do — return silently.
+Entered from the session loop's findings check — notices concerns that landed after the session-entry pass, and re-offers anything the user set aside. Run **A. Read**'s queue command. When `count` is `0`, there is nothing to do — return silently.
 
 Otherwise, surface at the next natural break — the same mid-thread protection agent findings get, never interrupting a live thread:
 
@@ -89,10 +115,10 @@ Otherwise, surface at the next natural break — the same mid-thread protection 
 
 ```
 · · · · · · · · · · · ·
-{count} concern(s) landed in this topic's triage queue mid-session:
+{count} concern(s) waiting in this topic's triage queue:
 
-- **`d`/`drain`** — Fold them into the session now
-- **`l`/`later`** — Keep the current thread; they fold before conclusion
+- **`d`/`drain`** — Surface the next one now
+- **`l`/`later`** — Keep the current thread
 · · · · · · · · · · · ·
 ```
 

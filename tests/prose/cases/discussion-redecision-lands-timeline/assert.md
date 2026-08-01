@@ -12,13 +12,15 @@ The prose should have taken this path:
    addresses the knowledge base once as a contextual query
    (keyword-only store — the session proceeds), and enters the session
    step
-4. the drain reads the triage queue and finds the Expansion Source
-   entry. The map add refuses — the subtopic already exists — so the
-   fold lands the entry body into the existing `## Expansion Source`
-   section and flips the subtopic back to `exploring`: the map is no
-   longer all-decided, the conclusion gate is re-armed. The drained
-   queue file is deleted, the drained-concern callout is surfaced, and
-   the drain commits with its drain-triage message
+4. the drain reads the triage queue, shows the one-entry agenda, and
+   surfaces the Expansion Source concern whole — its provenance and
+   full body presented to the user, not a title. The session discusses
+   it; the map add refuses — the subtopic already exists — so the fold
+   lands the provenance line and body into the existing
+   `## Expansion Source` section's Context and the subtopic re-arms to
+   `exploring`: the map is no longer all-decided. The queue file is
+   deleted and absorbed under its own commit naming the concern and
+   its origin
 5. the session explores the challenge; the user lands the changed
    decision (batch aggregates, daily refresh). Because the decision
    being re-decided was recorded in an earlier sitting, it lands as a
