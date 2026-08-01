@@ -81,7 +81,7 @@ Commit the drained artefact: `engine commit {work_unit} --topic {phase}/{topic} 
 
 ## D. Mid-Session Check
 
-Entered from the session loop's findings check — notices concerns that landed after the session-entry drain. Run **A. Read**'s queue command. When `count` is `0`, or every listed file has already been offered this session (a deferred offer is not re-raised), there is nothing to do — return silently.
+Entered from the session loop's findings check — notices concerns that landed after the session-entry drain. Run **A. Read**'s queue command. When `count` is `0`, there is nothing to do — return silently.
 
 Otherwise, surface at the next natural break — the same mid-thread protection agent findings get, never interrupting a live thread:
 
@@ -104,6 +104,6 @@ Otherwise, surface at the next natural break — the same mid-thread protection 
 
 **If `later`:**
 
-Note the offered files and do not re-offer them this session. Nothing is lost either way — the conclusion gate routes back through the drain before the topic can conclude.
+Continue the current thread. `later` means *not now*, never *not this session* — the loop's check re-enters here and re-offers at the next natural break, the same cadence review findings keep. The conclusion gate remains the backstop: nothing concludes over an undrained queue.
 
 → Return to caller.
