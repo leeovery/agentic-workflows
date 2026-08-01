@@ -299,6 +299,19 @@ Settled in PR 5 (2026-07-31):
   arm; the lifecycle join renders the combination as `researching`
   so the epic menu resurfaces it. New targets route at the judged
   phase, not the origin's.
+- Drain is a surfacing loop (2026-08-01, revisiting the original
+  findings-style intent): concerns leave the queue one at a time,
+  through conversation — agenda first, each surfaced whole with
+  provenance, discussed, folded as the record of that discussion,
+  absorbed under its own commit naming concern and origin. Batch
+  folding (which wrote substance the conversation never produced)
+  is gone; the queue-empty conclude gate becomes the single
+  never-lost guarantee; queue files stay deleted on absorption —
+  delivery and absorption commits bracket each concern's life, and
+  git history is the provenance ledger (a retained-files/.absorbed
+  store and a manifest ledger were considered and rejected: dual
+  source, drifting duplicate content, and a broken occupancy
+  invariant).
 - Verification addenda (2026-08-01, from #673's review): a migration
   over judgment-written content hands its blind spots to judgment —
   optional `info` (intent, project-agnostic) + `verify` returned from
