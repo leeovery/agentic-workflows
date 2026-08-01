@@ -1,6 +1,6 @@
 # Drain Triage
 
-*Shared reference. Loaded by `workflow-discussion-process` (Step 5) and `workflow-research-process` (Step 6) at the session step, before the session loop runs.*
+*Shared reference. Loaded by `workflow-discussion-process` (Step 5) and `workflow-research-process` (Step 6) at the session step, before the session loop runs. The session loops re-enter **D. Mid-Session Check** from their findings check.*
 
 ---
 
@@ -76,5 +76,34 @@ Surface that concerns arrived from elsewhere:
 ## C. Commit
 
 Commit the drained artefact: `engine commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): drain triage"`.
+
+→ Return to caller.
+
+## D. Mid-Session Check
+
+Entered from the session loop's findings check — notices concerns that landed after the session-entry drain. Run **A. Read**'s queue command. When `count` is `0`, or every listed file has already been offered this session (a deferred offer is not re-raised), there is nothing to do — return silently.
+
+Otherwise, surface at the next natural break — the same mid-thread protection agent findings get, never interrupting a live thread:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+{count} concern(s) landed in this topic's triage queue mid-session:
+
+- **`d`/`drain`** — Fold them into the session now
+- **`l`/`later`** — Keep the current thread; they fold before conclusion
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `drain`:**
+
+→ Return to **A. Read**.
+
+**If `later`:**
+
+Note the offered files and do not re-offer them this session. Nothing is lost either way — the conclusion gate routes back through the drain before the topic can conclude.
 
 → Return to caller.
