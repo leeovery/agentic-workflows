@@ -309,8 +309,18 @@ Settled in PR 5 (2026-07-31):
   once, never for recorded migrations. 054 opts in — straggler sweep
   plus empty-section residue cleanup on non-completed documents.
 
-Open — settle in the owning PR:
+Settled in the presence layer (2026-08-01):
 
-- Where presence lives (cache file vs manifest field) and the
-  staleness threshold. → PR 6
-- Boot serialisation: worth a lock, or accepted edge. → PR 6
+- Presence is a per-topic heartbeat file in the topic's cache dir
+  (gitignored, mtime is the signal) — the textbook ephemeral session
+  machinery. Staleness 900s; loops beat per turn; concludes clear on
+  orderly exit; a crash ages out. `presence scan` is the one shared
+  read, rendering the deferral callout as an engine section.
+- The conclude sweep is presence-gated and action-scoped: a live
+  row's dirt is the peer's; a dead session's leavings commit per
+  dirty topic via `--topic`, never a whole-index sweep.
+- Boot serialisation: accepted edge — migrations are idempotent and
+  tracking-logged; no lock.
+- Research adopts `--topic` commits (final layer): judged landings
+  make concurrent research designed-for; only the topic-split commit
+  stays work-unit scoped (genuinely cross-topic).
