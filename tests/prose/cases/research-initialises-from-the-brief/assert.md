@@ -19,9 +19,8 @@ The prose should have taken this path:
 7. initialisation reads the work's seed and no-ops — an epic's seed
    surfaces per topic through the knowledge base, not here; the brief
    read repeats idempotently; the research file is created from the
-   template with its terminal Triage section, its Starting Point
-   populated from the brief-fed context; the topic is registered
-   through the engine and one commit lands
+   template, its Starting Point populated from the brief-fed context;
+   the topic is registered through the engine and one commit lands
 8. the walk stops there — no knowledge query runs, and the research
    session never starts
 
@@ -40,8 +39,8 @@ EXPECTED WORLD — from a harvested epic with no per-topic work:
   `.workflows/search-relevance/research/relevance-measurement.md`
   holding a Starting Point that reflects the brief — the
   measurement problem, no evaluation set, the user never having built a
-  harness — with a terminal `## Triage` holding `(none)` and no
-  findings recorded yet
+  harness — with no findings recorded yet; the topic's triage queue
+  is empty
 - the manifest holding one research item, relevance-measurement, in
   progress — the epic's only per-phase item — and the topic's discovery
   map item now carrying `brief_incorporated: true`

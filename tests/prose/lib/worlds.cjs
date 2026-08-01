@@ -120,6 +120,10 @@ function excluded(rel) {
   if (rel.startsWith(path.join('.workflows', '.knowledge') + path.sep)) return true;
   if (rel.startsWith(path.join('.claude', 'skills') + path.sep)) return true;
   if (rel.startsWith(path.join('.claude', 'agents') + path.sep)) return true;
+  // Presence heartbeats are timing noise: every session loop beats one per
+  // turn, and no case claim can meaningfully pin an mtime artifact. Other
+  // cache content (the agent store) stays visible — cases pin its rows.
+  if (parts[0] === '.workflows' && parts[1] === '.cache' && parts[parts.length - 1] === 'presence') return true;
   return false;
 }
 

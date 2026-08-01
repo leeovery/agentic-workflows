@@ -43,7 +43,9 @@ Further claims:
   lifecycle carries the walk, and surfacing the last finding is what
   closes the row
 - nothing is written: no discussion-file edit, no map change, no
-  commit — the only state change is the surface call's
+  commit — the only state change is the surface call's (per-turn
+  presence heartbeats under `.workflows/.cache/` are expected, not
+  writes)
 - the walk stops with the question pending; the user never answers it
 
 EXPECTED WORLD — the fixture plus exactly one change: the agent store

@@ -8,12 +8,11 @@ The prose should have taken this path:
 2. the process reads the status again, finds no discussion file, and
    starts fresh — no resume choice is put to the user
 3. initialisation registers the discussion through the engine before
-   the file exists, creates the file from the template with its
-   terminal Triage section, seeds initial subtopics on the map as
-   pending, and commits once
+   the file exists, creates the file from the template, seeds initial
+   subtopics on the map as pending, and commits once
 4. the guidelines load, and the knowledge base is addressed once as a
    contextual query; with an empty store the session proceeds silently
-5. the triage drain no-ops on a `(none)` section — no commit, nothing
+5. the triage drain no-ops on an empty queue — no commit, nothing
    surfaced
 6. the session runs as an organic conversation: subtopics move through
    their lifecycle by engine calls as the discussion progresses, and
@@ -71,8 +70,8 @@ EXPECTED WORLD — from a feature holding only its discovery carrier:
   sections whose decisions match what the user actually said — webhook
   capture over polling, orders left open for bounded retries, hosted
   fields keeping card data out of scope — a Summary noting the unpaid
-  order expiry window as an open thread, and a terminal `## Triage`
-  holding `(none)`
+  order expiry window as an open thread; the topic's triage queue is
+  empty
 - the manifest holding the discussion in progress with every subtopic
   settled — `decided` or `deferred`, none left pending or exploring —
   the subtopics the user drove to decisions all `decided`, and an
