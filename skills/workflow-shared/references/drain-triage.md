@@ -56,7 +56,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_
 
 - Fold the entry body into the freeform research body as a seed thread under a `### {title}` heading, so the session picks it up from there.
 
-Delete each drained queue file (`rm`) — the commit below stages the deletions. (A legacy artefact carrying an old in-document `## Triage` section with real entries: fold and remove those the same way, resetting the section to `(none)`.)
+Delete each drained queue file (`rm`) — the commit below stages the deletions.
 
 Surface that concerns arrived from elsewhere:
 
