@@ -275,6 +275,14 @@ Settled in PR 5 (2026-07-31):
   can never meet an in-document entry.
 - Drain stays prose — the folding is judgment work; only the delivery
   and the commit needed engine ownership.
+- The queue store stays the filesystem (2026-08-01, from #673's
+  review, considered against manifest storage): concern bodies are
+  judgment-written prose — content belongs in files (the briefs
+  idiom), and queue files keep recovery commits human-readable where
+  manifest-embedded bodies would be escaped JSON blobs. Every
+  state-cleanliness benefit of manifest storage is had instead by the
+  engine owning the layout: the `topic queue` read verb answers
+  `{count, files}`, and no skill prose spells `.triage/`.
 - Verification addenda (2026-08-01, from #673's review): a migration
   over judgment-written content hands its blind spots to judgment —
   optional `info` (intent, project-agnostic) + `verify` returned from
