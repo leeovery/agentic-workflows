@@ -151,6 +151,23 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.strictEqual(missing.note, 'nothing to commit');
   });
 
+  it('regression: --topic commits survive an emptied triage queue (the post-drain state)', () => {
+    // Deliver a concern (creates + commits the sidecar file), drain it (rm +
+    // commit stages the deletion), then keep working: the emptied-but-present
+    // directory must not poison later --topic commits.
+    fs.writeFileSync(path.join(dir, 'c.md'), '### Q\n*From: x · discussion · d*\n\nBody.\n');
+    engine(dir, ['topic', 'triage', 'payments', 'discussion', 'topic-a',
+      '--concern', 'c.md', '--slug', 'q', '-m', 'discussion(payments/x): reroute concern to topic-a']);
+    fs.unlinkSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a/001-q.md'));
+    const drain = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): drain triage', '--topic', 'discussion/topic-a']);
+    assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
+
+    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress after the drain\n');
+    const after = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
+    assert.match(after.committed, /^[0-9a-f]+$/, 'the emptied queue directory no longer breaks the pathspec');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a')), 'the empty dir is still on disk — excluded, not deleted');
+  });
+
   it('does not stage the knowledge store — the KB dir never rides a --topic commit', () => {
     writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
