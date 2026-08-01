@@ -1102,6 +1102,12 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: 'in-progress', triage_parked: false });
     });
 
+    it('returns researching when reopened research sits beneath a completed discussion', () => {
+      const m = loadWithPhases('auth', { research: 'in-progress', discussion: 'completed' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: 'in-progress', triage_parked: false });
+    });
+
     it('returns ready_for_discussion when research is completed and no discussion item yet', () => {
       const m = loadWithPhases('auth', { research: 'completed' });
       const r = computeTopicLifecycle(m, 'auth');

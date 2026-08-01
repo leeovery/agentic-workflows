@@ -16,7 +16,8 @@ The caller provides these via context before loading:
 - `target` — the destination topic the concern belongs to (an existing map name, or a new kebab-case name the caller proposed and confirmed).
 - `concern` — the concern as a short title, plus the full context discussed about it.
 - `origin` — the topic the concern surfaced in (the current session's topic).
-- `phase` — the current session's phase, `research` or `discussion`. Recorded in the entry, and the routing for a brand-new target.
+- `phase` — the current session's phase, `research` or `discussion`. Recorded in the entry.
+- `landing_phase` — where the concern lands on the target, `research` or `discussion`: judged by the origin session from the concern's nature (an open question needing exploration → research; a decision needing making → discussion), recommended and confirmed at the caller's gate. The coherence findings gate always passes `discussion`. Any target state is legal — the delivery parks, leaves live work untouched, or reopens completed work as needed.
 - `date` — today's date.
 
 After return, the caller reads these from conversation memory:
@@ -37,7 +38,7 @@ Each rerouted concern is one queue file. Pin this exact content shape — the dr
 
 Carry **everything** worked out about the concern — as many paragraphs as it takes. Do not summarise or trim: the target topic processes this entry from cold when it next runs, so it needs the whole context, not a one-line pointer. One paragraph or ten, write whatever conveys what was discussed. (In practice a concern caught early carries little; that's fine too.)
 
-## A. Classify the Target
+## A. Resolve the Target
 
 Resolution is computed against the **live** state at landing time, never cached — a target created earlier in the same session must resolve correctly:
 
@@ -61,44 +62,15 @@ The topic is closed — no future session will drain its queue, and concluded ar
 
 #### Otherwise
 
-The dump's `phase=` field only reflects live phase work — completed, cancelled, and superseded items exist without it. Classify by the phase items themselves. Read both statuses (`get` prints nothing for an absent item):
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{target} status
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{target} status
-```
-
-Evaluate in order — first match wins:
-
-**If the discussion status is `in-progress`, `completed`, or `triaged`:**
-
-Set `landing_phase = discussion`.
-
-→ Proceed to **C. Land the Concern**.
-
-**If the research status is `in-progress`, `completed`, or `triaged`:**
-
-Set `landing_phase = research`.
-
-→ Proceed to **C. Land the Concern**.
-
-**If both phase items exist in terminal states `topic triage` refuses (`cancelled`, `superseded`, or `promoted`):**
-
-The topic is closed on every side — no phase can accept the concern. Set `lifecycle = cancelled`.
-
-→ Proceed to **D. Closed Target**.
-
-**Otherwise:**
-
-Set `landing_phase` to the row's `routing=` value — unless that phase's item exists in a terminal state `topic triage` refuses (`cancelled`, `superseded`, or `promoted`), in which case set `landing_phase` to the other phase.
+The landing phase is already judged and confirmed — `{landing_phase}` decides, not the target's live state. The delivery handles every item state (absent → parked; live → untouched; completed → reopened), and a terminal item refuses loudly with its recovery path.
 
 → Proceed to **C. Land the Concern**.
 
 ## B. New Target
 
-Create the target via the shared topic-creation core, routed at the current phase. No `phase` is passed — the phase item is created as `triaged` in **C**, never started:
+Create the target via the shared topic-creation core, routed at the judged landing phase. No `phase` is passed — the phase item is created as `triaged` in **C**, never started:
 
-→ Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `{phase}`, source = `reroute:{origin}`.
+→ Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `{landing_phase}`, source = `reroute:{origin}`.
 
 **If `result` is `cancelled`:**
 
@@ -108,7 +80,7 @@ The user dropped the new target — nothing was written.
 
 **Otherwise:**
 
-The topic was created — `{created_topic}` holds the validated name. Set `landing_phase = {phase}` and `target = {created_topic}`.
+The topic was created — `{created_topic}` holds the validated name. Set `target = {created_topic}`.
 
 → Proceed to **C. Land the Concern**.
 
@@ -132,7 +104,7 @@ Surface the engine's error verbatim — it names the recovery path (e.g. a cance
 
 **Otherwise:**
 
-Set `landed_topic = {target}` and `result = landed`.
+Set `landed_topic = {target}` and `result = landed`. When the response carries `reconcile_flagged`, the target's completed discussion was flagged for reconciliation — the caller's landing line should say so.
 
 → Return to caller.
 
@@ -170,13 +142,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_un
 
 If the response is `ok: false`, surface the engine's error verbatim and re-render this menu — the concern is still unlanded. Otherwise re-classify against the fresh state:
 
-→ Return to **A. Classify the Target**.
+→ Return to **A. Resolve the Target**.
 
 **If `elsewhere`:**
 
 Ask the user which topic the concern should land in, set `target` to their answer, and re-classify:
 
-→ Return to **A. Classify the Target**.
+→ Return to **A. Resolve the Target**.
 
 **If `drop`:**
 

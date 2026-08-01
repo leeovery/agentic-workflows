@@ -62,18 +62,22 @@ Where should "{concern}" land?
 - **`1`** — {candidate} [{lifecycle}]
 - **`2`** — {candidate} [{lifecycle}]
 - **`n`/`new`** — Create a new topic for it
+
+It reads as {an open question — I'd land it research-side|a decision to make — I'd land it discussion-side}. Append a phase to override (e.g. `1 discussion`).
 · · · · · · · · · · · ·
 ```
 
+Before rendering, judge `landing_phase` from the concern's nature: an open question needing exploration → `research`; a decision needing making → `discussion`. The menu states the recommendation.
+
 **STOP.** Wait for user response.
 
-A chosen candidate is the target; `new` means propose a kebab-case name and confirm it.
+A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. A phase appended to the selection overrides `landing_phase`.
 
 → Proceed to **C. Land It**.
 
 ## C. Land It
 
-→ Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel.
+→ Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel.
 
 **If `result` is `cancelled`:**
 
@@ -83,6 +87,6 @@ Nothing landed.
 
 **Otherwise:**
 
-The concern landed in `{landed_topic}`'s triage queue — the delivery committed itself. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it.
+The concern landed in `{landed_topic}`'s {landing_phase} triage queue — the delivery committed itself@if(reconcile_flagged), and `{landed_topic}`'s completed discussion is flagged to reconcile against the reopened research@endif. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it.
 
 → Return to caller for **B. Session Loop**.

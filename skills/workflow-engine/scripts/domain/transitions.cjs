@@ -147,6 +147,7 @@ function startTopic(cwd, workUnit, phase, topic) {
  * @property {string|null} status_before  the item's status before the call (null when created)
  * @property {boolean} [reopened]  set when a completed item was reopened to receive the concern
  * @property {string} [concern_path]  delivery form: the installed concern file, project-relative
+ * @property {boolean} [reconcile_flagged]  delivery form: a research-side landing flagged the topic's completed discussion for reconciliation
  * @property {string|null} [committed]  delivery form: short commit sha, or null
  * @property {string} [note]       delivery form: set when committed is null
  * @property {string[]} [warnings] delivery form: the tail commit's failure detail
@@ -247,6 +248,21 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
       } else {
         base = { topic, phase, status: before, created: false, status_before: before };
         dirty = false;
+      }
+    }
+
+    if (delivering && phase === 'research') {
+      // A research-side landing beneath a decided discussion reopens the
+      // ground that discussion stands on — flag it for reconciliation the
+      // next time the discussion is entered. Staleness begins at landing,
+      // not at the research's later conclusion.
+      const dItems = manifest.phases && manifest.phases.discussion && typeof manifest.phases.discussion === 'object'
+        ? manifest.phases.discussion.items : undefined;
+      const dItem = dItems && typeof dItems === 'object' ? dItems[topic] : undefined;
+      if (dItem && typeof dItem === 'object' && dItem.status === 'completed') {
+        dItem.reconcile_needed = 'research';
+        base.reconcile_flagged = true;
+        dirty = true;
       }
     }
 

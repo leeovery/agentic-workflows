@@ -351,6 +351,31 @@ describe('engine topic triage', () => {
     assert.ok(fs.existsSync(path.join(dir, 'c.md')), 'scratch concern preserved on refusal');
   });
 
+  it('research-side delivery beneath a completed discussion flags it for reconciliation', () => {
+    fs.writeFileSync(path.join(dir, 'c.md'), '### Q\n*From: x · discussion · d*\n\nBody.\n');
+    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'session-model',
+      '--concern', 'c.md', '--slug', 'open-question', '-m', 'discussion(payments/x): reroute concern to session-model']);
+
+    assert.strictEqual(res.reconcile_flagged, true);
+    const m = readManifest(dir, 'payments');
+    assert.strictEqual(m.phases.discussion.items['session-model'].reconcile_needed, 'research');
+    assert.strictEqual(m.phases.discussion.items['session-model'].status, 'completed', 'the discussion itself is not reopened');
+    assert.strictEqual(m.phases.research.items['session-model'].status, 'triaged', 'the research item parks the concern');
+  });
+
+  it('no reconcile flag for discussion-side deliveries or live discussions', () => {
+    fs.writeFileSync(path.join(dir, 'c.md'), 'content\n');
+    const disc = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model',
+      '--concern', 'c.md', '--slug', 'a-decision', '-m', 'm']);
+    assert.strictEqual(disc.reconcile_flagged, undefined);
+
+    fs.writeFileSync(path.join(dir, 'c.md'), 'content\n');
+    const live = engine(dir, ['topic', 'triage', 'payments', 'research', 'refund-policy',
+      '--concern', 'c.md', '--slug', 'open-q', '-m', 'm']);
+    assert.strictEqual(live.reconcile_flagged, undefined, 'in-progress discussion is not flagged');
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].reconcile_needed, undefined);
+  });
+
   it('queue read: empty for a missing directory, lists delivered concerns sorted, refuses illegal phases', () => {
     const empty = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
     assert.deepStrictEqual(empty, { ok: true, work_unit: 'payments', phase: 'discussion', topic: 'edge-cases', count: 0, files: [] });

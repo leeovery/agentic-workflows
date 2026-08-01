@@ -80,7 +80,7 @@ A processed gate's state is spent — landed findings live in their targets' tri
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.coherence-analysis
 ```
 
-Commit — one commit covers every landing and skip from this gate (triage-landing deliberately does not commit):
+Commit — this commit covers the gate's own state and skips (each landing already committed itself through the delivery):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): coherence findings triaged"
@@ -163,7 +163,7 @@ Revise this block's `target`, `summary`, or context in the staging file per the 
 
 Deliver through the shared triage landing — the finding's title, quotes, and full context paragraphs travel as the concern so the reopened session can resolve it from cold. `origin` is the block's `counterpart`; for a single-document finding (`counterpart: (none)`) pass the literal `coherence-review` instead — the entry's provenance line then names the check, not a topic:
 
-→ Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{finding title + both quotes with citations + the block's full context paragraphs}`, origin = `{counterpart, or coherence-review}`, phase = `discussion`, date = `{today}`.
+→ Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{finding title + both quotes with citations + the block's full context paragraphs}`, origin = `{counterpart, or coherence-review}`, phase = `discussion`, landing_phase = `discussion`, date = `{today}`.
 
 On return, read `result`.
 

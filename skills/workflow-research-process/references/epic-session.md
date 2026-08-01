@@ -47,7 +47,7 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
    node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
    ```
 
-   Resolve the target. If one topic clearly matches, propose it and confirm with the user. If nothing fits, propose a new kebab-case name and confirm. If several plausible candidates exist — or a near-match you're unsure of — present them and let the user choose:
+   Resolve the target, and judge `landing_phase` from the concern's nature: an open question needing exploration → `research`; a decision needing making → `discussion`. If one topic clearly matches, propose it — with the recommended phase — and confirm with the user (their reply may override the phase). If nothing fits, propose a new kebab-case name and confirm. If several plausible candidates exist — or a near-match you're unsure of — present them and let the user choose:
 
    > *Output the next fenced block as markdown (not a code block):*
 
@@ -67,7 +67,7 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
 
 2. Record the concern with the full context discussed about it as `concern` — the target topic picks it up cold.
 
-3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `research`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s triage queue — the delivery committed itself.
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s {landing_phase} triage queue — the delivery committed itself@if(reconcile_flagged), and `{landed_topic}`'s completed discussion is flagged to reconcile against the reopened research@endif.
 
 → Return to **B. Session Loop**.
 
