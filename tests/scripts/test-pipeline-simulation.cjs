@@ -552,6 +552,14 @@ describe('pipeline simulation', () => {
     assert.strictEqual(flagged.reconcile_flagged, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.reconcile_needed, 'research');
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'completed');
+    // Presence: a beat reads live (deferral territory for the bridge), the
+    // orderly clear empties the scan.
+    sim.run(['presence', 'beat', wu, 'research', 'alpha']);
+    const present = sim.run(['presence', 'scan', wu]);
+    assert.strictEqual(present.live, 1);
+    assert.strictEqual(present.sessions[0].topic, 'alpha');
+    sim.run(['presence', 'clear', wu, 'research', 'alpha']);
+    assert.strictEqual(sim.run(['presence', 'scan', wu]).live, 0);
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

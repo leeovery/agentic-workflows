@@ -16,6 +16,8 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
    Then check the triage queue: follow **D. Mid-Session Check** in **[drain-triage.md](../../workflow-shared/references/drain-triage.md)** — a concern rerouted here mid-session is offered at the next natural break, and re-offered at later breaks until drained; the conclusion gate is the backstop.
 
+   Beat presence — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} research {topic}` — the freshness signal peer sessions, the bridge, and the conclude sweep read.
+
 2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next.
 
 3. **Engage** — Don't just collect the answer. React to it. Challenge assumptions. Explore implications. Follow promising tangents. Connect what the user just said to something from earlier. This is where your value as a research partner lives — you're thinking alongside, not just recording.
