@@ -18,7 +18,7 @@ Whatever those loads returned — a seed, a brief, the handoff's carrier descrip
    ```
 4. Commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): initialize {topic} research"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}): initialize {topic} research"
    ```
 
 → Return to caller.
