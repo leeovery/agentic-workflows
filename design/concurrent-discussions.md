@@ -270,9 +270,9 @@ Settled in PR 5 (2026-07-31):
 - Concern transport: `--concern <file>` written to the origin topic's
   phase cache; the engine consumes the scratch on delivery. `-m` is
   required with it — attribution belongs to the rerouting session.
-- Migration 054 one-shot converts existing in-document sections; the
-  drain keeps a legacy fallback (folds and resets a real in-document
-  section the same way) for artifacts that predate the queue.
+- Migration 054 one-shot converts existing in-document sections — no
+  drain fallback: boot runs migrations before any session, so a drain
+  can never meet an in-document entry.
 - Drain stays prose — the folding is judgment work; only the delivery
   and the commit needed engine ownership.
 
