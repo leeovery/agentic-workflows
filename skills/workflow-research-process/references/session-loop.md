@@ -14,9 +14,9 @@ Not a rigid checklist — a natural cadence for productive research conversation
    
    Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the shared protocol.** Skip only when no agents have been dispatched yet — the store decides, not the iteration count: a resumed session may hold agents from an earlier sitting.
 
-   Then check the triage queue: follow **E. Mid-Session Check** in **[drain-triage.md](../../workflow-shared/references/drain-triage.md)** — a concern rerouted here mid-session is offered at the next natural break, and re-offered at later breaks until drained; the conclusion gate is the backstop.
+   Then check the triage queue: follow **F. Mid-Session Check** in **[drain-triage.md](../../workflow-shared/references/drain-triage.md)** — a concern rerouted here mid-session is offered at the next natural break, and re-offered at later breaks until drained; the conclusion gate is the backstop.
 
-   Beat presence, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} research {topic}` — the freshness signal peer sessions, the bridge, and the conclude sweep read.
+   Beat presence, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} research {topic}`.
 
 2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next.
 

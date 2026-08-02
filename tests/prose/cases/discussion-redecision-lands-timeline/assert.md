@@ -12,10 +12,11 @@ The prose should have taken this path:
    addresses the knowledge base once as a contextual query
    (keyword-only store — the session proceeds), and enters the session
    step
-4. the drain reads the triage queue, shows the one-entry agenda, and
-   surfaces the Expansion Source concern whole — its provenance and
-   full body presented to the user, not a title. The session discusses
-   it; the map add refuses — the subtopic already exists — so the fold
+4. the entry pass reads the triage queue and shows the one-entry
+   agenda; once the session machinery is loaded, the loop's check
+   offers the concern and surfaces it whole — its provenance and full
+   body presented to the user, not a title. The session discusses it;
+   the map add refuses — the subtopic already exists — so the fold
    lands the provenance line and body into the existing
    `## Expansion Source` section's Context and the subtopic re-arms to
    `exploring`: the map is no longer all-decided. The queue file is
