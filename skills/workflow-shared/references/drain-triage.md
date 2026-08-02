@@ -61,6 +61,8 @@ The agenda is the whole entry pass — the session loop's check (**F. Mid-Sessio
 
 Take the lowest-numbered concern still queued — or whichever the user asks for. Present it whole: name its origin in a sentence, then emit the file's full content verbatim as markdown (not a code block) — the entry is markdown and renders as such; the origin session carried everything it worked out, and the user decides from the substance, never from the title.
 
+Then break it down in your own voice before asking anything. The reopened ground may be days old and the reader cold — the verbatim entry is the record, the breakdown is what makes it workable: what the concern actually asks of this topic, how it sits against what this discussion already decided, and a concrete rendering of the problem — a worked example in the topic's own terms, a small diagram where shape or flow helps, a before/after. Keep it simple and engineer-level, sized to the concern, and vary the shape across a multi-concern drain — identical breakdowns read as a template, not a colleague. The test: the user can picture the problem before the first question arrives. End in a single opening question.
+
 **STOP.** Wait for user response.
 
 **If `phase` is `discussion` and the concern's title names an existing subtopic in a settled state** (`decided` or `deferred`): the ground is reopening — re-arm it before the discussion starts, so the map tells the truth while the re-decision is live:
