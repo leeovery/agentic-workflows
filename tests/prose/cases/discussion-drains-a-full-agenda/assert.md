@@ -30,9 +30,16 @@ The prose should have taken this path:
 
 Further claims:
 
-- the discussion document holds two subtopic sections, each opening
-  its Context with a provenance line naming the origin topic, each
-  recording its decision; the map holds both subtopics `decided`
+- the discussion document holds the two drained subtopic sections,
+  each opening its Context with a provenance line naming the origin
+  topic, each recording its decision; the map holds both `decided`.
+  Initialisation may legitimately have seeded further subtopics from
+  the brief — any such ended `decided` or `deferred`, never left
+  pending — but the triage-queue titles were not pre-seeded: the
+  drained subtopics entered the map at their folds
+- a fold's decision may carry a `Sibling check:` line citing the
+  origin sibling's decided text — legal where the resolution leans on
+  ground that sibling owns, never required
 - the triage queue directory for relevance-measurement is empty —
   both files deleted by their absorbs, deletions staged by the absorb
   commits
