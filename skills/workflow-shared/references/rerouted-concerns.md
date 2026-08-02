@@ -125,7 +125,7 @@ Then break it down in your own voice before asking anything. The reopened ground
 
 **STOP.** Wait for user response.
 
-Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer. A question from the user about the process itself suspends the concern, never the opt-in: answer it and stop — the answer is never licence to fold, absorb, or raise; the walk resumes on their word.
+Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer.
 
 **If the discussion reaches an outcome** — a decision, a direction, or the user explicitly parking it as a deferred thread:
 
