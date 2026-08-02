@@ -29,7 +29,7 @@ Not a rigid checklist — a natural cadence for productive research conversation
 6. **Commit & dispatch check** — Commit after each write. Don't batch — the commit history is your safety net across context compaction. When the write documents an agent finding's engagement, the subject carries `({id} {finding})` — e.g. `research({work_unit}/{topic}): pinned retry bound (review-003 F2)` — and the commit carries only the engagement's write; unrelated substance commits separately:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}/{topic}): {what changed}"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): {what changed}"
    ```
 
    Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and deep-dive agent instructions loaded by the session wrapper. If conditions are met, dispatch before continuing. If not, proceed.

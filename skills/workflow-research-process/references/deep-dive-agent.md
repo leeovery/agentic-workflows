@@ -125,7 +125,7 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 3. **If `result` is `cancelled`:** the promotion was dropped — the findings stay in the cache file. Otherwise create the research file at `.workflows/{work_unit}/research/{created_topic}.md` and synthesise the deep-dive findings into it (don't copy the cache file verbatim — organise for the research document context), then commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): add {created_topic} research from deep dive"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{created_topic} -m "research({work_unit}): add {created_topic} research from deep dive"
    ```
 
 For feature work types, deep-dive findings fold into the existing research file — there is only one research topic per feature.

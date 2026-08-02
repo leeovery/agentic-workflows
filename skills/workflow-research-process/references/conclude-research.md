@@ -31,7 +31,7 @@ A concern was rerouted into this topic after drain ran this session. It must be 
    ```
 2. Final commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): complete {topic} research"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} --kb -m "research({work_unit}): complete {topic} research"
    ```
 
 Emit the `complete` response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.

@@ -496,7 +496,7 @@ describe('pipeline simulation', () => {
     // Alpha: research then discussion; regenerated-brief reconcile flag rides.
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
-    sim.run(['commit', wu, '-m', `research(${wu}): alpha`]);
+    sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
     const ops = sim.write(`.workflows/.cache/${wu}/discovery/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.research.alpha`, fields: { reconcile_needed: true } }]);
