@@ -83,13 +83,15 @@ Files were updated, or a migration handed over checks its code could not perform
 
    **If nothing changed** (the migrations skipped everything and verification found nothing to fix):
 
-> *Output the next fenced block as a code block:*
+   > *Output the next fenced block as a code block:*
 
-```
-All documents up to date.
-```
+   ```
+   All documents up to date.
+   ```
 
-   **Do not stop here.** → Proceed to **Step 0.2**.
+   **Do not stop here.** Nothing needs review.
+
+   → Proceed to **Step 0.2**.
 
 3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
 4. Display the summary (`{N}`/`{M}` come from `migrations.output`; when it reports no changes — verification fixes only — omit the counts line):

@@ -50,22 +50,24 @@ Conclude this discussion and mark as completed?
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} --kb -m "discussion({work_unit}): complete {topic} discussion"
    ```
 
-Emit the `complete` response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.
+   Emit the `complete` response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.
 
-Then clear this session's presence and sweep for leavings:
+4. Clear this session's presence and sweep for leavings:
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs presence clear {work_unit} discussion {topic}
-git status --porcelain -- .workflows
-```
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs presence clear {work_unit} discussion {topic}
+   git status --porcelain -- .workflows
+   ```
 
-**If dirt remains under another topic's paths:** run `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}`. Dirt under a `live` row's topic belongs to that session — leave it. For each dirty topic with no live presence — a crashed session's leavings — commit it action-scoped: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{dirty_topic} -m "chore({work_unit}/{dirty_topic}): sweep session leavings"`.
+   **If dirt remains under another topic's paths:** run `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}`. Dirt under a `live` row's topic belongs to that session — leave it. For each dirty topic with no live presence — a crashed session's leavings — commit it action-scoped: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{dirty_topic} -m "chore({work_unit}/{dirty_topic}): sweep session leavings"`.
 
-4. Closing recap:
+   **Otherwise:** nothing to sweep — continue.
+
+5. Closing recap:
 
    → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `discussion`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-5. Hand off to the pipeline bridge:
+6. Hand off to the pipeline bridge:
 
 > *Output the next fenced block as markdown (not a code block):*
 

@@ -58,16 +58,20 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
    - **`1`** — {candidate} [{state}]
    - **`2`** — {candidate} [{state}]
    - **`n`/`new`** — Create a new topic for it
+
+   It reads as {concern_nature:[an open question — I'd land it research-side|a decision to make — I'd land it discussion-side]}. Reply with an option, appending a phase to override (e.g. `1 discussion`).
    · · · · · · · · · · · ·
    ```
 
    **STOP.** Wait for user response.
 
-   A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. If the resolved target is the current topic, it's not a reroute — fold it into this research file as a thread and → Return to **B. Session Loop**.
+   A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. A phase appended to the selection overrides `landing_phase`. If the resolved target is the current topic, it's not a reroute — fold it into this research file as a thread and → Return to **B. Session Loop**.
 
 2. Record the concern with the full context discussed about it as `concern` — the target topic picks it up cold.
 
-3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s {landing_phase} triage queue — the delivery committed itself@if(reconcile_flagged), and `{landed_topic}`'s completed discussion is flagged to reconcile against the reopened research@endif.
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `{landing_phase}` triage queue — the delivery committed itself.
+
+   **If the response carried `reconcile_flagged`:** also tell the user `{landed_topic}`'s completed discussion is flagged to reconcile against the reopened research.
 
 → Return to **B. Session Loop**.
 
