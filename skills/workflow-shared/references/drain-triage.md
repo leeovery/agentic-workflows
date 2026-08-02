@@ -4,7 +4,7 @@
 
 ---
 
-Folds the current topic's triage queue — concerns rerouted here from other topics, one file each under `.workflows/{work_unit}/{phase}/.triage/{topic}/` — into its working content, then deletes the drained files. Runs at every entry to the session step — the first pass of a session, and again when the conclusion gate bounces back because a concern landed mid-session. An empty queue is a no-op; a resume or reopen folds whatever landed since the topic last ran.
+Folds the current topic's triage queue — concerns rerouted here from other topics, one file each — into its working content, then deletes the drained files. Runs at every entry to the session step — the first pass of a session, and again when the conclusion gate bounces back because a concern landed mid-session. An empty queue is a no-op; a resume or reopen folds whatever landed since the topic last ran.
 
 The fold preserves the **full** rerouted context — each entry becomes real working material the session explores, not a bare map row. The conclusion gate backstops this: a topic cannot conclude while its queue holds entries.
 
@@ -18,9 +18,13 @@ The caller provides these via context before loading:
 
 ## A. Read
 
-List the topic's triage queue: `.workflows/{work_unit}/{phase}/.triage/{topic}/*.md`.
+List the topic's triage queue:
 
-#### If the directory is missing or empty
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} {phase} {topic}
+```
+
+#### If `count` is `0`
 
 Nothing landed. No-op — do not commit, surface nothing.
 
@@ -28,7 +32,7 @@ Nothing landed. No-op — do not commit, surface nothing.
 
 #### Otherwise
 
-Each file holds one `### {title}` entry (shape pinned in [triage-landing.md](triage-landing.md)). Read every file.
+Each path in `files` holds one `### {title}` entry (shape pinned in [triage-landing.md](triage-landing.md)). Read every file.
 
 → Proceed to **B. Fold Each Entry**.
 

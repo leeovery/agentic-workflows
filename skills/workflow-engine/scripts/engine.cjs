@@ -23,7 +23,7 @@ const { commitScopedWithKb, commitPathspecScoped, KB_DIR } = require('./domain/c
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
-const { startTopic, triageTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, triageTopic, queueStatus, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const taskSections = require('./domain/projections/tasks.cjs');
 const txSections = require('./domain/projections/transactions.cjs');
@@ -141,6 +141,7 @@ Commands:
   discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
   topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]
+  topic queue <work-unit> <phase> <topic>
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -524,6 +525,14 @@ function runTopic(argv) {
         throw new Error('Usage: engine topic supersede <work-unit> <phase> <topic> --by <topic>');
       }
       respond(supersedeTopic(process.cwd(), workUnit, phase, topic, { by: opts.by }));
+      return;
+    }
+    if (command === 'queue') {
+      const [workUnit, phase, topic] = rest;
+      if (!workUnit || !phase || !topic || rest.length !== 3) {
+        throw new Error('Usage: engine topic queue <work-unit> <phase> <topic>');
+      }
+      respond(queueStatus(process.cwd(), workUnit, phase, topic));
       return;
     }
     if (command === 'triage') {

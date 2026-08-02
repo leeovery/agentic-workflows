@@ -126,6 +126,7 @@ Across the family, the knowledge base is a derived index — its failures land i
 ```bash
 engine topic start <work-unit> <phase> <topic>
 engine topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]   # research|discussion only; parks a concern (bare) or delivers it into the triage queue, self-committing (delivery form)
+engine topic queue <work-unit> <phase> <topic>     # read the topic's triage queue — {"count": N, "files": [paths…]}; the engine owns the queue layout, so gates, drains, and resume detection ask instead of globbing
 engine topic complete <work-unit> <phase> <topic>
 engine topic reopen <work-unit> <phase> <topic>
 engine topic supersede <work-unit> <phase> <topic> --by <topic>
