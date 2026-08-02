@@ -42,7 +42,7 @@ Don't rely on your memory of what you wrote earlier. Pay particular attention to
 
 ## B. Compare and Reconcile
 
-Walk the conversation against the document and check four dimensions:
+Walk the conversation against the document and check five dimensions:
 
 1. **Undocumented substance** — threads, tangents, trade-offs, edge cases, provisional positions, or concerns that came up in conversation but never made it into a subtopic section or the Summary. Not verbatim — the *substance* of what was explored. This is the most common failure mode as sessions grow long and later exchanges crowd out earlier ones. Journey sections are especially vulnerable: they're supposed to capture the arc of how a decision was reached, and it's easy to write them tersely after the fact in a way that skips the actual back-and-forth.
 
@@ -52,18 +52,83 @@ Walk the conversation against the document and check four dimensions:
 
 4. **Revision landing** — a decision changed this session that was recorded in an earlier sitting must carry a dated timeline entry with a substance-bearing trigger line (the template's revision convention); earlier entries and the wrapped `#### Initial` must be unedited. A plain Decision block is fine when nothing recorded earlier was re-decided.
 
+5. **Misdirected knowledge** (epics only) — prose addressed to another topic instead of recording this topic's own ground: notes to carry forward ("→ {topic}: …"), corrections owed to a sibling whose decided text this session's decisions superseded, "tell {topic} about X" asides. Usually stranded in Summary → Open Threads, but check everywhere. A citation of a sibling's decision as context is fine — only knowledge *owed to* another document qualifies. The sanctioned path for these is the session's own reroute at the moment the correction is known; anything found here is a miss to repair, not a convention to preserve.
+
 **Apply the reconciliation.** For each finding:
 
 - Gap → add the missing substance to the discussion file at the appropriate place (subtopic section, Journey, or Summary)
 - Hallucination → remove or correct to match what was discussed
 - Drift → rewrite to faithfully reflect the conversation; correct Discussion Map states where needed (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}`)
 - Mislanded re-decision → restructure the block into the timeline shape (wrap the original prose as `#### Initial`, place the dated entry above it); restore any edited earlier entry from git
+- Misdirected knowledge → set aside for **C. Route Misdirected Knowledge** — never silently deleted, never landed without the gate
 
 Commit the changes (`engine commit {work_unit} --topic discussion/{topic} -m "..."`) with a descriptive message (e.g., `docs(discussion): capture undocumented trade-off thread`, `docs(discussion): correct drift on caching decision`, `docs(discussion): soften Map state to converging`).
 
-→ Proceed to **C. Brief the User**.
+→ Proceed to **C. Route Misdirected Knowledge**.
 
-## C. Brief the User
+## C. Route Misdirected Knowledge
+
+#### If the work type is not `epic`
+
+Single-topic work has no sibling to route to — a note owed to another work unit is surfaced conversationally instead; the user decides where it goes.
+
+→ Proceed to **D. Brief the User**.
+
+#### If no unhandled note remains
+
+Every note set aside in **B** has been gated (or none existed). When any reroute record was written, commit it — each landing already committed itself:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): reroute carry-notes via triage"
+```
+
+→ Proceed to **D. Brief the User**.
+
+#### Otherwise
+
+Take the next unhandled note. Judge the target topic from the note's own addressing, and judge `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Then gate it:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+This note is addressed to "{target}" — land it in that topic's
+{landing_phase} triage queue? If "{target}" is completed, landing
+reopens it.
+
+> {the note, quoted}
+
+- **`y`/`yes`** — Land it there; this document keeps a reroute record
+- **`s`/`skip`** — Leave it as prose in this document
+- **Comment** — Tell me what to change (target, phase, or content)
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+Build the concern from the note *plus* the session context it stems from — the decision that superseded the sibling's text, the reasoning, what the sibling needs to change — the target resolves it from cold.
+
+→ Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the note's full context}`, origin = `{topic}`, phase = `discussion`, landing_phase = `{landing_phase}`, date = `{today}`.
+
+On return: if `result` is `landed`, replace the stranded prose with a reroute record in place — `Rerouted to {landed_topic} triage ({date}).` — and when the landing response carried `reconcile_flagged`, tell the user the target's completed discussion was flagged to reconcile. If `result` is `cancelled`, the prose stands.
+
+→ Return to **C. Route Misdirected Knowledge**.
+
+**If `skip`:**
+
+The prose stands as written.
+
+→ Return to **C. Route Misdirected Knowledge**.
+
+**If comment:**
+
+Adjust the target, landing phase, or concern content per the user's feedback; the note stays unhandled and re-presents.
+
+→ Return to **C. Route Misdirected Knowledge**.
+
+## D. Brief the User
 
 #### If changes were made
 
