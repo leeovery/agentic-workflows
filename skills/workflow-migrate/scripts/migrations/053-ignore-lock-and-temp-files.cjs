@@ -5,10 +5,11 @@
 //
 // The engine's transient artifacts — manifest lock files
 // (.workflows/{wu}/.lock, plus the .breaking stale-break guard), the
-// project lock (.workflows/.project-lock), the commit lock
-// (.workflows/.commit-lock), and the knowledge store's atomic-write temp
-// files (.workflows/.knowledge/*.tmp) — are stageable today: a scoped
-// `git add` racing a live holder commits them. Migration 049 created
+// project lock (.workflows/.project-lock), and the knowledge store's
+// atomic-write temp files (.workflows/.knowledge/*.tmp) — are stageable
+// today: a scoped `git add` racing a live holder commits them. (The
+// .commit-lock rules cover a lock that ultimately shipped in the .git
+// dir instead — harmless, kept for the frozen rule set.) Migration 049 created
 // .workflows/.gitignore with only the .cache/ and manifest-temp rules;
 // this extends it to cover every transient the engine creates.
 //

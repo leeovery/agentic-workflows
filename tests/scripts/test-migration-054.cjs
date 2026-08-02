@@ -162,6 +162,58 @@ describe('migration 054: triage sections to queue', () => {
     assert.match(MIGRATION.info, /triage queue/);
   });
 
+  it('CRLF artifacts convert instead of silently skipping', () => {
+    const dir = setup();
+    write(dir, '.workflows/pay/discussion/alpha.md',
+      '# D\r\n\r\n## Triage\r\n\r\n### Windows Concern\r\n*From: x · discussion · d*\r\n\r\nBody.\r\n');
+
+    const c = runMigration(dir);
+
+    assert.strictEqual(c.updates, 1);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/pay/discussion/.triage/alpha/001-windows-concern.md')));
+    assert.match(read(dir, '.workflows/pay/discussion/alpha.md'), /## Triage\n\n\(none\)/);
+    teardown(dir);
+  });
+
+  it('a "## Triage" quoted inside a fence is content, not the section', () => {
+    const dir = setup();
+    const doc = '# D\n\n```\n## Triage\n### fake\nbody\n```\n\n## Summary\n\nReal content.\n';
+    write(dir, '.workflows/pay/discussion/alpha.md', doc);
+
+    const c = runMigration(dir);
+
+    assert.strictEqual(c.updates, 0);
+    assert.strictEqual(read(dir, '.workflows/pay/discussion/alpha.md'), doc, 'fenced example untouched');
+    teardown(dir);
+  });
+
+  it('completed topics are skipped — knowledge-indexed artifacts are the verify pass\'s to review', () => {
+    const dir = setup();
+    write(dir, '.workflows/pay/manifest.json', JSON.stringify({
+      name: 'pay', phases: { discussion: { items: { alpha: { status: 'completed' }, beta: { status: 'in-progress' } } } },
+    }));
+    write(dir, '.workflows/pay/discussion/alpha.md', DOC);
+    write(dir, '.workflows/pay/discussion/beta.md', '# D\n\n## Triage\n\n### Live One\n*From: x · discussion · d*\n\nBody.\n');
+
+    const c = runMigration(dir);
+
+    assert.strictEqual(c.updates, 1, 'only the in-progress topic converts');
+    assert.ok(read(dir, '.workflows/pay/discussion/alpha.md').includes('### Rate limits'), 'completed artifact untouched');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/pay/discussion/.triage/beta/001-live-one.md')));
+    teardown(dir);
+  });
+
+  it('reports one update per converted file', () => {
+    const dir = setup();
+    write(dir, '.workflows/pay/discussion/alpha.md', DOC);
+    write(dir, '.workflows/pay/research/topic.md', '# R\n\n## Triage\n\n### Q\n*From: x · discussion · d*\n\nBody.\n');
+
+    const c = runMigration(dir);
+
+    assert.strictEqual(c.updates, 2);
+    teardown(dir);
+  });
+
   it('research phase converts too', () => {
     const dir = setup();
     write(dir, '.workflows/pay/research/topic.md', '# R\n\n## Triage\n\n### Feasibility flag\n*From: x · discussion · d*\n\nBody.\n');
