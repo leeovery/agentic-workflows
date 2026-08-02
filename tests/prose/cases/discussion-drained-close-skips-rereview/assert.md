@@ -45,6 +45,7 @@ Further claims:
   surface, no incorporate — the store already held the row
   incorporated and it stays untouched
 - nothing is written: no discussion-file edit, no map change, no
-  commit — the walk reads, classifies, and stops
+  commit — the walk reads, classifies, and stops (per-turn cache
+  heartbeats under `.workflows/.cache/` are expected, not writes)
 
 EXPECTED WORLD — the fixture, unchanged.

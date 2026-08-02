@@ -24,11 +24,12 @@ The prose should have taken this path:
 6. the findings gate leads in with a count of 1; the second scripted
    answer reviews; the finding renders with its category, both quotes,
    and the proposed target; the third scripted answer approves
-7. triage landing classifies the live target — a completed discussion
-   — and delivers through the self-committing `topic triage`: the item
-   reopens to in-progress and the finding lands as one file in
-   synonym-handling's triage queue carrying the conflict's full
-   context, committed by the delivery itself
+7. triage landing resolves the target on the live map and delivers at
+   the gate's landing phase (discussion) through the self-committing
+   `topic triage`: the completed discussion reopens to in-progress and
+   the finding lands as one file in synonym-handling's triage queue
+   carrying the conflict's full context, committed by the delivery
+   itself
 8. the gate completes: the candidate recorded approved, the tracker
    carries synonym-handling, the spent `analysis_staging` subtree
    deleted, and the gate's commit — "discovery(search-relevance):
