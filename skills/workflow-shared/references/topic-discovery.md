@@ -182,6 +182,20 @@ If a name appears in both `new_arrivals.research_analysis` and `new_arrivals.gap
 
 ## F. Return
 
+Analyses and their gates write state nothing self-commits — staging files and gate registrations (a deferred gate's pending candidates included), spent-state clears, cache files, manifest stamps, knowledge-store dirt. When at least one analysis dispatched this pass, sweep it:
+
+```bash
+git status --porcelain -- .workflows/{work_unit} .workflows/.knowledge
+```
+
+**If the tree is dirty:**
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): analysis run bookkeeping"
+```
+
+**Otherwise:** every write was already carried by a self-committing delivery — nothing to sweep.
+
 The caller reads `new_arrivals` from conversation memory:
 
 - **`workflow-continue-epic`** — passes `new_arrivals` to `epic-display-and-menu.md` for the callouts above the Discovery Map: `⚑ N new topics added to the map from {analysis}` for the topic analyses, and a reopened-topics callout for `coherence_analysis` (the tracker holds topics reopened by landed findings). Callouts are rendered once at this boot-up; subsequent boots without changes don't repeat them.

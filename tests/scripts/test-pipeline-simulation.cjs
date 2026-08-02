@@ -643,6 +643,12 @@ describe('pipeline simulation', () => {
     assert.strictEqual(specAdvisory.coherence_status, 'absent');
     assert.strictEqual(specAdvisory.coherence_pending, 0);
 
+    // The analysis pass ends with the host's sweep commit — stamp dirt
+    // (cache files, manifest) never survives to the dashboard render.
+    sim.run(['commit', wu, '-m', `discovery(${wu}): analysis run bookkeeping`]);
+    const postSweep = git(sim.dir, ['status', '--porcelain', '--', `.workflows/${wu}`, '.workflows/.knowledge']);
+    assert.strictEqual(postSweep.trim(), '', 'analysis sweep leaves a clean tree');
+
     // The drain re-concludes the reopened discussion; the corpus is back
     // above the floor and the 1-file stamp reads stale.
     sim.write(`.workflows/${wu}/discussion/alpha.md`,
