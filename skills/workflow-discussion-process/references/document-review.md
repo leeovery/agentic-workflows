@@ -90,12 +90,12 @@ Take the next unhandled note. Handled-ness lives in the walk and is recoverable 
 
 Judge the target topic from the note's own addressing, and judge `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Present it:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 {the note, quoted}
 
-  Addressed to: {target} — lands in its {landing_phase} triage queue
+*Addressed to: {target} — lands in its {landing_phase} triage queue*
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
