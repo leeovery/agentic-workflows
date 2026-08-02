@@ -168,19 +168,19 @@ Fold the concern into the freeform body as a `### {title}` thread opening with t
 
 ## E. Absorb
 
-Delete the concern's queue file (`rm`) and commit it by name — one commit per absorbed concern, bracketing its life in history with the delivery commit that landed it. The response carries `triage_remaining` — route on it; never recap the absorbed concern on either branch:
+Absorb the concern — one engine transaction deletes its queue file and commits the fold action-scoped under its name, bracketing the concern's life in history with the delivery commit that landed it. The response answers `remaining` — route on it; never recap the absorbed concern on either branch:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
+node .claude/skills/workflow-engine/scripts/engine.cjs topic absorb {work_unit} {phase} {topic} --file {NNN-slug}.md -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
 ```
 
-**If `triage_remaining` is non-zero:**
+**If `remaining` is non-zero:**
 
 Emit nothing here — no recap, no pause for permission. The absorb is the next raise's natural break: re-enter the check now, in this same turn, and the standing opt-in routes it straight to the next raise.
 
 → Return to **A. Check**.
 
-**If `triage_remaining` is `0`:**
+**If `remaining` is `0`:**
 
 Emit the clear line and nothing else — no recap of the walk:
 
