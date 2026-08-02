@@ -18,9 +18,10 @@ The prose should have taken this path:
    — a fresh start, no resume choice
 7. initialisation reads the work's seed and no-ops — an epic's seed
    surfaces per topic through the knowledge base, not here; the brief
-   read repeats idempotently; the research file is created from the
-   template, its Starting Point populated from the brief-fed context;
-   the topic is registered through the engine and one commit lands
+   is already in context from the entry's read and is not re-read; the
+   research file is created from the template, its Starting Point
+   populated from the brief-fed context; the topic is registered
+   through the engine and one commit lands
 8. the walk stops there — no knowledge query runs, and the research
    session never starts
 
