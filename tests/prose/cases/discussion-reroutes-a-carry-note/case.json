@@ -1,0 +1,69 @@
+{
+  "origin": "the misdirected-knowledge check shipped with no prose coverage — document review detecting a carry-note stranded in Open Threads, gating it, landing it in the sibling's triage queue through the self-committing delivery, and replacing the prose with a reroute record; this walk pins the safety net end to end",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/drain-triage.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user decided everything in the earlier sitting and returns only to wrap the discussion up. They add nothing new, decline offered explorations or fresh threads, and say the discussion covers it at the first opportunity. They are agreeable to required steps — asked to proceed into a mandatory review or the conclusion, they say yes. The one thing they care about beyond concluding: when document review surfaces the stranded carry-note and offers to land it in behavioural-ranking's triage queue, they approve — that correction is owed and routing it properly is exactly what they want; they never ask to keep it as prose. If any other note or finding is offered they take the option that keeps the wrap-up moving. Once the bridge hand-off appears they are done.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.synonym-handling status",
+      "topic triage search-relevance discussion behavioural-ranking",
+      "document review — reroute carry-notes via triage",
+      "topic complete search-relevance discussion synonym-handling"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.synonym-handling status",
+      "topic triage search-relevance discussion behavioural-ranking",
+      "document review — reroute carry-notes via triage",
+      "topic complete search-relevance discussion synonym-handling"
+    ],
+    "calls_exclude": [
+      "--kind perspective",
+      "topic reopen",
+      "topic start search-relevance discussion behavioural-ranking",
+      "discovery-map add",
+      "discussion-map add search-relevance synonym-handling",
+      "knowledge.cjs index"
+    ]
+  }
+}
