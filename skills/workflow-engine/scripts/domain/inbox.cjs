@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const { removeFiles } = require('../kernel/git.cjs');
-const { commitScopedWithKb } = require('./commit.cjs');
+const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 
 const INBOX = '.workflows/.inbox';
 const FOLDERS = ['ideas', 'bugs', 'quickfixes'];
@@ -113,7 +113,16 @@ function moveAndCommit(cwd, items, destDir, verb) {
     fs.renameSync(path.join(cwd, item.given), path.join(cwd, dest));
     moved.push(dest);
   }
-  return { moved, committed: commitScopedWithKb(cwd, INBOX, commitMessage(verb, items)) };
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitTailWithKb(cwd, INBOX, commitMessage(verb, items), warnings);
+  /** @type {{moved: string[], committed: string|null, note?: string, warnings?: string[]}} */
+  const result = { moved, committed: outcome.committed };
+  if (outcome.failed) {
+    result.warnings = warnings;
+    noteCommitOutcome(result, outcome);
+  }
+  return result;
 }
 
 /**
@@ -124,8 +133,8 @@ function moveAndCommit(cwd, items, destDir, verb) {
  */
 function archiveItems(cwd, paths) {
   const items = parseAll(cwd, paths, { archived: false });
-  const { moved, committed } = moveAndCommit(cwd, items, (i) => `${INBOX}/.archived/${i.folder}`, 'archive');
-  return { archived: moved, committed };
+  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/.archived/${i.folder}`, 'archive');
+  return { archived: moved, ...rest };
 }
 
 /**
@@ -136,8 +145,8 @@ function archiveItems(cwd, paths) {
  */
 function restoreItems(cwd, paths) {
   const items = parseAll(cwd, paths, { archived: true });
-  const { moved, committed } = moveAndCommit(cwd, items, (i) => `${INBOX}/${i.folder}`, 'restore');
-  return { restored: moved, committed };
+  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/${i.folder}`, 'restore');
+  return { restored: moved, ...rest };
 }
 
 /**
@@ -150,10 +159,16 @@ function restoreItems(cwd, paths) {
 function deleteItems(cwd, paths) {
   const items = parseAll(cwd, paths, { archived: true });
   removeFiles(cwd, items.map((i) => i.given));
-  return {
-    deleted: items.map((i) => i.given),
-    committed: commitScopedWithKb(cwd, INBOX, commitMessage('delete', items)),
-  };
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitTailWithKb(cwd, INBOX, commitMessage('delete', items), warnings);
+  /** @type {{deleted: string[], committed: string|null, note?: string, warnings?: string[]}} */
+  const result = { deleted: items.map((i) => i.given), committed: outcome.committed };
+  if (outcome.failed) {
+    result.warnings = warnings;
+    noteCommitOutcome(result, outcome);
+  }
+  return result;
 }
 
 module.exports = { archiveItems, restoreItems, deleteItems, parseInboxPath };

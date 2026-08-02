@@ -28,7 +28,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
+const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { dedupe } = require('./workunit-create.cjs');
@@ -302,10 +302,10 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   }
 
   const cacheSpec = purgeWorkUnitCache(cwd, feature);
-  const committed = commitScopedWithKb(
+  const outcome = commitTailWithKb(
     cwd,
     [`.workflows/${feature}`, `.workflows/${into}`, '.workflows/manifest.json', ...(cacheSpec ? [cacheSpec] : [])],
-    `workflow(${feature}): absorb into ${into}`);
+    `workflow(${feature}): absorb into ${into}`, warnings);
 
   /** @type {WorkUnitAbsorbResult} */
   const result = {
@@ -317,10 +317,10 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     imports: importMoves.map((move) => ({ path: `imports/${move.dest}` })),
     seeds: seedMoves.map((move) => ({ path: `seeds/${move.dest}`, source: move.entry.source })),
     routing,
-    committed,
+    committed: outcome.committed,
     warnings,
   };
-  noteIfNothingCommitted(result, committed);
+  noteCommitOutcome(result, outcome);
   return result;
 }
 
