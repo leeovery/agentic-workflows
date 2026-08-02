@@ -3,6 +3,7 @@
   "entry": "workflow-discussion-entry",
   "files": [
     "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-discussion-entry/references/gather-context.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",

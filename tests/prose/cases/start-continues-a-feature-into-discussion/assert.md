@@ -43,8 +43,7 @@ EXPECTED WORLD — from a feature holding only its discovery carrier:
 
 - a discussion file at `.workflows/pay/discussion/pay.md` holding a
   Context section reflecting card payments at checkout via
-  the existing gateway account, and a terminal `## Triage` section
-  holding `(none)`
+  the existing gateway account; the topic's triage queue is empty
 - no decisions recorded in it — nothing has been discussed yet
 - the manifest holding an in-progress discussion for pay with its
   subtopics all pending; no discovery map item — a feature never gains
