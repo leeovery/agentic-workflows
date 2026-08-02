@@ -107,8 +107,8 @@ describe('render resume-gate', () => {
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', triage: '3' });
     assert.ok(out.startsWith([
       '=== DISPLAY: triage warning (emit verbatim as a code block, directly above the menu) ===',
-      '  ⚑ 3 rerouted concern(s) from other topics sit undrained in this',
-      "    file's Triage section. Restarting deletes them permanently.",
+      "  ⚑ 3 rerouted concern(s) from other topics wait in this topic's",
+      '    triage queue. Restart leaves them queued — they surface next session.',
       '',
     ].join('\n')));
     assert.ok(out.includes('=== MENU: resume gate'));

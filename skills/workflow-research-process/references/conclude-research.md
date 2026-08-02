@@ -17,7 +17,7 @@ A concern was rerouted into this topic after drain ran this session. It must be 
 > *Output the next fenced block as a code block:*
 
 ```
-  ⚑ Triage queue not empty — {count} rerouted concern(s) awaiting discussion.
+  ⚑ Triage queue not empty — {count} rerouted concern(s) awaiting exploration.
     Returning to the session to surface them before concluding.
 ```
 

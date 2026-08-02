@@ -127,6 +127,11 @@ Across the family, the knowledge base is a derived index — its failures land i
 engine topic start <work-unit> <phase> <topic>
 engine topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]   # research|discussion only; parks a concern (bare) or delivers it into the triage queue, self-committing (delivery form)
 engine topic queue <work-unit> <phase> <topic>     # read the topic's triage queue — {"count": N, "files": [paths…]}; the engine owns the queue layout, so gates, drains, and resume detection ask instead of globbing
+engine topic complete <work-unit> <phase> <topic>
+engine topic reopen <work-unit> <phase> <topic>
+engine topic supersede <work-unit> <phase> <topic> --by <topic>
+engine topic cancel <work-unit> <phase> <topic>
+engine topic reactivate <work-unit> <phase> <topic>
 ```
 
 **`presence`** — the per-topic session heartbeat, cache-resident (`.workflows/.cache/{wu}/{phase}/{topic}/presence`, gitignored; mtime is the signal). Awareness, never mutual exclusion. `beat` refreshes it — session loops beat at their per-turn check; `clear` drops it — the concludes' orderly exit (a crashed session's heartbeat ages out instead). `scan` reads every heartbeat in the work unit with liveness applied (`live` when younger than `stale_after_seconds`, 900): response `{"live": N, "stale_after_seconds": 900, "sessions": [{phase, topic, age_seconds, live}…]}`, plus a `DISPLAY: presence deferral` section after the JSON line when anything is live — emitted verbatim only at the analysis-dispatch deferral its marker names. Consumers: the topic-discovery dispatch defers stale-cache analyses while a peer session is live; the conclude sweep leaves a live row's dirt alone and commits a dead session's leavings action-scoped.
@@ -135,11 +140,6 @@ engine topic queue <work-unit> <phase> <topic>     # read the topic's triage que
 engine presence beat <work-unit> <phase> <topic>    # research|discussion only
 engine presence clear <work-unit> <phase> <topic>
 engine presence scan <work-unit>
-engine topic complete <work-unit> <phase> <topic>
-engine topic reopen <work-unit> <phase> <topic>
-engine topic supersede <work-unit> <phase> <topic> --by <topic>
-engine topic cancel <work-unit> <phase> <topic>
-engine topic reactivate <work-unit> <phase> <topic>
 ```
 
 **`task`** — implementation-task bookkeeping: format-blind, manifest-side only. The engine never reads or writes a task backend and knows no plan-format names — the session does the plan surgery, these commands record it against `phases.implementation.items.{topic}`. Each command is load → apply → save plus one decision-ready JSON line followed by rendered gate sections; no git commit (the session's per-task commit cadence picks the manifest change up).
