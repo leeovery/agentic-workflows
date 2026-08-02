@@ -542,6 +542,10 @@ describe('pipeline simulation', () => {
     const queue = sim.run(['topic', 'queue', wu, 'research', 'delta']);
     assert.strictEqual(queue.count, 1);
     assert.deepStrictEqual(queue.files, [parked.concern_path], 'the read verb lists the delivered concern');
+    // A topic-scoped commit on a triage-legal phase answers the live queue
+    // count — the absorb's caller routes on it without a follow-up read.
+    const queueProbe = sim.run(['commit', wu, '--topic', 'research/delta', '-m', 'probe']);
+    assert.strictEqual(queueProbe.triage_remaining, 1, 'topic commit answers the live queue count');
     // The raise's display surfaces: the offer gate (agenda payload validated
     // against the live queue), the framed entry, and the conclusion blocker.
     sim.write('.workflows/.cache/scratch/triage-offer.json', JSON.stringify({

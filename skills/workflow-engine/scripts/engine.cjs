@@ -917,13 +917,23 @@ function runCommit(argv) {
           ...artifact(wu, topic),
           ...(kb ? [KB_DIR] : []),
         ]);
+        // Triage-legal phases answer the live queue count with the commit,
+        // so an absorb's caller routes on the response — no follow-up read.
+        /** @type {{triage_remaining?: number}} */
+        const extra = {};
+        if (phase === 'research' || phase === 'discussion') {
+          const qdir = path.join(cwd, '.workflows', wu, phase, '.triage', topic);
+          extra.triage_remaining = fs.existsSync(qdir)
+            ? fs.readdirSync(qdir).filter((f) => f.endsWith('.md')).length
+            : 0;
+        }
         if (specs.length === 0) {
-          respond({ committed: null, note: 'nothing to commit' });
+          respond({ committed: null, note: 'nothing to commit', ...extra });
           return;
         }
         const committed = commitPathspecScoped(cwd, specs, message);
-        if (committed === null) respond({ committed: null, note: 'nothing to commit' });
-        else respond({ committed });
+        if (committed === null) respond({ committed: null, note: 'nothing to commit', ...extra });
+        else respond({ committed, ...extra });
         return;
       }
       if (plan !== null) {

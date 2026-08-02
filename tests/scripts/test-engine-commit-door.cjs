@@ -121,6 +121,29 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-b.md'], 'peer dirt untouched');
   });
 
+  it('answers triage_remaining on triage-legal phases, from the live queue', () => {
+    writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md', '### First\nbody\n');
+    writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/002-second.md', '### Second\nbody\n');
+    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nfold\n');
+    const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): absorb 001-first', '--topic', 'discussion/topic-a']);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.triage_remaining, 2, 'counts the queue files at commit time');
+
+    fs.rmSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md'));
+    fs.rmSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a/002-second.md'));
+    const emptied = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): absorb 002-second', '--topic', 'discussion/topic-a']);
+    assert.strictEqual(emptied.triage_remaining, 0, 'an emptied queue answers zero');
+
+    const clean = engine(dir, ['commit', 'payments', '-m', 'noop', '--topic', 'discussion/topic-a']);
+    assert.strictEqual(clean.committed, null);
+    assert.strictEqual(clean.triage_remaining, 0, 'the count rides the nothing-to-commit response too');
+
+    writeFile(dir, '.workflows/payments/specification/topic-a/specification.md', '# Spec\n');
+    const spec = engine(dir, ['commit', 'payments', '-m', 'spec(payments/topic-a): draft', '--topic', 'specification/topic-a']);
+    assert.strictEqual(spec.ok, true);
+    assert.ok(!('triage_remaining' in spec), 'non-triage phases carry no count');
+  });
+
   it('leaves content another process staged out of the commit and still staged', () => {
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
     writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
