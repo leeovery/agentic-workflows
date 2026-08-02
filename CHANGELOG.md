@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.28] - 2026-08-02
+
+✨ Added
+- Document review in discussion and research now catches notes meant for a sibling topic and routes them through triage, reopening the target if it's already decided — instead of leaving stray cross-topic asides stranded in the wrong document.
+- Sibling-consult step: decisions that touch another topic's ground now get a quick cross-check (and a recorded `Sibling check:` line) before being written down, so conflicting or superseding decisions get routed as corrections rather than silently landing in the wrong place.
+- Triage reopens a decided or deferred discussion subtopic automatically when a queued concern names it, keeping the map's state honest while the re-decision happens.
+- Topic-discovery sessions now sweep for uncommitted bookkeeping (staging files, gate state, cache/knowledge dirt) at the end of a run and commit it, instead of leaving it loose in the working tree.
+
+🔧 Changed
+- Clearing a processed coherence-analysis gate now also deletes its on-disk staging file, not just the manifest state, avoiding orphaned files after processing.
+
 ## [0.6.27] - 2026-08-02
 
 ✨ Added
