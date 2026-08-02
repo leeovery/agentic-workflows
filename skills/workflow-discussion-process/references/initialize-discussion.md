@@ -6,9 +6,7 @@
 
 → Load **[seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
 
-→ Load **[read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
-
-Whatever those loads returned — a seed, a brief, the handoff's carrier description — is this discussion's **inherited position**, not a list of questions to re-ask. Decisions discovery already reached with the user carry forward as working ground: record them, build on them, let this discussion's own findings test them. Softness means such a decision *can* move when something surfaced here contradicts it, or when the user reopens it — never that it gets re-elicited on entry. Re-running settled scope as a fresh options weigh-up spends the user's time on ground they covered and puts alternatives they already rejected back into the document as live material.
+The seed just read, the brief or carrier the entry skill read at Gather Context, and the handoff's description are this discussion's **inherited position**, not a list of questions to re-ask. Decisions discovery already reached with the user carry forward as working ground: record them, build on them, let this discussion's own findings test them. Softness means such a decision *can* move when something surfaced here contradicts it, or when the user reopens it — never that it gets re-elicited on entry. Re-running settled scope as a fresh options weigh-up spends the user's time on ground they covered and puts alternatives they already rejected back into the document as live material.
 
 1. Ensure the discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Register the discussion in the manifest (the map commands below require the item to exist):

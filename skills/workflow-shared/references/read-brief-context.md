@@ -1,6 +1,6 @@
 # Read the Topic's Discovery Brief
 
-*Shared reference for the research and discussion entry and processing skills.*
+*Shared reference. Loaded by the research and discussion entry skills at Gather Context, and by the reconcile advisory over a regenerated brief.*
 
 ---
 

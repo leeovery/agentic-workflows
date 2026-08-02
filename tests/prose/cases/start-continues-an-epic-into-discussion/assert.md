@@ -24,10 +24,11 @@ The prose should have taken this path:
    unit, and the topic
 7. discussion entry validates a fresh phase — status reads empty — and
    the discovery item already exists, so nothing is added to the map;
-   the handoff carries the work into the processing skill
-8. initialisation reads the topic's brief pointer and the brief file
-   in full, then records brief_incorporated; the seed reference no-ops
-   for an epic
+   its Gather Context reads the topic's brief pointer and the brief
+   file in full and records brief_incorporated; the handoff carries
+   the work into the processing skill
+8. initialisation inherits the brief already in context — the read is
+   not repeated — and the seed reference no-ops for an epic
 9. the discussion is registered through the engine, the discussion
    file is created from the template with a Context drawn from the
    brief, initial subtopics land on the discussion map, and the
