@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.30] - 2026-08-02
+
+🐛 Fixed
+- Drain-triage and document-review concern presentations now render as formatted markdown instead of a plain code block.
+- Concern breakdowns in drain-triage now walk through the problem in plain language before asking the user anything, instead of jumping straight to a question.
+
 ## [0.6.29] - 2026-08-02
 
 🔧 Changed
