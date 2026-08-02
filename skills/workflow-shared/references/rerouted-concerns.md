@@ -96,7 +96,13 @@ No opt-in. The check re-offers at a later break; the conclusion gate holds regar
 
 Take the lowest-numbered concern still queued — or whichever the user asks for.
 
-**If `phase` is `discussion`, arm the Discussion Map first** — the map tells the truth while the concern is live. Route on the subtopic the concern's title names (`{title:(kebabcase)}`), noting its prior state for the fold:
+**If `phase` is `discussion`, arm the Discussion Map first** — the map tells the truth while the concern is live. Read the subtopic states:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} subtopics
+```
+
+Route on the subtopic the concern's title names (`{title:(kebabcase)}`), noting its prior state for the fold:
 
 - Not on the map — new ground. Add it, then arm it:
 
