@@ -20,7 +20,27 @@ The common case. No output.
 
 → Return to caller.
 
-#### If output is non-empty (reconcile flagged)
+#### If output is `research` (upstream research reopened)
+
+A triage landing reopened this topic's research after the discussion concluded — its decisions may rest on ground the research is re-examining. Surface a non-blocking advisory (never a STOP gate), read the topic's research file fresh into context, and clear the flag.
+
+> *Output the next fenced block as a code block:*
+
+```
+  ⚑ This topic's research was reopened after the discussion
+    concluded. Re-read it — decisions here may need revisiting
+    against what it found. Nothing has been overwritten.
+```
+
+Read `.workflows/{work_unit}/research/{topic}.md` in full, then clear the flag:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+```
+
+→ Return to caller.
+
+#### If output is any other non-empty value (brief reconcile flagged)
 
 A discovery brief was written or regenerated after this work started. Surface a non-blocking advisory (never a STOP gate), re-read the regenerated brief into context, and clear the flag.
 

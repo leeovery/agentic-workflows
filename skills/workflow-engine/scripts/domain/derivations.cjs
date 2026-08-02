@@ -335,6 +335,12 @@ function computeTopicLifecycle(manifest, topicName) {
     return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, triage_parked };
   }
 
+  if (rs === 'in-progress' && ds === 'completed') {
+    // Reopened research beneath a decided discussion — a triage landing
+    // judged research-side. The topic is back in research; the discussion's
+    // reconcile flag carries the downstream consequence.
+    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, triage_parked };
+  }
   if (ds === 'completed') {
     return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs, triage_parked };
   }
