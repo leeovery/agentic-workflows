@@ -1,6 +1,6 @@
 # Drain Triage
 
-*Shared reference. Loaded by `workflow-discussion-process` (Step 5) and `workflow-research-process` (Step 6) at the session step, before the session loop runs.*
+*Shared reference. Loaded by `workflow-discussion-process` (Step 5) and `workflow-research-process` (Step 6) at the session step, before the session loop runs. The session loops re-enter **D. Mid-Session Check** from their findings check.*
 
 ---
 
@@ -76,5 +76,34 @@ Surface that concerns arrived from elsewhere:
 ## C. Commit
 
 Commit the drained artefact: `engine commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): drain triage"`.
+
+→ Return to caller.
+
+## D. Mid-Session Check
+
+Entered from the session loop's findings check — notices concerns that landed after the session-entry drain. Run **A. Read**'s queue command. When `count` is `0`, there is nothing to do — return silently.
+
+Otherwise, surface at the next natural break — the same mid-thread protection agent findings get, never interrupting a live thread:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+{count} concern(s) landed in this topic's triage queue mid-session:
+
+- **`d`/`drain`** — Fold them into the session now
+- **`l`/`later`** — Keep the current thread; they fold before conclusion
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `drain`:**
+
+→ Return to **A. Read**.
+
+**If `later`:**
+
+Continue the current thread. `later` means *not now*, never *not this session* — the loop's check re-enters here and re-offers at the next natural break, the same cadence review findings keep. The conclusion gate remains the backstop: nothing concludes over an undrained queue.
 
 → Return to caller.
