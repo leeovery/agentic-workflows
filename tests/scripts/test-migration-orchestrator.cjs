@@ -187,6 +187,38 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.ok(!second.stdout.includes('---VERIFY_ADDENDA---'), 'recorded migrations never re-emit');
   });
 
+  it('an aborted run journals earlier addenda — the next successful run emits them', () => {
+    const throwing =
+      `'use strict';\nmodule.exports = { id: '002', description: 'boom', run() { throw new Error('boom'); } };\n`;
+    const { migrate, root } = synthFleet({
+      '001-a.cjs':
+        `'use strict';\nmodule.exports = { id: '001', description: 'synthetic 001', info: 'What 001 does.',\n` +
+        `  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check 001 by hand.' }; } };\n`,
+      '002-b.cjs': throwing,
+    });
+    const project = freshProject();
+
+    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.notStrictEqual(first.status, 0, 'the fleet aborts on 002');
+    assert.ok(!first.stdout.includes('---VERIFY_ADDENDA---'), 'an aborted run emits nothing');
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n'), ['001'], '001 recorded, 002 not');
+
+    // Fix 002 and re-run: 001 never re-runs, but its journaled addendum rides.
+    fs.writeFileSync(path.join(root, 'scripts/migrations/002-b.cjs'),
+      `'use strict';\nmodule.exports = { id: '002', description: 'fixed', run({ reportSkip }) { reportSkip(); } };\n`);
+    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.strictEqual(second.status, 0, second.stderr);
+    const lines = second.stdout.split('\n');
+    const mi = lines.findIndex((l) => l.trim() === '---VERIFY_ADDENDA---');
+    assert.notStrictEqual(mi, -1, 'the recovered run emits the journal');
+    const addenda = JSON.parse(lines[mi + 1]);
+    assert.deepStrictEqual(addenda.map((a) => a.id), ['001'], "001's addendum survived the abort");
+    assert.ok(!fs.existsSync(path.join(project, '.workflows/.state/pending-verify.json')), 'journal cleared after emission');
+
+    const third = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.ok(!third.stdout.includes('---VERIFY_ADDENDA---'), 'emitted once, never again');
+  });
+
   it('emits no addenda when no executed migration declares verify', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.sh': shMig('002') });
     const project = freshProject();

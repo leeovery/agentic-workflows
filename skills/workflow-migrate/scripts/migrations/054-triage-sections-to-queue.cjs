@@ -27,18 +27,26 @@ function slugify(title) {
 }
 
 /**
- * Split `content` around its `## Triage` section. Returns null when the
- * section is absent.
+ * Split `content` around its `## Triage` section, fence-aware — a heading
+ * quoted inside a fenced code block is content, not the section. Returns
+ * null when the section is absent.
  * @param {string} content
  * @returns {{before: string, body: string, after: string}|null}
  */
 function splitTriageSection(content) {
   const lines = content.split('\n');
-  const start = lines.findIndex((l) => l.trim() === '## Triage');
+  let inFence = false;
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*```/.test(lines[i])) { inFence = !inFence; continue; }
+    if (!inFence && lines[i].trim() === '## Triage') { start = i; break; }
+  }
   if (start === -1) return null;
   let end = lines.length;
+  inFence = false;
   for (let i = start + 1; i < lines.length; i++) {
-    if (/^## /.test(lines[i])) { end = i; break; }
+    if (/^\s*```/.test(lines[i])) { inFence = !inFence; continue; }
+    if (!inFence && /^## /.test(lines[i])) { end = i; break; }
   }
   return {
     before: lines.slice(0, start + 1).join('\n'),
@@ -103,16 +111,32 @@ module.exports = {
         } catch {
           continue;
         }
+        // A completed topic's artifact is knowledge-indexed — its edits go
+        // through the corrigendum protocol, never a migration; the verify
+        // pass owns spotting anything parked there. Read the manifest
+        // directly (never `engine manifest` — migrations are point-in-time).
+        /** @type {Record<string, any>} */
+        let items = {};
+        try {
+          const manifest = JSON.parse(fs.readFileSync(path.join(workflowsDir, wu, 'manifest.json'), 'utf8'));
+          const ph = manifest && manifest.phases && manifest.phases[phase];
+          if (ph && typeof ph.items === 'object' && ph.items !== null) items = ph.items;
+        } catch { /* unreadable manifest — convert everything, verify pass reviews */ }
+
         for (const file of files) {
           sawArtifacts = true;
+          const topic = file.replace(/\.md$/, '');
+          const item = items[topic];
+          if (item && typeof item === 'object' && item.status === 'completed') continue;
           const artifact = path.join(phaseDir, file);
-          const content = fs.readFileSync(artifact, 'utf8');
+          // Normalise CRLF for parsing — the exact-match patterns are
+          // LF-anchored, and a CRLF artifact must convert, not silently skip.
+          const content = fs.readFileSync(artifact, 'utf8').replace(/\r\n/g, '\n');
           const split = splitTriageSection(content);
           if (!split) continue;
           const entries = parseEntries(split.body);
           if (entries.length === 0) continue;
 
-          const topic = file.replace(/\.md$/, '');
           const queueDir = path.join(phaseDir, '.triage', topic);
           fs.mkdirSync(queueDir, { recursive: true });
           let n = 0;
@@ -127,11 +151,12 @@ module.exports = {
           }
           fs.writeFileSync(artifact, `${split.before}\n\n(none)\n${split.after === '' ? '' : '\n' + split.after}`);
           converted.push(`${wu}/${phase}/${file}`);
+          reportUpdate();
         }
       }
     }
 
-    if (converted.length > 0) reportUpdate(); else reportSkip();
+    if (converted.length === 0) reportSkip();
 
     // The parser is exact-match; artifacts were written by judgment and may
     // hold shapes it cannot recognise — hand those to the verification pass.

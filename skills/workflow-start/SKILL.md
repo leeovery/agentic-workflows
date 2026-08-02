@@ -92,7 +92,7 @@ All documents up to date.
    **Do not stop here.** → Proceed to **Step 0.2**.
 
 3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
-4. Display the summary (`{N}`/`{M}` come from `migrations.output`):
+4. Display the summary (`{N}`/`{M}` come from `migrations.output`; when it reports no changes — verification fixes only — omit the counts line):
 
 > *Output the next fenced block as a code block:*
 

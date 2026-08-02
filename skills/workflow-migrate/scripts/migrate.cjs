@@ -50,8 +50,28 @@ const MIGRATIONS_DIR = path.join(SCRIPT_DIR, 'migrations');
 const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
 
 // Marker preceding the one-line JSON array of verification addenda from
-// migrations executed this run. Boot extracts and strips it.
+// migrations executed this run. Boot extracts and strips it. Addenda are
+// journaled to a pending file beside the tracking log as each migration
+// records, and emitted (then cleared) only by a fully successful run — a
+// later migration aborting the run must never cost an earlier migration's
+// checks, whose ID is already recorded and will never re-run.
 const VERIFY_MARKER = '---VERIFY_ADDENDA---';
+const PENDING_VERIFY = 'pending-verify.json';
+
+/** @param {string} cwd @param {string} trackingRel */
+function pendingVerifyPath(cwd, trackingRel) {
+  return path.join(path.dirname(path.resolve(cwd, trackingRel)), PENDING_VERIFY);
+}
+
+/** @param {string} file @returns {{id: string, description: string, info: string|null, verify: string}[]} */
+function readPendingVerify(file) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 // Bash used to source `*.sh` migrations. Default `bash` (PATH); the override
 // lets the orchestrator test pin stock /bin/bash 3.2 explicitly.
@@ -254,8 +274,6 @@ function main() {
 
   let filesUpdated = 0;
   let migrationsRun = 0;
-  /** @type {{id: string, description: string, info: string|null, verify: string}[]} */
-  const addenda = [];
 
   for (const script of scripts) {
     const id = migrationId(script);
@@ -273,15 +291,21 @@ function main() {
 
     if (result.stdout) process.stdout.write(result.stdout);
     filesUpdated += result.updated;
-    if ('verify' in result && result.verify) {
-      addenda.push({ id, description: require(script).description || '', info: result.info, verify: result.verify });
-    }
 
     // Re-find the tracking file (migration 011 moves it), then record the ID.
     trackingRel = findTrackingFile(cwd);
     fs.mkdirSync(path.dirname(trackingAbs()), { recursive: true });
     fs.appendFileSync(trackingAbs(), id + '\n');
     migrationsRun += 1;
+
+    // Journal the addendum durably the moment its migration is recorded —
+    // an abort further down the fleet must not lose it.
+    if ('verify' in result && result.verify) {
+      const pendingFile = pendingVerifyPath(cwd, trackingRel);
+      const pending = readPendingVerify(pendingFile);
+      pending.push({ id, description: require(script).description || '', info: result.info, verify: result.verify });
+      fs.writeFileSync(pendingFile, JSON.stringify(pending) + '\n');
+    }
   }
 
   if (filesUpdated > 0) {
@@ -295,9 +319,14 @@ function main() {
     process.stdout.write('[SKIP] No changes needed\n');
   }
 
+  // A fully successful run emits everything journaled — this run's addenda
+  // plus any stranded by an earlier aborted run — and clears the journal.
+  const pendingFile = pendingVerifyPath(cwd, trackingRel);
+  const addenda = readPendingVerify(pendingFile);
   if (addenda.length > 0) {
     process.stdout.write(VERIFY_MARKER + '\n');
     process.stdout.write(JSON.stringify(addenda) + '\n');
+    try { fs.unlinkSync(pendingFile); } catch { /* already gone */ }
   }
 }
 
