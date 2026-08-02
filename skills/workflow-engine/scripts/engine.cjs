@@ -803,15 +803,47 @@ const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: str
 });
 
 /**
- * Keep pathspecs `git add` will accept: on disk, or holding index entries
- * (a deleted-but-tracked path still stages its deletions).
+ * Whether the directory holds any file, at any depth. An existing-but-empty
+ * directory is a git no-man's-land: `git add` tolerates its pathspec
+ * silently while `git commit -- <paths>` refuses it — the state every
+ * triage queue reaches once its last concern's deletion is committed.
+ * @param {string} dirAbs
+ * @returns {boolean}
+ */
+function dirHasFiles(dirAbs) {
+  /** @type {fs.Dirent[]} */
+  let entries;
+  try {
+    entries = fs.readdirSync(dirAbs, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  for (const e of entries) {
+    if (e.isDirectory()) {
+      if (dirHasFiles(path.join(dirAbs, e.name))) return true;
+    } else {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Keep pathspecs the whole add+commit sequence will accept: a file on disk,
+ * a directory with content, or a path holding index entries (a
+ * deleted-but-tracked path still stages its deletions). An empty directory
+ * with no index entries is dropped — see dirHasFiles.
  * @param {string} cwd @param {string[]} specs
  * @returns {string[]}
  */
 function stageableSpecs(cwd, specs) {
   const { execFileSync } = require('child_process');
   return specs.filter((p) => {
-    if (fs.existsSync(path.join(cwd, p))) return true;
+    const abs = path.join(cwd, p);
+    if (fs.existsSync(abs)) {
+      if (!fs.statSync(abs).isDirectory()) return true;
+      if (dirHasFiles(abs)) return true;
+    }
     try {
       return execFileSync('git', ['ls-files', '--', p], { cwd, encoding: 'utf8' }).trim() !== '';
     } catch {
