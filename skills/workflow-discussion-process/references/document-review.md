@@ -70,7 +70,7 @@ Commit the changes (`engine commit {work_unit} --topic discussion/{topic} -m "..
 
 #### If the work type is not `epic`
 
-Single-topic work has no sibling to route to — a note owed to another work unit is surfaced conversationally instead; the user decides where it goes.
+Single-topic work has no sibling to route to. Surface each note now, one sentence apiece — what it says and which work unit it points at; the prose stays where it is and the user decides what to do with it.
 
 → Proceed to **D. Brief the User**.
 
@@ -79,24 +79,31 @@ Single-topic work has no sibling to route to — a note owed to another work uni
 Every note set aside in **B** has been gated (or none existed). When any reroute record was written, commit it — each landing already committed itself:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): reroute carry-notes via triage"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): document review — reroute carry-notes via triage"
 ```
 
 → Proceed to **D. Brief the User**.
 
 #### Otherwise
 
-Take the next unhandled note. Judge the target topic from the note's own addressing, and judge `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Then gate it:
+Take the next unhandled note. Handled-ness lives in the walk and is recoverable from the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
+
+Judge the target topic from the note's own addressing, and judge `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Present it:
+
+> *Output the next fenced block as a code block:*
+
+```
+{the note, quoted}
+
+  Addressed to: {target} — lands in its {landing_phase} triage queue
+```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-This note is addressed to "{target}" — land it in that topic's
-{landing_phase} triage queue? If "{target}" is completed, landing
-reopens it.
-
-> {the note, quoted}
+Land this note in "{target}"'s triage queue? If "{target}" is
+completed, landing reopens it.
 
 - **`y`/`yes`** — Land it there; this document keeps a reroute record
 - **`s`/`skip`** — Leave it as prose in this document
@@ -112,13 +119,13 @@ Build the concern from the note *plus* the session context it stems from — the
 
 → Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the note's full context}`, origin = `{topic}`, phase = `discussion`, landing_phase = `{landing_phase}`, date = `{today}`.
 
-On return: if `result` is `landed`, replace the stranded prose with a reroute record in place — `Rerouted to {landed_topic} triage ({date}).` — and when the landing response carried `reconcile_flagged`, tell the user the target's completed discussion was flagged to reconcile. If `result` is `cancelled`, the prose stands.
+On return: if `result` is `landed`, the note is handled — replace the stranded prose with a reroute record in place, `Rerouted to {landed_topic} triage ({date}).`, and when the landing response carried `reconcile_flagged`, tell the user the target's completed discussion was flagged to reconcile. If `result` is `cancelled`, nothing was written — the note stays unhandled and re-presents; dropping it for good is the `skip` arm's job.
 
 → Return to **C. Route Misdirected Knowledge**.
 
 **If `skip`:**
 
-The prose stands as written.
+The note is handled — the prose stands as written, by the user's choice.
 
 → Return to **C. Route Misdirected Knowledge**.
 
