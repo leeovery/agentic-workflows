@@ -11,7 +11,7 @@ The prose should have taken this path:
    subtopics as pending, and commits once
 4. the guidelines load and the knowledge base is addressed once as a
    contextual query; with an empty store the session proceeds silently;
-   the triage drain no-ops on `(none)`
+   the triage drain no-ops on an empty queue
 5. the session runs as an organic conversation: every thread the user
    engages is driven to a decision, the transitions recorded through
    the engine, the file written and committed at natural pauses
@@ -48,8 +48,8 @@ EXPECTED WORLD — from a feature holding only its discovery carrier:
 
 - a discussion file at `.workflows/pay/discussion/pay.md` whose
   decisions match what the user said — webhook capture over polling,
-  hosted fields keeping card data off their servers — with a terminal
-  `## Triage` holding `(none)`
+  hosted fields keeping card data off their servers; the topic's
+  triage queue is empty
 - the manifest holding the discussion in progress with every subtopic
   `decided` — none pending, exploring, or deferred; the discussion is
   NOT completed
