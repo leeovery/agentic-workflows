@@ -157,6 +157,46 @@ describe('migrate.cjs — synthetic fleet', () => {
     );
   });
 
+  it('collects verify addenda from executed .cjs migrations — skip paths included, never on re-run', () => {
+    const verifying =
+      `'use strict';\nmodule.exports = {\n  id: '002',\n  description: 'synthetic 002',\n` +
+      `  info: 'What this migration does, anywhere.',\n` +
+      `  run({ reportSkip }) {\n    reportSkip();\n    return { verify: 'Check the things code cannot see.' };\n  },\n};\n`;
+    const { migrate } = synthFleet({
+      '001-a.cjs': cjsMig('001'),
+      '002-b.cjs': verifying,
+      '003-c.sh': shMig('003'),
+    });
+    const project = freshProject();
+
+    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.strictEqual(first.status, 0, first.stderr);
+    const lines = first.stdout.split('\n');
+    const mi = lines.findIndex((l) => l.trim() === '---VERIFY_ADDENDA---');
+    assert.notStrictEqual(mi, -1, 'marker emitted');
+    const addenda = JSON.parse(lines[mi + 1]);
+    assert.deepStrictEqual(addenda, [{
+      id: '002',
+      description: 'synthetic 002',
+      info: 'What this migration does, anywhere.',
+      verify: 'Check the things code cannot see.',
+    }], 'the skip-path migration still hands over its checks');
+
+    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.strictEqual(second.status, 0, second.stderr);
+    assert.ok(!second.stdout.includes('---VERIFY_ADDENDA---'), 'recorded migrations never re-emit');
+  });
+
+  it('emits no addenda when no executed migration declares verify', () => {
+    const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.sh': shMig('002') });
+    const project = freshProject();
+
+    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.ok(!res.stdout.includes('---VERIFY_ADDENDA---'));
+  });
+
   it('honours a legacy tracking log written by the old migrate.sh', () => {
     const { migrate } = synthFleet({
       '001-a.sh': shMig('001'),

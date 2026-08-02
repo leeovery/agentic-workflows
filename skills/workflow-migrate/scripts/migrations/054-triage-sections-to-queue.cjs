@@ -76,6 +76,7 @@ function parseEntries(body) {
 module.exports = {
   id: '054',
   description: 'in-document triage sections to triage queue',
+  info: 'Rerouted concerns used to land as "### {title}" entries inside a research or discussion artifact\'s "## Triage" section. They now live as one file per concern in the topic\'s triage queue (.workflows/{wu}/{phase}/.triage/{topic}/NNN-{slug}.md), delivered by the engine; the drain folds queue files and the conclude gates check the queue — nothing reads in-document sections any more. This migration moves every parked entry into the queue and resets the section to "(none)".',
   run({ projectDir, reportUpdate, reportSkip }) {
     const workflowsDir = path.join(projectDir, '.workflows');
     /** @type {string[]} */
@@ -89,7 +90,9 @@ module.exports = {
       return;
     }
 
-    let converted = false;
+    /** @type {string[]} */
+    const converted = [];
+    let sawArtifacts = false;
     for (const wu of units) {
       for (const phase of PHASES) {
         const phaseDir = path.join(workflowsDir, wu, phase);
@@ -101,6 +104,7 @@ module.exports = {
           continue;
         }
         for (const file of files) {
+          sawArtifacts = true;
           const artifact = path.join(phaseDir, file);
           const content = fs.readFileSync(artifact, 'utf8');
           const split = splitTriageSection(content);
@@ -122,11 +126,21 @@ module.exports = {
             fs.writeFileSync(dest, entry.text.replace(/\n+$/, '') + '\n');
           }
           fs.writeFileSync(artifact, `${split.before}\n\n(none)\n${split.after === '' ? '' : '\n' + split.after}`);
-          converted = true;
+          converted.push(`${wu}/${phase}/${file}`);
         }
       }
     }
 
-    if (converted) reportUpdate(); else reportSkip();
+    if (converted.length > 0) reportUpdate(); else reportSkip();
+
+    // The parser is exact-match; artifacts were written by judgment and may
+    // hold shapes it cannot recognise — hand those to the verification pass.
+    if (!sawArtifacts) return;
+    const outcome = converted.length > 0
+      ? `Converted entries from: ${converted.join(', ')}.`
+      : 'No in-document entries matched the exact shape (a heading of "## Triage" with "### " entries) — that can mean none exist, or that any which do are malformed.';
+    return {
+      verify: `${outcome} Now check every research and discussion artifact (.workflows/*/research/*.md, .workflows/*/discussion/*.md) for triage content this code could not recognise: malformed headings (e.g. "## Triage:" or "##Triage"), concern entries not under "### " headings, or concern text sitting below a "(none)". Move any straggler into the topic's queue as .workflows/{wu}/{phase}/.triage/{topic}/NNN-{slug}.md (next free NNN, kebab slug), one file per concern, keeping its full text, and reset the section body to "(none)". While there, delete now-empty "## Triage"/"(none)" sections from documents whose topic is NOT completed — completed documents are knowledge-indexed, leave them untouched.`,
+    };
   },
 };

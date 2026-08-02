@@ -73,13 +73,26 @@ Migrations must never half-run silently. Surface the reported error to the user.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If `migrations.changed` is `true`
+#### If `migrations.changed` is `true` or `migrations.verify` is non-empty
 
-Files were updated. You MUST complete the steps below before proceeding.
+Files were updated, or a migration handed over checks its code could not perform. You MUST complete the steps below before proceeding.
 
-1. Run `git status --short -- .workflows` and `git diff -- .workflows` to see what changed. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
-2. Write a brief natural language summary of what the migrations did (e.g., "Restructured workflow directories, created manifest files, renamed tracking artifacts"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
-3. Display the summary (`{N}`/`{M}` come from `migrations.output`):
+1. **If `migrations.verify` is non-empty:** each entry is a migration that ran this boot. Its `info` says what the migration does in any project; its `verify` says what to check in this one. Perform each entry's checks with judgment against the actual files — the migration's code is exact-match and may have missed what it could not recognise — and fix what you find. Your fixes are migration changes: they join the diff, the summary, and the commit below.
+
+2. Run `git status --short -- .workflows` and `git diff -- .workflows` to see what changed. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
+
+   **If nothing changed** (the migrations skipped everything and verification found nothing to fix):
+
+> *Output the next fenced block as a code block:*
+
+```
+All documents up to date.
+```
+
+   **Do not stop here.** → Proceed to **Step 0.2**.
+
+3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
+4. Display the summary (`{N}`/`{M}` come from `migrations.output`):
 
 > *Output the next fenced block as a code block:*
 
@@ -91,7 +104,7 @@ Migrations Applied
 {N} migration(s), {M} file(s) updated.
 ```
 
-4. Confirm:
+5. Confirm:
 
 > *Output the next fenced block as markdown (not a code block):*
 

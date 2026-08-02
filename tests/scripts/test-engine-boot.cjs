@@ -160,7 +160,7 @@ describe('engine boot', () => {
 
     assert.deepStrictEqual(res, {
       ok: true,
-      migrations: { changed: false, output: '[SKIP] No changes needed' },
+      migrations: { changed: false, output: '[SKIP] No changes needed', verify: [] },
       knowledge: 'ready',
       compacted: true,
       kb_committed: null,
@@ -375,8 +375,11 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(first.ok, true);
     assert.strictEqual(typeof first.migrations.changed, 'boolean');
     assert.strictEqual(typeof first.migrations.output, 'string');
-    // The trimmed report never leaks the prose stop-gate lines.
+    // No work-unit artifacts in the fixture — no migration hands over checks.
+    assert.deepStrictEqual(first.migrations.verify, []);
+    // The trimmed report never leaks the prose stop-gate lines or addenda plumbing.
     assert.ok(!first.migrations.output.includes('STOP_GATE'));
+    assert.ok(!first.migrations.output.includes('VERIFY_ADDENDA'));
     // No knowledge store in the fixture — the hard stop: nothing is created.
     assert.strictEqual(first.knowledge, 'not-ready');
     assert.strictEqual(first.compacted, false);
@@ -408,6 +411,33 @@ describe('engine boot (real scripts)', () => {
     const third = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(third.knowledge, 'ready');
     assert.strictEqual(third.kb_committed, null);
+  });
+});
+
+describe('engine boot verification addenda (real scripts)', () => {
+  let root;
+  let project;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-verify-'));
+    project = setupProject(root);
+  });
+  afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  it('carries an executed migration\'s checks in migrations.verify, stripped from the report', () => {
+    writeFile(project, '.workflows/payments/discussion/alpha.md',
+      '# D\n\n## Triage\n\n### Parked\n*From: x · discussion · d*\n\nBody.\n');
+
+    const res = runEngine(REAL_ENGINE, project, ['boot']);
+
+    assert.strictEqual(res.ok, true);
+    const entry = res.migrations.verify.find((v) => v.id === '054');
+    assert.ok(entry, `054 addendum present: ${JSON.stringify(res.migrations.verify)}`);
+    assert.match(entry.verify, /Converted entries from: payments\/discussion\/alpha\.md/);
+    assert.match(entry.info, /triage queue/);
+    assert.ok(!res.migrations.output.includes('VERIFY_ADDENDA'), 'plumbing stripped from the report');
+    // Second boot: recorded — nothing re-fires.
+    const second = runEngine(REAL_ENGINE, project, ['boot']);
+    assert.deepStrictEqual(second.migrations.verify, []);
   });
 });
 
