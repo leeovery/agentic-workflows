@@ -83,7 +83,7 @@ The concern stays queued, untouched. Follow them — **F. Mid-Session Check** re
 
 ## D. Fold
 
-Record the discussion in the topic's content:
+Record the discussion in the topic's content. An outcome that re-decides ground this topic didn't introduce — it names an entity, field, rule, or classification this topic's artifact didn't define — requires the sibling consult before it is recorded: follow **G. Sibling Consult at Cross-Topic Decision Points** in **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** — query or cite, and carry the `Sibling check:` line in the recorded decision.
 
 #### If `phase` is `discussion`
 
