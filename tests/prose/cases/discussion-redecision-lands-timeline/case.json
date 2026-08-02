@@ -47,19 +47,19 @@
     "engine_before_write": true,
     "calls_include": [
       "manifest get search-relevance.discussion.synonym-handling status",
-      "discussion-map add search-relevance synonym-handling expansion-source",
       "discussion-map set search-relevance synonym-handling expansion-source exploring",
-      "absorb 001-expansion-source (from behavioural-ranking)",
+      "discussion-map add search-relevance synonym-handling expansion-source",
       "discussion-map set search-relevance synonym-handling expansion-source decided",
+      "absorb 001-expansion-source (from behavioural-ranking)",
       "workflow-discussion-process/scripts/gateway.cjs map search-relevance synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",
-      "discussion-map add search-relevance synonym-handling expansion-source",
       "discussion-map set search-relevance synonym-handling expansion-source exploring",
-      "absorb 001-expansion-source (from behavioural-ranking)",
+      "discussion-map add search-relevance synonym-handling expansion-source",
       "discussion-map set search-relevance synonym-handling expansion-source decided",
+      "absorb 001-expansion-source (from behavioural-ranking)",
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [

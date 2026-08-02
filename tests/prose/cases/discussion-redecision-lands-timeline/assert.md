@@ -13,26 +13,35 @@ The prose should have taken this path:
    (keyword-only store — the session proceeds), and enters the session
    step
 4. the entry pass reads the triage queue and shows the one-entry
-   agenda; once the session machinery is loaded, the loop's check
-   offers the concern and surfaces it whole — its provenance and full
-   body presented to the user, not a title. The session discusses it;
-   the map add refuses — the subtopic already exists — so the fold
-   lands the provenance line and body into the existing
-   `## Expansion Source` section's Context and the subtopic re-arms to
-   `exploring`: the map is no longer all-decided. The queue file is
-   deleted and absorbed under its own commit naming the concern and
-   its origin
-5. the session explores the challenge; the user lands the changed
-   decision (batch aggregates, daily refresh). Because the decision
-   being re-decided was recorded in an earlier sitting, it lands as a
-   dated timeline entry per the template's revision convention: the
-   block's original prose is wrapped verbatim as `#### Initial` and
-   the new decision sits above it as a dated entry whose trigger line
-   carries the substance of the triaged concern from
-   behavioural-ranking — not a bare id
-6. the subtopic is set back to `decided` — the map is fully decided
-   again — and the user signals the discussion covers it; the map is
-   read through the gateway and the closing gates load
+   agenda only; once the session machinery is loaded, the loop's
+   check offers the concern at a natural break and, on the user's
+   go, surfaces it whole — its provenance and full body presented,
+   not a title. Because the concern's title names an existing
+   subtopic in a settled state, the ground re-arms at surface time:
+   `expansion-source` is set to `exploring` before the discussion
+   starts, and the map is no longer all-decided
+5. the session discusses the concern as real material and the user
+   lands the changed decision (batch aggregates, daily refresh). The
+   outcome re-decides ground this document didn't introduce — the
+   batch aggregates are behavioural-ranking's — so the sibling
+   consult runs before it is recorded: the sibling's decided text is
+   already in context (the drained concern carries it), so citing it
+   satisfies the consult with no query owed. The fold then lands it:
+   the map add refuses — the subtopic already exists — so the
+   provenance line and body join the existing `## Expansion Source`
+   section's Context, and the re-decision lands as a dated timeline
+   entry per the template's revision convention: the block's
+   original prose wrapped verbatim as `#### Initial`, the new
+   decision above it as a dated entry whose trigger line carries the
+   substance of the triaged concern from behavioural-ranking — not a
+   bare id — and whose text carries the `Sibling check:` line naming
+   behavioural-ranking and what its decided text holds. The map is
+   set to `decided` — the recorded state reflects the re-decision
+   that just happened — and the queue file is deleted and absorbed
+   under its own commit naming the concern and its origin
+6. with the map fully decided again, the user signals the discussion
+   covers it; the map is read through the gateway and the closing
+   gates load
 7. the user passes the review gate per their conduct (a mandatory
    review proceeds — the stubbed report comes back clean; an optional
    fresh review is skipped), confirms the conclude gate, and the
@@ -55,6 +64,11 @@ Further claims:
   from the nightly batch aggregates; the live-stream consumption is
   no longer the current truth anywhere above the timeline's earlier
   entries
+- the revised entry carries a `Sibling check:` line naming
+  behavioural-ranking and the substance of its decided text (batch
+  aggregates, no live stream) — wording free, the citation required;
+  a knowledge query was legal but not owed, since the drained
+  concern carried the sibling's decision in context
 - the `#### Initial` entry holds the block's original decision prose
   (live click-signal stream at query time) unedited — wrapped, not
   rewritten, not annotated
