@@ -50,6 +50,7 @@
       "manifest get search-relevance.discussion.relevance-measurement status",
       "topic start search-relevance discussion relevance-measurement",
       "topic queue search-relevance discussion relevance-measurement",
+      "render concern search-relevance.discussion.relevance-measurement --file 001-offline-metrics-baseline.md",
       "discussion-map add search-relevance relevance-measurement offline-metrics-baseline",
       "discussion-map add search-relevance relevance-measurement expansion-quality-tracking",
       "absorb 001-offline-metrics-baseline (from behavioural-ranking)"

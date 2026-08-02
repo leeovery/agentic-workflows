@@ -100,7 +100,7 @@ No opt-in. The check re-offers at a later break; the conclusion gate holds regar
 
 ## C. Raise One Concern
 
-Take the lowest-numbered concern still queued — or whichever the user asks for — and read its file in full now: the one body in context.
+Take the lowest-numbered concern still queued — or whichever the user asks for.
 
 **If `phase` is `discussion`, arm the Discussion Map first** — the map tells the truth while the concern is live. Route on the subtopic the concern's title names (`{title:(kebabcase)}`), noting its prior state for the fold:
 
@@ -119,7 +119,13 @@ Take the lowest-numbered concern still queued — or whichever the user asks for
 
 - `exploring` or `converging` — already live. Leave it.
 
-Present the concern whole: name its origin in a sentence, then emit the file's full content verbatim as markdown (not a code block) — the entry is markdown and renders as such; the origin session carried everything it worked out, and the user decides from the substance, never from the title.
+Present the concern whole — name its origin in a sentence, then render the entry:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render concern {work_unit}.{phase}.{topic} --file {NNN-slug}.md
+```
+
+Emit its `DISPLAY: rerouted concern` section verbatim as markdown (not a code block) — the dot rails frame where the entry starts and ends. The render's output is also your read of the concern: the origin session carried everything it worked out, and the user decides from the substance, never from the title.
 
 Then break it down in your own voice before asking anything. The reopened ground may be days old and the reader cold — the verbatim entry is the record, the breakdown is what makes it workable: what the concern actually asks of this topic, how it sits against what this topic already decided, and a concrete rendering of the problem — a worked example in the topic's own terms, a small diagram where shape or flow helps, a before/after. Keep it simple and engineer-level, sized to the concern, and vary the shape across a multi-concern queue — identical breakdowns read as a template, not a colleague. The breakdown covers this concern alone: no other queued concern, open item, or finding rides along, and the closing question spans nothing the user hasn't seen. The test: the user can picture the problem before the first question arrives. End in a single opening question.
 

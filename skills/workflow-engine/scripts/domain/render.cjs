@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, dotFrame, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -587,6 +587,38 @@ function finding(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
+// concern — a rerouted triage-queue entry framed for markdown emission: dot
+// rails top and tail the verbatim file content so it reads as a bounded
+// quotation, not the session's own voice. The queue file is the payload;
+// --file names the entry (basename only — the engine owns the queue layout).
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function concern(cwd, { dotpath, file }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'concern');
+  if (!file) throw new Error('render concern: --file <NNN-slug.md> is required');
+  if (file !== path.basename(file) || !file.endsWith('.md')) {
+    throw new Error(`render concern: --file must be a queue-file name, not a path (got "${file}")`);
+  }
+  const dir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
+  const abs = path.join(dir, file);
+  if (!fs.existsSync(abs)) {
+    throw new Error(`render concern: "${file}" is not in the ${topic} ${phase} triage queue`);
+  }
+  const body = fs.readFileSync(abs, 'utf8').replace(/\s+$/, '');
+  if (!body) throw new Error(`render concern: "${file}" is empty`);
+  return section(
+    'DISPLAY: rerouted concern',
+    'emit verbatim as markdown',
+    dotFrame(['**Rerouted concern**', '', ...body.split('\n')]),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Bridge continuation surfaces — work-unit-level: pipeline completion
 // displays and the continuation gates the bridge presents between phases.
 // Address-backed (work_type from the manifest); phases ride as flags.
@@ -910,6 +942,7 @@ const SURFACES = {
   'task-list': taskList,
   'findings-summary': findingsSummary,
   'finding': finding,
+  'concern': concern,
   'proposed-task': proposedTask,
   'tasks-overview': tasksOverview,
   'author-task-gate': authorTaskGate,

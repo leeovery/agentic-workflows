@@ -542,6 +542,8 @@ describe('pipeline simulation', () => {
     const queue = sim.run(['topic', 'queue', wu, 'research', 'delta']);
     assert.strictEqual(queue.count, 1);
     assert.deepStrictEqual(queue.files, [parked.concern_path], 'the read verb lists the delivered concern');
+    // The raise's display surface frames the delivered entry verbatim.
+    sim.render(['concern', `${wu}.research.delta`, '--file', '001-parked-concern.md'], { expect: 'content' });
     // Judgment landing: a research-side delivery beneath beta's completed
     // discussion parks the concern AND flags the discussion for
     // reconciliation — the discussion itself stays completed.
