@@ -14,15 +14,6 @@ The caller provides these via context before loading:
 - `topic` — the current topic, whose queue is surfaced.
 - `phase` — `discussion` or `research`. Selects the artefact and the fold shape.
 
-## The Core Rules
-
-This protocol is a turn-level check, not a long-running state machine. Each consult does at most one thing — an offer, one raised concern, or silence — then exits to the session loop. The session loop is the only loop: the next concern is raised by a later iteration's check, never by this file routing back into itself.
-
-1. **One concern at a time, in every sense.** Never raise, fold, or absorb two concerns in one pass, and never treat the remaining queue as a work list you are part-way through. One body in context at a time: the agenda reads only each file's first two lines (title and provenance); a concern's body is read at its own raise and never before.
-2. **The opt-in is not approval.** `discuss` authorises surfacing each next concern at its turn — nothing more. The user's agreement covers only the concern on the table; never solicit or act on approval spanning concerns not yet raised — a question broad enough to cover unseen material is the same violation as skipping a STOP.
-3. **A live concern owns the conversation.** While a raised concern is unresolved it is the session's only subject. A tangent it surfaces gets parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties. Agent findings wait behind the queue: the loop's check order runs this check first.
-4. **State is the queue plus conversation.** Queue files are the durable record — a concern exists until its absorb deletes it. The opt-in and the live concern exist in conversation only; a context refresh loses both — the next check re-offers, never re-assumes.
-
 ## A. Check
 
 List the topic's triage queue:
@@ -31,7 +22,7 @@ List the topic's triage queue:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} {phase} {topic}
 ```
 
-Route on the response and the session's state — first match wins:
+Route on the response and the session's state — first match wins. The opt-in and the live concern are conversation state: a context refresh loses both — re-offer, never re-assume.
 
 #### If `count` is `0`
 
@@ -97,7 +88,7 @@ Work through them now?
 
 **If `discuss`:**
 
-The opt-in now stands — it covers surfacing each remaining concern in turn, and the user can park the queue at any point by saying so.
+The opt-in now stands — it authorises surfacing each remaining concern in turn, never agreement to any concern's content, and the user can park the queue at any point by saying so.
 
 → Proceed to **C. Raise One Concern**.
 
@@ -134,7 +125,7 @@ Then break it down in your own voice before asking anything. The reopened ground
 
 **STOP.** Wait for user response.
 
-Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it.
+Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer.
 
 **If the discussion reaches an outcome** — a decision, a direction, or the user explicitly parking it as a deferred thread:
 

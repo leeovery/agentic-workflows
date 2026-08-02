@@ -22,7 +22,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
 1. **Check for findings** — Beat presence first, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} discussion {topic}` — before the gated checks below: any of them can end in a STOP that closes the turn, and the beat must not miss its iteration.
 
-   Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. It offers a non-empty queue at the session's first check and at natural breaks, raises the next concern while the user's opt-in stands, and stays silent otherwise. When it acts, its STOP ends the turn — the agent checks below wait for a later iteration.
+   Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. When it acts, its STOP ends the turn — the agent checks below wait for a later iteration.
 
    Then run the check-for-results logic from the background-agent files loaded above. Each file knows its own rules; follow the named section in each:
    - **Review agent**: follow **B. Check and Surface** in **[review-agent.md](review-agent.md)** — delegates to the shared surfacing protocol for review findings.
