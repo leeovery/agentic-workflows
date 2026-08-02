@@ -53,6 +53,8 @@ Name it in passing as the landing happens — the user corrects you if you've mi
 
 **If genuinely ambiguous** — two or more plausible homes and the conversation doesn't settle it:
 
+Judge `landing_phase` from the concern's nature — an open question needing exploration → `research`; a decision needing making → `discussion` — and state the recommendation in the menu:
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -63,11 +65,9 @@ Where should "{concern}" land?
 - **`2`** — {candidate} [{lifecycle}]
 - **`n`/`new`** — Create a new topic for it
 
-It reads as {an open question — I'd land it research-side|a decision to make — I'd land it discussion-side}. Append a phase to override (e.g. `1 discussion`).
+It reads as {concern_nature:[an open question — I'd land it research-side|a decision to make — I'd land it discussion-side]}. Reply with an option, appending a phase to override (e.g. `1 discussion`).
 · · · · · · · · · · · ·
 ```
-
-Before rendering, judge `landing_phase` from the concern's nature: an open question needing exploration → `research`; a decision needing making → `discussion`. The menu states the recommendation.
 
 **STOP.** Wait for user response.
 
@@ -87,6 +87,8 @@ Nothing landed.
 
 **Otherwise:**
 
-The concern landed in `{landed_topic}`'s {landing_phase} triage queue — the delivery committed itself@if(reconcile_flagged), and `{landed_topic}`'s completed discussion is flagged to reconcile against the reopened research@endif. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it.
+The concern landed in `{landed_topic}`'s `{landing_phase}` triage queue — the delivery committed itself. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it.
+
+**If the response carried `reconcile_flagged`:** also tell the user `{landed_topic}`'s completed discussion is flagged to reconcile against the reopened research.
 
 → Return to caller for **B. Session Loop**.

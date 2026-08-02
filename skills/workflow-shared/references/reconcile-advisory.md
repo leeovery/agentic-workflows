@@ -40,7 +40,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
-#### If output is any other non-empty value (brief reconcile flagged)
+#### Otherwise (brief reconcile flagged)
 
 A discovery brief was written or regenerated after this work started. Surface a non-blocking advisory (never a STOP gate), re-read the regenerated brief into context, and clear the flag.
 

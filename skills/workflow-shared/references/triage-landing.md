@@ -92,9 +92,9 @@ One engine transaction owns the whole delivery: `topic triage` handles the item 
 2. Write the full entry (shape above) to `.workflows/.cache/{work_unit}/{phase}/{origin}/concern-{slug}.md` with the Write tool.
 3. Deliver:
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {landing_phase} {target} --concern .workflows/.cache/{work_unit}/{phase}/{origin}/concern-{slug}.md --slug {slug} -m "{phase}({work_unit}/{origin}): reroute concern to {target}"
-```
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {landing_phase} {target} --concern .workflows/.cache/{work_unit}/{phase}/{origin}/concern-{slug}.md --slug {slug} -m "{phase}({work_unit}/{origin}): reroute concern to {target}"
+   ```
 
 **If the response is `ok: false`:**
 
@@ -140,13 +140,13 @@ For `cancelled` (an engine transaction — it commits itself) — reactivate the
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {cancelled_phase} {target}
 ```
 
-If the response is `ok: false`, surface the engine's error verbatim and re-render this menu — the concern is still unlanded. Otherwise re-classify against the fresh state:
+If the response is `ok: false`, surface the engine's error verbatim and re-render this menu — the concern is still unlanded. Otherwise re-resolve against the fresh state:
 
 → Return to **A. Resolve the Target**.
 
 **If `elsewhere`:**
 
-Ask the user which topic the concern should land in, set `target` to their answer, and re-classify:
+Ask the user which topic the concern should land in, set `target` to their answer, and re-resolve:
 
 → Return to **A. Resolve the Target**.
 
