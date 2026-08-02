@@ -7,10 +7,10 @@ query time — resting, uncited, on exactly the capability the other
 discussion ruled out.
 
 The coherence analysis caught the conflict and the user approved the
-finding at the gate. Triage reopened synonym-handling and landed the
-concern in its `## Triage` section under the title "Expansion Source" —
-kebab-identical to the decided subtopic it challenges. The gate's
-commit and the coherence stamp closed that session.
+finding at the gate. Triage reopened synonym-handling and installed the
+concern as one file in its triage queue under the title "Expansion
+Source" — kebab-identical to the decided subtopic it challenges. The
+gate's commit and the coherence stamp closed that session.
 
 Hours have passed. The context was cleared — this session opens cold at
 the discussion entry skill with nothing but the three arguments and
