@@ -158,10 +158,14 @@ function restoreItems(cwd, paths) {
  */
 function deleteItems(cwd, paths) {
   const items = parseAll(cwd, paths, { archived: true });
-  removeFiles(cwd, items.map((i) => i.given));
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailWithKb(cwd, INBOX, commitMessage('delete', items), warnings);
+  // The git rm stages index changes, so it belongs inside the same commit
+  // lock as the commit that lands them — a concurrent whole-index commit
+  // must never sweep the deletions under its own message.
+  const outcome = commitTailWithKb(cwd, INBOX, commitMessage('delete', items), warnings, () => {
+    removeFiles(cwd, items.map((i) => i.given));
+  });
   /** @type {{deleted: string[], committed: string|null, note?: string, warnings?: string[]}} */
   const result = { deleted: items.map((i) => i.given), committed: outcome.committed };
   if (outcome.failed) {

@@ -296,11 +296,11 @@ describe('engine topic triage', () => {
 
   it('delivery form: installs the concern in the sidecar, self-commits concern + manifest only', () => {
     writeFile(dir, '.workflows/payments/discussion/refund-policy.md', '# Peer topic\ndirty peer content\n');
-    const scratch = path.join(dir, 'concern-scratch.md');
-    fs.writeFileSync(scratch, '### Rate limits\n*From: refund-policy · discussion · 2026-07-31*\n\nFull context.\n');
+    const scratch = path.join(dir, '.workflows/.cache/scratch/concern-scratch.md');
+    writeFile(dir, '.workflows/.cache/scratch/concern-scratch.md', '### Rate limits\n*From: refund-policy · discussion · 2026-07-31*\n\nFull context.\n');
 
     const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', 'concern-scratch.md', '--slug', 'rate-limits', '-m', 'discussion(payments/refund-policy): reroute concern to edge-cases']);
+      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'rate-limits', '-m', 'discussion(payments/refund-policy): reroute concern to edge-cases']);
 
     assert.strictEqual(res.created, true);
     assert.strictEqual(res.status, 'triaged');
@@ -320,9 +320,9 @@ describe('engine topic triage', () => {
 
   it('delivery form: numbers concerns sequentially and never collides', () => {
     for (const slug of ['first', 'second']) {
-      fs.writeFileSync(path.join(dir, 'c.md'), `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
+      writeFile(dir, '.workflows/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
       engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-        '--concern', 'c.md', '--slug', slug, '-m', `discussion(payments/x): reroute concern to edge-cases`]);
+        '--concern', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', `discussion(payments/x): reroute concern to edge-cases`]);
     }
     const files = fs.readdirSync(path.join(dir, '.workflows/payments/discussion/.triage/edge-cases')).sort();
     assert.deepStrictEqual(files, ['001-first.md', '002-second.md']);
@@ -330,31 +330,61 @@ describe('engine topic triage', () => {
 
   it('delivery form: refuses a missing or empty concern file, a bad slug, a missing message — nothing written', () => {
     assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', 'absent.md', '--slug', 'ok-slug', '-m', 'msg']).error, /concern file not found/);
-    fs.writeFileSync(path.join(dir, 'empty.md'), '  \n');
+      '--concern', '.workflows/.cache/scratch/absent.md', '--slug', 'ok-slug', '-m', 'msg']).error, /concern file not found/);
+    writeFile(dir, '.workflows/.cache/scratch/empty.md', '  \n');
     assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', 'empty.md', '--slug', 'ok-slug', '-m', 'msg']).error, /concern file is empty/);
-    fs.writeFileSync(path.join(dir, 'c.md'), 'content\n');
+      '--concern', '.workflows/.cache/scratch/empty.md', '--slug', 'ok-slug', '-m', 'msg']).error, /concern file is empty/);
+    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
     assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', 'c.md', '--slug', 'Bad_Slug', '-m', 'msg']).error, /kebab-case/);
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'Bad_Slug', '-m', 'msg']).error, /kebab-case/);
     assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', 'c.md', '--slug', 'ok-slug']).error, /Usage/);
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'ok-slug']).error, /Usage/);
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], undefined, 'no item conjured');
     assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.triage')), 'no sidecar conjured');
   });
 
+  it('hardening: refuses a concern path outside .workflows/.cache — a live artifact is never consumed', () => {
+    writeFile(dir, '.workflows/payments/research/live.md', '# Live artifact\n');
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases',
+      '--concern', '.workflows/payments/research/live.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \.workflows\/\.cache/);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/live.md')), 'live artifact untouched');
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases',
+      '--concern', '../outside.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \.workflows\/\.cache/);
+  });
+
+  it('hardening: refuses traversal in topic names — triage, queue, presence', () => {
+    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', '../../../evil',
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'x', '-m', 'msg']).error, /invalid topic name/);
+    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'discussion', '../evil']).error, /invalid topic name/);
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/evil')), 'nothing escaped');
+  });
+
+  it('hardening: a research landing never clobbers a pending brief-reconcile flag', () => {
+    const m = readManifest(dir, 'payments');
+    m.phases.discussion.items['session-model'].reconcile_needed = true;
+    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
+
+    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'session-model',
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'msg']);
+
+    assert.strictEqual(res.reconcile_flagged, undefined);
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].reconcile_needed, true, 'brief flag preserved');
+  });
+
   it('delivery form: a terminal target refuses before the concern is consumed', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'refund-policy']);
-    fs.writeFileSync(path.join(dir, 'c.md'), 'content\n');
+    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
     assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'refund-policy',
-      '--concern', 'c.md', '--slug', 'ok-slug', '-m', 'msg']).error, /cancelled/);
-    assert.ok(fs.existsSync(path.join(dir, 'c.md')), 'scratch concern preserved on refusal');
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'ok-slug', '-m', 'msg']).error, /cancelled/);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/scratch/c.md')), 'scratch concern preserved on refusal');
   });
 
   it('research-side delivery beneath a completed discussion flags it for reconciliation', () => {
-    fs.writeFileSync(path.join(dir, 'c.md'), '### Q\n*From: x · discussion · d*\n\nBody.\n');
+    writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
     const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'session-model',
-      '--concern', 'c.md', '--slug', 'open-question', '-m', 'discussion(payments/x): reroute concern to session-model']);
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'open-question', '-m', 'discussion(payments/x): reroute concern to session-model']);
 
     assert.strictEqual(res.reconcile_flagged, true);
     const m = readManifest(dir, 'payments');
@@ -364,14 +394,14 @@ describe('engine topic triage', () => {
   });
 
   it('no reconcile flag for discussion-side deliveries or live discussions', () => {
-    fs.writeFileSync(path.join(dir, 'c.md'), 'content\n');
+    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
     const disc = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model',
-      '--concern', 'c.md', '--slug', 'a-decision', '-m', 'm']);
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'a-decision', '-m', 'm']);
     assert.strictEqual(disc.reconcile_flagged, undefined);
 
-    fs.writeFileSync(path.join(dir, 'c.md'), 'content\n');
+    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
     const live = engine(dir, ['topic', 'triage', 'payments', 'research', 'refund-policy',
-      '--concern', 'c.md', '--slug', 'open-q', '-m', 'm']);
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'open-q', '-m', 'm']);
     assert.strictEqual(live.reconcile_flagged, undefined, 'in-progress discussion is not flagged');
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].reconcile_needed, undefined);
   });
@@ -381,9 +411,9 @@ describe('engine topic triage', () => {
     assert.deepStrictEqual(empty, { ok: true, work_unit: 'payments', phase: 'discussion', topic: 'edge-cases', count: 0, files: [] });
 
     for (const slug of ['first', 'second']) {
-      fs.writeFileSync(path.join(dir, 'c.md'), `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
+      writeFile(dir, '.workflows/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
       engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-        '--concern', 'c.md', '--slug', slug, '-m', 'discussion(payments/x): reroute concern to edge-cases']);
+        '--concern', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', 'discussion(payments/x): reroute concern to edge-cases']);
     }
     const two = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
     assert.strictEqual(two.count, 2);
@@ -392,7 +422,11 @@ describe('engine topic triage', () => {
       '.workflows/payments/discussion/.triage/edge-cases/002-second.md',
     ]);
 
-    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'planning', 'edge-cases']).error, /non-lifecycle phase|Invalid status/);
+    fs.mkdirSync(path.join(dir, '.workflows/payments/discussion/.triage/edge-cases/dir.md'), { recursive: true });
+    const withDir = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
+    assert.strictEqual(withDir.count, 2, 'a directory named *.md is not a concern');
+
+    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'planning', 'edge-cases']).error, /research\|discussion only/);
     assert.match(engineFails(dir, ['topic', 'queue', 'ghost', 'discussion', 'edge-cases']).error, /no work unit directory/);
     assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'discussion']).error, /Usage/);
   });

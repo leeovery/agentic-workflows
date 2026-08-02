@@ -155,9 +155,9 @@ describe('engine commit --topic: pathspec isolation', () => {
     // Deliver a concern (creates + commits the sidecar file), drain it (rm +
     // commit stages the deletion), then keep working: the emptied-but-present
     // directory must not poison later --topic commits.
-    fs.writeFileSync(path.join(dir, 'c.md'), '### Q\n*From: x · discussion · d*\n\nBody.\n');
+    writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
     engine(dir, ['topic', 'triage', 'payments', 'discussion', 'topic-a',
-      '--concern', 'c.md', '--slug', 'q', '-m', 'discussion(payments/x): reroute concern to topic-a']);
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/x): reroute concern to topic-a']);
     fs.unlinkSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a/001-q.md'));
     const drain = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): drain triage', '--topic', 'discussion/topic-a']);
     assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
@@ -198,6 +198,8 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion/topic-a', '--plan', 'topic-a']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', '--inbox', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--kb']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'toString/topic-a']).error, /expected <phase>\/<topic>/);
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', '__proto__/topic-a']).error, /expected <phase>\/<topic>/);
   });
 });
 
@@ -238,7 +240,7 @@ describe('commit door: index.lock retry and the commit lock', () => {
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
     const lock = path.join(dir, '.git', 'workflows-commit.lock');
     fs.writeFileSync(lock, '99999');
-    const past = new Date(Date.now() - 60000);
+    const past = new Date(Date.now() - 360000);
     fs.utimesSync(lock, past, past);
 
     const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);

@@ -76,6 +76,7 @@ describe('engine presence', () => {
 
   it('refuses illegal phases, unknown work units, and malformed calls', () => {
     assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'planning', 'x']).error, /research\|discussion only/);
+    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discussion', '../../escapee']).error, /invalid topic name/);
     assert.match(engineFails(dir, ['presence', 'scan', 'ghost']).error, /no work unit directory/);
     assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discussion']).error, /Usage/);
     assert.match(engineFails(dir, ['presence', 'bogus']).error, /Usage/);

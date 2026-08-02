@@ -11,9 +11,10 @@
 //   exists-guarded — staging a nonexistent path is a git error (the
 //   conditional-inbox lesson), and keyword-less projects may have no store.
 //
-// - Commits are serialised: a process-wide lock (`.workflows/.commit-lock`,
-//   same discipline as the manifest lock) holds each add+commit sequence
-//   alone, so concurrent sessions never interleave on git's shared index.
+// - Commits are serialised: a process-wide lock (`.git/workflows-commit.lock`,
+//   same discipline as the manifest lock, on a longer clock) holds each
+//   add+commit sequence alone, so concurrent sessions never interleave on
+//   git's shared index.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -42,9 +43,16 @@ function commitLockPath(cwd) {
  * @param {() => T} fn
  * @returns {T}
  */
+// A commit can run the project's hooks, so the commit lock lives on a longer
+// clock than the manifest lock: a holder is stale only after five minutes
+// (breaking a live holder mid-`git commit` would recreate the interleaving
+// the lock exists to prevent), and contenders wait up to a minute.
+const COMMIT_LOCK_STALE_MS = 300000;
+const COMMIT_LOCK_TIMEOUT_MS = 60000;
+
 function withCommitLock(cwd, fn) {
   const lockFile = commitLockPath(cwd);
-  acquireLockFile(lockFile, 'Timed out waiting for the commit lock');
+  acquireLockFile(lockFile, 'Timed out waiting for the commit lock', COMMIT_LOCK_TIMEOUT_MS, COMMIT_LOCK_STALE_MS);
   try {
     return fn();
   } finally {
@@ -107,11 +115,21 @@ function noteIfNothingCommitted(result, committed) {
  * degrades to a warning and a pending note — it never fails the verb.
  * @param {string} cwd @param {string|string[]} pathspec @param {string} message
  * @param {string[]} warnings
+ * @param {() => void} [beforeInLock] index-mutating prep (e.g. git rm) that
+ *   must run inside the same commit-lock hold as the commit that lands it
  * @returns {{committed: string|null, failed: boolean}}
  */
-function commitTailWithKb(cwd, pathspec, message, warnings) {
+function commitTailWithKb(cwd, pathspec, message, warnings, beforeInLock) {
   try {
-    return { committed: commitScopedWithKb(cwd, pathspec, message), failed: false };
+    const specs = Array.isArray(pathspec) ? [...pathspec] : [pathspec];
+    if (!specs.includes(KB_DIR) && fs.existsSync(path.join(cwd, KB_DIR))) {
+      specs.push(KB_DIR);
+    }
+    const committed = withCommitLock(cwd, () => {
+      if (beforeInLock) beforeInLock();
+      return commitScoped(cwd, specs, message);
+    });
+    return { committed, failed: false };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     warnings.push(`commit failed: ${detail}`);

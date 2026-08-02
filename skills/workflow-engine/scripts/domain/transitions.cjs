@@ -154,6 +154,17 @@ function startTopic(cwd, workUnit, phase, topic) {
  */
 
 /**
+ * A topic name usable in paths: non-empty, no separators, no traversal.
+ * Guards every verb that turns a topic into a filesystem location.
+ * @param {string} topic
+ */
+function assertLegalTopicName(topic) {
+  if (!topic || /[\\/]/.test(topic) || topic.includes('..')) {
+    throw new Error(`invalid topic name "${topic}" — no separators or ".."`);
+  }
+}
+
+/**
  * The next concern number in a topic's triage sidecar: highest `NNN-` prefix
  * plus one, `1` for a missing or empty directory.
  * @param {string} dirAbs
@@ -195,6 +206,8 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
   const { concernFile, slug, message } = opts;
   const delivering = concernFile !== undefined;
 
+  assertLegalTopicName(topic);
+
   /** @type {string|null} */
   let concern = null;
   if (delivering) {
@@ -202,8 +215,15 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
       throw new Error(`--slug must be kebab-case, got "${slug ?? ''}"`);
     }
     if (!message) throw new Error('topic triage --concern requires -m <message>');
+    // The scratch is consumed after delivery — confine it to the cache so a
+    // mis-passed path can never read (and delete) a live artifact.
+    const scratchAbs = path.resolve(cwd, /** @type {string} */ (concernFile));
+    const cacheRoot = path.join(cwd, '.workflows', '.cache') + path.sep;
+    if (!scratchAbs.startsWith(cacheRoot)) {
+      throw new Error(`--concern must point inside .workflows/.cache/ — got "${concernFile}"`);
+    }
     try {
-      concern = fs.readFileSync(path.resolve(cwd, concernFile), 'utf8');
+      concern = fs.readFileSync(scratchAbs, 'utf8');
     } catch {
       throw new Error(`concern file not found: ${concernFile}`);
     }
@@ -259,7 +279,9 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
       const dItems = manifest.phases && manifest.phases.discussion && typeof manifest.phases.discussion === 'object'
         ? manifest.phases.discussion.items : undefined;
       const dItem = dItems && typeof dItems === 'object' ? dItems[topic] : undefined;
-      if (dItem && typeof dItem === 'object' && dItem.status === 'completed') {
+      if (dItem && typeof dItem === 'object' && dItem.status === 'completed' && dItem.reconcile_needed === undefined) {
+        // Never clobber a pending brief-reconcile flag — the concern itself
+        // still arrives through the queue either way.
         dItem.reconcile_needed = 'research';
         base.reconcile_flagged = true;
         dirty = true;
@@ -297,6 +319,9 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
     result.committed = outcome.committed;
     result.warnings = warnings;
     noteCommitOutcome(result, outcome);
+    if (outcome.failed) {
+      result.note = `commit pending — state saved; retry with: engine commit ${workUnit} --topic ${phase}/${topic} -m "<message>"`;
+    }
   }
 
   return result;
@@ -322,17 +347,23 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
  * @returns {TopicQueueResult}
  */
 function queueStatus(cwd, workUnit, phase, topic) {
-  assertLegalWrite(phase, 'triaged');
+  if (phase !== 'research' && phase !== 'discussion') {
+    throw new Error(`triage queues exist for research|discussion only — got "${phase}"`);
+  }
+  assertLegalTopicName(topic);
   if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
     throw new Error(`no work unit directory: .workflows/${workUnit}`);
   }
   const dirRel = `.workflows/${workUnit}/${phase}/.triage/${topic}`;
-  /** @type {string[]} */
-  let names = [];
+  /** @type {fs.Dirent[]} */
+  let entries = [];
   try {
-    names = fs.readdirSync(path.join(cwd, dirRel));
+    entries = fs.readdirSync(path.join(cwd, dirRel), { withFileTypes: true });
   } catch { /* no queue yet — empty */ }
-  const files = names.filter((f) => f.endsWith('.md')).sort().map((f) => `${dirRel}/${f}`);
+  const files = entries
+    .filter((e) => e.isFile() && e.name.endsWith('.md'))
+    .map((e) => `${dirRel}/${e.name}`)
+    .sort();
   return { work_unit: workUnit, phase, topic, count: files.length, files };
 }
 

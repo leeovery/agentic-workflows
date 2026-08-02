@@ -234,20 +234,20 @@ function writeProjectManifestAtomic(workflowsDir, data) {
  * @param {string} lockFile
  * @returns {boolean} true when this process performed the break
  */
-function breakStaleLockFile(lockFile) {
+function breakStaleLockFile(lockFile, staleMs = LOCK_STALE_MS) {
   const guard = `${lockFile}.breaking`;
   let fd;
   try {
     fd = fs.openSync(guard, 'wx');
   } catch {
     try {
-      if (Date.now() - fs.statSync(guard).mtimeMs > LOCK_STALE_MS) fs.unlinkSync(guard);
+      if (Date.now() - fs.statSync(guard).mtimeMs > staleMs) fs.unlinkSync(guard);
     } catch { /* guard already gone */ }
     return false;
   }
   try {
     fs.writeSync(fd, String(process.pid));
-    if (Date.now() - fs.statSync(lockFile).mtimeMs > LOCK_STALE_MS) {
+    if (Date.now() - fs.statSync(lockFile).mtimeMs > staleMs) {
       fs.unlinkSync(lockFile);
       return true;
     }
@@ -262,11 +262,13 @@ function breakStaleLockFile(lockFile) {
 
 /**
  * Acquire `lockFile` (O_EXCL create, pid recorded), breaking a stale holder
- * and spinning on a live one up to the timeout.
+ * and spinning on a live one up to the timeout. `staleMs` lets a caller with
+ * a longer-running critical section (the commit lock, whose holder may run
+ * git hooks) keep live holders safe from the break.
  * @param {string} lockFile @param {string} timeoutMessage
- * @param {number} [timeoutMs]
+ * @param {number} [timeoutMs] @param {number} [staleMs]
  */
-function acquireLockFile(lockFile, timeoutMessage, timeoutMs = LOCK_TIMEOUT_MS) {
+function acquireLockFile(lockFile, timeoutMessage, timeoutMs = LOCK_TIMEOUT_MS, staleMs = LOCK_STALE_MS) {
   const deadline = Date.now() + timeoutMs;
 
   while (true) {
@@ -282,8 +284,8 @@ function acquireLockFile(lockFile, timeoutMessage, timeoutMs = LOCK_TIMEOUT_MS) 
     // Check stale lock
     try {
       const stat = fs.statSync(lockFile);
-      if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
-        breakStaleLockFile(lockFile);
+      if (Date.now() - stat.mtimeMs > staleMs) {
+        breakStaleLockFile(lockFile, staleMs);
         continue;
       }
     } catch {
@@ -294,7 +296,7 @@ function acquireLockFile(lockFile, timeoutMessage, timeoutMs = LOCK_TIMEOUT_MS) 
     if (Date.now() >= deadline) {
       throw new Error(
         `${timeoutMessage} (lock file: ${lockFile}). A stale lock from a crashed process clears automatically after ` +
-        `${LOCK_STALE_MS / 1000} seconds — retry; if it persists, delete the lock file.`
+        `${staleMs / 1000} seconds — retry; if it persists, delete the lock file.`
       );
     }
 
