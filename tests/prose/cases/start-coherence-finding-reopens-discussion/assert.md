@@ -32,18 +32,22 @@ The prose should have taken this path:
    itself
 8. the gate completes: the candidate recorded approved, the tracker
    carries synonym-handling, the spent `analysis_staging` subtree
-   deleted, and the gate's commit — "discovery(search-relevance):
-   coherence findings triaged" — covers its state
+   deleted along with its on-disk staging file, and the gate's
+   commit — "discovery(search-relevance): coherence findings
+   triaged" — covers its state
 9. the orchestrator re-enters the analysis at its cache section: the
    cache file lands at `.state/coherence-analysis.md` and the
    coherence cache is stamped over the one still-completed discussion
    file — the reopened target has already left the completed set, so
    the stamp covers behavioural-ranking.md alone and the cache reads
    absent until synonym-handling re-completes
-10. dedupe no-ops for coherence, the dispatch re-runs discovery, the
-    sequencing step is skipped (every live topic already ordered), and
-    the epic dashboard renders with the reopened-by-coherence callout
-    and its menu; the walk ends there without selecting anything
+10. dedupe no-ops for coherence; the sweep finds the stamp's leavings
+    dirty (the cache file and manifest write nothing self-committed)
+    and commits them — "discovery(search-relevance): analysis run
+    bookkeeping"; the dispatch re-runs discovery, the sequencing step
+    is skipped (every live topic already ordered), and the epic
+    dashboard renders with the reopened-by-coherence callout and its
+    menu; the walk ends there without selecting anything
 
 Further claims:
 
@@ -53,7 +57,11 @@ Further claims:
 - synonym-handling's triage queue holds one file whose body carries
   both decisions with quotes anchored to file and section; the
   document itself is untouched
-- `analysis_staging.coherence-analysis` is absent from the manifest
+- `analysis_staging.coherence-analysis` is absent from the manifest,
+  and the staging file `.state/coherence-analysis-candidates.md` no
+  longer exists on disk
+- the work tree is clean when the dashboard renders — the analysis
+  pass's bookkeeping commit swept the cache file and stamp
 - `phases.discovery.coherence_analysis_cache` exists with a checksum,
   a generated timestamp, and input_files naming only
   behavioural-ranking.md — the reopened target left the completed set
