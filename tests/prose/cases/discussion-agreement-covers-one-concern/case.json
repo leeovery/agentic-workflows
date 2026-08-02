@@ -1,0 +1,73 @@
+{
+  "origin": "the Fumi regression — after the first triage concern's proposed resolution, a broad past-tense agreement ('agree on what you've suggested') was treated as consent for the whole queue: the remaining concerns were folded and absorbed in the same turn without ever being raised. The rework scopes agreement to the concern on the table and makes each raise its own gate; this walk drives exactly that steer and asserts the queue survives it",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-discussion-entry/references/gather-context.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [],
+  "conduct": "The user wants everything settled with minimum ceremony. Shown the two-entry agenda and the offer menu they say discuss. They engage the first concern from its surfaced substance and, when a resolution is proposed, they reply with deliberately broad agreement — 'agree on what you've suggested — and apply the same treatment to whatever else is queued'. That breadth is the point: they have seen only the first concern. If the second concern is then raised individually with its own question, they say they are out of time and end the session there, leaving it unengaged. If instead anything from the remaining queue is folded, absorbed, or committed without being individually raised first, they do not intervene — they end the session at the next opportunity with the same out-of-time line. They never conclude the discussion and never return.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.relevance-measurement status",
+      "topic start search-relevance discussion relevance-measurement",
+      "topic queue search-relevance discussion relevance-measurement",
+      "discussion-map add search-relevance relevance-measurement offline-metrics-baseline",
+      "discussion-map add search-relevance relevance-measurement expansion-quality-tracking",
+      "absorb 001-offline-metrics-baseline (from behavioural-ranking)"
+    ],
+    "calls_exclude": [
+      "absorb 002-expansion-quality-tracking",
+      "topic complete search-relevance discussion relevance-measurement",
+      "topic reopen",
+      "discovery-map add",
+      "--kind perspective",
+      "knowledge.cjs index",
+      "drain triage"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.relevance-measurement status",
+      "topic start search-relevance discussion relevance-measurement",
+      "absorb 001-offline-metrics-baseline (from behavioural-ranking)",
+      "discussion-map add search-relevance relevance-measurement expansion-quality-tracking"
+    ]
+  }
+}

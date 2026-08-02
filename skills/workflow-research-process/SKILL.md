@@ -53,7 +53,7 @@ Then check if the research file exists at `.workflows/{work_unit}/research/{topi
 
 #### If status is `triaged`
 
-A first start, not a resume — no session has ever run. Parked concerns wait in the topic's triage queue, untouched by initialization — the session drain folds them.
+A first start, not a resume — no session has ever run. Parked concerns wait in the topic's triage queue, untouched by initialization — the session loop's triage check surfaces them.
 
 → Proceed to **Step 1**.
 
@@ -135,8 +135,6 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > — follow threads, surface options, and document findings.
 > No decisions needed at this stage.
 ```
-
-Load **[drain-triage.md](../workflow-shared/references/drain-triage.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
 
 Load **[route-session.md](references/route-session.md)** and follow its instructions as written.
 

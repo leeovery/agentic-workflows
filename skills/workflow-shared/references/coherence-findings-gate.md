@@ -4,7 +4,7 @@
 
 ---
 
-Presents the findings the coherence analysis staged and gates each before anything lands. Approving a finding delivers it through [triage-landing.md](triage-landing.md) — `topic triage` reopens the yielding discussion and the finding lands in its triage queue, where the next discussion session drains it and the conclusion gate forces resolution. Skipping a finding records its fingerprint in `phases.discovery.dismissed_findings[]` so the analysis won't re-stage it. Deferring leaves every finding `pending` and signals the host to skip the cache stamp, so the same staging is re-presented next boot without re-running the analysis.
+Presents the findings the coherence analysis staged and gates each before anything lands. Approving a finding delivers it through [triage-landing.md](triage-landing.md) — `topic triage` reopens the yielding discussion and the finding lands in its triage queue, where the next discussion session surfaces it and the conclusion gate forces resolution. Skipping a finding records its fingerprint in `phases.discovery.dismissed_findings[]` so the analysis won't re-stage it. Deferring leaves every finding `pending` and signals the host to skip the cache stamp, so the same staging is re-presented next boot without re-running the analysis.
 
 The gate is the boot-time review surface — it runs before the dashboard.
 

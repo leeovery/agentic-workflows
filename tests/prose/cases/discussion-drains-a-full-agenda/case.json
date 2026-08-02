@@ -24,7 +24,7 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-knowledge/references/knowledge-usage.md",
     "skills/workflow-knowledge/references/contextual-query.md",
-    "skills/workflow-shared/references/drain-triage.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-shared/references/triage-landing.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/closing-gates.md",
@@ -40,7 +40,7 @@
     "skills/workflow-shared/references/closing-recap.md"
   ],
   "answers": [],
-  "conduct": "The user knows two measurement questions were parked here and has come to settle them. Shown the two-entry agenda they take the concerns in the offered order. Offered the next waiting concern at a break, they say discuss. On offline metrics baseline they decide: the baseline is NDCG@10 plus click-through position computed weekly from the batch aggregates, and any ranking change that moves NDCG@10 down more than two points blocks until reviewed. On expansion quality tracking they decide: sample two hundred expanded queries weekly, judge precision against purchase follow-through from the same aggregates, and keep the tracking in the measurement topic's weekly report rather than a new system. They engage each concern from its surfaced substance, decide rather than park, and add nothing beyond the two concerns. When both are settled they say that covers it and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: an optional fresh gap review is skipped, offers of new threads are declined. They never introduce new material.",
+  "conduct": "The user knows two measurement questions were parked here and has come to settle them. Shown the two-entry agenda and the offer menu they say discuss, and they take the concerns in the offered order as each is raised. On offline metrics baseline they decide: the baseline is NDCG@10 plus click-through position computed weekly from the batch aggregates, and any ranking change that moves NDCG@10 down more than two points blocks until reviewed. On expansion quality tracking they decide: sample two hundred expanded queries weekly, judge precision against purchase follow-through from the same aggregates, and keep the tracking in the measurement topic's weekly report rather than a new system. They engage each concern from its surfaced substance, decide rather than park, and add nothing beyond the two concerns. When both are settled they say that covers it and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: an optional fresh gap review is skipped, offers of new threads are declined. They never introduce new material.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   },

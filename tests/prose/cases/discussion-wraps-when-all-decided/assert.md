@@ -11,7 +11,7 @@ The prose should have taken this path:
    subtopics as pending, and commits once
 4. the guidelines load and the knowledge base is addressed once as a
    contextual query; with an empty store the session proceeds silently;
-   the triage drain no-ops on an empty queue
+   the session loop's triage check no-ops on an empty queue
 5. the session runs as an organic conversation: every thread the user
    engages is driven to a decision, the transitions recorded through
    the engine, the file written and committed at natural pauses

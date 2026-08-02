@@ -10,8 +10,9 @@ The prose should have taken this path:
    the user continues
 3. initialisation is skipped; the guidelines load; the knowledge base
    is addressed once as a contextual query (empty or keyword-only
-   store — the session proceeds); the session-step entry reads the
-   triage queue and finds it empty — no agenda, nothing surfaced
+   store — the session proceeds); the session loop's first triage
+   check reads the queue and finds it empty — no agenda, nothing
+   surfaced
 4. the session works result caching to a decision (per-session cache
    on the normalised query, invalidated at the nightly refresh); the
    map records it decided and the write commits action-scoped

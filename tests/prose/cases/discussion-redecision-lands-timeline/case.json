@@ -21,7 +21,7 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-knowledge/references/knowledge-usage.md",
     "skills/workflow-knowledge/references/contextual-query.md",
-    "skills/workflow-shared/references/drain-triage.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-shared/references/triage-landing.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/closing-gates.md",
@@ -48,7 +48,6 @@
     "calls_include": [
       "manifest get search-relevance.discussion.synonym-handling status",
       "discussion-map set search-relevance synonym-handling expansion-source exploring",
-      "discussion-map add search-relevance synonym-handling expansion-source",
       "discussion-map set search-relevance synonym-handling expansion-source decided",
       "absorb 001-expansion-source (from behavioural-ranking)",
       "workflow-discussion-process/scripts/gateway.cjs map search-relevance synonym-handling",
@@ -57,7 +56,6 @@
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",
       "discussion-map set search-relevance synonym-handling expansion-source exploring",
-      "discussion-map add search-relevance synonym-handling expansion-source",
       "discussion-map set search-relevance synonym-handling expansion-source decided",
       "absorb 001-expansion-source (from behavioural-ranking)",
       "topic complete search-relevance discussion synonym-handling"
@@ -67,7 +65,8 @@
       "topic reopen",
       "topic start search-relevance discussion synonym-handling",
       "discovery-map add",
-      "knowledge.cjs index"
+      "knowledge.cjs index",
+      "discussion-map add search-relevance synonym-handling expansion-source"
     ]
   }
 }

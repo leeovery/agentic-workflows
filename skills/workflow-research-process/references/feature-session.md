@@ -6,11 +6,13 @@
 
 ## A. Background Agents
 
-Two types of background agent operate during research. Load their lifecycle instructions now — apply them at the appropriate moments during the session loop.
+Two types of background agent operate during research, and the topic's triage queue surfaces through a third protocol file. Load their instructions now — they run at the appropriate moments during the session loop.
 
 → Load **[review-agent.md](review-agent.md)** and follow its instructions as written.
 
 → Load **[deep-dive-agent.md](deep-dive-agent.md)** and follow its instructions as written.
+
+→ Load **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research` — a protocol, not a step: the session loop's triage check enters its **A. Check**; nothing runs at load time.
 
 ---
 

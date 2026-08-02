@@ -10,8 +10,8 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query
    (keyword-only store — the session proceeds), and enters the session
-   step; the triage queue is empty, so the drain's entry pass shows
-   nothing
+   step; the session loop's triage check finds the queue empty and
+   shows nothing
 4. the user has nothing to add — everything was decided in the earlier
    sitting — and signals the discussion covers it; the map is read
    through the gateway and the closing gates load

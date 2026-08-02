@@ -4,7 +4,7 @@
 
 ---
 
-Lands a rerouted concern in a target topic's **triage queue** — one engine-numbered file per concern, installed and committed by the engine — so the target drains it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to route to; their callers ignore the concern, surface it to the inbox, or pivot to an epic, and never load this reference.
+Lands a rerouted concern in a target topic's **triage queue** — one engine-numbered file per concern, installed and committed by the engine — so the target surfaces it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to route to; their callers ignore the concern, surface it to the inbox, or pivot to an epic, and never load this reference.
 
 The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a concern that belongs to the current topic is normal subtopic or thread work, not a reroute). The delivery is a self-committing engine transaction — the concern file and manifest land action-scoped under the reroute message; the caller commits nothing for the landing itself. (`topic reactivate` in **D** likewise commits itself.)
 
@@ -27,7 +27,7 @@ After return, the caller reads these from conversation memory:
 
 ## Triage Entry Shape
 
-Each rerouted concern is one queue file. Pin this exact content shape — the drain folds against it:
+Each rerouted concern is one queue file. Pin this exact content shape — the fold reads against it:
 
 ```
 ### {short title}
@@ -56,7 +56,7 @@ The target is not on the map yet.
 
 #### If the row's lifecycle is `handled` or `cancelled`
 
-The topic is closed — no future session will drain its queue, and concluded artefacts may exist beneath it. Record the row's lifecycle as `lifecycle`.
+The topic is closed — no future session will surface its queue, and concluded artefacts may exist beneath it. Record the row's lifecycle as `lifecycle`.
 
 → Proceed to **D. Closed Target**.
 
@@ -110,7 +110,7 @@ Set `landed_topic = {target}` and `result = landed`. When the response carries `
 
 ## D. Closed Target
 
-Never stub over a concluded artefact, and never land an entry no session will drain. Surface the state and let the user decide:
+Never stub over a concluded artefact, and never land an entry no session will surface. Present the state and let the user decide:
 
 > *Output the next fenced block as markdown (not a code block):*
 

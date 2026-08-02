@@ -53,7 +53,7 @@ Then check if the discussion file exists at `.workflows/{work_unit}/discussion/{
 
 #### If status is `triaged`
 
-A first start, not a resume — no session has ever run and no subtopics exist, so there is no map to render. Parked concerns wait in the topic's triage queue, untouched by initialization — the session drain folds them.
+A first start, not a resume — no session has ever run and no subtopics exist, so there is no map to render. Parked concerns wait in the topic's triage queue, untouched by initialization — the session loop's triage check surfaces them.
 
 → Proceed to **Step 1**.
 
@@ -135,8 +135,6 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > Map. You can lead wherever you want — I'll challenge thinking,
 > explore edge cases, and capture decisions as we go.
 ```
-
-Load **[drain-triage.md](../workflow-shared/references/drain-triage.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`.
 
 Load **[discussion-session.md](references/discussion-session.md)** and follow its instructions as written.
 

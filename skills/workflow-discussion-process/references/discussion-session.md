@@ -6,11 +6,13 @@
 
 ## A. Background Agents
 
-Two types of background agent operate during the discussion. Load their lifecycle instructions now — apply them at the appropriate moments during the session loop.
+Two types of background agent operate during the discussion, and the topic's triage queue surfaces through a third protocol file. Load their instructions now — they run at the appropriate moments during the session loop.
 
 → Load **[review-agent.md](review-agent.md)** and follow its instructions as written.
 
 → Load **[perspective-agents.md](perspective-agents.md)** and follow its instructions as written.
+
+→ Load **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion` — a protocol, not a step: the session loop's triage check enters its **A. Check**; nothing runs at load time.
 
 ---
 
@@ -18,13 +20,15 @@ Two types of background agent operate during the discussion. Load their lifecycl
 
 The discussion is an organic conversation. The Discussion Map is your tracking backbone — it tells you where you are, what's been decided, what's still open, and where to go next. It is typed state in the manifest (`phases.discussion.items.{topic}.subtopics`): you make every state call, the engine `discussion-map` commands record it, and the adapter renders it (see **E**). Follow this loop:
 
-1. **Check for findings** — Beat presence first, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} discussion {topic}` — before the gated checks below: any of them can end in a STOP that closes the turn, and the beat must not miss its iteration. Then run the check-for-results logic from the background-agent files loaded above. Each file knows its own rules; follow the named section in each:
+1. **Check for findings** — Beat presence first, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} discussion {topic}` — before the gated checks below: any of them can end in a STOP that closes the turn, and the beat must not miss its iteration.
+
+   Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. It offers a non-empty queue at the session's first check and at natural breaks, raises the next concern while the user's opt-in stands, and stays silent otherwise. When it acts, its STOP ends the turn — the agent checks below wait for a later iteration.
+
+   Then run the check-for-results logic from the background-agent files loaded above. Each file knows its own rules; follow the named section in each:
    - **Review agent**: follow **B. Check and Surface** in **[review-agent.md](review-agent.md)** — delegates to the shared surfacing protocol for review findings.
    - **Perspective agents**: follow **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)** — promotes completed perspective sets to synthesis, then delegates to the shared surfacing protocol for synthesis findings.
    
    Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the shared protocol.** Skip only when no agents have been dispatched yet — the store decides, not the iteration count: a resumed session may hold agents from an earlier sitting.
-
-   Then check the triage queue: follow **F. Mid-Session Check** in **[drain-triage.md](../../workflow-shared/references/drain-triage.md)** — a concern rerouted here mid-session is offered at the next natural break, and re-offered at later breaks until drained; the conclusion gate is the backstop.
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
@@ -39,7 +43,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    ```
 
    The command's JSON response carries `all_decided` and `unresolved_count` — no follow-up read needed. Don't force transitions — suggest them. The user can follow your suggestion or go wherever they want.
-4. **Document** — At natural pauses, update the discussion file — it holds the knowledge. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision); keep the Summary current. When the session re-decides a decision recorded in an *earlier sitting* — a drained triage concern, a review finding, a user reversal — the new decision lands as a dated entry on that block per the template's revision convention, wrapping a plain block first; refining an entry still being written this session edits it in place, no entry. Capture provisional thinking for subtopics still in progress if context compaction is a risk. The live map state lives in the manifest only — never write a map section into the file.
+4. **Document** — At natural pauses, update the discussion file — it holds the knowledge. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision); keep the Summary current. When the session re-decides a decision recorded in an *earlier sitting* — an absorbed triage concern, a review finding, a user reversal — the new decision lands as a dated entry on that block per the template's revision convention, wrapping a plain block first; refining an entry still being written this session edits it in place, no entry. Capture provisional thinking for subtopics still in progress if context compaction is a risk. The live map state lives in the manifest only — never write a map section into the file.
 5. **Commit & dispatch check** — Commit after each write. Don't batch. When the write documents an agent finding's engagement, the subject carries `({id} {finding})` — e.g. `discussion({work_unit}/{topic}): decided webhook reconciliation (review-003 F2)` — and the commit carries only the engagement's write; unrelated substance commits separately:
 
    ```bash

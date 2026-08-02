@@ -12,7 +12,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} r
 
 **If `count` is non-zero:**
 
-A concern was rerouted into this topic after drain ran this session. It must be folded before concluding.
+A rerouted concern is still queued — it must be discussed and folded before concluding.
 
 > *Output the next fenced block as a code block:*
 
