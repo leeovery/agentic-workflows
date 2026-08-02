@@ -287,6 +287,70 @@ function checkRouting(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 6b/15 — Cross-file section references: a bold lettered-section token
+// sharing a line with a reference-file link must name a heading that exists —
+// in the linked file (the cross-file read, e.g. "follow **E. Mid-Session
+// Check** in **[drain-triage.md](…)**") or locally (a same-line unrelated
+// link beside an intra-file route must never false-positive). A restructure
+// that shifts a target file's letters now fails here instead of rotting
+// silently; missing linked files are check 7's finding, not this one's.
+// ---------------------------------------------------------------------------
+
+function checkCrossFileSections(files) {
+  const out = [];
+  const tokenRe = /\*\*([A-Z]\.\s[^*]+?)\*\*/g;
+  const linkRe = /\[[^\]]*\]\(([^)#]+\.md)[^)]*\)/g;
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    const localHeadings = [];
+    lines.forEach((line) => {
+      const hm = line.match(/^#{1,6}\s+(.+?)\s*$/);
+      if (hm) localHeadings.push(hm[1]);
+    });
+    lines.forEach((line, i) => {
+      if (inFence[i]) return;
+      linkRe.lastIndex = 0;
+      const linked = [];
+      let lm;
+      while ((lm = linkRe.exec(line))) {
+        const target = lm[1];
+        if (target.includes('{') || /^[a-z]+:\/\//.test(target)) continue;
+        linked.push(path.resolve(path.dirname(file), target));
+      }
+      if (linked.length === 0) return;
+      tokenRe.lastIndex = 0;
+      let tm;
+      while ((tm = tokenRe.exec(line))) {
+        const token = tm[1].trim();
+        if (token.includes('{')) continue;
+        if (localHeadings.some((h) => h === token)) continue;
+        let resolvable = false;
+        let anyLinkedRead = false;
+        for (const abs of linked) {
+          let content;
+          try {
+            content = fs.readFileSync(abs, 'utf8');
+          } catch {
+            continue; // missing file — check 7's finding
+          }
+          anyLinkedRead = true;
+          const ok = content.split('\n').some((l) => {
+            const hm = l.match(/^#{1,6}\s+(.+?)\s*$/);
+            return hm && hm[1] === token;
+          });
+          if (ok) { resolvable = true; break; }
+        }
+        if (anyLinkedRead && !resolvable) {
+          out.push({ file, line: i + 1, message: `cross-file section reference **${token}** has no matching heading in the linked file(s)` });
+        }
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Check 7 — Markdown link resolution: every relative [text](path) link
 // resolves to an existing file (anchor fragment stripped). External URLs and
 // template-placeholder ({…}) paths are skipped. Links inside fenced code
@@ -745,6 +809,7 @@ const CHECKS = [
   ['12: earned chrome (inert load-only steps)', checkInertLoadChrome],
   ['13: templated-fence ratchet (render-surfaces D4)', checkTemplatedRatchet],
   ['14: buried invocation imperatives', checkBuriedInvoke],
+  ['15: cross-file section references', checkCrossFileSections],
 ];
 
 function report(violations) {
@@ -903,6 +968,38 @@ test('check 6 (routing) — catches dangling targets, skips exempt shapes', () =
       '## Step 1: Start\n→ Proceed to **Step 2**.\n\n## Step 2: Next\n\n## B. Second Section\n→ Return to **B. Second Section**.\n→ Return to caller.\n→ Return to **[the skill](../SKILL.md)** for **Step 7**.\n→ Proceed to **{next_section}**.\n'
     );
     assert.strictEqual(checkRouting([good]).length, 0, 'resolvable / caller / escape / param targets must pass');
+  });
+});
+
+test('check 15 (cross-file sections) — catches letter drift, honours local and fenced exemptions', () => {
+  withTemp((dir) => {
+    write(dir, 'skills/x/target.md', '## A. Read\n\n## E. Mid-Session Check\n');
+
+    const drifted = write(dir, 'skills/x/caller.md', 'follow **D. Mid-Session Check** in **[target.md](target.md)**.\n');
+    const v = checkCrossFileSections([drifted]);
+    assert.strictEqual(v.length, 1, 'a drifted letter must be caught');
+    assert.match(v[0].message, /D\. Mid-Session Check/);
+
+    const good = write(dir, 'skills/x/good.md', 'follow **E. Mid-Session Check** in **[target.md](target.md)**.\n');
+    assert.strictEqual(checkCrossFileSections([good]).length, 0, 'a matching reference must pass');
+
+    // An intra-file lettered route sharing its line with an unrelated link
+    // must resolve against local headings — never a false positive.
+    const local = write(
+      dir,
+      'skills/x/local.md',
+      '## B. Second Section\n\nLoad **[target.md](target.md)**, then → Return to **B. Second Section**.\n'
+    );
+    assert.strictEqual(checkCrossFileSections([local]).length, 0, 'local heading beside an unrelated link must pass');
+
+    const fenced = write(dir, 'skills/x/fenced.md', '```\nfollow **Z. Nowhere** in **[target.md](target.md)**\n```\n');
+    assert.strictEqual(checkCrossFileSections([fenced]).length, 0, 'fenced examples are exempt');
+
+    const missing = write(dir, 'skills/x/missing.md', 'follow **Q. Gone** in **[nope.md](nope.md)**.\n');
+    assert.strictEqual(checkCrossFileSections([missing]).length, 0, 'a missing linked file is check 7\'s finding');
+
+    const param = write(dir, 'skills/x/param.md', 'follow **{X}. Something** in **[target.md](target.md)**.\n');
+    assert.strictEqual(checkCrossFileSections([param]).length, 0, 'parameterised tokens are exempt');
   });
 });
 
