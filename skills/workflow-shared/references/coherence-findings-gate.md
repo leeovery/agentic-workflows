@@ -26,10 +26,11 @@ Read `staging_file` (finding content) and the gate state: `manifest get {work_un
 
 Nothing to review (the analysis staged nothing, or every finding was already handled on a prior pass).
 
-A processed gate's state is spent — landed findings live in their targets' triage queues, skipped fingerprints on the dismissed list. Set `gate_outcome` to `processed` and clear the state — skip the call when the gate-state read found no `analysis_staging.coherence-analysis` subtree (the analysis staged nothing, so there is no state to clear):
+A processed gate's state is spent — landed findings live in their targets' triage queues, skipped fingerprints on the dismissed list. Set `gate_outcome` to `processed` and clear the state — the manifest subtree and its on-disk staging file together; skip both when the gate-state read found no `analysis_staging.coherence-analysis` subtree (the analysis staged nothing, so there is no state to clear):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.coherence-analysis
+rm -f {staging_file}
 ```
 
 → Return to caller.
@@ -74,10 +75,11 @@ Walk the finding blocks in staging-file order. For the next finding the manifest
 
 #### If no `pending` block remains
 
-A processed gate's state is spent — landed findings live in their targets' triage queues, skipped fingerprints on the dismissed list. Clear it, set `gate_outcome` to `processed`:
+A processed gate's state is spent — landed findings live in their targets' triage queues, skipped fingerprints on the dismissed list. Clear it — the manifest subtree and its on-disk staging file together — and set `gate_outcome` to `processed`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.coherence-analysis
+rm -f {staging_file}
 ```
 
 Commit — this commit covers the gate's own state and skips (each landing already committed itself through the delivery):
