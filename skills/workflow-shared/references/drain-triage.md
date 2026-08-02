@@ -63,6 +63,12 @@ Take the lowest-numbered concern still queued — or whichever the user asks for
 
 **STOP.** Wait for user response.
 
+**If `phase` is `discussion` and the concern's title names an existing subtopic in a settled state** (`decided` or `deferred`): the ground is reopening — re-arm it before the discussion starts, so the map tells the truth while the re-decision is live:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {title:(kebabcase)} exploring
+```
+
 Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many.
 
 **If the discussion reaches an outcome** — a decision, a direction, or the user explicitly parking it as a deferred thread:
