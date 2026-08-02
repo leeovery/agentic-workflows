@@ -37,6 +37,7 @@
       "manifest delete search-relevance.discovery analysis_staging.coherence-analysis",
       "discovery(search-relevance): coherence findings triaged",
       "cache stamp search-relevance coherence-analysis",
+      "discovery(search-relevance): analysis run bookkeeping",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
     ],
     "calls_in_order": [
@@ -48,6 +49,7 @@
       "manifest delete search-relevance.discovery analysis_staging.coherence-analysis",
       "discovery(search-relevance): coherence findings triaged",
       "cache stamp search-relevance coherence-analysis",
+      "discovery(search-relevance): analysis run bookkeeping",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
     ],
     "calls_exclude": [
