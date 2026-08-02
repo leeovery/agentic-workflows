@@ -94,4 +94,17 @@ A chunk (or its source file) can carry a claim you have verified is wrong or has
 - **Implementation** — code is the source of truth for *what* exists during implementation. Read the code; don't query the KB for it. The KB is useful only for the *why* behind an existing pattern or decision (e.g., "why does this use UUID v7?" — the rationale lives in spec/discussion, not the code). Rare in practice. Never use it to fill spec gaps — those are blockers.
 - **Review** — query only for cross-work-unit consistency checks ("does this mirror how similar decisions were made elsewhere?"). Consistency with the current spec is already in scope — no KB needed for that.
 
+## G. Sibling Consult at Cross-Topic Decision Points
+
+A decision that names an entity, field, rule, or classification this topic's own artifact didn't introduce is deciding on ground another document may own. The trigger is local — whether this artifact introduced the term is checkable against the current file; whether another document owns it is exactly what the consult finds out.
+
+Before documenting such a decision:
+
+1. **Consult** — run a scoped query for the term, or cite the sibling's current decided text when it is already in this session's context.
+2. **Trace** — record the check as one line inside the documented decision: `Sibling check: {topic} — {what its decided text holds}`, or `Sibling check: no overlap found.`
+
+When the consult surfaces sibling text the new decision contradicts or supersedes, the sibling is owed a correction — reroute it through the session's off-topic path at that moment, never as a prose note to carry.
+
+In ordinary conversation this is the same advisory judgment as §A trigger 2. At engagement decision points — a review or synthesis finding's outcome, a drained triage concern's fold — the consult is a required step; the engagement flows name it.
+
 → Return to caller.
