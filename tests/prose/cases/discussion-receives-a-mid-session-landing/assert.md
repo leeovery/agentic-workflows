@@ -7,8 +7,8 @@ The prose should have taken this path:
 2. the process renders resume detection — the map with result-caching
    open — and the user continues; initialisation is skipped; the
    guidelines load; the knowledge base is addressed once as a
-   contextual query; the session-step entry reads the triage queue and
-   finds it empty — no agenda, nothing surfaced
+   contextual query; the session loop's first triage check reads the
+   queue and finds it empty — no agenda, nothing surfaced
 3. the session works result caching to its decision, the map records
    it decided, and the write commits action-scoped
 4. after that commit the armed substitution delivers the peer concern
@@ -19,11 +19,12 @@ The prose should have taken this path:
    and the session continues
 6. at the following break the check re-offers — later meant not now,
    never not this session — and the user takes it; the concern is
-   surfaced whole, provenance line and full body, and discussed to a
-   decision
-7. the fold is new ground: the subtopic is created with a
-   provenance-led Context, the decision documented, and the concern
-   absorbs under its own commit naming file and origin
+   new ground, so its raise arms the map (`discussion-map add` then
+   set `exploring`) before it is surfaced whole, provenance line and
+   full body, and discussed to a decision
+7. the fold writes the armed subtopic: a provenance-led Context, the
+   decision documented, the map set `decided`, and the concern
+   absorbed under its own commit naming file and origin
 8. the user wraps; the closing gates run the review machinery per the
    conduct (the stubbed review returns clean); the conclude gate reads
    the queue, finds it empty again, and the discussion completes with

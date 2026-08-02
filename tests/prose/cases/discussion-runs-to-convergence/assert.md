@@ -12,7 +12,7 @@ The prose should have taken this path:
    subtopics on the map as pending, and commits once
 4. the guidelines load, and the knowledge base is addressed once as a
    contextual query; with an empty store the session proceeds silently
-5. the triage drain no-ops on an empty queue — no commit, nothing
+5. the session loop's triage check no-ops on an empty queue — no commit, nothing
    surfaced
 6. the session runs as an organic conversation: subtopics move through
    their lifecycle by engine calls as the discussion progresses, and

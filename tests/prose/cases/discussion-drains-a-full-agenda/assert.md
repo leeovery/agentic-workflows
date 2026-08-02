@@ -8,19 +8,21 @@ The prose should have taken this path:
    no map to render, no resume gate — and initialisation creates the
    discussion file from the template, registers the topic (`topic
    start` flips `triaged` to `in-progress`), and commits action-scoped
-3. the session-step entry reads the queue and shows the two-entry
-   agenda — both titles with their origins — and returns; nothing is
-   surfaced until the session machinery is loaded
-4. the loop's check offers the waiting concerns; the user takes them;
-   the first concern is surfaced whole — provenance line and full
-   body, not a title — and discussed to the baseline decision
-5. the fold is new ground: `discussion-map add
-   offline-metrics-baseline` succeeds, the subtopic's Context opens
-   with the provenance line and the concern body, the decision is
-   documented, and the concern absorbs under its own commit naming
-   file and origin; the map state lands `decided`
-6. the second concern surfaces the same way, decides, folds as new
-   ground, and absorbs under its own distinct commit
+3. the session loop's first triage check reads the queue and renders
+   the two-entry agenda — both titles with their origins, bodies
+   unread — together with the offer menu, and stops for the user
+4. the user opts in; the first concern is armed on the map
+   (`discussion-map add` then set `exploring`), surfaced whole —
+   provenance line and full body, not a title — broken down, and
+   discussed to the baseline decision
+5. the fold documents the decision: a new `##` section whose Context
+   opens with the provenance line and the concern body, the map set
+   `decided`, and the concern absorbed under its own commit naming
+   file and origin
+6. the second concern is raised without a fresh offer — the opt-in
+   stands — through the same arm/surface/fold/absorb path, absorbing
+   under its own distinct commit; with the queue empty the clear line
+   renders
 7. with both settled the user wraps; the closing gates run the review
    machinery per the conduct (the stubbed review returns clean); the
    conclude gate reads the queue, finds it empty, and the discussion
@@ -36,7 +38,7 @@ Further claims:
   Initialisation may legitimately have seeded further subtopics from
   the brief — any such ended `decided` or `deferred`, never left
   pending — but the triage-queue titles were not pre-seeded: the
-  drained subtopics entered the map at their folds
+  drained subtopics entered the map at their raises, not before
 - a fold's decision may carry a `Sibling check:` line citing the
   origin sibling's decided text — legal where the resolution leans on
   ground that sibling owns, never required

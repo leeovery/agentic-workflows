@@ -105,6 +105,6 @@ Before documenting such a decision:
 
 When the consult surfaces text the new decision contradicts or supersedes, the owning document is owed a correction — never a prose note to carry. A sibling topic in the same epic: reroute through the session's off-topic path at that moment. Another work unit's artifact: follow **E. When a surfaced artifact is wrong**.
 
-In ordinary conversation this is the same advisory judgment as §A trigger 2. At engagement decision points — a review or synthesis finding's outcome, a drained triage concern's fold — the consult is a required step; the engagement flows name it.
+In ordinary conversation this is the same advisory judgment as §A trigger 2. At engagement decision points — a review or synthesis finding's outcome, a rerouted triage concern's fold — the consult is a required step; the engagement flows name it.
 
 → Return to caller.

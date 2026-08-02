@@ -365,6 +365,42 @@ describe('render findings-summary', () => {
   });
 });
 
+describe('render concern', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'wu', {});
+  });
+  afterEach(() => teardown(dir));
+
+  function writeQueue(topic, files) {
+    const qdir = path.join(dir, '.workflows', 'wu', 'discussion', '.triage', topic);
+    fs.mkdirSync(qdir, { recursive: true });
+    for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(qdir, f), body);
+  }
+
+  it('frames the queue file verbatim in dot rails under a markdown DISPLAY section', () => {
+    const entry = '### Offline metrics\n*From: ranking · discussion · 2026-08-02*\n\nBody with **bold** and\n\n> a quote.\n';
+    writeQueue('measurement', { '001-offline-metrics.md': entry });
+    const out = renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '001-offline-metrics.md' });
+    const lines = out.split('\n');
+    assert.strictEqual(lines[0], '=== DISPLAY: rerouted concern (emit verbatim as markdown) ===');
+    assert.strictEqual(lines[1], DOTS);
+    assert.strictEqual(lines[2], '**Rerouted concern**');
+    assert.strictEqual(lines[3], '');
+    assert.ok(out.includes(entry.trimEnd()), 'entry content is byte-verbatim');
+    assert.strictEqual(out.trimEnd().split('\n').pop(), DOTS, 'bottom rail closes the frame');
+  });
+
+  it('refuses a missing file, a path, an empty entry, and no --file', () => {
+    writeQueue('measurement', { '001-a.md': 'x', '002-empty.md': ' \n' });
+    assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '999-none.md' }), /not in the measurement discussion triage queue/);
+    assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '../001-a.md' }), /queue-file name, not a path/);
+    assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '002-empty.md' }), /is empty/);
+    assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement' }), /--file <NNN-slug\.md> is required/);
+  });
+});
+
 describe('render finding', () => {
   let dir;
   const base = {
@@ -994,7 +1030,7 @@ describe('selection not-found display', () => {
 
 describe('catalogue dispatch', () => {
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, concern, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });
 });
 

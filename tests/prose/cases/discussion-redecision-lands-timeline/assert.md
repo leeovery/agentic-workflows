@@ -12,22 +12,21 @@ The prose should have taken this path:
    addresses the knowledge base once as a contextual query
    (keyword-only store — the session proceeds), and enters the session
    step
-4. the entry pass reads the triage queue and shows the one-entry
-   agenda only; once the session machinery is loaded, the loop's
-   check offers the concern at a natural break and, on the user's
-   go, surfaces it whole — its provenance and full body presented,
-   not a title. Because the concern's title names an existing
-   subtopic in a settled state, the ground re-arms at surface time:
-   `expansion-source` is set to `exploring` before the discussion
-   starts, and the map is no longer all-decided
+4. the session loop's first triage check reads the queue and renders
+   the one-entry agenda with the offer menu; on the user's go the
+   concern is surfaced whole — its provenance and full body
+   presented, not a title. Because the concern's title names an
+   existing subtopic in a settled state, the ground re-arms at the
+   raise: `expansion-source` is set to `exploring` before the
+   discussion starts, and the map is no longer all-decided
 5. the session discusses the concern as real material and the user
    lands the changed decision (batch aggregates, daily refresh). The
    outcome re-decides ground this document didn't introduce — the
    batch aggregates are behavioural-ranking's — so the sibling
    consult runs before it is recorded: the sibling's decided text is
-   already in context (the drained concern carries it), so citing it
+   already in context (the rerouted concern carries it), so citing it
    satisfies the consult with no query owed. The fold then lands it:
-   the map add refuses — the subtopic already exists — so the
+   the subtopic already exists — armed at the raise — so the
    provenance line and body join the existing `## Expansion Source`
    section's Context, and the re-decision lands as a dated timeline
    entry per the template's revision convention: the block's
