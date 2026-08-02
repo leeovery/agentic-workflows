@@ -24,7 +24,7 @@ The prose should have taken this path:
 
 Further claims:
 
-- the discussion document holds exactly one drained subtopic section
+- the discussion document holds exactly one absorbed subtopic section
   (the offline-metrics-baseline fold, its Context opening with the
   provenance line and the concern body, its decision recorded); no
   section exists for expansion-quality-tracking
