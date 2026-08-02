@@ -62,27 +62,19 @@ Mid-thread — never interrupt. The next iteration's check reconsiders.
 
 ## B. Offer
 
-Read the first two lines only of each queue file — the `### {title}` heading and the `*From: …*` provenance line. Never a body here.
+Read the first two lines only of each queue file — the `### {title}` heading and the `*From: {origin} · {from_phase} · {from_date}*` provenance line. Never a body here. Write the agenda payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/triage-offer.json` with the Write tool — one item per queue file, keyed by its basename:
 
-> *Output the next fenced block as a code block:*
-
-```
-  ⚑ {count} rerouted concern(s) waiting in this topic's triage queue:
-
-  1. {title} — from {origin} ({from_phase}, {from_date})
-  2. ...
+```json
+{"items": [{"file": "{NNN-slug}.md", "title": "…", "origin": "…", "from_phase": "…", "from_date": "…"}]}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Render the offer:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render triage-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/triage-offer.json
 ```
-· · · · · · · · · · · ·
-Work through them now?
 
-- **`d`/`discuss`** — Surface and discuss them one at a time
-- **`l`/`later`** — Carry on with the session; I'll offer again at the next pause. The queue must be empty before this topic can conclude.
-· · · · · · · · · · · ·
-```
+Emit its `DISPLAY: triage agenda` section verbatim as a code block, then its `MENU: triage offer` section verbatim as markdown (not a code block).
 
 **STOP.** Wait for user response.
 

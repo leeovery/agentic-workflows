@@ -399,6 +399,59 @@ describe('render concern', () => {
     assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '002-empty.md' }), /is empty/);
     assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement' }), /--file <NNN-slug\.md> is required/);
   });
+
+  it('triage-offer renders the agenda in queue order and the discuss/later menu', () => {
+    writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
+    const file = writePayload(dir, 'offer.json', { items: [
+      { file: '002-tracking.md', title: 'Expansion tracking', origin: 'synonyms', from_phase: 'discussion', from_date: '2026-08-02' },
+      { file: '001-metrics.md', title: 'Offline metrics', origin: 'ranking', from_phase: 'discussion', from_date: '2026-08-01' },
+    ] });
+    const out = renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file });
+    assert.ok(out.startsWith([
+      '=== DISPLAY: triage agenda (emit verbatim as a code block) ===',
+      "  ⚑ 2 rerouted concerns waiting in this topic's triage queue:",
+      '',
+      '  1. Offline metrics — from ranking (discussion, 2026-08-01)',
+      '  2. Expansion tracking — from synonyms (discussion, 2026-08-02)',
+    ].join('\n')), out);
+    assert.ok(out.includes("=== MENU: triage offer (emit verbatim as markdown, then STOP for the user's response) ==="));
+    assert.ok(out.includes('Work through them now?'));
+    assert.ok(out.includes('- **`d`/`discuss`** — Surface and discuss them one at a time'));
+    assert.ok(out.includes('- **`l`/`later`** — Carry on with the session'));
+  });
+
+  it('triage-offer refuses an empty queue, a short payload, and a payload naming a file the queue lacks', () => {
+    const file = writePayload(dir, 'offer.json', { items: [
+      { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
+    ] });
+    assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file }), /queue is empty — nothing to offer/);
+    writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
+    assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file }), /payload items must cover the queue exactly/);
+    const wrong = writePayload(dir, 'wrong.json', { items: [
+      { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
+      { file: '999-ghost.md', title: 'G', origin: 'o', from_phase: 'discussion', from_date: 'd' },
+    ] });
+    assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file: wrong }), /payload items must cover the queue exactly/);
+    const missing = writePayload(dir, 'missing.json', { items: [{ file: '001-metrics.md', title: 'T', origin: 'o', from_date: 'd' }] });
+    assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /item 1 is missing "from_phase"/);
+  });
+
+  it('triage-block derives the count and the phase word, refusing an empty queue', () => {
+    assert.throws(() => renderSurface(dir, 'triage-block', { dotpath: 'wu.discussion.measurement' }), /queue is empty — nothing blocks conclusion/);
+    writeQueue('measurement', { '001-a.md': 'x' });
+    const out = renderSurface(dir, 'triage-block', { dotpath: 'wu.discussion.measurement' });
+    assert.ok(out.startsWith([
+      '=== DISPLAY: triage block (emit verbatim as a code block) ===',
+      '  ⚑ Triage queue not empty — 1 rerouted concern awaiting discussion.',
+      '    Returning to the session to surface them before concluding.',
+    ].join('\n')), out);
+    const rdir = path.join(dir, '.workflows', 'wu', 'research', '.triage', 'measurement');
+    fs.mkdirSync(rdir, { recursive: true });
+    fs.writeFileSync(path.join(rdir, '001-a.md'), 'x');
+    fs.writeFileSync(path.join(rdir, '002-b.md'), 'y');
+    const rout = renderSurface(dir, 'triage-block', { dotpath: 'wu.research.measurement' });
+    assert.ok(rout.includes('2 rerouted concerns awaiting exploration.'), rout);
+  });
 });
 
 describe('render finding', () => {
@@ -1030,7 +1083,7 @@ describe('selection not-found display', () => {
 
 describe('catalogue dispatch', () => {
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, concern, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, concern, triage-offer, triage-block, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });
 });
 
