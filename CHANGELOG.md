@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.31] - 2026-08-02
+
+🔧 Changed
+- The triage queue for discussion and research topics no longer waits for a bulk drain — it's now checked and offered continuously through the session loop, at natural breaks and before the first question.
+- Rerouted concerns are presented and folded one at a time with clearer scoping: a discussion or proposal can no longer implicitly span another queued concern.
+- Triage agenda, concern, and blocking displays now render through the engine (`render triage-offer`, `render concern`, `render triage-block`) instead of being hand-written in each skill.
+- Gates now only cover material already shown at that gate — a "shall I do all N?"-style question can no longer be used to pre-approve items not yet surfaced.
+
 ## [0.6.30] - 2026-08-02
 
 🐛 Fixed
