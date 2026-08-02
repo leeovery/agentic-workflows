@@ -1,0 +1,37 @@
+{
+  "origin": "the migration verification addenda had engine-level coverage only — nothing walked the judgment half: a boot whose migration converts nothing yet hands over checks, the Step 0.1 verify pass finding what exact-match code cannot (a malformed triage heading holding a real entry), the straggler recovered into the queue, and the recovery riding the migration commit through the confirm gate",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-start/references/active-work.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user boots into their project expecting the routine overview. Shown the migration summary describing a recovered parked concern, they read it, are satisfied, and continue. At the workflow overview menu they are done — they select nothing.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "chore: apply workflow migrations",
+      "workflow-start/scripts/gateway.cjs"
+    ],
+    "calls_exclude": [
+      "knowledge.cjs setup",
+      "topic triage",
+      "topic start",
+      "discussion-map",
+      "knowledge.cjs index"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "chore: apply workflow migrations",
+      "workflow-start/scripts/gateway.cjs"
+    ]
+  }
+}
