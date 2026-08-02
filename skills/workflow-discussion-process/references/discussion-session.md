@@ -18,15 +18,13 @@ Two types of background agent operate during the discussion. Load their lifecycl
 
 The discussion is an organic conversation. The Discussion Map is your tracking backbone — it tells you where you are, what's been decided, what's still open, and where to go next. It is typed state in the manifest (`phases.discussion.items.{topic}.subtopics`): you make every state call, the engine `discussion-map` commands record it, and the adapter renders it (see **E**). Follow this loop:
 
-1. **Check for findings** — Before each conversational turn, run the check-for-results logic from the background-agent files loaded above. Each file knows its own rules; follow the named section in each:
+1. **Check for findings** — Beat presence first, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} discussion {topic}` — before the gated checks below: any of them can end in a STOP that closes the turn, and the beat must not miss its iteration. Then run the check-for-results logic from the background-agent files loaded above. Each file knows its own rules; follow the named section in each:
    - **Review agent**: follow **B. Check and Surface** in **[review-agent.md](review-agent.md)** — delegates to the shared surfacing protocol for review findings.
    - **Perspective agents**: follow **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)** — promotes completed perspective sets to synthesis, then delegates to the shared surfacing protocol for synthesis findings.
    
    Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the shared protocol.** Skip only when no agents have been dispatched yet — the store decides, not the iteration count: a resumed session may hold agents from an earlier sitting.
 
    Then check the triage queue: follow **F. Mid-Session Check** in **[drain-triage.md](../../workflow-shared/references/drain-triage.md)** — a concern rerouted here mid-session is offered at the next natural break, and re-offered at later breaks until drained; the conclusion gate is the backstop.
-
-   Beat presence, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} discussion {topic}`.
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
