@@ -30,9 +30,8 @@ The prose should have taken this path:
    for an epic
 9. the discussion is registered through the engine, the discussion
    file is created from the template with a Context drawn from the
-   brief and a terminal Triage section seeded as (none), initial
-   subtopics land on the discussion map, and the initialisation
-   commit closes the walk — the session is never opened with the user
+   brief, initial subtopics land on the discussion map, and the
+   initialisation commit closes the walk — the session is never opened with the user
 
 Further claims:
 
