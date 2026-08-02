@@ -117,14 +117,14 @@ Otherwise, surface at the next natural break — the same mid-thread protection 
 · · · · · · · · · · · ·
 {count} concern(s) waiting in this topic's triage queue:
 
-- **`d`/`drain`** — Surface the next one now
+- **`d`/`discuss`** — Surface and discuss the next concern
 - **`l`/`later`** — Keep the current thread
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-**If `drain`:**
+**If `discuss`:**
 
 → Return to **A. Read**.
 
