@@ -22,8 +22,10 @@
 // release — the lock protects the manifest read-modify-write, nothing else.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
+const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../kernel/manifest-schema.cjs');
@@ -144,7 +146,33 @@ function startTopic(cwd, workUnit, phase, topic) {
  * @property {boolean} created     true when the phase item was created as `triaged`
  * @property {string|null} status_before  the item's status before the call (null when created)
  * @property {boolean} [reopened]  set when a completed item was reopened to receive the concern
+ * @property {string} [concern_path]  delivery form: the installed concern file, project-relative
+ * @property {string|null} [committed]  delivery form: short commit sha, or null
+ * @property {string} [note]       delivery form: set when committed is null
+ * @property {string[]} [warnings] delivery form: the tail commit's failure detail
  */
+
+/**
+ * The next concern number in a topic's triage sidecar: highest `NNN-` prefix
+ * plus one, `1` for a missing or empty directory.
+ * @param {string} dirAbs
+ * @returns {number}
+ */
+function nextConcernNumber(dirAbs) {
+  /** @type {string[]} */
+  let files;
+  try {
+    files = fs.readdirSync(dirAbs);
+  } catch {
+    return 1;
+  }
+  let max = 0;
+  for (const f of files) {
+    const m = f.match(/^(\d{3})-.+\.md$/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return max + 1;
+}
 
 /**
  * Park a rerouted concern on a topic: create the phase item as `triaged` when
@@ -161,46 +189,101 @@ function startTopic(cwd, workUnit, phase, topic) {
  * @param {string} topic
  * @returns {TopicTriageResult}
  */
-function triageTopic(cwd, workUnit, phase, topic) {
+function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
   assertLegalWrite(phase, 'triaged');
-  return withWorkUnitLock(cwd, workUnit, () => {
+  const { concernFile, slug, message } = opts;
+  const delivering = concernFile !== undefined;
+
+  /** @type {string|null} */
+  let concern = null;
+  if (delivering) {
+    if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+      throw new Error(`--slug must be kebab-case, got "${slug ?? ''}"`);
+    }
+    if (!message) throw new Error('topic triage --concern requires -m <message>');
+    try {
+      concern = fs.readFileSync(path.resolve(cwd, concernFile), 'utf8');
+    } catch {
+      throw new Error(`concern file not found: ${concernFile}`);
+    }
+    if (concern.trim() === '') throw new Error(`concern file is empty: ${concernFile}`);
+  }
+
+  /** @type {TopicTriageResult} */
+  const result = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const phases = ensureContainer(manifest, 'phases', 'phases');
     const ph = ensureContainer(phases, phase, `phases.${phase}`);
     const items = ensureContainer(ph, 'items', `phases.${phase}.items`);
 
+    /** @type {TopicTriageResult} */
+    let base;
+    let dirty = true;
     const existing = items[topic];
     if (!existing || typeof existing !== 'object') {
       items[topic] = { status: 'triaged' };
-      saveWorkUnitManifest(cwd, workUnit, manifest);
-      return { topic, phase, status: 'triaged', created: true, status_before: null };
+      base = { topic, phase, status: 'triaged', created: true, status_before: null };
+    } else {
+      const before = existing.status ?? null;
+      if (before === 'cancelled') {
+        throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+      }
+      if (before === 'superseded') {
+        const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
+        throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
+      }
+      if (before === 'promoted') {
+        const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
+        throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+      }
+      if (before === 'completed') {
+        existing.status = 'in-progress';
+        base = { topic, phase, status: 'in-progress', created: false, status_before: before, reopened: true };
+      } else if (before === null) {
+        // A status-less item (partial field writes) has never been started —
+        // heal it to triaged, the same way start heals it to in-progress.
+        existing.status = 'triaged';
+        base = { topic, phase, status: 'triaged', created: false, status_before: null };
+      } else {
+        base = { topic, phase, status: before, created: false, status_before: before };
+        dirty = false;
+      }
     }
-    const before = existing.status ?? null;
-    if (before === 'cancelled') {
-      throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+
+    if (delivering) {
+      // Install the concern in the topic's triage sidecar — a fresh
+      // engine-numbered file per concern, so concurrent deliveries can
+      // never collide or lose an entry.
+      const dirRel = `.workflows/${workUnit}/${phase}/.triage/${topic}`;
+      const dirAbs = path.join(cwd, dirRel);
+      fs.mkdirSync(dirAbs, { recursive: true });
+      const n = String(nextConcernNumber(dirAbs)).padStart(3, '0');
+      const rel = `${dirRel}/${n}-${slug}.md`;
+      const body = /** @type {string} */ (concern);
+      fs.writeFileSync(path.join(cwd, rel), body.endsWith('\n') ? body : body + '\n');
+      base.concern_path = rel;
     }
-    if (before === 'superseded') {
-      const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
-      throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
-    }
-    if (before === 'promoted') {
-      const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
-      throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
-    }
-    if (before === 'completed') {
-      existing.status = 'in-progress';
-      saveWorkUnitManifest(cwd, workUnit, manifest);
-      return { topic, phase, status: 'in-progress', created: false, status_before: before, reopened: true };
-    }
-    if (before === null) {
-      // A status-less item (partial field writes) has never been started —
-      // heal it to triaged, the same way start heals it to in-progress.
-      existing.status = 'triaged';
-      saveWorkUnitManifest(cwd, workUnit, manifest);
-      return { topic, phase, status: 'triaged', created: false, status_before: null };
-    }
-    return { topic, phase, status: before, created: false, status_before: before };
+
+    if (dirty) saveWorkUnitManifest(cwd, workUnit, manifest);
+    return base;
   });
+
+  if (delivering) {
+    try { fs.unlinkSync(path.resolve(cwd, /** @type {string} */ (concernFile))); } catch { /* scratch already gone */ }
+    /** @type {string[]} */
+    const warnings = [];
+    const outcome = commitTailPathspec(
+      cwd,
+      [`.workflows/${workUnit}/manifest.json`, /** @type {string} */ (result.concern_path)],
+      /** @type {string} */ (message),
+      warnings,
+    );
+    result.committed = outcome.committed;
+    result.warnings = warnings;
+    noteCommitOutcome(result, outcome);
+  }
+
+  return result;
 }
 
 /**

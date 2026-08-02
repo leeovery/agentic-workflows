@@ -43,7 +43,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Step 0: Resume Detection
 
-Read the phase status — file existence alone cannot distinguish a resumable session from a `triaged` stub of parked concerns:
+Read the phase status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
@@ -53,7 +53,7 @@ Then check if the research file exists at `.workflows/{work_unit}/research/{topi
 
 #### If status is `triaged`
 
-A first start, not a resume — no session has ever run. Initialization preserves the stub's parked `## Triage` entries.
+A first start, not a resume — no session has ever run. Parked concerns wait in the topic's triage queue, untouched by initialization — the session drain folds them.
 
 → Proceed to **Step 1**.
 

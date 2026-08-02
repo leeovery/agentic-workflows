@@ -294,6 +294,63 @@ describe('engine topic triage', () => {
     assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
   });
 
+  it('delivery form: installs the concern in the sidecar, self-commits concern + manifest only', () => {
+    writeFile(dir, '.workflows/payments/discussion/refund-policy.md', '# Peer topic\ndirty peer content\n');
+    const scratch = path.join(dir, 'concern-scratch.md');
+    fs.writeFileSync(scratch, '### Rate limits\n*From: refund-policy · discussion · 2026-07-31*\n\nFull context.\n');
+
+    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
+      '--concern', 'concern-scratch.md', '--slug', 'rate-limits', '-m', 'discussion(payments/refund-policy): reroute concern to edge-cases']);
+
+    assert.strictEqual(res.created, true);
+    assert.strictEqual(res.status, 'triaged');
+    assert.strictEqual(res.concern_path, '.workflows/payments/discussion/.triage/edge-cases/001-rate-limits.md');
+    assert.match(res.committed, /^[0-9a-f]+$/);
+    assert.deepStrictEqual(res.warnings, []);
+    const installed = fs.readFileSync(path.join(dir, res.concern_path), 'utf8');
+    assert.match(installed, /### Rate limits/);
+    assert.ok(!fs.existsSync(scratch), 'scratch concern file consumed');
+    const show = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+    assert.deepStrictEqual(show, [
+      '.workflows/payments/discussion/.triage/edge-cases/001-rate-limits.md',
+      '.workflows/payments/manifest.json',
+    ], 'commit confined to concern + manifest');
+    assert.match(git(dir, ['status', '--porcelain']), /discussion\/refund-policy\.md/, 'peer dirt untouched');
+  });
+
+  it('delivery form: numbers concerns sequentially and never collides', () => {
+    for (const slug of ['first', 'second']) {
+      fs.writeFileSync(path.join(dir, 'c.md'), `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
+      engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
+        '--concern', 'c.md', '--slug', slug, '-m', `discussion(payments/x): reroute concern to edge-cases`]);
+    }
+    const files = fs.readdirSync(path.join(dir, '.workflows/payments/discussion/.triage/edge-cases')).sort();
+    assert.deepStrictEqual(files, ['001-first.md', '002-second.md']);
+  });
+
+  it('delivery form: refuses a missing or empty concern file, a bad slug, a missing message — nothing written', () => {
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
+      '--concern', 'absent.md', '--slug', 'ok-slug', '-m', 'msg']).error, /concern file not found/);
+    fs.writeFileSync(path.join(dir, 'empty.md'), '  \n');
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
+      '--concern', 'empty.md', '--slug', 'ok-slug', '-m', 'msg']).error, /concern file is empty/);
+    fs.writeFileSync(path.join(dir, 'c.md'), 'content\n');
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
+      '--concern', 'c.md', '--slug', 'Bad_Slug', '-m', 'msg']).error, /kebab-case/);
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
+      '--concern', 'c.md', '--slug', 'ok-slug']).error, /Usage/);
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], undefined, 'no item conjured');
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.triage')), 'no sidecar conjured');
+  });
+
+  it('delivery form: a terminal target refuses before the concern is consumed', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'refund-policy']);
+    fs.writeFileSync(path.join(dir, 'c.md'), 'content\n');
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'refund-policy',
+      '--concern', 'c.md', '--slug', 'ok-slug', '-m', 'msg']).error, /cancelled/);
+    assert.ok(fs.existsSync(path.join(dir, 'c.md')), 'scratch concern preserved on refusal');
+  });
+
   it('is idempotent — a second call on a triaged stub is a no-op', () => {
     engine(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases']);
     const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases']);
@@ -1278,7 +1335,7 @@ describe('engine usage banner', () => {
     assert.strictEqual(res.status, 1);
     for (const line of [
       'topic start <work-unit> <phase> <topic>',
-      'topic triage <work-unit> <phase> <topic>',
+      'topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]',
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',

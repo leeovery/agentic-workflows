@@ -140,7 +140,7 @@ Commands:
   discovery-session open  <work-unit> --session-log-file <path>
   discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
-  topic triage <work-unit> <phase> <topic>
+  topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -526,6 +526,26 @@ function runTopic(argv) {
       respond(supersedeTopic(process.cwd(), workUnit, phase, topic, { by: opts.by }));
       return;
     }
+    if (command === 'triage') {
+      /** @type {string[]} */ const pos = [];
+      /** @type {string|undefined} */ let concern;
+      /** @type {string|undefined} */ let slug;
+      /** @type {string|undefined} */ let message;
+      for (let i = 0; i < rest.length; i++) {
+        const a = rest[i];
+        if (a === '--concern') concern = rest[++i];
+        else if (a === '--slug') slug = rest[++i];
+        else if (a === '-m' || a === '--message') message = rest[++i];
+        else pos.push(a);
+      }
+      const [workUnit, phase, topic] = pos;
+      const delivering = concern !== undefined || slug !== undefined || message !== undefined;
+      if (!workUnit || !phase || !topic || pos.length !== 3 || (delivering && !(concern && slug && message))) {
+        throw new Error('Usage: engine topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]');
+      }
+      respond(triageTopic(process.cwd(), workUnit, phase, topic, delivering ? { concernFile: concern, slug, message } : {}));
+      return;
+    }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
       throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate> <work-unit> <phase> <topic>');
     }
@@ -729,16 +749,18 @@ function runBoot() {
 // fine: {committed: null}.
 // ---------------------------------------------------------------------------
 
-// Per-phase artifact pathspec for `commit --topic` — the paths a topic's
-// session writes, joined with the work-unit manifest at the call site.
-const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string>} */ ({
-  research: (wu, t) => `.workflows/${wu}/research/${t}.md`,
-  discussion: (wu, t) => `.workflows/${wu}/discussion/${t}.md`,
-  investigation: (wu, t) => `.workflows/${wu}/investigation/${t}.md`,
-  specification: (wu, t) => `.workflows/${wu}/specification/${t}`,
-  planning: (wu, t) => `.workflows/${wu}/planning/${t}`,
-  implementation: (wu, t) => `.workflows/${wu}/implementation/${t}`,
-  review: (wu, t) => `.workflows/${wu}/review/${t}`,
+// Per-phase artifact pathspecs for `commit --topic` — the paths a topic's
+// session writes, joined with the work-unit manifest at the call site. The
+// triage-legal phases carry their sidecar directory so a drain's deletions
+// ride the same commit.
+const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
+  research: (wu, t) => [`.workflows/${wu}/research/${t}.md`, `.workflows/${wu}/research/.triage/${t}`],
+  discussion: (wu, t) => [`.workflows/${wu}/discussion/${t}.md`, `.workflows/${wu}/discussion/.triage/${t}`],
+  investigation: (wu, t) => [`.workflows/${wu}/investigation/${t}.md`],
+  specification: (wu, t) => [`.workflows/${wu}/specification/${t}`],
+  planning: (wu, t) => [`.workflows/${wu}/planning/${t}`],
+  implementation: (wu, t) => [`.workflows/${wu}/implementation/${t}`],
+  review: (wu, t) => [`.workflows/${wu}/review/${t}`],
 });
 
 /**
@@ -818,7 +840,7 @@ function runCommit(argv) {
         // knowledge index) — stage it with the write that produced it.
         const specs = stageableSpecs(cwd, [
           `.workflows/${wu}/manifest.json`,
-          artifact(wu, topic),
+          ...artifact(wu, topic),
           ...(kb ? [KB_DIR] : []),
         ]);
         if (specs.length === 0) {

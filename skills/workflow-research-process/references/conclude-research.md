@@ -4,22 +4,22 @@
 
 ---
 
-First check the `## Triage` section of `.workflows/{work_unit}/research/{topic}.md`.
+First check the topic's triage queue: `.workflows/{work_unit}/research/.triage/{topic}/*.md`.
 
-**If `## Triage` is not `(none)`:**
+**If the queue holds entries:**
 
 A concern was rerouted into this topic after drain ran this session. It must be folded before concluding.
 
 > *Output the next fenced block as a code block:*
 
 ```
-  ⚑ Triage not empty — {N} rerouted concern(s) awaiting fold.
+  ⚑ Triage queue not empty — {N} rerouted concern(s) awaiting fold.
     Returning to the session to drain and explore them before concluding.
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
-**If `## Triage` is `(none)`:**
+**If the queue is missing or empty:**
 
 1. Mark the research completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash

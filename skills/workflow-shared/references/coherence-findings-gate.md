@@ -4,7 +4,7 @@
 
 ---
 
-Presents the findings the coherence analysis staged and gates each before anything lands. Approving a finding delivers it through [triage-landing.md](triage-landing.md) — `topic triage` reopens the yielding discussion and the finding lands in its `## Triage` section, where the next discussion session drains it and the conclusion gate forces resolution. Skipping a finding records its fingerprint in `phases.discovery.dismissed_findings[]` so the analysis won't re-stage it. Deferring leaves every finding `pending` and signals the host to skip the cache stamp, so the same staging is re-presented next boot without re-running the analysis.
+Presents the findings the coherence analysis staged and gates each before anything lands. Approving a finding delivers it through [triage-landing.md](triage-landing.md) — `topic triage` reopens the yielding discussion and the finding lands in its triage queue, where the next discussion session drains it and the conclusion gate forces resolution. Skipping a finding records its fingerprint in `phases.discovery.dismissed_findings[]` so the analysis won't re-stage it. Deferring leaves every finding `pending` and signals the host to skip the cache stamp, so the same staging is re-presented next boot without re-running the analysis.
 
 The gate is the boot-time review surface — it runs before the dashboard.
 
@@ -26,7 +26,7 @@ Read `staging_file` (finding content) and the gate state: `manifest get {work_un
 
 Nothing to review (the analysis staged nothing, or every finding was already handled on a prior pass).
 
-A processed gate's state is spent — landed findings live in their targets' Triage sections, skipped fingerprints on the dismissed list. Set `gate_outcome` to `processed` and clear the state — skip the call when the gate-state read found no `analysis_staging.coherence-analysis` subtree (the analysis staged nothing, so there is no state to clear):
+A processed gate's state is spent — landed findings live in their targets' triage queues, skipped fingerprints on the dismissed list. Set `gate_outcome` to `processed` and clear the state — skip the call when the gate-state read found no `analysis_staging.coherence-analysis` subtree (the analysis staged nothing, so there is no state to clear):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.coherence-analysis
@@ -74,7 +74,7 @@ Walk the finding blocks in staging-file order. For the next finding the manifest
 
 #### If no `pending` block remains
 
-A processed gate's state is spent — landed findings live in their targets' Triage sections, skipped fingerprints on the dismissed list. Clear it, set `gate_outcome` to `processed`:
+A processed gate's state is spent — landed findings live in their targets' triage queues, skipped fingerprints on the dismissed list. Clear it, set `gate_outcome` to `processed`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.coherence-analysis
