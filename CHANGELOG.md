@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.27] - 2026-08-02
+
+✨ Added
+- Migrations can now hand off natural-language checks for the assistant to verify after a run, closing gaps automatic parsing can't catch.
+- Off-topic concerns rerouted between discussion topics now land in a per-topic triage queue instead of a shared document section, so they surface one at a time in conversation instead of getting silently batch-folded.
+- Concurrent discussion sessions on the same epic are now safe — commits, triage delivery, and cross-topic analyses are scoped to avoid stepping on a peer session's work.
+
+🔧 Changed
+- `engine commit` gains a `--topic` mode that commits only a single topic's files, leaving other sessions' in-progress work untouched.
+- Git commits made by the engine now retry briefly on lock contention and degrade to a "commit pending" note instead of failing outright.
+- Rerouted concerns are now routed to research or discussion based on their nature (open question vs. decision), rather than always following the origin topic's phase.
+- The completed-idea index no longer keeps closed rows — finished ideas are removed and deleted rather than struck through and archived in place.
+
+🐛 Fixed
+- A race where two sessions committing at once could silently steal or lose each other's uncommitted changes is closed by scoping commits to the acting topic's files.
+
 ## [0.6.26] - 2026-07-31
 
 ✨ Added
