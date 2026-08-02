@@ -57,6 +57,8 @@ Once all accepted threads have been processed, single commit covering the manife
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}/{parent_topic}): split into {N} topic(s)"
 ```
 
+The work-unit scope is deliberate: a split writes the superseded parent and every new topic's file — no single `--topic` covers it.
+
 Then offer the user a choice of which topic to continue with:
 
 > *Output the next fenced block as markdown (not a code block):*

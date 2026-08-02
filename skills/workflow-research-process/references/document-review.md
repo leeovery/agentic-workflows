@@ -47,7 +47,7 @@ Walk the conversation against the document and check three dimensions:
 - Hallucination → remove or correct to match what was discussed
 - Drift → rewrite to faithfully reflect the conversation
 
-Commit the changes with a descriptive message (e.g., `docs(research): capture undocumented tradeoff thread`, `docs(research): correct drift on storage preference`).
+Commit the changes (`engine commit {work_unit} --topic research/{topic} -m "..."`) with a descriptive message (e.g., `docs(research): capture undocumented tradeoff thread`, `docs(research): correct drift on storage preference`).
 
 → Proceed to **C. Brief the User**.
 

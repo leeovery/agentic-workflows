@@ -35,9 +35,8 @@ function resolveAddress(cwd, dotpath, surface) {
 // ---------------------------------------------------------------------------
 // resume-gate — the shared continue/restart gate over an in-progress phase
 // artifact. Address-backed; the artifact name is the phase segment. The
-// optional triage count is model-counted (the Triage section lives in the
-// artifact markdown, which the model has already read and the engine never
-// parses) and rides as a scalar flag.
+// optional triage count comes from the caller's `topic queue` read and
+// rides as a scalar flag.
 // ---------------------------------------------------------------------------
 
 const RESUME_MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
@@ -137,8 +136,8 @@ function resumeGate(cwd, args) {
       'DISPLAY: triage warning',
       'emit verbatim as a code block, directly above the menu',
       callout([
-        `${n} rerouted concern(s) from other topics sit undrained in this`,
-        "file's Triage section. Restarting deletes them permanently.",
+        `${n} rerouted concern(s) from other topics wait in this topic's`,
+        'triage queue. Restart leaves them queued — they surface next session.',
       ]),
     ));
   }

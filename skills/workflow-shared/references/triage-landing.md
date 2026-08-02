@@ -22,7 +22,7 @@ The caller provides these via context before loading:
 
 After return, the caller reads these from conversation memory:
 
-- `result` — `landed` (entry written; manifest/artefact ready for the caller's commit) or `cancelled` (the reroute was dropped or blocked; nothing written).
+- `result` — `landed` (concern delivered and committed by the engine) or `cancelled` (the reroute was dropped or blocked; nothing written).
 - `landed_topic` — the final target name (a new target may have been renamed during validation).
 
 ## Triage Entry Shape
