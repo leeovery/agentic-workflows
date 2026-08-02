@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.29] - 2026-08-02
+
+🔧 Changed
+- Presence beats now fire before the gated findings checks in discussion and research sessions — prevents a missed beat when a check ends the turn early.
+- Discussion triage folds into an existing subtopic now create the section if one was never written, instead of only appending to it.
+
+🐛 Fixed
+- Discussion initialization no longer seeds the map from the triage queue — parked concerns now enter only through the session drain.
+
 ## [0.6.28] - 2026-08-02
 
 ✨ Added
