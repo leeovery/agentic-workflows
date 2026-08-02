@@ -46,7 +46,7 @@ Initialise an in-conversation tracker:
 new_arrivals = { research_analysis: [], gap_analysis: [], coherence_analysis: [] }
 ```
 
-This tracker captures topic names **approved and written** during this run, per analysis — a gate appends a name only when the user approves the item, so the caller's callouts count approvals, not proposals. The two topic analyses collect topics added to the map; `coherence_analysis` collects topics **reopened** by landed findings. The caller reads it after **F. Return**.
+This tracker captures topic names **approved and written** during this run, per analysis — a gate appends a name only when the user approves the item, so the caller's callouts count approvals, not proposals. The two topic analyses collect topics added to the map; `coherence_analysis` collects topics **reopened** by landed findings. The caller reads it after **G. Return**.
 
 → Proceed to **B. Run Research Analysis if Stale**.
 
@@ -178,23 +178,31 @@ When both analyses surface the same kebab-case theme, research-analysis runs fir
 
 If a name appears in both `new_arrivals.research_analysis` and `new_arrivals.gap_analysis`, treat it as a research-analysis arrival only for caller-side display purposes (single callout entry, single Topic Discovery Arrivals bullet). The manifest already records the comma-joined source. Coherence-analysis does not participate — it adds no map items; `new_arrivals.coherence_analysis` names reopened topics and stays as-is.
 
-→ Proceed to **F. Return**.
+→ Proceed to **F. Sweep**.
 
-## F. Return
+## F. Sweep
 
-Analyses and their gates write state nothing self-commits — staging files and gate registrations (a deferred gate's pending candidates included), spent-state clears, cache files, manifest stamps, knowledge-store dirt. When at least one analysis dispatched this pass, sweep it:
+Analyses and their gates write state nothing self-commits — staging files and gate registrations (a deferred gate's pending candidates included), spent-state clears, cache files, manifest stamps, knowledge-store dirt. Check for leavings:
 
 ```bash
 git status --porcelain -- .workflows/{work_unit} .workflows/.knowledge
 ```
 
-**If the tree is dirty:**
+#### If the tree is dirty
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): analysis run bookkeeping"
 ```
 
-**Otherwise:** every write was already carried by a self-committing delivery — nothing to sweep.
+→ Proceed to **G. Return**.
+
+#### Otherwise
+
+Every write was already carried by a self-committing delivery — nothing to sweep.
+
+→ Proceed to **G. Return**.
+
+## G. Return
 
 The caller reads `new_arrivals` from conversation memory:
 
