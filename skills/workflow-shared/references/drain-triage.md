@@ -59,7 +59,7 @@ The agenda is the whole entry pass — the session loop's check (**F. Mid-Sessio
 
 ## C. Surface One Concern
 
-Take the lowest-numbered concern still queued — or whichever the user asks for. Present it whole: name its origin in a sentence, then emit the file's full content verbatim as a code block (with a rendering instruction) — the origin session carried everything it worked out, and the user decides from the substance, never from the title.
+Take the lowest-numbered concern still queued — or whichever the user asks for. Present it whole: name its origin in a sentence, then emit the file's full content verbatim as markdown (not a code block) — the entry is markdown and renders as such; the origin session carried everything it worked out, and the user decides from the substance, never from the title.
 
 **STOP.** Wait for user response.
 
