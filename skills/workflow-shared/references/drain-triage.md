@@ -95,7 +95,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_
 
 **If the add succeeds** — new ground: create a `## {title}` subtopic section whose `### Context` opens with a provenance line (`*From: {origin} · {from_phase} · {from_date}*`) followed by the concern's body, then document what the discussion just concluded in the section's usual shape. Set the subtopic's map state to wherever the conversation actually got it.
 
-**If the add refuses because the subtopic already exists** — ground this discussion already covers: append the provenance line and the concern's body to that subtopic's existing `### Context` — never a new heading of your own — and set the map so the recorded state reflects the re-decision that just happened:
+**If the add refuses because the subtopic already exists** — ground this discussion already covers: append the provenance line and the concern's body to that subtopic's existing `### Context` — never a new heading of your own. A map entry whose section was never written has nothing to append to: create the `## {title}` section exactly as the new-ground branch prescribes. Either way, set the map so the recorded state reflects the re-decision that just happened:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {title:(kebabcase)} {state}
