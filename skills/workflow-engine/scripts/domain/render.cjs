@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, dotFrame, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -606,10 +606,12 @@ function triageQueue(cwd, workUnit, phase, topic) {
   };
 }
 
-// concern — a rerouted triage-queue entry framed for markdown emission: dot
-// rails top and tail the verbatim file content so it reads as a bounded
-// quotation, not the session's own voice. The queue file is the payload;
-// --file names the entry (basename only — the engine owns the queue layout).
+// concern — a rerouted triage-queue entry framed for markdown emission: a
+// bold header and horizontal rules top and tail the verbatim file content so
+// it reads as a bounded quotation, not the session's own voice (rules are
+// semantic markdown, not drawn borders; dot rails stay menu vocabulary). The
+// queue file is the payload; --file names the entry (basename only — the
+// engine owns the queue layout).
 
 /**
  * @param {string} cwd
@@ -631,7 +633,7 @@ function concern(cwd, { dotpath, file }) {
   return section(
     'DISPLAY: rerouted concern',
     'emit verbatim as markdown',
-    dotFrame(['**Rerouted concern**', '', ...body.split('\n')]),
+    ['**Rerouted concern**', '', '---', '', ...body.split('\n'), '', '---'].join('\n'),
   );
 }
 

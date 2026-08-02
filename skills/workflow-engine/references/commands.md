@@ -194,7 +194,6 @@ engine render finding <wu>.<phase>.<topic> --file <payload>       # one finding 
 engine render concern <wu>.<phase>.<topic> --file <NNN-slug.md>   # a rerouted triage-queue entry framed for markdown emission — dot rails top and tail the verbatim file content; --file is the queue-file basename, resolved inside the topic's triage sidecar
 engine render triage-offer <wu>.<phase>.<topic> --file <payload>  # the offer gate over a non-empty queue: agenda display + discuss/later menu; count and order come from the live queue, per-entry lines from the payload {items: [{file, title, origin, from_phase, from_date}]}, validated to cover the queue exactly
 engine render triage-block <wu>.<phase>.<topic>                   # the conclusion blocker over a non-empty queue — count from the live queue, awaiting-word from the phase; refuses an empty queue loudly
-
 engine render proposed-task <wu>.<phase>.<topic> --file <payload> --gate gated|auto [--comment-hint STR]  # analysis/review synthesis task + its gate; payload {current, total, title, severity, sources, problem, solution, outcome, steps, criteria, tests}
 engine render tasks-overview <wu>.<phase>.<topic> --file <payload>    # proposed-tasks cycle overview; payload {label, tasks: [{title, severity}]}
 engine render author-task-gate <wu>.planning.<topic> --m N --total N --title STR   # task-authoring approval menu (the detail itself is a verbatim file emission the flow owns)

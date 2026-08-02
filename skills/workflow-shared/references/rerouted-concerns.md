@@ -30,9 +30,9 @@ Nothing queued. No output.
 
 → Return to caller.
 
-#### If a raised concern is still open
+#### If a raised concern is still under discussion
 
-The conversation owns it — its outcome routes through **D. Fold**, and the user moving on parks the queue. Nothing to do here.
+The conversation owns it — its outcome routes through **D. Fold**, and the user moving on parks the queue. A parked concern is not under discussion: it waits for the natural-break branch below. Nothing to do here.
 
 → Return to caller.
 
@@ -50,7 +50,7 @@ The session is starting: the offer precedes any session output — render it now
 
 #### If at a natural break
 
-A concern landed mid-session, or the user chose `later` earlier. Consult **[natural-breaks.md](natural-breaks.md)** — a recent `later` defers the re-offer until the conversation has genuinely moved on.
+A concern landed mid-session, or the user chose `later` earlier. Consult the natural-breaks checklist — a recent `later` defers the re-offer until the conversation has genuinely moved on.
 
 → Proceed to **B. Offer**.
 
@@ -73,6 +73,8 @@ Render the offer:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render triage-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/triage-offer.json
 ```
+
+**If the response is `ok: false`** — the queue moved beneath the payload (a peer session landed a concern): re-run **A. Check**'s queue command, rebuild the payload over the fresh queue, and render again.
 
 Emit its `DISPLAY: triage agenda` section verbatim as a code block, then its `MENU: triage offer` section verbatim as markdown (not a code block).
 
@@ -117,7 +119,7 @@ Present the concern whole — name its origin in a sentence, then render the ent
 node .claude/skills/workflow-engine/scripts/engine.cjs render concern {work_unit}.{phase}.{topic} --file {NNN-slug}.md
 ```
 
-Emit its `DISPLAY: rerouted concern` section verbatim as markdown (not a code block) — the dot rails frame where the entry starts and ends. The render's output is also your read of the concern: the origin session carried everything it worked out, and the user decides from the substance, never from the title.
+Emit its `DISPLAY: rerouted concern` section verbatim as markdown (not a code block) — its header and horizontal rules frame where the entry starts and ends. The render's output is also your read of the concern: the origin session carried everything it worked out, and the user decides from the substance, never from the title.
 
 Then break it down in your own voice before asking anything. The reopened ground may be days old and the reader cold — the verbatim entry is the record, the breakdown is what makes it workable: what the concern actually asks of this topic, how it sits against what this topic already decided, and a concrete rendering of the problem — a worked example in the topic's own terms, a small diagram where shape or flow helps, a before/after. Keep it simple and engineer-level, sized to the concern, and vary the shape across a multi-concern queue — identical breakdowns read as a template, not a colleague. The breakdown covers this concern alone: no other queued concern, open item, or finding rides along, and the closing question spans nothing the user hasn't seen. The test: the user can picture the problem before the first question arrives. End in a single opening question.
 
@@ -143,14 +145,14 @@ Record the discussion in the topic's content. An outcome that re-decides ground 
 
 Write the concern into its armed subtopic:
 
-- **New ground** (the raise's `add` created the subtopic): create a `## {title}` section whose `### Context` opens with a provenance line (`*From: {origin} · {from_phase} · {from_date}*`) followed by the concern's body, then document what the discussion concluded in the section's usual shape.
-- **Pre-existing subtopic**: append the provenance line and the concern's body to that subtopic's existing `### Context` — never a new heading of your own. A map entry whose section was never written has nothing to append to: create the `## {title}` section exactly as the new-ground branch prescribes.
+- **The concern's own ground** (the subtopic exists only because raising this concern added it — this raise's `add`, or an earlier raise of it the user moved on from): create a `## {title}` section whose `### Context` opens with a provenance line (`*From: {origin} · {from_phase} · {from_date}*`) followed by the concern's body, then document what the discussion concluded in the section's usual shape.
+- **Pre-existing subtopic**: append the provenance line and the concern's body to that subtopic's existing `### Context` — never a new heading of your own. A map entry whose section was never written has nothing to append to: create the `## {title}` section exactly as the branch above prescribes.
 
-Then set the map state — the fold corrects the record, it never advances open ground:
+Then set the map state — the fold corrects the record, it never advances the session's own open ground:
 
-- **New ground** → wherever the concern's own discussion landed — `decided` with a fully written section when the outcome is a decision.
-- **Reopened settled ground** (was `decided` or `deferred` before the raise): the re-decision lands as a dated entry on the block per the template's revision convention → set `decided`. If the discussion left it genuinely open, leave it `exploring`.
-- **Previously open ground** (was `pending`, `exploring`, or `converging` before the raise): leave it where the arming put it — never `decided` from a fold, however settled the exchange felt. Deciding open ground is the session's own work after the queue empties.
+- **The concern's own ground** → wherever the concern's own discussion landed — `decided` with a fully written section when the outcome is a decision.
+- **Reopened settled ground** (was `decided` or `deferred` before the concern's first raise): the re-decision lands as a dated entry on the block per the template's revision convention → set `decided`. An outcome that re-parks previously-`deferred` ground → set `deferred` — the one fold that may write that state: the raise showed the user exactly what is being set aside, and the fold notes the thread in Summary → Open Threads as the defer gate would. If the discussion left the ground genuinely open, leave it `exploring`.
+- **The session's own open ground** (was `pending`, `exploring`, or `converging` before any raise of this concern): leave it where the arming put it — never `decided` from a fold, however settled the exchange felt. Deciding the session's ground is its own work after the queue empties.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {title:(kebabcase)} {state}

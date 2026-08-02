@@ -54,7 +54,8 @@
       "render concern search-relevance.discussion.relevance-measurement --file 001-offline-metrics-baseline.md",
       "discussion-map add search-relevance relevance-measurement offline-metrics-baseline",
       "discussion-map add search-relevance relevance-measurement expansion-quality-tracking",
-      "absorb 001-offline-metrics-baseline (from behavioural-ranking)"
+      "absorb 001-offline-metrics-baseline (from behavioural-ranking)",
+      "render concern search-relevance.discussion.relevance-measurement --file 002-expansion-quality-tracking.md"
     ],
     "calls_exclude": [
       "absorb 002-expansion-quality-tracking",
@@ -62,14 +63,14 @@
       "topic reopen",
       "discovery-map add",
       "--kind perspective",
-      "knowledge.cjs index",
-      "drain triage"
+      "knowledge.cjs index"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.relevance-measurement status",
       "topic start search-relevance discussion relevance-measurement",
       "absorb 001-offline-metrics-baseline (from behavioural-ranking)",
-      "discussion-map add search-relevance relevance-measurement expansion-quality-tracking"
+      "discussion-map add search-relevance relevance-measurement expansion-quality-tracking",
+      "render concern search-relevance.discussion.relevance-measurement --file 002-expansion-quality-tracking.md"
     ]
   }
 }

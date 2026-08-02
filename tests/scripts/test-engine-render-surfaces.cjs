@@ -379,17 +379,19 @@ describe('render concern', () => {
     for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(qdir, f), body);
   }
 
-  it('frames the queue file verbatim in dot rails under a markdown DISPLAY section', () => {
+  it('frames the queue file verbatim between horizontal rules under a markdown DISPLAY section', () => {
     const entry = '### Offline metrics\n*From: ranking · discussion · 2026-08-02*\n\nBody with **bold** and\n\n> a quote.\n';
     writeQueue('measurement', { '001-offline-metrics.md': entry });
     const out = renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '001-offline-metrics.md' });
     const lines = out.split('\n');
     assert.strictEqual(lines[0], '=== DISPLAY: rerouted concern (emit verbatim as markdown) ===');
-    assert.strictEqual(lines[1], DOTS);
-    assert.strictEqual(lines[2], '**Rerouted concern**');
-    assert.strictEqual(lines[3], '');
+    assert.strictEqual(lines[1], '**Rerouted concern**');
+    assert.strictEqual(lines[2], '');
+    assert.strictEqual(lines[3], '---');
+    assert.strictEqual(lines[4], '');
     assert.ok(out.includes(entry.trimEnd()), 'entry content is byte-verbatim');
-    assert.strictEqual(out.trimEnd().split('\n').pop(), DOTS, 'bottom rail closes the frame');
+    assert.deepStrictEqual(out.trimEnd().split('\n').slice(-2), ['', '---'], 'a blank line then a rule closes the frame — never a setext-heading collapse');
+    assert.ok(!out.includes(DOTS), 'dot rails stay menu vocabulary');
   });
 
   it('refuses a missing file, a path, an empty entry, and no --file', () => {

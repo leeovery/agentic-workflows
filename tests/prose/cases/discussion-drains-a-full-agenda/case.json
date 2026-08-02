@@ -62,8 +62,7 @@
       "topic reopen",
       "discovery-map add",
       "--kind perspective",
-      "knowledge.cjs index",
-      "drain triage"
+      "knowledge.cjs index"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.relevance-measurement status",

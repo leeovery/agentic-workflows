@@ -47,6 +47,8 @@
     "engine_before_write": true,
     "calls_include": [
       "manifest get search-relevance.discussion.synonym-handling status",
+      "render triage-offer search-relevance.discussion.synonym-handling",
+      "render concern search-relevance.discussion.synonym-handling --file 001-expansion-source.md",
       "discussion-map set search-relevance synonym-handling expansion-source exploring",
       "discussion-map set search-relevance synonym-handling expansion-source decided",
       "absorb 001-expansion-source (from behavioural-ranking)",

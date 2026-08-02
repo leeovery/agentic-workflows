@@ -50,6 +50,8 @@
       "manifest get search-relevance.discussion.synonym-handling status",
       "discussion-map set search-relevance synonym-handling result-caching",
       "topic triage search-relevance discussion synonym-handling",
+      "render triage-offer search-relevance.discussion.synonym-handling",
+      "render concern search-relevance.discussion.synonym-handling --file 001-expansion-cache-invalidation.md",
       "discussion-map add search-relevance synonym-handling expansion-cache-invalidation",
       "absorb 001-expansion-cache-invalidation (from relevance-measurement)",
       "topic complete search-relevance discussion synonym-handling"
