@@ -41,7 +41,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 5. **Commit & dispatch check** — Commit after each write. Don't batch. When the write documents an agent finding's engagement, the subject carries `({id} {finding})` — e.g. `discussion({work_unit}/{topic}): decided webhook reconciliation (review-003 F2)` — and the commit carries only the engagement's write; unrelated substance commits separately:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}/{topic}): {what changed}"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): {what changed}"
    ```
 
    Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and perspective agent instructions loaded above. If conditions are met, dispatch before continuing. If not, proceed.

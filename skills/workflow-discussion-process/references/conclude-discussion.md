@@ -43,7 +43,7 @@ Conclude this discussion and mark as completed?
    ```
 3. Final commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}): complete {topic} discussion"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} --kb -m "discussion({work_unit}): complete {topic} discussion"
    ```
 
 Emit the `complete` response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.

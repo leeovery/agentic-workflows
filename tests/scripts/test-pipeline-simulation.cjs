@@ -363,8 +363,9 @@ describe('pipeline simulation', () => {
     // First phase: discussion (topic = work unit for single-topic types).
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
-    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`]);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`, '--kb']);
 
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
 
@@ -532,6 +533,18 @@ describe('pipeline simulation', () => {
     sim.write(`.workflows/${wu}/research/delta.md`,
       '# Research: Delta\n\n## Triage\n\n### Parked concern\n*From: alpha · discussion · 2026-07-23*\n\nDetails.\n');
     sim.run(['commit', wu, '-m', `discussion(${wu}): reroute concern to delta`]);
+    // Concurrent-session shape: a --topic commit slices out only its own
+    // topic's paths — a peer topic's dirty file survives unstaged and
+    // uncommitted, and the commit contains no path outside the topic + manifest.
+    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research: Alpha\n\nown progress\n');
+    sim.write(`.workflows/${wu}/research/delta.md`,
+      '# Research: Delta\n\n## Triage\n\n### Parked concern\n*From: alpha · discussion · 2026-07-23*\n\nDetails. Peer dirt.\n');
+    sim.run(['commit', wu, '-m', `research(${wu}/alpha): progress`, '--topic', 'research/alpha']);
+    const porcelain = git(sim.dir, ['status', '--porcelain']);
+    assert.match(porcelain, /research\/delta\.md/, 'peer topic dirt survives a --topic commit');
+    const headPaths = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
+    assert.ok(!headPaths.includes('research/delta.md'), 'peer topic path absent from the --topic commit');
+    sim.run(['commit', wu, '-m', `research(${wu}): sweep delta dirt for the next steps`]);
     const reparked = sim.run(['topic', 'triage', wu, 'research', 'delta']);
     assert.strictEqual(reparked.created, false);
     assert.strictEqual(reparked.status, 'triaged');

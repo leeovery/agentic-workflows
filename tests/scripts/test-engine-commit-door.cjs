@@ -161,12 +161,26 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.ok(statusLines(dir).some((l) => l.includes('.workflows/.knowledge')), 'KB dirt left in place');
   });
 
+  it('--kb stages the knowledge store alongside the topic pathspec', () => {
+    writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
+    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nconcluded\n');
+    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
+
+    const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments): complete topic-a discussion', '--topic', 'discussion/topic-a', '--kb']);
+
+    assert.match(res.committed, /^[0-9a-f]+$/);
+    const files = headFiles(dir);
+    assert.ok(files.includes('.workflows/.knowledge/metadata.json'), 'KB dirt rides the --kb commit');
+    assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'), 'peer topic still excluded');
+  });
+
   it('rejects malformed and illegal --topic specs', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'bogus/topic-a']).error, /expected <phase>\/<topic>/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion']).error, /expected <phase>\/<topic>/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion/..']).error, /invalid topic name/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion/topic-a', '--plan', 'topic-a']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', '--inbox', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--kb']).error, /Usage/);
   });
 });
 
