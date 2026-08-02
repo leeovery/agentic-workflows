@@ -542,8 +542,14 @@ describe('pipeline simulation', () => {
     const queue = sim.run(['topic', 'queue', wu, 'research', 'delta']);
     assert.strictEqual(queue.count, 1);
     assert.deepStrictEqual(queue.files, [parked.concern_path], 'the read verb lists the delivered concern');
-    // The raise's display surface frames the delivered entry verbatim.
+    // The raise's display surfaces: the offer gate (agenda payload validated
+    // against the live queue), the framed entry, and the conclusion blocker.
+    sim.write('.workflows/.cache/scratch/triage-offer.json', JSON.stringify({
+      items: [{ file: '001-parked-concern.md', title: 'Parked concern', origin: 'alpha', from_phase: 'discussion', from_date: '2026-07-23' }],
+    }));
+    sim.render(['triage-offer', `${wu}.research.delta`, '--file', '.workflows/.cache/scratch/triage-offer.json'], { expect: 'content' });
     sim.render(['concern', `${wu}.research.delta`, '--file', '001-parked-concern.md'], { expect: 'content' });
+    sim.render(['triage-block', `${wu}.research.delta`], { expect: 'content' });
     // Judgment landing: a research-side delivery beneath beta's completed
     // discussion parks the concern AND flags the discussion for
     // reconciliation — the discussion itself stays completed.

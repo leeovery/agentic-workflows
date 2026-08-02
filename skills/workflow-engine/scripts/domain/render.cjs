@@ -587,11 +587,29 @@ function finding(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
+// Triage surfaces — the queue sidecar is engine-owned layout, so these
+// surfaces list it directly; entry *content* beyond the verbatim quotation
+// never populates a render from a parse — per-entry agenda values arrive as
+// a judgment payload.
+// ---------------------------------------------------------------------------
+
+/**
+ * List a topic's triage queue: sorted engine-numbered basenames.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @returns {{dir: string, files: string[]}}
+ */
+function triageQueue(cwd, workUnit, phase, topic) {
+  const dir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
+  return {
+    dir,
+    files: fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort() : [],
+  };
+}
+
 // concern — a rerouted triage-queue entry framed for markdown emission: dot
 // rails top and tail the verbatim file content so it reads as a bounded
 // quotation, not the session's own voice. The queue file is the payload;
 // --file names the entry (basename only — the engine owns the queue layout).
-// ---------------------------------------------------------------------------
 
 /**
  * @param {string} cwd
@@ -604,18 +622,86 @@ function concern(cwd, { dotpath, file }) {
   if (file !== path.basename(file) || !file.endsWith('.md')) {
     throw new Error(`render concern: --file must be a queue-file name, not a path (got "${file}")`);
   }
-  const dir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
-  const abs = path.join(dir, file);
-  if (!fs.existsSync(abs)) {
+  const queue = triageQueue(cwd, workUnit, phase, topic);
+  if (!queue.files.includes(file)) {
     throw new Error(`render concern: "${file}" is not in the ${topic} ${phase} triage queue`);
   }
-  const body = fs.readFileSync(abs, 'utf8').replace(/\s+$/, '');
+  const body = fs.readFileSync(path.join(queue.dir, file), 'utf8').replace(/\s+$/, '');
   if (!body) throw new Error(`render concern: "${file}" is empty`);
   return section(
     'DISPLAY: rerouted concern',
     'emit verbatim as markdown',
     dotFrame(['**Rerouted concern**', '', ...body.split('\n')]),
   );
+}
+
+// triage-offer — the offer gate over a non-empty queue: the agenda (count
+// and order from the live queue, per-entry lines from the caller's payload,
+// keyed by queue file so payload and queue stay in exact correspondence)
+// plus the discuss/later menu.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function triageOffer(cwd, { dotpath, file }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'triage-offer');
+  if (!file) throw new Error('render triage-offer: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'triage-offer');
+  const { files } = triageQueue(cwd, workUnit, phase, topic);
+  if (!files.length) throw new Error(`render triage-offer: the ${topic} ${phase} triage queue is empty — nothing to offer`);
+  if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render triage-offer: "items" must be a non-empty array');
+  /** @type {Map<string, {file: string, title: string, origin: string, from_phase: string, from_date: string}>} */
+  const byFile = new Map();
+  p.items.forEach((it, i) => {
+    for (const field of ['file', 'title', 'origin', 'from_phase', 'from_date']) {
+      if (!isFilled(it[field])) throw new Error(`render triage-offer: item ${i + 1} is missing "${field}"`);
+    }
+    if (byFile.has(it.file)) throw new Error(`render triage-offer: duplicate item for "${it.file}"`);
+    byFile.set(it.file, it);
+  });
+  if (byFile.size !== files.length || files.some((f) => !byFile.has(f))) {
+    throw new Error(`render triage-offer: payload items must cover the queue exactly (queue: ${files.join(', ')})`);
+  }
+  const agenda = [
+    callout(`${files.length} rerouted concern${files.length === 1 ? '' : 's'} waiting in this topic's triage queue:`),
+    '',
+    ...files.map((f, i) => {
+      const it = /** @type {NonNullable<ReturnType<typeof byFile.get>>} */ (byFile.get(f));
+      return `  ${i + 1}. ${it.title} — from ${it.origin} (${it.from_phase}, ${it.from_date})`;
+    }),
+  ];
+  return [
+    section('DISPLAY: triage agenda', 'emit verbatim as a code block', agenda.join('\n')),
+    section(
+      'MENU: triage offer',
+      "emit verbatim as markdown, then STOP for the user's response",
+      menu('Work through them now?', [
+        cmdOption('d', 'discuss', 'Surface and discuss them one at a time'),
+        cmdOption('l', 'later', "Carry on with the session; I'll offer again at the next pause. The queue must be empty before this topic can conclude"),
+      ]),
+    ),
+  ].join('\n');
+}
+
+// triage-block — the conclusion blocker over a non-empty queue. Count comes
+// from the live queue; the awaiting-word follows the phase.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function triageBlock(cwd, { dotpath }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'triage-block');
+  const { files } = triageQueue(cwd, workUnit, phase, topic);
+  if (!files.length) throw new Error(`render triage-block: the ${topic} ${phase} triage queue is empty — nothing blocks conclusion`);
+  const doing = phase === 'research' ? 'exploration' : 'discussion';
+  return section('DISPLAY: triage block', 'emit verbatim as a code block', callout([
+    `Triage queue not empty — ${files.length} rerouted concern${files.length === 1 ? '' : 's'} awaiting ${doing}.`,
+    'Returning to the session to surface them before concluding.',
+  ]));
 }
 
 // ---------------------------------------------------------------------------
@@ -943,6 +1029,8 @@ const SURFACES = {
   'findings-summary': findingsSummary,
   'finding': finding,
   'concern': concern,
+  'triage-offer': triageOffer,
+  'triage-block': triageBlock,
   'proposed-task': proposedTask,
   'tasks-overview': tasksOverview,
   'author-task-gate': authorTaskGate,

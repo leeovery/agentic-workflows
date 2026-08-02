@@ -12,13 +12,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} r
 
 **If `count` is non-zero:**
 
-A rerouted concern is still queued — it must be discussed and folded before concluding.
+A rerouted concern is still queued — it must be discussed and folded before concluding. Render the blocker and emit its `DISPLAY: triage block` section verbatim as a code block:
 
-> *Output the next fenced block as a code block:*
-
-```
-  ⚑ Triage queue not empty — {count} rerouted concern(s) awaiting exploration.
-    Returning to the session to surface them before concluding.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.research.{topic}
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
