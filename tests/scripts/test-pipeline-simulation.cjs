@@ -617,13 +617,16 @@ describe('pipeline simulation', () => {
 
     // Repair arm: a stale-reference finding is corrected in place — the
     // target stays completed (no reopen), the manifest records `repaired`,
-    // and the action-scoped commit carries the (coherence repair) marker
-    // the commit classifiers drop.
+    // and the action-scoped --kb commit carries the (coherence repair)
+    // marker the classifiers drop AND the store dirt the re-index left.
     sim.write(`.workflows/${wu}/discussion/alpha.md`,
       '# Discussion — Alpha\n\n> **Corrigendum 2026-07-31** (coherence check, from `beta`): "tier claim" — corrected: durable, per beta.\n\nAuth decision stands.\n');
+    sim.write('.workflows/.knowledge/store.json', '{"chunks": ["repair re-index dirt"]}\n');
     sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-tier.status', 'repaired']);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'completed', 'repair never reopens the target');
-    sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): repair stale reference — alpha-vs-beta-tier (coherence repair)`, '--topic', 'discussion/alpha']);
+    sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): repair stale reference — alpha-vs-beta-tier (coherence repair)`, '--topic', 'discussion/alpha', '--kb']);
+    const postRepair = git(sim.dir, ['status', '--porcelain', '--', '.workflows/.knowledge']);
+    assert.strictEqual(postRepair.trim(), '', 'the repair commit rides the store dirt (--kb)');
 
     // Spec entry surfaces the soft gate while the cache is stale and a
     // finding still pends — informational fields, never a scenario change.

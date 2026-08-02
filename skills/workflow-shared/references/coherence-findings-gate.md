@@ -4,7 +4,7 @@
 
 ---
 
-Presents the findings the coherence analysis staged and gates each before anything lands. Approving a finding delivers it through [triage-landing.md](triage-landing.md) — `topic triage` reopens the yielding discussion and the finding lands in its triage queue, where the next discussion session drains it and the conclusion gate forces resolution. A `stale-reference` finding may instead be **repaired** — the correction applied to the target artifact directly, no reopen: its decision layer is already coherent (the supersession is dated and acknowledged), so the finding carries its own resolution and the full reopen cycle is conflict-weight machinery. Skipping a finding records its fingerprint in `phases.discovery.dismissed_findings[]` so the analysis won't re-stage it. Deferring leaves every finding `pending` and signals the host to skip the cache stamp, so the same staging is re-presented next boot without re-running the analysis.
+Presents the findings the coherence analysis staged and gates each before anything lands. Approving a finding delivers it through [triage-landing.md](triage-landing.md) — `topic triage` reopens the yielding discussion and the finding lands in its triage queue, where the next discussion session drains it and the conclusion gate forces resolution. A `stale-reference` finding whose target is still `completed` may instead be **repaired** — the correction applied to the target artifact directly, no reopen. Skipping a finding records its fingerprint in `phases.discovery.dismissed_findings[]` so the analysis won't re-stage it. Deferring leaves every finding `pending` and signals the host to skip the cache stamp, so the same staging is re-presented next boot without re-running the analysis.
 
 The gate is the boot-time review surface — it runs before the dashboard.
 
@@ -16,11 +16,11 @@ The caller provides these via context before loading:
 - `tracker` — a list (initially empty) the caller surfaces as the reopened-topics callout. The reference appends a topic name only when a finding is **approved and landed**.
 - `staging_file` — path to the staging file (`.workflows/{work_unit}/.state/coherence-analysis-candidates.md`).
 
-On return, the reference sets `gate_outcome` to `processed` (gate ran to completion — host stamps the cache) or `deferred` (host skips the stamp).
+On return, the reference sets `gate_outcome` to `processed` (gate ran to completion — host stamps the cache) or `deferred` (host skips the stamp), and `repairs_landed` — `true` when at least one finding took the repair arm, else `false`. A repair edits the corpus after the analysis read it, so the host must not stamp over it.
 
 ## A. Lead-In and Defer
 
-Read `staging_file` (finding content) and the gate state: `manifest get {work_unit}.discovery analysis_staging.coherence-analysis`. Count the candidates whose `status` is `pending` — call it `K`.
+Set `repairs_landed` to `false`. Read `staging_file` (finding content) and the gate state: `manifest get {work_unit}.discovery analysis_staging.coherence-analysis`. Count the candidates whose `status` is `pending` — call it `K`.
 
 #### If `K` is `0`
 
@@ -101,10 +101,10 @@ Render the finding from its block:
   {docA}.md · {section}: "{quote}"
   {docB}.md · {section}: "{quote}"
 
-  Resolves in: {target} — reopens to re-decide or repair
+  Resolves in: {target}
 ```
 
-Read `gate_mode` from the manifest's `analysis_staging.coherence-analysis` subtree (held from the **A** read; re-read if stale).
+Read `gate_mode` from the manifest's `analysis_staging.coherence-analysis` subtree (held from the **A** read; re-read if stale). Derive `repair_available` — `true` only when the finding's `category` is `stale-reference` **and** the target's discussion item still reads `completed` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{target} status` — an earlier landing this pass may have reopened it; a live document is corrected through its own session, never from the gate).
 
 #### If `gate_mode` is `auto`
 
@@ -120,8 +120,6 @@ Auto approves through the triage delivery only — a repair edits an artifact di
 
 #### If `gate_mode` is `gated`
 
-The `r`/`repair` option renders only when the finding's `category` is `stale-reference`:
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -129,7 +127,7 @@ The `r`/`repair` option renders only when the finding's `category` is `stale-ref
 Send this finding to "{target}" for resolution?
 
 - **`y`/`yes`** — Approve; reopen "{target}" with the finding in its triage
-- **`r`/`repair`** — Apply the dated correction to "{target}" directly — no reopen
+@if(repair_available) - **`r`/`repair`** — Apply the dated correction to "{target}" directly — no reopen @endif
 - **`a`/`auto`** — Approve this and all remaining findings automatically
 - **`s`/`skip`** — Skip and dismiss (won't be re-surfaced)
 - **Comment** — Tell me what to change (target, summary, or context)
@@ -196,7 +194,17 @@ Never loop a failing landing without the user. Record the finding `skipped` (sam
 
 ## D. Repair Stale Reference
 
-The finding's target-side quote anchors the stale prose; the counterpart quote and context paragraphs hold what is current. Compose the repair on `.workflows/{work_unit}/discussion/{target}.md`:
+The finding's target-side quote anchors the stale prose. Read `.workflows/{work_unit}/discussion/{target}.md` and locate that quote.
+
+#### If the quote no longer appears verbatim
+
+The document moved since the finding was staged — the evidence is stale and there is nothing safe to anchor an edit to. Tell the user, name approve or skip as the ways forward, and re-present the finding.
+
+→ Return to **B. Gate Each Finding**.
+
+#### Otherwise
+
+The counterpart quote and context paragraphs hold what is current. Compose the repair:
 
 1. Replace the stale prose with text reflecting the current decision.
 2. At the top of the file, directly beneath the title, add (or extend, one entry per correction):
@@ -209,8 +217,11 @@ Show the edit before anything is written — narrate nothing between the fence a
 
 > *Output the next fenced block as a ` ```diff ` code block:*
 
-```
-{the proposed edit as a unified diff — column-0 +/- markers, context lines with a leading space}
+```diff
+ {2 context lines above}
+-{the stale prose}
++{the corrected prose}
+ {2 context lines below}
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -241,12 +252,12 @@ The finding stays `pending`; its menu re-presents.
    node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/discussion/{target}.md
    ```
 
-3. Record the outcome (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.coherence-analysis.candidates.{slug}.status repaired`) and commit action-scoped — the `(coherence repair)` marker tells the commit classifiers this is boot-time bookkeeping, not session movement:
+3. Record the outcome (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.coherence-analysis.candidates.{slug}.status repaired`) and commit action-scoped with the store riding along — the `(coherence repair)` marker tells the commit classifiers this is boot-time bookkeeping, not session movement:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{target} -m "discussion({work_unit}/{target}): repair stale reference — {slug} (coherence repair)"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{target} --kb -m "discussion({work_unit}/{target}): repair stale reference — {slug} (coherence repair)"
    ```
 
-Append nothing to `tracker` — nothing reopened. The repaired prose is gone from the corpus, so the next analysis run cannot re-find it; no dismissed fingerprint.
+Set `repairs_landed` to `true`. Append nothing to `tracker` — nothing reopened. The repaired prose is gone from the corpus, so the next analysis run cannot re-find it; no dismissed fingerprint.
 
 → Return to **B. Gate Each Finding**.

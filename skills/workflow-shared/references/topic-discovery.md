@@ -150,9 +150,15 @@ On return (or on reuse), run the findings gate over the staged findings:
 
 → Load **[coherence-findings-gate.md](coherence-findings-gate.md)** with work_unit = `{work_unit}`, tracker = `new_arrivals.coherence_analysis`, staging_file = `.workflows/{work_unit}/.state/coherence-analysis-candidates.md`.
 
-On return, read `gate_outcome`.
+On return, read `gate_outcome` and `repairs_landed`.
 
-**If `gate_outcome` is `processed`:**
+**If `gate_outcome` is `processed` and `repairs_landed` is `true`:**
+
+Skip the stamp — a repair edited the corpus after the analysis read it, so the cache stays stale and the next boot re-reads the repaired text.
+
+→ Proceed to **E. Dedupe Sources**.
+
+**If `gate_outcome` is `processed` and `repairs_landed` is `false`:**
 
 Stamp the cache (a skip-all pass still stamps, so the analysis won't re-fire):
 
