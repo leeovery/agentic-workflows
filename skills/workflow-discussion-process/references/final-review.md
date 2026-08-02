@@ -84,7 +84,7 @@ Nothing new for a fresh review to see — the final-review gate is satisfied. De
 
 → Return to caller.
 
-**If a remaining commit is meaningful** (a decision documented, a subtopic explored — not typo fixes, not bookkeeping: document-review reconciliation, drain triage, summary maintenance). A commit carrying both — a decision documented alongside bookkeeping in one write — is meaningful; the bookkeeping it travels with does not neutralise it:
+**If a remaining commit is meaningful** (a decision documented, a subtopic explored — not typo fixes, not bookkeeping: document-review reconciliation, summary maintenance). A commit carrying both — a decision documented alongside bookkeeping in one write — is meaningful; the bookkeeping it travels with does not neutralise it:
 
 → Proceed to **C. Dispatch Final Review**.
 

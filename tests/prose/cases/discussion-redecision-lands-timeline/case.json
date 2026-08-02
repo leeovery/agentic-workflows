@@ -49,7 +49,7 @@
       "manifest get search-relevance.discussion.synonym-handling status",
       "discussion-map add search-relevance synonym-handling expansion-source",
       "discussion-map set search-relevance synonym-handling expansion-source exploring",
-      "discussion(search-relevance/synonym-handling): drain triage",
+      "absorb 001-expansion-source (from behavioural-ranking)",
       "discussion-map set search-relevance synonym-handling expansion-source decided",
       "workflow-discussion-process/scripts/gateway.cjs map search-relevance synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
@@ -58,7 +58,7 @@
       "manifest get search-relevance.discussion.synonym-handling status",
       "discussion-map add search-relevance synonym-handling expansion-source",
       "discussion-map set search-relevance synonym-handling expansion-source exploring",
-      "discussion(search-relevance/synonym-handling): drain triage",
+      "absorb 001-expansion-source (from behavioural-ranking)",
       "discussion-map set search-relevance synonym-handling expansion-source decided",
       "topic complete search-relevance discussion synonym-handling"
     ],
