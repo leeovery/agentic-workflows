@@ -529,25 +529,25 @@ describe('pipeline simulation', () => {
     // self-committing transaction (engine-numbered queue file, scratch
     // consumed, commit confined to concern + manifest).
     sim.run(['discovery-map', 'add', wu, 'delta', 'research', '--summary', 'Delta summary', '--source', 'reroute:alpha']);
-    sim.write('concern-scratch.md',
+    sim.write('.workflows/.cache/scratch/concern-scratch.md',
       '### Parked concern\n*From: alpha · discussion · 2026-07-23*\n\nDetails.\n');
     const parked = sim.run(['topic', 'triage', wu, 'research', 'delta',
-      '--concern', 'concern-scratch.md', '--slug', 'parked-concern',
+      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'parked-concern',
       '-m', `discussion(${wu}/alpha): reroute concern to delta`]);
     assert.strictEqual(parked.status, 'triaged');
     assert.strictEqual(parked.created, true);
     assert.strictEqual(parked.concern_path, `.workflows/${wu}/research/.triage/delta/001-parked-concern.md`);
     assert.ok(parked.committed, 'delivery self-commits');
-    assert.ok(!fs.existsSync(path.join(sim.dir, 'concern-scratch.md')), 'scratch consumed');
+    assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows/.cache/scratch/concern-scratch.md')), 'scratch consumed');
     const queue = sim.run(['topic', 'queue', wu, 'research', 'delta']);
     assert.strictEqual(queue.count, 1);
     assert.deepStrictEqual(queue.files, [parked.concern_path], 'the read verb lists the delivered concern');
     // Judgment landing: a research-side delivery beneath beta's completed
     // discussion parks the concern AND flags the discussion for
     // reconciliation — the discussion itself stays completed.
-    sim.write('concern-scratch.md', '### Feasibility question\n*From: alpha · discussion · 2026-07-23*\n\nIs this even possible?\n');
+    sim.write('.workflows/.cache/scratch/concern-scratch.md', '### Feasibility question\n*From: alpha · discussion · 2026-07-23*\n\nIs this even possible?\n');
     const flagged = sim.run(['topic', 'triage', wu, 'research', 'beta',
-      '--concern', 'concern-scratch.md', '--slug', 'feasibility-question',
+      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'feasibility-question',
       '-m', `discussion(${wu}/alpha): reroute concern to beta`]);
     assert.strictEqual(flagged.reconcile_flagged, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.reconcile_needed, 'research');

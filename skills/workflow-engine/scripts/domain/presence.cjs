@@ -21,10 +21,13 @@ function presencePath(cwd, wu, phase, topic) {
   return path.join(cwd, '.workflows', '.cache', wu, phase, topic, 'presence');
 }
 
-/** @param {string} cwd @param {string} workUnit @param {string} [phase] */
-function assertArgs(cwd, workUnit, phase) {
+/** @param {string} cwd @param {string} workUnit @param {string} [phase] @param {string} [topic] */
+function assertArgs(cwd, workUnit, phase, topic) {
   if (phase !== undefined && !PHASES.includes(phase)) {
     throw new Error(`presence is ${PHASES.join('|')} only — got "${phase}"`);
+  }
+  if (topic !== undefined && (!topic || /[\\/]/.test(topic) || topic.includes('..'))) {
+    throw new Error(`invalid topic name "${topic}" — no separators or ".."`);
   }
   if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
     throw new Error(`no work unit directory: .workflows/${workUnit}`);
@@ -37,7 +40,7 @@ function assertArgs(cwd, workUnit, phase) {
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  */
 function beatPresence(cwd, workUnit, phase, topic) {
-  assertArgs(cwd, workUnit, phase);
+  assertArgs(cwd, workUnit, phase, topic);
   const p = presencePath(cwd, workUnit, phase, topic);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, String(process.pid) + '\n');
@@ -49,7 +52,7 @@ function beatPresence(cwd, workUnit, phase, topic) {
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  */
 function clearPresence(cwd, workUnit, phase, topic) {
-  assertArgs(cwd, workUnit, phase);
+  assertArgs(cwd, workUnit, phase, topic);
   try { fs.unlinkSync(presencePath(cwd, workUnit, phase, topic)); } catch { /* never set */ }
   return { work_unit: workUnit, phase, topic, cleared: true };
 }

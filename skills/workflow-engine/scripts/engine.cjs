@@ -902,7 +902,7 @@ function runCommit(argv) {
         const parts = topicSpec.split('/');
         const phase = parts[0];
         const topic = parts[1];
-        const artifact = TOPIC_COMMIT_ARTIFACTS[phase];
+        const artifact = Object.hasOwn(TOPIC_COMMIT_ARTIFACTS, phase) ? TOPIC_COMMIT_ARTIFACTS[phase] : undefined;
         if (parts.length !== 2 || !artifact) {
           throw new Error(`commit --topic: expected <phase>/<topic> with phase one of ${Object.keys(TOPIC_COMMIT_ARTIFACTS).join(', ')} — got "${topicSpec}"`);
         }

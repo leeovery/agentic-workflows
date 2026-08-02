@@ -23,7 +23,7 @@ module.exports = {
     e.harvest(h);
     e.completeDiscussions(h);
 
-    h.write('concern-scratch.md', [
+    h.write('.workflows/.cache/scratch/concern-scratch.md', [
       '### Expansion Source',
       '*From: behavioural-ranking · discussion · 2026-01-01*',
       '',
@@ -40,7 +40,7 @@ module.exports = {
       '',
     ].join('\n'));
     h.engine('topic', 'triage', WU, 'discussion', 'synonym-handling',
-      '--concern', 'concern-scratch.md', '--slug', 'expansion-source',
+      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'expansion-source',
       '-m', `discussion(${WU}/behavioural-ranking): reroute concern to synonym-handling`);
     h.write(`.workflows/${WU}/discussion/synonym-handling.md`, [
       '# Discussion: Synonym Handling',
