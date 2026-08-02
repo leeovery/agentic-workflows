@@ -125,7 +125,7 @@ Then break it down in your own voice before asking anything. The reopened ground
 
 **STOP.** Wait for user response.
 
-Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer.
+Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer. A question from the user about the process itself suspends the concern, never the opt-in: answer it and stop — the answer is never licence to fold, absorb, or raise; the walk resumes on their word.
 
 **If the discussion reaches an outcome** — a decision, a direction, or the user explicitly parking it as a deferred thread:
 
@@ -176,9 +176,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 **If concerns remain queued:**
 
-Not yours to raise here — the loop's next check raises the next one, with this absorb as its natural break.
+Emit nothing here — no recap of the absorbed concern, no pause for permission. The absorb is the next raise's natural break: re-enter the check now, in this same turn, and the standing opt-in routes it straight to the next raise.
 
-→ Return to caller.
+→ Return to **A. Check**.
 
 **Otherwise:**
 
