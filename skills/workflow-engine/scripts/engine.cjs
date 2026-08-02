@@ -31,6 +31,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
+const { beatPresence, clearPresence, scanPresence, deferralSection } = require('./domain/presence.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
@@ -142,6 +143,9 @@ Commands:
   topic start <work-unit> <phase> <topic>
   topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]
   topic queue <work-unit> <phase> <topic>
+  presence beat <work-unit> <phase> <topic>
+  presence clear <work-unit> <phase> <topic>
+  presence scan <work-unit>
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -513,6 +517,32 @@ function runDiscoverySession(argv) {
 // ---------------------------------------------------------------------------
 
 const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
+
+/** @param {string[]} argv */
+function runPresence(argv) {
+  const [command, ...rest] = argv;
+  try {
+    if (command === 'beat' || command === 'clear') {
+      const [workUnit, phase, topic] = rest;
+      if (!workUnit || !phase || !topic || rest.length !== 3) {
+        throw new Error(`Usage: engine presence ${command} <work-unit> <phase> <topic>`);
+      }
+      respond((command === 'beat' ? beatPresence : clearPresence)(process.cwd(), workUnit, phase, topic));
+      return;
+    }
+    if (command === 'scan') {
+      const [workUnit] = rest;
+      if (!workUnit || rest.length !== 1) throw new Error('Usage: engine presence scan <work-unit>');
+      const res = scanPresence(process.cwd(), workUnit);
+      respond(res);
+      respondSections(deferralSection(res));
+      return;
+    }
+    throw new Error('Usage: engine presence <beat|clear|scan> …');
+  } catch (err) {
+    failJson(err);
+  }
+}
 
 /** @param {string[]} argv */
 function runTopic(argv) {
@@ -970,6 +1000,9 @@ function runCli(argv) {
       break;
     case 'topic':
       runTopic(rest);
+      break;
+    case 'presence':
+      runPresence(rest);
       break;
     case 'task':
       runTask(rest);

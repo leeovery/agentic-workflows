@@ -78,6 +78,10 @@ Assemble the call as follows:
 
 Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~` — so the shell passes it through literally.
 
+**If the response is `ok: false` naming an active duplicate:** the map moved since validation — a concurrent session landed the same name. Surface the engine's error verbatim, set `proposed_name` to the clashing name, and re-validate against the fresh map:
+
+→ Return to **A. Validate the Name**.
+
 **If `phase` is set**, create the phase item:
 
 ```bash
