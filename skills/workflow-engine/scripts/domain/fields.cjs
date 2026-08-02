@@ -270,8 +270,8 @@ function validateSet(segments, value, fieldSegments = segments) {
     // Analysis candidate gate state (field analysis_staging.<analysis>.candidates.<name>.…)
     if (fieldSegments[0] === 'analysis_staging' && fieldSegments.length >= 2) {
       const leaf = fieldSegments[fieldSegments.length - 1];
-      if (leaf === 'status' && (typeof value !== 'string' || !['pending', 'approved', 'skipped', 'resolved'].includes(value))) {
-        fail(`Invalid candidate status ${JSON.stringify(value)}. Must be one of: pending, approved, skipped, resolved`);
+      if (leaf === 'status' && (typeof value !== 'string' || !['pending', 'approved', 'repaired', 'skipped', 'resolved'].includes(value))) {
+        fail(`Invalid candidate status ${JSON.stringify(value)}. Must be one of: pending, approved, repaired, skipped, resolved`);
       }
       if (leaf === 'fanout_offer' && (typeof value !== 'string' || !['pending', 'marked', 'declined'].includes(value))) {
         fail(`Invalid fanout_offer ${JSON.stringify(value)}. Must be one of: pending, marked, declined`);

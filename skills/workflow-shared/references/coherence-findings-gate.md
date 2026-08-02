@@ -4,7 +4,7 @@
 
 ---
 
-Presents the findings the coherence analysis staged and gates each before anything lands. Approving a finding delivers it through [triage-landing.md](triage-landing.md) — `topic triage` reopens the yielding discussion and the finding lands in its triage queue, where the next discussion session drains it and the conclusion gate forces resolution. Skipping a finding records its fingerprint in `phases.discovery.dismissed_findings[]` so the analysis won't re-stage it. Deferring leaves every finding `pending` and signals the host to skip the cache stamp, so the same staging is re-presented next boot without re-running the analysis.
+Presents the findings the coherence analysis staged and gates each before anything lands. Approving a finding delivers it through [triage-landing.md](triage-landing.md) — `topic triage` reopens the yielding discussion and the finding lands in its triage queue, where the next discussion session drains it and the conclusion gate forces resolution. A `stale-reference` finding may instead be **repaired** — the correction applied to the target artifact directly, no reopen: its decision layer is already coherent (the supersession is dated and acknowledged), so the finding carries its own resolution and the full reopen cycle is conflict-weight machinery. Skipping a finding records its fingerprint in `phases.discovery.dismissed_findings[]` so the analysis won't re-stage it. Deferring leaves every finding `pending` and signals the host to skip the cache stamp, so the same staging is re-presented next boot without re-running the analysis.
 
 The gate is the boot-time review surface — it runs before the dashboard.
 
@@ -108,6 +108,8 @@ Read `gate_mode` from the manifest's `analysis_staging.coherence-analysis` subtr
 
 #### If `gate_mode` is `auto`
 
+Auto approves through the triage delivery only — a repair edits an artifact directly and is never taken without an explicit choice.
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -118,6 +120,8 @@ Read `gate_mode` from the manifest's `analysis_staging.coherence-analysis` subtr
 
 #### If `gate_mode` is `gated`
 
+The `r`/`repair` option renders only when the finding's `category` is `stale-reference`:
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -125,6 +129,7 @@ Read `gate_mode` from the manifest's `analysis_staging.coherence-analysis` subtr
 Send this finding to "{target}" for resolution?
 
 - **`y`/`yes`** — Approve; reopen "{target}" with the finding in its triage
+- **`r`/`repair`** — Apply the dated correction to "{target}" directly — no reopen
 - **`a`/`auto`** — Approve this and all remaining findings automatically
 - **`s`/`skip`** — Skip and dismiss (won't be re-surfaced)
 - **Comment** — Tell me what to change (target, summary, or context)
@@ -136,6 +141,10 @@ Send this finding to "{target}" for resolution?
 **If `yes`:**
 
 → Proceed to **C. Land Approved Finding**.
+
+**If `repair`:**
+
+→ Proceed to **D. Repair Stale Reference**.
 
 **If `auto`:**
 
@@ -182,5 +191,62 @@ The landing was dropped or blocked — nothing was written. The finding stays `p
 **If `result` is `cancelled` and `gate_mode` is `auto`:**
 
 Never loop a failing landing without the user. Record the finding `skipped` (same write as the skip arm) but push **no** dismissed fingerprint — the next stale run re-stages it with the user present.
+
+→ Return to **B. Gate Each Finding**.
+
+## D. Repair Stale Reference
+
+The finding's target-side quote anchors the stale prose; the counterpart quote and context paragraphs hold what is current. Compose the repair on `.workflows/{work_unit}/discussion/{target}.md`:
+
+1. Replace the stale prose with text reflecting the current decision.
+2. At the top of the file, directly beneath the title, add (or extend, one entry per correction):
+
+   ```markdown
+   > **Corrigendum {YYYY-MM-DD}** (coherence check@if(counterpart != '(none)'), from `{counterpart}`@endif): {stale claim, quoted} — corrected: {what is current}.
+   ```
+
+Show the edit before anything is written — narrate nothing between the fence and the menu:
+
+> *Output the next fenced block as a ` ```diff ` code block:*
+
+```
+{the proposed edit as a unified diff — column-0 +/- markers, context lines with a leading space}
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Apply this repair to "{target}"?
+
+- **`y`/`yes`** — Edit in place + corrigendum + knowledge re-index; no reopen
+- **`n`/`no`** — Back to the finding's options
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `no`:**
+
+The finding stays `pending`; its menu re-presents.
+
+→ Return to **B. Gate Each Finding**.
+
+**If `yes`:**
+
+1. Apply the edit and the corrigendum block.
+2. Re-index the artifact — replaces its chunks in one idempotent call; the topic stays `completed`, no status transition:
+
+   ```bash
+   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/discussion/{target}.md
+   ```
+
+3. Record the outcome (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.coherence-analysis.candidates.{slug}.status repaired`) and commit action-scoped — the `(coherence repair)` marker tells the commit classifiers this is boot-time bookkeeping, not session movement:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{target} -m "discussion({work_unit}/{target}): repair stale reference — {slug} (coherence repair)"
+   ```
+
+Append nothing to `tracker` — nothing reopened. The repaired prose is gone from the corpus, so the next analysis run cannot re-find it; no dismissed fingerprint.
 
 → Return to **B. Gate Each Finding**.

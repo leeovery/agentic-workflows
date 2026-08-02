@@ -1,7 +1,7 @@
 ---
 name: workflow-bridge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs), Bash(node .claude/skills/workflow-continue-epic/scripts/gateway.cjs), Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs), Bash(node .claude/skills/workflow-continue-epic/scripts/gateway.cjs), Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(mkdir -p .workflows/)
 ---
 
 Enter plan mode with deterministic continuation instructions.

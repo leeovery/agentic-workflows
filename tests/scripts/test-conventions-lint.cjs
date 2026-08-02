@@ -678,7 +678,7 @@ const RATCHET_PINS = {
   'skills/workflow-scoping-process/references/write-specification.md': 1,
   'skills/workflow-shared/references/analysis-approval-gate.md': 4,
   'skills/workflow-shared/references/background-agent-surfacing.md': 3,
-  'skills/workflow-shared/references/coherence-findings-gate.md': 4,
+  'skills/workflow-shared/references/coherence-findings-gate.md': 6,
   'skills/workflow-shared/references/compliance-check.md': 1,
   'skills/workflow-shared/references/convergence-analysis.md': 1,
   'skills/workflow-shared/references/correcting-historical-artifacts.md': 1,

@@ -72,7 +72,7 @@ The decline stands — do not re-litigate it. A later conclusion attempt classif
 
 **If no decline was given:**
 
-List what landed after that review's dispatch — `{created}` is the row's `created` timestamp, on every scan row; git does the time comparison — then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) or a `(deferral)` marker — engagement writes and the conclusion's own deferral write are not new work:
+List what landed after that review's dispatch — `{created}` is the row's `created` timestamp, on every scan row; git does the time comparison — then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`), a `(deferral)` marker, or a `(coherence repair)` marker — engagement writes, the conclusion's own deferral write, and a boot-time text repair landed while the topic was closed are not new work:
 
 ```bash
 git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/discussion/{topic}.md

@@ -607,12 +607,23 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.discovery`,
       'analysis_staging.coherence-analysis.gate_mode=gated',
       'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-retry.status=pending',
+      'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-tier.status=pending',
       'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-auth.status=pending']);
     sim.refuses(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-retry.status', 'maybe'], /Invalid candidate status/);
 
     // Skip arm: the finding's fingerprint joins the dismissed list.
     sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-retry.status', 'skipped']);
     sim.run(['manifest', 'push', `${wu}.discovery`, 'dismissed_findings', 'alpha|beta|retry-policy']);
+
+    // Repair arm: a stale-reference finding is corrected in place — the
+    // target stays completed (no reopen), the manifest records `repaired`,
+    // and the action-scoped commit carries the (coherence repair) marker
+    // the commit classifiers drop.
+    sim.write(`.workflows/${wu}/discussion/alpha.md`,
+      '# Discussion — Alpha\n\n> **Corrigendum 2026-07-31** (coherence check, from `beta`): "tier claim" — corrected: durable, per beta.\n\nAuth decision stands.\n');
+    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-tier.status', 'repaired']);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'completed', 'repair never reopens the target');
+    sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): repair stale reference — alpha-vs-beta-tier (coherence repair)`, '--topic', 'discussion/alpha']);
 
     // Spec entry surfaces the soft gate while the cache is stale and a
     // finding still pends — informational fields, never a scenario change.
