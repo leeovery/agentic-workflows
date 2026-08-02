@@ -1,0 +1,74 @@
+{
+  "origin": "the receiver side of the surfacing loop had walk coverage only for a single already-known concern — nothing walked a triaged first start where the queue is the whole agenda: the two-entry agenda view, concerns surfaced one at a time through the loop, new-ground folds creating subtopics, per-concern absorb commits, and the conclude gate over the emptied queue",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-discussion-entry/references/gather-context.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/drain-triage.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [],
+  "conduct": "The user knows two measurement questions were parked here and has come to settle them. Shown the two-entry agenda they take the concerns in the offered order. Offered the next waiting concern at a break, they say discuss. On offline metrics baseline they decide: the baseline is NDCG@10 plus click-through position computed weekly from the batch aggregates, and any ranking change that moves NDCG@10 down more than two points blocks until reviewed. On expansion quality tracking they decide: sample two hundred expanded queries weekly, judge precision against purchase follow-through from the same aggregates, and keep the tracking in the measurement topic's weekly report rather than a new system. They engage each concern from its surfaced substance, decide rather than park, and add nothing beyond the two concerns. When both are settled they say that covers it and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: an optional fresh gap review is skipped, offers of new threads are declined. They never introduce new material.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.relevance-measurement status",
+      "topic start search-relevance discussion relevance-measurement",
+      "topic queue search-relevance discussion relevance-measurement",
+      "discussion-map add search-relevance relevance-measurement offline-metrics-baseline",
+      "discussion-map add search-relevance relevance-measurement expansion-quality-tracking",
+      "absorb 001-offline-metrics-baseline (from behavioural-ranking)",
+      "absorb 002-expansion-quality-tracking (from synonym-handling)",
+      "topic complete search-relevance discussion relevance-measurement"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "discovery-map add",
+      "--kind perspective",
+      "knowledge.cjs index",
+      "drain triage"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.relevance-measurement status",
+      "topic start search-relevance discussion relevance-measurement",
+      "absorb 001-offline-metrics-baseline (from behavioural-ranking)",
+      "absorb 002-expansion-quality-tracking (from synonym-handling)",
+      "topic complete search-relevance discussion relevance-measurement"
+    ]
+  }
+}
