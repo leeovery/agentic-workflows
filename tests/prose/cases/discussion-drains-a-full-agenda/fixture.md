@@ -1,5 +1,7 @@
-The search-relevance epic with both discussions concluded — and a third
-topic, relevance-measurement, that exists only as parked concerns. Each
+The search-relevance epic with both discussions concluded and mutually
+coherent (synonym expansion computed from the batch aggregates, its
+Sibling check citing behavioural-ranking) — and a third topic,
+relevance-measurement, that exists only as parked concerns. Each
 concluded discussion rerouted a measurement question into it: an
 offline-metrics-baseline concern from behavioural-ranking and an
 expansion-quality-tracking concern from synonym-handling, both

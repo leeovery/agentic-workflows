@@ -26,15 +26,17 @@ If the list goes, something has to produce expansions at query time.
 ### Journey
 A managed list just moves the upkeep somewhere else. Deriving
 expansions from reformulation-and-click pairs kept winning on both
-upkeep and quality. For freshness we want expansions reacting
-within the session, so the expansion service reads the live
-click-signal stream at query time.
+upkeep and quality. Signal ingestion is batch-only per
+behavioural-ranking, and daily refresh is fine — the
+reformulation-and-click derivation is the part that matters.
 
 ### Decision
-Synonym expansion is behaviour-driven: the expansion service
-consumes the live click-signal stream at query time, keyed on
-reformulation-and-click pairs. The hand-maintained list is retired
-once behavioural coverage matches it.
+Sibling check: behavioural-ranking — signal ingestion is a batch
+nightly aggregation job; no live stream will be built. Synonym
+expansion is behaviour-driven, computed from the nightly batch
+aggregates: expansions derive from reformulation-and-click pairs
+and refresh daily. The hand-maintained list is retired once
+behavioural coverage matches it.
 
 ---
 
@@ -43,11 +45,8 @@ once behavioural coverage matches it.
 ### Key Insights
 1. Any curated list recreates the upkeep problem — derive
    expansions from behaviour instead.
+2. Daily refresh suffices; the pair derivation is what matters.
 
 ### Current State
-- Expansion source decided: behaviour-driven, reading the live
-  click-signal stream.
-
-## Triage
-
-(none)
+- Expansion source decided: behaviour-driven, computed from the
+  nightly batch aggregates, daily refresh.
