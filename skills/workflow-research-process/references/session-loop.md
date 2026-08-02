@@ -8,15 +8,13 @@
 
 Not a rigid checklist — a natural cadence for productive research conversations:
 
-1. **Check for findings** — Before each conversational turn, run the check-for-results logic from the background-agent files loaded by the session wrapper. Each file knows its own rules; follow the named section in each:
+1. **Check for findings** — Beat presence first, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} research {topic}` — before the gated checks below: any of them can end in a STOP that closes the turn, and the beat must not miss its iteration. Then run the check-for-results logic from the background-agent files loaded by the session wrapper. Each file knows its own rules; follow the named section in each:
    - **Review agent**: follow **B. Check and Surface** in **[review-agent.md](review-agent.md)** — delegates to the shared surfacing protocol for review findings.
    - **Deep-dive agent**: follow **C. Check and Surface** in **[deep-dive-agent.md](deep-dive-agent.md)** — delegates to the shared surfacing protocol for deep-dive findings.
    
    Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the shared protocol.** Skip only when no agents have been dispatched yet — the store decides, not the iteration count: a resumed session may hold agents from an earlier sitting.
 
    Then check the triage queue: follow **F. Mid-Session Check** in **[drain-triage.md](../../workflow-shared/references/drain-triage.md)** — a concern rerouted here mid-session is offered at the next natural break, and re-offered at later breaks until drained; the conclusion gate is the backstop.
-
-   Beat presence, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} research {topic}`.
 
 2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next.
 
