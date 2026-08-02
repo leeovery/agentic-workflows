@@ -21,8 +21,6 @@ What we know so far:
 - {Where we're starting: technical, market, business, etc.}
 
 ---
-
-{Content follows - freeform, managed by the skill}
 ```
 
 ## Notes
