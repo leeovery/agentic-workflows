@@ -195,13 +195,11 @@ Emit the lane marker once per visit to this section — on a re-render after a q
 ·· No Decision Needed ···························
 ```
 
-Digest the report — never read it out. Write one payload entry per remaining `apply` finding, in the order they should read: `title` is the report's own claim, `detail` is one or two sentences saying what the fix is and which decision determines it. Write the payload with the Write tool to the topic's cache directory, then render it:
+Digest the report — never read it out. Write the payload to the topic's cache directory with the Write tool (`{"lane": "apply", "items": [{"title": "…", "detail": "…"}]}`, one entry per remaining `apply` finding in the order they should read: `title` is the report's own claim, `detail` is one or two sentences saying what the fix is and which decision determines it), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-apply.json
 ```
-
-Payload shape — `{"lane": "apply", "items": [{"title": "…", "detail": "…"}, …]}`.
 
 Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
@@ -278,13 +276,11 @@ Emit the lane marker once per visit to this section — on a re-render after a q
 ·· Belongs Elsewhere ····························
 ```
 
-Judge each finding's `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Write one payload entry per finding — `target` is the owning topic, `detail` is what it says, why it is theirs, and which queue it lands in — then render it:
+Judge each finding's `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Write the payload with the Write tool (`{"lane": "route", "items": [{"target": "…", "detail": "…"}]}`, one entry per finding: `target` is the owning topic, `detail` is what it says, why it is theirs, and which queue it lands in), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
 ```
-
-Payload shape — `{"lane": "route", "items": [{"target": "…", "detail": "…"}, …]}`.
 
 Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
