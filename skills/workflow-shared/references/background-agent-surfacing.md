@@ -94,7 +94,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {ph
 
 ## C. Decide Action
 
-The row's `remaining` list is the unsurfaced set; `announced` and `surfaced` route what happens now.
+The row's `remaining` list is the unsurfaced set; `announced` and `surfaced` route what happens now. A row acknowledged in an earlier sitting arrives here unread — read its report and its lanes as **B** prescribes before rendering anything.
 
 #### If NOT a natural break
 
@@ -169,7 +169,7 @@ Do not re-ask. The user has already committed to working through the set.
 
 Lanes run in a fixed order — **apply, then the walk, then route**. The cheap lanes clear the deck first, and the route batch runs last so that a reroute raised *during* the walk joins the same send.
 
-Intersect the row's `remaining` with each finding's lane, and take the first lane in that order that still holds findings. A session that entered at **C** — a row acknowledged before this sitting — has not read the report yet: read it now, as **B** prescribes, before routing.
+Intersect the row's `remaining` with each finding's lane, and take the first lane in that order that still holds findings.
 
 #### If the lane is `apply`
 
@@ -302,7 +302,7 @@ Emit the lane marker once per visit to this section — on a re-render after a q
 ·· Belongs Elsewhere ····························
 ```
 
-Judge each finding's `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Write the payload with the Write tool (`{"lane": "route", "items": [{"target": "…", "detail": "…"}]}`, one entry per finding: `target` is the owning topic, `detail` is what it says, why it is theirs, and which queue it lands in), then render it:
+Judge each finding's `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. The target's own `routing` does not decide it: a question landing on a discussion-routed topic still lands research-side. Write the payload with the Write tool (`{"lane": "route", "items": [{"target": "…", "detail": "…"}]}`, one entry per finding: `target` is the owning topic, `detail` is what it says, why it is theirs, and which queue it lands in), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
