@@ -64,7 +64,7 @@ Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase
 
 Read each finding's **lane** from its report section. Three lanes carry across every caller — the batched `apply`, the batched `route`, and the walked one, which a report names for its own phase (`decide` in discussion, `explore` in research). A report that declares no lanes is all-walk, as is any single finding whose section names none — an unlabelled finding is never assumed settled. Synthesis tensions are always walked, whatever the report says.
 
-Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding whose fix turns out to rest on a choice nobody has made moves to the walked lane. Never move a finding the other way.
+Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding the artifact itself contradicts — a subtopic the map records as open, a fix resting on a decision no section carries — moves to the walked lane and never reaches the batch screen. Never move a finding the other way.
 
 #### If the report has no findings (zero-gap case)
 
@@ -314,7 +314,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 **If `yes`:**
 
-Deliver each finding in turn, with the context built here so its target resolves it from cold.
+Deliver each finding in turn, with the context built here so its target resolves it from cold. Write no reroute record and leave the Discussion Map untouched — the target's queue is the record.
 
 → Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`.
 
