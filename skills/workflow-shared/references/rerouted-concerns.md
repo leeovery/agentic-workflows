@@ -102,7 +102,7 @@ Take the lowest-numbered concern still queued — or whichever the user asks for
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} subtopics
 ```
 
-Route on the subtopic the concern's title names (`{title:(kebabcase)}`), noting its prior state for the fold:
+Route on the ground the concern reopens — the subtopic its title names (`{title:(kebabcase)}`), or, for a correction whose title names no subtopic, the subtopic whose recorded content it corrects — noting its prior state for the fold:
 
 - Not on the map — new ground. Add it, then arm it:
 
@@ -151,8 +151,9 @@ A cross-topic correction tempts you to write guidance about the documents themse
 
 #### If `phase` is `discussion`
 
-Write the concern into its armed subtopic:
+Write the outcome into the document:
 
+- **A pure correction** (the outcome is only that cited material is out of date — nothing new was decided): amend the affected sites in place, each amendment a dated note naming the superseding decision — e.g. *(Amended {date} — this cited {thing}; {origin} retired it on {date})* — striking or rewriting the stale text as each site needs. No dedicated section and no Context block: the dated amendments and the absorb commit are the concern's record.
 - **The concern's own ground** (the subtopic exists only because raising this concern added it — this raise's `add`, or an earlier raise of it the user moved on from): create a `## {title}` section whose `### Context` opens with a provenance line (`*From: {origin} · {from_phase} · {from_date}*`) followed by the concern's body, then document what the discussion concluded in the section's usual shape.
 - **Pre-existing subtopic**: append the provenance line and the concern's body to that subtopic's existing `### Context` — never a new heading of your own. A map entry whose section was never written has nothing to append to: create the `## {title}` section exactly as the branch above prescribes.
 
