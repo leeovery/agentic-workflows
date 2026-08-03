@@ -30,7 +30,8 @@
   "answers": [
     "c — continue",
     "n — now",
-    "the retry ceiling is not three for us — we are on a negotiated plan"
+    "the retry ceiling is not three for us — we are on a negotiated plan",
+    "y — yes"
   ],
   "conduct": "The user is picking a card-payments discussion back up after most of a day away. They are brisk and glad to have bookkeeping handled in bulk. Shown a screen of three corrections, they accept two without comment but stop at the one writing the provider's published retry ceiling into the decision: they know this account is on a negotiated plan whose ceiling is not the published figure, which appears nowhere in the document. They say so, and they do not supply the real number — they want it treated as the open question it now is. They add no new material and do not ask to move on to anything else.",
   "invariants": {
