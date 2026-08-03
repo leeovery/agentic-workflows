@@ -573,14 +573,28 @@ describe('pipeline simulation', () => {
     assert.strictEqual(flagged.reconcile_flagged, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.reconcile_needed, 'research');
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'completed');
-    // Presence: a beat reads live (deferral territory for the bridge), the
-    // orderly clear empties the scan.
+    // Presence: a beat reads live and held (deferral territory for the
+    // bridge, in-session territory for the epic view), the orderly clear
+    // empties the scan.
     sim.run(['presence', 'beat', wu, 'research', 'alpha']);
     const present = sim.run(['presence', 'scan', wu]);
     assert.strictEqual(present.live, 1);
+    assert.strictEqual(present.held, 1);
     assert.strictEqual(present.sessions[0].topic, 'alpha');
+    assert.strictEqual(present.sessions[0].held, true);
     sim.run(['presence', 'clear', wu, 'research', 'alpha']);
     assert.strictEqual(sim.run(['presence', 'scan', wu]).live, 0);
+    // The SessionEnd cleanup sweeps by owning session id — a peer session's
+    // heartbeat survives.
+    sim.write(`.workflows/.cache/${wu}/discussion/beta/presence`,
+      JSON.stringify({ pid: null, pid_start: null, session_id: 'sim-sess' }) + '\n');
+    sim.write(`.workflows/.cache/${wu}/discussion/gamma/presence`,
+      JSON.stringify({ pid: null, pid_start: null, session_id: 'peer-sess' }) + '\n');
+    const swept = sim.run(['presence', 'cleanup', 'sim-sess']);
+    assert.deepStrictEqual(swept.cleared, [{ work_unit: wu, phase: 'discussion', topic: 'beta' }]);
+    assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions.map((r) => r.topic), ['gamma']);
+    sim.run(['presence', 'cleanup', 'peer-sess']);
+    assert.strictEqual(sim.run(['presence', 'scan', wu]).sessions.length, 0);
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

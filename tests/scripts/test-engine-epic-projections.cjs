@@ -573,6 +573,74 @@ describe('epic projections: menu', () => {
   });
 });
 
+describe('epic projections: presence join', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function twoTopicDetail() {
+    return detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            'topic-a': { routing: 'discussion', source: 'discovery', order: 1 },
+            'topic-b': { routing: 'discussion', source: 'discovery', order: 2 },
+          },
+        },
+        discussion: { items: { 'topic-a': { status: 'in-progress' } } },
+      },
+    });
+  }
+
+  const heldRow = { phase: 'discussion', topic: 'topic-a', age_seconds: 120, held: true, live: true, session_id: 's1' };
+
+  it('a held topic keeps its position struck through; the recommendation skips to the next row in place', () => {
+    const { keys, rendered } = epicMenu('v1', twoTopicDetail(), { presence: [heldRow] });
+    const numbered = keys.filter((k) => /^\d+$/.test(k.key));
+    assert.deepStrictEqual(
+      numbered.map((k) => [k.key, k.action, k.topic, k.in_session === true, k.recommended === true]),
+      [
+        ['1', 'continue_discussion', 'topic-a', true, false],
+        ['2', 'start_discussion', 'topic-b', false, true],
+      ]
+    );
+    assert.strictEqual(numbered[0].session_age, 120);
+    assert.ok(rendered.includes('- **`1`** — ~~Continue "Topic A" — discussion~~ · in session (last active 2m ago)'), rendered);
+    assert.ok(rendered.includes('- **`2`** — Start discussion for "Topic B" (recommended)'), rendered);
+  });
+
+  it('without presence the same detail recommends the held topic as before', () => {
+    const { keys } = epicMenu('v1', twoTopicDetail());
+    const numbered = keys.filter((k) => /^\d+$/.test(k.key));
+    assert.deepStrictEqual(
+      numbered.map((k) => [k.key, k.action, k.topic, k.recommended === true]),
+      [
+        ['1', 'continue_discussion', 'topic-a', true],
+        ['2', 'start_discussion', 'topic-b', false],
+      ]
+    );
+  });
+
+  it('an unheld or phase-mismatched presence row marks nothing', () => {
+    const stale = { ...heldRow, held: false, live: false };
+    const wrongPhase = { phase: 'research', topic: 'topic-a', age_seconds: 10, held: true, live: true, session_id: 's2' };
+    const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [stale, wrongPhase] });
+    assert.ok(!keys.some((k) => k.in_session), 'no entry marked');
+    assert.strictEqual(keys.find((k) => k.topic === 'topic-a').recommended, true);
+  });
+
+  it('the dashboard cues held map rows and the key explains the cue', () => {
+    const d = twoTopicDetail();
+    const out = epicDashboard('v1', d, { presence: [heldRow] });
+    assert.ok(out.includes('Topic A [discussing · in session]'), out);
+    assert.ok(!out.includes('Topic B [fresh · routed to discussion · in session]'), out);
+    const key = epicKey(d, { presence: [heldRow] });
+    assert.ok(key.includes('    Session:\n      in session — a live session elsewhere holds this topic'), key);
+    assert.ok(!epicKey(d).includes('Session:'), 'no presence, no session key block');
+  });
+});
+
 describe('epic projections: selection sub-views', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });

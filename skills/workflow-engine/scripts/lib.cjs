@@ -26,6 +26,7 @@ const conventions = require('./domain/conventions.cjs');
 const reads = require('./domain/reads.cjs');
 const derivations = require('./domain/derivations.cjs');
 const discoverySession = require('./domain/discovery-session.cjs');
+const presence = require('./domain/presence.cjs');
 const gateway = require('./gateway.cjs');
 const epic = require('./domain/epic-detail.cjs');
 const start = require('./domain/start.cjs');
@@ -78,6 +79,10 @@ module.exports = {
   },
   session: {
     nextSessionNumber: discoverySession.nextSessionNumber,
+  },
+  presence: {
+    scanPresence: presence.scanPresence,
+    fmtAge: presence.fmtAge,
   },
   detail: {
     epicDetail: epic.epicDetail,

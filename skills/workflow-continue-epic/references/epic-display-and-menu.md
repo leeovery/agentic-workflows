@@ -28,7 +28,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} 
 
 The output is one snapshot in three demarcated sections:
 
-- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(blocked: …)` markers. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(blocked: …)` / `(in session: …)` markers. Reason from it; never display or restate it.
 - **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
 
@@ -98,6 +98,34 @@ Commit the change.
 → Proceed to **F. Reactivate Topic**.
 
 #### Otherwise
+
+**If the selected entry carries an `(in session: …)` marker:**
+
+Another live session holds this topic open — warn before doubling up, using the marker's age detail:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+"{topic:(titlecase)}" is open in another session (last
+active {age} ago). Proceeding starts a second concurrent
+session on the same {phase} — its work could conflict
+with that session's.
+
+- **`y`/`yes`** — Proceed anyway
+- **`b`/`back`** — Return to menu
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If user chose `back`:**
+
+→ Return to **A. State Display and Menu**.
+
+**If user chose `yes`:**
+
+Continue with the **Soft gate check** below.
 
 **Soft gate check** — before routing, check whether the selection conflicts with a phase-completion recommendation. Advisory, not blocking. Read the counts from `phase_counts` in DATA.
 
