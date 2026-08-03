@@ -9,6 +9,7 @@
 
 const path = require('path');
 const { fileExists, filesChecksum } = require('./reads.cjs');
+const { WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -49,6 +50,25 @@ function computeNextPhase(manifest) {
   const wt = manifest.work_type;
 
   const ps = (phase) => phaseStatus(manifest, phase);
+
+  // A completed phase whose item carries a reconcile flag routes BACK to that
+  // phase for the linear types — routing forward past known-stale input is
+  // the bug this override closes, and it keeps the bridge off its terminal
+  // `done` branch while a flag is live. The walk stops at the first in-flight
+  // phase: an upstream mid-revision owns the next action, and its conclusion
+  // re-runs this. Epics are excluded — their next_phase is phase-coarse;
+  // flagged epic items get per-item cues instead.
+  if (wt !== 'epic') {
+    const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (wt)] || [];
+    for (const phase of pipeline) {
+      if (ps(phase) === 'in-progress') break;
+      const flagged = phaseItems(manifest, phase)
+        .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined);
+      if (flagged) {
+        return { next_phase: phase, phase_label: `${phase} (input moved — reconcile)` };
+      }
+    }
+  }
 
   // Quick-fix has its own short pipeline: scoping → implementation → review
   if (wt === 'quick-fix') {

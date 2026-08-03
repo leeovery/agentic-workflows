@@ -820,6 +820,11 @@ describe('pipeline simulation', () => {
     let spec = sim.manifest(wu).phases.specification.items[wu];
     assert.strictEqual(spec.reconcile_needed, 'discussion');
     assert.strictEqual(spec.sources[wu].status, 'stale');
+    // The read side never routes forward past the flag: the bridge's next
+    // phase is the flagged spec, not done — the terminal branch stays untaken.
+    const bridged = BRIDGE.discover(sim.dir, wu);
+    assert.strictEqual(bridged.next_phase, 'specification');
+    assert.deepStrictEqual(bridged.reconcile_pending, [`specification/${wu} (discussion)`]);
     sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
 
@@ -852,6 +857,8 @@ describe('pipeline simulation', () => {
     ro = sim.run(['topic', 'reopen', wu, 'review', wu]);
     assert.strictEqual(ro.reconcile_flagged, undefined);
     sim.run(['topic', 'complete', wu, 'review', wu]);
+    // Every flag cleared, every phase re-completed: the pipeline reads done.
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'done');
   });
 
   it('work-unit lifecycle: complete → reactivate → cancel → reactivate', () => {

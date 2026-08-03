@@ -145,6 +145,29 @@ describe('epic projections: dashboard (map branch)', () => {
     );
   });
 
+  it('a flagged completed item carries the input-moved cue on the dashboard, key, and menu', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { 'menu-admin': { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discussion: { items: { 'menu-admin': { status: 'completed' } } },
+        specification: { items: { 'menu-admin': { status: 'completed', reconcile_needed: 'discussion', sources: { 'menu-admin': { status: 'stale' } } } } },
+        planning: { items: { 'other-topic': { status: 'in-progress', reconcile_needed: 'specification' } } },
+      },
+    });
+    const out = epicDashboard('v1', d);
+    assert.ok(out.includes('Menu Admin [completed · input moved]'), out);
+    const key = epicKey(d);
+    assert.ok(key.includes('input moved — an upstream artifact was revised'), key);
+    const { keys } = epicMenu('v1', d);
+    const start = keys.find((k) => k.action === 'start_planning');
+    assert.ok(start, 'start_planning entry present');
+    assert.strictEqual(start.label, 'Start planning for "Menu Admin" — spec completed · input moved');
+    const cont = keys.find((k) => k.action === 'continue_planning');
+    assert.ok(cont, 'continue_planning entry present');
+    assert.strictEqual(cont.label, 'Continue "Other Topic" — planning [in-progress] · input moved');
+  });
+
   it('a triaged stub renders fresh with the triage waiting cue and counts as fresh', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',

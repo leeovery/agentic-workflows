@@ -53,6 +53,22 @@ describe('workflow-bridge discovery', () => {
     assert.strictEqual(r.next_phase, 'done');
   });
 
+  it('a live reconcile flag keeps the pipeline off done — the flagged phase is next', () => {
+    createManifest(dir, 'moved', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { moved: { status: 'completed' } } },
+        specification: { items: { moved: { status: 'completed' } } },
+        planning: { items: { moved: { status: 'completed' } } },
+        implementation: { items: { moved: { status: 'completed' } } },
+        review: { items: { moved: { status: 'completed', reconcile_needed: 'implementation' } } },
+      },
+    });
+    const r = discover(dir, 'moved');
+    assert.strictEqual(r.next_phase, 'review');
+    assert.deepStrictEqual(r.reconcile_pending, ['review/moved (implementation)']);
+  });
+
   it('computes next_phase for epic same as other types', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -218,6 +234,7 @@ describe('workflow-bridge format', () => {
       '=== auth (feature) ===',
       'next_phase: discussion',
       'completed_phases: (none)',
+      'reconcile_pending: (none)',
       'revisitable_phases: (none)',
       '',
     ].join('\n'));
@@ -238,6 +255,7 @@ describe('workflow-bridge format', () => {
       '=== auth (feature) ===',
       'next_phase: planning',
       'completed_phases: research, discussion, specification',
+      'reconcile_pending: (none)',
       'revisitable_phases: research, discussion, specification',
       '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===',
       '· · · · · · · · · · · ·',
@@ -268,6 +286,7 @@ describe('workflow-bridge format', () => {
       '=== rename-api (quick-fix) ===',
       'next_phase: done',
       'completed_phases: scoping, implementation, review',
+      'reconcile_pending: (none)',
       'revisitable_phases: (none)',
       '',
     ].join('\n'));
@@ -288,6 +307,7 @@ describe('workflow-bridge format', () => {
       '=== rename-api (quick-fix) ===',
       'next_phase: review',
       'completed_phases: scoping, specification, planning, implementation',
+      'reconcile_pending: (none)',
       'revisitable_phases: scoping, implementation',
       '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===',
       '· · · · · · · · · · · ·',
@@ -301,6 +321,22 @@ describe('workflow-bridge format', () => {
       '· · · · · · · · · · · ·',
       '',
     ].join('\n'));
+  });
+
+  it('a flagged phase surfaces in the dump and takes next_phase', () => {
+    createManifest(dir, 'moved', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { moved: { status: 'completed' } } },
+        specification: { items: { moved: { status: 'completed', reconcile_needed: 'discussion' } } },
+        planning: { items: { moved: { status: 'completed' } } },
+        implementation: { items: { moved: { status: 'completed' } } },
+        review: { items: { moved: { status: 'completed' } } },
+      },
+    });
+    const out = format(discover(dir, 'moved'));
+    assert.match(out, /^next_phase: specification$/m);
+    assert.match(out, /^reconcile_pending: specification\/moved \(discussion\)$/m);
   });
 
   it('epic dump carries no revisitable line and no section', () => {

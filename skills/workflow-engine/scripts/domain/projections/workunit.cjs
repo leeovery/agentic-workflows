@@ -54,12 +54,14 @@ function nextPhaseStarted(unit) {
   return unit.phase_label.endsWith('(in-progress)');
 }
 
-/** Pipeline rows: completed phases, the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped). @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
+/** Pipeline rows: completed phases (an `· input moved` cue on flagged ones), the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped). @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
 function pipelineNodes(cfg, unit) {
+  const flaggedPhases = new Set((unit.reconcile_phases || []).map((r) => r.phase));
   const nodes = [];
   for (const phase of cfg.pipeline) {
     if (unit.completed_phases.includes(phase)) {
-      nodes.push({ title: title({ glyph: '✓', label: titlecase(phase), tag: 'completed' }) });
+      const tag = flaggedPhases.has(phase) ? 'completed · input moved' : 'completed';
+      nodes.push({ title: title({ glyph: '✓', label: titlecase(phase), tag }) });
     } else if (phase === unit.next_phase) {
       const started = nextPhaseStarted(unit);
       nodes.push({
@@ -94,6 +96,11 @@ function workUnitStatus(type, unit) {
   if (callouts.length > 0) out += callouts.join('\n') + '\n\n';
   out += `  PIPELINE (${cfg.workType})\n`;
   out += renderTree(pipelineNodes(cfg, unit), { width: TREE_WIDTH });
+  for (const r of unit.reconcile_phases || []) {
+    out += typeof r.from === 'string'
+      ? `\n  ⚑ ${titlecase(r.phase)} input moved — ${r.from} revised since it completed.\n`
+      : `\n  ⚑ ${titlecase(r.phase)} input moved — reconcile at next entry.\n`;
+  }
   if (unit.finalising) out += '\n  ⚑ All phases complete — ready to finalise.\n';
   return out.replace(/\n+$/, '\n');
 }
@@ -168,6 +175,7 @@ function workUnitData(type, unit, menu) {
   lines.push(`phase_label: ${unit.phase_label}`);
   lines.push(`finalising: ${unit.finalising === true}`);
   lines.push(`completed_phases: ${unit.completed_phases.join(', ') || '(none)'}`);
+  lines.push(`reconcile_pending: ${(unit.reconcile_phases || []).map((r) => `${r.phase} (${r.from})`).join(', ') || '(none)'}`);
   lines.push(`revisit_available: ${menu.keys.some((k) => k.action === 'revisit')}`);
   if (cfg.surfacesSeeds) {
     lines.push(`seeds_count: ${unit.seeds_count || 0}`);

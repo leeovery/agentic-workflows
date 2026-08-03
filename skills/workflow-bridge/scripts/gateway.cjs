@@ -3,7 +3,7 @@
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
-const { phaseStatus, computeNextPhase } = engine.derivations;
+const { phaseStatus, phaseItems, computeNextPhase } = engine.derivations;
 
 const ALL_PHASES = engine.schema.VALID_PHASES.filter((p) => p !== 'discovery');
 
@@ -36,12 +36,24 @@ function discover(cwd, workUnit) {
   const workType = manifest.work_type;
   const next_phase = computeNextPhase(manifest).next_phase;
 
+  // Completed items carrying a live reconcile flag — observability for the
+  // continuation prose (routing itself rides next_phase).
+  const reconcile_pending = [];
+  for (const phase of ALL_PHASES) {
+    for (const item of phaseItems(manifest, phase)) {
+      if (item.status === 'completed' && item.reconcile_needed !== undefined) {
+        reconcile_pending.push(`${phase}/${item.name} (${item.reconcile_needed})`);
+      }
+    }
+  }
+
   return {
     work_unit: workUnit,
     work_type: workType,
     status: manifest.status,
     phases,
     next_phase,
+    reconcile_pending,
   };
 }
 
@@ -61,6 +73,7 @@ function format(result) {
   lines.push(`=== ${result.work_unit} (${result.work_type}) ===`);
   lines.push(`next_phase: ${result.next_phase}`);
   lines.push(`completed_phases: ${completed.join(', ') || '(none)'}`);
+  lines.push(`reconcile_pending: ${(result.reconcile_pending || []).join(', ') || '(none)'}`);
 
   let section = '';
   if (engine.detail.WORK_UNIT_TYPES[result.work_type]) {
