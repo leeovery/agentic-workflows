@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.35] - 2026-08-03
+
+✨ Added
+- Background review agents (discussion, research) now classify findings by lane — apply, decide/explore, or route — and batch-apply/batch-route lanes present the whole set on one screen instead of one finding at a time.
+- Carry-note routing in discussion document review moved onto the same batch screen as rerouted findings, so all misdirected notes are handled in one pass.
+
+🔧 Changed
+- `agent surface` accepts a comma-separated batch of finding ids in one call, validated all-or-nothing before any are recorded.
+- The background-agent surfacing protocol now routes by lane before falling back to the one-at-a-time walk, with promotion allowed only toward more user attention, never away from it.
+- `agent scan` no longer computes a `next` suggestion — picking the next row and finding is now the surfacing protocol's own judgment.
+
 ## [0.6.34] - 2026-08-03
 
 ✨ Added
