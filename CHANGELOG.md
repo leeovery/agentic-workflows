@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.33] - 2026-08-03
+
+🔧 Changed — Work artifacts (discussion, discovery sessions) now stay strictly in-topic — no process notes, doc-convention advice, or session commentary leak into recorded content.
+🔧 Changed — Rerouted concerns now route to the subtopic they actually correct, not just the one their title names.
+🔧 Changed — Pure corrections in discussion (stale citations, no new decision) are folded as dated in-place amendments instead of new sections.
+
 ## [0.6.32] - 2026-08-03
 
 ✨ Added
