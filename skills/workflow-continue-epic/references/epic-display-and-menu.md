@@ -32,6 +32,8 @@ The output is one snapshot in three demarcated sections:
 - **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
 
+When held sessions exist, the snapshot appends one `MENU: in-session gate — {key}` section per marked entry — emitted only where **B**'s in-session branch says so, never at the call.
+
 Emit the DISPLAY section, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 **STOP.** Wait for user response.
@@ -101,21 +103,7 @@ Commit the change.
 
 **If the selected entry carries an `(in session: …)` marker:**
 
-Another live session holds this topic open — warn before doubling up, using the marker's age detail:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-"{topic:(titlecase)}" is open in another session (last
-active {age} ago). Proceeding starts a second concurrent
-session on the same {phase} — its work could conflict
-with that session's.
-
-- **`y`/`yes`** — Proceed anyway
-- **`b`/`back`** — Return to menu
-· · · · · · · · · · · ·
-```
+Another live session holds this topic open. Emit the snapshot's `MENU: in-session gate — {key}` section for the selected entry — verbatim per its marker.
 
 **STOP.** Wait for user response.
 

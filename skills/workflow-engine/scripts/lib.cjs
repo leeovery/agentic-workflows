@@ -104,6 +104,7 @@ module.exports = {
     epicDashboard: epicProjections.epicDashboard,
     epicKey: epicProjections.epicKey,
     epicMenu: epicProjections.epicMenu,
+    epicInSessionGate: epicProjections.epicInSessionGate,
     epicCompletedMenu: epicProjections.epicCompletedMenu,
     epicCancelMenu: epicProjections.epicCancelMenu,
     epicReactivateMenu: epicProjections.epicReactivateMenu,

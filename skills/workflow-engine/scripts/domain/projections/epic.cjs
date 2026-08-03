@@ -12,7 +12,7 @@
 
 const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
-const { dotFrame, cmdOption, callout } = require('./surfaces.cjs');
+const { section, dotFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge } = require('../presence.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
@@ -697,6 +697,27 @@ function epicMenu(workUnit, detail, opts = {}) {
   return { keys: [...numbered, ...options], rendered: dotFrame(lines) };
 }
 
+/**
+ * Labelled confirm-gate section for one menu entry a held session occupies —
+ * appended to the view snapshot per marked key, emitted by the flow only when
+ * the user selects that entry.
+ * @param {MenuKey} entry
+ * @returns {string} one labelled MENU section
+ */
+function epicInSessionGate(entry) {
+  const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (entry.action)];
+  return section(
+    `MENU: in-session gate — ${entry.key}`,
+    "emit verbatim as markdown only when the user selects this entry, then STOP for the user's response",
+    dotFrame([
+      `"${titlecase(entry.topic || '')}" is open in another session — last active ${fmtAge(entry.session_age ?? 0)} ago. Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`,
+      '',
+      cmdOption('y', 'yes', 'Proceed anyway'),
+      cmdOption('b', 'back', 'Return to menu'),
+    ]),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Selection sub-views — the grouped pick lists behind the menu's internal
 // flows (resume completed / cancel / reactivate). Each returns the keys table,
@@ -833,4 +854,4 @@ function epicReactivateMenu(detail) {
   return selectionSubView('Cancelled Topics', 'Which topic would you like to reactivate?', 'reactivate', rows, { numberedRows: true });
 }
 
-module.exports = { epicDashboard, epicKey, epicMenu, epicCompletedMenu, epicCancelMenu, epicReactivateMenu };
+module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu };

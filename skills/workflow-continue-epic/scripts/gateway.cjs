@@ -222,6 +222,9 @@ function view(workUnit, newArrivalsJson) {
     engine.gateway.dataBlock(dataLines.join('\n')),
     engine.gateway.displayBlock(key ? display + '\n' + key : display),
     engine.gateway.menuBlock(menu.rendered),
+    // One confirm gate per entry a held session occupies — emitted by the
+    // flow only when that entry is selected, never at the call.
+    ...menu.keys.filter((k) => k.in_session).map((k) => engine.project.epicInSessionGate(k)),
   ].join('\n');
 }
 

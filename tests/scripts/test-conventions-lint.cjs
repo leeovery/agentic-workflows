@@ -617,10 +617,7 @@ function checkInertLoadChrome(files) {
 
 /** @type {Record<string, number>} */
 const RATCHET_PINS = {
-  // 4th fence: the in-session confirm gate — fires on the user's selection,
-  // composed from the ACTIONS entry's marker; unknowable at engine render time
-  // (same class as the soft-gate menu beside it).
-  'skills/workflow-continue-epic/references/epic-display-and-menu.md': 4,
+  'skills/workflow-continue-epic/references/epic-display-and-menu.md': 3,
   'skills/workflow-continue-epic/references/summary-backfill.md': 3,
   'skills/workflow-discovery/references/confirm-trigger.md': 1,
   'skills/workflow-discovery/references/map-operations.md': 9,

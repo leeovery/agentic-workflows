@@ -1790,6 +1790,10 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.ok(res.stdout.includes('sessions_in_progress: discussion/auth (last active 2m ago)'), res.stdout);
     assert.ok(res.stdout.includes('(in session: last active 2m ago)'), res.stdout);
     assert.ok(res.stdout.includes('- **`1`** — ~~Continue "Auth" — discussion [in-progress]~~ · in session (last active 2m ago)'), res.stdout);
+    assert.ok(res.stdout.includes(
+      "=== MENU: in-session gate — 1 (emit verbatim as markdown only when the user selects this entry, then STOP for the user's response) ==="
+    ), res.stdout);
+    assert.ok(res.stdout.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s.'), res.stdout);
 
     // A dead owner reads free: same record, unheld pid identity.
     fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: 'Thu Jan  1 00:00:00 1970', session_id: 'sess-view' }) + '\n');

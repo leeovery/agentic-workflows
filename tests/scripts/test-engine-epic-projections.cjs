@@ -8,7 +8,7 @@ const { execFileSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { discover } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
 const {
-  epicDashboard, epicKey, epicMenu, epicCompletedMenu, epicCancelMenu, epicReactivateMenu,
+  epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu,
 } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
 const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
 
@@ -628,6 +628,21 @@ describe('epic projections: presence join', () => {
     const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [stale, wrongPhase] });
     assert.ok(!keys.some((k) => k.in_session), 'no entry marked');
     assert.strictEqual(keys.find((k) => k.topic === 'topic-a').recommended, true);
+  });
+
+  it('renders the in-session confirm gate as a labelled MENU section, byte-for-byte', () => {
+    const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [heldRow] });
+    const marked = keys.find((k) => k.in_session);
+    assert.strictEqual(epicInSessionGate(marked), [
+      "=== MENU: in-session gate — 1 (emit verbatim as markdown only when the user selects this entry, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      '"Topic A" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s.',
+      '',
+      '- **`y`/`yes`** — Proceed anyway',
+      '- **`b`/`back`** — Return to menu',
+      '· · · · · · · · · · · ·',
+      '',
+    ].join('\n'));
   });
 
   it('the dashboard cues held map rows and the key explains the cue', () => {
