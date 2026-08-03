@@ -164,6 +164,30 @@ describe('engine agent — lifecycle store', () => {
       /is incorporated — only an acknowledged row/);
   });
 
+  it('surface takes a comma batch — a lane lands in one call, all-or-nothing', () => {
+    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    writeContent(dir, d.file);
+    runJson(dir, ['scan', 'pay', 'research', 'alpha']);
+    runJson(dir, ['ack', 'pay', 'research', 'alpha', d.id, '--findings', 'F1,F2,F3,F4']);
+
+    const b = runJson(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F1,F3']);
+    assert.deepStrictEqual(b.surfaced, ['F1', 'F3']);
+    assert.deepStrictEqual(b.remaining, ['F2', 'F4']);
+    assert.strictEqual(b.status, 'acknowledged');
+
+    // A bad entry fails the batch whole — the good ids in it stay unsurfaced.
+    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2,F9']).error, /no finding "F9"/);
+    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2,F1']).error, /already surfaced/);
+    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2,F2']).error, /duplicate ids/);
+    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2,']).error, /no empty entries/);
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).acknowledged[0].remaining, ['F2', 'F4'],
+      'a refused batch records nothing');
+
+    const last = runJson(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2, F4']);
+    assert.strictEqual(last.status, 'incorporated', 'a batch draining the row incorporates it');
+    assert.deepStrictEqual(last.surfaced, ['F1', 'F3', 'F2', 'F4']);
+  });
+
   it('a multi-label dispatch is one set: shared number, per-label rows and files', () => {
     const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
       '--label', 'formal-systems', '--label', 'incentive-realist']);
