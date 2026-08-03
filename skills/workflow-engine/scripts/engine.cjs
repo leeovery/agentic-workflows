@@ -23,7 +23,7 @@ const { commitScopedWithKb, commitPathspecScoped, KB_DIR } = require('./domain/c
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
-const { startTopic, triageTopic, queueStatus, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const taskSections = require('./domain/projections/tasks.cjs');
 const txSections = require('./domain/projections/transactions.cjs');
@@ -143,6 +143,7 @@ Commands:
   topic start <work-unit> <phase> <topic>
   topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]
   topic queue <work-unit> <phase> <topic>
+  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
   presence scan <work-unit>
@@ -566,6 +567,23 @@ function runTopic(argv) {
         throw new Error('Usage: engine topic queue <work-unit> <phase> <topic>');
       }
       respond(queueStatus(process.cwd(), workUnit, phase, topic));
+      return;
+    }
+    if (command === 'absorb') {
+      /** @type {string[]} */ const pos = [];
+      /** @type {string|undefined} */ let file;
+      /** @type {string|undefined} */ let message;
+      for (let i = 0; i < rest.length; i++) {
+        const a = rest[i];
+        if (a === '--file') file = rest[++i];
+        else if (a === '-m' || a === '--message') message = rest[++i];
+        else pos.push(a);
+      }
+      const [workUnit, phase, topic] = pos;
+      if (!workUnit || !phase || !topic || pos.length !== 3 || !file || !message) {
+        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>');
+      }
+      respond(absorbConcern(process.cwd(), workUnit, phase, topic, { file, message }));
       return;
     }
     if (command === 'triage') {

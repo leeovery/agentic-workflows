@@ -368,6 +368,61 @@ function queueStatus(cwd, workUnit, phase, topic) {
 }
 
 /**
+ * @typedef {object} TopicAbsorbResult
+ * @property {string} phase
+ * @property {string} topic
+ * @property {string} absorbed  the queue-file basename removed
+ * @property {number} remaining  queue files left after the removal
+ * @property {string|null} [committed]
+ * @property {string[]} [warnings]
+ * @property {string} [note]
+ */
+
+/**
+ * Absorb one rerouted concern — the mirror of `triage`'s delivery form:
+ * delete its queue file and commit the fold action-scoped (the phase
+ * artifact, this deletion, the work-unit manifest) under the caller's
+ * message. The response answers `remaining` so the caller routes
+ * loop-or-exit with no follow-up read.
+ * @param {string} cwd @param {string} workUnit @param {string} phase
+ * @param {string} topic @param {{file: string, message: string}} opts
+ * @returns {TopicAbsorbResult}
+ */
+function absorbConcern(cwd, workUnit, phase, topic, { file, message }) {
+  const queue = queueStatus(cwd, workUnit, phase, topic);
+  if (file !== path.basename(file) || !file.endsWith('.md')) {
+    throw new Error(`topic absorb: --file must be a queue-file name, not a path (got "${file}")`);
+  }
+  const rel = `.workflows/${workUnit}/${phase}/.triage/${topic}/${file}`;
+  if (!queue.files.includes(rel)) {
+    throw new Error(`topic absorb: "${file}" is not in the ${topic} ${phase} triage queue`);
+  }
+  fs.unlinkSync(path.join(cwd, rel));
+  /** @type {TopicAbsorbResult} */
+  const result = { phase, topic, absorbed: file, remaining: queue.count - 1 };
+  const artifactRel = `.workflows/${workUnit}/${phase}/${topic}.md`;
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitTailPathspec(
+    cwd,
+    [
+      `.workflows/${workUnit}/manifest.json`,
+      rel,
+      ...(fs.existsSync(path.join(cwd, artifactRel)) ? [artifactRel] : []),
+    ],
+    message,
+    warnings,
+  );
+  result.committed = outcome.committed;
+  result.warnings = warnings;
+  noteCommitOutcome(result, outcome);
+  if (outcome.failed) {
+    result.note = `commit pending — the concern is absorbed; retry with: engine commit ${workUnit} --topic ${phase}/${topic} -m "<message>"`;
+  }
+  return result;
+}
+
+/**
  * Complete a phase item: set `status: completed` and, when the phase's
  * artifact is knowledge-base indexed, index it (warn-don't-block). The item
  * must exist; a cancelled item must go through reactivate first. No git
@@ -613,4 +668,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic };
+module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic };

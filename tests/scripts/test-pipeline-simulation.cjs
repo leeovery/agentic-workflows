@@ -542,6 +542,19 @@ describe('pipeline simulation', () => {
     const queue = sim.run(['topic', 'queue', wu, 'research', 'delta']);
     assert.strictEqual(queue.count, 1);
     assert.deepStrictEqual(queue.files, [parked.concern_path], 'the read verb lists the delivered concern');
+    // topic absorb — the delivery's mirror: deliver a second concern, absorb
+    // it, and the self-committing response answers what remains.
+    sim.write('.workflows/.cache/scratch/concern-scratch.md',
+      '### Second parked\n*From: alpha · discussion · 2026-07-23*\n\nMore.\n');
+    sim.run(['topic', 'triage', wu, 'research', 'delta',
+      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'second-parked',
+      '-m', `discussion(${wu}/alpha): reroute concern to delta`]);
+    const absorbed = sim.run(['topic', 'absorb', wu, 'research', 'delta',
+      '--file', '002-second-parked.md', '-m', `research(${wu}/delta): absorb 002-second-parked (from alpha)`]);
+    assert.strictEqual(absorbed.absorbed, '002-second-parked.md');
+    assert.strictEqual(absorbed.remaining, 1, 'the absorb answers the post-deletion count');
+    assert.ok(absorbed.committed, 'absorb self-commits');
+    assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/${wu}/research/.triage/delta/002-second-parked.md`)), 'queue file deleted');
     // The raise's display surfaces: the offer gate (agenda payload validated
     // against the live queue), the framed entry, and the conclusion blocker.
     sim.write('.workflows/.cache/scratch/triage-offer.json', JSON.stringify({

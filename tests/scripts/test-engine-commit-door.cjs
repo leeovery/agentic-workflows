@@ -121,6 +121,38 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-b.md'], 'peer dirt untouched');
   });
 
+  it('topic absorb deletes one queue file, commits action-scoped, and answers remaining', () => {
+    writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md', '### First\nbody\n');
+    writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/002-second.md', '### Second\nbody\n');
+    commitAll(dir, 'deliveries');
+    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nfold\n');
+    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
+
+    const res = engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md', '-m', 'discussion(payments/topic-a): absorb 001-first (from origin)']);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.absorbed, '001-first.md');
+    assert.strictEqual(res.remaining, 1, 'answers the post-deletion count');
+    assert.match(res.committed, /^[0-9a-f]+$/);
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md')), 'queue file deleted');
+    const files = headFiles(dir);
+    assert.ok(files.includes('.workflows/payments/discussion/topic-a.md'), 'fold rides the commit');
+    assert.ok(files.includes('.workflows/payments/discussion/.triage/topic-a/001-first.md'), 'the deletion rides the commit');
+    assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'), 'peer topic not swept');
+
+    const last = engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '-m', 'discussion(payments/topic-a): absorb 002-second (from origin)']);
+    assert.strictEqual(last.remaining, 0, 'the emptied queue answers zero');
+
+    assert.match(
+      engineFails(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '-m', 'x']).error,
+      /is not in the topic-a discussion triage queue/);
+    assert.match(
+      engineFails(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '../002-second.md', '-m', 'x']).error,
+      /queue-file name, not a path/);
+    assert.match(
+      engineFails(dir, ['topic', 'absorb', 'payments', 'planning', 'topic-a', '--file', '001-x.md', '-m', 'x']).error,
+      /research\|discussion only/);
+  });
+
   it('leaves content another process staged out of the commit and still staged', () => {
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
     writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
