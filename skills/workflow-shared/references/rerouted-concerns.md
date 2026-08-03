@@ -147,7 +147,7 @@ The concern stays queued, untouched, and the opt-in is cleared. Follow them; the
 
 Record the discussion in the topic's content. An outcome that re-decides ground this topic didn't introduce — it names an entity, field, rule, or classification this topic's artifact didn't define — requires the sibling consult before it is recorded: follow **G. Sibling consult at cross-topic decision points** in **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** — query or cite, and carry the `Sibling check:` line in the recorded decision.
 
-A cross-topic correction tempts meta — rules about how to cite, edit, or point between documents, lessons about how the topics drifted. None of it lands: the fold records what changed and why in the topic's own terms; the pipeline is not the topic.
+A cross-topic correction tempts you to write guidance about the documents themselves. Do not: never write rules for how documents cite, edit, or point at each other, and never write lessons about how the topics drifted apart. The fold records only what changed and why, in the topic's own terms.
 
 #### If `phase` is `discussion`
 
