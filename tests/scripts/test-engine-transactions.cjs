@@ -393,6 +393,25 @@ describe('engine topic triage', () => {
     assert.strictEqual(m.phases.research.items['session-model'].status, 'triaged', 'the research item parks the concern');
   });
 
+  it('discussion-side delivery beneath a spec-sourced discussion flags the spec and stales the row', () => {
+    const m = epicManifest();
+    m.phases.specification = { items: {
+      unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' } } },
+    } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
+
+    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model',
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'shifted-ground', '-m', 'm']);
+
+    assert.strictEqual(res.reopened, true, 'the landing reopens the discussion');
+    assert.strictEqual(res.reconcile_flagged, true);
+    assert.deepStrictEqual(res.sources_staled, ['unified']);
+    const items = readManifest(dir, 'payments').phases.specification.items;
+    assert.strictEqual(items.unified.reconcile_needed, 'discussion');
+    assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
+  });
+
   it('no reconcile flag for discussion-side deliveries or live discussions', () => {
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
     const disc = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model',
@@ -661,6 +680,103 @@ describe('engine topic reopen', () => {
     engine(dir, ['topic', 'complete', 'payments', 'discussion', 'session-model']);
     const res = engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
     assert.strictEqual(res.status, 'in-progress');
+  });
+
+  it('flags the same-named completed discussion when research reopens — the downstream hop', () => {
+    const m = epicManifest();
+    m.phases.discussion.items['fee-model'] = { status: 'completed' };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
+
+    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'discussion', topic: 'fee-model' }]);
+    const after = readManifest(dir, 'payments');
+    assert.strictEqual(after.phases.discussion.items['fee-model'].reconcile_needed, 'research');
+    assert.strictEqual(after.phases.discussion.items['fee-model'].status, 'completed', 'the discussion itself is not reopened');
+  });
+
+  it('does not flag an in-progress downstream — completed items only', () => {
+    const m = epicManifest();
+    m.phases.discussion.items['fee-model'] = { status: 'in-progress' };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
+
+    assert.strictEqual(res.reconcile_flagged, undefined);
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['fee-model'].reconcile_needed, undefined);
+  });
+
+  it('never clobbers an existing downstream flag', () => {
+    const m = epicManifest();
+    m.phases.discussion.items['fee-model'] = { status: 'completed', reconcile_needed: true };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
+
+    assert.strictEqual(res.reconcile_flagged, undefined);
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['fee-model'].reconcile_needed, true, 'brief flag preserved');
+  });
+
+  it('discussion reopen flags owning specs by reverse join and stales their source rows', () => {
+    const m = epicManifest();
+    m.phases.specification = { items: {
+      unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' }, other: { status: 'incorporated' } } },
+      legacy: { status: 'completed', sources: [{ name: 'session-model', status: 'incorporated' }] },
+      unrelated: { status: 'completed', sources: { other: { status: 'incorporated' } } },
+      gone: { status: 'superseded', superseded_by: 'unified', sources: { 'session-model': { status: 'incorporated' } } },
+      building: { status: 'in-progress', sources: { 'session-model': { status: 'incorporated' } } },
+    } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
+
+    assert.deepStrictEqual(res.reconcile_flagged, [
+      { phase: 'specification', topic: 'unified' },
+      { phase: 'specification', topic: 'legacy' },
+    ]);
+    assert.deepStrictEqual(res.sources_staled, ['unified', 'legacy', 'building']);
+    const items = readManifest(dir, 'payments').phases.specification.items;
+    assert.strictEqual(items.unified.reconcile_needed, 'discussion');
+    assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
+    assert.strictEqual(items.unified.sources.other.status, 'incorporated', 'sibling rows untouched');
+    assert.strictEqual(items.legacy.sources[0].status, 'stale', 'legacy array form stales in place');
+    assert.strictEqual(items.unrelated.reconcile_needed, undefined, 'no source row, no flag');
+    assert.strictEqual(items.gone.reconcile_needed, undefined, 'terminal specs are skipped');
+    assert.strictEqual(items.gone.sources['session-model'].status, 'incorporated');
+    // The in-progress spec takes no flag — its own session's sign-off reads
+    // the stale row — but the row still stales.
+    assert.strictEqual(items.building.reconcile_needed, undefined);
+    assert.strictEqual(items.building.sources['session-model'].status, 'stale');
+  });
+
+  it('a second source re-deciding still stales its row on an already-flagged spec', () => {
+    const m = epicManifest();
+    m.phases.discussion.items['refund-policy'].status = 'completed';
+    m.phases.specification = { items: {
+      unified: { status: 'completed', reconcile_needed: 'discussion',
+        sources: { 'session-model': { status: 'stale' }, 'refund-policy': { status: 'incorporated' } } },
+    } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'refund-policy']);
+
+    assert.strictEqual(res.reconcile_flagged, undefined, 'the existing flag is never clobbered');
+    assert.deepStrictEqual(res.sources_staled, ['unified']);
+    const item = readManifest(dir, 'payments').phases.specification.items.unified;
+    assert.strictEqual(item.reconcile_needed, 'discussion');
+    assert.strictEqual(item.sources['refund-policy'].status, 'stale');
+  });
+
+  it('specification reopen flags the completed plan — the pipeline hop', () => {
+    const m = epicManifest();
+    m.phases.specification = { items: { 'auth-flow': { status: 'completed' } } };
+    m.phases.planning = { items: { 'auth-flow': { status: 'completed' } } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'specification', 'auth-flow']);
+
+    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'planning', topic: 'auth-flow' }]);
+    assert.strictEqual(readManifest(dir, 'payments').phases.planning.items['auth-flow'].reconcile_needed, 'specification');
   });
 
   it('refuses an in-progress item — nothing touched', () => {
