@@ -87,7 +87,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 If any show `status: pending`, work them now per **[spec-construction.md](spec-construction.md)** → Exhaustive Extraction — extract the source's relevant content into the specification through the construction cycle, then mark it `incorporated`.
 
-> **CHECKPOINT**: Do not proceed to sign-off while any source is `pending`. Its material has not been extracted into the specification.
+If any show `status: stale`, the source discussion was re-decided after extraction — work them now per **[spec-construction.md](spec-construction.md)** → Reconcile Stale Sources, then mark them `incorporated`.
+
+> **CHECKPOINT**: Do not proceed to sign-off while any source is `pending` or `stale`. Pending material has not been extracted; stale material was extracted from a decision that has since moved.
 
 Also confirm every consult reference is addressed:
 
@@ -141,7 +143,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 Specification is complete when:
 - All topics have validated content
-- All sources are marked as `incorporated`
+- All sources are marked as `incorporated` — neither `pending` nor `stale`
 - All consult references are marked as `addressed`
 - At least one review cycle completed with no findings, OR user explicitly chose to proceed past the re-loop prompt
 - Every manifest `tracking` entry `complete`

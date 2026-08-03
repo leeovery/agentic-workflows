@@ -24,6 +24,11 @@ All sources extracted:
   • {discussion-name}
 ```
 
+> A refinement is for factual corrections and sharpening. A change of
+> decision belongs in the source discussion — reopen that discussion
+> instead, and this specification is flagged to reconcile once it
+> re-decides.
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```

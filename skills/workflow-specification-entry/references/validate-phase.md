@@ -32,6 +32,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_u
 
 Set verb = "Continuing".
 
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `specification`.
+
 → Return to caller.
 
 #### If the status is `completed`
@@ -49,6 +51,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_u
 ```
 
 Set verb = "Continuing".
+
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `specification`.
 
 → Return to caller.
 

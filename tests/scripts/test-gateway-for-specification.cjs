@@ -530,6 +530,28 @@ describe('workflow-specification-entry format', () => {
       assert.strictEqual(spec.has_pending_sources, true);
     });
 
+    it('has_pending_sources true when a source is stale — reconciliation is open work', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'd-one': { status: 'completed' } } },
+          specification: {
+            items: {
+              'staled-spec': {
+                status: 'completed',
+                sources: { 'd-one': { status: 'stale' } },
+              },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/staled-spec/specification.md', '# Staled');
+      const r = discover(dir);
+      const spec = r.specifications.find(s => s.name === 'staled-spec');
+      assert.strictEqual(spec.has_pending_sources, true);
+      assert.strictEqual(spec.sources[0].status, 'stale');
+    });
+
     it('has_pending_sources false for a spec with no sources', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',

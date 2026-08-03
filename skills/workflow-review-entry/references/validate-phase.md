@@ -44,8 +44,12 @@ Reopen it:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} review {topic}
 ```
 
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `review`.
+
 → Return to caller.
 
 #### If status is `in-progress`
+
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `review`.
 
 → Return to caller.

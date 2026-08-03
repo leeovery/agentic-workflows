@@ -746,6 +746,13 @@ describe('pipeline simulation', () => {
     assert.strictEqual(unified.sources.alpha.status, 'incorporated', 'sibling rows untouched');
     assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.reconcile_needed, undefined);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+    // While stale, the spec boundary keeps the spec actionable — Continuing,
+    // never Refining/concluded — and the stale row rides the detail.
+    const staleView = specDetail(sim.dir, wu);
+    const unifiedRow = staleView.actionable.find((r) => r.name === 'unified');
+    assert.ok(unifiedRow, 'staled spec stays actionable');
+    assert.strictEqual(unifiedRow.verb, 'Continuing');
+    assert.strictEqual(unifiedRow.stale, 1);
     // Reconciliation: the advisory clears the flag at spec entry; the
     // diff-guided re-extraction re-incorporates the row.
     sim.run(['manifest', 'delete', `${wu}.specification.unified`, 'reconcile_needed']);

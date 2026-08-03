@@ -217,3 +217,20 @@ This is the end of this iteration.
 #### If all topics are covered
 
 → Return to caller.
+
+---
+
+## Reconcile Stale Sources
+
+Entered by name when a source row reads `stale` — its discussion was re-decided after extraction, so the specification holds content from a decision that has since moved. Reconcile the logged content against the revision; never re-extract the source wholesale.
+
+1. Re-read the source discussion (`.workflows/{work_unit}/discussion/{source-name}.md`) in full. Its decision timeline marks the revision — identify which decisions changed, which were added, and which stand.
+2. Re-read the specification for the content logged from that source.
+3. Diff the two in judgment: content the revision left standing stays untouched; content it contradicts or extends goes through **Context Resurfacing** (section A) — present the change as a diff, gate on approval, log the clean replacement.
+4. When every changed decision is reconciled, mark the source `incorporated`:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
+```
+
+→ Return to caller.

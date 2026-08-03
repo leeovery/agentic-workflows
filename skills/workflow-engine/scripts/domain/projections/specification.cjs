@@ -196,7 +196,7 @@ function singleDisplay(detail) {
   const row = single.spec || {
     name: detail.work_unit, status: 'proposed',
     sources: [{ name: single.discussion, tag: 'ready' }], consult: [],
-    extracted: 0, total: 1, pending: 1, consult_pending: 0, verb: 'Creating',
+    extracted: 0, total: 1, pending: 1, stale: 0, consult_pending: 0, verb: 'Creating',
   };
   const shown = { ...row, name: single.variant === 'grouped' ? row.name : detail.work_unit, consult: [] };
   return compose([
@@ -291,7 +291,10 @@ function rowLabel(row, scenario) {
   if (row.status === 'proposed') {
     label = `Start "${t}" — ${row.total} ready discussion(s)`;
   } else if (row.status === 'completed') {
-    label = `Continue "${t}" — ${row.pending} new source(s) to extract`;
+    const parts = [];
+    if (row.pending > 0) parts.push(`${row.pending} new source(s) to extract`);
+    if (row.stale > 0) parts.push(`${row.stale} stale source(s) to reconcile`);
+    label = `Continue "${t}" — ${parts.join(', ')}`;
   } else if (scenario === 'specs-menu') {
     label = `Continue "${t}" — in-progress`;
   } else {

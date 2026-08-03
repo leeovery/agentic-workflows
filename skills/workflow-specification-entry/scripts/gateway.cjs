@@ -122,7 +122,10 @@ function discover(cwd, workUnit) {
         });
       }
 
-      spec.has_pending_sources = (spec.sources || []).some(s => s.status === 'pending');
+      // Stale counts as pending work: an extraction the source moved out from
+      // under still blocks conclusion, so the actionable/concluded split, the
+      // sort rank, and the Continuing/Refining verb all treat it as open.
+      spec.has_pending_sources = (spec.sources || []).some(s => s.status === 'pending' || s.status === 'stale');
 
       specifications.push(spec);
     }

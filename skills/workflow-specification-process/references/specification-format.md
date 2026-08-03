@@ -38,7 +38,7 @@ Lifecycle `status` transitions go through the engine, not `set` — `engine topi
 | `review_cycle` | Starts at 0; incremented each review cycle. Missing field treated as 0. |
 | `finding_gate_mode` | Spec creation → `gated`; user opts in → `auto` |
 | `construction_gate_mode` | Spec creation → `gated`; user opts in → `auto` |
-| `sources` | Spec creation — all sources as `pending`; updated as extraction completes |
+| `sources` | Spec creation — all sources as `pending`; updated as extraction completes. The engine sets a row to `stale` when its source discussion reopens after extraction; reconciliation sets it back to `incorporated` |
 | `consult_references` | Session setup — declared refs registered as `pending`; set `addressed` once the sibling discussion's hand-off slice is read narrowly and reconciled. Optional — absent when the spec owes no corrections |
 
 ---
@@ -80,12 +80,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 **Status values:**
 - `pending` — Source has been selected but content extraction is not complete
 - `incorporated` — Source content has been fully extracted and woven into the specification
+- `stale` — Source was extracted, but its discussion was re-decided since — the extraction predates the revision. Set by the engine when the source discussion reopens; never set by hand
 
 **When to update source status:**
 
 1. **When creating the specification**: All sources start as `pending` — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status pending`
 2. **After completing exhaustive extraction from a source**: Mark that source as `incorporated` — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`
 3. **When adding a new source to an existing spec**: Add it with `status: pending` via the same command
+4. **After reconciling a `stale` source** (see **[spec-construction.md](spec-construction.md)** → Reconcile Stale Sources): mark it `incorporated` — the same command as extraction
 
 **How to determine if a source is incorporated:**
 
@@ -95,11 +97,11 @@ A source is `incorporated` when you have:
 - No more content from that source needs to be extracted
 
 **IMPORTANT**: The specification should only be marked `completed` (via `node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}`) when:
-- All sources are marked as `incorporated`
+- All sources are marked as `incorporated` — neither `pending` nor `stale`
 - Both review phases are complete
 - User has signed off
 
-If a new source is added to a completed specification (via grouping analysis), the specification effectively needs updating — even if the manifest still shows `status: completed`, the presence of `pending` sources indicates work remains.
+If a new source is added to a completed specification (via grouping analysis), or a source discussion is re-decided beneath it, the specification effectively needs updating — even if the manifest still shows `status: completed`, the presence of `pending` or `stale` sources indicates work remains.
 
 ---
 

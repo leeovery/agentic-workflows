@@ -1,0 +1,35 @@
+{
+  "origin": "staleness hops — the first case to exercise a reopen positively: a spec reopened beneath a completed plan flags it, and planning-entry's reconcile advisory surfaces the moved input and clears the flag on the way into the session",
+  "entry": "workflow-planning-entry",
+  "files": [
+    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-planning-entry/references/validate-spec.md",
+    "skills/workflow-planning-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-planning-entry/references/cross-cutting-context.md",
+    "skills/workflow-planning-entry/references/invoke-skill.md"
+  ],
+  "invariants": {
+    "calls_include": [
+      "render entry-gate pay.planning.pay",
+      "topic reopen pay planning pay",
+      "render phase-note pay.planning.pay",
+      "manifest get pay.planning.pay reconcile_needed",
+      "manifest delete pay.planning.pay reconcile_needed",
+      "knowledge.cjs query"
+    ],
+    "calls_in_order": [
+      "topic reopen pay planning pay",
+      "manifest get pay.planning.pay reconcile_needed",
+      "manifest delete pay.planning.pay reconcile_needed"
+    ],
+    "calls_exclude": [
+      "knowledge.cjs index",
+      "knowledge.cjs remove"
+    ]
+  }
+}
