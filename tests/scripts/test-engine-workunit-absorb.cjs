@@ -291,6 +291,17 @@ describe('engine workunit absorb — happy path', () => {
     assert.deepStrictEqual(knowledgeCalls(fix), ['remove --work-unit auth-flow']);
   });
 
+  it('a live reconcile flag travels with the absorbed discussion — research moves with it, so the flag stays true', () => {
+    const feature = featureManifest();
+    feature.phases.discussion.items['auth-flow'].reconcile_needed = 'research';
+    fix = setupFixture({ feature });
+    engine(fix, ABSORB);
+
+    const m = readManifest(fix, 'payments');
+    assert.strictEqual(m.phases.discussion.items.auth.reconcile_needed, 'research');
+    assert.strictEqual(m.phases.discussion.items.auth.status, feature.phases.discussion.items['auth-flow'].status);
+  });
+
   it('KB failures are warnings, never blocks — the absorb still lands and commits', () => {
     fix = setupFixture();
     const res = engine(fix, ABSORB, { STUB_KNOWLEDGE_EXIT: '1' });
