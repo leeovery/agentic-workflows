@@ -4,13 +4,13 @@
 
 ---
 
-This reference is loaded at phase conclusion when a final-review agent has produced a report. It renders a two-option menu (review / skip) and delegates the raise-one-finding loop to the shared surfacing protocol. Lifecycle state lives in the engine's agent store.
+This reference is loaded at phase conclusion when a final-review agent has produced a report. It renders a two-option menu (review / skip) and delegates the lane routing to the shared surfacing protocol. Lifecycle state lives in the engine's agent store.
 
 **Parameters** (provided by caller via Load directive):
 
 - `work_unit`, `phase`, `topic` — the agent store address
 
-The **never-dump rules apply in full** — they live with the raise itself, in **[background-agent-surfacing.md](background-agent-surfacing.md)**, and this reference never restates them. Findings are raised one at a time.
+The **never-dump rules apply in full** — they live with the surfacing itself, in **[background-agent-surfacing.md](background-agent-surfacing.md)**, and this reference never restates them.
 
 ## A. Check Review State
 
@@ -70,7 +70,7 @@ Conclusion is a decision point every time — whether the drain started mid-sess
 · · · · · · · · · · · ·
 Final review: {N} area(s) still unreviewed.
 
-- **`r`/`review`** — Walk through them one at a time
+- **`r`/`review`** — Work through them now
 - **`s`/`skip`** — Acknowledge and conclude the topic
 · · · · · · · · · · · ·
 ```
@@ -87,7 +87,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit
 
 Raise inline this turn — do not re-prompt, and do not re-enter the protocol at its **A**: this reference has already scanned, acknowledged, and announced the row. The protocol's parameters for this raise are agent_type = `review`, work_unit = `{work_unit}`, phase = `{phase}`, topic = `{topic}`.
 
-Follow **D. Raise One Finding** in **[background-agent-surfacing.md](background-agent-surfacing.md)**.
+Follow **D. Route by Lane** in **[background-agent-surfacing.md](background-agent-surfacing.md)**.
 
 → Return to caller.
 

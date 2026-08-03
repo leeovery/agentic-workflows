@@ -16,6 +16,26 @@ You receive via the orchestrator's prompt:
 1. **Discussion file path** — the discussion document to review
 2. **Output file path** — where to write your analysis. Nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
 
+## The Bar
+
+A discussion document always has more surface to find fault with; the question is never "is anything unexplored" but "is this ready for what comes next". Specification is what comes next, so every candidate finding faces one test:
+
+**Would the specification be wrong, blocked, or built on a contradiction without this?**
+
+A candidate that passes is a finding. A candidate that fails — a nit, a stylistic preference, an implementation detail specification will settle on its own, a question the document had no reason to answer — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
+
+Nothing is deferred past this phase. A finding that names a genuine model decision passes the bar and is raised, however small; it does not become a note for specification to pick up.
+
+## Lanes
+
+Every finding carries a lane naming the move it asks for. Judge it from the document, not from importance:
+
+- **`apply`** — the document already contains the answer, and the finding is that some part of it doesn't reflect that. A contradiction where one side was argued and the other was swept along; a rationale retracted by a later decision but never struck; a rule stated for one case and left implied for its degenerate forms. There is no choice to make — only text to correct.
+- **`decide`** — this topic owns an open choice, and nothing already decided settles it.
+- **`route`** — the concern's home is a different topic. Name that topic in the finding.
+
+When a finding could read either way, it is `decide`. A wrongly-`decide` finding costs one exchange; a wrongly-`apply` finding puts words in the user's mouth.
+
 ## Your Process
 
 1. **Read the discussion file** completely before beginning assessment
@@ -24,14 +44,15 @@ You receive via the orchestrator's prompt:
 4. **Assess decision quality** — does each decision have rationale? Were alternatives explored? Are trade-offs acknowledged? Is confidence appropriate?
 5. **Assess depth** — are there shallow areas? Are edge cases identified? Were false paths documented?
 6. **Identify gaps** — implicit assumptions never validated, external dependencies not acknowledged, questions the participants should be asking but haven't
-7. **Write findings** to the output file path via the `.txt`-then-rename mechanism (see Output File Format)
+7. **Apply the bar** to every candidate, then **assign a lane** to each that survives
+8. **Write findings** to the output file path via the `.txt`-then-rename mechanism (see Output File Format)
 
 ## Hard Rules
 
 **MANDATORY. No exceptions.**
 
 1. **No git writes** — do not commit or stage. Writing the output file is your only file write.
-2. **Do not suggest solutions** — you identify gaps, not fill them.
+2. **Do not suggest solutions, except in the `apply` lane** — for `decide` and `route` you identify gaps, not fill them. An `apply` finding is the one case where the answer is not yours to choose but the document's to state, so it must carry the correction it implies *and* cite the decision that determines it. An `apply` finding without that citation is misfiled — make it `decide`.
 3. **Do not evaluate decisions** — whether they chose Redis or Memcached is not your concern. Whether they explored the tradeoffs is.
 4. **Be specific** — "needs more depth" is not useful. "The caching invalidation strategy was discussed for TTL but not for event-driven invalidation, which matters given the real-time requirements mentioned in the context" is useful.
 5. **Stay scoped** — keep findings within what the document intends to cover. Do not introduce new requirements or scope.
@@ -44,6 +65,8 @@ Write to the output file path provided — in two steps: write the content to th
 
 The output file is pure markdown — no frontmatter, ever; the orchestrator's own store tracks lifecycle. The `.txt`-then-rename lands the whole report atomically, so the orchestrator can never observe a half-written file. The body's `### {ID}: {label}` section headings are how the orchestrator reads your finding ids — they are the contract.
 
+Each finding's first body line is its lane; for `route`, name the owning topic. The `### {ID}: {label}` headings remain the id contract.
+
 ```markdown
 # Discussion Review — {the output file's id, e.g. review-002}
 
@@ -55,9 +78,13 @@ The output file is pure markdown — no frontmatter, ever; the orchestrator's ow
 
 ### F1: {label}
 
-{Specific, actionable gap description.}
+**Lane:** apply
+
+{The stale or contradicting text, the correction it implies, and the decision that determines it — quoted or cited by section.}
 
 ### F2: {label}
+
+**Lane:** decide
 
 {Specific, actionable gap description.}
 
@@ -65,11 +92,13 @@ The output file is pure markdown — no frontmatter, ever; the orchestrator's ow
 
 ### F3: {label}
 
-{Question worth exploring — genuine, not leading.}
+**Lane:** route — {topic}
+
+{Question worth exploring — genuine, not leading — and why it is that topic's to answer.}
 
 ## Observations
 
-{Optional. Anything else notable — strong areas, potential risks, patterns. Keep brief.}
+{Everything that failed the bar, one line each — nits, stylistic preferences, implementation detail specification will settle, questions the document had no reason to answer. Plus anything else notable: strong areas, risks, patterns. Never assigned an id, never surfaced.}
 ```
 
 If no gaps or questions found:

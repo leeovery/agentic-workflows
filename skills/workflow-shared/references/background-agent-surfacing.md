@@ -4,20 +4,23 @@
 
 ---
 
-This reference defines how to surface findings from background agents without dumping walls of text. It is loaded by agent reference files with parameters for the specific agent type. All lifecycle state lives in the engine's agent store — never in the content files, whose markdown is the report and nothing else.
+This reference defines how to surface findings from background agents. Findings arrive classified by the move they ask of the user, and each class gets the ceremony it earns — a batch for the ones with no choice in them, a full raise for the ones that need a decision. All lifecycle state lives in the engine's agent store — never in the content files, whose markdown is the report and nothing else.
 
 **Parameters** (provided by caller via Load directive):
 
 - `agent_type` — `review` | `synthesis` | `deep-dive` — human-readable name used in user-facing messages, and the row kind this invocation surfaces
 - `work_unit`, `phase`, `topic` — the agent store address
+- `walk_heading` — optional; the heading the decision lane renders under. Defaults to `Needs A Decision`
 
 ## The Core Rules
 
-**Never dump findings.** Three hard rules govern every surfacing interaction:
+**The ceremony matches the move owed, never the finding's importance.** Five hard rules govern every surfacing interaction:
 
-1. **Two-phase surfacing.** First acknowledge the report exists (micro-menu, no content). Only after the user opts in, start raising findings one at a time.
-2. **One finding per turn, then exit.** Each invocation of this protocol does at most one thing and hands control back. Never expect the protocol to "resume" after the user has engaged with a finding — the next session-loop check will pick up the next one at the next natural break.
+1. **Two-phase surfacing.** First acknowledge the report exists (micro-menu, no content). Only after the user opts in, start on the lanes.
+2. **One lane per turn, and inside the decision lane one finding per turn.** Each invocation of this protocol does at most one thing and hands control back. Never expect the protocol to "resume" after the user has engaged — the next session-loop check picks up where the store says it left off.
 3. **Mid-thread protection.** If you are mid-Q/A with the user, defer the announce menu until the next natural break. A one-line parenthetical is acceptable, but only the first time.
+4. **Nothing is applied unseen.** A batch is rendered in full — every item, numbered, with its two-line reading — before a single edit lands. "There was no choice anyway" is not licence to write first.
+5. **Findings move toward the user, never away.** A finding the report placed in a batch moves into the decision lane the moment you find a real choice hiding in it, or the user says it isn't settled. Never the reverse: a decision-lane finding is never demoted into a batch to save a turn.
 
 Natural-break detection is guidance, not hard-enforced.
 
@@ -25,9 +28,11 @@ Natural-break detection is guidance, not hard-enforced.
 
 ## LLM Turn Semantics (IMPORTANT)
 
-This protocol runs as a turn-level check, not a long-running state machine. Each invocation runs one `agent scan`, does at most one thing with its answer (a parenthetical, a menu, or one raised finding), and exits back to the session loop. Once you raise a finding, control belongs to the conversation. The user engages naturally — it may take five turns or fifty. Do NOT wait "inside the protocol" for that engagement to finish. The next iteration of the session loop's check will re-enter here and scan again; the row lists say exactly where things stand (the response's `next` is a default that ignores your `agent_type` — the kind filter below decides).
+This protocol runs as a turn-level check, not a long-running state machine. Each invocation runs one `agent scan`, does at most one thing with its answer (a parenthetical, a menu, one batch, or one raised finding), and exits back to the session loop. Once a batch lands or a finding is raised, control belongs to the conversation. Do NOT wait "inside the protocol" for the user to finish engaging. The next iteration of the session loop's check will re-enter here and scan again; the row lists say exactly where things stand (the response's `next` is a default that ignores your `agent_type` and knows nothing of lanes — the kind filter and the lane order below decide).
 
-**The engine store is the only state.** Never track surfacing progress in conversation memory, and never write it anywhere else.
+**The engine store is the only state.** Never track surfacing progress in conversation memory, and never write it anywhere else. Lanes live in the report file, which is durable — re-read it rather than recalling it.
+
+**Coverage guarantee**: the goal is natural flow during engagement AND eventual coverage of every finding. The store ensures nothing is forgotten across turns — every session-loop iteration re-enters this protocol, and at each natural break the next lane or the next finding is taken up. When all findings have been surfaced, the engine incorporates the row.
 
 ## A. Check for Results
 
@@ -56,6 +61,10 @@ The report was first-read on an earlier iteration; the row carries `announced`, 
 ## B. First Read
 
 Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `### {ID}:` section headings. Cross-check the count either way.
+
+Read each finding's **lane** from its report section — `apply`, `decide`, or `route`. A report that declares no lanes is all-`decide`; synthesis tensions and deep-dive findings are always `decide`, whatever the report says.
+
+Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding whose fix turns out to rest on a choice nobody has made becomes `decide`. Never move a finding the other way.
 
 #### If the report has no findings (zero-gap case)
 
@@ -119,15 +128,15 @@ Route on the row's `surfaced` list: empty means the user has not yet opted in; n
 
 **If `surfaced` is empty (first time at a break):**
 
-Render the announce menu. Do not describe findings, do not summarise, do not preview — just the count and the menu.
+Render the announce menu. `{shape}` is the lane split in one clause — the count in each lane and what each asks of the user, e.g. *4 need nothing from you, 7 need a call, 2 belong elsewhere*; name only lanes that have findings. Do not describe individual findings, do not summarise, do not preview.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Background {agent_type} returned — flagged {N} area(s).
+Background {agent_type} returned — {N} finding(s): {shape}.
 
-- **`n`/`now`** — Walk through them one at a time
+- **`n`/`now`** — Start on them
 - **`l`/`later`** — Keep pulling on the current thread, I'll raise them at the next pause
 · · · · · · · · · · · ·
 ```
@@ -142,7 +151,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit
 
 **If `now`:**
 
-→ Proceed to **D. Raise One Finding**.
+→ Proceed to **D. Route by Lane**.
 
 **If `later`:**
 
@@ -152,24 +161,92 @@ Nothing surfaced yet, so the next natural break re-renders this menu.
 
 **If `surfaced` is non-empty (user already opted in, more findings remain):**
 
-Do not re-ask. The user has already committed to walking through the set.
+Do not re-ask. The user has already committed to working through the set.
 
-→ Proceed to **D. Raise One Finding**.
+→ Proceed to **D. Route by Lane**.
 
-## D. Raise One Finding
+## D. Route by Lane
+
+Lanes run in a fixed order — **apply, then decide, then route**. The cheap lanes clear the deck first, and the route batch runs last so that a reroute raised *during* the decision walk joins the same send.
+
+Intersect the row's `remaining` with the lanes read in **B**, and take the first lane in that order that still holds findings.
+
+#### If the lane is `apply`
+
+→ Proceed to **E. No Decision Needed**.
+
+#### If the lane is `decide`
+
+→ Proceed to **F. Needs A Decision**.
+
+#### If the lane is `route`
+
+→ Proceed to **G. Belongs Elsewhere**.
+
+## E. No Decision Needed
+
+Every remaining `apply` finding lands in one screen. The set is fixed here — a finding promoted out by the user's answer leaves this lane and is picked up by **F** on a later iteration; nothing is ever added.
+
+> *Output the next fenced block as a code block:*
+
+```
+·· No Decision Needed ···························
+```
+
+Digest the report — never read it out. Write one payload entry per remaining `apply` finding, in the order they should read: `title` is the report's own claim, `detail` is one or two sentences saying what the fix is and which decision determines it. Write the payload with the Write tool to the topic's cache directory, then render it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-apply.json
+```
+
+Payload shape — `{"lane": "apply", "items": [{"title": "…", "detail": "…"}, …]}`.
+
+Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+Apply each finding to the phase's content file, then record the whole batch in one call and commit each finding's write under its own subject marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
+```
+
+Confirm in one line per finding — what changed, no restatement of the reasoning the screen already carried.
+
+→ Return to caller.
+
+**If the user asks about a number:**
+
+Answer it — the report's full section, the sites it touches, why the fix is the one it is. Then re-render this screen for the findings still unapplied.
+
+A user who says a numbered item is not settled has promoted it (core rule 5). Leave it unsurfaced, drop it from this lane, and treat it as `decide` from now on.
+
+→ Return to caller.
+
+## F. Needs A Decision
 
 This section runs once per invocation and then exits. It never waits in-protocol for the user to finish engaging — that's the conversation's job.
 
-1. Pick the single most contextually relevant finding from the row's `remaining` — never from `scan.next`, which may belong to another row. **Contextual relevance outranks the list order.** When engaging the previous finding built a scene — a worked scenario, a diagram, one corner of the document — prefer remaining findings that live inside it, and exhaust them before opening a new corner: the reconstruction is already paid for. Otherwise, if the current conversation has just touched on a related area, prefer that finding; if nothing is particularly relevant, pick the one with the broadest implications.
+1. Pick the single most contextually relevant `decide` finding from the row's `remaining` — never from `scan.next`, which may belong to another row or another lane. **Contextual relevance outranks the list order.** When engaging the previous finding built a scene — a worked scenario, a diagram, one corner of the document — prefer remaining findings that live inside it, and exhaust them before opening a new corner: the reconstruction is already paid for. Otherwise, if the current conversation has just touched on a related area, prefer that finding; if nothing is particularly relevant, pick the one with the broadest implications.
 2. Record it — the response confirms what remains, and raising the last finding incorporates the row automatically:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}
    ```
 3. Digest the finding from the content file — never read it out — and compose the raise in three beats. A findings walk is a series of cold starts — each raise lands in a corner of the document the user last held fully hours or days ago — so the first beat rebuilds that context rather than referencing it:
-   - **Present** — scene reconstruction before any assessment: say where it came from (the background {agent_type}) and what it observed — for a synthesis, the two positions in tension — then rebuild the scene as **Setting the scene** below prescribes. Restate any term borrowed from another subtopic or an earlier decision; never reference it bare. Never use a bare id (`F5`, `T2`) as a label in conversational prose — name the finding by its report title on first mention, or describe it by what it is; ids belong in commit subjects (`(review-003 F5)`) and in-document markers (`(resolves review-003 F5)`), not in the conversation. When earlier findings from this set have been raised, open with a one-line bridge: what the previous one settled — or simply that it was raised, when that engagement predates this session — and how many follow this one (the surface response's `remaining`; `findings` is the full set).
+   - **Present** — scene reconstruction before any assessment: say where it came from (the background {agent_type}) and what it observed — for a synthesis, the two positions in tension — then rebuild the scene as **Setting the scene** below prescribes. Restate any term borrowed from another subtopic or an earlier decision; never reference it bare. Never use a bare id (`F5`, `T2`) as a label in conversational prose — name the finding by its report title on first mention, or describe it by what it is; ids belong in commit subjects (`(review-003 F5)`) and in-document markers (`(resolves review-003 F5)`), not in the conversation. When earlier findings from this set have been raised, open with a one-line bridge: what the previous one settled — or simply that it was raised, when that engagement predates this session — and how many follow this one (the surface response's `remaining`, counted within this lane).
    - **Position** — your read, only where you genuinely have one: verified it holds, narrower than framed, already covered by a decision made since the report. Skip the beat rather than manufacture a verdict.
    - **Move** — sized to how open the decision is as much as how cold the context: a clear resolution — propose it and name what it costs ("this creates X and Y; I don't see another approach"), never an option survey; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
-4. Raise it in the current turn, ending in a single question — or, for a finding with one defensible resolution, a stated proposal awaiting the user's response. Either way the turn ends and control returns: one finding per invocation regardless of how settled, and the user's agreement is never licence to roll into the next. No bundled follow-ups, no menu.
+4. Raise it in the current turn, ending in a single question — or, for a finding with one defensible resolution, a stated proposal awaiting the user's response. Either way the turn ends and control returns: one finding per invocation, and the user's agreement is never licence to roll into the next. No bundled follow-ups, no menu.
+
+The first raise of this lane opens with its heading, so the shift out of the batches is visible:
+
+> *Output the next fenced block as a code block:*
+
+```
+·· {walk_heading} ·······························
+```
 
 **Setting the scene** — an example over a description, every time. A reader who can picture the failure can judge the fix; a reader parsing a mechanism description is still building the picture when the ask arrives.
 
@@ -181,7 +258,45 @@ This section runs once per invocation and then exits. It never waits in-protocol
 
 After this, control belongs to the conversation. The user will engage (or deflect, or redirect) naturally. Handle their response as normal discussion — not as protocol-driven routing. An outcome that re-decides ground this topic didn't introduce — it names an entity, field, rule, or classification this topic's artifact didn't define — requires the sibling consult before it is documented: follow **G. Sibling consult at cross-topic decision points** in **[knowledge-usage.md](../../workflow-knowledge/references/knowledge-usage.md)** — query or cite, and carry the `Sibling check:` line in the documented decision. When the engagement's outcome is documented and committed — resolved or deflected — the commit subject carries `({id} {finding})`, e.g. `(review-003 F2)`.
 
-**Coverage guarantee**: the goal is natural flow during engagement AND eventual coverage of every finding. The store ensures nothing is forgotten across turns — every session-loop iteration re-enters this protocol, and at each natural break the next unsurfaced finding is raised. When all findings have been raised, the engine incorporates the row.
+An engagement that concludes the concern belongs to a sibling topic moves the finding to the `route` lane rather than rerouting it now — **G** sends the batch, and one send beats two.
+
+→ Return to caller.
+
+## G. Belongs Elsewhere
+
+Every remaining `route` finding lands in one screen, together with any the decision walk moved here.
+
+> *Output the next fenced block as a code block:*
+
+```
+·· Belongs Elsewhere ····························
+```
+
+Write one payload entry per finding — `target` is the owning topic, `detail` is what it says and why it is theirs — then render it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
+```
+
+Payload shape — `{"lane": "route", "items": [{"target": "…", "detail": "…"}, …]}`.
+
+Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+Deliver each in turn — load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{phase}`, date = `{today}` — then record the batch in one call:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
+```
+
+→ Return to caller.
+
+**If the user asks about a number:**
+
+Answer it, then re-render this screen for the findings still unsent. A finding the user says belongs here is theirs to keep: leave it unsurfaced and treat it as `decide`.
 
 → Return to caller.
 
@@ -189,10 +304,10 @@ After this, control belongs to the conversation. The user will engage (or deflec
 
 Before producing any surfacing output, verify:
 
-- □ Raising AT MOST one finding this turn — the rest of the set appears as a count, never as content
-- □ Asking AT MOST one question this turn
-- □ The finding itself is stated, self-contained, before any position or proposal
-- □ The user can picture the problem before the ask arrives — scene rebuilt, not referenced
+- □ Working ONE lane this turn — never two screens, never a batch and a raise together
+- □ In the decision lane: AT MOST one finding, AT MOST one question, and the finding stated self-contained before any position or proposal
+- □ In a batch: every item shown before anything is applied or sent, two lines each, numbered continuously
+- □ No finding demoted out of the decision lane — promotion only
 - □ No bare id (`F5`, `T2`) as a label in prose — named by report title or described
 - □ Not reading the content file verbatim
 
