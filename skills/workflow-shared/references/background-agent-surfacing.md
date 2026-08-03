@@ -215,13 +215,17 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 **If `yes`:**
 
-Apply each finding to the phase's artifact, then record the whole batch in one call and commit each finding's write under its own subject marker:
+Take the findings one at a time — apply, then commit under that finding's own subject marker (`({id} {finding})`) — before starting the next.
+
+Each fix is a pure correction: amend the affected sites in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs — the shape in **D. Fold** in **[rerouted-concerns.md](rerouted-concerns.md)**. Never the template's revision shape.
+
+When every finding has landed, record the batch in one call:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
 ```
 
-Confirm in one line per finding — what changed, no restatement of the reasoning the screen already carried.
+Confirm in one line per finding — what changed, no restatement of the reasoning the screen already carried. An amended site is amended, not removed.
 
 → Return to caller.
 
