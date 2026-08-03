@@ -365,6 +365,64 @@ describe('render findings-summary', () => {
   });
 });
 
+describe('render finding-batch', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the apply lane — fixed intro, numbered claims, subDetail, y/Ask menu', () => {
+    const file = writePayload(dir, 'a.json', {
+      lane: 'apply',
+      items: [
+        { title: 'Self-containment is holed by `excluded`', detail: 'Restate the invariant as ownership, not transport.' },
+        { title: 'A retracted rationale survives unmarked', detail: 'Superseded when copy-only won; mark it superseded.' },
+      ],
+    });
+    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
+    assert.strictEqual(out, [
+      '=== DISPLAY: finding batch (emit verbatim as a code block) ===',
+      "The fix follows from what's already decided. Nothing here is a choice.",
+      '',
+      '1. Self-containment is holed by `excluded`',
+      '   · Restate the invariant as ownership, not transport.',
+      '',
+      '2. A retracted rationale survives unmarked',
+      '   · Superseded when copy-only won; mark it superseded.',
+      '',
+      "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '- **`y`/`yes`** — Apply all 2, then move on',
+      "- **Ask** — Tell me a number to expand, or one you don't think is settled",
+      DOTS,
+      '',
+    ].join('\n'));
+  });
+
+  it('renders the route lane — targets arrowed, send wording, no label line', () => {
+    const file = writePayload(dir, 'r.json', {
+      lane: 'route',
+      items: [{ target: 'storage-and-sync', detail: 'The spec-readiness claim rests on their window_state subtopic.' }],
+    });
+    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
+    assert.match(out, /^1\. → storage-and-sync$/m);
+    assert.match(out, /- \*\*`y`\/`yes`\*\* — Send all 1$/m);
+    assert.match(out, /one that should stay here/);
+    assert.ok(!out.includes(`${DOTS}\n\n`), 'a label-less menu opens straight on its options');
+  });
+
+  it('validates loudly — unknown lane, empty items, per-item fields by lane', () => {
+    const bad = (name, obj) => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
+    assert.throws(() => bad('l.json', { lane: 'decide', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, route/);
+    assert.throws(() => bad('e.json', { lane: 'apply', items: [] }), /"items" must be a non-empty array of \{title, detail\}/);
+    assert.throws(() => bad('m.json', { lane: 'apply', items: [{ title: 't' }] }), /item 1 is missing "detail"/);
+    assert.throws(() => bad('t.json', { lane: 'route', items: [{ detail: 'd' }] }), /item 1 is missing "target"/);
+    assert.throws(() => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout' }), /--file <payload\.json> is required/);
+  });
+});
+
 describe('render concern', () => {
   let dir;
   beforeEach(() => {
@@ -1085,7 +1143,7 @@ describe('selection not-found display', () => {
 
 describe('catalogue dispatch', () => {
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, concern, triage-offer, triage-block, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, concern, triage-offer, triage-block, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });
 });
 

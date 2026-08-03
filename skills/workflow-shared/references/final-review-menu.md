@@ -4,13 +4,13 @@
 
 ---
 
-This reference is loaded at phase conclusion when a final-review agent has produced a report. It renders a two-option menu (review / skip) and delegates the raise-one-finding loop to the shared surfacing protocol. Lifecycle state lives in the engine's agent store.
+This reference is loaded at phase conclusion when a final-review agent has produced a report. It renders a two-option menu (review / skip) and delegates the lane routing to the shared surfacing protocol. Lifecycle state lives in the engine's agent store.
 
 **Parameters** (provided by caller via Load directive):
 
 - `work_unit`, `phase`, `topic` — the agent store address
 
-The **never-dump rules apply in full**. Findings are raised one at a time.
+The **never-dump rules apply in full** — they live with the surfacing itself, in **[background-agent-surfacing.md](background-agent-surfacing.md)**, and this reference never restates them.
 
 ## A. Check Review State
 
@@ -70,7 +70,7 @@ Conclusion is a decision point every time — whether the drain started mid-sess
 · · · · · · · · · · · ·
 Final review: {N} area(s) still unreviewed.
 
-- **`r`/`review`** — Walk through them one at a time
+- **`r`/`review`** — Work through them now
 - **`s`/`skip`** — Acknowledge and conclude the topic
 · · · · · · · · · · · ·
 ```
@@ -85,20 +85,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit
 
 #### If `review`
 
-Apply the raise-one-finding step inline this turn (do not re-prompt):
+Surface inline this turn — do not re-prompt, and do not re-enter the protocol at its **A**: this reference has already scanned, acknowledged, and announced the row. What the user sees is whichever lane comes first: a batch screen, or one raised finding. The protocol's parameters here are agent_type = `review`, work_unit = `{work_unit}`, phase = `{phase}`, topic = `{topic}`.
 
-1. Pick the single most contextually relevant finding from the row's `remaining`. Contextual relevance outranks the list order. If nothing is particularly relevant, pick the one with the broadest implications.
-2. Record it — raising the last finding incorporates the row automatically:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}
-   ```
-3. Digest the finding from the content file — never read it out — and compose the raise as conversational prose in three beats:
-   - **Present** — orientation before any assessment. Say where it came from (the background review) and what it observed in plain, self-contained terms a user returning after hours can follow. Restate any term borrowed from another subtopic or an earlier decision; never reference it bare. Depth follows the conversation: a clause when the finding set was visible moments ago, full orientation when the conversation has moved on since it was last visible. When earlier findings from this set have been raised, open with a one-line bridge: what the previous one settled — or simply that it was raised, when that engagement predates this session.
-   - **Position** — your read, only where you genuinely have one: verified it holds, narrower than framed, already covered by a decision made since the report. Skip the beat rather than manufacture a verdict.
-   - **Move** — sized to how settled the finding is: a clear resolution — propose it; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
-4. Raise it in the current turn, ending in a single question. One finding, one question, no bundled follow-ups, no menu.
-
-When the engagement's outcome is documented and committed — resolved or deflected — the commit subject carries `({id} {finding})`, e.g. `(review-003 F2)`.
+Follow **D. Route by Lane** in **[background-agent-surfacing.md](background-agent-surfacing.md)**.
 
 → Return to caller.
 
@@ -111,14 +100,3 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_u
 The declined ids stay recorded unsurfaced, and the content file is preserved on disk for the record.
 
 → Return to caller.
-
-## Never-Dump Checklist
-
-Before producing any surfacing output, verify:
-
-- □ Raising AT MOST one finding this turn — the rest of the set appears as a count, never as content
-- □ Asking AT MOST one question this turn
-- □ The finding itself is stated, self-contained, before any position or proposal
-- □ Not reading the content file verbatim
-
-If any box is unchecked, stop and reframe.

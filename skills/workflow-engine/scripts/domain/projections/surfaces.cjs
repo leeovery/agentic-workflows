@@ -33,13 +33,15 @@ function dotFrame(lines) {
 
 /**
  * Dot-framed menu for the common shape: contextual label, blank line,
- * options, optional trailing prompt line separated by a blank line.
+ * options, optional trailing prompt line separated by a blank line. An empty
+ * label opens straight on the options — the label-less selection menu, for
+ * gates whose context is carried by the display directly above them.
  * @param {string} label @param {string[]} options
  * @param {{prompt?: string}} [opts]
  * @returns {string}
  */
 function menu(label, options, { prompt } = {}) {
-  const lines = [label, '', ...options];
+  const lines = label ? [label, '', ...options] : [...options];
   if (prompt) lines.push('', prompt);
   return dotFrame(lines);
 }

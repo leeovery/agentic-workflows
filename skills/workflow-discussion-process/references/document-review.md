@@ -86,54 +86,39 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 #### Otherwise
 
-Take the next unhandled note. Handled-ness lives in the walk and is recoverable from the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
+Every unhandled note goes on one screen — the same batch the surfacing protocol sends rerouted findings on, over the same kind of item. Handled-ness lives in the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
 
-Judge the target topic from the note's own addressing, and judge `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Present it:
+Judge each note's target topic from its own addressing, and its `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Write the payload with the Write tool (`{"lane": "route", "items": [{"target": "…", "detail": "…"}]}`, one entry per note: `target` is the topic, `detail` is what the note says, why it is theirs, and which queue it lands in), then render it:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-{the note, quoted}
-
-*Addressed to: {target} — lands in its {landing_phase} triage queue*
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/carry-notes.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Land this note in "{target}"'s triage queue? If "{target}" is
-completed, landing reopens it.
-
-- **`y`/`yes`** — Land it there; this document keeps a reroute record
-- **`s`/`skip`** — Leave it as prose in this document
-- **Comment** — Tell me what to change (target, phase, or content)
-· · · · · · · · · · · ·
-```
+Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 
 **If `yes`:**
 
-Build the concern from the note *plus* the session context it stems from — the decision that superseded the sibling's text, the reasoning, what the sibling needs to change — the target resolves it from cold.
+Deliver each note in turn. Build its concern from the note *plus* the session context it stems from — the decision that superseded the sibling's text, the reasoning, what the sibling needs to change — the target resolves it from cold.
 
 → Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the note's full context}`, origin = `{topic}`, phase = `discussion`, landing_phase = `{landing_phase}`, date = `{today}`.
 
-On return: if `result` is `landed`, the note is handled — replace the stranded prose with a reroute record in place, `Rerouted to {landed_topic} triage ({date}).`, and when the landing response carried `reconcile_flagged`, tell the user the target's completed discussion was flagged to reconcile. If `result` is `cancelled`, nothing was written — the note stays unhandled and re-presents; dropping it for good is the `skip` arm's job.
+On return: if `result` is `landed`, the note is handled — replace the stranded prose with a reroute record in place, `Rerouted to {landed_topic} triage ({date}).`, and when the landing response carried `reconcile_flagged`, tell the user the target's completed discussion was flagged to reconcile. If `result` is `cancelled`, nothing was written — the note stays unhandled and re-presents on the next run.
 
 → Return to **C. Route Misdirected Knowledge**.
 
-**If `skip`:**
+**If the user asks about a number:**
 
-The note is handled — the prose stands as written, by the user's choice.
-
-→ Return to **C. Route Misdirected Knowledge**.
-
-**If comment:**
-
-Adjust the target, landing phase, or concern content per the user's feedback; the note stays unhandled and re-presents.
+Answer it — what the note says, where it sits, why that target. A note the user says belongs here is handled: the prose stands as written, by their choice. Adjust a target, landing phase, or concern content they correct. The screen re-renders for the notes still unsent.
 
 → Return to **C. Route Misdirected Knowledge**.
+
+**If the user moves on without answering** — they bounce to another concern or the main thread:
+
+Nothing lands. The notes stay as prose and stay unhandled — a later run re-presents them, and the conclusion gate still sees them.
+
+→ Proceed to **D. Brief the User**.
 
 ## D. Brief the User
 

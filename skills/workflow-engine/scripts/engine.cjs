@@ -167,7 +167,7 @@ Commands:
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
   agent announce <work-unit> <phase> <topic> <id>
-  agent surface  <work-unit> <phase> <topic> <id> <finding>
+  agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…]
   agent incorporate <work-unit> <phase> <topic> <id>
   commit <work-unit> -m <message> [--plan <topic>]
   commit --inbox -m <message>
@@ -795,7 +795,7 @@ function runAgent(argv) {
     }
     if (command === 'surface') {
       if (!workUnit || !phase || !topic || !id || !finding || positional.length !== 5) {
-        throw new Error('Usage: engine agent surface <work-unit> <phase> <topic> <id> <finding>');
+        throw new Error('Usage: engine agent surface <work-unit> <phase> <topic> <id> <finding>[,<finding>…]');
       }
       respond(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding));
       return;

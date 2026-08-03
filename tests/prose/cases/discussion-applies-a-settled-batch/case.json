@@ -1,0 +1,57 @@
+{
+  "origin": "the surfacing protocol spent a full raise — scene, position, proposal, stop — on every finding regardless of how settled it was, and a live epic burned 17 review rounds across three topics without closing one; nothing walked a review whose findings all carry the apply lane, where the whole set lands as one screen and one yes",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": [
+    "c — continue",
+    "n — now",
+    "y — yes"
+  ],
+  "conduct": "The user is picking a card-payments discussion back up after most of a day away. They are brisk and want to spend their attention on decisions, not on bookkeeping. Asked whether to look at what the background review returned, they say yes. Shown a screen of corrections that the document's own decisions already determine, they read it, find nothing that surprises them, and approve the lot in one go without asking for any of them to be expanded. They offer no new material of their own and do not ask to move on to anything else.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "agent scan pay discussion pay",
+      "render finding-batch pay.discussion.pay",
+      "agent surface pay discussion pay review-001 F1,F2,F3"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "agent scan pay discussion pay",
+      "render finding-batch pay.discussion.pay",
+      "agent surface pay discussion pay review-001 F1,F2,F3"
+    ],
+    "calls_exclude": [
+      "agent dispatch",
+      "agent ack",
+      "agent incorporate",
+      "discussion-map add",
+      "topic complete",
+      "knowledge.cjs index"
+    ]
+  }
+}

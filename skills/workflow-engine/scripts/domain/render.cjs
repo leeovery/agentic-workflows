@@ -512,6 +512,68 @@ function findingsSummary(cwd, { dotpath, file }) {
   return section('DISPLAY: findings summary', 'emit verbatim as a code block', lines.join('\n'));
 }
 
+// finding-batch — a surfacing lane whose findings ask nothing of the user
+// beyond a yes: the `apply` batch (corrections determined by decisions
+// already made) and the `route` batch (concerns owned by a sibling topic).
+// The lane fixes the chrome; the payload carries only judgment content, so
+// the screen is one call and the prose holds no template.
+
+/** @type {Record<string, {intro: string, confirm: (n: number) => string, ask: string, line: (it: any, i: number) => string, fields: string[]}>} */
+const BATCH_LANES = {
+  apply: {
+    intro: "The fix follows from what's already decided. Nothing here is a choice.",
+    confirm: (n) => `Apply all ${n}, then move on`,
+    ask: "Tell me a number to expand, or one you don't think is settled",
+    fields: ['title', 'detail'],
+    line: (it, i) => `${i + 1}. ${it.title}`,
+  },
+  route: {
+    intro: "Not this topic's to answer. Each goes to its owner's triage queue as a concern, carrying the context built here.",
+    confirm: (n) => `Send all ${n}`,
+    ask: 'Tell me a number to expand, or one that should stay here',
+    fields: ['target', 'detail'],
+    line: (it, i) => `${i + 1}. → ${it.target}`,
+  },
+};
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function findingBatch(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render finding-batch: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'finding-batch');
+  const p = readJsonPayload(cwd, file, 'finding-batch');
+  const lane = BATCH_LANES[p.lane];
+  if (!lane) {
+    throw new Error(`render finding-batch: "lane" must be one of ${Object.keys(BATCH_LANES).join(', ')}`);
+  }
+  if (!Array.isArray(p.items) || p.items.length === 0) {
+    throw new Error(`render finding-batch: "items" must be a non-empty array of {${lane.fields.join(', ')}}`);
+  }
+  const lines = [lane.intro, ''];
+  p.items.forEach((it, i) => {
+    for (const field of lane.fields) {
+      if (!isFilled(it[field])) throw new Error(`render finding-batch: item ${i + 1} is missing "${field}"`);
+    }
+    lines.push(lane.line(it, i));
+    lines.push(subDetail(it.detail));
+    if (i < p.items.length - 1) lines.push('');
+  });
+  return [
+    section('DISPLAY: finding batch', 'emit verbatim as a code block', lines.join('\n')),
+    section(
+      'MENU: finding batch',
+      "emit verbatim as markdown, then STOP for the user's response",
+      menu('', [
+        cmdOption('y', 'yes', lane.confirm(p.items.length)),
+        promptOption('Ask', lane.ask),
+      ]),
+    ),
+  ].join('\n');
+}
+
 /**
  * @param {string} cwd
  * @param {{dotpath: string, file?: string}} args
@@ -1029,6 +1091,7 @@ const SURFACES = {
   'resume-gate': resumeGate,
   'task-list': taskList,
   'findings-summary': findingsSummary,
+  'finding-batch': findingBatch,
   'finding': finding,
   'concern': concern,
   'triage-offer': triageOffer,

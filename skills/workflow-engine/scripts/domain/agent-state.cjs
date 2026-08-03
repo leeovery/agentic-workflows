@@ -380,8 +380,10 @@ function announceAgent(cwd, workUnit, phase, topic, id) {
 }
 
 /**
- * Surface one finding. When the last unsurfaced finding is raised the row
- * incorporates automatically — the response's `status` says so.
+ * Surface one finding, or a comma-separated batch of them — a lane's whole
+ * screen lands in one call. Every id is validated before any is recorded, so
+ * a bad entry fails the batch whole. When the last unsurfaced finding is
+ * raised the row incorporates automatically — the response's `status` says so.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id @param {string} finding
  */
@@ -389,19 +391,28 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateSegment(topic, 'topic');
+  const batch = String(finding).split(',').map((f) => f.trim());
+  if (batch.some((f) => f === '')) {
+    throw new Error('Invalid findings: a finding id, or a comma-separated list of them, with no empty entries');
+  }
+  if (new Set(batch).size !== batch.length) {
+    throw new Error('Invalid findings: duplicate ids');
+  }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (row.status !== 'acknowledged') {
       throw new Error(`Agent "${id}" is ${row.status} — only an acknowledged row surfaces findings`);
     }
-    if (!row.findings.includes(finding)) {
-      throw new Error(`Agent "${id}" has no finding "${finding}". Findings: ${row.findings.join(', ')}`);
+    for (const f of batch) {
+      if (!row.findings.includes(f)) {
+        throw new Error(`Agent "${id}" has no finding "${f}". Findings: ${row.findings.join(', ')}`);
+      }
+      if (row.surfaced.includes(f)) {
+        throw new Error(`Finding "${f}" is already surfaced on "${id}"`);
+      }
     }
-    if (row.surfaced.includes(finding)) {
-      throw new Error(`Finding "${finding}" is already surfaced on "${id}"`);
-    }
-    row.surfaced.push(finding);
+    row.surfaced.push(...batch);
     if (unsurfaced(row).length === 0) row.status = 'incorporated';
     saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
