@@ -22,9 +22,8 @@ The prose should have taken this path:
    triage landing into its target topic's queue, carrying the context
    built here, and both ids are recorded in ONE surface call, which
    drains the row so it incorporates automatically. Landing phase
-   follows each concern's nature: synonym-handling's is a constraint it
-   inherits, landing discussion-side; relevance-measurement's is an open
-   question needing exploration, landing research-side
+   follows each concern's nature, not the target's routing: both are
+   open questions their owners must explore, so both land research-side
 
 Presentation claims:
 
@@ -50,6 +49,6 @@ Further claims:
 - the walk stops after the sends; the conclusion gate is never entered
 
 EXPECTED WORLD — the fixture plus: the Decision clause amended in place
-and committed; a triage entry in synonym-handling's discussion queue and
-one in relevance-measurement's research queue; and the store row
+and committed; a triage entry in each of synonym-handling's and
+relevance-measurement's research queues; and the store row
 `review-001` with all three findings surfaced, standing `incorporated`.
