@@ -114,7 +114,7 @@ Answer it — what the note says, where it sits, why that target. A note the use
 
 → Return to **C. Route Misdirected Knowledge**.
 
-**If `later`:**
+**If the user moves on without answering** — they bounce to another concern or the main thread:
 
 Nothing lands. The notes stay as prose and stay unhandled — a later run re-presents them, and the conclusion gate still sees them.
 

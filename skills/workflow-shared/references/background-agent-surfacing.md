@@ -229,15 +229,15 @@ Confirm in one line per finding — what changed, no restatement of the reasonin
 
 Answer it — the report's full section, the sites it touches, why the fix is the one it is.
 
-A user who says a numbered item is not settled has promoted it (core rule 5). Leave it unsurfaced, drop it from this lane, and treat it as walked from now on.
+A user who says a numbered item is not settled has promoted it (core rule 5). Leave it unsurfaced, drop it from this lane, and treat it as walked — the walk raises it once this lane empties. A promotion is held for the length of the engagement, not in the store: abandon the batch before the walk reaches it and the report's own lane is what the next visit reads, which costs a repeat ask, never a silent loss.
 
 The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered.
 
 → Return to **E. No Decision Needed**.
 
-**If `later`:**
+**If the user moves on without answering** — they bounce to another subtopic, another finding, or the main thread:
 
-Nothing is applied and nothing is recorded. The row keeps its findings; the next natural break re-enters the protocol and offers the lane again.
+Nothing is applied and nothing is recorded. Follow them; the next natural break re-enters the protocol and re-offers the lane.
 
 → Return to caller.
 
@@ -330,9 +330,9 @@ The batch is still owed, and nothing has been surfaced — returning to the call
 
 → Return to **G. Belongs Elsewhere**.
 
-**If `later`:**
+**If the user moves on without answering** — they bounce to another subtopic, another finding, or the main thread:
 
-Nothing is sent and nothing is recorded. The next natural break re-enters the protocol and offers the lane again.
+Nothing is sent and nothing is recorded. Follow them; the next natural break re-enters the protocol and re-offers the lane.
 
 → Return to caller.
 
