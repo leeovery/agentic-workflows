@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.34] - 2026-08-03
+
+✨ Added
+- Epic dashboard now flags topics another live session already has open, with a confirm-before-proceed gate if you pick one anyway.
+
+🔧 Changed
+- Presence tracking now verifies the actual owning process (pid + start time), so a topic reads as held for as long as that session truly runs, not just for 15 minutes of inactivity.
+- Session cleanup now also fires on session end (`/clear`, logout) via a hook, sweeping any presence heartbeats that session owned across all work units.
+
 ## [0.6.33] - 2026-08-03
 
 🔧 Changed — Work artifacts (discussion, discovery sessions) now stay strictly in-topic — no process notes, doc-convention advice, or session commentary leak into recorded content.
