@@ -66,6 +66,8 @@ Read each finding's **lane** from its report section. Three lanes carry across e
 
 Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding whose fix turns out to rest on a choice nobody has made moves to the walked lane. Never move a finding the other way.
 
+This is the first of two catches, not the only one. Re-classify here whatever the document itself shows — a subtopic the report read as settled that the artifact records as open, a fix resting on a decision no section carries. What survives is what looked settled from the document alone, and the user's own knowledge is the second catch: **E** promotes anything they say isn't settled. Neither replaces the other, and a finding caught here never reaches the batch screen at all.
+
 #### If the report has no findings (zero-gap case)
 
 ```bash
@@ -215,13 +217,17 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 **If `yes`:**
 
-Apply each finding to the phase's artifact, then record the whole batch in one call and commit each finding's write under its own subject marker:
+Take the findings one at a time: apply, then commit, before moving to the next. Applying them all and committing afterwards collapses the batch into a single commit — the first commit sweeps every edit and the rest report nothing to commit — and the per-finding subject markers the closing gates read are lost.
+
+An `apply` finding is a **pure correction**: nothing new was decided, so its fix lands as the amendment shape in **D. Fold** in **[rerouted-concerns.md](rerouted-concerns.md)** — the affected sites amended in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs. Never the template's revision shape: that belongs to a decision this session re-took, and there is none here.
+
+Each finding's write commits under its own subject marker (`({id} {finding})`). When the last one has landed, record the batch in one call:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
 ```
 
-Confirm in one line per finding — what changed, no restatement of the reasoning the screen already carried.
+Confirm in one line per finding — what changed, no restatement of the reasoning the screen already carried. Say what the record says: an amended site is amended, not removed.
 
 → Return to caller.
 
@@ -310,7 +316,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 **If `yes`:**
 
-Deliver each finding in turn, with the context built here so its target resolves it from cold.
+Deliver each finding in turn, with the context built here so its target resolves it from cold. Rerouting sends a concern away from this topic; it does not mark it. No reroute record is written here and the Discussion Map is untouched — the delivery commits itself, and the target's queue is the record.
 
 → Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`.
 
