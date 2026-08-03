@@ -8,6 +8,7 @@
 // Rings:
 //   engine.render         kernel — pure layout (no workflow vocabulary)
 //   engine.manifest       kernel — work-unit manifest IO (load / atomic save)
+//   engine.schema         kernel — manifest vocabulary (phases, per-type pipelines)
 //   engine.conventions    domain — workflow glyphs, tags, title composition
 //   engine.reads          domain — generic manifest/file reads (no phase semantics)
 //   engine.derivations    domain — shared derivations (phase joins, lifecycle, cache status)
@@ -22,6 +23,7 @@
 
 const render = require('./kernel/render.cjs');
 const manifest = require('./kernel/manifest.cjs');
+const schema = require('./kernel/manifest-schema.cjs');
 const conventions = require('./domain/conventions.cjs');
 const reads = require('./domain/reads.cjs');
 const derivations = require('./domain/derivations.cjs');
@@ -48,6 +50,10 @@ module.exports = {
   manifest,
   conventions,
   gateway,
+  schema: {
+    VALID_PHASES: schema.VALID_PHASES,
+    WORK_TYPE_PIPELINES: schema.WORK_TYPE_PIPELINES,
+  },
   reads: {
     listFiles: reads.listFiles,
     listDirs: reads.listDirs,

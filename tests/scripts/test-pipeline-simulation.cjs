@@ -33,16 +33,11 @@ const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
 
 const schema = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
 const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/derivations.cjs'));
-const { WORK_UNIT_TYPES } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/workunit-detail.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
-// pipelineOf): epics use the epic phase list minus discovery.
+// pipelineOf): the schema's one home for pipeline order.
 function pipelineOf(workType) {
-  if (workType === 'epic') {
-    return ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
-  }
-  const cfg = WORK_UNIT_TYPES[workType];
-  return cfg ? cfg.pipeline : schema.VALID_PHASES.filter((p) => p !== 'discovery');
+  return schema.WORK_TYPE_PIPELINES[workType] || schema.VALID_PHASES.filter((p) => p !== 'discovery');
 }
 
 const GATEWAYS = {

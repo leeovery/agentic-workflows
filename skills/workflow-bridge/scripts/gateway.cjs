@@ -5,7 +5,7 @@ const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
 const { phaseStatus, computeNextPhase } = engine.derivations;
 
-const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
+const ALL_PHASES = engine.schema.VALID_PHASES.filter((p) => p !== 'discovery');
 
 function phaseFileExists(cwd, workUnit, phase, manifest) {
   const dir = path.join(cwd, '.workflows', workUnit, phase);

@@ -11,6 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
+const { WORK_TYPE_PIPELINES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, dotFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge } = require('../presence.cjs');
@@ -46,13 +47,27 @@ const { fmtAge } = require('../presence.cjs');
 
 /** @typedef {import('../presence.cjs').PresenceRow} PresenceRow */
 
-const BUILD_PHASES = ['specification', 'planning', 'implementation', 'review'];
+const EPIC_PIPELINE = WORK_TYPE_PIPELINES.epic;
 
-const STAGES = [
-  { name: 'DISCOVERY', phases: ['research', 'discussion'] },
-  { name: 'DEFINITION', phases: ['specification', 'planning'] },
-  { name: 'DELIVERY', phases: ['implementation', 'review'] },
-];
+const BUILD_PHASES = EPIC_PIPELINE.slice(EPIC_PIPELINE.indexOf('specification'));
+
+// The three-D stage each pipeline phase renders under. STAGES groups the epic
+// pipeline in order by this labelling, so the dividers can never hold a phase
+// the pipeline lacks.
+const STAGE_OF = {
+  research: 'DISCOVERY', discussion: 'DISCOVERY',
+  specification: 'DEFINITION', planning: 'DEFINITION',
+  implementation: 'DELIVERY', review: 'DELIVERY',
+};
+
+/** @type {{name: string, phases: string[]}[]} */
+const STAGES = EPIC_PIPELINE.reduce((/** @type {{name: string, phases: string[]}[]} */ stages, phase) => {
+  const name = STAGE_OF[/** @type {keyof typeof STAGE_OF} */ (phase)];
+  const last = stages[stages.length - 1];
+  if (last && last.name === name) last.phases.push(phase);
+  else stages.push({ name, phases: [phase] });
+  return stages;
+}, []);
 
 const STATUS_ORDER = ['proposed', 'triaged', 'in-progress', 'completed', 'cancelled', 'promoted'];
 
@@ -653,7 +668,7 @@ function epicMenu(workUnit, detail, opts = {}) {
     }
   } else {
     // Continue items — any in-progress item in any phase, pipeline order.
-    for (const phase of ['research', 'discussion', ...BUILD_PHASES]) {
+    for (const phase of EPIC_PIPELINE) {
       numbered.push(...continueEntries(workUnit, detail, phase));
     }
     // Next-phase-ready items — specification first, then planning,

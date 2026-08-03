@@ -13,6 +13,7 @@
 // ---------------------------------------------------------------------------
 
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
+const { WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 const {
   phaseStatus,
   computeUnitPhaseState,
@@ -38,7 +39,7 @@ const WORK_UNIT_TYPES = {
     header: 'FEATURES',
     nounPlural: 'features',
     nounCounted: 'feature(s)',
-    pipeline: ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'],
+    pipeline: WORK_TYPE_PIPELINES.feature,
     surfacesSeeds: true,
   },
   bugfix: {
@@ -47,7 +48,7 @@ const WORK_UNIT_TYPES = {
     header: 'BUGFIXES',
     nounPlural: 'bugfixes',
     nounCounted: 'bugfix(es)',
-    pipeline: ['investigation', 'specification', 'planning', 'implementation', 'review'],
+    pipeline: WORK_TYPE_PIPELINES.bugfix,
     surfacesSeeds: false,
   },
   'quick-fix': {
@@ -56,7 +57,7 @@ const WORK_UNIT_TYPES = {
     header: 'QUICK-FIXES',
     nounPlural: 'quick-fixes',
     nounCounted: 'quick-fix(es)',
-    pipeline: ['scoping', 'implementation', 'review'],
+    pipeline: WORK_TYPE_PIPELINES['quick-fix'],
     surfacesSeeds: false,
   },
   'cross-cutting': {
@@ -65,7 +66,7 @@ const WORK_UNIT_TYPES = {
     header: 'CROSS-CUTTING',
     nounPlural: 'cross-cutting concerns',
     nounCounted: 'cross-cutting concern(s)',
-    pipeline: ['research', 'discussion', 'specification'],
+    pipeline: WORK_TYPE_PIPELINES['cross-cutting'],
     surfacesSeeds: false,
   },
 };
