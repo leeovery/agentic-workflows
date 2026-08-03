@@ -62,7 +62,7 @@ The report was first-read on an earlier iteration; the row carries `announced`, 
 
 Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `### {ID}:` section headings. Cross-check the count either way.
 
-Read each finding's **lane** from its report section. Three lanes carry across every caller — the batched `apply`, the batched `route`, and the walked one, which a report names for its own phase (`decide` in discussion, `explore` in research). A report that declares no lanes is all-walk; synthesis tensions are always walked, whatever the report says.
+Read each finding's **lane** from its report section. Three lanes carry across every caller — the batched `apply`, the batched `route`, and the walked one, which a report names for its own phase (`decide` in discussion, `explore` in research). A report that declares no lanes is all-walk, as is any single finding whose section names none — an unlabelled finding is never assumed settled. Synthesis tensions are always walked, whatever the report says.
 
 Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding whose fix turns out to rest on a choice nobody has made moves to the walked lane. Never move a finding the other way.
 
