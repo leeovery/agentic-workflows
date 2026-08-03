@@ -1,0 +1,59 @@
+{
+  "origin": "the one-way rule — a finding moves toward the user, never away — had no walk: nothing exercised a user pushing back on a batch item, which must leave the batch unapplied and be raised as a decision instead of being defended back in or applied anyway",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": [
+    "c — continue",
+    "n — now",
+    "the missed-webhook one is not settled — we noted it and moved on"
+  ],
+  "conduct": "The user is picking a card-payments discussion back up after most of a day away. They are brisk and glad to have bookkeeping handled in bulk. Shown a screen of three corrections, they accept two of them without comment but stop at the one about reconciling a webhook that never arrives: they remember that being raised and explicitly left open, not decided, and they say so. They do not offer a resolution for it — they want it treated as the open question it is. They add no new material and do not ask to move on to anything else.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "agent scan pay discussion pay",
+      "render finding-batch pay.discussion.pay",
+      "agent surface pay discussion pay review-001 F1,F3",
+      "agent surface pay discussion pay review-001 F2"
+    ],
+    "calls_in_order": [
+      "agent scan pay discussion pay",
+      "render finding-batch pay.discussion.pay",
+      "agent surface pay discussion pay review-001 F1,F3",
+      "agent surface pay discussion pay review-001 F2"
+    ],
+    "calls_exclude": [
+      "agent dispatch",
+      "agent ack",
+      "agent incorporate",
+      "agent surface pay discussion pay review-001 F1,F2,F3",
+      "discussion-map add",
+      "topic complete",
+      "knowledge.cjs index"
+    ]
+  }
+}

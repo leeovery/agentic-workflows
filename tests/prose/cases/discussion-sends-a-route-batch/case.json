@@ -1,0 +1,76 @@
+{
+  "origin": "the route lane had no walk: findings belonging to a sibling topic were raised one at a time in the wrong topic, each with a full scene and a stop, and nothing exercised the batch send or the lane ordering that puts it after the cheap corrections",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-discussion-entry/references/gather-context.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue",
+    "n — now",
+    "y — yes",
+    "y — yes"
+  ],
+  "conduct": "The user is picking the behavioural-ranking discussion back up after a day away. They want their attention spent on their own topic, not on other people's. Shown a single correction the document already determines, they approve it without comment. Shown two concerns that belong to sibling topics — one to synonym handling, one to relevance measurement — they agree both belong there and approve the send in one go, without asking for either to be expanded and without trying to answer them here. They add no new material and do not ask to conclude.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.behavioural-ranking status",
+      "agent scan search-relevance discussion behavioural-ranking",
+      "render finding-batch search-relevance.discussion.behavioural-ranking",
+      "agent surface search-relevance discussion behavioural-ranking review-001 F1",
+      "topic triage search-relevance discussion synonym-handling",
+      "topic triage search-relevance discussion relevance-measurement",
+      "agent surface search-relevance discussion behavioural-ranking review-001 F2,F3"
+    ],
+    "calls_in_order": [
+      "agent scan search-relevance discussion behavioural-ranking",
+      "agent surface search-relevance discussion behavioural-ranking review-001 F1",
+      "topic triage search-relevance discussion synonym-handling",
+      "agent surface search-relevance discussion behavioural-ranking review-001 F2,F3"
+    ],
+    "calls_exclude": [
+      "agent dispatch",
+      "agent ack",
+      "agent incorporate",
+      "agent surface search-relevance discussion behavioural-ranking review-001 F1,F2,F3",
+      "topic start search-relevance discussion synonym-handling",
+      "topic complete",
+      "knowledge.cjs index"
+    ]
+  }
+}

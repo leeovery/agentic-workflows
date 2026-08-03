@@ -943,6 +943,24 @@ describe('pipeline simulation', () => {
     const closedEarly = sim.run(['agent', 'incorporate', wu, 'research', 'alpha', skipAll.id]);
     assert.deepStrictEqual(closedEarly.remaining, ['F9'], 'skip-all keeps the declined record');
 
+    // A surfacing lane: the batch renders from a payload, then drains in one
+    // call — the apply/route screens' call sequence, not the walk's.
+    const laned = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
+    sim.write(laned.file, '# Laned findings\n\n### F1: a\n\n### F2: b\n\n### F3: c\n');
+    sim.run(['agent', 'scan', wu, 'research', 'alpha']);
+    sim.run(['agent', 'ack', wu, 'research', 'alpha', laned.id, '--findings', 'F1,F2,F3']);
+    sim.run(['agent', 'announce', wu, 'research', 'alpha', laned.id]);
+    const payload = `.workflows/.cache/${wu}/research/alpha/batch-apply.json`;
+    sim.write(payload, JSON.stringify({
+      lane: 'apply',
+      items: [{ title: 'a', detail: 'follows from the tier decision' }, { title: 'b', detail: 'retracted rationale, unstruck' }],
+    }));
+    sim.render(['finding-batch', `${wu}.research.alpha`, '--file', payload], { expect: 'content' });
+    const applied = sim.run(['agent', 'surface', wu, 'research', 'alpha', laned.id, 'F1,F2']);
+    assert.deepStrictEqual(applied.remaining, ['F3'], 'a batch drains its lane and leaves the rest');
+    const walked = sim.run(['agent', 'surface', wu, 'research', 'alpha', laned.id, 'F3']);
+    assert.strictEqual(walked.status, 'incorporated', 'the walk finishes what the batch left');
+
     // Guards hold mid-lifecycle, and the conclusion gate still sees the straggler.
     sim.refuses(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1'], /incorporated/);
     sim.refuses(['agent', 'ack', wu, 'research', 'alpha', 'deep-dive-001-auth', '--clean'], /in-flight/);
