@@ -16,14 +16,14 @@ dropped once delivery guarantees were confirmed. The Decision beneath
 it still ends "A polling fallback remains available if delivery
 proves unreliable." Strike it.
 
-### F2: The missed-webhook path is decided but never written down
+### F2: The retry ceiling is deferred to but never numbered
 
 **Lane:** apply
 
-The Journey records that reconciling a webhook that never arrives was
-raised. Since polling is ruled out, the reconciliation path follows:
-the checkout reconciles pending orders against the gateway on a
-schedule. State it in the Decision.
+Failed-Payment Retries decides that retries stop at the gateway's own
+ceiling and never says what that ceiling is. The provider documents it
+as three attempts, so the Decision can carry the number it already
+defers to: retries stop at three.
 
 ### F3: The currency rule is stated for amounts but left implied for refunds
 

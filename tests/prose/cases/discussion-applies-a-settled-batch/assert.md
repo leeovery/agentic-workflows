@@ -20,11 +20,11 @@ The prose should have taken this path:
    built: a payload written to the topic's cache, rendered through the
    engine's finding-batch surface, and its DISPLAY and MENU sections
    emitted
-7. the user says yes. The three corrections are applied to the
-   discussion file, the batch is recorded in the store in ONE surface
-   call carrying all three ids — which drains the row, so it
-   incorporates automatically — and each finding's write is committed
-   under its own subject marker
+7. the user says yes. The corrections are taken one at a time — each
+   applied, then committed under its own subject marker, before the next
+   begins — so three commits land, not one sweeping all three. The batch
+   is then recorded in ONE surface call carrying all three ids, which
+   drains the row so it incorporates automatically
 
 Presentation claims — deliberate display claims; the batch's shape is
 the behaviour under test:
@@ -46,14 +46,15 @@ Further claims:
 - no fresh review dispatch, no ack, no incorporate call: surfacing the
   batch is what closes the row
 - the discussion file's edits are confined to the three corrections
-  named in the report — the polling-fallback sentence struck, the
-  contradiction resolved to the absolute reading, and the currency rule
-  stated for refunds. No subtopic is added, no map state changes, and
-  the Journey and Options blocks are untouched
+  named in the report, each landing as a dated in-place amendment rather
+  than a revision block preserving the original under an `#### Initial`
+  heading. No subtopic is added, no map state changes, and the Journey
+  and Options blocks are untouched
 - the walk stops after the commits; no new subtopic is opened and no
   conclusion gate is entered
 
 EXPECTED WORLD — the fixture plus: the agent store row `review-001`
 holds all three findings surfaced and stands `incorporated`; the
-discussion file carries the three corrections; and each correction is
-committed under its own `(review-001 F…)` subject.
+discussion file carries the three corrections as dated in-place
+amendments; and each correction is committed under its own
+`(review-001 F…)` subject, one commit per finding.

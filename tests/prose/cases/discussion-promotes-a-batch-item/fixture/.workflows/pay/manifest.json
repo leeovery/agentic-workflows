@@ -17,6 +17,10 @@
             "currency-handling": {
               "status": "decided",
               "parent": null
+            },
+            "failed-payment-retries": {
+              "status": "decided",
+              "parent": null
             }
           }
         }

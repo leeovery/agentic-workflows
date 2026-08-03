@@ -16,9 +16,10 @@ The prose should have taken this path:
 6. all three are in the apply lane, so the batch screen is built from a
    payload rendered through the engine's finding-batch surface, and its
    DISPLAY and MENU sections are emitted
-7. the user does not approve the lot: they say the missed-webhook item
-   is not settled. That finding is promoted out of the apply lane —
-   left unsurfaced, treated as a decision from here on
+7. the user does not approve the lot: they say the retry ceiling is not
+   the published figure for this account. Nothing in the artifact showed
+   that, so the promotion could only come from them. That finding leaves
+   the apply lane — unsurfaced, treated as a decision from here on
 8. the two genuinely settled corrections are applied and recorded in
    one surface call carrying exactly those two ids, each committed
    under its own subject marker. The row stays acknowledged: one
@@ -29,13 +30,14 @@ The prose should have taken this path:
 
 Presentation claims:
 
-- the batch screen shows all three items before anything is written
+- the batch screen shows all three items before anything is written —
+  the retry finding is not re-classified out beforehand, because nothing
+  in the artifact contradicts it
 - when the user pushes back on one item, no attempt is made to defend
   it back into the batch or to apply it anyway
 - the promoted finding is raised as an open question about what the
-  reconciliation path should be, NOT as a correction with a determined
-  answer — the document's Open Threads says it was never settled, and
-  the raise reflects that
+  ceiling should be, NOT as a correction with a determined answer — the
+  user withheld the real number, so the raise asks for it
 - the raise states the finding self-contained before any position, and
   ends in a single question with no menu and no bundled follow-ups
 
@@ -47,11 +49,15 @@ Further claims:
   raised, at step 9
 - no fresh review dispatch, no ack, no incorporate call
 - the discussion file's edits are confined to the two applied
-  corrections; nothing is written about the reconciliation path, which
-  is still an open question when the walk stops
+  corrections, each landing as a dated in-place amendment rather than a
+  revision block preserving the original under an `#### Initial`
+  heading; nothing is written about the retry ceiling, which is still an
+  open question when the walk stops
+- the two corrections commit separately, one per finding, each under its
+  own `(review-001 F…)` subject — not one commit sweeping both
 - the walk stops with the question pending; the user never answers it
 
-EXPECTED WORLD — the fixture plus: the two settled corrections applied
-to the discussion file and committed under their own `(review-001 F…)`
-subjects, and the store row `review-001` with all three findings
-surfaced, standing `incorporated`.
+EXPECTED WORLD — the fixture plus: the two settled corrections amended
+into the discussion file and committed under their own `(review-001 F…)`
+subjects, one commit each, and the store row `review-001` with all three
+findings surfaced, standing `incorporated`.

@@ -19,10 +19,12 @@ The prose should have taken this path:
 7. the decide lane is empty, so the route batch follows: a second
    finding-batch render, this time the route lane, naming each target
 8. the user approves. Each concern is delivered through the shared
-   triage landing into its target topic's queue — synonym-handling and
-   relevance-measurement — carrying the context built here, and both
-   ids are recorded in ONE surface call, which drains the row so it
-   incorporates automatically
+   triage landing into its target topic's queue, carrying the context
+   built here, and both ids are recorded in ONE surface call, which
+   drains the row so it incorporates automatically. Landing phase
+   follows each concern's nature: synonym-handling's is a constraint it
+   inherits, landing discussion-side; relevance-measurement's is an open
+   question needing exploration, landing research-side
 
 Presentation claims:
 
@@ -39,13 +41,15 @@ Further claims:
 - the apply lane is cleared before the route lane is offered
 - exactly one surface call carries both route ids — the concerns are
   not sent one at a time with a stop each
-- each landing reopens or seeds its target topic's triage queue; this
-  topic's own discussion file gains a reroute record for each, and
-  neither sibling's discussion is entered or edited
+- each landing seeds its target topic's triage queue, and neither
+  sibling's discussion is entered or edited. Rerouting sends a concern
+  away without marking this topic: behavioural-ranking's own Triage
+  section still reads `(none)`, its Discussion Map is unchanged, and no
+  reroute record is written
 - no fresh review dispatch, no ack, no incorporate call
 - the walk stops after the sends; the conclusion gate is never entered
 
-EXPECTED WORLD — the fixture plus: the Decision clause struck and
-committed; a triage entry in each of synonym-handling's and
-relevance-measurement's discussion queues; and the store row
+EXPECTED WORLD — the fixture plus: the Decision clause amended in place
+and committed; a triage entry in synonym-handling's discussion queue and
+one in relevance-measurement's research queue; and the store row
 `review-001` with all three findings surfaced, standing `incorporated`.
