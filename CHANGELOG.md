@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.32] - 2026-08-03
+
+✨ Added
+- Rerouted-concern absorption is now a single engine transaction (`engine topic absorb`) — deletes the queue file and commits the fold in one atomic, action-scoped step.
+
+🔧 Changed
+- Absorbing a rerouted concern no longer pauses the discussion or research session — it flows straight to the next raise instead of stopping and waiting.
+- Discussion and research sessions now read seed/brief context once at entry instead of re-loading it during initialization, avoiding a redundant read.
+
 ## [0.6.31] - 2026-08-02
 
 🔧 Changed
