@@ -205,6 +205,18 @@ the protocol already forbids reading it.
 
 ## Log
 
+- 2026-08-03 — Landed whole in #737. Lanes across every surface that
+  raises findings: discussion review, research review, deep-dive,
+  synthesis, the final-review menu, and document-review's carry-note
+  walk. The walked lane is named by its phase (`decide` / `explore`)
+  and the shared protocol carries a heading parameter rather than
+  discussion's word for it. Two engine additions the prose earned:
+  `render finding-batch` (D4 refuses a templated batch screen in prose)
+  and `agent surface`'s comma form (a new batching census row — first
+  instance of the N-call shape that programme exists to remove).
+  `final-review-menu` stopped cloning the raise; `document-review`'s
+  ratchet pin shrank to zero. Three prose cases and a simulation leg.
+
 - 2026-08-03 — Programme opened. Evidence gathered from two live fumi
   discussion transcripts and the epic's manifest state; contract L1–L8
   drafted; stack scoped against the five loaders of
