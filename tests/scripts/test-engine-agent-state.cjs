@@ -103,7 +103,6 @@ describe('engine agent — lifecycle store', () => {
     let scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
     assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['review-001']);
     assert.ok(scan.in_flight[0].created, 'in-flight rows carry created for the earlier-session judgment');
-    assert.strictEqual(scan.next, null, 'nothing actionable while the agent runs');
 
     fs.mkdirSync(path.dirname(path.join(dir, d.file)), { recursive: true });
     fs.writeFileSync(path.join(dir, d.file), '');
@@ -113,7 +112,6 @@ describe('engine agent — lifecycle store', () => {
     writeContent(dir, d.file);
     scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
     assert.strictEqual(scan.pending[0].id, 'review-001');
-    assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: 'review-001' });
   });
 
   it('ack records findings and moves to acknowledged; --clean incorporates immediately', () => {
@@ -195,7 +193,6 @@ describe('engine agent — lifecycle store', () => {
     assert.deepStrictEqual(d.agents.map((a) => a.id),
       ['perspective-001-formal-systems', 'perspective-001-incentive-realist']);
     const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
-    assert.ok(scan.next === null, 'perspective rows are never scan.next');
     const again = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
       '--label', 'ship-now', '--label', 'strategic-timing']);
     assert.strictEqual(again.set, '002', 'the next council is the next set');
@@ -233,7 +230,7 @@ describe('engine agent — lifecycle store', () => {
       /legacy file/, 'a dead session file never becomes this council synthesis');
   });
 
-  it('perspectives are never acknowledged; a mid-drain review outranks them in next', () => {
+  it('perspectives are never acknowledged, and sit alongside a mid-drain review', () => {
     const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
     for (const a of pair.agents) writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
@@ -245,8 +242,9 @@ describe('engine agent — lifecycle store', () => {
     runJson(dir, ['ack', 'pay', 'discussion', 'alpha', r.id, '--findings', 'F1,F2']);
     runJson(dir, ['surface', 'pay', 'discussion', 'alpha', r.id, 'F1']);
     const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
-    assert.deepStrictEqual(scan.next, { action: 'surface', id: r.id, finding: 'F2' },
-      'pending perspectives never null out a mid-drain review');
+    assert.deepStrictEqual(scan.acknowledged[0].remaining, ['F2'],
+      'the mid-drain review keeps its remaining findings alongside pending perspectives');
+    assert.strictEqual(scan.pending.length, 2, 'both perspectives stay listed for set checks');
   });
 
   it('deleting the topic cache dir is a complete cleanse — state is colocated', () => {
@@ -261,15 +259,15 @@ describe('engine agent — lifecycle store', () => {
     assert.strictEqual(fresh.id, 'review-001', 'a cleansed topic restarts its numbering');
   });
 
-  it('scan.next never points at a perspective row even when one is oldest-pending', () => {
+  it('a pending perspective and a pending review are both listed, kinds intact', () => {
     const p = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'lens']);
     writeContent(dir, p.file);
     const r = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     writeContent(dir, r.file);
     const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
-    assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: 'review-001' },
-      'the older pending perspective is skipped');
-    assert.strictEqual(scan.pending.length, 2, 'both rows still listed for set checks');
+    assert.strictEqual(scan.pending.length, 2, 'both rows listed for set checks');
+    assert.deepStrictEqual(scan.pending.map((/** @type {any} */ x) => x.kind), ['perspective', 'review'],
+      'the reading flow filters by kind — the store lists both');
   });
 
   it('rows expose set and created; incorporated rows come back whole', () => {
@@ -309,7 +307,7 @@ describe('engine agent — lifecycle store', () => {
     assert.deepStrictEqual(done.remaining, ['F2', 'F3'], 'declined findings stay recorded as never raised');
   });
 
-  it('scan drives the surfacing protocol: surface-in-progress wins over new pending rows', () => {
+  it('a mid-drain row and a fresh report coexist: remaining and pending both stand', () => {
     const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'research', 'alpha']);
@@ -319,8 +317,7 @@ describe('engine agent — lifecycle store', () => {
     const b = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     writeContent(dir, b.file);
     const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    assert.deepStrictEqual(scan.next, { action: 'surface', id: 'review-001', finding: 'F2' },
-      'finish raising what is mid-flight before acknowledging new reports');
+    assert.deepStrictEqual(scan.acknowledged[0].remaining, ['F2'], 'the mid-drain row keeps F2 owed');
     assert.strictEqual(scan.pending[0].id, 'review-002');
   });
 

@@ -1142,6 +1142,22 @@ describe('selection not-found display', () => {
 });
 
 describe('catalogue dispatch', () => {
+  it('the CLI usage banner lists every registered surface', () => {
+    // A surface reachable from the catalogue but absent from the banner is
+    // invisible to anyone who mistypes a command — the way finding-batch was.
+    let catalogue;
+    try {
+      renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' });
+    } catch (err) {
+      catalogue = String(err.message).match(/surfaces: ([^)]+)\)/)[1].split(', ');
+    }
+    const engineSrc = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs'), 'utf8');
+    const banner = [...engineSrc.matchAll(/^ {2}render (\S+)/gm)].map((m) => m[1]);
+    const missing = catalogue.filter((n) => !banner.includes(n));
+    assert.deepStrictEqual(missing, [], `surfaces missing from the usage banner: ${missing.join(', ')}`);
+  });
+
   it('unknown surface errors with the catalogue listing', () => {
     assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, concern, triage-offer, triage-block, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });

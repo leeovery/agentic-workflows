@@ -28,7 +28,7 @@ Natural-break detection is guidance, not hard-enforced.
 
 ## LLM Turn Semantics (IMPORTANT)
 
-This protocol runs as a turn-level check, not a long-running state machine. Each invocation runs one `agent scan`, does at most one thing with its answer (a parenthetical, a menu, one batch, or one raised finding), and exits back to the session loop. Once a batch lands or a finding is raised, control belongs to the conversation. Do NOT wait "inside the protocol" for the user to finish engaging. The next iteration of the session loop's check will re-enter here and scan again; the row lists say exactly where things stand (the response's `next` is a default that ignores your `agent_type` and knows nothing of lanes — the kind filter and the lane order below decide).
+This protocol runs as a turn-level check, not a long-running state machine. Each invocation runs one `agent scan`, does at most one thing with its answer (a parenthetical, a menu, one batch, or one raised finding), and exits back to the session loop. Once a batch lands or a finding is raised, control belongs to the conversation. Do NOT wait "inside the protocol" for the user to finish engaging. The next iteration of the session loop's check will re-enter here and scan again; the row lists say exactly where things stand.
 
 **The engine store is the only state.** Never track surfacing progress in conversation memory, and never write it anywhere else. Lanes live in the report file, which is durable — re-read it rather than recalling it.
 
@@ -62,7 +62,7 @@ The report was first-read on an earlier iteration; the row carries `announced`, 
 
 Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `### {ID}:` section headings. Cross-check the count either way.
 
-Read each finding's **lane** from its report section. Three lanes carry across every caller — the batched `apply`, the batched `route`, and the walked one, which a report names for its own phase (`decide` in discussion, `explore` in research). A report that declares no lanes is all-walk; synthesis tensions are always walked, whatever the report says.
+Read each finding's **lane** from its report section. Three lanes carry across every caller — the batched `apply`, the batched `route`, and the walked one, which a report names for its own phase (`decide` in discussion, `explore` in research). A report that declares no lanes is all-walk, as is any single finding whose section names none — an unlabelled finding is never assumed settled. Synthesis tensions are always walked, whatever the report says.
 
 Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding whose fix turns out to rest on a choice nobody has made moves to the walked lane. Never move a finding the other way.
 
@@ -245,7 +245,7 @@ Nothing is applied and nothing is recorded. Follow them; the next natural break 
 
 This section runs once per invocation and then exits. It never waits in-protocol for the user to finish engaging — that's the conversation's job.
 
-1. Pick the single most contextually relevant walked finding from the row's `remaining` — never from `scan.next`, which may belong to another row or another lane. **Contextual relevance outranks the list order.** When engaging the previous finding built a scene — a worked scenario, a diagram, one corner of the document — prefer remaining findings that live inside it, and exhaust them before opening a new corner: the reconstruction is already paid for. Otherwise, if the current conversation has just touched on a related area, prefer that finding; if nothing is particularly relevant, pick the one with the broadest implications.
+1. Pick the single most contextually relevant walked finding from the row's `remaining`. **Contextual relevance outranks the list order.** When engaging the previous finding built a scene — a worked scenario, a diagram, one corner of the document — prefer remaining findings that live inside it, and exhaust them before opening a new corner: the reconstruction is already paid for. Otherwise, if the current conversation has just touched on a related area, prefer that finding; if nothing is particularly relevant, pick the one with the broadest implications.
 2. Record it — the response confirms what remains, and raising the last finding incorporates the row automatically:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}
