@@ -176,10 +176,17 @@ function view(workUnit, newArrivalsJson) {
     try { newArrivals = JSON.parse(newArrivalsJson); } catch { /* ignore malformed tracker */ }
   }
 
-  const menu = engine.project.epicMenu(e.name, d);
+  // Held sessions elsewhere mark their topics across the snapshot: the
+  // dashboard cue, the menu strike-through, the recommendation skip, and the
+  // ACTIONS markers the in-session confirm gate reads.
+  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions;
+  const held = presence.filter((r) => r.held);
+
+  const menu = engine.project.epicMenu(e.name, d, { presence });
 
   const dataLines = [];
   dataLines.push(`work_unit: ${e.name}`);
+  dataLines.push(`sessions_in_progress: ${held.map((r) => `${r.phase}/${r.topic} (last active ${engine.presence.fmtAge(r.age_seconds)} ago)`).join(', ') || '(none)'}`);
   dataLines.push(`convergence: ${d.convergence_state || 'none'}`);
   dataLines.push(`needs_sequencing: ${d.needs_sequencing}`);
   dataLines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}, coherence_analysis=${d.analysis_caches.coherence_analysis.status}`);
@@ -204,16 +211,20 @@ function view(workUnit, newArrivalsJson) {
     let line = `  ${k.key}  ${k.action}  ${k.topic || '—'}  → ${k.route || '(internal)'}`;
     if (k.recommended) line += '  (recommended)';
     if (k.blocked) line += `  (blocked: ${(k.deps_blocking || []).map(b => b.topic + (b.internal_id ? ':' + b.internal_id : '') + ' — ' + b.reason).join('; ')})`;
+    if (k.in_session) line += `  (in session: last active ${engine.presence.fmtAge(k.session_age || 0)} ago)`;
     dataLines.push(line);
   }
 
-  const display = engine.project.epicDashboard(e.name, d, { newArrivals });
-  const key = engine.project.epicKey(d);
+  const display = engine.project.epicDashboard(e.name, d, { newArrivals, presence });
+  const key = engine.project.epicKey(d, { presence });
 
   return [
     engine.gateway.dataBlock(dataLines.join('\n')),
     engine.gateway.displayBlock(key ? display + '\n' + key : display),
     engine.gateway.menuBlock(menu.rendered),
+    // One confirm gate per entry a held session occupies — emitted by the
+    // flow only when that entry is selected, never at the call.
+    ...menu.keys.filter((k) => k.in_session).map((k) => engine.project.epicInSessionGate(k)),
   ].join('\n');
 }
 

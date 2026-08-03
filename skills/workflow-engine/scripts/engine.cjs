@@ -31,7 +31,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
-const { beatPresence, clearPresence, scanPresence, deferralSection } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, scanPresence, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
@@ -147,6 +147,7 @@ Commands:
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
   presence scan <work-unit>
+  presence cleanup [session-id]
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -542,7 +543,23 @@ function runPresence(argv) {
       respondSections(deferralSection(res));
       return;
     }
-    throw new Error('Usage: engine presence <beat|clear|scan> …');
+    if (command === 'cleanup') {
+      // The SessionEnd hook's target: session id from the argument or the
+      // hook's stdin JSON. Root resolution favours the invocation cwd (a
+      // project root has `.workflows`), falling back to CLAUDE_PROJECT_DIR
+      // for hooks fired from a drifted cwd.
+      if (rest.length > 1) throw new Error('Usage: engine presence cleanup [session-id]');
+      let sessionId = rest[0] || null;
+      if (!sessionId && !process.stdin.isTTY) {
+        try { sessionId = (JSON.parse(fs.readFileSync(0, 'utf8')) || {}).session_id || null; } catch { sessionId = null; }
+      }
+      const cwd = fs.existsSync(path.join(process.cwd(), '.workflows'))
+        ? process.cwd()
+        : (process.env.CLAUDE_PROJECT_DIR || process.cwd());
+      respond(cleanupPresence(cwd, sessionId));
+      return;
+    }
+    throw new Error('Usage: engine presence <beat|clear|scan|cleanup> …');
   } catch (err) {
     failJson(err);
   }

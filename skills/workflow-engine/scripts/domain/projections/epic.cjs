@@ -12,7 +12,8 @@
 
 const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
-const { dotFrame, cmdOption, callout } = require('./surfaces.cjs');
+const { section, dotFrame, cmdOption, callout } = require('./surfaces.cjs');
+const { fmtAge } = require('../presence.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
@@ -39,7 +40,11 @@ const { dotFrame, cmdOption, callout } = require('./surfaces.cjs');
  * @property {boolean} [recommended]
  * @property {boolean} [blocked]
  * @property {DepBlocking[]} [deps_blocking]
+ * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
+ * @property {number} [session_age]    that session's last-active age in seconds
  */
+
+/** @typedef {import('../presence.cjs').PresenceRow} PresenceRow */
 
 const BUILD_PHASES = ['specification', 'planning', 'implementation', 'review'];
 
@@ -193,17 +198,23 @@ function stageMetaCallouts(detail, newArrivals) {
   return lines;
 }
 
-/** Discovery-map topic rows as kernel tree nodes. @param {EpicDetail} detail */
-function mapNodes(detail) {
+/** Discovery-map topic rows as kernel tree nodes. @param {EpicDetail} detail @param {Set<string>} heldTopics */
+function mapNodes(detail, heldTopics) {
   return detail.discovery_map.map((row) => {
     const body = [];
     if (row.summary) body.push(row.summary);
     if (row.source_provenance) body.push(derivedFrom(row.source_provenance));
+    const tag = heldTopics.has(row.name) ? `${lifecycleLabel(row)} · in session` : lifecycleLabel(row);
     const node = {
-      title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name), tag: lifecycleLabel(row) }),
+      title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name), tag }),
     };
     return body.length ? { ...node, body } : node;
   });
+}
+
+/** Held rows from a presence scan — sessions whose owning process still runs. @param {PresenceRow[]|undefined} presence @returns {PresenceRow[]} */
+function heldSessions(presence) {
+  return (presence || []).filter((r) => r.held);
 }
 
 /** First-matching recommendation for the no-map dashboard, or null. @param {EpicDetail} detail */
@@ -268,11 +279,12 @@ function plansNotReadyBlock(detail) {
  * dividers, map/phase trees, recommendation, and the plans-not-ready block.
  * @param {string} workUnit
  * @param {EpicDetail} detail
- * @param {{newArrivals?: NewArrivals}} [opts]
+ * @param {{newArrivals?: NewArrivals, presence?: PresenceRow[]}} [opts]
  * @returns {string}
  */
 function epicDashboard(workUnit, detail, opts = {}) {
   const newArrivals = opts.newArrivals || {};
+  const heldTopics = new Set(heldSessions(opts.presence).map((r) => r.topic));
   const hasMap = detail.discovery_map.length > 0;
   const phaseNames = Object.keys(detail.phases);
 
@@ -293,7 +305,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
     const total = detail.map_summary ? detail.map_summary.total : detail.discovery_map.length;
     block += treeHeader(`RESEARCH & DISCUSSION (${total} topics${mapStatusSuffix(detail)})`) + '\n';
-    block += renderTree(mapNodes(detail), { width: TREE_WIDTH });
+    block += renderTree(mapNodes(detail, heldTopics), { width: TREE_WIDTH });
     stages.push(block);
   }
 
@@ -344,13 +356,18 @@ const KEY_BLOCKING =
   + '      blocked by {plan}:{task} — depends on another plan\'s task\n'
   + '      blocked by {plan}        — dependency unresolved';
 
+const KEY_SESSION =
+  '    Session:\n'
+  + '      in session — a live session elsewhere holds this topic';
+
 /**
  * Section B — the Key block, showing only categories present in the display.
  * Empty string for a brand-new epic (the key is skipped on that branch).
  * @param {EpicDetail} detail
+ * @param {{presence?: PresenceRow[]}} [opts]
  * @returns {string}
  */
-function epicKey(detail) {
+function epicKey(detail, opts = {}) {
   const hasMap = detail.discovery_map.length > 0;
   const phaseNames = Object.keys(detail.phases);
   if (!hasMap && phaseNames.length === 0) return '';
@@ -364,6 +381,7 @@ function epicKey(detail) {
   } else {
     blocks.push(KEY_STATUS);
   }
+  if (hasMap && heldSessions(opts.presence).length > 0) blocks.push(KEY_SESSION);
   if (anyBlocked) blocks.push(KEY_BLOCKING);
   return '  Key:\n' + blocks.join('\n\n');
 }
@@ -541,8 +559,9 @@ function pickRecommendation(detail, numbered, options, hasMap) {
       // Top of the actionable map — the first discovery entry mirrors the
       // first map row with a non-null next_action. Decided rows lead the map
       // but carry no action, so the actionable order is → then ◐ then ○.
+      // A topic another session holds open is never the recommendation.
       const discoveryActions = ['start_research', 'start_discussion', 'continue_research', 'continue_discussion', 'start_discussion_after_research'];
-      return numbered.find((e) => discoveryActions.includes(e.action)) || null;
+      return numbered.find((e) => discoveryActions.includes(e.action) && !e.in_session) || null;
     }
     // settled — first build-phase next_phase_ready entry in pipeline order
     const build = numbered.find((e) => e.action.startsWith('start_') && !e.blocked
@@ -585,13 +604,30 @@ function pickRecommendation(detail, numbered, options, hasMap) {
 }
 
 /**
+ * Mark entries whose (phase, topic) a held session elsewhere occupies —
+ * research and discussion actions only, the phases presence tracks.
+ * @param {MenuKey[]} numbered @param {PresenceRow[]} held
+ */
+function markHeldEntries(numbered, held) {
+  for (const e of numbered) {
+    const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (e.action)];
+    const row = held.find((r) => r.phase === phase && r.topic === e.topic);
+    if (row) {
+      e.in_session = true;
+      e.session_age = row.age_seconds;
+    }
+  }
+}
+
+/**
  * Section C — the interactive menu. `keys` carries the machine action keys
  * (skills route on these); `rendered` is the dotted-gate markdown block.
  * @param {string} workUnit
  * @param {EpicDetail} detail
+ * @param {{presence?: PresenceRow[]}} [opts]
  * @returns {{keys: MenuKey[], rendered: string}}
  */
-function epicMenu(workUnit, detail) {
+function epicMenu(workUnit, detail, opts = {}) {
   const hasMap = detail.discovery_map.length > 0;
 
   /** @type {MenuKey[]} */
@@ -627,19 +663,30 @@ function epicMenu(workUnit, detail) {
     }
   }
 
+  markHeldEntries(numbered, heldSessions(opts.presence));
+
   const options = commandOptions(workUnit, detail, hasMap);
 
   const recommended = pickRecommendation(detail, numbered, options, hasMap);
   if (recommended) {
     recommended.recommended = true;
-    numbered = [recommended, ...numbered.filter((e) => e !== recommended)];
+    // The recommendation leads the menu — unless the entries it would jump
+    // include one a held session occupies, which keeps its position so the
+    // in-session marker reads in place.
+    const ahead = numbered.slice(0, numbered.indexOf(recommended));
+    if (!ahead.some((e) => e.in_session)) {
+      numbered = [recommended, ...numbered.filter((e) => e !== recommended)];
+    }
   }
 
   numbered.forEach((e, i) => { e.key = String(i + 1); });
 
   const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
-    lines.push(cmdOption(e.key, null, `${e.label}${e.recommended ? ' (recommended)' : ''}`));
+    const label = e.in_session
+      ? `~~${e.label}~~ · in session (last active ${fmtAge(e.session_age ?? 0)} ago)`
+      : e.label;
+    lines.push(cmdOption(e.key, null, `${label}${e.recommended ? ' (recommended)' : ''}`));
   }
   if (hasMap && numbered.length > 0 && options.length > 0) lines.push('');
   for (const o of options) {
@@ -648,6 +695,27 @@ function epicMenu(workUnit, detail) {
   lines.push('', 'Select an option:');
 
   return { keys: [...numbered, ...options], rendered: dotFrame(lines) };
+}
+
+/**
+ * Labelled confirm-gate section for one menu entry a held session occupies —
+ * appended to the view snapshot per marked key, emitted by the flow only when
+ * the user selects that entry.
+ * @param {MenuKey} entry
+ * @returns {string} one labelled MENU section
+ */
+function epicInSessionGate(entry) {
+  const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (entry.action)];
+  return section(
+    `MENU: in-session gate — ${entry.key}`,
+    "emit verbatim as markdown only when the user selects this entry, then STOP for the user's response",
+    dotFrame([
+      `"${titlecase(entry.topic || '')}" is open in another session — last active ${fmtAge(entry.session_age ?? 0)} ago. Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`,
+      '',
+      cmdOption('y', 'yes', 'Proceed anyway'),
+      cmdOption('b', 'back', 'Return to menu'),
+    ]),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -786,4 +854,4 @@ function epicReactivateMenu(detail) {
   return selectionSubView('Cancelled Topics', 'Which topic would you like to reactivate?', 'reactivate', rows, { numberedRows: true });
 }
 
-module.exports = { epicDashboard, epicKey, epicMenu, epicCompletedMenu, epicCancelMenu, epicReactivateMenu };
+module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu };
