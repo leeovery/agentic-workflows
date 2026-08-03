@@ -169,7 +169,7 @@ Do not re-ask. The user has already committed to working through the set.
 
 Lanes run in a fixed order — **apply, then the walk, then route**. The cheap lanes clear the deck first, and the route batch runs last so that a reroute raised *during* the walk joins the same send.
 
-Intersect the row's `remaining` with the lanes read in **B**, and take the first lane in that order that still holds findings.
+Intersect the row's `remaining` with each finding's lane, and take the first lane in that order that still holds findings. A session that entered at **C** — a row acknowledged before this sitting — has not read the report yet: read it now, as **B** prescribes, before routing.
 
 #### If the lane is `apply`
 
@@ -185,7 +185,15 @@ Intersect the row's `remaining` with the lanes read in **B**, and take the first
 
 ## E. No Decision Needed
 
-Every remaining `apply` finding lands in one screen. The set is fixed here — a finding promoted out by the user's answer leaves this lane and is picked up by **F** on a later iteration; nothing is ever added.
+Every remaining `apply` finding lands in one screen. The set only ever shrinks — a finding the user promotes leaves this lane for the walk; nothing is ever added.
+
+#### If no `apply` finding remains
+
+The lane emptied — every one applied, or every one promoted out.
+
+→ Return to **D. Route by Lane**.
+
+#### Otherwise
 
 Emit the lane marker once per visit to this section — on a re-render after a question, skip it:
 
@@ -226,6 +234,12 @@ A user who says a numbered item is not settled has promoted it (core rule 5). Le
 The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered.
 
 → Return to **E. No Decision Needed**.
+
+**If `later`:**
+
+Nothing is applied and nothing is recorded. The row keeps its findings; the next natural break re-enters the protocol and offers the lane again.
+
+→ Return to caller.
 
 ## F. The Walk
 
@@ -268,6 +282,14 @@ An engagement that concludes the concern belongs to a sibling topic moves the fi
 
 Every remaining `route` finding lands in one screen, together with any the walk moved here.
 
+#### If no `route` finding remains
+
+The lane emptied — every one sent, or every one kept here.
+
+→ Return to **D. Route by Lane**.
+
+#### Otherwise
+
 Emit the lane marker once per visit to this section — on a re-render after a question, skip it:
 
 > *Output the next fenced block as a code block:*
@@ -307,6 +329,12 @@ Answer it. A finding the user says belongs here is theirs to keep: leave it unsu
 The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered.
 
 → Return to **G. Belongs Elsewhere**.
+
+**If `later`:**
+
+Nothing is sent and nothing is recorded. The next natural break re-enters the protocol and offers the lane again.
+
+→ Return to caller.
 
 ## Never-Dump Checklist
 

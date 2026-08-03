@@ -395,6 +395,7 @@ describe('render finding-batch', () => {
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       '- **`y`/`yes`** — Apply all 2, then move on',
+      "- **`l`/`later`** — Leave them; I'll raise them at the next pause",
       "- **Ask** — Tell me a number to expand, or one you don't think is settled",
       DOTS,
       '',
@@ -409,6 +410,7 @@ describe('render finding-batch', () => {
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
     assert.match(out, /^1\. → storage-and-sync$/m);
     assert.match(out, /- \*\*`y`\/`yes`\*\* — Send all 1$/m);
+    assert.match(out, /- \*\*`l`\/`later`\*\* — Leave them; I'll raise them at the next pause$/m);
     assert.match(out, /one that should stay here/);
     assert.ok(!out.includes(`${DOTS}\n\n`), 'a label-less menu opens straight on its options');
   });

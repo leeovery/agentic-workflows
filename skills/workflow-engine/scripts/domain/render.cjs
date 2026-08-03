@@ -518,12 +518,13 @@ function findingsSummary(cwd, { dotpath, file }) {
 // The lane fixes the chrome; the payload carries only judgment content, so
 // the screen is one call and the prose holds no template.
 
-/** @type {Record<string, {intro: string, confirm: (n: number) => string, ask: string, line: (it: any, i: number) => string, fields: string[]}>} */
+/** @type {Record<string, {intro: string, confirm: (n: number) => string, later: string, ask: string, line: (it: any, i: number) => string, fields: string[]}>} */
 const BATCH_LANES = {
   apply: {
     intro: "The fix follows from what's already decided. Nothing here is a choice.",
     confirm: (n) => `Apply all ${n}, then move on`,
     ask: "Tell me a number to expand, or one you don't think is settled",
+    later: "Leave them; I'll raise them at the next pause",
     fields: ['title', 'detail'],
     line: (it, i) => `${i + 1}. ${it.title}`,
   },
@@ -531,6 +532,7 @@ const BATCH_LANES = {
     intro: "Not this topic's to answer. Each goes to its owner's triage queue as a concern, carrying the context built here.",
     confirm: (n) => `Send all ${n}`,
     ask: 'Tell me a number to expand, or one that should stay here',
+    later: "Leave them; I'll raise them at the next pause",
     fields: ['target', 'detail'],
     line: (it, i) => `${i + 1}. → ${it.target}`,
   },
@@ -568,6 +570,7 @@ function findingBatch(cwd, { dotpath, file }) {
       "emit verbatim as markdown, then STOP for the user's response",
       menu('', [
         cmdOption('y', 'yes', lane.confirm(p.items.length)),
+        cmdOption('l', 'later', lane.later),
         promptOption('Ask', lane.ask),
       ]),
     ),

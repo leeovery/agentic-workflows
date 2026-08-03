@@ -114,6 +114,12 @@ Answer it — what the note says, where it sits, why that target. A note the use
 
 → Return to **C. Route Misdirected Knowledge**.
 
+**If `later`:**
+
+Nothing lands. The notes stay as prose and stay unhandled — a later run re-presents them, and the conclusion gate still sees them.
+
+→ Proceed to **D. Brief the User**.
+
 ## D. Brief the User
 
 #### If changes were made
