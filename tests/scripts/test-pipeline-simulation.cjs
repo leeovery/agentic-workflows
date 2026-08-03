@@ -923,12 +923,12 @@ describe('pipeline simulation', () => {
     const review = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
     sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     let scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
-    assert.strictEqual(scan.next, null, 'nothing actionable while agents run');
+    assert.deepStrictEqual(scan.pending, [], 'nothing readable while agents run');
 
     // The review agent finishes (writes content); the deep-dive is still out.
     sim.write(review.file, '# Review findings\n\n## F1\n\n## F2\n');
     scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
-    assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: 'review-001' });
+    assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), ['review-001']);
     sim.run(['agent', 'ack', wu, 'research', 'alpha', 'review-001', '--findings', 'F1,F2']);
     sim.run(['agent', 'announce', wu, 'research', 'alpha', 'review-001']);
     sim.run(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1']);
@@ -984,8 +984,8 @@ describe('pipeline simulation', () => {
     assert.ok(pair.agents.every((a) => a.id.includes(`-${pair.set}-`)), 'one shared set number');
     sim.write(pair.agents[0].file, '# The user-centric case\n');
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
-    assert.strictEqual(scan.next, null, 'a half-landed council is not actionable');
-    assert.strictEqual(scan.pending.length + scan.in_flight.length, 2);
+    assert.strictEqual(scan.pending.length + scan.in_flight.length, 2,
+      'a half-landed council: one report in, one still out');
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set], /not complete/);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', '009'], /No perspective set/);
 
@@ -997,7 +997,7 @@ describe('pipeline simulation', () => {
     for (const a of pair.agents) sim.run(['agent', 'incorporate', wu, 'discussion', 'alpha', a.id]);
     sim.write(syn.file, '# Landscape\n\n### T1: the tradeoff\n');
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
-    assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: syn.id },
+    assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), [syn.id],
       'consumed perspectives never mask the synthesis');
 
     // The discussion closing sequence: the synthesis drains, the closing
@@ -1012,7 +1012,7 @@ describe('pipeline simulation', () => {
       .filter((r) => r.kind === 'review');
     let probe = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
     assert.strictEqual(reviewRows(probe).length, 0, 'probe: no review row — the due classification');
-    assert.strictEqual(probe.next, null, 'nothing else awaits surfacing');
+    assert.deepStrictEqual(probe.pending, [], 'nothing else awaits surfacing');
 
     const fin = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'review']);
     sim.write(fin.file, '# Final review\n\n## G1\n');

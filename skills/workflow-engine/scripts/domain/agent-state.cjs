@@ -268,16 +268,14 @@ function publicRow(row) {
   };
 }
 
-// Kinds that are consumed by another agent, never surfaced to the user —
-// scan's `next` must not point at them.
+// Kinds that are consumed by another agent, never surfaced to the user.
 const NEVER_SURFACED = ['perspective'];
 
 /**
  * Scan: promote every in-flight row whose content file now exists, then
- * answer with the snapshot the surfacing protocol reads — counts per state,
- * the rows themselves, and `next`: the one thing to do now (surface the next
- * finding of a partially-surfaced row, else acknowledge the oldest pending
- * row), or null when there is nothing actionable.
+ * answer with the snapshot the surfacing protocol reads — the rows grouped
+ * by state. Which row and which finding to take next is the protocol's
+ * judgment, made from lane order and what the conversation just touched.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  */
 function scanAgents(cwd, workUnit, phase, topic) {
@@ -299,29 +297,15 @@ function scanAgents(cwd, workUnit, phase, topic) {
     if (promoted) saveState(cwd, workUnit, phase, topic, state);
 
     const byStatus = (/** @type {string} */ s) => rows.filter((r) => r.status === s);
-    const acked = byStatus('acknowledged');
-    const surfaceable = (/** @type {any} */ r) => !NEVER_SURFACED.includes(r.kind);
-    const surfacing = acked.find((r) => surfaceable(r) && unsurfaced(r).length > 0);
-    const pending = byStatus('pending');
-
-    /** @type {null | {action: string, id: string, finding?: string}} */
-    let next = null;
-    if (surfacing) {
-      next = { action: 'surface', id: surfacing.id, finding: unsurfaced(surfacing)[0] };
-    } else {
-      const first = pending.find(surfaceable);
-      if (first) next = { action: 'acknowledge', id: first.id };
-    }
 
     return {
       work_unit: workUnit,
       phase,
       topic,
       in_flight: byStatus('in-flight').map(publicRow),
-      pending: pending.map(publicRow),
-      acknowledged: acked.map(publicRow),
+      pending: byStatus('pending').map(publicRow),
+      acknowledged: byStatus('acknowledged').map(publicRow),
       incorporated: byStatus('incorporated').map(publicRow),
-      next,
     };
   });
 }
