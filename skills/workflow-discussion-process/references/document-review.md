@@ -88,7 +88,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 Every unhandled note goes on one screen — the same batch the surfacing protocol sends rerouted findings on, over the same kind of item. Handled-ness lives in the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
 
-Judge each note's target topic from its own addressing, and its `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Write one payload entry per note — `target` is the topic, `detail` is what the note says and why it is theirs — then render it:
+Judge each note's target topic from its own addressing, and its `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Write one payload entry per note — `target` is the topic, `detail` is what the note says, why it is theirs, and which queue it lands in — then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/carry-notes.json
@@ -112,7 +112,7 @@ On return: if `result` is `landed`, the note is handled — replace the stranded
 
 **If the user asks about a number:**
 
-Answer it — what the note says, where it sits, why that target. A note the user says belongs here is handled: the prose stands as written, by their choice. Adjust a target, landing phase, or concern content they correct, then re-render the screen for the notes still unsent.
+Answer it — what the note says, where it sits, why that target. A note the user says belongs here is handled: the prose stands as written, by their choice. Adjust a target, landing phase, or concern content they correct. The screen re-renders for the notes still unsent.
 
 → Return to **C. Route Misdirected Knowledge**.
 

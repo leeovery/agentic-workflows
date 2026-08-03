@@ -187,6 +187,8 @@ Intersect the row's `remaining` with the lanes read in **B**, and take the first
 
 Every remaining `apply` finding lands in one screen. The set is fixed here — a finding promoted out by the user's answer leaves this lane and is picked up by **F** on a later iteration; nothing is ever added.
 
+Emit the lane marker once per visit to this section — on a re-render after a question, skip it:
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -207,7 +209,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 **If `yes`:**
 
-Apply each finding to the phase's content file, then record the whole batch in one call and commit each finding's write under its own subject marker:
+Apply each finding to the phase's artifact, then record the whole batch in one call and commit each finding's write under its own subject marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
@@ -219,11 +221,13 @@ Confirm in one line per finding — what changed, no restatement of the reasonin
 
 **If the user asks about a number:**
 
-Answer it — the report's full section, the sites it touches, why the fix is the one it is. Then re-render this screen for the findings still unapplied.
+Answer it — the report's full section, the sites it touches, why the fix is the one it is.
 
 A user who says a numbered item is not settled has promoted it (core rule 5). Leave it unsurfaced, drop it from this lane, and treat it as walked from now on.
 
-→ Return to caller.
+The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered.
+
+→ Return to **E. No Decision Needed**.
 
 ## F. The Walk
 
@@ -240,7 +244,7 @@ This section runs once per invocation and then exits. It never waits in-protocol
    - **Move** — sized to how open the decision is as much as how cold the context: a clear resolution — propose it and name what it costs ("this creates X and Y; I don't see another approach"), never an option survey; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
 4. Raise it in the current turn, ending in a single question — or, for a finding with one defensible resolution, a stated proposal awaiting the user's response. Either way the turn ends and control returns: one finding per invocation, and the user's agreement is never licence to roll into the next. No bundled follow-ups, no menu.
 
-When this row's `surfaced` list holds no walked finding yet, the raise opens with the lane heading, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
+When this row's `surfaced` list holds no walked finding yet, the raise opens with the lane heading, padded with middle dots to 49 characters total, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
 
 > *Output the next fenced block as a code block:*
 
@@ -264,7 +268,9 @@ An engagement that concludes the concern belongs to a sibling topic moves the fi
 
 ## G. Belongs Elsewhere
 
-Every remaining `route` finding lands in one screen, together with any the decision walk moved here.
+Every remaining `route` finding lands in one screen, together with any the walk moved here.
+
+Emit the lane marker once per visit to this section — on a re-render after a question, skip it:
 
 > *Output the next fenced block as a code block:*
 
@@ -272,7 +278,7 @@ Every remaining `route` finding lands in one screen, together with any the decis
 ·· Belongs Elsewhere ····························
 ```
 
-Write one payload entry per finding — `target` is the owning topic, `detail` is what it says and why it is theirs — then render it:
+Judge each finding's `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Write one payload entry per finding — `target` is the owning topic, `detail` is what it says, why it is theirs, and which queue it lands in — then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
@@ -286,7 +292,11 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 **If `yes`:**
 
-Deliver each in turn — load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{phase}`, date = `{today}` — then record the batch in one call:
+Deliver each finding in turn, with the context built here so its target resolves it from cold.
+
+→ Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`.
+
+On return, a `result` of `cancelled` means nothing was written for that finding — leave it unsurfaced and re-present it on the next visit. Record the landed ids in one call:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
@@ -296,9 +306,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit}
 
 **If the user asks about a number:**
 
-Answer it, then re-render this screen for the findings still unsent. A finding the user says belongs here is theirs to keep: leave it unsurfaced and treat it as walked.
+Answer it. A finding the user says belongs here is theirs to keep: leave it unsurfaced and treat it as walked.
 
-→ Return to caller.
+The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered.
+
+→ Return to **G. Belongs Elsewhere**.
 
 ## Never-Dump Checklist
 
