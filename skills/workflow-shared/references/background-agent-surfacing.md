@@ -10,17 +10,17 @@ This reference defines how to surface findings from background agents. Findings 
 
 - `agent_type` — `review` | `synthesis` | `deep-dive` — human-readable name used in user-facing messages, and the row kind this invocation surfaces
 - `work_unit`, `phase`, `topic` — the agent store address
-- `walk_heading` — optional; the heading the decision lane renders under. Defaults to `Needs A Decision`
+- `walk_heading` — optional; the heading the walked lane renders under. Defaults to `Needs A Decision`
 
 ## The Core Rules
 
 **The ceremony matches the move owed, never the finding's importance.** Five hard rules govern every surfacing interaction:
 
 1. **Two-phase surfacing.** First acknowledge the report exists (micro-menu, no content). Only after the user opts in, start on the lanes.
-2. **One lane per turn, and inside the decision lane one finding per turn.** Each invocation of this protocol does at most one thing and hands control back. Never expect the protocol to "resume" after the user has engaged — the next session-loop check picks up where the store says it left off.
+2. **One lane per turn, and inside the walked lane one finding per turn.** Each invocation of this protocol does at most one thing and hands control back. Never expect the protocol to "resume" after the user has engaged — the next session-loop check picks up where the store says it left off.
 3. **Mid-thread protection.** If you are mid-Q/A with the user, defer the announce menu until the next natural break. A one-line parenthetical is acceptable, but only the first time.
 4. **Nothing is applied unseen.** A batch is rendered in full — every item, numbered, with its two-line reading — before a single edit lands. "There was no choice anyway" is not licence to write first.
-5. **Findings move toward the user, never away.** A finding the report placed in a batch moves into the decision lane the moment you find a real choice hiding in it, or the user says it isn't settled. Never the reverse: a decision-lane finding is never demoted into a batch to save a turn.
+5. **Findings move toward the user, never away.** A finding the report placed in a batch moves into the walked lane the moment you find a real choice hiding in it, or the user says it isn't settled. Never the reverse: a walked finding is never demoted into a batch to save a turn.
 
 Natural-break detection is guidance, not hard-enforced.
 
@@ -62,9 +62,9 @@ The report was first-read on an earlier iteration; the row carries `announced`, 
 
 Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `### {ID}:` section headings. Cross-check the count either way.
 
-Read each finding's **lane** from its report section — `apply`, `decide`, or `route`. A report that declares no lanes is all-`decide`; synthesis tensions and deep-dive findings are always `decide`, whatever the report says.
+Read each finding's **lane** from its report section. Three lanes carry across every caller — the batched `apply`, the batched `route`, and the walked one, which a report names for its own phase (`decide` in discussion, `explore` in research). A report that declares no lanes is all-walk; synthesis tensions are always walked, whatever the report says.
 
-Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding whose fix turns out to rest on a choice nobody has made becomes `decide`. Never move a finding the other way.
+Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding whose fix turns out to rest on a choice nobody has made moves to the walked lane. Never move a finding the other way.
 
 #### If the report has no findings (zero-gap case)
 
@@ -167,7 +167,7 @@ Do not re-ask. The user has already committed to working through the set.
 
 ## D. Route by Lane
 
-Lanes run in a fixed order — **apply, then decide, then route**. The cheap lanes clear the deck first, and the route batch runs last so that a reroute raised *during* the decision walk joins the same send.
+Lanes run in a fixed order — **apply, then the walk, then route**. The cheap lanes clear the deck first, and the route batch runs last so that a reroute raised *during* the walk joins the same send.
 
 Intersect the row's `remaining` with the lanes read in **B**, and take the first lane in that order that still holds findings.
 
@@ -175,9 +175,9 @@ Intersect the row's `remaining` with the lanes read in **B**, and take the first
 
 → Proceed to **E. No Decision Needed**.
 
-#### If the lane is `decide`
+#### If the lane is the walked one
 
-→ Proceed to **F. Needs A Decision**.
+→ Proceed to **F. The Walk**.
 
 #### If the lane is `route`
 
@@ -221,15 +221,15 @@ Confirm in one line per finding — what changed, no restatement of the reasonin
 
 Answer it — the report's full section, the sites it touches, why the fix is the one it is. Then re-render this screen for the findings still unapplied.
 
-A user who says a numbered item is not settled has promoted it (core rule 5). Leave it unsurfaced, drop it from this lane, and treat it as `decide` from now on.
+A user who says a numbered item is not settled has promoted it (core rule 5). Leave it unsurfaced, drop it from this lane, and treat it as walked from now on.
 
 → Return to caller.
 
-## F. Needs A Decision
+## F. The Walk
 
 This section runs once per invocation and then exits. It never waits in-protocol for the user to finish engaging — that's the conversation's job.
 
-1. Pick the single most contextually relevant `decide` finding from the row's `remaining` — never from `scan.next`, which may belong to another row or another lane. **Contextual relevance outranks the list order.** When engaging the previous finding built a scene — a worked scenario, a diagram, one corner of the document — prefer remaining findings that live inside it, and exhaust them before opening a new corner: the reconstruction is already paid for. Otherwise, if the current conversation has just touched on a related area, prefer that finding; if nothing is particularly relevant, pick the one with the broadest implications.
+1. Pick the single most contextually relevant walked finding from the row's `remaining` — never from `scan.next`, which may belong to another row or another lane. **Contextual relevance outranks the list order.** When engaging the previous finding built a scene — a worked scenario, a diagram, one corner of the document — prefer remaining findings that live inside it, and exhaust them before opening a new corner: the reconstruction is already paid for. Otherwise, if the current conversation has just touched on a related area, prefer that finding; if nothing is particularly relevant, pick the one with the broadest implications.
 2. Record it — the response confirms what remains, and raising the last finding incorporates the row automatically:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}
@@ -240,7 +240,7 @@ This section runs once per invocation and then exits. It never waits in-protocol
    - **Move** — sized to how open the decision is as much as how cold the context: a clear resolution — propose it and name what it costs ("this creates X and Y; I don't see another approach"), never an option survey; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
 4. Raise it in the current turn, ending in a single question — or, for a finding with one defensible resolution, a stated proposal awaiting the user's response. Either way the turn ends and control returns: one finding per invocation, and the user's agreement is never licence to roll into the next. No bundled follow-ups, no menu.
 
-When this row's `surfaced` list holds no `decide` finding yet, the raise opens with the lane heading, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
+When this row's `surfaced` list holds no walked finding yet, the raise opens with the lane heading, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
 
 > *Output the next fenced block as a code block:*
 
@@ -296,7 +296,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit}
 
 **If the user asks about a number:**
 
-Answer it, then re-render this screen for the findings still unsent. A finding the user says belongs here is theirs to keep: leave it unsurfaced and treat it as `decide`.
+Answer it, then re-render this screen for the findings still unsent. A finding the user says belongs here is theirs to keep: leave it unsurfaced and treat it as walked.
 
 → Return to caller.
 
@@ -305,9 +305,9 @@ Answer it, then re-render this screen for the findings still unsent. A finding t
 Before producing any surfacing output, verify:
 
 - □ Working ONE lane this turn — never two screens, never a batch and a raise together
-- □ In the decision lane: AT MOST one finding, AT MOST one question, and the finding stated self-contained before any position or proposal
+- □ In the walked lane: AT MOST one finding, AT MOST one question, and the finding stated self-contained before any position or proposal
 - □ In a batch: every item shown before anything is applied or sent, two lines each, numbered continuously
-- □ No finding demoted out of the decision lane — promotion only
+- □ No finding demoted out of the walked lane — promotion only
 - □ No bare id (`F5`, `T2`) as a label in prose — named by report title or described
 - □ Not reading the content file verbatim
 
