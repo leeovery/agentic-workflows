@@ -40,6 +40,7 @@ const { fmtAge } = require('../presence.cjs');
  * @property {string} label
  * @property {boolean} [recommended]
  * @property {boolean} [blocked]
+ * @property {boolean} [input_moved]   the entry's item (or its source item) carries a live reconcile flag
  * @property {DepBlocking[]} [deps_blocking]
  * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
  * @property {number} [session_age]    that session's last-active age in seconds
@@ -109,7 +110,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false);
+  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
@@ -398,10 +399,12 @@ function epicKey(detail, opts = {}) {
   const anyBlocked = (detail.phases.planning || [])
     .some((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
   // The cue legend mirrors the display: with a map only build phases render
-  // item rows; without one every phase does.
+  // item rows — but map rows themselves cue via the reconcile_pending rider;
+  // without a map every phase renders.
   const cuePhases = hasMap ? BUILD_PHASES : Object.keys(detail.phases);
   const anyFlagged = cuePhases.some((p) => (detail.phases[p] || [])
-    .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined));
+    .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined))
+    || detail.discovery_map.some((r) => r.reconcile_pending === true);
   const blocks = [];
   if (hasMap) {
     blocks.push(KEY_TIER);
@@ -481,6 +484,7 @@ function continueEntries(workUnit, detail, phase) {
       topic: item.name,
       route: topicRoute(`continue_${phase}`, workUnit, item.name),
       label: continueLabel(phase, item),
+      ...(item.reconcile_needed !== undefined ? { input_moved: true } : {}),
     }));
 }
 
@@ -497,13 +501,15 @@ function startEntries(workUnit, detail, phase) {
     // known-stale input, so the label carries the cue.
     const srcPhase = EPIC_PIPELINE[EPIC_PIPELINE.indexOf(phase) - 1];
     const srcItem = srcPhase ? (detail.phases[srcPhase] || []).find((i) => i.name === n.name) : undefined;
+    const srcFlagged = srcItem !== undefined && srcItem.reconcile_needed !== undefined;
     /** @type {MenuKey} */
     const entry = {
       key: '',
       action: n.action,
       topic: n.name,
       route: topicRoute(n.action, workUnit, n.name),
-      label: startVerbLabel(n, srcItem !== undefined && srcItem.reconcile_needed !== undefined),
+      label: startVerbLabel(n, srcFlagged),
+      ...(srcFlagged ? { input_moved: true } : {}),
     };
     if (n.blocked) {
       entry.blocked = true;
@@ -602,8 +608,11 @@ function pickRecommendation(detail, numbered, options, hasMap) {
       const discoveryActions = ['start_research', 'start_discussion', 'continue_research', 'continue_discussion', 'start_discussion_after_research'];
       return numbered.find((e) => discoveryActions.includes(e.action) && !e.in_session) || null;
     }
-    // settled — first build-phase next_phase_ready entry in pipeline order
-    const build = numbered.find((e) => e.action.startsWith('start_') && !e.blocked
+    // settled — first build-phase next_phase_ready entry in pipeline order.
+    // An input-moved entry is never the recommendation: recommending a start
+    // that propagates known-stale input contradicts its own cue — the
+    // reconcile (via the flagged item's entry flow) comes first.
+    const build = numbered.find((e) => e.action.startsWith('start_') && !e.blocked && !e.input_moved
       && BUILD_PHASES.includes(ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (e.action)]));
     if (build) return build;
     if (sOption) sOption.recommended = true;
@@ -628,15 +637,15 @@ function pickRecommendation(detail, numbered, options, hasMap) {
   }
 
   const specs = liveItems(detail, 'specification');
-  const planEntry = numbered.find((e) => e.action === 'start_planning');
+  const planEntry = numbered.find((e) => e.action === 'start_planning' && !e.input_moved);
   if (specs.length > 0 && specs.every((i) => i.status === 'completed') && planEntry) return planEntry;
 
   const plans = liveItems(detail, 'planning');
-  const implEntry = numbered.find((e) => e.action === 'start_implementation' && !e.blocked);
+  const implEntry = numbered.find((e) => e.action === 'start_implementation' && !e.blocked && !e.input_moved);
   if (plans.length > 0 && plans.every((i) => i.status === 'completed') && implEntry) return implEntry;
 
   const impls = liveItems(detail, 'implementation');
-  const reviewEntry = numbered.find((e) => e.action === 'start_review');
+  const reviewEntry = numbered.find((e) => e.action === 'start_review' && !e.input_moved);
   if (impls.length > 0 && impls.every((i) => i.status === 'completed') && reviewEntry) return reviewEntry;
 
   return null;
@@ -838,13 +847,16 @@ function pipelineOrdered(items) {
  * @returns {{keys: SubViewKey[], display: string, rendered: string}}
  */
 function epicCompletedMenu(workUnit, detail) {
-  const rows = pipelineOrdered(detail.completed).map((item) => ({
-    phase: item.phase,
-    topic: item.name,
-    row: title({ label: titlecase(item.name), tag: 'completed' }),
-    label: `Resume "${titlecase(item.name)}" — ${item.phase}`,
-    route: topicRoute(`continue_${item.phase}`, workUnit, item.name),
-  }));
+  const rows = pipelineOrdered(detail.completed).map((item) => {
+    const flagged = item.reconcile_needed !== undefined;
+    return {
+      phase: item.phase,
+      topic: item.name,
+      row: title({ label: titlecase(item.name), tag: flagged ? 'completed · input moved' : 'completed' }),
+      label: `Resume "${titlecase(item.name)}" — ${item.phase}${flagged ? ' · input moved' : ''}`,
+      route: topicRoute(`continue_${item.phase}`, workUnit, item.name),
+    };
+  });
   return selectionSubView('Completed Topics', 'Which topic would you like to resume?', 'resume', rows);
 }
 

@@ -822,11 +822,24 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
  * @returns {string}
  */
 function earlyCompletionGate(cwd, { dotpath }) {
-  const { workUnit } = resolveWorkUnit(cwd, dotpath, 'early-completion-gate');
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'early-completion-gate');
+  // A live reconcile flag makes the skip-review exit an informed choice: the
+  // gate names what completing now would carry unresolved.
+  const flagged = [];
+  for (const [phase, data] of Object.entries(manifest.phases || {})) {
+    for (const [name, item] of Object.entries((data && data.items) || {})) {
+      if (item && typeof item === 'object' && item.status === 'completed' && item.reconcile_needed !== undefined) {
+        flagged.push(`${phase}/${name} (${item.reconcile_needed})`);
+      }
+    }
+  }
+  const label = flagged.length > 0
+    ? `Implementation completed for "${titlecase(workUnit)}". ⚑ Input moved beneath ${flagged.join(', ')} — completing without review carries the pending reconcile unresolved.`
+    : `Implementation completed for "${titlecase(workUnit)}".`;
   return section(
     'MENU: early completion gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(`Implementation completed for "${titlecase(workUnit)}".`, [
+    menu(label, [
       cmdOption('y', 'yes', 'Proceed to review'),
       cmdOption('d', 'done', 'Complete without review'),
     ]),

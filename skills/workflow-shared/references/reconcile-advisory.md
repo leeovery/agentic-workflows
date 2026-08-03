@@ -68,7 +68,7 @@ A discussion this specification extracted was re-decided after extraction. The s
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
-Surface the advisory, read each stale source's discussion file (`.workflows/{work_unit}/discussion/{source-name}.md`) in full, and clear the flag. The `stale` rows themselves stay — the session reconciles them per **[spec-construction.md](../../workflow-specification-process/references/spec-construction.md)** → Reconcile Stale Sources, and only re-incorporation clears a row.
+Surface the advisory. The `stale` rows themselves stay — the session reconciles them per **[spec-construction.md](../../workflow-specification-process/references/spec-construction.md)** → Reconcile Stale Sources, and only re-incorporation clears a row.
 
 > *Output the next fenced block as a code block:*
 
@@ -79,7 +79,7 @@ Surface the advisory, read each stale source's discussion file (`.workflows/{wor
     decisions. Nothing has been overwritten.
 ```
 
-Clear the flag:
+Read each stale source's discussion file (`.workflows/{work_unit}/discussion/{source-name}.md`) in full, then clear the flag:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
@@ -109,7 +109,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 #### If output is `scoping` (the quick-fix scope revised)
 
-Scoping was revisited after this implementation completed — the spec and plan it registered may have changed. Surface the advisory, re-read the plan before continuing, and clear the flag.
+Scoping was revisited after this implementation completed — the plan it registered may have changed. Surface the advisory, re-read the plan before continuing, and clear the flag.
 
 > *Output the next fenced block as a code block:*
 

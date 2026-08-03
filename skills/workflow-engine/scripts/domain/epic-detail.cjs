@@ -58,6 +58,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @typedef {object} ItemRef
  * @property {string} name
  * @property {string} phase
+ * @property {string|boolean} [reconcile_needed]  completed items only — a live reconcile flag
  * @property {string|null} [previous_status]   cancelled items only
  */
 
@@ -85,6 +86,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} current_phase
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {boolean} triage_parked  a `triaged` stub (parked rerouted concerns) exists in either phase
+ * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
  * @property {string|null} next_action
  */
 
@@ -252,7 +254,10 @@ function epicDetail(cwd, manifest) {
         inProgressItems.push({ name: item.name, phase });
       }
       if (item.status === 'completed') {
-        completedItems.push({ name: item.name, phase });
+        completedItems.push({
+          name: item.name, phase,
+          ...(item.reconcile_needed !== undefined ? { reconcile_needed: item.reconcile_needed } : {}),
+        });
       }
       if (item.status === 'cancelled') {
         cancelledItems.push({ name: item.name, phase, previous_status: item.previous_status || null });

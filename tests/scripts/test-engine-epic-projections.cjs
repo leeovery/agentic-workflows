@@ -168,6 +168,52 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.strictEqual(cont.label, 'Continue "Other Topic" — planning [in-progress] · input moved');
   });
 
+  it('a flagged decided discussion cues input moved on its map row and the key', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { fees: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discussion: { items: { fees: { status: 'completed', reconcile_needed: 'research' } } },
+      },
+    });
+    const out = epicDashboard('v1', d);
+    assert.ok(out.includes('✓ Fees [decided · input moved]'), out);
+    const key = epicKey(d);
+    assert.ok(key.includes('input moved — an upstream artifact was revised'), key);
+  });
+
+  it('the completed-topics picker carries the input-moved cue on flagged rows', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { fees: { status: 'completed' } } },
+        specification: { items: { fees: { status: 'completed', reconcile_needed: 'discussion' } } },
+      },
+    });
+    const sub = epicCompletedMenu('v1', d);
+    assert.ok(sub.display.includes('Fees [completed · input moved]'), sub.display);
+    const entry = sub.keys.find((k) => k.phase === 'specification');
+    assert.strictEqual(entry.label, 'Resume "Fees" — specification · input moved');
+    const clean = sub.keys.find((k) => k.phase === 'discussion');
+    assert.strictEqual(clean.label, 'Resume "Fees" — discussion');
+  });
+
+  it('an input-moved start entry is never the recommendation', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { fees: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discussion: { items: { fees: { status: 'completed' } } },
+        specification: { items: { fees: { status: 'completed', reconcile_needed: 'discussion', sources: { fees: { status: 'stale' } } } } },
+      },
+    });
+    const { keys } = epicMenu('v1', d);
+    const start = keys.find((k) => k.action === 'start_planning');
+    assert.ok(start, 'start_planning entry present');
+    assert.strictEqual(start.input_moved, true);
+    assert.notStrictEqual(start.recommended, true, 'flagged-source start never recommended');
+  });
+
   it('a triaged stub renders fresh with the triage waiting cue and counts as fresh', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',

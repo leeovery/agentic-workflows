@@ -224,13 +224,16 @@ This is the end of this iteration.
 
 Entered by name when a source row reads `stale` — its discussion was re-decided after extraction, so the specification holds content from a decision that has since moved. Reconcile the logged content against the revision; never re-extract the source wholesale.
 
+First check the source discussion's status (`engine manifest get {work_unit}.discussion.{source-name} status`). If it is `in-progress`, the revision is not final — defer: leave the row `stale`, tell the user reconciliation waits for that discussion to re-conclude, and → Return to caller. Otherwise:
+
 1. Re-read the source discussion (`.workflows/{work_unit}/discussion/{source-name}.md`) in full. Its decision timeline marks the revision — identify which decisions changed, which were added, and which stand.
 2. Re-read the specification for the content logged from that source.
-3. Diff the two in judgment: content the revision left standing stays untouched; content it contradicts or extends goes through **Context Resurfacing** (section A) — present the change as a diff, gate on approval, log the clean replacement.
-4. When every changed decision is reconciled, mark the source `incorporated`:
+3. Diff the two in judgment: content the revision left standing stays untouched. For content the revision contradicts or extends, present the changed lines as a diff view (the Context Resurfacing display shape — summary in chat, only changed lines with 2 lines of context) and gate on explicit approval; this gate stays gated even when `construction_gate_mode` is `auto`. On approval, write the clean replacement to the specification verbatim — no silent modifications.
+4. When every changed decision is reconciled, mark the source `incorporated` and commit:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): reconcile stale source {source-name}"
 ```
 
 → Return to caller.

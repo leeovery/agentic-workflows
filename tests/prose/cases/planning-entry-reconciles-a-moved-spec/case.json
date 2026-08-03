@@ -10,7 +10,6 @@
     "skills/workflow-planning-entry/references/validate-spec.md",
     "skills/workflow-planning-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-planning-entry/references/cross-cutting-context.md",
     "skills/workflow-planning-entry/references/invoke-skill.md"
   ],
   "invariants": {
@@ -19,8 +18,7 @@
       "topic reopen pay planning pay",
       "render phase-note pay.planning.pay",
       "manifest get pay.planning.pay reconcile_needed",
-      "manifest delete pay.planning.pay reconcile_needed",
-      "knowledge.cjs query"
+      "manifest delete pay.planning.pay reconcile_needed"
     ],
     "calls_in_order": [
       "topic reopen pay planning pay",
@@ -28,6 +26,7 @@
       "manifest delete pay.planning.pay reconcile_needed"
     ],
     "calls_exclude": [
+      "knowledge.cjs query",
       "knowledge.cjs index",
       "knowledge.cjs remove"
     ]

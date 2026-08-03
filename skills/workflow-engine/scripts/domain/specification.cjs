@@ -96,7 +96,13 @@
 /** Display tag for one materialized source. @param {DiscoverySource} src */
 function sourceTag(src) {
   if (src.status === 'pending') return 'pending';
-  if (src.status === 'stale') return 'stale';
+  if (src.status === 'stale') {
+    // A stale row whose discussion is back in flight shows both facts — the
+    // reconcile waits for the re-decision.
+    return src.discussion_status === 'completed' || src.discussion_status === 'unknown'
+      ? 'stale'
+      : 'stale, reopened';
+  }
   if (src.discussion_status === 'completed' || src.discussion_status === 'unknown') return 'extracted';
   return 'extracted, reopened';
 }
@@ -243,4 +249,4 @@ function specificationDetail(workUnit, result, opts = {}) {
   };
 }
 
-module.exports = { specificationDetail };
+module.exports = { specificationDetail, sourceTag };

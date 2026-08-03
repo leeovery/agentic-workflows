@@ -319,6 +319,13 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryLifecycleLabel('researching', 'research', 'in-progress', true), 'researching · triage waiting');
   });
 
+  it('discoveryLifecycleLabel appends the input moved cue when a reconcile flag is pending', () => {
+    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, true), 'decided · input moved');
+    // Both riders compose, triage first.
+    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, true, true), 'decided · triage waiting · input moved');
+    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, false), 'decided');
+  });
+
   it('discoveryLifecycleLabel renders no cue when triageParked is false or omitted', () => {
     assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null, false), 'fresh · routed to research');
     assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null), 'fresh · routed to research');

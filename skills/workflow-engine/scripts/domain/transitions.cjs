@@ -354,10 +354,12 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
       }
     }
 
-    if (delivering) {
+    if (delivering || base.reopened === true) {
       // A landing reopens the ground the downstream phase stands on — flag it
       // for reconciliation the next time it is entered. Staleness begins at
-      // landing, not at the topic's later re-conclusion.
+      // landing, not at the topic's later re-conclusion. The bare form hops
+      // only when it reopened a completed item — the same onset reopen has —
+      // so no completed→in-progress transition ever skips the hop.
       const fd = flagDownstream(manifest, manifest.work_type, phase, topic);
       if (fd.flagged.length > 0) {
         base.reconcile_flagged = true;
