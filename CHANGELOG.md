@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.36] - 2026-08-04
+
+✨ Added
+- Staleness hops — when a discussion, research topic, or other completed phase reopens, the engine flags the next downstream phase for reconciliation, so you're never routed past known-stale input.
+- Discovery maps, epic dashboards, and work-unit status now show an `input moved` cue wherever a completed item needs reconciling, with a matching legend entry explaining it.
+- Specification sources re-decided after extraction are marked `stale` and surfaced separately from `pending` sources, with a guided reconciliation flow to update the spec against the revision.
+- Reconcile advisories now fire on entry to specification, planning, implementation, and review — not just research and discussion — each pointing at exactly what moved upstream (research, investigation, discussion, spec, scoping, planning, or implementation).
+- Early-completion gate now names any pending reconcile flags so skipping review is an informed choice.
+
+🔧 Changed
+- Triage landings and background-agent findings now report when they've flagged a specification as stale (`sources_staled`), not just when they've flagged a discussion.
+- Refining a completed specification now prompts you to reopen the source discussion instead, since a decision change belongs there and will automatically flag the spec to reconcile.
+- Pipeline phase ordering is now defined once in the manifest schema and reused everywhere (bridge, epic detail, dashboards), replacing several duplicated phase lists.
+
 ## [0.6.35] - 2026-08-03
 
 ✨ Added
