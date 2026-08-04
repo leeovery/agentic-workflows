@@ -12,6 +12,7 @@ work was shaped.
 
 ### Context
 How the checkout learns that a card payment was actually captured.
+Everything here runs against the legacy gateway account.
 
 ### Options Considered
 

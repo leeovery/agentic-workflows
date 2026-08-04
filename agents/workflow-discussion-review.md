@@ -36,6 +36,8 @@ Every finding carries a lane naming the move it asks for. Judge it from the docu
 
 When a finding could read either way, it is `decide`. A wrongly-`decide` finding costs one exchange; a wrongly-`apply` finding puts words in the user's mouth.
 
+Findings do not overlap. Two observations that resolve to the same correction are one finding — file the site once, however many angles reach it.
+
 ## Your Process
 
 1. **Read the discussion file** completely before beginning assessment

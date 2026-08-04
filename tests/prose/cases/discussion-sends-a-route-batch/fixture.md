@@ -4,12 +4,14 @@ decided: signals reach the ranker by nightly batch, and the live stream
 was dropped rather than deferred. Synonym handling and relevance
 measurement have not started.
 
-A background review of the behavioural-ranking discussion returned
-three findings across two lanes. One is a correction the document's own
+A background review of the behavioural-ranking discussion returned four
+findings across two lanes. One is a correction the document's own
 Journey determines — a Decision clause that reopens what the Journey
 closed. The other two belong elsewhere: one to synonym handling, which
-must weigh the batch-only constraint decided here, and one to relevance
-measurement, which owns the question of whether a ranking change helped.
+must weigh the batch-only constraint decided here, one to relevance
+measurement, which owns the question of whether a ranking change helped,
+and one more to synonym handling — a refresh-cadence decision it owes,
+with both options already on the table.
 
 The store row is acknowledged and announced. Nothing has been surfaced.
 

@@ -6,8 +6,8 @@ sections.
 
 A background review of that file returned three findings and put every
 one of them in the apply lane: each is a place where the document
-contradicts a decision it has already taken, and each names the entry
-that determines the correction. Two more candidates failed the review's
+contradicts a decision it has already taken, each names the entry that
+determines the correction, and each lands on a site of its own. Two more candidates failed the review's
 bar and sit in Observations, carrying no id.
 
 The store row is acknowledged and announced. Nothing has been surfaced

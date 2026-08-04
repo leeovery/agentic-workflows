@@ -80,7 +80,7 @@ module.exports = {
       '',
       '## Summary',
       '',
-      'One correction the document already determines, and two concerns',
+      'One correction the document already determines, and three concerns',
       'whose home is a sibling topic.',
       '',
       '## Gaps Identified',
@@ -111,19 +111,28 @@ module.exports = {
       'change helped is the measurement topic\'s ground, and it has not',
       'started.',
       '',
+      '### F4: synonym-handling owes a decision on expansion refresh cadence',
+      '',
+      '**Lane:** route — synonym-handling',
+      '',
+      'Ingestion being nightly bounds how fresh an expansion set can be. That',
+      'topic must decide whether expansions refresh on the nightly cadence or',
+      'hold until a full rebuild — a decision owed, with both options already',
+      'on the table, not a question needing exploration.',
+      '',
       '## Observations',
       '',
       '- The Options blocks would read faster as a table. Style only.',
       '',
       'STATUS: gaps_found',
-      'FINDINGS: F1,F2,F3',
-      'GAPS_COUNT: 3',
+      'FINDINGS: F1,F2,F3,F4',
+      'GAPS_COUNT: 4',
       'QUESTIONS_COUNT: 0',
-      'SUMMARY: One determined correction; two concerns owned by sibling topics.',
+      'SUMMARY: One determined correction; three concerns owned by sibling topics.',
       '',
     ].join('\n'));
     h.engine('agent', 'scan', WU, 'discussion', 'behavioural-ranking');
-    h.engine('agent', 'ack', WU, 'discussion', 'behavioural-ranking', 'review-001', '--findings', 'F1,F2,F3');
+    h.engine('agent', 'ack', WU, 'discussion', 'behavioural-ranking', 'review-001', '--findings', 'F1,F2,F3,F4');
     h.engine('agent', 'announce', WU, 'discussion', 'behavioural-ranking', 'review-001');
   },
 };
