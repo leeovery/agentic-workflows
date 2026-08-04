@@ -29,6 +29,14 @@ At natural conversational breaks, check for completed results.
 
 ---
 
+## Lanes
+
+The shared surfacing protocol reads this declaration when presenting this phase's findings.
+
+- `explore` — the walked lane. Raises render under the heading `Needs Investigation`.
+- `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the source or finding that determines it. The confirmation says amended, never removed.
+- `route` — approving delivers each finding to its owning topic through the shared triage landing.
+
 ## A. Dispatch
 
 Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal):
@@ -70,7 +78,7 @@ The research session continues — do not wait for the agent to return.
 
 Delegate all check-for-results and presentation behaviour to the shared surfacing protocol. This enforces the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection.
 
-→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, work_unit = `{work_unit}`, phase = `research`, topic = `{topic}`, walk_heading = `Needs Investigation`.
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, work_unit = `{work_unit}`, phase = `research`, topic = `{topic}`.
 
 **Offering deep dives during presentation**: If the user engages with a raised finding and it's substantial enough for independent investigation, offer to dispatch a deep-dive agent for it. Follow the deep-dive agent instructions for the offer and dispatch.
 
