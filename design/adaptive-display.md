@@ -220,8 +220,9 @@ advisories stops being a warning.
 
 1. **Engine width resolution** — detection chain, cap, headroom, and
    the content widths (`TREE_WIDTH`, the `surfaces.cjs` and
-   `renderTree` defaults) resolving from it. No vocabulary change, so
-   snapshots move in width only.
+   `renderTree` defaults) resolving from it. Snapshots do not move at
+   all: the harnesses pin `WORKFLOWS_DISPLAY_WIDTH=65`, which is the
+   pre-detection width, so the goldens stay byte-identical.
 2. **Tree layout** — connector, hanging indent, `# tag` column,
    `makefile` fence.
 3. **Menus** — label, alignment, dot rule, and the label-trimming
@@ -254,3 +255,11 @@ through the stack.
   verified against a live terminal rather than assumed. Two early
   assumptions were refuted by measurement: that terminal width was
   unreachable, and that signpost hand-wrapping was still required.
+- 2026-08-04 — Slice 1 PR'd (#771). Detection reads the device with
+  `tty.WriteStream(fd).columns` rather than spawning `stty`, so the
+  cost is one `ps` per process and no shell. Pinning turned out to be
+  mandatory rather than tidy: `CLAUDE_PID` reaches `process.env` in
+  every suite, so an unpinned run would have rendered against whichever
+  pane was open — the goldens would have moved on a resize, not on a
+  code change. Pinned at the pre-detection 65, all gates green with
+  byte-identical snapshots.
