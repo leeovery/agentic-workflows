@@ -160,6 +160,14 @@ findings likewise.
 
 ## Log
 
+- 2026-08-04 — Stack layer 1 up (#757). The enumeration found the
+  landing-phase rule stated at seven call sites plus triage-landing's
+  own parameter bullet — not the three the motivation recorded; the
+  research phase carried four statements of its own. Wording had
+  drifted between sites, and the routing-has-no-vote clause existed at
+  exactly one of eight. Canonical home: **Judging the Landing Phase**
+  in triage-landing.md; all seven sites defer by name.
+
 - 2026-08-04 — Programme opened. Scope agreed in discussion: maturity
   grading, the three-owner split, the canonical landing rule, research
   coverage; cadence deferred pending first real use of the lanes
