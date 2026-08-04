@@ -76,7 +76,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 Take the next unhandled note. Handled-ness lives in the walk and is recoverable from the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
 
-Judge the target topic from the note's own addressing, and judge `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Present it:
+Judge the target topic from the note's own addressing, and `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Present it:
 
 > *Output the next fenced block as markdown (not a code block):*
 

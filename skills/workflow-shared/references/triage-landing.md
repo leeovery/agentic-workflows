@@ -17,13 +17,17 @@ The caller provides these via context before loading:
 - `concern` — the concern as a short title, plus the full context discussed about it.
 - `origin` — the topic the concern surfaced in (the current session's topic).
 - `phase` — the current session's phase, `research` or `discussion`. Recorded in the entry.
-- `landing_phase` — where the concern lands on the target, `research` or `discussion`: judged by the origin session from the concern's nature (an open question needing exploration → research; a decision needing making → discussion), recommended and confirmed at the caller's gate. The coherence findings gate always passes `discussion`. Any target state is legal — the delivery parks, leaves live work untouched, or reopens completed work as needed.
+- `landing_phase` — where the concern lands on the target, `research` or `discussion`: judged by the origin session per **Judging the Landing Phase** below, recommended and confirmed at the caller's gate. The coherence findings gate always passes `discussion`. Any target state is legal — the delivery parks, leaves live work untouched, or reopens completed work as needed.
 - `date` — today's date.
 
 After return, the caller reads these from conversation memory:
 
 - `result` — `landed` (concern delivered and committed by the engine) or `cancelled` (the reroute was dropped or blocked; nothing written).
 - `landed_topic` — the final target name (a new target may have been renamed during validation).
+
+## Judging the Landing Phase
+
+The concern's nature decides, never the target: an open question needing exploration → `research`; a correction or decision owed → `discussion`. The target's map `routing` and live state have no vote — a question landing on a discussion-routed topic still lands research-side.
 
 ## Triage Entry Shape
 
