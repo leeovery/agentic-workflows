@@ -28,6 +28,10 @@ Do not fire for quick lookups, single searches, or questions that inform the nex
 
 ---
 
+## Lanes
+
+Deep-dive findings are all walked — no batch lanes. Raises render under the heading `Needs Investigation`.
+
 ## A. Offer Deep Dive
 
 #### If user-initiated
@@ -110,10 +114,6 @@ The research session continues — do not wait for the agent to return.
 **Concurrency**: Before dispatching, count the `deep-dive` ids in `agent scan`'s `in_flight` list — excluding rows an earlier session dispatched (those agents are dead; incorporate them instead of counting them). Limit to 3-4 in flight at once. If the limit is reached, note the thread for later dispatch.
 
 ---
-
-## Lanes
-
-Deep-dive findings are all walked — no batch lanes. Raises render under the heading `Needs Investigation`.
 
 ## C. Check and Surface
 

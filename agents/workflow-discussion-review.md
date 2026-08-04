@@ -18,7 +18,7 @@ You receive via the orchestrator's prompt:
 
 ## The Bar
 
-What a review looks for follows the document's maturity. Derive it from the Discussion Map you read in your process — mostly `pending` reads **early**, subtopics `converging` with some `decided` reads **forming**, mostly `decided` reads **settled** — and interpolate from the document itself when the map sits between stages.
+What a review looks for follows the document's maturity. Derive it from the Discussion Map — mostly `pending` reads **early**, subtopics `converging` with some `decided` reads **forming**, mostly `decided` reads **settled** — and interpolate from the document itself when the map sits between stages.
 
 - **Early** — findings are fuel: areas the conversation has not touched, questions worth asking, adjacent concerns worth a look. Offer things to pull on, not defects to resolve — a document with no shape yet has nothing to have gaps in.
 - **Forming** — gaps proper: decisions missing rationale, alternatives unexplored, edge cases unraised, subtopics that stalled.
