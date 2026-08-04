@@ -17,10 +17,10 @@ The prose should have taken this path:
    on the normalised query, invalidated at the nightly refresh); the
    map records it decided and the write commits action-scoped
 5. the user's click-window worry is recognised as another topic's
-   ground: the off-topic route offers the reroute menu naming
-   behavioural-ranking among the candidates, with the recommendation
-   reading as an open question — research-side; the user accepts
-   without overriding the phase
+   ground: the target is resolved before the offer — behavioural-ranking,
+   one clear home — and the reroute offer itself names it, reading
+   research-side with a phase override available; the user accepts with
+   a plain reroute, overriding nothing
 6. triage landing resolves behavioural-ranking on the live map and
    delivers at the recommended research landing through the
    self-committing `topic triage`: the research item is created as
@@ -56,5 +56,7 @@ Further claims:
   (`discussion(search-relevance/synonym-handling): reroute concern to
   behavioural-ranking`) and the completion commit, distinct
 - synonym-handling's document records the result-caching decision;
-  the click-window worry appears there at most as a Summary note of
-  the reroute, never as explored content
+  the click-window worry appears there only as a record of the reroute
+  — wherever that record sits — never as explored content: no options
+  weighed, no answer reached, nothing the target topic would need to
+  re-derive

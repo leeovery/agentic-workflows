@@ -6,13 +6,44 @@
 
 The caller provides `work_unit`, `topic`, and the `concern` with its discussed context. The concern is already judged off-topic for this discussion — on an epic it belongs to a sibling topic, existing or new. Offer the reroute, resolve the target yourself, and land the concern where it belongs.
 
-## A. Offer the Reroute
+## A. Resolve the Target
+
+Read the live map:
+
+```bash
+node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
+```
+
+You hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The concern's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the concern. Don't put the reading back on the user. Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** — the concern's nature decides, so the judgement holds whatever the target.
+
+#### If the resolved target is the current topic
+
+It was a detail of this discussion after all, not a reroute: record it as a `pending` subtopic (session loop step 2).
+
+→ Return to caller for **B. Session Loop**.
+
+#### If one home is clear
+
+An existing topic, or the new name when nothing fits. Set `resolution = clear`.
+
+→ Proceed to **B. Offer the Reroute**.
+
+#### Otherwise
+
+Two or more plausible homes and the conversation doesn't settle it. Set `resolution = ambiguous`.
+
+→ Proceed to **B. Offer the Reroute**.
+
+## B. Offer the Reroute
+
+The user consents knowing the destination: a clear home is named in the offer, with its landing phase, before anything lands.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
 **{concern}** belongs to a different topic, not this one.
+@if(resolution == clear) It reads as {target}'s ground, landing {landing_phase}-side — append a phase to override (e.g. `r discussion`). @endif
 
 - **`r`/`reroute`** — Send it to the topic it belongs to; it picks it up later
 - **`k`/`keep`** — Keep it here as a subtopic
@@ -27,33 +58,15 @@ Record it as a `pending` subtopic (session loop step 2).
 
 → Return to caller for **B. Session Loop**.
 
-**If `reroute`:**
+**If `reroute` and `resolution` is `clear`:**
 
-→ Proceed to **B. Resolve the Target**.
-
-## B. Resolve the Target
-
-Read the live map:
-
-```bash
-node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
-```
-
-You hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The concern's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the concern. Don't put the reading back on the user.
-
-**If the resolved target is the current topic** — it was a detail of this discussion after all, not a reroute: record it as a `pending` subtopic (session loop step 2).
-
-→ Return to caller for **B. Session Loop**.
-
-**If one home is clear** (an existing topic, or the new name when nothing fits):
-
-Name it in passing as the landing happens — the user corrects you if you've misread.
+A phase appended to the reply overrides `landing_phase`.
 
 → Proceed to **C. Land It**.
 
-**If genuinely ambiguous** — two or more plausible homes and the conversation doesn't settle it:
+**If `reroute` and `resolution` is `ambiguous`:**
 
-Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** and state the recommendation in the menu:
+State the recommendation in the menu:
 
 > *Output the next fenced block as markdown (not a code block):*
 
