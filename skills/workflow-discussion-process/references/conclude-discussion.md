@@ -12,7 +12,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} d
 
 **If `count` is non-zero:**
 
-A rerouted concern is still queued — it must be discussed and folded before concluding. Render the blocker and emit its `DISPLAY: triage block` section verbatim as a code block:
+A rerouted concern is still queued — it must be discussed and folded before concluding. Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.discussion.{topic}

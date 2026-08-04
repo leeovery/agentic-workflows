@@ -262,6 +262,8 @@ Advisory and gating messages inside code blocks use a `⚑` prefix to visually s
   before they can be included in a specification.
 ```
 
+**Blocked states render red — advisory callouts stay plain.** A message meaning *you cannot proceed* (a terminal entry blocker, a conclusion blocked on an unmet condition) emits in its own `properties` fence: the `⚑` first token renders turquoise, everything after it red, and `properties` is the one highlighter that never tokenises English, so the message stays uniform whatever words it contains. One logical line, flag at column zero, no hard wrapping — a wrapped continuation would restart the per-line colouring mid-sentence, while the renderer's own soft-wrap keeps it intact. Guidance (what to do about it) travels separately as a markdown signpost beneath the fence, where it reflows. A warning or suggestion the user may act on or ignore is not a blocked state — it keeps the plain form above, so red stays rare enough to mean something. Engine blockers build through `blocker()` in `domain/render.cjs`; prose-authored blockers mirror the same shape.
+
 ### Content Dividers & Frames
 
 Inside a single DISPLAY/code block, centered `── {Title} ──` dividers separate grouped content (the epic dashboard's stage dividers, per-item boundaries in inbox views). They are content dividers, not step markers — no width rule, no signpost pairing.

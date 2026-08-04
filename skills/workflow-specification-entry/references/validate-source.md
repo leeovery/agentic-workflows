@@ -18,6 +18,6 @@ Source material is ready.
 
 #### If the response carried `DISPLAY: entry blocker`
 
-Emit the section verbatim per its marker.
+Emit both sections verbatim per their markers — the red blocker line, then its guidance.
 
 **STOP.** Do not proceed — terminal condition.

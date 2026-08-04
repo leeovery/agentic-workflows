@@ -834,10 +834,16 @@ function triageBlock(cwd, { dotpath }) {
   const { files } = triageQueue(cwd, workUnit, phase, topic);
   if (!files.length) throw new Error(`render triage-block: the ${topic} ${phase} triage queue is empty — nothing blocks conclusion`);
   const doing = phase === 'research' ? 'exploration' : 'discussion';
-  return section('DISPLAY: triage block', 'emit verbatim as a code block', callout([
-    `Triage queue not empty — ${files.length} rerouted concern${files.length === 1 ? '' : 's'} awaiting ${doing}.`,
-    'Returning to the session to surface them before concluding.',
-  ]));
+  // A true blocker — the red register (see blocker()), guidance as markdown.
+  return section(
+    'DISPLAY: triage block',
+    'emit verbatim as a properties code block — ```properties fence',
+    `⚑ Triage queue not empty — ${files.length} rerouted concern${files.length === 1 ? '' : 's'} awaiting ${doing}`,
+  ) + section(
+    'DISPLAY: triage block guidance',
+    'emit verbatim as markdown',
+    '> Returning to the session to surface them before concluding.',
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -987,12 +993,23 @@ function itemOf(manifest, phase, topic) {
   return (((manifest.phases || {})[phase] || {}).items || {})[topic];
 }
 
-/** @param {string} title @param {string[]} bodyLines */
-function blocker(title, bodyLines) {
+// Blocked states render red: a `properties` fence colours the first token
+// (the ⚑) turquoise and everything after it red, and is the one highlighter
+// that never tokenises English — so the message stays uniform whatever words
+// it contains. One logical line only; a hard-wrapped continuation would
+// restart the per-line colouring mid-sentence, while soft-wrap keeps it
+// intact. Red means "you cannot proceed" — guidance travels in its own
+// markdown section as a signpost, so it reflows and stays calm.
+/** @param {string} fact @param {string} guidance */
+function blocker(fact, guidance) {
   return section(
     'DISPLAY: entry blocker',
-    'emit verbatim as a code block, then STOP — terminal condition',
-    [title, '', ...bodyLines].join('\n'),
+    'emit verbatim as a properties code block — ```properties fence',
+    `⚑ ${fact}`,
+  ) + section(
+    'DISPLAY: blocker guidance',
+    'emit verbatim as markdown, then STOP — terminal condition',
+    `> ${guidance}`,
   );
 }
 
@@ -1013,16 +1030,16 @@ function entryGate(cwd, { dotpath, own }) {
     }
     const spec = itemOf(manifest, 'specification', topic) || {};
     if (spec.status === 'superseded') {
-      return blocker('Specification Superseded', [
-        `The specification for "${t}" was consolidated into`,
-        `"${titlecase(String(spec.superseded_by || ''))}". Work on that specification instead.`,
-      ]);
+      return blocker(
+        `The specification for "${t}" was consolidated into "${titlecase(String(spec.superseded_by || ''))}"`,
+        'Work on that specification instead.',
+      );
     }
     if (spec.status === 'promoted') {
-      return blocker('Specification Promoted', [
-        `"${t}" was promoted to the cross-cutting work unit`,
-        `"${String(spec.promoted_to || '')}". Continue it from that work unit.`,
-      ]);
+      return blocker(
+        `"${t}" was promoted to the cross-cutting work unit "${String(spec.promoted_to || '')}"`,
+        'Continue it from that work unit.',
+      );
     }
     return '';
   }
@@ -1031,42 +1048,34 @@ function entryGate(cwd, { dotpath, own }) {
     const spec = itemOf(manifest, 'specification', topic);
     const status = spec && spec.status;
     if (!status) {
-      return blocker('Specification Missing', [
-        `No specification found for "${t}".`,
-        '',
+      return blocker(
+        `No specification found for "${t}"`,
         'The specification must be completed before planning can begin.',
-      ]);
+      );
     }
     if (status === 'in-progress') {
-      return blocker('Specification In Progress', [
-        `The specification for "${t}" is not yet completed.`,
-        '',
+      return blocker(
+        `The specification for "${t}" is not yet completed`,
         'The specification must be completed before planning can begin.',
-      ]);
+      );
     }
     if (status === 'proposed') {
-      return blocker('Specification Not Started', [
-        `"${t}" is a proposed grouping — the specification`,
-        "hasn't been started yet.",
-        '',
-        'Start the specification first, then return to planning once it',
-        'completes.',
-      ]);
+      return blocker(
+        `"${t}" is a proposed grouping — the specification hasn't been started yet`,
+        'Start the specification first, then return to planning once it completes.',
+      );
     }
     if (status === 'superseded') {
-      return blocker('Specification Superseded', [
-        `The specification for "${t}" was consolidated into`,
-        `"${titlecase(String(spec.superseded_by || ''))}".`,
-        '',
+      return blocker(
+        `The specification for "${t}" was consolidated into "${titlecase(String(spec.superseded_by || ''))}"`,
         'Plan the superseding specification instead.',
-      ]);
+      );
     }
     if (status === 'promoted') {
-      return blocker('Specification Promoted', [
-        `"${t}" was promoted to the cross-cutting work unit`,
-        `"${String(spec.promoted_to || '')}". Cross-cutting specifications inform other plans —`,
-        'they are not planned directly.',
-      ]);
+      return blocker(
+        `"${t}" was promoted to the cross-cutting work unit "${String(spec.promoted_to || '')}"`,
+        'Cross-cutting specifications inform other plans — they are not planned directly.',
+      );
     }
     return '';
   }
@@ -1074,36 +1083,39 @@ function entryGate(cwd, { dotpath, own }) {
   if (phase === 'implementation') {
     const plan = itemOf(manifest, 'planning', topic);
     if (!plan || !plan.status) {
-      return blocker('Plan Missing', [
-        `No plan found for "${t}".`,
-        '',
+      return blocker(
+        `No plan found for "${t}"`,
         'A completed plan is required for implementation.',
-      ]);
+      );
     }
     if (plan.status !== 'completed') {
-      return blocker('Plan Not Completed', [`The plan for "${t}" is not yet completed.`]);
+      return blocker(
+        `The plan for "${t}" is not yet completed`,
+        'A completed plan is required for implementation.',
+      );
     }
     return '';
   }
 
   if (phase === 'review') {
     if (!itemOf(manifest, 'planning', topic)) {
-      return blocker('Plan Missing', [
-        `No plan found for "${t}".`,
-        '',
+      return blocker(
+        `No plan found for "${t}"`,
         'A completed plan and completed implementation are required for review.',
-      ]);
+      );
     }
     const impl = itemOf(manifest, 'implementation', topic);
     if (!impl) {
-      return blocker('Implementation Missing', [
-        `No implementation found for "${t}".`,
-        '',
+      return blocker(
+        `No implementation found for "${t}"`,
         'A completed implementation is required for review.',
-      ]);
+      );
     }
     if (impl.status !== 'completed') {
-      return blocker('Implementation Not Complete', [`The implementation for "${t}" is not yet completed.`]);
+      return blocker(
+        `The implementation for "${t}" is not yet completed`,
+        'A completed implementation is required for review.',
+      );
     }
     return '';
   }
@@ -1114,18 +1126,16 @@ function entryGate(cwd, { dotpath, own }) {
     if (workType === 'bugfix') {
       const inv = itemOf(manifest, 'investigation', topic);
       if (!inv) {
-        return blocker('Source Material Missing', [
-          `No investigation found for "${wu}".`,
-          '',
+        return blocker(
+          `No investigation found for "${wu}"`,
           'A completed investigation is required before specification can begin.',
-        ]);
+        );
       }
       if (inv.status !== 'completed') {
-        return blocker('Investigation In Progress', [
-          `The investigation for "${wu}" is not yet completed.`,
-          '',
+        return blocker(
+          `The investigation for "${wu}" is not yet completed`,
           'The investigation must be completed before specification can begin.',
-        ]);
+        );
       }
       return '';
     }
@@ -1133,37 +1143,32 @@ function entryGate(cwd, { dotpath, own }) {
       const items = ((manifest.phases || {}).discussion || {}).items || {};
       const names = Object.keys(items);
       if (names.length === 0) {
-        return blocker('Source Material Missing', [
-          `No discussions found for "${wu}".`,
-          '',
+        return blocker(
+          `No discussions found for "${wu}"`,
           'At least one completed discussion is required before specification can begin.',
-        ]);
+        );
       }
       if (!names.some((n) => items[n] && items[n].status === 'completed')) {
-        return blocker('No Completed Discussions', [
-          `No completed discussions found for "${wu}".`,
-          '',
-          'At least one completed discussion is required before specification can begin.',
-          'Run /workflow-start to continue an in-progress discussion.',
-        ]);
+        return blocker(
+          `No completed discussions found for "${wu}"`,
+          'At least one completed discussion is required before specification can begin. Run /workflow-start to continue an in-progress discussion.',
+        );
       }
       return '';
     }
     // feature / cross-cutting: the topic's own discussion.
     const disc = itemOf(manifest, 'discussion', topic);
     if (!disc) {
-      return blocker('Source Material Missing', [
-        `No discussion found for "${wu}".`,
-        '',
+      return blocker(
+        `No discussion found for "${wu}"`,
         'A completed discussion is required before specification can begin.',
-      ]);
+      );
     }
     if (disc.status !== 'completed') {
-      return blocker('Discussion In Progress', [
-        `The discussion for "${wu}" is not yet completed.`,
-        '',
+      return blocker(
+        `The discussion for "${wu}" is not yet completed`,
         'The discussion must be completed before specification can begin.',
-      ]);
+      );
     }
     return '';
   }
