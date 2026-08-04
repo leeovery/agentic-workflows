@@ -39,9 +39,9 @@ Every substantive point in those sections appears in the retelling — nothing s
 · · · · · · · · · · · ·
 **`◆ Do these findings match your understanding?`**
 
-**`y/yes`**          → Findings are correct, move to fix exploration
-**`t/technical`**    → Retell the findings from the code's perspective
-**`v/view`**         → Show the full investigation file
+**`y/yes`**            → Findings are correct, move to fix exploration
+**`t/technical`**      → Retell the findings from the code's perspective
+**`v/view`**           → Show the full investigation file
 **Provide feedback** → Tell me what's off or unclear
 ```
 

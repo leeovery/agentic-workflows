@@ -90,13 +90,16 @@ Missing Dependencies
 
 **If `implement`:**
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a properties code block (```properties fence):*
 
 ```
-Implementation Paused
+⚑ "{topic:(titlecase)}" is blocked until these dependencies are resolved
+```
 
-"{topic:(titlecase)}" is blocked until these dependencies are resolved.
-Use /workflow-start to navigate to the blocking work.
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Use /workflow-start to navigate to the blocking work.
 ```
 
 **STOP.** Do not proceed — terminal condition.

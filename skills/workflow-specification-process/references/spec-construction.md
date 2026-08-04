@@ -56,8 +56,8 @@ Then, **separately from the diff above** (clear visual break):
 · · · · · · · · · · · ·
 **`◆ Record this to the specification verbatim?`**
 
-**`y/yes`**                → Apply changes to specification
-**`v/view full`**          → Show the full updated section, then decide
+**`y/yes`**                  → Apply changes to specification
+**`v/view full`**            → Show the full updated section, then decide
 **Tell me what to change** → Revise before recording
 ```
 
@@ -141,8 +141,8 @@ Skip the menu and the STOP gate. The content presented above is logged exactly a
 · · · · · · · · · · · ·
 **`◆ Record this to the specification verbatim?`**
 
-**`y/yes`**                → Add exactly as shown, no modifications
-**`a/auto`**               → Approve this and all remaining topics automatically
+**`y/yes`**                  → Add exactly as shown, no modifications
+**`a/auto`**                 → Approve this and all remaining topics automatically
 **Tell me what to change** → Revise before recording
 ```
 

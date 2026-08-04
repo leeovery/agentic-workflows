@@ -279,8 +279,8 @@ describe('render task-list', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Approve this task list?`**',
       '',
-      '**`y/yes`**                → Proceed to authoring',
-      '**`a/auto`**               → Approve this and all remaining task list gates automatically',
+      '**`y/yes`**                  → Proceed to authoring',
+      '**`a/auto`**                 → Approve this and all remaining task list gates automatically',
       '**Tell me what to change** → which tasks to reorder, split, merge, add, edit, or remove',
       '**Navigate**               → Tell me where to go: a different phase or task, or the leading edge',
       '',
@@ -505,7 +505,7 @@ describe('render finding-batch', () => {
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       '**`y/yes`** → Apply all 2, then move on',
-      "**Ask**     → Tell me a number to expand, or one you don't think is settled",
+      "**Ask**   → Tell me a number to expand, or one you don't think is settled",
       '',
     ].join('\n'));
   });
@@ -612,6 +612,7 @@ describe('render concern', () => {
     assert.ok(out.startsWith([
       '=== DISPLAY: triage block (emit verbatim as a properties code block — ```properties fence) ===',
       '⚑ Triage queue not empty — 1 rerouted concern awaiting discussion',
+      '',
       '=== DISPLAY: triage block guidance (emit verbatim as markdown) ===',
       '> Returning to the session to surface them before concluding.',
     ].join('\n')), out);
@@ -742,10 +743,10 @@ describe('render proposed-task', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Approve this task?`**',
       '',
-      '**`y/yes`**  → Approve this task',
-      '**`a/auto`** → Approve this and all remaining tasks automatically',
-      '**`s/skip`** → Skip this task',
-      '**Comment**  → Tell me what to change',
+      '**`y/yes`**   → Approve this task',
+      '**`a/auto`**  → Approve this and all remaining tasks automatically',
+      '**`s/skip`**  → Skip this task',
+      '**Comment** → Tell me what to change',
       '',
     ].join('\n'));
   });
@@ -811,8 +812,8 @@ describe('render author-task-gate', () => {
       '· · · · · · · · · · · ·',
       '**Task 2 of 5: Wrap command**',
       '',
-      '**`y/yes`**                → Write it to the plan',
-      '**`a/auto`**               → Approve this and all remaining tasks automatically',
+      '**`y/yes`**                  → Write it to the plan',
+      '**`a/auto`**                 → Approve this and all remaining tasks automatically',
       '**Tell me what to change** → what to revise in this task',
       '**Navigate**               → Tell me where to go: a different phase or task, or the leading edge',
       '',
@@ -1198,6 +1199,7 @@ describe('render entry-gate --own', () => {
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }), [
       '=== DISPLAY: entry blocker (emit verbatim as a properties code block — ```properties fence) ===',
       '⚑ The specification for "Auth" was consolidated into "Core Auth"',
+      '',
       '=== DISPLAY: blocker guidance (emit verbatim as markdown, then STOP — terminal condition) ===',
       '> Work on that specification instead.',
       '',

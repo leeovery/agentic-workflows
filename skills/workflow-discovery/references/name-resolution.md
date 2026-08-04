@@ -26,7 +26,7 @@ Suggested {work-type} name: {work_unit}
 · · · · · · · · · · · ·
 **`◆ Is this name okay?`**
 
-**`y/yes`**          → Use this name
+**`y/yes`**            → Use this name
 **A different name** → Tell me what to call it instead
 ```
 

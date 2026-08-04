@@ -88,7 +88,7 @@ Emit the `=== DISPLAY` section verbatim **as a code block** — it shows the pro
 
 **`y/yes`**     → Commit these topics and conclude
 **`e/explore`** → Go back to exploration; not ready to commit yet
-**Adjust**      → Tell me what to change (split, merge, rename, re-route, edit summary)
+**Adjust**    → Tell me what to change (split, merge, rename, re-route, edit summary)
 ```
 
 **STOP.** Wait for user response.

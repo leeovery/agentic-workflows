@@ -115,10 +115,10 @@ Read `gate_mode` from the manifest's `analysis_staging.{analysis}` subtree (held
 · · · · · · · · · · · ·
 **`◆ Add this topic to the map?`**
 
-**`y/yes`**  → Approve and add to the map
-**`a/auto`** → Approve this and all remaining candidates automatically
-**`s/skip`** → Skip and dismiss (won't be re-proposed)
-**Comment**  → Tell me what to change (routing, summary, or description)
+**`y/yes`**   → Approve and add to the map
+**`a/auto`**  → Approve this and all remaining candidates automatically
+**`s/skip`**  → Skip and dismiss (won't be re-proposed)
+**Comment** → Tell me what to change (routing, summary, or description)
 ```
 
 **STOP.** Wait for user response.

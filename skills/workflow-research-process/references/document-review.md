@@ -91,9 +91,9 @@ Judge the target topic from the note's own addressing, and `landing_phase` per *
 Land this note in "{target}"'s triage queue? If "{target}" is
 completed, landing reopens it.
 
-**`y/yes`**  → Land it there; this document keeps a reroute record
-**`s/skip`** → Leave it as prose in this document
-**Comment**  → Tell me what to change (target, phase, or content)
+**`y/yes`**   → Land it there; this document keeps a reroute record
+**`s/skip`**  → Leave it as prose in this document
+**Comment** → Tell me what to change (target, phase, or content)
 ```
 
 **STOP.** Wait for user response.

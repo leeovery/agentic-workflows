@@ -507,7 +507,7 @@ describe('start projections: working set', () => {
       '**`r/archive`** → Archive the whole set out of the inbox',
       '**`v/view`**    → View full content of the set',
       '**`b/back`**    → Return to the inbox list',
-      '**Ask**         → Ask about the set',
+      '**Ask**       → Ask about the set',
     ].join('\n'));
     assert.strictEqual(v.sections, [
       '=== DISPLAY: add candidates (emit verbatim as a code block only at the add-items gate — never at the call) ===',
@@ -649,7 +649,7 @@ describe('start projections: manage unit', () => {
       '**`p/pivot`**  → Convert to epic (enables multiple topics)',
       '**`c/cancel`** → Mark as cancelled',
       '**`b/back`**   → Return',
-      '**Ask**        → Ask a question about this work unit',
+      '**Ask**      → Ask a question about this work unit',
     ].join('\n'));
     assert.strictEqual(v.sections, '');
   });
@@ -706,7 +706,7 @@ describe('start projections: manage unit', () => {
       '**`v/view-plan`** → View the implementation plan',
       '**`c/cancel`**    → Mark as cancelled',
       '**`b/back`**      → Return',
-      '**Ask**           → Ask a question about this work unit',
+      '**Ask**         → Ask a question about this work unit',
     ].join('\n'));
     assert.ok(!v.menu.includes('pivot'));
     assert.strictEqual(v.sections, '');

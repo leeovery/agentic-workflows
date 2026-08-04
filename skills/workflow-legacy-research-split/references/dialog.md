@@ -87,7 +87,7 @@ Candidate themes for {current_source}.md:
 · · · · · · · · · · · ·
 **`y/yes`**     → Proceed to draft cache files
 **`a/abandon`** → Skip this source file
-**Redirect**    → Adjust the theme list (rename, merge two, split one, add, remove)
+**Redirect**  → Adjust the theme list (rename, merge two, split one, add, remove)
 ```
 
 **STOP.** Wait for user response.
@@ -199,7 +199,7 @@ Source file will be renamed to {current_source}-superseded-{datetime}.md.
 · · · · · · · · · · · ·
 **`y/yes`**     → Apply this plan
 **`a/abandon`** → Skip this source file
-**Edit**        → Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.
+**Edit**      → Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.
 ```
 
 **STOP.** Wait for user response.
@@ -401,9 +401,7 @@ User specifies `theme_name`. Confirm before destructive removal:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Removing "{theme_name}" will drop its drafted content. Has its
-> content been reabsorbed into another theme, or are you intentionally
-> discarding it?
+> Removing "{theme_name}" will drop its drafted content. Has its content been reabsorbed into another theme, or are you intentionally discarding it?
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

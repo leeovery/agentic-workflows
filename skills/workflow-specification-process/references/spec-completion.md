@@ -44,7 +44,7 @@ of functionality to build."}
 · · · · · · · · · · · ·
 **`◆ Confirm this assessment?`**
 
-**`y/yes`** → Confirm assessment
+**`y/yes`**   → Confirm assessment
 **Comment** → Suggest a different classification
 ```
 
@@ -112,7 +112,7 @@ If any show `status: pending`, work them now per **[spec-construction.md](spec-c
 · · · · · · · · · · · ·
 **`◆ Ready to conclude?`**
 
-**`y/yes`** → Conclude specification and mark as completed
+**`y/yes`**   → Conclude specification and mark as completed
 **Comment** → Add context before concluding
 ```
 

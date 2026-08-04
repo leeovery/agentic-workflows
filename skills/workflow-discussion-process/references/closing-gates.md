@@ -55,8 +55,8 @@ A review has already run and drained; declining a fresh one forfeits nothing owe
 The discussion has moved since the last review. A fresh gap review
 can catch what the movement opened — or skip it and move on.
 
-**`y/yes`**    → Run the fresh review
-**`s/skip`**   → Skip it and go to the conclude gate
+**`y/yes`**      → Run the fresh review
+**`s/skip`**     → Skip it and go to the conclude gate
 **Keep going** → Tell me what else to explore
 ```
 
@@ -87,7 +87,7 @@ At least one full review pass belongs to every discussion — this one cannot be
 Next: a final gap review before concluding — {reason}.
 Proceed?
 
-**`y/yes`**    → Run the final review
+**`y/yes`**      → Run the final review
 **Keep going** → Tell me what else to explore
 ```
 

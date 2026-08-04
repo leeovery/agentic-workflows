@@ -140,14 +140,14 @@ Bugs:
 **`◆ Any questions before proceeding?`**
 
 @if(has_donow)
-**`d/do-now`**     → Apply the zero-risk fixes now
+**`d/do-now`** → Apply the zero-risk fixes now
 @endif
 @if(has_recommendations)
-**`s/surface`**    → Surface recommendations to inbox
+**`s/surface`** → Surface recommendations to inbox
 @endif
-**`t/technical`**  → Retell the review from the code's perspective
-**`v/view`**       → Show the full review report
-**`c/continue`**   → Proceed to review actions
+**`t/technical`**    → Retell the review from the code's perspective
+**`v/view`**         → Show the full review report
+**`c/continue`**     → Proceed to review actions
 **Ask a question** → Ask about the review findings
 ```
 

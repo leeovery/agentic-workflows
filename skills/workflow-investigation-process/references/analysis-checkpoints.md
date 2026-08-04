@@ -42,7 +42,7 @@ Next: {what will be traced next}
 **`◆ Continue as planned?`**
 
 **`y/yes`** → Continue with the next trace line
-**Steer**   → Tell me what to look at instead, or what this changes
+**Steer** → Tell me what to look at instead, or what this changes
 ```
 
 **STOP.** Wait for user response.
@@ -73,8 +73,8 @@ Proposed direction:
 · · · · · · · · · · · ·
 **`◆ Proceed on the new direction?`**
 
-**`y/yes`** → Proceed as proposed
-**Adjust**  → Tell me what to change
+**`y/yes`**  → Proceed as proposed
+**Adjust** → Tell me what to change
 ```
 
 **STOP.** Wait for user response.

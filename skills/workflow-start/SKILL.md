@@ -114,7 +114,7 @@ Migrations Applied
 **`◆ Ready to continue?`**
 
 **`c/continue`** → Proceed
-**Ask**          → Ask questions about the changes
+**Ask**        → Ask questions about the changes
 ```
 
 **STOP.** Wait for user response.

@@ -4,7 +4,7 @@
 
 ---
 
-Open the shaping conversation. The PATTERN is universal; the SPECIFIC TEXT phrases itself for whatever the caller already told us (the work-type pre-seed, or an inbox seed, or nothing for `s`/start). No pre-announce of process discipline — discipline shows through behaviour, not preamble.
+Open the shaping conversation. The PATTERN is universal; the SPECIFIC TEXT phrases itself for whatever the caller already told us (the work-type pre-seed, or an inbox seed, or nothing for `s/start`). No pre-announce of process discipline — discipline shows through behaviour, not preamble.
 
 Inputs held from Step 1: `work_type` pre-seed (or none), `inbox_seeds` — a list of inbox file paths (or none).
 
@@ -118,7 +118,7 @@ I'll read them in.
 
 #### Otherwise
 
-No pre-seed (`s`/start). Open fully and fold the "we'll figure out the shape together" framing into the question itself.
+No pre-seed (`s/start`). Open fully and fold the "we'll figure out the shape together" framing into the question itself.
 
 > *Output the next fenced block as a code block:*
 

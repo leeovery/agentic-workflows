@@ -24,19 +24,29 @@ const MENU_GLYPH = '◆';
 // terminal-width chrome may not.
 const OPTION = /^(\*\*.+?\*\*) → (.*)$/;
 
+// The column aligns as RENDERED, not as authored: `**` and backticks are
+// markup the renderer consumes, and a cmdOption head carries two more markup
+// characters than a promptOption head — measuring source length would land
+// mixed blocks two columns apart on screen. Padding spaces sit outside the
+// markup, so rendered pad equals source pad.
+/** @param {string} head */
+function renderedLen(head) {
+  return head.replace(/\*\*/g, '').replace(/`/g, '').length;
+}
+
 /**
- * Pad option lines so their arrows share a column. Non-option lines pass
- * through untouched, so a block may mix options with plain text.
+ * Pad option lines so their arrows share a rendered column. Non-option lines
+ * pass through untouched, so a block may mix options with plain text.
  * @param {string[]} lines @returns {string[]}
  */
 function alignOptions(lines) {
-  const widths = lines.map((l) => { const m = OPTION.exec(l); return m ? m[1].length : -1; });
+  const widths = lines.map((l) => { const m = OPTION.exec(l); return m ? renderedLen(m[1]) : -1; });
   const column = Math.max(-1, ...widths);
-  if (column < 0) return lines;
+  if (column < 0) return lines.slice();
   return lines.map((l, i) => {
     if (widths[i] < 0) return l;
     const m = /** @type {RegExpExecArray} */ (OPTION.exec(l));
-    return `${m[1].padEnd(column)} → ${m[2]}`;
+    return `${m[1]}${' '.repeat(column - widths[i])} → ${m[2]}`;
   });
 }
 

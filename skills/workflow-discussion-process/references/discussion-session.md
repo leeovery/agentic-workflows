@@ -59,15 +59,15 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
 Subtopics move through states as the conversation progresses. The judgment call is yours; recording it is the `discussion-map set` command (session loop step 3):
 
-**pending** → Identified but not yet explored. Sits on the map waiting for attention. New subtopics from tangents, agent findings, or natural discovery start here.
+**pending**    → Identified but not yet explored. Sits on the map waiting for attention. New subtopics from tangents, agent findings, or natural discovery start here.
 
-**exploring** → Actively being discussed. Options are surfacing, trade-offs being weighed, edge cases emerging. Only one or two subtopics should be `exploring` at a time — the conversation is linear.
+**exploring**  → Actively being discussed. Options are surfacing, trade-offs being weighed, edge cases emerging. Only one or two subtopics should be `exploring` at a time — the conversation is linear.
 
 **converging** → Narrowing toward a decision. The options are clear, the trade-offs are understood, and the discussion is honing in on a choice. This signals to both you and the user that a decision is close.
 
-**decided** → Decision reached with rationale. The subtopic section gets written up with the full Context → Options → Journey → Decision structure. Terminal for the map, though a later sitting may re-decide — the re-decision lands as a dated entry on the block's timeline (template revision convention).
+**decided**    → Decision reached with rationale. The subtopic section gets written up with the full Context → Options → Journey → Decision structure. Terminal for the map, though a later sitting may re-decide — the re-decision lands as a dated entry on the block's timeline (template revision convention).
 
-**deferred** → Deliberately set aside. Written by the defer gate in **G. Concluding** — and by a triage fold that re-parks previously-`deferred` ground a rerouted concern reopened (the raise showed the user what is being set aside, and the fold writes the Open Threads note itself) — and nowhere else: never set it during the session loop, however plainly the user parks something. When they say a subtopic stays open, leave it in the state the conversation reached and carry on; the defer gate sweeps it at conclusion. Setting it early makes `all_decided` true, so the gate never renders — the user is never shown what is being set aside, and the Open Threads entry the gate writes never lands.
+**deferred**   → Deliberately set aside. Written by the defer gate in **G. Concluding** — and by a triage fold that re-parks previously-`deferred` ground a rerouted concern reopened (the raise showed the user what is being set aside, and the fold writes the Open Threads note itself) — and nowhere else: never set it during the session loop, however plainly the user parks something. When they say a subtopic stays open, leave it in the state the conversation reached and carry on; the defer gate sweeps it at conclusion. Setting it early makes `all_decided` true, so the gate never renders — the user is never shown what is being set aside, and the Open Threads entry the gate writes never lands.
 
 **State transitions are judgement calls.** Move a subtopic to `converging` when the viable options are narrowed and the discussion is heading toward resolution. Move to `decided` when there's a clear outcome with rationale — even if provisional. Don't wait for absolute certainty. Any state can move to any other — judgment may revisit. The one exception is `deferred`: it belongs to the defer gate, not to session judgement.
 
@@ -112,7 +112,7 @@ node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_un
 The output is one snapshot in two demarcated sections:
 
 - **DATA** — reasoning surface: `counts`, `all_decided`, `unresolved`, `review_cycles`. Reason from it; never display or restate it.
-- **DISPLAY** — the rendered map. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **DISPLAY** — the rendered map. Emit verbatim as a makefile code block (```makefile fence — it tints the status column). Never redraw, reflow, or trim it.
 
 A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 

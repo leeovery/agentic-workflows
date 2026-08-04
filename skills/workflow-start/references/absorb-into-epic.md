@@ -42,7 +42,7 @@ Topic name in **{target_epic:(titlecase)}**: **{selected.name}**
 
 **`y/yes`**  → Use this name
 **`b/back`** → Return
-**Rename**   → Enter a different name (kebab-case)
+**Rename** → Enter a different name (kebab-case)
 ```
 
 **STOP.** Wait for user response.
@@ -170,7 +170,7 @@ Absorb Summary
 
 ```
 · · · · · · · · · · · ·
-Proceed?
+**`◆ Proceed?`**
 **`y/yes`**
 **`n/no`**
 ```

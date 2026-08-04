@@ -115,7 +115,8 @@ function firstContentIndex(lines) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 1 — Phase-title borders: ●-bordered lines are exactly 49 characters
+// Check 1 — Drawn phase-title borders are retired (banner excepted); the
+// markdown H1 chrome pins the ■ glyph
 // (● + 47 ─ + ●). The workflow-start banner block is the one documented
 // exception and is skipped.
 // ---------------------------------------------------------------------------
@@ -153,7 +154,7 @@ function checkBorders(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 2 — Step / sub-step markers are exactly 49 characters. A marker is
+// Check 2 — Drawn step / sub-step markers are retired. A marker is
 // positively identified as the SOLE content line of a fenced block whose text
 // begins with "── " or "·· ". Centered "── {Title} ──" content dividers live
 // embedded inside multi-line DISPLAY blocks and are therefore never matched.
@@ -821,8 +822,8 @@ function checkBuriedInvoke(files) {
 // ---------------------------------------------------------------------------
 
 const CHECKS = [
-  ['1: phase-title borders (49 chars)', checkBorders],
-  ['2: step / sub-step markers (49 chars)', checkMarkers],
+  ['1: phase-title chrome (drawn borders retired)', checkBorders],
+  ['2: step / sub-step chrome (drawn markers retired)', checkMarkers],
   ['3: menu dot frames', checkDotFrames],
   ['4: banned STOP variants', checkBannedStop],
   ['5: banned navigation verbs', checkBannedNav],

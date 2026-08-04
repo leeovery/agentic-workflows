@@ -60,8 +60,8 @@ Depth: {depth:[straight-through|check-ins]} — {one-line reasoning}
 · · · · · · · · · · · ·
 **`◆ Does this plan look right?`**
 
-**`y/yes`** → Proceed with the analysis as planned
-**Adjust**  → Tell me what to change: hypotheses, trace lines, or depth
+**`y/yes`**  → Proceed with the analysis as planned
+**Adjust** → Tell me what to change: hypotheses, trace lines, or depth
 ```
 
 **STOP.** Wait for user response.
@@ -112,8 +112,8 @@ Remaining: {unresolved hypotheses and open trace lines, or "all hypotheses resol
 · · · · · · · · · · · ·
 **`◆ Picking up where we left off — still good?`**
 
-**`y/yes`** → Continue as agreed
-**Revise**  → Tell me what to change: hypotheses, trace lines, or depth
+**`y/yes`**  → Continue as agreed
+**Revise** → Tell me what to change: hypotheses, trace lines, or depth
 ```
 
 **STOP.** Wait for user response.

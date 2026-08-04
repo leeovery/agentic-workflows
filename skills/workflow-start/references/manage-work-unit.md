@@ -17,7 +17,7 @@ node .claude/skills/workflow-start/scripts/gateway.cjs manage
 The output is one snapshot in three demarcated sections:
 
 - **DATA** — reasoning surface: the `UNITS` table — one line per work unit, `n  work_type  work_unit`, numbering matching the overview. Reason from it; never display or restate it.
-- **DISPLAY** — the numbered work-unit list by type. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **DISPLAY** — the numbered work-unit list by type. Emit verbatim as a makefile code block (```makefile fence — it tints the status column). Never redraw, reflow, or trim it.
 - **MENU** — the selection prompt. Emit verbatim as markdown (not a code block).
 
 Emit the DISPLAY section, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.

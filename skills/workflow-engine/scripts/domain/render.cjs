@@ -835,15 +835,18 @@ function triageBlock(cwd, { dotpath }) {
   if (!files.length) throw new Error(`render triage-block: the ${topic} ${phase} triage queue is empty — nothing blocks conclusion`);
   const doing = phase === 'research' ? 'exploration' : 'discussion';
   // A true blocker — the red register (see blocker()), guidance as markdown.
-  return section(
-    'DISPLAY: triage block',
-    'emit verbatim as a properties code block — ```properties fence',
-    `⚑ Triage queue not empty — ${files.length} rerouted concern${files.length === 1 ? '' : 's'} awaiting ${doing}`,
-  ) + section(
-    'DISPLAY: triage block guidance',
-    'emit verbatim as markdown',
-    '> Returning to the session to surface them before concluding.',
-  );
+  return [
+    section(
+      'DISPLAY: triage block',
+      'emit verbatim as a properties code block — ```properties fence',
+      `⚑ Triage queue not empty — ${files.length} rerouted concern${files.length === 1 ? '' : 's'} awaiting ${doing}`,
+    ),
+    section(
+      'DISPLAY: triage block guidance',
+      'emit verbatim as markdown',
+      '> Returning to the session to surface them before concluding.',
+    ),
+  ].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -1002,15 +1005,18 @@ function itemOf(manifest, phase, topic) {
 // markdown section as a signpost, so it reflows and stays calm.
 /** @param {string} fact @param {string} guidance */
 function blocker(fact, guidance) {
-  return section(
-    'DISPLAY: entry blocker',
-    'emit verbatim as a properties code block — ```properties fence',
-    `⚑ ${fact}`,
-  ) + section(
-    'DISPLAY: blocker guidance',
-    'emit verbatim as markdown, then STOP — terminal condition',
-    `> ${guidance}`,
-  );
+  return [
+    section(
+      'DISPLAY: entry blocker',
+      'emit verbatim as a properties code block — ```properties fence',
+      `⚑ ${fact}`,
+    ),
+    section(
+      'DISPLAY: blocker guidance',
+      'emit verbatim as markdown, then STOP — terminal condition',
+      `> ${guidance}`,
+    ),
+  ].join('\n');
 }
 
 /**

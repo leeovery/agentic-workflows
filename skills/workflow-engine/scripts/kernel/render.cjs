@@ -29,7 +29,7 @@
 
 const { displayWidth } = require('./terminal.cjs');
 
-const WIDTH = 49; // canonical fixed width (CONVENTIONS.md: phase titles, markers)
+const WIDTH = 49; // legacy drawn-chrome width — engine DISPLAY boxes and dev-aid CLI verbs only; prose chrome is markdown now
 
 // ---------------------------------------------------------------------------
 // Core: width + wrap primitives
@@ -204,8 +204,9 @@ function renderSiblings(nodes, prefix, width, out) {
 
 // Pad every tagged row out to one shared column so tags line up regardless of
 // label length or depth. When the column would push the longest tag past the
-// width, it tightens to a single space — an aligned column is worth less than
-// a row that fits.
+// width, it tightens to a single space — the least-overflow layout available;
+// a pathological row+tag can still exceed the width and soft-wrap, exactly as
+// the inline [tag] form always could.
 /** @param {{text: string, tag: string|null}[]} rows @param {number} width @returns {string[]} */
 function columniseTags(rows, width) {
   const tagged = rows.filter((r) => r.tag);

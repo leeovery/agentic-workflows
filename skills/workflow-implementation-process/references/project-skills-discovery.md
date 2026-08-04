@@ -158,8 +158,8 @@ Found these project skills that may be relevant to implementation:
 · · · · · · · · · · · ·
 **`◆ Which project skills should be used?`**
 
-**`a/all`**                → Use all listed skills
-**`n/none`**               → Skip project skills
+**`a/all`**                  → Use all listed skills
+**`n/none`**                 → Skip project skills
 **List the ones you want** → e.g. "golang-pro, react-patterns"
 ```
 
