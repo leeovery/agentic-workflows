@@ -259,6 +259,43 @@ through the stack.
 
 ## Log
 
+- 2026-08-05 — Slices 3–6 PR'd (#773–#776), the stack complete at six
+  code layers plus this log. Findings along the way, recorded so review
+  starts from them:
+  - **The glyph rule moved into `menuFrame`** rather than `menu` — a
+    bespoke projection's menu must render identically to a `menu()`
+    one, and a leading label is detectable structurally (first line,
+    blank beneath). Long or marked-up labels stay prose: markup cannot
+    nest inside the glyph span.
+  - **Golden re-pinning by script needs adult supervision.** The
+    resplice tool located the wrong array in several tests —
+    overwriting a display tree, a fixture input, and two JSON payloads
+    with menu content. Every wrong splice was caught by a failing test
+    and restored from git; the lesson is that the tool's output is a
+    draft, not a result. One corrupted expected-block (the tasks cycle
+    test) was worth a hand-written golden.
+  - **The banned-nav lint collided with the arrow.** An option label
+    may legitimately open with "Skip to" or "Enter" — option lines are
+    inputs, not navigation directives, and the lint now exempts the
+    option grammar. The dot-frame check gained the inverse: a rule
+    directly below option content is a closing rule and flagged.
+  - **Inline key references merged everywhere** (`` `b/back` ``, 99
+    sites) so the menu row and the prose that names it share one form.
+  - **Slice 6 shrank on inspection**: the 851-line estimate counted
+    every short quote line; only 145 lines were genuinely wrapped
+    paragraphs inside markdown-instructed fences. Artifact templates
+    were protected by construction — they never carry the markdown
+    emission instruction.
+  - **Slice 7 dissolves.** Prose snapshots hold state, not display
+    output, and no case file references an old shape — the
+    deterministic perimeter never moved. What remains is walks: 48
+    cases intersect the stack's diff (`select --diff main`), to be run
+    selectively on command.
+  - Open for review: engine-drawn display boxes still render at 49
+    inside their fences (the width question slice 2 answered for stage
+    dividers is unanswered for boxes — widening them to content width
+    read as heavy in the design session, so they stayed).
+
 - 2026-08-04 — Design settled end to end in one session, every register
   verified against a live terminal rather than assumed. Two early
   assumptions were refuted by measurement: that terminal width was
