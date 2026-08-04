@@ -1315,6 +1315,13 @@ describe('reads + derivations', () => {
         research: { items: { fees: { status: 'completed', reconcile_needed: true } } },
       } };
       assert.strictEqual(computeTopicLifecycle(m2, 'fees').reconcile_pending, true, 'brief flag raises it too');
+
+      // Terminal items keep their flag inertly — no cue with no clear route.
+      const m3 = { work_type: 'epic', phases: {
+        discovery: { items: { fees: { routing: 'discussion' } } },
+        discussion: { items: { fees: { status: 'cancelled', previous_status: 'completed', reconcile_needed: 'research' } } },
+      } };
+      assert.strictEqual(computeTopicLifecycle(m3, 'fees').reconcile_pending, false, 'cancelled flag stays dark');
     });
 
     it('a triaged stub renders fresh with the triage_parked rider — research', () => {

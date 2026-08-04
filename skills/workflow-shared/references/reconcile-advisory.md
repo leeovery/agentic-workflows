@@ -109,7 +109,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 #### If output is `scoping` (the quick-fix scope revised)
 
-Scoping was revisited after this implementation completed — the plan it registered may have changed. Surface the advisory, re-read the plan before continuing, and clear the flag.
+Scoping was revisited after this implementation completed — the spec and plan it registered may have changed. Surface the advisory, re-read the plan before continuing, and clear the flag.
 
 > *Output the next fenced block as a code block:*
 

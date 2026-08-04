@@ -198,6 +198,26 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.strictEqual(clean.label, 'Resume "Fees" — discussion');
   });
 
+  it('all-done-but-flagged: the reconcile route (resume completed) is the recommendation, not analyze/regroup', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { fees: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discussion: { items: { fees: { status: 'completed' } } },
+        specification: { items: { fees: { status: 'completed', sources: { fees: { status: 'incorporated' } } } } },
+        planning: { items: { fees: { status: 'completed' } } },
+        implementation: { items: { fees: { status: 'completed' } } },
+        review: { items: { fees: { status: 'completed', reconcile_needed: 'implementation' } } },
+      },
+    });
+    const { keys } = epicMenu('v1', d);
+    const cOption = keys.find((k) => k.action === 'resume_completed');
+    assert.ok(cOption, 'completed option present');
+    assert.strictEqual(cOption.recommended, true, 'the reconcile route leads');
+    const sOption = keys.find((k) => k.action === 'analyze_discussions');
+    assert.notStrictEqual(sOption && sOption.recommended, true, 'analyze is not the recommendation');
+  });
+
   it('an input-moved start entry is never the recommendation', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',

@@ -758,6 +758,16 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'delete', `${wu}.specification.unified`, 'reconcile_needed']);
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.beta.status', 'incorporated']);
 
+    // A BARE triage landing on the spec'd completed discussion takes the
+    // same hop — no completed→in-progress transition skips it.
+    const bareReopen = sim.run(['topic', 'triage', wu, 'discussion', 'beta']);
+    assert.strictEqual(bareReopen.reopened, true);
+    assert.strictEqual(bareReopen.reconcile_flagged, true);
+    assert.deepStrictEqual(bareReopen.sources_staled, ['unified']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+    sim.run(['manifest', 'delete', `${wu}.specification.unified`, 'reconcile_needed']);
+    sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.beta.status', 'incorporated']);
+
     // Spec-entry bookkeeping: the wildcard snapshot and the analysis cache
     // metadata (a phase-level write on discussion).
     const statuses = sim.read(['manifest', 'get', `${wu}.specification.*`, 'status']);

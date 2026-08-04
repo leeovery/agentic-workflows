@@ -57,7 +57,7 @@
  * @typedef {object} SpecRow
  * @property {string} name
  * @property {string} status              proposed | in-progress | completed
- * @property {{name: string, tag: string}[]} sources  display rows (ready | extracted | pending | stale | "extracted, reopened")
+ * @property {{name: string, tag: string}[]} sources  display rows (ready | extracted | pending | stale | "stale, reopened" | "extracted, reopened")
  * @property {ConsultRow[]} consult
  * @property {number} extracted           X — sources incorporated
  * @property {number} total               Y — sources counted

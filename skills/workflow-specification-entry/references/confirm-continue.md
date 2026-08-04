@@ -119,7 +119,7 @@ Proceed?
 
 #### If `yes`
 
-→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `specification`, topic = `{the selected spec's name}`. On the epic scoped path this is the flag's one clear site — the topic path already cleared it at validate-phase, so the re-read is an empty no-op there.
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `specification`, topic = `{the selected spec's name}`.
 
 **If spec is completed with pending or stale sources:**
 

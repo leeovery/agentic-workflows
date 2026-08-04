@@ -350,8 +350,12 @@ function computeTopicLifecycle(manifest, topicName) {
   const rs = research ? research.status ?? null : null;
   const ds = discussion ? discussion.status : null;
   const triage_parked = rs === 'triaged' || ds === 'triaged';
-  const reconcile_pending = (research !== undefined && research.reconcile_needed !== undefined)
-    || (discussion !== undefined && discussion.reconcile_needed !== undefined);
+  // Terminal items keep their flag inertly (reactivation restores it live);
+  // cueing them would light `input moved` with no entry flow to clear it.
+  const flagLive = (/** @type {{status?: string, reconcile_needed?: unknown}|undefined} */ it) =>
+    it !== undefined && it.reconcile_needed !== undefined
+    && !['cancelled', 'superseded', 'promoted'].includes(/** @type {string} */ (it.status));
+  const reconcile_pending = flagLive(research) || flagLive(discussion);
 
   // Stored marker wins over name-matching: a research topic that fanned out
   // into differently-named discussions is terminal, with no next action. Read

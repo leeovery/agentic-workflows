@@ -615,6 +615,12 @@ function pickRecommendation(detail, numbered, options, hasMap) {
     const build = numbered.find((e) => e.action.startsWith('start_') && !e.blocked && !e.input_moved
       && BUILD_PHASES.includes(ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (e.action)]));
     if (build) return build;
+    // With a flagged completed item and nothing else to start, the reconcile
+    // route IS the recommendation — resuming the flagged item clears the flag.
+    if (detail.completed.some((i) => i.reconcile_needed !== undefined)) {
+      const cOption = options.find((o) => o.action === 'resume_completed');
+      if (cOption) { cOption.recommended = true; return null; }
+    }
     if (sOption) sOption.recommended = true;
     return null;
   }

@@ -51,7 +51,7 @@ Parse the discovery output to understand:
 - one line per closed epic — `{name} (last phase: {phase})`
 - `completed_count` / `cancelled_count` — the header counts
 
-The per-epic state surface (`all_done`, `analysis_caches`, `needs_sequencing`, the discovery map) is the scoped dump Step 4 runs after validation; display and routing come from the `view` snapshot at Step 8.
+The per-epic state surface (`all_done`, `reconcile_pending`, `analysis_caches`, `needs_sequencing`, the discovery map) is the scoped dump Step 4 runs after validation; display and routing come from the `view` snapshot at Step 8.
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

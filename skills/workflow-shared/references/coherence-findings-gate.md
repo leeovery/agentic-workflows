@@ -171,7 +171,7 @@ On return, read `result`.
 
 **If `result` is `landed`:**
 
-Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.coherence-analysis.candidates.{slug}.status approved`) and append `landed_topic` to the caller's `tracker` unless already present — several findings can land in one discussion, and the callout counts topics, not findings.
+Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.coherence-analysis.candidates.{slug}.status approved`) and append `landed_topic` to the caller's `tracker` unless already present — several findings can land in one discussion, and the callout counts topics, not findings. When the landing response carried `reconcile_flagged` or `sources_staled`, also tell the user the specification(s) named in `sources_staled` were flagged to reconcile — their extraction of `{landed_topic}` is now stale.
 
 → Return to **B. Gate Each Finding**.
 
