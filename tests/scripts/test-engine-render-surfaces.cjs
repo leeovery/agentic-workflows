@@ -365,6 +365,102 @@ describe('render findings-summary', () => {
   });
 });
 
+describe('render reroute-offer', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the clear-home offer byte-exactly — destination named, override in hand', () => {
+    const file = writePayload(dir, 'o.json', {
+      concern: 'Whether the pipeline can expose click windows',
+      target: 'behavioural-ranking',
+      landing_phase: 'research',
+    });
+    const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
+    assert.strictEqual(out, [
+      "=== MENU: reroute offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**Whether the pipeline can expose click windows** belongs to a different topic, not this one.',
+      "It reads as **behavioural-ranking**'s ground, landing research-side — append a phase to override (e.g. `r discussion`).",
+      '',
+      '- **`r`/`reroute`** — Send it to the topic it belongs to; it picks it up later',
+      '- **`k`/`keep`** — Keep it here as a subtopic',
+      DOTS,
+      '',
+    ].join('\n'));
+  });
+
+  it('renders the bare offer when no home is resolved', () => {
+    const file = writePayload(dir, 'b.json', { concern: 'A stray worry' });
+    const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
+    assert.match(out, /\*\*A stray worry\*\* belongs to a different topic, not this one\.\n\n- /);
+    assert.ok(!out.includes('ground, landing'), 'no destination line without a resolved home');
+  });
+
+  it('validates loudly — concern required, target and phase together, phase constrained', () => {
+    const bad = (name, obj) => renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
+    assert.throws(() => bad('c.json', { target: 't', landing_phase: 'research' }), /"concern" must be a non-empty string/);
+    assert.throws(() => bad('t.json', { concern: 'x', target: 't' }), /come together/);
+    assert.throws(() => bad('p.json', { concern: 'x', landing_phase: 'research' }), /come together/);
+    assert.throws(() => bad('l.json', { concern: 'x', target: 't', landing_phase: 'planning' }), /"landing_phase" must be "research" or "discussion"/);
+    assert.throws(() => renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout' }), /--file <payload\.json> is required/);
+  });
+});
+
+describe('render reroute-candidates', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders numbered candidates, the new option, and the research recommendation byte-exactly', () => {
+    const file = writePayload(dir, 'c.json', {
+      concern: 'Click-window feasibility',
+      landing_phase: 'research',
+      candidates: [
+        { name: 'behavioural-ranking', lifecycle: 'decided' },
+        { name: 'relevance-measurement', lifecycle: 'fresh' },
+      ],
+    });
+    const out = renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file });
+    assert.strictEqual(out, [
+      "=== MENU: reroute candidates (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'Where should "Click-window feasibility" land?',
+      '',
+      '- **`1`** — behavioural-ranking [decided]',
+      '- **`2`** — relevance-measurement [fresh]',
+      '- **`n`/`new`** — Create a new topic for it',
+      '',
+      "It reads as an open question — I'd land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).",
+      DOTS,
+      '',
+    ].join('\n'));
+  });
+
+  it('the discussion recommendation flips the wording and the override example', () => {
+    const file = writePayload(dir, 'd.json', {
+      concern: 'x', landing_phase: 'discussion',
+      candidates: [{ name: 'a', lifecycle: 'fresh' }],
+    });
+    const out = renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file });
+    assert.match(out, /a decision to make — I'd land it discussion-side/);
+    assert.match(out, /e\.g\. `1 research`/);
+  });
+
+  it('validates loudly — phase constrained, candidates non-empty and complete', () => {
+    const bad = (name, obj) => renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
+    assert.throws(() => bad('p.json', { concern: 'x', landing_phase: 'scoping', candidates: [{ name: 'a', lifecycle: 'f' }] }), /"landing_phase" must be "research" or "discussion"/);
+    assert.throws(() => bad('e.json', { concern: 'x', landing_phase: 'research', candidates: [] }), /"candidates" must be a non-empty array/);
+    assert.throws(() => bad('m.json', { concern: 'x', landing_phase: 'research', candidates: [{ name: 'a' }] }), /candidate 1 is missing "lifecycle"/);
+  });
+});
+
 describe('render finding-batch', () => {
   let dir;
   beforeEach(() => {
@@ -1175,7 +1271,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, concern, triage-offer, triage-block, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, concern, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });
 });
 

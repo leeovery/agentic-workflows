@@ -36,19 +36,13 @@ Two or more plausible homes and the conversation doesn't settle it. Set `resolut
 
 ## B. Offer the Reroute
 
-The user consents knowing the destination: a clear home is named in the offer, with its landing phase, before anything lands.
+Write the offer payload to `.workflows/.cache/{work_unit}/discussion/{topic}/reroute-offer.json` with the Write tool (`{"concern": "…", "target": "…", "landing_phase": "…"}` — the concern's short title, with `target` and `landing_phase` only when `resolution` is `clear`), then render it:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render reroute-offer {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/reroute-offer.json
 ```
-· · · · · · · · · · · ·
-**{concern}** belongs to a different topic, not this one.
-@if(resolution == clear) It reads as {target}'s ground, landing {landing_phase}-side — append a phase to override (e.g. `r discussion`). @endif
 
-- **`r`/`reroute`** — Send it to the topic it belongs to; it picks it up later
-- **`k`/`keep`** — Keep it here as a subtopic
-· · · · · · · · · · · ·
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -66,21 +60,13 @@ A phase appended to the reply overrides `landing_phase`.
 
 **If `reroute` and `resolution` is `ambiguous`:**
 
-State the recommendation in the menu:
+Write the candidates payload to `.workflows/.cache/{work_unit}/discussion/{topic}/reroute-candidates.json` with the Write tool (`{"concern": "…", "landing_phase": "…", "candidates": [{"name": "…", "lifecycle": "…"}]}` — every plausible home, lifecycle from the map read), then render it:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render reroute-candidates {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/reroute-candidates.json
 ```
-· · · · · · · · · · · ·
-Where should "{concern}" land?
 
-- **`1`** — {candidate} [{lifecycle}]
-- **`2`** — {candidate} [{lifecycle}]
-- **`n`/`new`** — Create a new topic for it
-
-It reads as {concern_nature:[an open question — I'd land it research-side|a decision to make — I'd land it discussion-side]}. Reply with an option, appending a phase to override (e.g. `1 discussion`).
-· · · · · · · · · · · ·
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
