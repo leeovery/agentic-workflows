@@ -259,6 +259,21 @@ through the stack.
 
 ## Log
 
+- 2026-08-05 — Five review agents swept the finished stack (conventions
+  accuracy, straggler hunt, engine correctness with live repros, golden
+  fidelity, prose readability). The golden audit — aimed at the known
+  resplice misfires — came back clean. Confirmed findings landed as one
+  fix commit at the tip: rendered-length arrow alignment (mixed menus
+  sat two columns apart), the makefile-fence restatement drift at
+  twelve call sites, and a tail of stragglers in docs/, README, and the
+  agent definitions — the systemic gap being that no sweep had covered
+  anything outside skills/. Deliberately left: engine DISPLAY boxes at
+  49 inside their fences (open question above), TREE_WIDTH freezing at
+  module load (bites only tests that reset mid-process), and the
+  glyph-length seam where the same surface flips between glyphed and
+  prose labels on name length — all recorded by the engine reviewer,
+  none load-bearing.
+
 - 2026-08-05 — Slices 3–6 PR'd (#773–#776), the stack complete at six
   code layers plus this log. Findings along the way, recorded so review
   starts from them:
