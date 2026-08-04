@@ -66,10 +66,16 @@ function tag(term) {
   return `[${term}]`;
 }
 
-// `↳ Derived-from` line — provenance, capitalised. Feeds a tree node's body[].
-/** @param {string} text */
+// `↳ Derived-from` line — provenance, capitalised. Feeds a tree node's body[]
+// as a hanging paragraph: the marker is two columns wide, so continuation
+// lines indent past it and the provenance reads as one block rather than
+// wrapping back under the arrow. The domain owns the marker, so it owns its
+// width; the renderer only applies the hang it is given.
+const PROVENANCE_HANG = '↳ '.length;
+
+/** @param {string} text @returns {{text: string, hang: number}} */
 function derivedFrom(text) {
-  return '↳ ' + capitalise(String(text).trim());
+  return { text: '↳ ' + capitalise(String(text).trim()), hang: PROVENANCE_HANG };
 }
 
 // Compose a tree node's title from its parts: `glyph label [tag]`. Any part may

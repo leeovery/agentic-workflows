@@ -26,18 +26,21 @@ const {
 // the split: conventions builds the strings, the renderer lays them out).
 const MAP = [
   {
-    title: title({ glyph: discoveryGlyph('researching'), label: 'Ai Content Engine', tag: 'researching' }),
+    title: title({ glyph: discoveryGlyph('researching'), label: 'Ai Content Engine' }),
+    tag: 'researching',
     body: [
       'AI imagery (enhancement-only v1), description generation, per-tenant tone / base-knowledge primitive, allowance + overage cost shape',
       derivedFrom('from exploration'),
     ],
   },
   {
-    title: title({ glyph: discoveryGlyph('ready_for_discussion'), label: 'Legal And Regulatory', tag: 'research complete · ready for discussion' }),
+    title: title({ glyph: discoveryGlyph('ready_for_discussion'), label: 'Legal And Regulatory' }),
+    tag: 'research complete · ready for discussion',
     body: ['Data residency, GDPR, age-gating for the competition flows', derivedFrom('from research-analysis')],
   },
   {
-    title: title({ glyph: discoveryGlyph('researching'), label: 'Menu And Admin', tag: 'researching' }),
+    title: title({ glyph: discoveryGlyph('researching'), label: 'Menu And Admin' }),
+    tag: 'researching',
     body: ['Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles', derivedFrom('from exploration')],
   },
 ];
@@ -178,14 +181,17 @@ describe('render shape: box (phase title)', () => {
 describe('render shape: renderTree (discovery map)', () => {
   it('reproduces the documented row lines byte-for-byte', () => {
     const lines = renderTree(MAP, { width: 65 }).split('\n');
-    assert.strictEqual(lines[0], '  ├─ ◐ Ai Content Engine [researching]');
+    // One shared tag column across the whole tree. The longest row sets it;
+    // here the 40-char tag will not fit at width 65, so the column tightens
+    // to a single space rather than pushing the tag past the edge.
+    assert.strictEqual(lines[0], '  ├─ ◐ Ai Content Engine    # researching');
     assert.strictEqual(
       lines.find((l) => l.includes('Legal And Regulatory')),
-      '  ├─ → Legal And Regulatory [research complete · ready for discussion]'
+      '  ├─ → Legal And Regulatory # research complete · ready for discussion'
     );
     assert.strictEqual(
       lines.find((l) => l.includes('Menu And Admin')),
-      '  └─ ◐ Menu And Admin [researching]'
+      '  └─ ◐ Menu And Admin       # researching'
     );
   });
 
@@ -269,8 +275,8 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(capitalise(''), '');
   });
 
-  it('derivedFrom builds a capitalised ↳ line', () => {
-    assert.strictEqual(derivedFrom('from research-analysis'), '↳ From research-analysis');
+  it('derivedFrom builds a capitalised ↳ line that hangs past its marker', () => {
+    assert.deepStrictEqual(derivedFrom('from research-analysis'), { text: '↳ From research-analysis', hang: 2 });
   });
 
   it('title composes glyph + label + [tag], omitting absent parts', () => {

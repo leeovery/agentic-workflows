@@ -147,13 +147,15 @@ function phaseNodes(phase, items) {
     const tagText = item.status === 'completed' && item.reconcile_needed !== undefined
       ? 'completed · input moved'
       : item.status;
-    let head = title({ label: titlecase(item.name), tag: tagText });
-    if (phase === 'planning' && item.format) head += ` · ${item.format}`;
-    /** @type {{title: string}[]} */
+    const head = title({ label: titlecase(item.name) });
+    // The plan format rides inside the tag rather than after it: anything
+    // appended past the tag column would break the alignment for every row.
+    const tag = phase === 'planning' && item.format ? `${tagText} · ${item.format}` : tagText;
+    /** @type {{title: string, tag?: string}[]} */
     const children = [];
     if (phase === 'specification' && Array.isArray(item.sources)) {
       for (const src of item.sources) {
-        children.push({ title: title({ label: titlecase(sourceName(src)), tag: src.status || 'pending' }) });
+        children.push({ title: title({ label: titlecase(sourceName(src)) }), tag: src.status || 'pending' });
       }
     }
     if (phase === 'implementation') {
@@ -164,7 +166,7 @@ function phaseNodes(phase, items) {
         children.push({ title: `${tasks} task(s) completed` });
       }
     }
-    return children.length ? { title: head, children } : { title: head };
+    return children.length ? { title: head, tag, children } : { title: head, tag };
   });
 }
 
@@ -225,7 +227,8 @@ function mapNodes(detail, heldTopics) {
     if (row.source_provenance) body.push(derivedFrom(row.source_provenance));
     const tag = heldTopics.has(row.name) ? `${lifecycleLabel(row)} · in session` : lifecycleLabel(row);
     const node = {
-      title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name), tag }),
+      title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
+      tag,
     };
     return body.length ? { ...node, body } : node;
   });
@@ -319,7 +322,11 @@ function epicDashboard(workUnit, detail, opts = {}) {
   const stages = [];
 
   if (hasMap) {
-    let block = signpost('DISCOVERY') + '\n\n';
+    // Stage dividers are drawn inside the fence, where markdown chrome cannot
+    // reach — so they size to the content they divide rather than to the
+    // kernel's fixed chrome width, and the dashboard stays internally
+    // consistent at any terminal width.
+    let block = signpost('DISCOVERY', { width: TREE_WIDTH }) + '\n\n';
     const callouts = stageMetaCallouts(detail, newArrivals);
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
     const total = detail.map_summary ? detail.map_summary.total : detail.discovery_map.length;
@@ -333,7 +340,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     const populated = stage.phases.filter((p) => (detail.phases[p] || []).length > 0);
     if (populated.length === 0) continue;
     stages.push(
-      signpost(stage.name) + '\n\n'
+      signpost(stage.name, { width: TREE_WIDTH }) + '\n\n'
       + populated.map((p) => phaseBlock(p, detail.phases[p])).join('\n')
     );
   }

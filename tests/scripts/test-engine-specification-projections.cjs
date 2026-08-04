@@ -206,16 +206,16 @@ describe('specification projections: display goldens', () => {
       '1. Auth Flow',
       '   ├─ Spec: [no spec]',
       '   └─ Discussions:',
-      '      ├─ auth-design [ready]',
-      '      └─ session-model [ready]',
+      '      ├─ auth-design      # ready',
+      '      └─ session-model    # ready',
       '',
       '2. Data Spec',
       '   ├─ Spec: in-progress (1 of 2 sources extracted)',
       '   ├─ Discussions:',
-      '   │  ├─ data-model [pending]',
-      '   │  └─ session-model [extracted]',
+      '   │  ├─ data-model       # pending',
+      '   │  └─ session-model    # extracted',
       '   └─ Consult:',
-      '      └─ billing [pending]',
+      '      └─ billing          # pending',
       '',
       '⚑ Discussions not ready for specification:',
       '  These discussions are still in progress and must be completed',
@@ -281,13 +281,13 @@ describe('specification projections: display goldens', () => {
       '1. Auth Spec',
       '   ├─ Spec: in-progress (1 of 1 sources extracted)',
       '   └─ Discussions:',
-      '      └─ auth-design [extracted, reopened]',
+      '      └─ auth-design    # extracted, reopened',
       '',
       '2. Data Spec',
       '   ├─ Spec: completed (1 of 2 sources extracted)',
       '   └─ Discussions:',
-      '      ├─ data-model [extracted]',
-      '      └─ billing [pending]',
+      '      ├─ data-model    # extracted',
+      '      └─ billing       # pending',
       '',
       'Completed discussions not in a specification:',
       '  • reports',
@@ -373,7 +373,7 @@ describe('specification projections: display goldens', () => {
       '1. V1',
       '   ├─ Spec: [no spec]',
       '   └─ Discussions:',
-      '      └─ solo [ready]',
+      '      └─ solo    # ready',
       '',
       '⚑ Discussions not ready for specification:',
       '  These discussions are still in progress and must be completed',
@@ -411,7 +411,7 @@ describe('specification projections: display goldens', () => {
       '1. V1',
       '   ├─ Spec: in-progress (1 of 1 sources extracted)',
       '   └─ Discussions:',
-      '      └─ solo [extracted]',
+      '      └─ solo    # extracted',
       '',
       'Key:',
       '',
@@ -453,8 +453,8 @@ describe('specification projections: display goldens', () => {
       '1. Combined Spec',
       '   ├─ Spec: completed (2 of 2 sources extracted)',
       '   └─ Discussions:',
-      '      ├─ solo [extracted]',
-      '      └─ other [extracted, reopened]',
+      '      ├─ solo     # extracted',
+      '      └─ other    # extracted, reopened',
       '',
       '⚑ Discussions not ready for specification:',
       '  These discussions are still in progress and must be completed',
@@ -700,8 +700,8 @@ describe('specification projections: menu goldens', () => {
     const sub = specificationCompletedMenu(detailOf(dir, 'v1'));
     assert.strictEqual(sub.display, [
       'Completed Specifications',
-      '  ├─ Auth Flow [completed]',
-      '  └─ Data Model [completed]',
+      '  ├─ Auth Flow     # completed',
+      '  └─ Data Model    # completed',
       '',
     ].join('\n'));
     assert.strictEqual(sub.rendered, [
@@ -773,7 +773,7 @@ describe('specification adapter: gateway verbs', () => {
     ].join('\n'));
     const out = run(['view', 'v1']);
     assert.ok(out.includes('=== DATA (reason from this — never display or parse the sections below) ==='));
-    assert.ok(out.includes('=== DISPLAY (emit verbatim as a code block) ==='));
+    assert.ok(out.includes('=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ==='));
     assert.ok(out.includes('=== MENU (emit verbatim as markdown) ==='));
     assert.ok(out.includes('scenario: groupings\n'));
     assert.ok(out.includes('discussions_checksum: (none)'));
@@ -787,7 +787,7 @@ describe('specification adapter: gateway verbs', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
     const out = run(['view', 'v1']);
     assert.ok(out.includes('scenario: blocked-no-discussions'));
-    assert.ok(out.includes('=== DISPLAY (emit verbatim as a code block) ==='));
+    assert.ok(out.includes('=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ==='));
     assert.ok(!out.includes('=== MENU'));
     assert.ok(!out.includes('ACTIONS'));
   });

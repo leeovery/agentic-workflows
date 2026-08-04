@@ -63,21 +63,19 @@ function breakdown(summary) {
   return ' — ' + present.map(([key, label]) => `${summary[key]} ${label}`).join(' · ');
 }
 
-/** Map rows as kernel tree nodes: glyph + name + [lifecycle label]. @param {DiscoveryMapRow[]} rows */
+/** Map rows as kernel tree nodes: glyph + name, lifecycle label in the tag column. @param {DiscoveryMapRow[]} rows */
 function mapNodes(rows) {
   return rows.map((row) => ({
-    title: title({
-      glyph: discoveryGlyph(row.lifecycle),
-      label: titlecase(row.name),
-      tag: discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false),
-    }),
+    title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
+    tag: discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false),
   }));
 }
 
-/** Proposed rows: ○ (fresh-to-be) + name + [routing], summary wrapping beneath. @param {ProposedTopic[] } proposed */
+/** Proposed rows: ○ (fresh-to-be) + name, routing in the tag column, summary beneath. @param {ProposedTopic[] } proposed */
 function proposedNodes(proposed) {
   return proposed.map((t) => ({
-    title: title({ glyph: '○', label: titlecase(t.name), tag: t.routing }),
+    title: title({ glyph: '○', label: titlecase(t.name) }),
+    tag: t.routing,
     body: [t.summary],
   }));
 }

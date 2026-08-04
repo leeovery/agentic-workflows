@@ -60,7 +60,7 @@ describe('epic projections: dashboard (map branch)', () => {
     '  Quiz Competition V1',
     '●───────────────────────────────────────────────●',
     '',
-    '── DISCOVERY ────────────────────────────────────',
+    '── DISCOVERY ────────────────────────────────────────────────────',
     '',
     '  · seeded from the inbox',
     '  · 1 import',
@@ -68,29 +68,29 @@ describe('epic projections: dashboard (map branch)', () => {
     '  ⚑ 1 discussion(s) reopened by coherence review.',
     '',
     '  RESEARCH & DISCUSSION (2 topics · 1 ready · 1 fresh)',
-    '  ├─ → Kitchen Hardware [research complete · ready for discussion]',
+    '  ├─ → Kitchen Hardware # research complete · ready for discussion',
     '  │     Receipt printing, KDS handoff, and the',
     '  │     fastest-cumulative-time-tiebreak-resolution-policy-and-of',
     '  │     fline-sync token that cannot break',
-    '  └─ ○ Menu Admin [fresh · routed to discussion]',
+    '  └─ ○ Menu Admin       # fresh · routed to discussion',
     '        Business-side menu modelling, admin shell (Filament vs',
     '        custom Vue/Nuxt), JustEat import, staff/roles',
     '        ↳ From exploration',
     '',
-    '── DEFINITION ───────────────────────────────────',
+    '── DEFINITION ───────────────────────────────────────────────────',
     '',
     '  SPECIFICATION (1 completed)',
-    '  └─ Roles And Permissions [completed]',
-    '     ├─ Menu Admin [incorporated]',
-    '     └─ Auth Flow [pending]',
+    '  └─ Roles And Permissions    # completed',
+    '     ├─ Menu Admin            # incorporated',
+    '     └─ Auth Flow             # pending',
     '',
     '  PLANNING (1 completed)',
-    '  └─ Roles And Permissions [completed] · tick',
+    '  └─ Roles And Permissions    # completed · tick',
     '',
-    '── DELIVERY ─────────────────────────────────────',
+    '── DELIVERY ─────────────────────────────────────────────────────',
     '',
     '  IMPLEMENTATION (1 in-progress)',
-    '  └─ Roles And Permissions [in-progress]',
+    '  └─ Roles And Permissions    # in-progress',
     '     └─ Phase 2, 3 task(s) completed',
     '',
   ].join('\n');
@@ -107,7 +107,7 @@ describe('epic projections: dashboard (map branch)', () => {
       newArrivals: { research_analysis: ['menu-admin'], gap_analysis: [] },
     });
     const lines = out.split('\n');
-    const start = lines.indexOf('  ├─ → Kitchen Hardware [research complete · ready for discussion]');
+    const start = lines.findIndex((l) => l.startsWith('  ├─ → Kitchen Hardware'));
     const end = lines.indexOf('        ↳ From exploration');
     assert.ok(start > 0 && end > start, 'map tree rows present');
     let underLast = false;
@@ -136,10 +136,10 @@ describe('epic projections: dashboard (map branch)', () => {
         '  V1',
         '●───────────────────────────────────────────────●',
         '',
-        '── DISCOVERY ────────────────────────────────────',
+        '── DISCOVERY ────────────────────────────────────────────────────',
         '',
         '  RESEARCH & DISCUSSION (1 topics · 1 fresh)',
-        '  └─ ○ Topic [fresh · routed to research]',
+        '  └─ ○ Topic    # fresh · routed to research',
         '',
       ].join('\n')
     );
@@ -156,7 +156,7 @@ describe('epic projections: dashboard (map branch)', () => {
       },
     });
     const out = epicDashboard('v1', d);
-    assert.ok(out.includes('Menu Admin [completed · input moved]'), out);
+    assert.match(out, /Menu Admin\s+# completed · input moved/, out);
     const key = epicKey(d);
     assert.ok(key.includes('input moved — an upstream artifact was revised'), key);
     const { keys } = epicMenu('v1', d);
@@ -177,7 +177,7 @@ describe('epic projections: dashboard (map branch)', () => {
       },
     });
     const out = epicDashboard('v1', d);
-    assert.ok(out.includes('✓ Fees [decided · input moved]'), out);
+    assert.match(out, /✓ Fees\s+# decided · input moved/, out);
     const key = epicKey(d);
     assert.ok(key.includes('input moved — an upstream artifact was revised'), key);
   });
@@ -244,7 +244,7 @@ describe('epic projections: dashboard (map branch)', () => {
     });
     const out = epicDashboard('v1', d);
     assert.ok(out.includes('  RESEARCH & DISCUSSION (1 topics · 1 fresh)'), out);
-    assert.ok(out.includes('  └─ ○ Parked [fresh · routed to research · triage waiting]'), out);
+    assert.match(out, /  └─ ○ Parked\s+# fresh · routed to research · triage waiting/, out);
   });
 });
 
@@ -268,14 +268,14 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
         '  Auth Overhaul',
         '●───────────────────────────────────────────────●',
         '',
-        '── DISCOVERY ────────────────────────────────────',
+        '── DISCOVERY ────────────────────────────────────────────────────',
         '',
         '  RESEARCH (1 in-progress, 1 completed)',
-        '  ├─ Market Analysis [in-progress]',
-        '  └─ Competitor Scan [completed]',
+        '  ├─ Market Analysis    # in-progress',
+        '  └─ Competitor Scan    # completed',
         '',
         '  DISCUSSION (1 completed)',
-        '  └─ Auth Flow [completed]',
+        '  └─ Auth Flow    # completed',
         '',
         '  ⚑ Consider completing remaining research before starting',
         '    discussion. Topic analysis works best with all research',
@@ -737,8 +737,8 @@ describe('epic projections: presence join', () => {
   it('the dashboard cues held map rows and the key explains the cue', () => {
     const d = twoTopicDetail();
     const out = epicDashboard('v1', d, { presence: [heldRow] });
-    assert.ok(out.includes('Topic A [discussing · in session]'), out);
-    assert.ok(!out.includes('Topic B [fresh · routed to discussion · in session]'), out);
+    assert.match(out, /Topic A\s+# discussing · in session/, out);
+    assert.doesNotMatch(out, /Topic B\s+# fresh · routed to discussion · in session/, out);
     const key = epicKey(d, { presence: [heldRow] });
     assert.ok(key.includes('    Session:\n      in session — a live session elsewhere holds this topic'), key);
     assert.ok(!epicKey(d).includes('Session:'), 'no presence, no session key block');
@@ -944,7 +944,7 @@ describe('epic projections: selection sub-views', () => {
       '  2  resume  auth-flow  discussion  → /workflow-discussion-entry epic quiz-competition-v1 auth-flow',
       '  b  back  —  —  → (internal)',
       '',
-      '=== DISPLAY (emit verbatim as a code block) ===',
+      '=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ===',
       'Completed Topics',
       '',
       '  Research',

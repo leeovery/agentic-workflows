@@ -13,9 +13,17 @@
 // ---------------------------------------------------------------------------
 
 /**
+ * @typedef {{text: string, hang?: number}} TreeBody
+ *   A body paragraph. `hang` indents its continuation lines, so a paragraph
+ *   opening with a marker wraps under its text rather than under the marker.
+ *   A bare string is the same thing with no hang.
+ */
+
+/**
  * @typedef {object} TreeNode
- * @property {string} title          one-line header row (glyph/label/tag already composed)
- * @property {string[]} [body]       paragraphs beneath the row; each wraps independently
+ * @property {string} title          one-line header row (glyph/label already composed)
+ * @property {string} [tag]          trailing annotation, aligned into a column across the tree
+ * @property {(string|TreeBody)[]} [body] paragraphs beneath the row; each wraps independently
  * @property {TreeNode[]} [children] nested nodes, same shape, recursively
  */
 
@@ -71,15 +79,22 @@ function wrap(text, budget) {
 // rendered width (prefix + text) within `width`. THE budget bug lives here and
 // only here: the wrap budget is `width - prefix.length`, never the bare width.
 // `prefix` is the gutter/indent string applied to every line uniformly.
-/** @param {string} text @param {{width?: number, prefix?: string}} [opts] @returns {string[]} */
-function wrapWithPrefix(text, { width = WIDTH, prefix = '' } = {}) {
-  const budget = width - prefix.length;
+//
+// `hang` indents continuation lines by that many columns, so a paragraph
+// opening with a marker (`↳ `) wraps under its text rather than under the
+// marker. The budget subtracts the hang from every line, not just the
+// continuations — one unused column on the first line buys arithmetic that
+// cannot overflow.
+/** @param {string} text @param {{width?: number, prefix?: string, hang?: number}} [opts] @returns {string[]} */
+function wrapWithPrefix(text, { width = WIDTH, prefix = '', hang = 0 } = {}) {
+  const budget = width - prefix.length - hang;
   if (budget < 1) {
     throw new Error(
       `wrapWithPrefix: prefix (${prefix.length}) leaves no room within width ${width}`
     );
   }
-  return wrap(text, budget).map((seg) => prefix + seg);
+  const continuation = prefix + ' '.repeat(hang);
+  return wrap(text, budget).map((seg, i) => (i === 0 ? prefix : continuation) + seg);
 }
 
 // ---------------------------------------------------------------------------
@@ -121,20 +136,29 @@ function box(title, { width = WIDTH } = {}) {
 // Shapes: tree (continuous-gutter, recursive)
 // ---------------------------------------------------------------------------
 
+// Marker introducing a row's trailing annotation. It is a comment opener in
+// the fence the tree is emitted into, which is what tints the annotation
+// apart from the row — the kernel only knows it as the string that precedes
+// a tag, never what the tag means.
+const TAG_MARKER = '# ';
+
+// Blank columns between the longest row and the tag column.
+const TAG_GAP = 4;
+
 // Render nodes as a continuous-gutter tree. PURE LAYOUT: branch glyphs (├─/└─,
 // never ┌─ — the list hangs off whatever header precedes it), a continuous │
-// gutter at every depth, body word-wrap with the gutter subtracted from the
-// budget, and recursion for children. It knows nothing about glyphs, tags, or
-// provenance — the caller composes those into the strings (see the domain
-// ring's conventions.cjs).
+// gutter at every depth, a connector from a parent down to its children, body
+// word-wrap with the gutter subtracted from the budget, and tags aligned into
+// one column. It knows nothing about glyphs, statuses, or provenance — the
+// caller composes those (see the domain ring's conventions.cjs).
 //
-//   ├─ ◐ Ai Content Engine [researching]      ← title (caller-composed line)
-//   │      summary text wrapped to the budget…  ← body[0]
-//   │      ↳ From exploration                   ← body[1]
-//   ├─ → Decision-Point INFO Line Shape
-//   │  ├─ ✓ Field Order                         ← child
-//   │  └─ ◐ Truncation Rules
-//   └─ ◐ Menu And Admin [researching]           ← last sibling drops the │
+//   ├─ ◐ Ai Content Engine        # researching   ← title + columnised tag
+//   │  │  Summary text wrapped to the budget…      ← body[0], hanging off
+//   │  │  ↳ From exploration                       ← body[1], marker hangs
+//   │  ├─ ✓ Field Order           # decided        ← child
+//   │  └─ ◐ Truncation Rules      # exploring
+//   └─ ◐ Menu And Admin           # researching    ← last sibling drops the │
+//         Summary with no children sits unconnected
 //
 // Every sub-line carries the accumulated gutter, so the │ runs unbroken at any
 // depth; the body wrap budget is width − gutter, so body can never orphan.
@@ -143,27 +167,34 @@ function renderTree(nodes, { width = displayWidth() } = {}) {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     throw new Error('renderTree: nodes must be a non-empty array');
   }
-  /** @type {string[]} */
-  const out = [];
-  renderSiblings(nodes, '  ', width, out);
-  return out.join('\n') + '\n';
+  /** @type {{text: string, tag: string|null}[]} */
+  const rows = [];
+  renderSiblings(nodes, '  ', width, rows);
+  return columniseTags(rows, width).join('\n') + '\n';
 }
 
 // `prefix` is the accumulated gutter that precedes this level's branch glyphs.
-/** @param {TreeNode[]} nodes @param {string} prefix @param {number} width @param {string[]} out */
+/** @param {TreeNode[]} nodes @param {string} prefix @param {number} width @param {{text: string, tag: string|null}[]} out */
 function renderSiblings(nodes, prefix, width, out) {
   nodes.forEach((node, i) => {
     if (!node || !node.title) throw new Error(`renderTree: node ${i} needs a title`);
     const isLast = i === nodes.length - 1;
-    out.push(prefix + (isLast ? '└─ ' : '├─ ') + node.title);
+    out.push({ text: prefix + (isLast ? '└─ ' : '├─ ') + node.title, tag: node.tag || null });
     // Sub-content lives one level in. The last sibling drops the │ (blank) so
-    // nothing dangles below └─. Children branch at `childPrefix`; body has no
-    // branch, so it indents by the branch width (3) to land at the same content
-    // column — body text and child rows align.
+    // nothing dangles below └─.
     const childPrefix = prefix + (isLast ? '   ' : '│  ');
-    const bodyPrefix = childPrefix + '   ';
+    const hasChildren = !!(node.children && node.children.length);
+    // With children, the connector runs from this node's glyph through its
+    // body down to the last child, so the subtree visibly descends from its
+    // parent rather than appearing at an indent. With none there is nothing
+    // to connect to, so body indents to the content column instead.
+    const bodyPrefix = childPrefix + (hasChildren ? '│  ' : '   ');
     for (const para of node.body || []) {
-      for (const wl of wrapWithPrefix(para, { width, prefix: bodyPrefix })) out.push(wl);
+      const text = typeof para === 'string' ? para : para.text;
+      const hang = typeof para === 'string' ? 0 : (para.hang || 0);
+      for (const wl of wrapWithPrefix(text, { width, prefix: bodyPrefix, hang })) {
+        out.push({ text: wl, tag: null });
+      }
     }
     if (node.children && node.children.length) {
       renderSiblings(node.children, childPrefix, width, out);
@@ -171,4 +202,18 @@ function renderSiblings(nodes, prefix, width, out) {
   });
 }
 
-module.exports = { WIDTH, fillTo, wrap, wrapWithPrefix, signpost, box, renderTree };
+// Pad every tagged row out to one shared column so tags line up regardless of
+// label length or depth. When the column would push the longest tag past the
+// width, it tightens to a single space — an aligned column is worth less than
+// a row that fits.
+/** @param {{text: string, tag: string|null}[]} rows @param {number} width @returns {string[]} */
+function columniseTags(rows, width) {
+  const tagged = rows.filter((r) => r.tag);
+  if (!tagged.length) return rows.map((r) => r.text);
+  const longestRow = Math.max(...tagged.map((r) => r.text.length));
+  const longestTag = Math.max(...tagged.map((r) => TAG_MARKER.length + String(r.tag).length));
+  const column = longestRow + TAG_GAP + longestTag <= width ? longestRow + TAG_GAP : longestRow + 1;
+  return rows.map((r) => (r.tag ? r.text.padEnd(column) + TAG_MARKER + r.tag : r.text));
+}
+
+module.exports = { WIDTH, TAG_MARKER, TAG_GAP, fillTo, wrap, wrapWithPrefix, signpost, box, renderTree };
