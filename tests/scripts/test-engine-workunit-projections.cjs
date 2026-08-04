@@ -70,6 +70,32 @@ describe('workunit projections: status display', () => {
     assert.ok(!out.includes('seeded from the inbox'));
   });
 
+  it('feature: a flagged completed phase carries the cue, the ⚑ line, and takes next_phase', () => {
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        specification: { items: { 'auth-flow': { status: 'completed', reconcile_needed: 'discussion' } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    const unit = unitOf(dir, 'feature', 'auth-flow');
+    assert.strictEqual(workUnitStatus('feature', unit), [
+      ...boxOf('Auth Flow'),
+      '  PIPELINE (feature)',
+      '  ├─ ✓ Discussion [completed]',
+      '  ├─ ✓ Specification [completed · input moved]',
+      '  └─ ✓ Planning [completed]',
+      '',
+      '  ⚑ Specification input moved — discussion revised since it completed.',
+      '',
+    ].join('\n'));
+    assert.strictEqual(unit.next_phase, 'specification');
+    assert.strictEqual(unit.phase_label, 'specification (input moved — reconcile)');
+    const menu = workUnitMenu('feature', unit);
+    assert.strictEqual(menu.keys[0].route, '/workflow-specification-entry feature auth-flow');
+    assert.match(workUnitData('feature', unit, menu), /^reconcile_pending: specification \(discussion\)$/m);
+  });
+
   it('bugfix: completed investigation and a ready next phase', () => {
     createManifest(dir, 'login-crash', {
       work_type: 'bugfix',
@@ -395,6 +421,7 @@ describe('workunit projections: data body', () => {
       'phase_label: specification (in-progress)',
       'finalising: false',
       'completed_phases: discussion',
+      'reconcile_pending: (none)',
       'revisit_available: true',
       'seeds_count: 1',
       'imports_count: 0',
@@ -416,6 +443,7 @@ describe('workunit projections: data body', () => {
       'phase_label: ready for investigation',
       'finalising: false',
       'completed_phases: (none)',
+      'reconcile_pending: (none)',
       'revisit_available: false',
       'ACTIONS (key  action  topic  → route):',
       '  y  continue  login-crash  → /workflow-investigation-entry bugfix login-crash',
@@ -440,6 +468,7 @@ describe('workunit projections: data body', () => {
       'phase_label: pipeline complete',
       'finalising: true',
       'completed_phases: scoping, implementation, review',
+      'reconcile_pending: (none)',
       'revisit_available: true',
       'ACTIONS (key  action  topic  → route):',
       '  y  finalise  hotfix-logs  → (internal)',

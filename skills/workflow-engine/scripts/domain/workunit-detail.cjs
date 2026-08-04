@@ -16,6 +16,7 @@ const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const { WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 const {
   phaseStatus,
+  phaseItems,
   computeUnitPhaseState,
   lastCompletedPhase,
 } = require('./derivations.cjs');
@@ -81,6 +82,9 @@ const WORK_UNIT_TYPES = {
  *                                     complete` never ran
  * @property {string[]} completed_phases
  * @property {string[]} in_progress_phases  pipeline phases in flight (a reopened phase mid-revisit)
+ * @property {{phase: string, from: string|boolean}[]} [reconcile_phases]  completed phases whose item carries
+ *                                     a reconcile flag — `from` is the flag value (the upstream
+ *                                     phase that moved, or `true` for a brief flag)
  * @property {number} [imports_count]  types with surfacesSeeds only
  * @property {number} [seeds_count]    types with surfacesSeeds only
  */
@@ -127,6 +131,18 @@ function completedPhases(cfg, manifest) {
   return cfg.pipeline.filter((phase) => phaseStatus(manifest, phase) === 'completed');
 }
 
+/** Completed pipeline phases whose item carries a reconcile flag, in pipeline order. @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {{phase: string, from: string|boolean}[]} */
+function reconcilePhases(cfg, manifest) {
+  /** @type {{phase: string, from: string|boolean}[]} */
+  const out = [];
+  for (const phase of cfg.pipeline) {
+    const flagged = phaseItems(manifest, phase)
+      .find((i) => i.status === 'completed' && i.reconcile_needed !== undefined);
+    if (flagged) out.push({ phase, from: flagged.reconcile_needed });
+  }
+  return out;
+}
+
 /**
  * Build the work-unit detail for one single-topic type: active units with
  * next-phase state, plus the completed/cancelled sets.
@@ -151,6 +167,8 @@ function workUnitDetail(cwd, type) {
       completed_phases: completedPhases(cfg, m),
       in_progress_phases: state.in_progress_phases,
     };
+    const flagged = reconcilePhases(cfg, m);
+    if (flagged.length > 0) unit.reconcile_phases = flagged;
     if (cfg.surfacesSeeds) {
       unit.imports_count = Array.isArray(m.imports) ? m.imports.length : 0;
       unit.seeds_count = Array.isArray(m.seeds) ? m.seeds.length : 0;

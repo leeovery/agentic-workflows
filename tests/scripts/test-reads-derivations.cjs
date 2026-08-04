@@ -437,6 +437,69 @@ describe('reads + derivations', () => {
       assert.ok(r.phase_label.includes('in-progress'));
     });
 
+    it('a flagged completed phase overrides forward routing — the pipeline never reads done past it', () => {
+      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
+        discussion: { items: { test: { status: 'completed' } } },
+        specification: { items: { test: { status: 'completed' } } },
+        planning: { items: { test: { status: 'completed' } } },
+        implementation: { items: { test: { status: 'completed' } } },
+        review: { items: { test: { status: 'completed', reconcile_needed: 'implementation' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'review');
+      assert.strictEqual(r.phase_label, 'review (input moved — reconcile)');
+    });
+
+    it('the earliest flagged phase wins over later flags and forward routing', () => {
+      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
+        discussion: { items: { test: { status: 'completed' } } },
+        specification: { items: { test: { status: 'completed', reconcile_needed: 'discussion' } } },
+        planning: { items: { test: { status: 'completed' } } },
+        implementation: { items: { test: { status: 'completed', reconcile_needed: 'planning' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'specification');
+      assert.strictEqual(r.phase_label, 'specification (input moved — reconcile)');
+    });
+
+    it('an upstream phase in flight preempts the flag walk — the cascade answers as before', () => {
+      // Mid-revision upstream: the flag must NOT route into the spec while its
+      // input is still moving. The walk defers to the cascade (which keeps the
+      // pre-flag mid-revisit answer); the upstream's conclusion re-runs this
+      // and the flag wins then.
+      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
+        discussion: { items: { test: { status: 'in-progress' } } },
+        specification: { items: { test: { status: 'completed', reconcile_needed: 'discussion' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'planning');
+      assert.strictEqual(r.phase_label, 'ready for planning');
+    });
+
+    it('a flagged in-progress item never triggers the override — completed only', () => {
+      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
+        discussion: { items: { test: { status: 'completed' } } },
+        specification: { items: { test: { status: 'in-progress', reconcile_needed: 'discussion' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'specification');
+      assert.strictEqual(r.phase_label, 'specification (in-progress)');
+    });
+
+    it('quick-fix flags route back the same way', () => {
+      const r = computeNextPhase({ name: 'test', work_type: 'quick-fix', phases: {
+        scoping: { items: { test: { status: 'completed' } } },
+        implementation: { items: { test: { status: 'completed', reconcile_needed: 'scoping' } } },
+        review: { items: { test: { status: 'completed' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'implementation');
+      assert.strictEqual(r.phase_label, 'implementation (input moved — reconcile)');
+    });
+
+    it('epics are excluded from the flag override — next_phase stays phase-coarse', () => {
+      const r = computeNextPhase({ name: 'test', work_type: 'epic', phases: {
+        discussion: { items: { alpha: { status: 'completed' } } },
+        specification: { items: { alpha: { status: 'completed', reconcile_needed: 'discussion' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'planning');
+    });
+
     it('returns in-progress review', () => {
       const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { review: { items: { test: { status: 'in-progress' } } } } });
       assert.strictEqual(r.next_phase, 'review');

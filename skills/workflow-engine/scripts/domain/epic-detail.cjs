@@ -42,6 +42,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @typedef {object} PhaseEntry
  * @property {string} name
  * @property {string} status
+ * @property {string|boolean} [reconcile_needed]  a live reconcile flag — the upstream phase that
+ *                                             moved, or `true` for a brief flag
  * @property {SpecSource[]} [sources]          specification items
  * @property {string} [format]                 planning items
  * @property {boolean} [deps_satisfied]        planning items
@@ -205,6 +207,7 @@ function epicDetail(cwd, manifest) {
     for (const item of items) {
       /** @type {PhaseEntry} */
       const entry = { name: item.name, status: item.status || 'unknown' };
+      if (item.reconcile_needed !== undefined) entry.reconcile_needed = item.reconcile_needed;
 
       if (phase === 'specification' && item.sources) {
         const sourcesArr = Array.isArray(item.sources)

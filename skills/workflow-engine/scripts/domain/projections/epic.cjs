@@ -140,10 +140,13 @@ function displayOrder(phase, items) {
   return [...items.filter((i) => i.status === 'proposed'), ...items.filter((i) => i.status !== 'proposed')];
 }
 
-/** Build the tree nodes for one build/flat phase. @param {string} phase @param {PhaseEntry[]} items */
+/** Build the tree nodes for one build/flat phase — a completed item with a live reconcile flag carries the `· input moved` cue. @param {string} phase @param {PhaseEntry[]} items */
 function phaseNodes(phase, items) {
   return displayOrder(phase, items).map((item) => {
-    let head = title({ label: titlecase(item.name), tag: item.status });
+    const tagText = item.status === 'completed' && item.reconcile_needed !== undefined
+      ? 'completed · input moved'
+      : item.status;
+    let head = title({ label: titlecase(item.name), tag: tagText });
     if (phase === 'planning' && item.format) head += ` · ${item.format}`;
     /** @type {{title: string}[]} */
     const children = [];
@@ -375,6 +378,11 @@ const KEY_SESSION =
   '    Session:\n'
   + '      in session — a live session elsewhere holds this topic';
 
+const KEY_RECONCILE =
+  '    Cue:\n'
+  + '      input moved — an upstream artifact was revised since this item\n'
+  + '                    completed; the item\'s entry flow reconciles it';
+
 /**
  * Section B — the Key block, showing only categories present in the display.
  * Empty string for a brand-new epic (the key is skipped on that branch).
@@ -389,6 +397,11 @@ function epicKey(detail, opts = {}) {
 
   const anyBlocked = (detail.phases.planning || [])
     .some((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
+  // The cue legend mirrors the display: with a map only build phases render
+  // item rows; without one every phase does.
+  const cuePhases = hasMap ? BUILD_PHASES : Object.keys(detail.phases);
+  const anyFlagged = cuePhases.some((p) => (detail.phases[p] || [])
+    .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined));
   const blocks = [];
   if (hasMap) {
     blocks.push(KEY_TIER);
@@ -396,6 +409,7 @@ function epicKey(detail, opts = {}) {
   } else {
     blocks.push(KEY_STATUS);
   }
+  if (anyFlagged) blocks.push(KEY_RECONCILE);
   if (hasMap && heldSessions(opts.presence).length > 0) blocks.push(KEY_SESSION);
   if (anyBlocked) blocks.push(KEY_BLOCKING);
   return '  Key:\n' + blocks.join('\n\n');
@@ -429,27 +443,32 @@ function discoveryEntryLabel(action, name, researchState, triageParked) {
 /** @param {string} phase @param {PhaseEntry} item */
 function continueLabel(phase, item) {
   const t = titlecase(item.name);
+  let label;
   if (phase === 'implementation' && item.current_phase != null) {
     if (item.current_task) {
-      return `Continue "${t}" — implementation (Phase ${item.current_phase}, Task ${item.current_task})`;
+      label = `Continue "${t}" — implementation (Phase ${item.current_phase}, Task ${item.current_task})`;
+    } else {
+      const tasks = Array.isArray(item.completed_tasks) ? item.completed_tasks.length : 0;
+      label = `Continue "${t}" — implementation (Phase ${item.current_phase}, ${tasks} task(s) completed)`;
     }
-    const tasks = Array.isArray(item.completed_tasks) ? item.completed_tasks.length : 0;
-    return `Continue "${t}" — implementation (Phase ${item.current_phase}, ${tasks} task(s) completed)`;
+  } else {
+    label = `Continue "${t}" — ${phase} [in-progress]`;
   }
-  return `Continue "${t}" — ${phase} [in-progress]`;
+  return item.reconcile_needed !== undefined ? `${label} · input moved` : label;
 }
 
-/** @param {NextPhaseEntry} n */
-function startVerbLabel(n) {
+/** @param {NextPhaseEntry} n @param {boolean} [srcFlagged]  the entry's source item carries a live reconcile flag */
+function startVerbLabel(n, srcFlagged) {
   const t = titlecase(n.name);
+  const cue = srcFlagged ? ' · input moved' : '';
   if (n.action === 'start_implementation') {
     if (n.blocked) {
-      return `Start implementation of "${t}" — blocked by ${(n.deps_blocking || []).map(depRef).join(', ')}`;
+      return `Start implementation of "${t}" — blocked by ${(n.deps_blocking || []).map(depRef).join(', ')}${cue}`;
     }
-    return `Start implementation of "${t}" — ${n.label}`;
+    return `Start implementation of "${t}" — ${n.label}${cue}`;
   }
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (n.action)];
-  return `Start ${phase} for "${t}" — ${n.label}`;
+  return `Start ${phase} for "${t}" — ${n.label}${cue}`;
 }
 
 /** Continue entries for one phase's in-progress items. @param {string} workUnit @param {EpicDetail} detail @param {string} phase @returns {MenuKey[]} */
@@ -473,13 +492,18 @@ function startEntries(workUnit, detail, phase) {
     if (ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (n.action)] !== phase) continue;
     const gate = START_GATE[/** @type {keyof typeof START_GATE} */ (n.action)];
     if (gate && !detail.gating[/** @type {keyof EpicDetail['gating']} */ (gate)]) continue;
+    // The entry's source item is the previous pipeline phase's same-named
+    // item — a live reconcile flag there means starting forward propagates
+    // known-stale input, so the label carries the cue.
+    const srcPhase = EPIC_PIPELINE[EPIC_PIPELINE.indexOf(phase) - 1];
+    const srcItem = srcPhase ? (detail.phases[srcPhase] || []).find((i) => i.name === n.name) : undefined;
     /** @type {MenuKey} */
     const entry = {
       key: '',
       action: n.action,
       topic: n.name,
       route: topicRoute(n.action, workUnit, n.name),
-      label: startVerbLabel(n),
+      label: startVerbLabel(n, srcItem !== undefined && srcItem.reconcile_needed !== undefined),
     };
     if (n.blocked) {
       entry.blocked = true;
