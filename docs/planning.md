@@ -2,7 +2,7 @@
 
 Planning turns the specification's *what* into a concrete *how*: phases, tasks, acceptance criteria, and the order they should be built in. It writes no code. Its output is a plan detailed enough that implementation can execute it task by task without re-opening a single decision — which is the point, because the decisions were already made and written into the spec.
 
-The spec is planning's only input, and planning refuses to start without a completed one. It also refuses on the in-between states — a spec that is only proposed, or has been superseded or promoted — and tells you which it hit. This is deliberate: a plan built on an unfinished spec is a plan built on sand. If a plan already exists, you choose to continue it or restart, and on continue, if the spec has changed since the plan was last built, the phase detects that and folds the changes into the affected phases before concluding.
+The spec is planning's only input, and planning refuses to start without a completed one. It also refuses on the in-between states — a spec that is only proposed, or has been superseded or promoted — and tells you which it hit. This is deliberate: a plan built on an unfinished spec is a plan built on sand. If a plan already exists, you choose to continue it or restart, and on continue, if the spec has changed since the plan was last built, the phase detects that and folds the changes into the affected phases before concluding. You are not left to stumble into that detection, either: reopening a spec marks its plan "input moved" at that moment, so menus and routing steer you back into planning — the staleness guarantee described in [how it stays reliable](reliability.md).
 
 ## Where the work will live
 
