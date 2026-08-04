@@ -53,7 +53,7 @@ Name it in passing as the landing happens — the user corrects you if you've mi
 
 **If genuinely ambiguous** — two or more plausible homes and the conversation doesn't settle it:
 
-Judge `landing_phase` from the concern's nature — an open question needing exploration → `research`; a decision needing making → `discussion` — and state the recommendation in the menu:
+Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** and state the recommendation in the menu:
 
 > *Output the next fenced block as markdown (not a code block):*
 

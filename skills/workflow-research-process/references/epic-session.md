@@ -49,7 +49,7 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
    node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
    ```
 
-   Resolve the target, and judge `landing_phase` from the concern's nature: an open question needing exploration → `research`; a decision needing making → `discussion`. If one topic clearly matches, propose it — with the recommended phase — and confirm with the user (their reply may override the phase). If nothing fits, propose a new kebab-case name and confirm. If several plausible candidates exist — or a near-match you're unsure of — present them and let the user choose:
+   Resolve the target, and judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. If one topic clearly matches, propose it — with the recommended phase — and confirm with the user (their reply may override the phase). If nothing fits, propose a new kebab-case name and confirm. If several plausible candidates exist — or a near-match you're unsure of — present them and let the user choose:
 
    > *Output the next fenced block as markdown (not a code block):*
 
