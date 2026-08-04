@@ -33,7 +33,7 @@ At natural conversational breaks, check for completed results.
 
 The shared surfacing protocol reads this declaration when presenting this phase's findings.
 
-- `explore` — the walked lane. Raises render under the heading `Needs Investigation`.
+- `explore` — the walked lane. Raises render under the heading `Needs Investigation`, and the raise's move is investigation: offer a deep-dive on the thread, never dispatched without the user's say.
 - `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the source or finding that determines it. The confirmation says amended, never removed.
 - `route` — approving delivers each finding to its owning topic through the shared triage landing.
 
