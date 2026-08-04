@@ -629,7 +629,6 @@ const RATCHET_PINS = {
   'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
   'skills/workflow-discussion-entry/references/gather-context.md': 1,
   'skills/workflow-discussion-process/references/closing-gates.md': 2,
-  'skills/workflow-discussion-process/references/off-topic-epic.md': 2,
   'skills/workflow-discussion-process/references/off-topic-non-epic.md': 2,
   'skills/workflow-discussion-process/references/perspective-agents.md': 2,
   'skills/workflow-implementation-entry/references/check-dependencies.md': 4,

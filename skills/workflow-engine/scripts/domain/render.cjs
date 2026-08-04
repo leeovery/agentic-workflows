@@ -512,6 +512,78 @@ function findingsSummary(cwd, { dotpath, file }) {
   return section('DISPLAY: findings summary', 'emit verbatim as a code block', lines.join('\n'));
 }
 
+// reroute-offer — the off-topic reroute's consent gate. The concern and,
+// when one home is clear, the resolved target with its judged landing
+// phase are judgment content; the chrome and the options are fixed.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function rerouteOffer(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render reroute-offer: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'reroute-offer');
+  const p = readJsonPayload(cwd, file, 'reroute-offer');
+  if (!isFilled(p.concern)) throw new Error('render reroute-offer: "concern" must be a non-empty string');
+  const hasTarget = isFilled(p.target);
+  const hasPhase = isFilled(p.landing_phase);
+  if (hasTarget !== hasPhase) {
+    throw new Error('render reroute-offer: "target" and "landing_phase" come together — both for a clear home, neither otherwise');
+  }
+  if (hasPhase && !['research', 'discussion'].includes(p.landing_phase)) {
+    throw new Error(`render reroute-offer: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
+  }
+  const label = hasTarget
+    ? `**${p.concern}** belongs to a different topic, not this one.\nIt reads as **${p.target}**'s ground, landing ${p.landing_phase}-side — append a phase to override (e.g. \`r discussion\`).`
+    : `**${p.concern}** belongs to a different topic, not this one.`;
+  return section(
+    'MENU: reroute offer',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(label, [
+      cmdOption('r', 'reroute', 'Send it to the topic it belongs to; it picks it up later'),
+      cmdOption('k', 'keep', 'Keep it here as a subtopic'),
+    ]),
+  );
+}
+
+// reroute-candidates — the ambiguous reroute's selection gate. The plausible
+// homes and the judged landing phase are judgment content; the numbering,
+// the new-topic option, and the override grammar are fixed.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function rerouteCandidates(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render reroute-candidates: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'reroute-candidates');
+  const p = readJsonPayload(cwd, file, 'reroute-candidates');
+  if (!isFilled(p.concern)) throw new Error('render reroute-candidates: "concern" must be a non-empty string');
+  if (!['research', 'discussion'].includes(p.landing_phase)) {
+    throw new Error(`render reroute-candidates: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
+  }
+  if (!Array.isArray(p.candidates) || p.candidates.length === 0) {
+    throw new Error('render reroute-candidates: "candidates" must be a non-empty array of {name, lifecycle}');
+  }
+  const options = p.candidates.map((c, i) => {
+    for (const field of ['name', 'lifecycle']) {
+      if (!isFilled(c[field])) throw new Error(`render reroute-candidates: candidate ${i + 1} is missing "${field}"`);
+    }
+    return cmdOption(String(i + 1), null, `${c.name} [${c.lifecycle}]`);
+  });
+  options.push(cmdOption('n', 'new', 'Create a new topic for it'));
+  const prompt = p.landing_phase === 'research'
+    ? 'It reads as an open question — I\'d land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).'
+    : 'It reads as a decision to make — I\'d land it discussion-side. Reply with an option, appending a phase to override (e.g. `1 research`).';
+  return section(
+    'MENU: reroute candidates',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`Where should "${p.concern}" land?`, options, { prompt }),
+  );
+}
+
 // finding-batch — a surfacing lane whose findings ask nothing of the user
 // beyond a yes: the `apply` batch (corrections determined by decisions
 // already made) and the `route` batch (concerns owned by a sibling topic).
@@ -1109,6 +1181,8 @@ const SURFACES = {
   'concern': concern,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,
+  'reroute-offer': rerouteOffer,
+  'reroute-candidates': rerouteCandidates,
   'proposed-task': proposedTask,
   'tasks-overview': tasksOverview,
   'author-task-gate': authorTaskGate,
