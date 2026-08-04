@@ -160,6 +160,19 @@ findings likewise.
 
 ## Log
 
+- 2026-08-04 — The stack walked: 17 affected cases, 14 PASS including
+  the phase's first research-review walk and both new lane shapes.
+  Walkers cite the canonical landing section by name; the three-owner
+  relay held for headings and resolutions. Three residues: the
+  clear-home arm of off-topic-epic surfaces neither target nor phase
+  before the reroute consent (case red, fork open — ceremony vs
+  consent, pre-dating this stack); the explore move landed in the
+  declaration but § F's Move beat never consults declarations, so the
+  move only sometimes closes the raise (one clause, costs a re-sweep);
+  and a walker-narration flake on the promotion case. Layers 5–7
+  (#762, #763, #764) added the polish pass, the coverage cases, and
+  the explore-move sentence.
+
 - 2026-08-04 — Stack layer 1 up (#757). The enumeration found the
   landing-phase rule stated at seven call sites plus triage-landing's
   own parameter bullet — not the three the motivation recorded; the
