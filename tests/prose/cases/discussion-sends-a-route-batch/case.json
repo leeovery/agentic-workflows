@@ -55,22 +55,23 @@
       "agent surface search-relevance discussion behavioural-ranking review-001 F1",
       "topic triage search-relevance research synonym-handling",
       "topic triage search-relevance research relevance-measurement",
-      "agent surface search-relevance discussion behavioural-ranking review-001 F2,F3"
+      "topic triage search-relevance discussion synonym-handling",
+      "agent surface search-relevance discussion behavioural-ranking review-001 F2,F3,F4"
     ],
     "calls_in_order": [
       "agent scan search-relevance discussion behavioural-ranking",
       "agent surface search-relevance discussion behavioural-ranking review-001 F1",
       "topic triage search-relevance research synonym-handling",
-      "agent surface search-relevance discussion behavioural-ranking review-001 F2,F3"
+      "agent surface search-relevance discussion behavioural-ranking review-001 F2,F3,F4"
     ],
     "calls_exclude": [
       "agent dispatch",
       "agent ack",
       "agent incorporate",
-      "agent surface search-relevance discussion behavioural-ranking review-001 F1,F2,F3",
       "topic start search-relevance discussion synonym-handling",
       "topic complete",
-      "knowledge.cjs index"
+      "knowledge.cjs index",
+      "agent surface search-relevance discussion behavioural-ranking review-001 F1,F2,F3,F4"
     ]
   }
 }

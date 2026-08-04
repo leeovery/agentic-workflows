@@ -17,13 +17,16 @@ The prose should have taken this path:
    approves, the Decision clause is struck, the finding is recorded and
    the write committed under its own subject marker
 7. the decide lane is empty, so the route batch follows: a second
-   finding-batch render, this time the route lane, naming each target
+   finding-batch render, this time the route lane, naming each target —
+   three items, two of them bound for the same sibling
 8. the user approves. Each concern is delivered through the shared
    triage landing into its target topic's queue, carrying the context
    built here, and both ids are recorded in ONE surface call, which
    drains the row so it incorporates automatically. Landing phase
-   follows each concern's nature, not the target's routing: both are
-   open questions their owners must explore, so both land research-side
+   follows each concern's nature, not the target's routing: the two open
+   questions land research-side, and the decision owed lands
+   discussion-side — including where the same sibling receives one of
+   each
 
 Presentation claims:
 
@@ -38,8 +41,8 @@ Presentation claims:
 Further claims:
 
 - the apply lane is cleared before the route lane is offered
-- exactly one surface call carries both route ids — the concerns are
-  not sent one at a time with a stop each
+- exactly one surface call carries all three route ids — the concerns
+  are not sent one at a time with a stop each
 - each landing seeds its target topic's triage queue, and neither
   sibling's discussion is entered or edited. Rerouting sends a concern
   away without marking this topic: behavioural-ranking's own Triage
@@ -50,5 +53,6 @@ Further claims:
 
 EXPECTED WORLD — the fixture plus: the Decision clause amended in place
 and committed; a triage entry in each of synonym-handling's and
-relevance-measurement's research queues; and the store row
-`review-001` with all three findings surfaced, standing `incorporated`.
+relevance-measurement's research queues plus one in synonym-handling's
+discussion queue; and the store row `review-001` with all four findings
+surfaced, standing `incorporated`.

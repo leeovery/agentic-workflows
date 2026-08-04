@@ -46,10 +46,12 @@ Further claims:
 - no fresh review dispatch, no ack, no incorporate call: surfacing the
   batch is what closes the row
 - the discussion file's edits are confined to the three corrections
-  named in the report, each landing as a dated in-place amendment rather
-  than a revision block preserving the original under an `#### Initial`
-  heading. No subtopic is added, no map state changes, and the Journey
-  and Options blocks are untouched
+  named in the report — the polling-fallback sentence, the retired
+  gateway name in Capture Confirmation's Context, and the currency rule
+  for refunds — three distinct sites, each landing as a dated in-place
+  amendment rather than a revision block preserving the original under
+  an `#### Initial` heading. No subtopic is added, no map state changes,
+  and the Options blocks are untouched
 - the walk stops after the commits; no new subtopic is opened and no
   conclusion gate is entered
 

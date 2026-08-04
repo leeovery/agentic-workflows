@@ -17,14 +17,14 @@ it still ends "A polling fallback remains available if delivery
 proves unreliable." The Journey is the argued side; the Decision
 sentence is the leftover. Strike it.
 
-### F2: "never polls" and the fallback sentence contradict each other
+### F2: The capture Context names a gateway the account section retired
 
 **Lane:** apply
 
-The same Decision block asserts the checkout never polls and then
-offers polling as a fallback, in consecutive sentences. Determined by
-the same Journey entry as F1 — the absolute reading is the decided
-one.
+Capture Confirmation § Context still calls the provider "the legacy
+gateway account". The opening Context settled on the existing gateway
+account under its current name when card-only was scoped. Rename it
+to match.
 
 ### F3: The currency rule is stated for amounts but left implied for refunds
 
