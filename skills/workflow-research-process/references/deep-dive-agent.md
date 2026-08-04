@@ -111,11 +111,15 @@ The research session continues — do not wait for the agent to return.
 
 ---
 
+## Lanes
+
+Deep-dive findings are all walked — no batch lanes. Raises render under the heading `Needs Investigation`.
+
 ## C. Check and Surface
 
 Delegate all check-for-results and presentation behaviour to the shared surfacing protocol. Deep-dive reports are substantive and prone to wall-of-text dumps — the protocol's never-dump rules are especially important here.
 
-→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `deep-dive`, work_unit = `{work_unit}`, phase = `research`, topic = `{topic}`, walk_heading = `Needs Investigation`.
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `deep-dive`, work_unit = `{work_unit}`, phase = `research`, topic = `{topic}`.
 
 **Promoting to a research file** (epic work type only): If during presentation the user engages with findings substantial enough to warrant their own research file — and agrees or requests it — promote them through the shared topic-creation core, so the new topic lands on the discovery map with validated naming and provenance:
 

@@ -10,7 +10,8 @@ This reference defines how to surface findings from background agents. Findings 
 
 - `agent_type` — `review` | `synthesis` | `deep-dive` — human-readable name used in user-facing messages, and the row kind this invocation surfaces
 - `work_unit`, `phase`, `topic` — the agent store address
-- `walk_heading` — optional; the heading the walked lane renders under. Defaults to `Needs A Decision`
+
+**Lane declaration** — the calling reference's **Lanes** section, already in context, owns this phase's lane semantics: the walked lane's name and heading, and what approving each batch lane does. A caller with no **Lanes** section is all-walk; its raises render under `Needs A Decision`.
 
 ## The Core Rules
 
@@ -62,7 +63,7 @@ The report was first-read on an earlier iteration; the row carries `announced`, 
 
 Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `### {ID}:` section headings. Cross-check the count either way.
 
-Read each finding's **lane** from its report section. Three lanes carry across every caller — the batched `apply`, the batched `route`, and the walked one, which a report names for its own phase (`decide` in discussion, `explore` in research). A report that declares no lanes is all-walk, as is any single finding whose section names none — an unlabelled finding is never assumed settled. Synthesis tensions are always walked, whatever the report says.
+Read each finding's **lane** from its report section. Three lanes carry across every caller — the batched `apply`, the batched `route`, and the walked one, named by the caller's **Lanes** declaration. A report that declares no lanes is all-walk, as is any single finding whose section names none — an unlabelled finding is never assumed settled. Synthesis tensions are always walked, whatever the report says.
 
 Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding the artifact itself contradicts — a subtopic the map records as open, a fix resting on a decision no section carries — moves to the walked lane and never reaches the batch screen. Never move a finding the other way.
 
@@ -217,7 +218,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 Take the findings one at a time — apply, then commit under that finding's own subject marker (`({id} {finding})`) — before starting the next.
 
-Each fix is a pure correction: amend the affected sites in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs — the shape in **D. Fold** in **[rerouted-concerns.md](rerouted-concerns.md)**. Never the template's revision shape.
+Each fix lands as the **Lanes** declaration's `apply` resolution prescribes.
 
 When every finding has landed, record the batch in one call:
 
@@ -225,7 +226,7 @@ When every finding has landed, record the batch in one call:
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
 ```
 
-Confirm in one line per finding — what changed, no restatement of the reasoning the screen already carried. An amended site is amended, not removed.
+Confirm in one line per finding — what changed, no restatement of the reasoning the screen already carried.
 
 → Return to caller.
 
@@ -260,12 +261,12 @@ This section runs once per invocation and then exits. It never waits in-protocol
    - **Move** — sized to how open the decision is as much as how cold the context: a clear resolution — propose it and name what it costs ("this creates X and Y; I don't see another approach"), never an option survey; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive.
 4. Raise it in the current turn, ending in a single question — or, for a finding with one defensible resolution, a stated proposal awaiting the user's response. Either way the turn ends and control returns: one finding per invocation, and the user's agreement is never licence to roll into the next. No bundled follow-ups, no menu.
 
-When this row's `surfaced` list holds no walked finding yet, the raise opens with the lane heading, padded with middle dots to 49 characters total, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
+When this row's `surfaced` list holds no walked finding yet, the raise opens with the walked lane's declared heading, padded with middle dots to 49 characters total, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
 
 > *Output the next fenced block as a code block:*
 
 ```
-·· {walk_heading} ·······························
+·· {lane_heading} ·······························
 ```
 
 **Setting the scene** — an example over a description, every time. A reader who can picture the failure can judge the fix; a reader parsing a mechanism description is still building the picture when the ask arrives.

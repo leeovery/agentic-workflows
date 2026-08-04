@@ -29,6 +29,14 @@ At natural conversational breaks, check for completed results.
 
 ---
 
+## Lanes
+
+The shared surfacing protocol reads this declaration when presenting this phase's findings.
+
+- `decide` — the walked lane. Raises render under the heading `Needs A Decision`.
+- `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs — the shape in **D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**; never the template's revision shape. The confirmation says amended, never removed.
+- `route` — approving delivers each finding to its owning topic through the shared triage landing.
+
 ## A. Dispatch
 
 Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal):
