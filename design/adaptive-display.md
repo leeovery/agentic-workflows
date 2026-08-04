@@ -131,6 +131,14 @@ Four signals, spent deliberately so each keeps meaning:
 - **green** (makefile comment) — status, within a closed vocabulary
 - **red** (properties value) — blocked; you cannot proceed
 
+There is a **fourth chrome category** the first pass missed: chrome the
+engine draws *inside* a fence. The epic dashboard's stage dividers
+(`── DISCOVERY ──`) are `signpost()` calls emitted into the DISPLAY
+block, where markdown cannot reach — so neither the prose sweep nor the
+width slice covers them. They size to the content they divide, which is
+free because they are engine-drawn, and unlike a menu rule they span
+exactly the block they belong to rather than the whole terminal.
+
 Glyphs carry the second axis, because colour dies if highlighting is
 off or the theme changes:
 
@@ -255,6 +263,15 @@ through the stack.
   verified against a live terminal rather than assumed. Two early
   assumptions were refuted by measurement: that terminal width was
   unreachable, and that signpost hand-wrapping was still required.
+- 2026-08-04 — Slice 2 PR'd (#772). The tag column is shared across the
+  whole tree, not per depth, and tightens to a single space when the
+  longest tag would otherwise be pushed past the width — visible in the
+  discovery-map golden, where a 40-character tag will not fit at 65.
+  The bracket form survives for plain list rows: they are not trees and
+  have no column to share, which two over-eager passes of the
+  re-pinning script got wrong and the tests caught. Fourth chrome
+  category found while re-pinning (see above): engine-drawn dividers
+  inside the fence, now sized to their content.
 - 2026-08-04 — Slice 1 PR'd (#771). Detection reads the device with
   `tty.WriteStream(fd).columns` rather than spawning `stty`, so the
   cost is one `ps` per process and no shell. Pinning turned out to be
