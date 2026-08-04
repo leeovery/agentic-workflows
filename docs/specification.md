@@ -20,13 +20,15 @@ Here is the phase's signature guard. Specification will not let you sign off whi
 
 The reason is that a spec which *looks* finished but silently dropped a source is more dangerous than one that is obviously unfinished. The obviously-unfinished spec gets completed; the silently-incomplete one ships a gap into the plan, where it becomes missing code or invented behaviour that nobody decided on. Refusing to complete is how the phase guarantees that "the spec is done" actually means "everything decided is in the spec."
 
+The refusal covers time as well as completeness. If a source discussion is re-decided *after* its content was extracted, that source is marked **stale** the moment the discussion reopens — and a stale source blocks sign-off exactly as a pending one does, even on a spec that was already completed once. Reconciling it is deliberately not a re-extraction: the phase re-reads the revised discussion, uses its decision history to find what actually changed, and amends only the affected content, through the same approval gate as everything else. And if the source discussion is still mid-revision, reconciliation waits — the spec will not conclude on a decision that has not finished moving.
+
 ## How the document gets built
 
 Content is written one topic at a time, never in a single pass. For each topic the cycle is the same: extract it exhaustively from the sources, present the exact text that will be written — rendered as it will appear in the document — refine it with you if needed, get explicit approval, write it verbatim, commit, and move to the next. Presenting the text is not approval; nor is silence, nor "continue," nor a follow-up question. Only an explicit yes writes anything. You approve each topic as it is built, or opt into auto to approve the rest at once.
 
 One gate never yields to auto. If, while extracting a later topic, the phase discovers something that changes a topic you already approved, it resurfaces that topic immediately — shows you a small diff of what would change and asks whether to record it. Because this edits content you already blessed, it stops and asks even if you have switched everything else to automatic. Blessed content is never quietly rewritten underneath you.
 
-Near the end, an automated two-pass review runs: one pass compares the spec against its source material to catch anything missed, and a second reads the spec as a standalone document looking for gaps a fresh reader would hit. You approve or dismiss what it finds.
+Near the end, an automated two-pass review runs: one pass compares the spec against its source material to catch anything missed, and a second reads the spec as a standalone document looking for gaps a fresh reader would hit — and for duplication, because a fact told twice is a future contradiction, so findings can shrink the spec as well as grow it. You approve or dismiss what it finds.
 
 ## What you are left with
 

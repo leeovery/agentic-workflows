@@ -88,7 +88,7 @@ Every completed artifact is indexed: research, discussions, investigations, spec
 
 ## An expert in the room
 
-This is multi-agent by design. Twenty-three specialised agents work alongside the pipeline: background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Findings are surfaced, never silently applied.
+This is multi-agent by design. Twenty-four specialised agents work alongside the pipeline: background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Findings are surfaced, never silently applied.
 
 ## Your task tracker
 
@@ -96,7 +96,7 @@ Plans write tasks to the format you choose behind one adapter contract: **Tick**
 
 ## When work changes shape
 
-A feature that outgrows its scope pivots into an epic. A feature that belongs inside one gets absorbed as a topic. Completed work reopens cleanly, cancelled work reactivates, and a spec that turns out to be project-wide gets promoted to a standing document. The system also notices change on its own: artifacts are checksummed, so an edited research file triggers an offer to re-analyse, and an edited spec an offer to replan.
+A feature that outgrows its scope pivots into an epic. A feature that belongs inside one gets absorbed as a topic. Completed work reopens cleanly, cancelled work reactivates, and a spec that turns out to be project-wide gets promoted to a standing document. The system also notices change on its own: artifacts are checksummed, so an edited research file triggers an offer to re-analyse, and an edited spec an offer to replan. Reopening has teeth too: reopen anything a later phase was built on and that phase is flagged to reconcile — cued on every menu, routed back to instead of past, and never read as done while the flag is live.
 
 ---
 
@@ -114,7 +114,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 ## Documentation
 
-The [full documentation](docs/README.md) covers every phase in detail, the engine beneath them, the knowledge base, all twenty-three agents, and the history of the project. Start with these:
+The [full documentation](docs/README.md) covers every phase in detail, the engine beneath them, the knowledge base, all twenty-four agents, and the history of the project. Start with these:
 
 | Page | Contents |
 |---|---|
@@ -124,7 +124,7 @@ The [full documentation](docs/README.md) covers every phase in detail, the engin
 | [Implementation](docs/implementation.md) | The TDD loop, gates, and the fix threshold |
 | [The engine](docs/engine.md) | What the deterministic core does, and why |
 | [The knowledge base](docs/knowledge-base.md) | Recall, provenance, decay |
-| [The agents](docs/agents.md) | All twenty-three, organised by when they act |
+| [The agents](docs/agents.md) | All twenty-four, organised by when they act |
 | [Configuration](docs/configuration.md) | Install, project defaults, gate modes |
 | [History](docs/history.md) | Where this came from and how it evolved |
 

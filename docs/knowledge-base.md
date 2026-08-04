@@ -18,7 +18,11 @@ You do not go looking for the memory; it comes to you. As you work through the e
 
 When something relevant turns up, you get a brief, unintrusive line noting the one or two things that actually bear on what you are doing — not a wall of old material — and that context folds into the phase. It pulls up a full original document only when a snippet looks genuinely load-bearing. If nothing relevant exists, you see nothing at all and the session simply continues.
 
-There is deliberate restraint about *when* it looks. During the phases meant to stay faithful to a single source — writing the specification, and planning against it — the system does not rummage through the wider memory, because that would pull the document away from its own agreed source material. The memory is for widening context early, not for second-guessing a decision that has already been captured.
+There is deliberate restraint about *when* it looks. During the phases meant to stay faithful to a single source — writing the specification, and planning against it — the system does not rummage through the wider memory, because that would pull the document away from its own agreed source material. The memory is for widening context early, not for second-guessing a decision that has already been captured. One narrow exception proves the rule: when an epic's specifications are being grouped, the memory is asked a single pointed question — did a sibling discussion decide something this spec must respect? What comes back arrives as a consult reference to cite, never as content to absorb, so the spec stays faithful to its own sources while still honouring decisions made next door.
+
+## When memory needs correcting
+
+A finished document sometimes turns out to be wrong after the fact. The correction is made in the document itself — edited in place, with a dated note recording what changed and why — and the memory then re-indexes that document, so recall serves the corrected text rather than the version that misled. Nothing is corrected by deletion: the note keeps the correction itself part of the record, and the citation trail stays honest.
 
 ## Why old material fades
 
