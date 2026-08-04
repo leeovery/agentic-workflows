@@ -24,7 +24,8 @@
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-shared/references/background-agent-surfacing.md",
-    "skills/workflow-shared/references/natural-breaks.md"
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-shared/references/triage-landing.md"
   ],
   "answers": [
     "c — continue"
