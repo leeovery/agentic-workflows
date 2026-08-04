@@ -7,19 +7,17 @@ The prose should have taken this path:
    and the user continues
 3. initialisation is skipped: the walk passes through file strategy and
    the guidelines, addresses the knowledge base once as a contextual
-   query (empty store — the session proceeds silently), and routes into
-   the epic research session
+   query — the store holds the epic's discovery context, and the session
+   takes the results in stride — and routes into the epic research
+   session
 4. the user shares a finding about click-log retention; the session
    documents it in the research file and commits
 5. the commit arms the dispatch check: no prior review row exists,
-   meaningful content landed, so a review dispatches. The dispatch
-   prompt carries the research file path, the output file path, AND a
-   one-line maturity indication of where the session stands — three
-   items, the indication present in the prompt text
-6. the stubbed report lands; at the next natural break the scan
-   promotes it, the findings are acknowledged, and the announce menu
-   renders — a count and the lane shape (one needs nothing, one needs
-   investigation), no finding content
+   meaningful content landed, so a review dispatches and the stubbed
+   report lands at the dispatch path
+6. at the next natural break the scan promotes the report, the
+   findings are acknowledged, and the announce menu renders — a count
+   per lane and what each asks, wording free, no finding content
 7. the user opts in. The apply lane runs first: a one-item batch screen
    rendered through the engine's finding-batch surface. The user
    approves; the judgment-collection thread is amended in place with a
@@ -35,8 +33,6 @@ The prose should have taken this path:
 Presentation claims — the research lane declarations are the behaviour
 under test:
 
-- the dispatch prompt's third item is a one-line maturity indication;
-  its wording is free but it describes session state, not a verdict
 - the announce names counts and what each lane asks; no finding content
 - the batch screen renders from the engine, not a prose template
 - the amendment cites the file's own source (the RankBench note) as
