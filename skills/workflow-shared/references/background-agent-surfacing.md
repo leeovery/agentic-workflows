@@ -141,7 +141,7 @@ Background {agent_type} returned — {N} finding(s): {shape}.
 · · · · · · · · · · · ·
 ```
 
-After rendering the menu, record the announce:
+After rendering the menu, record the announce — skip the call when the row already reads `announced: true`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}
