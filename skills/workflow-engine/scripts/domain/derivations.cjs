@@ -338,7 +338,10 @@ function computeNeedsSequencing(mapItems) {
 // (parked rerouted concerns, no session yet). It is a rider, not a lifecycle
 // — a triaged stub renders as `fresh` by fall-through, and the rider survives
 // on every branch (a `discussing` topic can still hold a parked research
-// stub, which never drains from the discussion side).
+// stub, which never drains from the discussion side). `reconcile_pending`
+// is the third rider: either phase item carries a live reconcile flag, so
+// the map row can cue `input moved` — with a map, phase-item rows never
+// render for research/discussion, making this the topic's only surface.
 function computeTopicLifecycle(manifest, topicName) {
   const discovery = phaseItems(manifest, 'discovery').find(i => i.name === topicName);
   const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
@@ -347,31 +350,37 @@ function computeTopicLifecycle(manifest, topicName) {
   const rs = research ? research.status ?? null : null;
   const ds = discussion ? discussion.status : null;
   const triage_parked = rs === 'triaged' || ds === 'triaged';
+  // Terminal items keep their flag inertly (reactivation restores it live);
+  // cueing them would light `input moved` with no entry flow to clear it.
+  const flagLive = (/** @type {{status?: string, reconcile_needed?: unknown}|undefined} */ it) =>
+    it !== undefined && it.reconcile_needed !== undefined
+    && !['cancelled', 'superseded', 'promoted'].includes(/** @type {string} */ (it.status));
+  const reconcile_pending = flagLive(research) || flagLive(discussion);
 
   // Stored marker wins over name-matching: a research topic that fanned out
   // into differently-named discussions is terminal, with no next action. Read
   // only the item's own field — never inspect siblings or provenance.
   if (discovery && discovery.handled === true) {
-    return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, triage_parked };
+    return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, triage_parked, reconcile_pending };
   }
 
   if (rs === 'in-progress' && ds === 'completed') {
     // Reopened research beneath a decided discussion — a triage landing
     // judged research-side. The topic is back in research; the discussion's
     // reconcile flag carries the downstream consequence.
-    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, triage_parked };
+    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, triage_parked, reconcile_pending };
   }
   if (ds === 'completed') {
-    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs, triage_parked };
+    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs, triage_parked, reconcile_pending };
   }
   if (ds === 'in-progress') {
-    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: rs, triage_parked };
+    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: rs, triage_parked, reconcile_pending };
   }
   if (rs === 'completed') {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked, reconcile_pending };
   }
   if (rs === 'in-progress') {
-    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, triage_parked };
+    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, triage_parked, reconcile_pending };
   }
   // Every attempted phase item is cancelled (and at least one was attempted):
   // the topic is cancelled-tier. A dual-attempt topic with one live item never
@@ -384,15 +393,15 @@ function computeTopicLifecycle(manifest, topicName) {
   // falling through to fresh (the stub is startable).
   const attempted = [rs, ds].filter((s) => s != null);
   if (attempted.length > 0 && attempted.every((s) => s === 'cancelled')) {
-    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, triage_parked };
+    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, triage_parked, reconcile_pending };
   }
   // Superseded research with no discussion: the topic's research lineage is
   // closed but a discussion path remains open. Render as ready-for-discussion
   // — the next available action is to discuss.
   if (rs === 'superseded' && !ds) {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked, reconcile_pending };
   }
-  return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, triage_parked };
+  return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, triage_parked, reconcile_pending };
 }
 
 function computeNextAction(routing, lifecycle) {
@@ -455,6 +464,7 @@ function computeSourceProvenance(source) {
  * @property {string|null} current_phase
  * @property {string|null} research_state
  * @property {boolean} triage_parked       a `triaged` stub (parked rerouted concerns) exists in either phase
+ * @property {boolean} reconcile_pending   a phase item beneath the row carries a live reconcile flag
  * @property {string|null} next_action
  */
 
@@ -476,7 +486,7 @@ function computeSourceProvenance(source) {
 function buildDiscoveryMap(manifest) {
   const discoveryItems = phaseItems(manifest, 'discovery');
   const map = discoveryItems.map((item) => {
-    const { lifecycle, tier, current_phase, research_state, triage_parked } = computeTopicLifecycle(manifest, item.name);
+    const { lifecycle, tier, current_phase, research_state, triage_parked, reconcile_pending } = computeTopicLifecycle(manifest, item.name);
     const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
     const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
     return {
@@ -494,6 +504,7 @@ function buildDiscoveryMap(manifest) {
       current_phase,
       research_state,
       triage_parked,
+      reconcile_pending,
       next_action: computeNextAction(item.routing, lifecycle),
     };
   });

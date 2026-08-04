@@ -112,9 +112,11 @@ function discoveryGlyph(tier) {
 // superseded research is named as such, never as complete. `triageParked`
 // (computeTopicLifecycle's triage_parked) appends a `triage waiting` cue on
 // any lifecycle — a `triaged` stub holds rerouted concerns that drain when
-// the phase's session starts.
-/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [triageParked] */
-function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked) {
+// the phase's session starts. `reconcilePending` (computeTopicLifecycle's
+// reconcile_pending) appends an `input moved` cue the same way — a phase item
+// beneath the row carries a live reconcile flag its entry flow will clear.
+/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [triageParked] @param {boolean} [reconcilePending] */
+function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked, reconcilePending) {
   let label;
   switch (lifecycle) {
     case 'ready_for_discussion':
@@ -133,7 +135,9 @@ function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked
     case 'cancelled': label = 'cancelled'; break;
     default: label = routing ? `fresh · routed to ${routing}` : 'fresh';
   }
-  return triageParked ? `${label} · triage waiting` : label;
+  if (triageParked) label += ' · triage waiting';
+  if (reconcilePending) label += ' · input moved';
+  return label;
 }
 
 // Discussion-map glyph vocabulary — subtopic states. Distinct from the

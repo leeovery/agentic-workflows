@@ -472,6 +472,39 @@ describe('engine topic triage', () => {
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].status, 'in-progress');
   });
 
+  it('a bare reopen of a completed discussion hops like reopen — no completed→in-progress transition skips it', () => {
+    const m = epicManifest();
+    m.phases.specification = { items: {
+      unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' } } },
+    } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model']);
+
+    assert.strictEqual(res.reopened, true);
+    assert.strictEqual(res.reconcile_flagged, true);
+    assert.deepStrictEqual(res.sources_staled, ['unified']);
+    const items = readManifest(dir, 'payments').phases.specification.items;
+    assert.strictEqual(items.unified.reconcile_needed, 'discussion');
+    assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
+  });
+
+  it('a bare call that does not reopen never hops — parking and idempotent re-parks stay hop-free', () => {
+    const m = epicManifest();
+    m.phases.specification = { items: {
+      unified: { status: 'completed', sources: { 'refund-policy': { status: 'incorporated' } } },
+    } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    // refund-policy's discussion is in-progress — the bare call leaves it
+    // untouched and must not stale the spec.
+    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'refund-policy']);
+
+    assert.strictEqual(res.reopened, undefined);
+    assert.strictEqual(res.reconcile_flagged, undefined);
+    assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.unified.sources['refund-policy'].status, 'incorporated');
+  });
+
   it('refuses cancelled and superseded items with the start messages', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
     assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'auth-flow']).error, /is cancelled — reactivate it instead/);
@@ -777,6 +810,53 @@ describe('engine topic reopen', () => {
 
     assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'planning', topic: 'auth-flow' }]);
     assert.strictEqual(readManifest(dir, 'payments').phases.planning.items['auth-flow'].reconcile_needed, 'specification');
+  });
+
+  it('bugfix investigation reopen flags the completed spec — the type pipeline drives the hop', () => {
+    writeFile(dir, '.workflows/crash/manifest.json', JSON.stringify({
+      name: 'crash', work_type: 'bugfix', status: 'in-progress',
+      phases: {
+        investigation: { items: { crash: { status: 'completed' } } },
+        specification: { items: { crash: { status: 'completed' } } },
+      },
+    }, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'crash', 'investigation', 'crash']);
+
+    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'specification', topic: 'crash' }]);
+    assert.strictEqual(readManifest(dir, 'crash').phases.specification.items.crash.reconcile_needed, 'investigation');
+  });
+
+  it('quick-fix scoping reopen flags the completed implementation', () => {
+    writeFile(dir, '.workflows/typo/manifest.json', JSON.stringify({
+      name: 'typo', work_type: 'quick-fix', status: 'in-progress',
+      phases: {
+        scoping: { items: { typo: { status: 'completed' } } },
+        implementation: { items: { typo: { status: 'completed' } } },
+      },
+    }, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'typo', 'scoping', 'typo']);
+
+    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'implementation', topic: 'typo' }]);
+    assert.strictEqual(readManifest(dir, 'typo').phases.implementation.items.typo.reconcile_needed, 'scoping');
+  });
+
+  it('a phase outside the work type pipeline never mis-hops — the -1 guard', () => {
+    // A bugfix with a (schema-legal, pipeline-foreign) research item: its
+    // reopen must not flag investigation via a wrapped index.
+    writeFile(dir, '.workflows/crash/manifest.json', JSON.stringify({
+      name: 'crash', work_type: 'bugfix', status: 'in-progress',
+      phases: {
+        research: { items: { crash: { status: 'completed' } } },
+        investigation: { items: { crash: { status: 'completed' } } },
+      },
+    }, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'crash', 'research', 'crash']);
+
+    assert.strictEqual(res.reconcile_flagged, undefined);
+    assert.strictEqual(readManifest(dir, 'crash').phases.investigation.items.crash.reconcile_needed, undefined);
   });
 
   it('refuses an in-progress item — nothing touched', () => {

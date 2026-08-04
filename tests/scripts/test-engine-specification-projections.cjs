@@ -673,6 +673,10 @@ describe('specification projections: menu goldens', () => {
     assert.strictEqual(row.verb, 'Continuing');
     assert.strictEqual(row.stale, 1);
     assert.deepStrictEqual(row.sources.map((s) => s.tag).sort(), ['pending', 'stale']);
+    // A stale row whose discussion is back in flight shows both facts.
+    const { sourceTag } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
+    assert.strictEqual(sourceTag({ name: 'a', status: 'stale', discussion_status: 'in-progress' }), 'stale, reopened');
+    assert.strictEqual(sourceTag({ name: 'a', status: 'stale', discussion_status: 'completed' }), 'stale');
     const menu = specificationMenu(detail);
     const entry = menu.keys.find((k) => k.topic === 'moved-spec');
     assert.strictEqual(entry.label, 'Continue "Moved Spec" — 1 new source(s) to extract, 1 stale source(s) to reconcile');

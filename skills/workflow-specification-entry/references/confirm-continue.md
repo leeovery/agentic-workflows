@@ -15,7 +15,9 @@ Consult references (read narrowly — do not extract):
 
 ## A. Display Confirmation
 
-#### If spec is in-progress with pending sources
+#### If spec is in-progress with pending or stale sources
+
+Omit either sources block when the spec has none of that status:
 
 > *Output the next fenced block as a code block:*
 
@@ -26,6 +28,9 @@ Existing: .workflows/{work_unit}/specification/{topic}/specification.md [in-prog
 
 Sources to extract:
   • {discussion-name} [pending]
+
+Sources re-decided since extraction (reconcile):
+  • {discussion-name} [stale]
 
 Previously extracted (for reference):
   • {discussion-name}
@@ -45,7 +50,7 @@ Proceed?
 
 → Proceed to **B. Handle Response**.
 
-#### If spec is in-progress with all sources extracted
+#### If spec is in-progress with all sources extracted and none stale
 
 > *Output the next fenced block as a code block:*
 
@@ -113,6 +118,8 @@ Proceed?
 ## B. Handle Response
 
 #### If `yes`
+
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `specification`, topic = `{the selected spec's name}`.
 
 **If spec is completed with pending or stale sources:**
 

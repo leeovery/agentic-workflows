@@ -26,8 +26,8 @@ All sources extracted:
 
 > A refinement is for factual corrections and sharpening. A change of
 > decision belongs in the source discussion — reopen that discussion
-> instead, and this specification is flagged to reconcile once it
-> re-decides.
+> instead; the moment it reopens, this specification is flagged to
+> reconcile against the re-decision.
 
 > *Output the next fenced block as markdown (not a code block):*
 

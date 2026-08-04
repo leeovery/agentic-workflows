@@ -87,9 +87,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 If any show `status: pending`, work them now per **[spec-construction.md](spec-construction.md)** → Exhaustive Extraction — extract the source's relevant content into the specification through the construction cycle, then mark it `incorporated`.
 
-If any show `status: stale`, the source discussion was re-decided after extraction — work them now per **[spec-construction.md](spec-construction.md)** → Reconcile Stale Sources, then mark them `incorporated`.
+If any show `status: stale`, the source discussion was re-decided after extraction — work them now per **[spec-construction.md](spec-construction.md)** → Reconcile Stale Sources. Reconciliation itself marks a row `incorporated`; when the section defers (the source discussion is still in-progress), the row stays `stale` and this spec cannot conclude yet — tell the user conclusion waits on that discussion re-deciding, commit the session's work, and stop here rather than looping on the checkpoint.
 
-> **CHECKPOINT**: Do not proceed to sign-off while any source is `pending` or `stale`. Pending material has not been extracted; stale material was extracted from a decision that has since moved.
+> **CHECKPOINT**: Do not proceed to sign-off while any source is `pending` or `stale`. Pending material has not been extracted; stale material was extracted from a decision that has since moved — and stays stale while its discussion is mid-revision.
 
 Also confirm every consult reference is addressed:
 

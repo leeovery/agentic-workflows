@@ -238,7 +238,14 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // paths.
     const epicPhases = ensureContainer(epicManifest, 'phases', 'phases');
     const discussion = ensureContainer(epicPhases, 'discussion', 'phases.discussion');
-    ensureContainer(discussion, 'items', 'phases.discussion.items')[topic] = { status: discussionItem.status };
+    // A live reconcile flag travels with the topic: research and discussion
+    // move together, so "research moved beneath this discussion" stays true
+    // in the epic — the map row cues it and the discussion's next entry
+    // clears it, same as any epic topic.
+    ensureContainer(discussion, 'items', 'phases.discussion.items')[topic] = {
+      status: discussionItem.status,
+      ...(discussionItem.reconcile_needed !== undefined ? { reconcile_needed: discussionItem.reconcile_needed } : {}),
+    };
     if (researchPlan.length > 0) {
       const research = ensureContainer(epicPhases, 'research', 'phases.research');
       const researchItems = ensureContainer(research, 'items', 'phases.research.items');

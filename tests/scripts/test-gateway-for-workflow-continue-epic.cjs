@@ -1485,6 +1485,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
     assert.strictEqual(out, [
       '=== EPIC: v1 ===',
       'all_done: false',
+      'reconcile_pending: (none)',
       'analysis_caches: research_analysis=absent, gap_analysis=absent, coherence_analysis=absent',
       'needs_sequencing: true',
       'discovery_map (2):',
@@ -1503,6 +1504,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
     assert.strictEqual(out, [
       '=== EPIC: v1 ===',
       'all_done: false',
+      'reconcile_pending: (none)',
       'analysis_caches: research_analysis=absent, gap_analysis=absent, coherence_analysis=absent',
       'needs_sequencing: false',
       'discovery_map (0):',
@@ -1563,6 +1565,24 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       });
       const out = formatScoped('v1', discover(dir, 'v1'));
       assert.ok(out.includes('all_done: true'));
+    });
+
+    it('false while any item carries a live reconcile flag — the terminal gate is never offered past known-stale input', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: {
+            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
+          },
+          planning: { items: { 'auth-spec': { status: 'completed' } } },
+          implementation: { items: { 'auth-spec': { status: 'completed' } } },
+          review: { items: { 'auth-spec': { status: 'completed', reconcile_needed: 'implementation' } } },
+        },
+      });
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('all_done: false'), out);
+      assert.ok(out.includes('reconcile_pending: review/auth-spec (implementation)'), out);
     });
 
     it('false when every review item is cancelled — vacuous completion never counts', () => {

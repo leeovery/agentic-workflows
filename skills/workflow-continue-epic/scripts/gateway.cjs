@@ -112,8 +112,10 @@ function format(result) {
 /**
  * The bridge's all-done derivation over one epic detail: review items exist
  * and every non-cancelled one is completed, nothing is in progress or awaiting
- * its next phase, no completed discussion is unaccounted, and the discovery
- * map has settled (or the epic has none).
+ * its next phase, no completed discussion is unaccounted, no item carries a
+ * live reconcile flag (the epic mirror of the linear types' routing override
+ * — the terminal gate is never offered past known-stale input), and the
+ * discovery map has settled (or the epic has none).
  * @param {any} d  EpicDetail
  * @returns {boolean}
  */
@@ -125,7 +127,27 @@ function computeAllDone(d) {
     && d.in_progress.length === 0
     && d.next_phase_ready.length === 0
     && d.unaccounted_discussions.length === 0
+    && reconcilePending(d).length === 0
     && (d.convergence_state === 'settled' || d.convergence_state === null);
+}
+
+/**
+ * Completed items carrying a live reconcile flag, across every phase —
+ * `phase/name (value)` strings for the scoped dump, the same vocabulary the
+ * linear bridge's `reconcile_pending:` line uses.
+ * @param {any} d  EpicDetail
+ * @returns {string[]}
+ */
+function reconcilePending(d) {
+  const out = [];
+  for (const [phase, items] of Object.entries(d.phases || {})) {
+    for (const item of items) {
+      if (item.status === 'completed' && item.reconcile_needed !== undefined) {
+        out.push(`${phase}/${item.name} (${item.reconcile_needed})`);
+      }
+    }
+  }
+  return out;
 }
 
 // The scoped state dump for one epic — the reasoning surface Steps 5–7 and
@@ -142,6 +164,7 @@ function formatScoped(workUnit, result) {
   }
   const d = e.detail;
   lines.push(`all_done: ${computeAllDone(d)}`);
+  lines.push(`reconcile_pending: ${reconcilePending(d).join(', ') || '(none)'}`);
   lines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}, coherence_analysis=${d.analysis_caches.coherence_analysis.status}`);
   lines.push(`needs_sequencing: ${d.needs_sequencing}`);
   lines.push(`discovery_map (${d.discovery_map.length}):`);

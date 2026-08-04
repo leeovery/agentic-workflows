@@ -855,6 +855,22 @@ describe('bridge continuation surfaces', () => {
     assert.ok(note.includes('Discussion completed for "Pay".'));
   });
 
+  it('early-completion gate names a live reconcile flag — skipping review is an informed choice', () => {
+    writeManifest(dir, 'moved', {
+      work_type: 'feature',
+      phases: {
+        implementation: { items: { moved: { status: 'completed' } } },
+        review: { items: { moved: { status: 'completed', reconcile_needed: 'implementation' } } },
+      },
+    });
+    const out = renderSurface(dir, 'early-completion-gate', { dotpath: 'moved' });
+    assert.ok(out.includes('⚑ Input moved beneath review/moved (implementation)'), out);
+    assert.ok(out.includes('carries the pending reconcile unresolved'), out);
+    // No flag, no cue.
+    const clean = renderSurface(dir, 'early-completion-gate', { dotpath: 'pay' });
+    assert.ok(!clean.includes('⚑'), clean);
+  });
+
   it('work-unit addressing is loud on dotted paths, unknown units, and missing flags', () => {
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay.review.pay', phase: 'review' }), /must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'nope', phase: 'review' }), /work unit "nope" not found/);

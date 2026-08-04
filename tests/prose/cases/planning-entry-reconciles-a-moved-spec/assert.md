@@ -9,11 +9,9 @@ The prose should have taken this path:
    non-blocking callout saying the specification was revised after the
    plan completed and that spec-change detection will walk the diff at
    resume — and clears the flag; it never stops for input
-4. cross-cutting context is gathered: no cross-cutting work units
-   exist, then the knowledge base is queried for completed
-   cross-cutting specs
-5. hands off to the planning processing skill for pay with an existing
-   plan
+4. the existing-plan arm skips the cross-cutting context step (that
+   step is fresh-plan-only) and hands off to the planning processing
+   skill for pay with an existing plan
 
 Further claims:
 
@@ -21,4 +19,5 @@ Further claims:
   an advisory only — the walk is never blocked on the user
 - the flag is cleared exactly once, via manifest delete, and no other
   manifest field is touched by the advisory
-- the knowledge base is queried, never written to, by an entry skill
+- the knowledge base is never queried and never written — the
+  existing-plan path has no knowledge-base step
