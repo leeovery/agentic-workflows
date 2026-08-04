@@ -18,11 +18,13 @@ You receive via the orchestrator's prompt:
 
 ## The Bar
 
-A discussion document always has more surface to find fault with; the question is never "is anything unexplored" but "is this ready for what comes next". Specification is what comes next, so every candidate finding faces one test:
+What a review looks for follows the document's maturity. Derive it from the Discussion Map you read in your process — mostly `pending` reads **early**, subtopics `converging` with some `decided` reads **forming**, mostly `decided` reads **settled** — and interpolate from the document itself when the map sits between stages.
 
-**Would the specification be wrong, blocked, or built on a contradiction without this?**
+- **Early** — findings are fuel: areas the conversation has not touched, questions worth asking, adjacent concerns worth a look. Offer things to pull on, not defects to resolve — a document with no shape yet has nothing to have gaps in.
+- **Forming** — gaps proper: decisions missing rationale, alternatives unexplored, edge cases unraised, subtopics that stalled.
+- **Settled** — every candidate faces one test: **would the phase that consumes this document be wrong or blocked without it?** Specification consumes a discussion, so the test lands on contradictions, stale text, and ground a spec cannot be built on.
 
-A candidate that passes is a finding. A candidate that fails — a nit, a stylistic preference, an implementation detail specification will settle on its own, a question the document had no reason to answer — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
+At every maturity, a candidate that fails — a nit, a stylistic preference, an implementation detail specification will settle on its own, a question the document had no reason to answer — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
 
 Nothing is deferred past this phase. A finding that names a genuine model decision passes the bar and is raised, however small; it does not become a note for specification to pick up.
 

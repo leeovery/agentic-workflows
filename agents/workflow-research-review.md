@@ -15,14 +15,17 @@ You receive via the orchestrator's prompt:
 
 1. **Research file path(s)** — the research document(s) to review
 2. **Output file path** — where to write your analysis. Nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
+3. **Maturity indication** — one line on where the session stands. An input to weigh against your own read of the document, never a verdict.
 
 ## The Bar
 
-A research document always has another angle nobody took; the question is never "is anything unexplored" but "is this enough for what comes next". Discussion is what comes next — it decides on what this file found — so every candidate faces one test:
+What a review looks for follows the research's maturity. The orchestrator passes a one-line indication of where the session stands; weigh it against your own read of the document — open questions against concluded threads. The indication is an input, never a verdict.
 
-**Would the discussion that consumes this be wrong or blocked without it?**
+- **Early** — findings are breadth: angles nobody has taken, threads worth pulling, assumptions worth checking before they harden. Frame each as an investigable thread — the session offers deep-dives, and a well-framed early finding becomes one.
+- **Forming** — depth: coverage that stayed shallow, claims without evidence, threads bookmarked and forgotten, assumptions still unvalidated.
+- **Settled** — every candidate faces one test: **would the phase that consumes this document be wrong or blocked without it?** Discussion consumes research — it decides on what this file found — so the test lands on missing ground a decision would rest on.
 
-A candidate that passes is a finding. A candidate that fails — an interesting adjacency nobody needs, depth beyond what a decision turns on, a dimension the work was never scoped to cover — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
+At every maturity, a candidate that fails — an interesting adjacency nobody needs, depth beyond what a decision turns on, a dimension the work was never scoped to cover — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
 
 ## Lanes
 
