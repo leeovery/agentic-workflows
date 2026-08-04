@@ -61,10 +61,10 @@ Check if a review file exists at `.workflows/{work_unit}/review/{topic}/report.m
 
 #### If review file exists
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Resume Detection ─────────────────────────────
+**`□ Resume Detection`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -184,10 +184,10 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 ## Step 5: QA Verification
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── QA Verification ──────────────────────────────
+**`□ QA Verification`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -208,10 +208,10 @@ Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and fol
 
 ## Step 6: Produce Review
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Produce Review ───────────────────────────────
+**`□ Produce Review`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -229,10 +229,10 @@ Load **[produce-review.md](references/produce-review.md)** and follow its instru
 
 ## Step 7: Present Review
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Present Review ───────────────────────────────
+**`□ Present Review`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -258,10 +258,10 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 
 ## Step 9: Review Actions
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Review Actions ───────────────────────────────
+**`□ Review Actions`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

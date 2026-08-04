@@ -36,10 +36,10 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 ●─────────────────────────────────────────────────────────────────●
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Initialisation ───────────────────────────────
+**`□ Initialisation`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -164,10 +164,10 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 ## Step 1: Run Discovery
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Run Discovery ────────────────────────────────
+**`□ Run Discovery`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -209,10 +209,10 @@ Display and routing derive from the `view` snapshot at Step 3 — this dump is t
 
 ## Step 2: Check State
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Check State ──────────────────────────────────
+**`□ Check State`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -234,10 +234,10 @@ Load **[empty-state.md](references/empty-state.md)** and follow its instructions
 
 ## Step 3: Display and Route
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Display and Route ────────────────────────────
+**`□ Display and Route`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

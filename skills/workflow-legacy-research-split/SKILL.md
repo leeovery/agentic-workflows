@@ -20,13 +20,10 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 ## Step 1: List Qualifying Sources
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-●───────────────────────────────────────────────●
-  Legacy Research Split
-●───────────────────────────────────────────────●
-
+# **`■ Legacy Research Split`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -37,10 +34,10 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 > user-guided per source.
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── List Qualifying Sources ──────────────────────
+**`□ List Qualifying Sources`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -113,10 +110,10 @@ Qualifying source files (in-progress, migration-seeded):
 
 ## Step 2: Per-Source Session Loop
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Session Loop ─────────────────────────────────
+**`□ Session Loop`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -134,10 +131,10 @@ Load **[dialog.md](references/dialog.md)** and follow its instructions as writte
 
 ## Step 3: Conclude
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Legacy Split Complete ────────────────────────
+**`□ Legacy Split Complete`**
 ```
 
 Evaluate the branches below in order — error reporting takes precedence over clean outcomes.

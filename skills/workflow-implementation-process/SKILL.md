@@ -126,10 +126,10 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 ## Step 6: Task Loop
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Task Loop ────────────────────────────────────
+**`□ Task Loop`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -160,10 +160,10 @@ After the loop completes:
 
 ## Step 7: Analysis Loop
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Analysis Loop ────────────────────────────────
+**`□ Analysis Loop`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -196,10 +196,10 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 
 ## Step 9: Mark Implementation Complete
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Conclude Implementation ──────────────────────
+**`□ Conclude Implementation`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

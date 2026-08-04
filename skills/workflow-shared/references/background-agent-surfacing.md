@@ -197,10 +197,10 @@ The lane emptied — every one applied, or every one promoted out.
 
 Emit the lane marker once per visit to this section — on a re-render after a question, skip it:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-·· No Decision Needed ···························
+**`▪ No Decision Needed`**
 ```
 
 Digest the report — never read it out. Write the payload to the topic's cache directory with the Write tool (`{"lane": "apply", "items": [{"title": "…", "detail": "…"}]}`, one entry per remaining `apply` finding in the order they should read: `title` is the report's own claim, `detail` is one or two sentences saying what the fix is and which decision determines it), then render it:
@@ -260,12 +260,12 @@ This section runs once per invocation and then exits. It never waits in-protocol
    - **Move** — sized to how open the decision is as much as how cold the context: a clear resolution — propose it and name what it costs ("this creates X and Y; I don't see another approach"), never an option survey; genuinely open — sketch the option space in a sentence or two; needs investigation — suggest research or a deep-dive. Where the caller's **Lanes** declaration names the walked lane's move, that move closes the raise.
 4. Raise it in the current turn, ending in a single question — or, for a finding with one defensible resolution, a stated proposal awaiting the user's response. Either way the turn ends and control returns: one finding per invocation, and the user's agreement is never licence to roll into the next. No bundled follow-ups, no menu.
 
-When this row's `surfaced` list holds no walked finding yet, the raise opens with the walked lane's declared heading, padded with middle dots to 49 characters total, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
+When this row's `surfaced` list holds no walked finding yet, the raise opens with the walked lane's declared heading as sub-step chrome, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-·· {lane_heading} ·······························
+**`▪ {lane_heading}`**
 ```
 
 **Setting the scene** — an example over a description, every time. A reader who can picture the failure can judge the fix; a reader parsing a mechanism description is still building the picture when the ask arrives.
@@ -296,10 +296,10 @@ The lane emptied — every one sent, or every one kept here.
 
 Emit the lane marker once per visit to this section — on a re-render after a question, skip it:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-·· Belongs Elsewhere ····························
+**`▪ Belongs Elsewhere`**
 ```
 
 Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"target": "…", "detail": "…"}]}`, one entry per finding: `target` is the owning topic, `detail` is what it says, why it is theirs, and which queue it lands in), then render it:

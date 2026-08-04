@@ -11,10 +11,10 @@ The caller passes:
 
 ## A. Read Source Files
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Summary Backfill ─────────────────────────────
+**`□ Summary Backfill`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

@@ -20,11 +20,13 @@ All user-facing output uses five distinct visual tiers, each with a specific pur
 
 | Tier | Element | Purpose | Rendering |
 |------|---------|---------|-----------|
-| 1 | Phase title | "Where am I" — top-level anchor | Code block |
+| 1 | Phase title | "Where am I" — top-level anchor | Markdown — `# **`■ Title`**` |
 | 2 | Signpost blockquote | "What's happening" — guidance, context, closure | Markdown |
-| 3 | Step marker | Progress through the phase | Code block |
-| 4 | Sub-step marker | Progress within a step | Code block |
+| 3 | Step marker | Progress through the phase | Markdown — `**`□ Name`**` |
+| 4 | Sub-step marker | Progress within a step | Markdown — `**`▪ Name`**` |
 | 5 | Status / menu | Data displays and interactive choices | Code block / markdown |
+
+The chrome family is the square glyphs at falling weight — `■` filled, `□` hollow, `▪` small — all in bold inline code so they render blue, the H1 adding its underline to the title alone. Squares are structure; circles (`○ ◐ ✓ ⊙ ⊘`) are item state, `◆` is a decision, `⚑` is an alert, and `⏺` belongs to the host UI's gutter.
 
 Every skill invocation should produce at most one phase title. Signpost blockquotes appear at phase entry, before steps where context helps, and at phase completion.
 
@@ -42,7 +44,7 @@ or:
 > *Output the next fenced block as markdown (not a code block):*
 ```
 
-Code blocks are used for informational displays (overviews, status, keys, phase titles, step markers) — they preserve indentation for tree structures and aligned lists. Markdown is used for interactive elements (menus, prompts) and signpost blockquotes where bold formatting is needed. When content benefits from rendered formatting (headings, checkboxes, bold) and indentation control isn't needed, prefer markdown rendering even for informational displays.
+Code blocks are used for informational displays (overviews, status, keys) — they preserve indentation for tree structures and aligned lists. Markdown is used for chrome (phase titles, step and sub-step markers), interactive elements (menus, prompts), and signpost blockquotes, where the renderer's own styling does the work. When content benefits from rendered formatting (headings, checkboxes, bold) and indentation control isn't needed, prefer markdown rendering even for informational displays.
 
 ### Presentation Register
 
@@ -62,27 +64,23 @@ Engine calls may append labelled DISPLAY/MENU sections — transaction verbs (e.
 
 ### Phase Titles
 
-Bullet-bordered box. One per skill invocation. Serves as the top-level anchor telling the user where they are. Always followed by a blank line before any subsequent content.
+A markdown H1 carrying the chrome family's heaviest register — bold inline code with the filled square, so it renders blue, underlined, and italic. One per skill invocation. Serves as the top-level anchor telling the user where they are.
 
 ```
-●───────────────────────────────────────────────●
-  Specification Overview
-●───────────────────────────────────────────────●
-
+# **`■ Specification Overview`**
 ```
 
 Rules:
-- Fixed width: 49 characters total (● + 47 em-dashes + ●)
-- 2-space left padding on the title text
+- Exactly this shape: `# ` + `**` + backtick + `■ ` + title + backtick + `**`
 - Title text is the phase or context name (e.g., "Workflow Overview", "Planning Overview")
-- Include a trailing blank line after the closing border inside the code block — this creates visual breathing room in the rendered output
-- **Must be inside a code block** — never markdown. Code blocks preserve the indentation and whitespace that the border layout depends on. Markdown rendering would collapse the spacing and break the layout
+- **Emitted as markdown** (use the markdown rendering instruction) — the styling comes from the renderer, so the title is correct at any terminal width
+- The glyph is always `■`. Squares are structure (`■` phase, `□` step, `▪` sub-step); circles are item state (`○ ◐ ✓ ⊙ ⊘`), `◆` is a decision, and `⏺` is the host UI's own gutter — chrome never borrows another family's shape
 
-Status displays use the phase title at the top of the same code block, followed by a blank line before the content.
+Engine-rendered displays that carry a title inside their fenced DISPLAY section still draw the legacy bullet-bordered box — markdown cannot reach inside a fence. The workflow-start banner likewise keeps its bordered art (see Workflow Banner).
 
 ### Step Markers
 
-Em-dash framed progress indicators. Embedded at the step boundaries that earn them — never instructed once at the top of a file. Short left side, long right side to fill width.
+Progress indicators in the chrome family's middle register — bold inline code with the hollow square, rendering as a blue label. Embedded at the step boundaries that earn them — never instructed once at the top of a file.
 
 **Markers are earned, not automatic.** A step carries a marker only when the user gets something between it and the next visible output: an interaction (menu, `**STOP.**` gate), substantive watchable activity (analysis, agent dispatch, engine transactions, multi-file work), or rendered content. Consecutive markers with nothing between them read as step-by-step progress that isn't happening — noise, not orientation.
 
@@ -92,39 +90,39 @@ Em-dash framed progress indicators. Embedded at the step boundaries that earn th
 Every step marker must be followed by a signpost blockquote explaining what the step does and why — the marker names the step, the signpost explains it.
 
 ```
-── Construct Specification ─────────────────────
+**`□ Construct Specification`**
 ```
 
 Variations for loops and routing:
 
 ```
-── Task Execution (3 of 12) ────────────────────
-── Review (cycle 2) ────────────────────────────
-── Returning to Discussion Session ─────────────
+**`□ Task Execution (3 of 12)`**
+**`□ Review (cycle 2)`**
+**`□ Returning to Discussion Session`**
 ```
 
 Rules:
-- Always `── ` (two em-dashes + space) on the left
-- Right side padded with em-dashes to 49 characters total — aligned with phase title width
+- Exactly this shape: `**` + backtick + `□ ` + name + backtick + `**` — no fill, no padding; the styling comes from the renderer, so the marker is correct at any terminal width
 - **No step numbers** — steps may be skipped based on conditionals and routing is non-linear. Names alone are sufficient
 - Loop iterations shown in parentheses: `(cycle N)`, `(N of M)`
 - Route-back uses `Returning to {Name}`
-- Rendered as a code block with its own rendering instruction. No trailing blank line — natural block separation provides enough spacing
+- Emitted as markdown with its own rendering instruction. No trailing blank line — natural block separation provides enough spacing
+
+Engine-drawn dividers inside a fenced DISPLAY block (the epic dashboard's `── STAGE ──` lines) are a different object: markdown cannot reach inside a fence, so they stay drawn, sized to the content they divide.
 
 ### Sub-step Markers
 
-Dot-framed markers for stages within a step. Visually lighter than step markers to indicate nesting.
+Markers for stages within a step, in the chrome family's lightest register — the small square marks the nesting.
 
 ```
-·· Extract Sources ·································
+**`▪ Extract Sources`**
 ```
 
 Rules:
-- Always `·· ` (two middle dots + space) on the left
-- Right side padded with middle dots to 49 characters total — aligned with phase title and step marker width
+- Exactly this shape: `**` + backtick + `▪ ` + name + backtick + `**`
 - Named only — no numbering or lettered suffixes
 - Same loop/iteration conventions as step markers
-- Rendered as a single-line code block with its own rendering instruction
+- Emitted as markdown with its own rendering instruction
 
 ### Signpost Blockquotes
 
@@ -380,17 +378,19 @@ Automatically proceeding with "{topic:(titlecase)}".
 
 ### Block / Terminal Messages
 
-When a phase can't proceed — use the phase title at the top, then explain:
+When a phase can't proceed — the phase title, the blocking fact in the red register (see Callout Flag → blocked states), then guidance as a signpost:
 
 ```
-●───────────────────────────────────────────────●
-  Planning Overview
-●───────────────────────────────────────────────●
-
-No specification found in .workflows/{work_unit}/specification/{topic}/
-
-The planning phase requires a completed specification.
+# **`■ Planning Overview`**
 ```
+
+```properties
+⚑ No specification found for this topic
+```
+
+> The planning phase requires a completed specification.
+
+Engine entry gates emit this shape as two sections (`DISPLAY: entry blocker` + `DISPLAY: blocker guidance`); prose-authored terminal messages mirror it by hand.
 
 ### Bullet Characters
 
@@ -400,7 +400,7 @@ Within a numbered item, `·` marks quiet sub-detail: a wrapped summary paragraph
 
 ### Spacing Rules
 
-**Between blocks**: One blank line after the phase title closing border before any content (code block, blockquote, or step marker). No `---` separators between code blocks (overview → not-ready → key → menu) — just natural block separation.
+**Between blocks**: One blank line after the phase title before any content (code block, blockquote, or step marker). No `---` separators between code blocks (overview → not-ready → key → menu) — just natural block separation.
 
 **Inside code blocks**: One blank line between:
 - Each numbered tree item

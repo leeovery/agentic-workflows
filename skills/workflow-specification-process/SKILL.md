@@ -75,10 +75,10 @@ Check if `.workflows/{work_unit}/specification/{topic}/specification.md` exists.
 
 #### If file exists
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Resume Detection ─────────────────────────────
+**`□ Resume Detection`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -126,10 +126,10 @@ Load **[specification-principles.md](references/specification-principles.md)** a
 
 ## Step 5: Spec Construction
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Spec Construction ────────────────────────────
+**`□ Spec Construction`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -154,10 +154,10 @@ Load **[spec-construction.md](references/spec-construction.md)** and follow its 
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Document Dependencies ────────────────────────
+**`□ Document Dependencies`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -175,10 +175,10 @@ Load **[dependencies.md](references/dependencies.md)** and follow its instructio
 
 ## Step 7: Specification Review
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Specification Review ─────────────────────────
+**`□ Specification Review`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -205,10 +205,10 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 
 ## Step 9: Assess Cross-Cutting & Conclude
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Conclude ─────────────────────────────────────
+**`□ Conclude`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

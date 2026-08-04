@@ -16,13 +16,10 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 ## Step 0: Initialisation
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-●───────────────────────────────────────────────●
-  Continue Epic
-●───────────────────────────────────────────────●
-
+# **`■ Continue Epic`**
 ```
 
 → Proceed to **Step 1**.
@@ -87,10 +84,10 @@ Store the work_unit.
 
 ## Step 3: Select Epic
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Select Epic ──────────────────────────────────
+**`□ Select Epic`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -129,10 +126,10 @@ Then read `discovery_map` from the most recent discovery output and filter for r
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Backfill ─────────────────────────────────────
+**`□ Backfill`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -164,10 +161,10 @@ Read `needs_sequencing` from the most recent discovery output.
 
 #### If `needs_sequencing` is true
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Sequence Map ─────────────────────────────────
+**`□ Sequence Map`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -194,10 +191,10 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 
 ## Step 8: Display State and Menu
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Epic State ───────────────────────────────────
+**`□ Epic State`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

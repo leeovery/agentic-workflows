@@ -84,10 +84,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 #### Otherwise (planning entry exists)
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Resume Detection ─────────────────────────────
+**`□ Resume Detection`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -185,10 +185,10 @@ Load **[verify-source-material.md](references/verify-source-material.md)** and f
 
 ## Step 6: Plan Construction
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Plan Construction ────────────────────────────
+**`□ Plan Construction`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -207,10 +207,10 @@ Load **[plan-construction.md](references/plan-construction.md)** and follow its 
 
 ## Step 7: Analyze Task Graph
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Analyze Task Graph ───────────────────────────
+**`□ Analyze Task Graph`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -234,10 +234,10 @@ Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow it
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Resolve External Dependencies ────────────────
+**`□ Resolve External Dependencies`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -255,10 +255,10 @@ Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follo
 
 ## Step 9: Plan Review
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Plan Review ──────────────────────────────────
+**`□ Plan Review`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -285,10 +285,10 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 
 ## Step 11: Conclude the Plan
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Conclude the Plan ────────────────────────────
+**`□ Conclude the Plan`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

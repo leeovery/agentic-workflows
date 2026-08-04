@@ -68,10 +68,10 @@ A first start, not a resume — no session has ever run. Parked concerns wait in
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Resume Detection ─────────────────────────────
+**`□ Resume Detection`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -127,10 +127,10 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 
 ## Step 6: Research Session
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Research Session ─────────────────────────────
+**`□ Research Session`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

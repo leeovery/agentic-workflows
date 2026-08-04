@@ -61,10 +61,10 @@ ls .workflows/{work_unit}/specification/{topic}/specification.md 2>/dev/null && 
 
 #### If specification exists
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Resume Detection ─────────────────────────────
+**`□ Resume Detection`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -211,10 +211,10 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 ## Step 2: Gather Context
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Gather Context ───────────────────────────────
+**`□ Gather Context`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -250,10 +250,10 @@ Load **[complexity-check.md](references/complexity-check.md)** and follow its in
 
 ## Step 5: Write Specification
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Write Specification ──────────────────────────
+**`□ Write Specification`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -271,10 +271,10 @@ Load **[write-specification.md](references/write-specification.md)** and follow 
 
 ## Step 6: Select Output Format
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Select Output Format ─────────────────────────
+**`□ Select Output Format`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -291,10 +291,10 @@ Load **[select-format.md](references/select-format.md)** and follow its instruct
 
 ## Step 7: Write Tasks
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Write Tasks ──────────────────────────────────
+**`□ Write Tasks`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -312,10 +312,10 @@ Load **[write-tasks.md](references/write-tasks.md)** and follow its instructions
 
 ## Step 8: Conclude Scoping
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Conclude Scoping ─────────────────────────────
+**`□ Conclude Scoping`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

@@ -68,10 +68,10 @@ A first start, not a resume — no session has ever run and no subtopics exist, 
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Resume Detection ─────────────────────────────
+**`□ Resume Detection`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -127,10 +127,10 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 
 ## Step 5: Discussion Session
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Discussion Session ───────────────────────────
+**`□ Discussion Session`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -159,10 +159,10 @@ Load **[final-review.md](references/final-review.md)** and follow its instructio
 
 ## Step 7: Document Review
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Document Review ──────────────────────────────
+**`□ Document Review`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -188,10 +188,10 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 
 ## Step 9: Conclude Discussion
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Conclude Discussion ──────────────────────────
+**`□ Conclude Discussion`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

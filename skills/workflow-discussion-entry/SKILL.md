@@ -95,10 +95,10 @@ Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `
 
 ## Step 3: Gather Context
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Gather Context ───────────────────────────────
+**`□ Gather Context`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

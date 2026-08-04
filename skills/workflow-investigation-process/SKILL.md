@@ -80,10 +80,10 @@ Set `resumed` = `false`.
 
 #### If file exists
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Resume Detection ─────────────────────────────
+**`□ Resume Detection`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -127,10 +127,10 @@ An earlier session already interviewed the user — don't re-interview. Fold in 
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Symptom Gathering ────────────────────────────
+**`□ Symptom Gathering`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -162,10 +162,10 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 
 ## Step 5: Investigation Plan
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Investigation Plan ───────────────────────────
+**`□ Investigation Plan`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -184,10 +184,10 @@ Load **[investigation-plan.md](references/investigation-plan.md)** and follow it
 
 ## Step 6: Code Analysis
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Code Analysis ────────────────────────────────
+**`□ Code Analysis`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -209,10 +209,10 @@ When the root cause is identified and every hypothesis is resolved:
 
 ## Step 7: Root Cause Synthesis
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Root Cause Synthesis ─────────────────────────
+**`□ Root Cause Synthesis`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -241,10 +241,10 @@ Document in the investigation file and commit.
 
 ## Step 8: Root Cause Validation
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Root Cause Validation ────────────────────────
+**`□ Root Cause Validation`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -262,10 +262,10 @@ Load **[root-cause-validation.md](references/root-cause-validation.md)** and fol
 
 ## Step 9: Findings Sign-off
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Findings Sign-off ────────────────────────────
+**`□ Findings Sign-off`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -283,10 +283,10 @@ Load **[findings-signoff.md](references/findings-signoff.md)** and follow its in
 
 ## Step 10: Fix Exploration & Discussion
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Fix Exploration ──────────────────────────────
+**`□ Fix Exploration`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -303,10 +303,10 @@ Load **[fix-exploration.md](references/fix-exploration.md)** and follow its inst
 
 ## Step 11: Fix Validation
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Fix Validation ───────────────────────────────
+**`□ Fix Validation`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -332,10 +332,10 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 
 ## Step 13: Conclude Investigation
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Conclude Investigation ───────────────────────
+**`□ Conclude Investigation`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

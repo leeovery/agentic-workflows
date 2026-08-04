@@ -48,10 +48,10 @@ Load **[summary-backfill.md](summary-backfill.md)** with work_unit = `{work_unit
 
 Mutations from A and B are already committed. Returning to the caller would continue Step 6 onward inside the same conversation, but the backfill pass — particularly legacy decomposition — is context-heavy by design. Hand the user a fresh window before the rest of `/workflow-continue-epic` runs.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Backfill Complete ────────────────────────────
+**`□ Backfill Complete`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

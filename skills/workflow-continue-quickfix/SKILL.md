@@ -16,13 +16,10 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 ## Step 0: Initialisation
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-●───────────────────────────────────────────────●
-  Continue Quick-Fix
-●───────────────────────────────────────────────●
-
+# **`■ Continue Quick-Fix`**
 ```
 
 → Proceed to **Step 1**.
@@ -87,10 +84,10 @@ Store the work_unit.
 
 ## Step 3: Select Quick-Fix
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Select Quick-Fix ─────────────────────────────
+**`□ Select Quick-Fix`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -115,10 +112,10 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ## Step 5: Display State and Menu
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Quick-Fix State ──────────────────────────────
+**`□ Quick-Fix State`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
