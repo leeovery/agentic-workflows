@@ -13,12 +13,14 @@
 // ---------------------------------------------------------------------------
 
 const { wrapWithPrefix } = require('../kernel/render.cjs');
+const { displayWidth } = require('../kernel/terminal.cjs');
 
-// Tree content width: total rendered width INCLUDING the gutter — the
-// deliberate narrow-wrap choice (narrow reads well on mobile / split panes,
-// and pre-empts terminal soft-wrap orphaning the │ gutter). Dividers, boxes,
-// and markers stay at the kernel's canonical 49; trees wrap to this.
-const TREE_WIDTH = 65;
+// Tree content width: total rendered width INCLUDING the gutter, resolved
+// from the reader's actual pane (../kernel/terminal.cjs) and capped for
+// legibility. An undetectable environment falls back to the 65 that shipped
+// before detection existed. Dividers, boxes, and markers stay at the
+// kernel's canonical 49; trees wrap to this.
+const TREE_WIDTH = displayWidth();
 
 // Composed sub-header (`  LABEL (count summary)`) clamped to the tree width
 // budget: 2-space indent on every line, wrapped like tree body so a long

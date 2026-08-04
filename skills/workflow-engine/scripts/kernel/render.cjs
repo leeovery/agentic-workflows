@@ -19,6 +19,8 @@
  * @property {TreeNode[]} [children] nested nodes, same shape, recursively
  */
 
+const { displayWidth } = require('./terminal.cjs');
+
 const WIDTH = 49; // canonical fixed width (CONVENTIONS.md: phase titles, markers)
 
 // ---------------------------------------------------------------------------
@@ -137,7 +139,7 @@ function box(title, { width = WIDTH } = {}) {
 // Every sub-line carries the accumulated gutter, so the │ runs unbroken at any
 // depth; the body wrap budget is width − gutter, so body can never orphan.
 /** @param {TreeNode[]} nodes @param {{width?: number}} [opts] @returns {string} */
-function renderTree(nodes, { width = 72 } = {}) {
+function renderTree(nodes, { width = displayWidth() } = {}) {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     throw new Error('renderTree: nodes must be a non-empty array');
   }
