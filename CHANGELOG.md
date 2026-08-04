@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.37] - 2026-08-04
+
+✨ Added
+- Discussion and specification documents now carry a visible revision history — re-decided points and corrected sources are amended in place with a dated note rather than silently rewritten.
+- New per-topic session presence heartbeat — the epic view marks topics open in another session, skips them as recommendations, and confirms before letting you open a second session on the same topic.
+- Epic specifications can now cite a sibling discussion's decision as a consult reference during grouping, without absorbing its content wholesale.
+- Reopening a discussion, spec, or implementation now flags the downstream phase that was built on it as "input moved," with routing and menus steering you back to reconcile before moving on.
+- A background coherence check re-reads an epic's decided discussions for contradictions and stale references, surfacing findings one at a time for reroute into the discussion that needs to change.
+- Corrections to a finished document can now be made in place, with the knowledge base re-indexed to serve the corrected text.
+- Commits are now scoped per topic, so parallel work on different topics no longer gets swept into the same commit.
+
+🔧 Changed
+- Review agents (discussion and research) now grade what counts as a finding by how mature the document is — early sessions get exploratory leads instead of being held to the "final review" bar.
+- The off-topic reroute flow in discussions now renders through the engine's menu system instead of hand-written prompts, and offers/candidate lists carry structured payloads.
+- The specification's standalone-read review can now flag duplicated content for removal, not just gaps.
+- Findings from background reviews are now applied and committed one at a time rather than as a single bulk write.
+
+🐛 Fixed
+- The rule for judging whether a rerouted concern lands in research or discussion is now defined once and referenced everywhere, replacing several drifting copies.
+
 ## [0.6.36] - 2026-08-04
 
 ✨ Added
