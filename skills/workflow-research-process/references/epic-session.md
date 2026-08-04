@@ -51,19 +51,13 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
 
    Resolve the target, and judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. If one topic clearly matches, propose it — with the recommended phase — and confirm with the user (their reply may override the phase). If nothing fits, propose a new kebab-case name and confirm. If several plausible candidates exist — or a near-match you're unsure of — present them and let the user choose:
 
-   > *Output the next fenced block as markdown (not a code block):*
+   Write the candidates payload to `.workflows/.cache/{work_unit}/research/{topic}/reroute-candidates.json` with the Write tool (`{"concern": "…", "landing_phase": "…", "candidates": [{"name": "…", "lifecycle": "…"}]}` — every plausible home, lifecycle from the map read), then render it:
 
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render reroute-candidates {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/reroute-candidates.json
    ```
-   · · · · · · · · · · · ·
-   Where should "{concern}" land?
 
-   - **`1`** — {candidate} [{state}]
-   - **`2`** — {candidate} [{state}]
-   - **`n`/`new`** — Create a new topic for it
-
-   It reads as {concern_nature:[an open question — I'd land it research-side|a decision to make — I'd land it discussion-side]}. Reply with an option, appending a phase to override (e.g. `1 discussion`).
-   · · · · · · · · · · · ·
-   ```
+   Emit the call's MENU section verbatim per its marker.
 
    **STOP.** Wait for user response.
 
