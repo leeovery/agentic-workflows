@@ -19,29 +19,23 @@ const {
   computeUnitPhaseState,
   lastCompletedPhase,
 } = require('./derivations.cjs');
-const { WORK_UNIT_TYPES } = require('./workunit-detail.cjs');
-const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
+const { WORK_TYPE_PIPELINES, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 
 // The epic pipeline — research → review, the completion / next-phase pipeline
-// and the start dashboard's active-phase row. Derived from epic-detail's full
-// EPIC_DETAIL_PHASES minus discovery (the map, not a pipeline phase) so the two
-// lists can never drift.
-const EPIC_PIPELINE_PHASES = EPIC_DETAIL_PHASES.filter((p) => p !== 'discovery');
+// and the start dashboard's active-phase row.
+const EPIC_PIPELINE_PHASES = WORK_TYPE_PIPELINES.epic;
 
-const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
+// Every pipeline phase across all work types — the closed-unit last-phase scan.
+const ALL_PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 
 /**
- * The type's pipeline phases — the same per-type list the work-unit detail
- * builders derive from, so the two surfaces can never disagree. Epic uses its
- * own phase list; an unknown type (grouped with features) falls back to every
- * phase.
+ * The type's pipeline phases, from the schema's one home for pipeline order.
+ * An unknown type (grouped with features) falls back to every phase.
  * @param {string} workType
  * @returns {string[]}
  */
 function pipelineOf(workType) {
-  if (workType === 'epic') return EPIC_PIPELINE_PHASES;
-  const cfg = WORK_UNIT_TYPES[workType];
-  return cfg ? cfg.pipeline : ALL_PHASES;
+  return WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || ALL_PHASES;
 }
 
 /**

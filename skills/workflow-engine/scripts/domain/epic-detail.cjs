@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
+const { WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 const {
   phaseItems,
   computeAnalysisCacheStatus,
@@ -19,11 +20,9 @@ const {
 } = require('./derivations.cjs');
 
 // Every phase the epic detail iterates and the epic dashboard / thin dump
-// surface — discovery (the map) first, then the pipeline. The pipeline-only
-// view (research → review, for completion / next-phase and the start
-// dashboard) is domain/start.cjs's EPIC_PIPELINE_PHASES, derived from this
-// minus discovery — discovery is the map, not a pipeline phase.
-const EPIC_DETAIL_PHASES = ['discovery', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
+// surface — discovery (the map, not a pipeline phase) first, then the epic
+// pipeline from the schema's one home for pipeline order.
+const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
 
 /**
  * @typedef {object} SpecSource

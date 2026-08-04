@@ -18,6 +18,19 @@ const VALID_PHASES = [
   'review'
 ];
 
+// Per-work-type pipeline order — the phases a unit of that type moves through
+// after discovery (the universal first phase; a map, not a pipeline phase, so
+// it never appears here). The one home for pipeline order: detail builders,
+// dashboards, gateways, and the simulation all read these arrays, never a
+// local copy.
+const WORK_TYPE_PIPELINES = {
+  epic:            ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'],
+  feature:         ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'],
+  bugfix:          ['investigation', 'specification', 'planning', 'implementation', 'review'],
+  'quick-fix':     ['scoping', 'implementation', 'review'],
+  'cross-cutting': ['research', 'discussion', 'specification'],
+};
+
 const VALID_PHASE_STATUSES = {
   // Empty on purpose, never removed: discovery items are map items with NO
   // status field (lifecycle is computed at render time), and an empty
@@ -51,6 +64,7 @@ const RESERVED_WORK_UNIT_NAMES = ['project'];
 module.exports = {
   VALID_WORK_TYPES,
   VALID_PHASES,
+  WORK_TYPE_PIPELINES,
   VALID_PHASE_STATUSES,
   VALID_ROUTINGS,
   VALID_GATE_MODES,
