@@ -28,7 +28,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureCont
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 
-const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
 // items (no lifecycle status — computed at render time); they are created and
@@ -147,7 +147,8 @@ function startTopic(cwd, workUnit, phase, topic) {
  * @property {string|null} status_before  the item's status before the call (null when created)
  * @property {boolean} [reopened]  set when a completed item was reopened to receive the concern
  * @property {string} [concern_path]  delivery form: the installed concern file, project-relative
- * @property {boolean} [reconcile_flagged]  delivery form: a research-side landing flagged the topic's completed discussion for reconciliation
+ * @property {boolean} [reconcile_flagged]  delivery form: the landing flagged completed downstream item(s) for reconciliation
+ * @property {string[]} [sources_staled]  delivery form: spec items whose source row for this discussion flipped `incorporated` → `stale`
  * @property {string|null} [committed]  delivery form: short commit sha, or null
  * @property {string} [note]       delivery form: set when committed is null
  * @property {string[]} [warnings] delivery form: the tail commit's failure detail
@@ -184,6 +185,88 @@ function nextConcernNumber(dirAbs) {
     if (m) max = Math.max(max, parseInt(m[1], 10));
   }
   return max + 1;
+}
+
+/** Statuses past reconciliation — no flag, no source-row flip. */
+const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted'];
+
+/**
+ * The `topic`-named row of a spec item's `sources`, object or legacy array
+ * form, or undefined.
+ * @param {object|Array<{name?: string}>|undefined} sources
+ * @param {string} topic
+ * @returns {{status?: string}|undefined}
+ */
+function sourceRow(sources, topic) {
+  if (!sources || typeof sources !== 'object') return undefined;
+  const row = Array.isArray(sources)
+    ? sources.find((s) => s && typeof s === 'object' && s.name === topic)
+    : sources[/** @type {keyof typeof sources} */ (topic)];
+  return row && typeof row === 'object' ? row : undefined;
+}
+
+/**
+ * @typedef {object} DownstreamFlagResult
+ * @property {{phase: string, topic: string}[]} flagged  completed downstream items now carrying `reconcile_needed`
+ * @property {string[]} staled  spec items whose `sources.{topic}` row flipped `incorporated` → `stale`
+ */
+
+/**
+ * Flag `topic`'s downstream neighbours when it goes stale — a reopen or a
+ * triage landing, never the later re-completion. One hop only: the downstream
+ * phase's own reconciliation earns (or doesn't earn) the next.
+ *
+ * Discussion's downstream is the reverse join through spec `sources` (a
+ * grouped spec's own name may differ from the discussion's); every other
+ * phase flags the same-named item in the work type's next pipeline phase.
+ * Only a `completed` item takes the flag (value = the upstream phase name,
+ * consumed and cleared by the entry skills' reconcile advisory; an existing
+ * flag is never clobbered). An `incorporated` source row on any non-terminal
+ * spec item flips to `stale` regardless of the item's flag state — the
+ * persistent record that the extraction predates the revision, cleared only
+ * by the spec's own reconciliation.
+ *
+ * Mutates the loaded manifest; the caller saves under its own lock.
+ * @param {object} manifest
+ * @param {string} workType
+ * @param {string} phase  the phase going stale
+ * @param {string} topic
+ * @returns {DownstreamFlagResult}
+ */
+function flagDownstream(manifest, workType, phase, topic) {
+  /** @type {DownstreamFlagResult} */
+  const result = { flagged: [], staled: [] };
+  const itemsOf = (p) => {
+    const ph = manifest.phases && typeof manifest.phases === 'object' ? manifest.phases[p] : undefined;
+    const items = ph && typeof ph === 'object' ? ph.items : undefined;
+    return items && typeof items === 'object' ? items : undefined;
+  };
+  const flag = (p, name, item) => {
+    if (item && typeof item === 'object' && item.status === 'completed' && item.reconcile_needed === undefined) {
+      item.reconcile_needed = phase;
+      result.flagged.push({ phase: p, topic: name });
+    }
+  };
+
+  if (phase === 'discussion') {
+    for (const [name, item] of Object.entries(itemsOf('specification') || {})) {
+      if (!item || typeof item !== 'object' || TERMINAL_STATUSES.includes(item.status)) continue;
+      const row = sourceRow(item.sources, topic);
+      if (!row) continue;
+      if (row.status === 'incorporated') {
+        row.status = 'stale';
+        result.staled.push(name);
+      }
+      flag('specification', name, item);
+    }
+    return result;
+  }
+
+  const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
+  const at = pipeline.indexOf(phase);
+  const next = at === -1 ? undefined : pipeline[at + 1];
+  if (next) flag(next, topic, (itemsOf(next) || {})[topic]);
+  return result;
 }
 
 /**
@@ -271,19 +354,17 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
       }
     }
 
-    if (delivering && phase === 'research') {
-      // A research-side landing beneath a decided discussion reopens the
-      // ground that discussion stands on — flag it for reconciliation the
-      // next time the discussion is entered. Staleness begins at landing,
-      // not at the research's later conclusion.
-      const dItems = manifest.phases && manifest.phases.discussion && typeof manifest.phases.discussion === 'object'
-        ? manifest.phases.discussion.items : undefined;
-      const dItem = dItems && typeof dItems === 'object' ? dItems[topic] : undefined;
-      if (dItem && typeof dItem === 'object' && dItem.status === 'completed' && dItem.reconcile_needed === undefined) {
-        // Never clobber a pending brief-reconcile flag — the concern itself
-        // still arrives through the queue either way.
-        dItem.reconcile_needed = 'research';
+    if (delivering) {
+      // A landing reopens the ground the downstream phase stands on — flag it
+      // for reconciliation the next time it is entered. Staleness begins at
+      // landing, not at the topic's later re-conclusion.
+      const fd = flagDownstream(manifest, manifest.work_type, phase, topic);
+      if (fd.flagged.length > 0) {
         base.reconcile_flagged = true;
+        dirty = true;
+      }
+      if (fd.staled.length > 0) {
+        base.sources_staled = fd.staled;
         dirty = true;
       }
     }
@@ -472,13 +553,17 @@ function completeTopic(cwd, workUnit, phase, topic) {
  * @property {string} topic
  * @property {string} phase
  * @property {string} status   always `in-progress`
+ * @property {{phase: string, topic: string}[]} [reconcile_flagged]  downstream items this reopen flagged for reconciliation
+ * @property {string[]} [sources_staled]  spec items whose source row for this discussion flipped `incorporated` → `stale`
  */
 
 /**
- * Reopen a completed phase item: set `status: in-progress`. Only a completed
- * item reopens — anything else keeps its own flow (a cancelled item must go
- * through reactivate). No knowledge-base sync — the item's chunks stay live
- * until re-completion re-indexes over the same identity. No git commit.
+ * Reopen a completed phase item: set `status: in-progress` and flag the
+ * topic's downstream neighbours (flagDownstream — staleness begins at the
+ * reopen, not the later re-completion). Only a completed item reopens —
+ * anything else keeps its own flow (a cancelled item must go through
+ * reactivate). No knowledge-base sync — the item's chunks stay live until
+ * re-completion re-indexes over the same identity. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -497,9 +582,14 @@ function reopenTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is not completed (status: ${item.status ?? 'none'}) — only a completed item can be reopened`);
     }
     item.status = 'in-progress';
+    const fd = flagDownstream(manifest, manifest.work_type, phase, topic);
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { topic, phase, status: 'in-progress' };
+    /** @type {TopicReopenResult} */
+    const result = { topic, phase, status: 'in-progress' };
+    if (fd.flagged.length > 0) result.reconcile_flagged = fd.flagged;
+    if (fd.staled.length > 0) result.sources_staled = fd.staled;
+    return result;
   });
 }
 

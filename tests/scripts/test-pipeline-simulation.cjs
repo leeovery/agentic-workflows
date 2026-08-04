@@ -502,6 +502,14 @@ describe('pipeline simulation', () => {
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
+    // The hop on a direct reopen: research alpha beneath alpha's decided
+    // discussion — the same flag a triage landing sets.
+    const reopenHop = sim.run(['topic', 'reopen', wu, 'research', 'alpha']);
+    assert.deepStrictEqual(reopenHop.reconcile_flagged, [{ phase: 'discussion', topic: 'alpha' }]);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.reconcile_needed, 'research');
+    sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+    sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
+
     // Beta discussed to a decided map; gamma-prime cancelled mid-flight and
     // reactivated later.
     sim.run(['topic', 'start', wu, 'discussion', 'beta']);
@@ -726,6 +734,23 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'start', wu, 'specification', 'alpha'], /superseded/);
     sim.refuses(['topic', 'complete', wu, 'specification', 'alpha'], /superseded/);
 
+    // The discussion hop finds the grouped spec by reverse join: re-deciding
+    // beta flags 'unified' (a spec named differently) and stales its beta row;
+    // the superseded alpha spec is terminal — never flagged.
+    const betaReopen = sim.run(['topic', 'reopen', wu, 'discussion', 'beta']);
+    assert.deepStrictEqual(betaReopen.reconcile_flagged, [{ phase: 'specification', topic: 'unified' }]);
+    assert.deepStrictEqual(betaReopen.sources_staled, ['unified']);
+    const unified = sim.manifest(wu).phases.specification.items.unified;
+    assert.strictEqual(unified.reconcile_needed, 'discussion');
+    assert.strictEqual(unified.sources.beta.status, 'stale');
+    assert.strictEqual(unified.sources.alpha.status, 'incorporated', 'sibling rows untouched');
+    assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.reconcile_needed, undefined);
+    sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+    // Reconciliation: the advisory clears the flag at spec entry; the
+    // diff-guided re-extraction re-incorporates the row.
+    sim.run(['manifest', 'delete', `${wu}.specification.unified`, 'reconcile_needed']);
+    sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.beta.status', 'incorporated']);
+
     // Spec-entry bookkeeping: the wildcard snapshot and the analysis cache
     // metadata (a phase-level write on discussion).
     const statuses = sim.read(['manifest', 'get', `${wu}.specification.*`, 'status']);
@@ -780,6 +805,53 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'reopen', wu, 'discussion', wu]);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     assert.strictEqual(sim.manifest(wu).phases.specification.items[wu].status, 'in-progress');
+
+    // Run the pipeline out, then walk the hop family backwards: staleness
+    // lands at each reopen, one hop downstream, value = the upstream phase.
+    walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
+
+    // discussion → specification (reverse join): flag + stale source row.
+    let ro = sim.run(['topic', 'reopen', wu, 'discussion', wu]);
+    assert.deepStrictEqual(ro.reconcile_flagged, [{ phase: 'specification', topic: wu }]);
+    assert.deepStrictEqual(ro.sources_staled, [wu]);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    // Re-completion clears nothing: the flag waits for the entry advisory,
+    // the stale row for the spec's own reconciliation.
+    let spec = sim.manifest(wu).phases.specification.items[wu];
+    assert.strictEqual(spec.reconcile_needed, 'discussion');
+    assert.strictEqual(spec.sources[wu].status, 'stale');
+    sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
+    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
+
+    // specification → planning: the pipeline hop, same-named item.
+    ro = sim.run(['topic', 'reopen', wu, 'specification', wu]);
+    assert.deepStrictEqual(ro.reconcile_flagged, [{ phase: 'planning', topic: wu }]);
+    assert.strictEqual(ro.sources_staled, undefined);
+    assert.strictEqual(sim.manifest(wu).phases.planning.items[wu].reconcile_needed, 'specification');
+    sim.run(['topic', 'complete', wu, 'specification', wu]);
+    sim.run(['manifest', 'delete', `${wu}.planning.${wu}`, 'reconcile_needed']);
+
+    // planning → implementation.
+    ro = sim.run(['topic', 'reopen', wu, 'planning', wu]);
+    assert.deepStrictEqual(ro.reconcile_flagged, [{ phase: 'implementation', topic: wu }]);
+    assert.strictEqual(sim.manifest(wu).phases.implementation.items[wu].reconcile_needed, 'planning');
+    sim.run(['topic', 'complete', wu, 'planning', wu]);
+    sim.run(['manifest', 'delete', `${wu}.implementation.${wu}`, 'reconcile_needed']);
+
+    // implementation → review; a second reopen never clobbers the live flag.
+    ro = sim.run(['topic', 'reopen', wu, 'implementation', wu]);
+    assert.deepStrictEqual(ro.reconcile_flagged, [{ phase: 'review', topic: wu }]);
+    assert.strictEqual(sim.manifest(wu).phases.review.items[wu].reconcile_needed, 'implementation');
+    sim.run(['topic', 'complete', wu, 'implementation', wu]);
+    ro = sim.run(['topic', 'reopen', wu, 'implementation', wu]);
+    assert.strictEqual(ro.reconcile_flagged, undefined, 'existing flag never clobbered');
+    sim.run(['topic', 'complete', wu, 'implementation', wu]);
+    sim.run(['manifest', 'delete', `${wu}.review.${wu}`, 'reconcile_needed']);
+
+    // review is the pipeline tail — reopening it flags nothing.
+    ro = sim.run(['topic', 'reopen', wu, 'review', wu]);
+    assert.strictEqual(ro.reconcile_flagged, undefined);
+    sim.run(['topic', 'complete', wu, 'review', wu]);
   });
 
   it('work-unit lifecycle: complete → reactivate → cancel → reactivate', () => {
