@@ -217,6 +217,8 @@ Every migration has a matching test suite.
 
 Add or update a test alongside any change to engine scripts, adapters, migrations, or `src/knowledge/`.
 
+**Display-width pinning**: the engine detects the terminal width at render time (`kernel/terminal.cjs`), and `CLAUDE_PID` reaches every test env — so `npm test` and `npm run test:cli` pin `WORKFLOWS_DISPLAY_WIDTH=65`, and the prose harness pins it in `recipeEnv()`. **Running a suite directly with `node --test` skips the npm pin** — prefix `WORKFLOWS_DISPLAY_WIDTH=65` by hand, or goldens regenerated from that run will encode whatever pane happened to be open.
+
 ## Pipeline Simulation
 
 `tests/scripts/test-pipeline-simulation.cjs` (under `npm test`) drives the engine CLI end-to-end through the call sequences the skill prose prescribes — every work type's mainline plus the supported edges (reopen, supersession, cancel/reactivate, pivot, absorption, promotion, restarts) — auditing the whole state after every mutation: schema-valid manifests, no shadow roots, every derivation computes, every navigation gateway discovers and formats, render surfaces hold. It is the detector for silent state corruption — writes that succeed and only break a menu phases later.
