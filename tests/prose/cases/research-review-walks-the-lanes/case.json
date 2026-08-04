@@ -1,0 +1,72 @@
+{
+  "origin": "no prose case had ever walked a research review — the phase's review machinery shipped and was revised entirely on inference. This walks it end to end from a live dispatch: the maturity indication in the dispatch prompt, research's own lane declarations (explore walked under Needs Investigation, apply amending with the file's own source), and the batch-then-walk ordering. The agent half of the graded bar — what a real reviewer returns at each maturity — is not walkable: the report is a stub, so its lanes and content are fixture-authored",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-research-entry/references/gather-context.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-research-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/review-agent.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-research-process/references/topic-splitting.md"
+  ],
+  "answers": [
+    "c — continue",
+    "n — now",
+    "y — yes"
+  ],
+  "conduct": "The user returns to the relevance-measurement research after a day away. They have one thing to contribute: they checked, and the events pipeline retains ninety days of click logs — enough history to derive labels from. They share it, agree with how it is captured, and carry on. When the background review is offered they say yes to hearing it. Shown a one-item correction their own benchmark note determines, they approve it without asking for expansion. When the investigable thread is raised they read it with interest but the walk stops before they answer. They never ask for a deep-dive and never move to conclude.",
+  "stubs": {
+    "research-review-laned": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.research.relevance-measurement status",
+      "agent dispatch search-relevance research relevance-measurement --kind review",
+      "agent scan search-relevance research relevance-measurement",
+      "agent ack search-relevance research relevance-measurement review-001 --findings F1,F2",
+      "render finding-batch search-relevance.research.relevance-measurement",
+      "agent surface search-relevance research relevance-measurement review-001 F2",
+      "agent surface search-relevance research relevance-measurement review-001 F1"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.research.relevance-measurement status",
+      "agent dispatch search-relevance research relevance-measurement --kind review",
+      "agent scan search-relevance research relevance-measurement",
+      "agent ack search-relevance research relevance-measurement review-001 --findings F1,F2",
+      "agent surface search-relevance research relevance-measurement review-001 F2",
+      "agent surface search-relevance research relevance-measurement review-001 F1"
+    ],
+    "calls_exclude": [
+      "--kind deep-dive",
+      "--kind perspective",
+      "agent incorporate",
+      "topic complete",
+      "knowledge.cjs index"
+    ]
+  }
+}
