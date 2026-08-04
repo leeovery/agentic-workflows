@@ -173,7 +173,16 @@ findings likewise.
   programme's surface: coherence-analysis's prescribed manifest read
   satisfied from derived map state by one walker — the
   read-vs-context family, with compliance-check and the retired
-  topic-synthesis flake. Eight-item observation batch handed over.
+  topic-synthesis flake. The observation batch, none of it this
+  programme's surface: prescribed-read shortcuts (compliance-check,
+  coherence-analysis — the family topic-synthesis was cured of);
+  document-review § D's counters stumbling on route-only reviews;
+  rerouted-concerns § C body read-ahead (thrice, display never
+  contaminated); natural-breaks silent on post-resume and post-batch
+  moments; discussion-flavoured chrome in research sessions;
+  the initialize-discussion resume wander; instructions.md turn-end
+  vs § C announce ordering; the carry-note walker's uncited landing
+  judgement (watch only).
 
 - 2026-08-04 — The stack walked: 17 affected cases, 14 PASS including
   the phase's first research-review walk and both new lane shapes.
