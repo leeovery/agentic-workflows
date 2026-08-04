@@ -8,7 +8,7 @@ A background review of the behavioural-ranking discussion returned
 three findings across two lanes. One is a correction the document's own
 Journey determines — a Decision clause that reopens what the Journey
 closed. The other two belong elsewhere: one to synonym handling, which
-inherits the batch-only constraint decided here, and one to relevance
+must weigh the batch-only constraint decided here, and one to relevance
 measurement, which owns the question of whether a ranking change helped.
 
 The store row is acknowledged and announced. Nothing has been surfaced.

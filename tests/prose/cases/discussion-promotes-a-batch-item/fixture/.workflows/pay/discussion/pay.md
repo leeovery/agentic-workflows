@@ -17,9 +17,7 @@ How the checkout learns that a card payment was actually captured.
 Polling looked simplest until rate limits came up. The webhook is
 guaranteed by the provider, which settled it. An earlier draft
 argued for a polling fallback on top of the webhook; that was
-dropped once delivery guarantees were confirmed. Someone raised
-reconciling a webhook that never arrives at all — we noted it and
-moved on without settling it.
+dropped once delivery guarantees were confirmed.
 
 ### Decision
 Capture is confirmed by the gateway webhooks; the checkout never
@@ -39,14 +37,28 @@ is called with the store currency.
 
 ---
 
+## Failed-Payment Retries
+
+### Context
+How many times a declined payment is retried before it is given up on.
+
+### Journey
+Picking our own number invited an argument nobody could settle, and
+the provider already enforces a ceiling of its own. Deferring to it
+ended the discussion.
+
+### Decision
+Retries stop at the gateway's own ceiling; the checkout does not
+impose a lower one.
+
+---
+
 ## Summary
 
 ### Current State
 - Capture confirmation decided — webhooks, never polling.
 - Currency handling decided — integer minor units.
-
-### Open Threads
-- Reconciling a webhook that never arrives was raised and not settled.
+- Retries decided — the gateway's ceiling governs.
 
 ## Triage
 

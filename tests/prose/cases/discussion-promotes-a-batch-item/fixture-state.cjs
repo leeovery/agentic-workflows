@@ -35,9 +35,7 @@ module.exports = {
       'Polling looked simplest until rate limits came up. The webhook is',
       'guaranteed by the provider, which settled it. An earlier draft',
       'argued for a polling fallback on top of the webhook; that was',
-      'dropped once delivery guarantees were confirmed. Someone raised',
-      'reconciling a webhook that never arrives at all — we noted it and',
-      'moved on without settling it.',
+      'dropped once delivery guarantees were confirmed.',
       '',
       '### Decision',
       'Capture is confirmed by the gateway webhooks; the checkout never',
@@ -57,14 +55,28 @@ module.exports = {
       '',
       '---',
       '',
+      '## Failed-Payment Retries',
+      '',
+      '### Context',
+      'How many times a declined payment is retried before it is given up on.',
+      '',
+      '### Journey',
+      'Picking our own number invited an argument nobody could settle, and',
+      'the provider already enforces a ceiling of its own. Deferring to it',
+      'ended the discussion.',
+      '',
+      '### Decision',
+      "Retries stop at the gateway's own ceiling; the checkout does not",
+      'impose a lower one.',
+      '',
+      '---',
+      '',
       '## Summary',
       '',
       '### Current State',
       '- Capture confirmation decided — webhooks, never polling.',
       '- Currency handling decided — integer minor units.',
-      '',
-      '### Open Threads',
-      '- Reconciling a webhook that never arrives was raised and not settled.',
+      "- Retries decided — the gateway's ceiling governs.",
       '',
       '## Triage',
       '',
@@ -73,9 +85,11 @@ module.exports = {
     ].join('\n'));
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'currency-handling');
+    h.engine('discussion-map', 'add', WU, WU, 'failed-payment-retries');
     h.engine('discussion-map', 'set', WU, WU, 'capture-confirmation', 'decided');
     h.engine('discussion-map', 'set', WU, WU, 'currency-handling', 'decided');
-    h.engine('commit', WU, '-m', `discussion(${WU}/${WU}): capture and currency decided`);
+    h.engine('discussion-map', 'set', WU, WU, 'failed-payment-retries', 'decided');
+    h.engine('commit', WU, '-m', `discussion(${WU}/${WU}): capture, currency and retries decided`);
 
     h.engine('agent', 'dispatch', WU, 'discussion', WU, '--kind', 'review');
     h.write(`.workflows/.cache/${WU}/discussion/${WU}/review-001.md`, [
@@ -97,14 +111,14 @@ module.exports = {
       'it still ends "A polling fallback remains available if delivery',
       'proves unreliable." Strike it.',
       '',
-      '### F2: The missed-webhook path is decided but never written down',
+      '### F2: The retry ceiling is deferred to but never numbered',
       '',
       '**Lane:** apply',
       '',
-      'The Journey records that reconciling a webhook that never arrives was',
-      'raised. Since polling is ruled out, the reconciliation path follows:',
-      'the checkout reconciles pending orders against the gateway on a',
-      'schedule. State it in the Decision.',
+      "Failed-Payment Retries decides that retries stop at the gateway's own",
+      'ceiling and never says what that ceiling is. The provider documents it',
+      'as three attempts, so the Decision can carry the number it already',
+      'defers to: retries stop at three.',
       '',
       '### F3: The currency rule is stated for amounts but left implied for refunds',
       '',

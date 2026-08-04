@@ -1,5 +1,5 @@
 {
-  "origin": "the one-way rule — a finding moves toward the user, never away — had no walk: nothing exercised a user pushing back on a batch item, which must leave the batch unapplied and be raised as a decision instead of being defended back in or applied anyway",
+  "origin": "the one-way rule — a finding moves toward the user, never away — had no walk only the user could satisfy: the first fixture planted a misfile the artifact itself exposed, so a walker re-classifying on that evidence caught it before rendering and the scripted pushback never fired. This plants one the artifact cannot reveal, so the promotion can only come from the user",
   "entry": "workflow-discussion-entry",
   "world": "claims",
   "files": [
@@ -8,6 +8,7 @@
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
     "skills/workflow-discussion-entry/references/invoke-skill.md",
@@ -23,14 +24,16 @@
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-shared/references/background-agent-surfacing.md",
-    "skills/workflow-shared/references/natural-breaks.md"
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/template.md"
   ],
   "answers": [
     "c — continue",
     "n — now",
-    "the missed-webhook one is not settled — we noted it and moved on"
+    "the retry ceiling is not three for us — we are on a negotiated plan",
+    "y — yes"
   ],
-  "conduct": "The user is picking a card-payments discussion back up after most of a day away. They are brisk and glad to have bookkeeping handled in bulk. Shown a screen of three corrections, they accept two of them without comment but stop at the one about reconciling a webhook that never arrives: they remember that being raised and explicitly left open, not decided, and they say so. They do not offer a resolution for it — they want it treated as the open question it is. They add no new material and do not ask to move on to anything else.",
+  "conduct": "The user is picking a card-payments discussion back up after most of a day away. They are brisk and glad to have bookkeeping handled in bulk. Shown a screen of three corrections, they accept two without comment but stop at the one writing the provider's published retry ceiling into the decision: they know this account is on a negotiated plan whose ceiling is not the published figure, which appears nowhere in the document. They say so, and they do not supply the real number — they want it treated as the open question it now is. They add no new material and do not ask to move on to anything else.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [

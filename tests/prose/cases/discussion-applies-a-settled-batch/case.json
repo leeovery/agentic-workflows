@@ -8,6 +8,7 @@
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
     "skills/workflow-discussion-entry/references/invoke-skill.md",
@@ -23,7 +24,8 @@
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-shared/references/background-agent-surfacing.md",
-    "skills/workflow-shared/references/natural-breaks.md"
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/template.md"
   ],
   "answers": [
     "c — continue",
