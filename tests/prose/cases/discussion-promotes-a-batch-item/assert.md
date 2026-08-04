@@ -20,10 +20,11 @@ The prose should have taken this path:
    the published figure for this account. Nothing in the artifact showed
    that, so the promotion could only come from them. That finding leaves
    the apply lane — unsurfaced, treated as a decision from here on
-8. the two genuinely settled corrections are applied and recorded in
-   one surface call carrying exactly those two ids, each committed
-   under its own subject marker. The row stays acknowledged: one
-   finding remains
+8. the batch re-renders for the two remaining items after the
+   promotion; the user approves, and the two settled corrections are
+   applied and recorded in one surface call carrying exactly those two
+   ids, each committed under its own subject marker. The row stays
+   acknowledged: one finding remains
 9. with the apply lane empty, the promoted finding is raised as a
    decision — the lane heading, then the full raise, ending in a single
    question, and the turn ends

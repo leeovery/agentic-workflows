@@ -9,7 +9,7 @@ The prose should have taken this path:
    addresses the knowledge base once as a contextual query, and enters
    the session step
 4. the session loop's triage check no-ops on an empty queue
-5. the check-for-results scan finds the acknowledged row with three
+5. the check-for-results scan finds the acknowledged row with four
    findings remaining, the announce menu is rendered — a count and the
    lane shape — and the user opts in
 6. lanes run in order, so the apply lane goes first: a one-item batch
