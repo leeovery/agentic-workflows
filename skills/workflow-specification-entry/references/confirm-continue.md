@@ -73,7 +73,9 @@ Proceed?
 
 → Proceed to **B. Handle Response**.
 
-#### If spec is completed with pending sources
+#### If spec is completed with pending or stale sources
+
+Omit either sources block when the spec has none of that status:
 
 > *Output the next fenced block as a code block:*
 
@@ -84,6 +86,9 @@ Existing: .workflows/{work_unit}/specification/{topic}/specification.md [complet
 
 New sources to extract:
   • {discussion-name} [pending]
+
+Sources re-decided since extraction (reconcile):
+  • {discussion-name} [stale]
 
 Previously extracted (for reference):
   • {discussion-name}
@@ -109,7 +114,7 @@ Proceed?
 
 #### If `yes`
 
-**If spec is completed with pending sources:**
+**If spec is completed with pending or stale sources:**
 
 → Load **[continue-completed.md](handoffs/continue-completed.md)** and follow its instructions as written.
 

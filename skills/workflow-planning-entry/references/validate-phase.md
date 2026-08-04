@@ -53,10 +53,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_u
 
 Set source="existing".
 
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `planning`.
+
 → Return to caller.
 
 #### If status is `in-progress`
 
 Set source="existing".
+
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `planning`.
 
 → Return to caller.

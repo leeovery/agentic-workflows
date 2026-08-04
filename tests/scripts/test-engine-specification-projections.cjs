@@ -648,6 +648,36 @@ describe('specification projections: menu goldens', () => {
     );
   });
 
+  it('specs-menu: a stale source keeps a completed spec actionable with the reconcile label', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: { a: { status: 'completed' }, b: { status: 'completed' } },
+        },
+        specification: {
+          items: {
+            'moved-spec': {
+              status: 'completed',
+              sources: { a: { status: 'stale' }, b: { status: 'pending' } },
+            },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/moved-spec/specification.md', '# M');
+    const detail = detailOf(dir, 'v1');
+    const row = detail.actionable.find((r) => r.name === 'moved-spec');
+    assert.ok(row, 'the staled spec is actionable, not concluded');
+    assert.strictEqual(detail.concluded.length, 0);
+    assert.strictEqual(row.verb, 'Continuing');
+    assert.strictEqual(row.stale, 1);
+    assert.deepStrictEqual(row.sources.map((s) => s.tag).sort(), ['pending', 'stale']);
+    const menu = specificationMenu(detail);
+    const entry = menu.keys.find((k) => k.topic === 'moved-spec');
+    assert.strictEqual(entry.label, 'Continue "Moved Spec" — 1 new source(s) to extract, 1 stale source(s) to reconcile');
+  });
+
   it('completed sub-view: plural refine entries and back', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',

@@ -9,8 +9,8 @@
 The verb rides on the flow's context — the selected `ACTIONS` entry's `verb`, or the DATA `verb` on the single-discussion path:
 
 - **"Creating"** — no spec exists (proposed grouping or fresh single discussion)
-- **"Continuing"** — spec is `in-progress`, or `completed` with pending sources
-- **"Refining"** — spec is `completed` with all sources extracted
+- **"Continuing"** — spec is `in-progress`, or `completed` with pending or stale sources
+- **"Refining"** — spec is `completed` with all sources extracted and none stale
 
 ## Route
 

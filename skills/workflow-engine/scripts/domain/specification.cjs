@@ -57,11 +57,12 @@
  * @typedef {object} SpecRow
  * @property {string} name
  * @property {string} status              proposed | in-progress | completed
- * @property {{name: string, tag: string}[]} sources  display rows (ready | extracted | pending | "extracted, reopened")
+ * @property {{name: string, tag: string}[]} sources  display rows (ready | extracted | pending | stale | "extracted, reopened")
  * @property {ConsultRow[]} consult
  * @property {number} extracted           X — sources incorporated
  * @property {number} total               Y — sources counted
  * @property {number} pending             sources still pending
+ * @property {number} stale               sources extracted but revised since — needing reconciliation
  * @property {number} consult_pending
  * @property {string} verb                Creating | Continuing | Refining
  */
@@ -95,6 +96,7 @@
 /** Display tag for one materialized source. @param {DiscoverySource} src */
 function sourceTag(src) {
   if (src.status === 'pending') return 'pending';
+  if (src.status === 'stale') return 'stale';
   if (src.discussion_status === 'completed' || src.discussion_status === 'unknown') return 'extracted';
   return 'extracted, reopened';
 }
@@ -102,7 +104,7 @@ function sourceTag(src) {
 /** @param {SpecRow} row */
 function rowVerb(row) {
   if (row.status === 'proposed') return 'Creating';
-  if (row.status === 'completed' && row.pending === 0) return 'Refining';
+  if (row.status === 'completed' && row.pending === 0 && row.stale === 0) return 'Refining';
   return 'Continuing';
 }
 
@@ -140,6 +142,7 @@ function specRow(spec, hints) {
     extracted: proposed ? 0 : kept.filter((s) => s.status === 'incorporated').length,
     total: kept.length,
     pending: kept.filter((s) => s.status === 'pending').length,
+    stale: kept.filter((s) => s.status === 'stale').length,
     consult_pending: consult.filter((c) => c.status === 'pending').length,
     verb: '',
   };
@@ -204,7 +207,7 @@ function specificationDetail(workUnit, result, opts = {}) {
   const unassigned = completed.filter((d) => !sourced.has(d));
 
   const rows = result.specifications.map((s) => specRow(s, hints));
-  const concluded = rows.filter((r) => r.status === 'completed' && r.pending === 0);
+  const concluded = rows.filter((r) => r.status === 'completed' && r.pending === 0 && r.stale === 0);
   const actionable = rows.filter((r) => !concluded.includes(r));
 
   /** @type {SpecificationDetail['scenario']} */
