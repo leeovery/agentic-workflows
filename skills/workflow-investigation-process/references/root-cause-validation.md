@@ -19,11 +19,10 @@ An independent agent validates the root cause hypothesis by tracing the code fre
 
 ```
 · · · · · · · · · · · ·
-Root cause documented. Run validation?
+**`◆ Root cause documented. Run validation?`**
 
-- **`y`/`yes`** — Run root cause validation
-- **`s`/`skip`** — Skip straight to findings sign-off
-· · · · · · · · · · · ·
+**`y/yes`**  → Run root cause validation
+**`s/skip`** → Skip straight to findings sign-off
 ```
 
 **STOP.** Wait for user response.
@@ -116,11 +115,10 @@ The gaps live only in cache — each must land in the investigation file or be e
 
 ```
 · · · · · · · · · · · ·
-How should these gaps be handled?
+**`◆ How should these gaps be handled?`**
 
-- **`a`/`address`** — Work through them and fold the answers into the investigation
-- **`d`/`dismiss`** — Note them as considered-and-dismissed and proceed
-· · · · · · · · · · · ·
+**`a/address`** → Work through them and fold the answers into the investigation
+**`d/dismiss`** → Note them as considered-and-dismissed and proceed
 ```
 
 **STOP.** Wait for user response.

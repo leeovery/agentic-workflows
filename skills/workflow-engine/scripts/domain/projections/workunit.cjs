@@ -13,7 +13,7 @@
 
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title } = require('../conventions.cjs');
-const { dotFrame, cmdOption } = require('./surfaces.cjs');
+const { menuFrame, cmdOption } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -145,7 +145,7 @@ function workUnitMenu(type, unit) {
   if (unit.finalising || revisitable.length > 0) {
     const options = [cmdOption('y', 'yes', keys[0].label)];
     if (revisitable.length > 0) options.push(cmdOption('r', 'revisit', 'Revisit an earlier phase'));
-    rendered = dotFrame([
+    rendered = menuFrame([
       `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — ${unit.phase_label}.`,
       '',
       ...options,
@@ -207,7 +207,7 @@ function revisitablePhases(type, unit) {
  */
 function revisitPhasesSection(phases) {
   if (phases.length === 0) return '';
-  const body = dotFrame([
+  const body = menuFrame([
     'Which phase would you like to revisit?',
     '',
     ...phases.map((phase, i) => cmdOption(String(i + 1), null, `${titlecase(phase)} — completed`)),

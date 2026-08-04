@@ -24,9 +24,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 · · · · · · · · · · · ·
 Project default format is **{format}**. Use the same format?
 
-- **`y`/`yes`** — Use {format}
-- **`n`/`no`** — See all available formats
-· · · · · · · · · · · ·
+**`y/yes`** → Use {format}
+**`n/no`**  → See all available formats
 ```
 
 **STOP.** Wait for user response.

@@ -226,11 +226,10 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Auth Flow" — specification (in-progress).',
+      '**`◆ Continuing "Auth Flow" — specification (in-progress).`**',
       '',
-      '- **`y`/`yes`** — Proceed to specification',
-      '- **`r`/`revisit`** — Revisit an earlier phase',
-      '· · · · · · · · · · · ·',
+      '**`y/yes`**     → Proceed to specification',
+      '**`r/revisit`** → Revisit an earlier phase',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
@@ -260,11 +259,10 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('bugfix', unitOf(dir, 'bugfix', 'login-crash'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Login Crash" — ready for specification.',
+      '**`◆ Continuing "Login Crash" — ready for specification.`**',
       '',
-      '- **`y`/`yes`** — Proceed to specification',
-      '- **`r`/`revisit`** — Revisit an earlier phase',
-      '· · · · · · · · · · · ·',
+      '**`y/yes`**     → Proceed to specification',
+      '**`r/revisit`** → Revisit an earlier phase',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
@@ -287,11 +285,10 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('quick-fix', unitOf(dir, 'quick-fix', 'hotfix-logs'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Hotfix Logs" — implementation (in-progress).',
+      '**`◆ Continuing "Hotfix Logs" — implementation (in-progress).`**',
       '',
-      '- **`y`/`yes`** — Proceed to implementation',
-      '- **`r`/`revisit`** — Revisit an earlier phase',
-      '· · · · · · · · · · · ·',
+      '**`y/yes`**     → Proceed to implementation',
+      '**`r/revisit`** → Revisit an earlier phase',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
@@ -329,11 +326,10 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Finalising "Auth Flow" — pipeline complete.',
+      '**`◆ Finalising "Auth Flow" — pipeline complete.`**',
       '',
-      '- **`y`/`yes`** — Mark the work unit completed',
-      '- **`r`/`revisit`** — Revisit an earlier phase',
-      '· · · · · · · · · · · ·',
+      '**`y/yes`**     → Mark the work unit completed',
+      '**`r/revisit`** → Revisit an earlier phase',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
@@ -381,11 +377,10 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Caching" — ready for specification.',
+      '**`◆ Continuing "Caching" — ready for specification.`**',
       '',
-      '- **`y`/`yes`** — Proceed to specification',
-      '- **`r`/`revisit`** — Revisit an earlier phase',
-      '· · · · · · · · · · · ·',
+      '**`y/yes`**     → Proceed to specification',
+      '**`r/revisit`** → Revisit an earlier phase',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
@@ -507,14 +502,13 @@ describe('workunit projections: revisit phases section', () => {
     assert.strictEqual(revisitPhasesSection(['discussion', 'specification']), [
       '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===',
       '· · · · · · · · · · · ·',
-      'Which phase would you like to revisit?',
+      '**`◆ Which phase would you like to revisit?`**',
       '',
-      '- **`1`** — Discussion — completed',
-      '- **`2`** — Specification — completed',
-      '- **`b`/`back`** — Return to the previous menu',
+      '**`1`**      → Discussion — completed',
+      '**`2`**      → Specification — completed',
+      '**`b/back`** → Return to the previous menu',
       '',
       'Select an option:',
-      '· · · · · · · · · · · ·',
       '',
     ].join('\n'));
   });

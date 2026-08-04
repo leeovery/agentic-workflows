@@ -42,9 +42,8 @@ Match the decision topic against the polarity-pair table below. Pick the pair wh
 · · · · · · · · · · · ·
 This decision sits on a {tension description} tension. Want to explore both lenses?
 
-- **`y`/`yes`** — Spin up perspective agents arguing each lens
-- **`n`/`no`** — Continue without perspectives
-· · · · · · · · · · · ·
+**`y/yes`** → Spin up perspective agents arguing each lens
+**`n/no`**  → Continue without perspectives
 ```
 
 **STOP.** Wait for user response.

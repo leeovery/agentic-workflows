@@ -48,10 +48,9 @@ One or more import paths don't exist — nothing was created. Report them and re
 >   • {missing_path_2}
 
 · · · · · · · · · · · ·
-Provide the corrected file path(s):
+**`◆ Provide the corrected file path(s):`**
 
-- **Provide file paths** — one or more, space or newline separated
-· · · · · · · · · · · ·
+**Provide file paths** → one or more, space or newline separated
 ```
 
 **STOP.** Wait for user response.

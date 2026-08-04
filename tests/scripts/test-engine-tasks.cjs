@@ -601,12 +601,11 @@ describe('engine task gate sections', () => {
   const BLOCKED_MENU = [
     "=== MENU: blocked tasks (emit verbatim as markdown only at the task loop's blocked-tasks stop) ===",
     '· · · · · · · · · · · ·',
-    'How would you like to proceed?',
+    '**\`◆ How would you like to proceed?\`**',
     '',
-    '- **`p`/`proceed`** — Continue with the first blocked task anyway (its blocker will not be completed)',
-    '- **`s`/`skip`** — Skip the blocked tasks and conclude the loop',
-    '- **`t`/`stop`** — Stop implementation entirely',
-    '· · · · · · · · · · · ·',
+    '**`p/proceed`** → Continue with the first blocked task anyway (its blocker will not be completed)',
+    '**`s/skip`**    → Skip the blocked tasks and conclude the loop',
+    '**`t/stop`**    → Stop implementation entirely',
     '',
   ].join('\n');
 
@@ -615,14 +614,13 @@ describe('engine task gate sections', () => {
     return [
       '=== MENU: task gate (emit verbatim as markdown at the task gate — never before) ===',
       '· · · · · · · · · · · ·',
-      `Approve task ${id}?`,
+      `**\`◆ Approve task ${id}?\`**`,
       '',
-      '- **`y`/`yes`** — Commit and continue to next task',
-      '- **`a`/`auto`** — Approve this and all future tasks automatically',
-      "- **`t`/`technical`** — Retell the result from the code's perspective",
-      "- **Ask** — Ask questions about the implementation (doesn't approve or reject)",
-      '- **Comment** — Request changes (triggers a fix round)',
-      '· · · · · · · · · · · ·',
+      '**`y/yes`**       → Commit and continue to next task',
+      '**`a/auto`**      → Approve this and all future tasks automatically',
+      "**`t/technical`** → Retell the result from the code's perspective",
+      "**Ask**           → Ask questions about the implementation (doesn't approve or reject)",
+      '**Comment**       → Request changes (triggers a fix round)',
       '',
     ].join('\n');
   }
@@ -632,15 +630,14 @@ describe('engine task gate sections', () => {
     return [
       '=== MENU: fix gate (emit verbatim as markdown at the fix approval gate) ===',
       '· · · · · · · · · · · ·',
-      `Accept the reviewer's fix analysis for task ${id}?`,
+      `**\`◆ Accept the reviewer's fix analysis for task ${id}?\`**`,
       '',
-      '- **`y`/`yes`** — Pass to executor',
-      ...(auto ? [] : ['- **`a`/`auto`** — Accept and auto-approve future fix analyses']),
-      '- **`s`/`skip`** — Override the reviewer and proceed as-is',
-      "- **`t`/`technical`** — Retell the review from the code's perspective",
-      "- **Ask** — Ask questions about the review (doesn't accept or reject)",
-      '- **Comment** — Accept with adjustments — pass your own direction alongside the review',
-      '· · · · · · · · · · · ·',
+      '**`y/yes`**       → Pass to executor',
+      ...(auto ? [] : ['**`a/auto`**      → Accept and auto-approve future fix analyses']),
+      '**`s/skip`**      → Override the reviewer and proceed as-is',
+      "**`t/technical`** → Retell the review from the code's perspective",
+      "**Ask**           → Ask questions about the review (doesn't accept or reject)",
+      '**Comment**       → Accept with adjustments — pass your own direction alongside the review',
       '',
     ].join('\n');
   }
@@ -748,11 +745,10 @@ describe('engine task gate sections', () => {
       '',
       '=== MENU: cycle gate (emit verbatim as markdown at the cycle gate) ===',
       '· · · · · · · · · · · ·',
-      'Continue with analysis?',
+      '**`◆ Continue with analysis?`**',
       '',
-      '- **`p`/`proceed`** — Continue analysis',
-      '- **`s`/`skip`** — Skip analysis, proceed to completion',
-      '· · · · · · · · · · · ·',
+      '**`p/proceed`** → Continue analysis',
+      '**`s/skip`**    → Skip analysis, proceed to completion',
       '',
     ].join('\n');
 

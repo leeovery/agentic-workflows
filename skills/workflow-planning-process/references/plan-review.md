@@ -64,11 +64,10 @@ Auto mode is active — pass through to review. Section E's safety cap (cycle 5)
 
 ```
 · · · · · · · · · · · ·
-Continue with review?
+**`◆ Continue with review?`**
 
-- **`p`/`proceed`** — Continue review
-- **`s`/`skip`** — Skip review, proceed to completion
-· · · · · · · · · · · ·
+**`p/proceed`** → Continue review
+**`s/skip`**    → Skip review, proceed to completion
 ```
 
 **STOP.** Wait for user response.
@@ -157,11 +156,10 @@ with fresh context — 2-3 cycles typically surface anything cascading.
 
 ```
 · · · · · · · · · · · ·
-Run another review round?
+**`◆ Run another review round?`**
 
-- **`r`/`reanalyse`** — Run another round (traceability + integrity)
-- **`p`/`proceed`** — Proceed to conclusion
-· · · · · · · · · · · ·
+**`r/reanalyse`** → Run another round (traceability + integrity)
+**`p/proceed`**   → Proceed to conclusion
 ```
 
 **STOP.** Wait for user response.
@@ -190,11 +188,10 @@ with fresh context — 2-3 cycles typically surface anything cascading.
 
 ```
 · · · · · · · · · · · ·
-Run another review round?
+**`◆ Run another review round?`**
 
-- **`r`/`reanalyse`** — Run another round (traceability + integrity)
-- **`p`/`proceed`** — Proceed to conclusion
-· · · · · · · · · · · ·
+**`r/reanalyse`** → Run another round (traceability + integrity)
+**`p/proceed`**   → Proceed to conclusion
 ```
 
 **STOP.** Wait for user response.

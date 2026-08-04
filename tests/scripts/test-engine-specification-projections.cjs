@@ -544,20 +544,19 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '- **`1`** — Start "Auth Flow" — 2 ready discussion(s)',
-      '- **`2`** — Continue "Data Spec" — 1 source(s) pending extraction — 1 consult ref(s) pending',
-      '- **`3`** — Unify all into single specification',
+      '**`1`**           → Start "Auth Flow" — 2 ready discussion(s)',
+      '**`2`**           → Continue "Data Spec" — 1 source(s) pending extraction — 1 consult ref(s) pending',
+      '**`3`**           → Unify all into single specification',
       '   `All discussions are combined into one specification. Existing`',
       '   `specifications are incorporated and superseded.`',
-      '- **`4`** — Re-analyze groupings',
+      '**`4`**           → Re-analyze groupings',
       '   `Current groupings are discarded and rebuilt. Existing`',
       '   `specification names are preserved. You can provide guidance`',
       '   `in the next step.`',
       '',
-      '- **`c`/`completed`** — Manage completed specifications — 1 completed',
+      '**`c/completed`** → Manage completed specifications — 1 completed',
       '',
       'Select an option:',
-      '· · · · · · · · · · · ·',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
@@ -589,13 +588,12 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '- **`1`** — Start "Only Grp" — 2 ready discussion(s)',
-      '- **`2`** — Re-analyze groupings',
+      '**`1`** → Start "Only Grp" — 2 ready discussion(s)',
+      '**`2`** → Re-analyze groupings',
       '   `Current groupings are discarded and rebuilt. You can provide`',
       '   `guidance in the next step.`',
       '',
       'Select an option:',
-      '· · · · · · · · · · · ·',
     ].join('\n'));
   });
 
@@ -625,17 +623,16 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '- **`1`** — Analyze for groupings (recommended)',
+      '**`1`**           → Analyze for groupings (recommended)',
       '   `All discussions are analyzed for natural groupings. Existing`',
       '   `specification names are preserved. You can provide guidance`',
       '   `in the next step.`',
-      '- **`2`** — Continue "Auth Spec" — in-progress',
-      '- **`3`** — Continue "Data Spec" — 1 new source(s) to extract — 1 consult ref(s) pending',
+      '**`2`**           → Continue "Auth Spec" — in-progress',
+      '**`3`**           → Continue "Data Spec" — 1 new source(s) to extract — 1 consult ref(s) pending',
       '',
-      '- **`c`/`completed`** — Manage completed specifications — 1 completed',
+      '**`c/completed`** → Manage completed specifications — 1 completed',
       '',
       'Select an option:',
-      '· · · · · · · · · · · ·',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
@@ -706,14 +703,13 @@ describe('specification projections: menu goldens', () => {
     ].join('\n'));
     assert.strictEqual(sub.rendered, [
       '· · · · · · · · · · · ·',
-      'Which completed specification would you like to refine?',
+      '**`◆ Which completed specification would you like to refine?`**',
       '',
-      '- **`1`** — Refine "Auth Flow" — completed',
-      '- **`2`** — Refine "Data Model" — completed',
-      '- **`b`/`back`** — Return to the specifications menu',
+      '**`1`**      → Refine "Auth Flow" — completed',
+      '**`2`**      → Refine "Data Model" — completed',
+      '**`b/back`** → Return to the specifications menu',
       '',
       'Select an option:',
-      '· · · · · · · · · · · ·',
     ].join('\n'));
     assert.deepStrictEqual(
       sub.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
@@ -780,7 +776,7 @@ describe('specification adapter: gateway verbs', () => {
     assert.ok(out.includes('    consult: billing (pending — pricing slice supersedes the auth draft)'));
     assert.ok(out.includes('ACTIONS (key  action  topic  verb):'));
     assert.ok(out.includes('  1  start_spec  auth-flow  Creating'));
-    assert.ok(out.includes('- **`1`** — Start "Auth Flow" — 2 ready discussion(s) — 1 consult ref(s) pending'));
+    assert.ok(/\*\*`1`\*\* +→ Start "Auth Flow" — 2 ready discussion\(s\) — 1 consult ref\(s\) pending/.test(out));
   });
 
   it('view for a blocked work unit emits DATA + DISPLAY and no MENU', () => {
@@ -840,8 +836,8 @@ describe('specification adapter: gateway verbs', () => {
     const out = run(['completed-menu', 'v1']);
     assert.ok(out.includes('  1  refine_spec  done-spec  Refining'));
     assert.ok(out.includes('Completed Specifications'));
-    assert.ok(out.includes('- **`1`** — Refine "Done Spec" — completed'));
-    assert.ok(out.includes('- **`b`/`back`** — Return to the specifications menu'));
+    assert.ok(/\*\*`1`\*\* +→ Refine "Done Spec" — completed/.test(out));
+    assert.ok(/\*\*`b\/back`\*\* +→ Return to the specifications menu/.test(out));
   });
 
   it('no-arg and positional forms emit the thin state line, not sectioned output', () => {

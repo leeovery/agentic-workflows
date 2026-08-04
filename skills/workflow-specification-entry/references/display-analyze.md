@@ -23,9 +23,8 @@ Emit the DISPLAY section from the Step 1 snapshot verbatim as a code block.
 
 · · · · · · · · · · · ·
 Proceed with analysis?
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.
@@ -44,9 +43,8 @@ Proceed with analysis?
 
 · · · · · · · · · · · ·
 Proceed with analysis?
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.

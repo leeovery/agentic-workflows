@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: shared render-surface primitives — the single builder every engine-rendered
 // menu, callout, and content frame flows through. The skill-visible formatting
-// rules (CONVENTIONS.md: dot frames, option syntax, callout flags) exist in
+// rules (CONVENTIONS.md: menu frames, option syntax, callout flags) exist in
 // code exactly once, here; restyling a surface class is a one-place change.
 // Artefact content is framed by its emission fence, never by drawn borders
 // (D8) — fences re-flow with the terminal; fixed-width borders cannot.
@@ -13,6 +13,32 @@ const { wrap } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 
 const DOTS = '· · · · · · · · · · · ·';
+
+// The menu's label glyph. Squares are structure; a menu is a decision, so it
+// takes the diamond — the one place the user must act.
+const MENU_GLYPH = '◆';
+
+// Option lines align their arrows into one column. The padding is measured
+// against the widest key in the same block, never against the terminal, so it
+// is stable at any width — which is why prose may carry it by hand while
+// terminal-width chrome may not.
+const OPTION = /^(\*\*.+?\*\*) → (.*)$/;
+
+/**
+ * Pad option lines so their arrows share a column. Non-option lines pass
+ * through untouched, so a block may mix options with plain text.
+ * @param {string[]} lines @returns {string[]}
+ */
+function alignOptions(lines) {
+  const widths = lines.map((l) => { const m = OPTION.exec(l); return m ? m[1].length : -1; });
+  const column = Math.max(-1, ...widths);
+  if (column < 0) return lines;
+  return lines.map((l, i) => {
+    if (widths[i] < 0) return l;
+    const m = /** @type {RegExpExecArray} */ (OPTION.exec(l));
+    return `${m[1].padEnd(column)} → ${m[2]}`;
+  });
+}
 
 /**
  * One `=== NAME (instruction) ===` demarcated section.
@@ -24,19 +50,42 @@ function section(name, instruction, body) {
 }
 
 /**
- * The menu frame: content lines between the canonical dot rules. Projections
- * with bespoke option grouping build their lines and frame them here.
+ * The menu frame: an opening dot rule above the content. One-sided by
+ * design — output stops while the user chooses, so their own input closes
+ * the block more definitively than a drawn rule could. Projections with
+ * bespoke option grouping build their lines and frame them here.
+ *
+ * A leading label (first line, blank line beneath it) takes the decision
+ * glyph here rather than in `menu`, so a menu reads the same whether its
+ * options were grouped by `menu` or composed by the projection itself.
  * @param {string[]} lines @returns {string}
  */
-function dotFrame(lines) {
-  return [DOTS, ...lines, DOTS].join('\n');
+function menuFrame(lines) {
+  const body = alignOptions(lines);
+  if (body.length > 1 && body[1] === '' && isGlyphable(body[0])) {
+    body[0] = `**\`${MENU_GLYPH} ${body[0]}\`**`;
+  }
+  return [DOTS, ...body].join('\n');
+}
+
+// A label earns the decision glyph only when it is a short plain phrase.
+// Longer labels are context rather than a label — they carry their own
+// emphasis, run to several lines, and would have to be nested inside a code
+// span to take the glyph, which renders the markup literally. Those pass
+// through as prose above the options, where they already read correctly.
+const LABEL_MAX = 60;
+
+/** @param {string} label */
+function isGlyphable(label) {
+  return Boolean(label) && label.length <= LABEL_MAX && !/[\n*`]/.test(label);
 }
 
 /**
- * Dot-framed menu for the common shape: contextual label, blank line,
- * options, optional trailing prompt line separated by a blank line. An empty
- * label opens straight on the options — the label-less selection menu, for
- * gates whose context is carried by the display directly above them.
+ * Framed menu for the common shape: contextual label, blank line, options,
+ * optional trailing prompt line separated by a blank line. A short plain
+ * label carries the decision glyph; a longer one stays prose. An empty label
+ * opens straight on the options — the label-less selection menu, for gates
+ * whose context is carried by the display directly above them.
  * @param {string} label @param {string[]} options
  * @param {{prompt?: string}} [opts]
  * @returns {string}
@@ -44,38 +93,40 @@ function dotFrame(lines) {
 function menu(label, options, { prompt } = {}) {
   const lines = label ? [label, '', ...options] : [...options];
   if (prompt) lines.push('', prompt);
-  return dotFrame(lines);
+  return menuFrame(lines);
 }
 
 /**
  * Command option line — a discrete input the user types verbatim
- * (CONVENTIONS.md option grammar): `- **`k`/`word`** — label`, word omitted
- * for bare-key options (numbered entries).
+ * (CONVENTIONS.md option grammar): key and word share one code span, the
+ * arrow separates it from the label. The word is omitted for bare-key
+ * options (numbered entries). Arrows are aligned by the enclosing frame.
  * @param {string} key @param {string | null | undefined} word @param {string} label
  * @returns {string}
  */
 function cmdOption(key, word, label) {
-  return word ? `- **\`${key}\`/\`${word}\`** — ${label}` : `- **\`${key}\`** — ${label}`;
+  return `**\`${word ? `${key}/${word}` : key}\`** → ${label}`;
 }
 
 /**
  * Prompt option line — the user responds naturally; the description directs
- * the user's response: `- **Label** — description`.
+ * their response. Plain bold rather than a code span, because there is no
+ * literal input to type.
  * @param {string} label @param {string} description
  * @returns {string}
  */
 function promptOption(label, description) {
-  return `- **${label}** — ${description}`;
+  return `**${label}** → ${description}`;
 }
 
 /**
- * Numbered-range option line — a span of selectable numbers:
- * `- **`1`–`N`** — label`.
+ * Numbered-range option line — a span of selectable numbers, both bounds
+ * inside one code span.
  * @param {number|string} first @param {number|string} last @param {string} label
  * @returns {string}
  */
 function rangeOption(first, last, label) {
-  return `- **\`${first}\`–\`${last}\`** — ${label}`;
+  return `**\`${first}–${last}\`** → ${label}`;
 }
 
 /**
@@ -124,4 +175,4 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, section, dotFrame, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList };

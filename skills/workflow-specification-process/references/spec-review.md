@@ -64,11 +64,10 @@ Auto mode is active — pass through to review. Section E's safety cap (cycle 5)
 
 ```
 · · · · · · · · · · · ·
-Continue with review?
+**`◆ Continue with review?`**
 
-- **`p`/`proceed`** — Continue review
-- **`s`/`skip`** — Skip review, proceed to completion
-· · · · · · · · · · · ·
+**`p/proceed`** → Continue review
+**`s/skip`**    → Skip review, proceed to completion
 ```
 
 You MUST NOT choose on the user's behalf.
@@ -182,11 +181,10 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 
 ```
 · · · · · · · · · · · ·
-Run another review cycle?
+**`◆ Run another review cycle?`**
 
-- **`r`/`reanalyse`** — Run another review cycle (Phase 1 + Phase 2)
-- **`p`/`proceed`** — Proceed to completion
-· · · · · · · · · · · ·
+**`r/reanalyse`** → Run another review cycle (Phase 1 + Phase 2)
+**`p/proceed`**   → Proceed to completion
 ```
 
 **STOP.** Wait for user response.
@@ -207,11 +205,10 @@ Run another review cycle?
 
 ```
 · · · · · · · · · · · ·
-Run another review cycle?
+**`◆ Run another review cycle?`**
 
-- **`r`/`reanalyse`** — Run another review cycle (Phase 1 + Phase 2)
-- **`p`/`proceed`** — Proceed to completion
-· · · · · · · · · · · ·
+**`r/reanalyse`** → Run another review cycle (Phase 1 + Phase 2)
+**`p/proceed`**   → Proceed to completion
 ```
 
 **STOP.** Wait for user response.

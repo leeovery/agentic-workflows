@@ -68,11 +68,10 @@ Conclusion is a decision point every time — whether the drain started mid-sess
 
 ```
 · · · · · · · · · · · ·
-Final review: {N} area(s) still unreviewed.
+**`◆ Final review: {N} area(s) still unreviewed.`**
 
-- **`r`/`review`** — Work through them now
-- **`s`/`skip`** — Acknowledge and conclude the topic
-· · · · · · · · · · · ·
+**`r/review`** → Work through them now
+**`s/skip`**   → Acknowledge and conclude the topic
 ```
 
 Record the announce:

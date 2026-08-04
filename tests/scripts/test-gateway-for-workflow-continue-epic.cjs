@@ -1415,18 +1415,17 @@ describe('workflow-continue-epic format (index dump)', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      "=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user's response) ===",
+      '=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
-      'Which epic would you like to continue?',
+      '**`◆ Which epic would you like to continue?`**',
       '',
-      '- **`1`** — Continue "V1"',
-      '- **`2`** — Continue "V2"',
+      '**`1`**        → Continue "V1"',
+      '**`2`**        → Continue "V2"',
       '',
-      '- **`3`** — View completed & cancelled epics',
-      "- **`m`/`manage`** — Manage an epic's lifecycle",
+      '**`3`**        → View completed & cancelled epics',
+      '**`m/manage`** → Manage an epic\'s lifecycle',
       '',
       'Select an option:',
-      '· · · · · · · · · · · ·',
       '',
     ].join('\n'));
   });
@@ -1809,7 +1808,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(res.stdout.includes('sessions_in_progress: discussion/auth (last active 2m ago)'), res.stdout);
     assert.ok(res.stdout.includes('(in session: last active 2m ago)'), res.stdout);
-    assert.ok(res.stdout.includes('- **`1`** — ~~Continue "Auth" — discussion [in-progress]~~ · in session (last active 2m ago)'), res.stdout);
+    assert.ok(/\*\*`1`\*\* +→ ~~Continue "Auth" — discussion \[in-progress\]~~ · in session \(last active 2m ago\)/.test(res.stdout), res.stdout);
     assert.ok(res.stdout.includes(
       "=== MENU: in-session gate — 1 (emit verbatim as markdown only when the user selects this entry, then STOP for the user's response) ==="
     ), res.stdout);

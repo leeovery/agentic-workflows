@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { DOTS, section, dotFrame, menu, callout, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, menuFrame, menu, callout, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
 const { selectionSections } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
 
@@ -31,16 +31,30 @@ function writePayload(dir, rel, obj) {
 }
 
 describe('surfaces primitives', () => {
-  it('menu renders dot frame, label, blank line, options', () => {
+  it('menu opens on the rule, glyphs a short label, and never closes the frame', () => {
     assert.strictEqual(
-      menu('Approve?', ['- **`y`/`yes`**', '- **`n`/`no`**']),
-      [DOTS, 'Approve?', '', '- **`y`/`yes`**', '- **`n`/`no`**', DOTS].join('\n'),
+      menu('Approve?', ['**`y/yes`**', '**`n/no`**']),
+      [DOTS, '**`◆ Approve?`**', '', '**`y/yes`**', '**`n/no`**'].join('\n'),
     );
   });
 
+  it('leaves a long or marked-up label as prose — the glyph span cannot nest markup', () => {
+    const long = 'Whether the pipeline can expose **click windows** belongs to a different topic entirely';
+    const out = menu(long, ['**`y/yes`**']);
+    assert.strictEqual(out, [DOTS, long, '', '**`y/yes`**'].join('\n'));
+  });
+
   it('menu appends an optional trailing prompt after a blank line', () => {
-    const out = menu('Pick one:', ['- **`1`** — A'], { prompt: 'Select an option:' });
-    assert.ok(out.endsWith(['- **`1`** — A', '', 'Select an option:', DOTS].join('\n')));
+    const out = menu('Pick one:', ['**`1`** → A'], { prompt: 'Select an option:' });
+    assert.ok(out.endsWith(['**`1`** → A', '', 'Select an option:'].join('\n')));
+  });
+
+  it('aligns option arrows into one column, leaving non-option lines alone', () => {
+    const out = menu('Pick one:', ['**`c/continue`** → Carry on', '**`q`** → Quit', 'a plain line']);
+    const lines = out.split('\n');
+    const arrows = lines.filter((l) => l.includes(' → ')).map((l) => l.indexOf(' → '));
+    assert.strictEqual(new Set(arrows).size, 1, 'arrows share a column');
+    assert.ok(lines.includes('a plain line'), 'non-option lines pass through untouched');
   });
 
   it('section wraps body in a named, instruction-carrying marker and strips trailing newlines', () => {
@@ -51,8 +65,12 @@ describe('surfaces primitives', () => {
     assert.strictEqual(callout(['first line', 'second line']), '  ⚑ first line\n    second line');
   });
 
-  it('dotFrame wraps arbitrary lines in the canonical dot rules', () => {
-    assert.strictEqual(dotFrame(['a', '', 'b']), [DOTS, 'a', '', 'b', DOTS].join('\n'));
+  it('menuFrame opens arbitrary lines with the canonical rule and does not close them', () => {
+    assert.strictEqual(menuFrame(['a', '', 'b']), [DOTS, '**`◆ a`**', '', 'b'].join('\n'));
+  });
+
+  it('menuFrame glyphs only a leading short label — no blank beneath means no glyph', () => {
+    assert.strictEqual(menuFrame(['a', 'b']), [DOTS, 'a', 'b'].join('\n'));
   });
 
   it('callout wraps a string to the width with the flag gutter subtracted', () => {
@@ -92,13 +110,12 @@ describe('render resume-gate', () => {
   it('renders the menu byte-exactly, artifact from the phase segment, topic titlecased', () => {
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow' });
     assert.strictEqual(out, [
-      "=== MENU: resume gate (emit verbatim as markdown, then STOP for the user's response) ===",
-      DOTS,
+      '=== MENU: resume gate (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
       'Found existing discussion for **Auth Flow**.',
       '',
-      '- **`c`/`continue`** — Pick up where you left off',
-      '- **`r`/`restart`** — Delete the discussion and start fresh',
-      DOTS,
+      '**`c/continue`** → Pick up where you left off',
+      '**`r/restart`**  → Delete the discussion and start fresh',
       '',
     ].join('\n'));
   });
@@ -140,8 +157,8 @@ describe('render resume-gate variants', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
     assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3, task 2).'));
-    assert.ok(out.includes('- **`c`/`continue`** — Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.'));
-    assert.ok(out.includes('- **`r`/`restart`** — Erase all planning work for this topic and start fresh. This deletes the planning file, authored tasks, and clears manifest state. Other topics are unaffected.'));
+    assert.ok(/\*\*`c\/continue`\*\* +→ Walk through the plan from the start\. You can review, amend, or navigate at any point — including straight to the leading edge\./.test(out));
+    assert.ok(/\*\*`r\/restart`\*\* +→ Erase all planning work for this topic and start fresh\. This deletes the planning file, authored tasks, and clears manifest state\. Other topics are unaffected\./.test(out));
   });
 
   it('plan omits the parenthetical when the position fields are absent', () => {
@@ -164,8 +181,8 @@ describe('render resume-gate variants', () => {
     } });
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
     assert.ok(out.includes('Found existing review for **Portal**.\nReview covered 1 of 3 tasks. 2 task(s) not yet reviewed.'));
-    assert.ok(out.includes('- **`c`/`continue`** — Review the 2 unreviewed tasks'));
-    assert.ok(out.includes('- **`r`/`restart`** — Delete review, re-review all 3 tasks'));
+    assert.ok(/\*\*`c\/continue`\*\* +→ Review the 2 unreviewed tasks/.test(out));
+    assert.ok(/\*\*`r\/restart`\*\* +→ Delete review, re-review all 3 tasks/.test(out));
   });
 
   it('review coverage tolerates reviewed ids outside completed_tasks — restart-skips count as covered', () => {
@@ -196,27 +213,27 @@ describe('render resume-gate variants', () => {
     } });
     const all = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
     assert.ok(all.includes('Found existing review for **Portal**.\nAll 2 tasks have been reviewed.'));
-    assert.ok(all.includes('- **`c`/`continue`** — Continue from current review state'));
+    assert.ok(/\*\*`c\/continue`\*\* +→ Continue from current review state/.test(all));
 
     writeManifest(dir, 'pay', { phases: { review: { items: { portal: { status: 'in-progress' } } } } });
     const bare = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
     assert.ok(bare.includes('Found existing review for **Portal**.\n\n'), 'no tracking — label only, no coverage line');
-    assert.ok(bare.includes('- **`r`/`restart`** — Delete review, start fresh'));
+    assert.ok(/\*\*`r\/restart`\*\* +→ Delete review, start fresh/.test(bare));
   });
 
   it('scoping renders the revisit wording', () => {
     writeManifest(dir, 'pay', { phases: { scoping: { items: { pay: { status: 'in-progress' } } } } });
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.scoping.pay', variant: 'scoping' });
     assert.ok(out.includes('Found completed scoping for **Pay** — spec and plan are in place.'));
-    assert.ok(out.includes('- **`c`/`continue`** — Adjust the existing spec and plan'));
-    assert.ok(out.includes('- **`r`/`restart`** — Erase the spec, plan, and task files, then rescope from scratch'));
+    assert.ok(/\*\*`c\/continue`\*\* +→ Adjust the existing spec and plan/.test(out));
+    assert.ok(/\*\*`r\/restart`\*\* +→ Erase the spec, plan, and task files, then rescope from scratch/.test(out));
   });
 
   it('session takes a bare work-unit address and reads the active-session marker', () => {
     writeManifest(dir, 'pay', { phases: { discovery: { active_session: '002', items: {} } } });
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay', variant: 'session' });
     assert.ok(out.includes('Found an in-progress discovery session for **Pay** at `session-002.md`.'));
-    assert.ok(out.includes('- **`r`/`restart`** — Discard the interrupted log and start a new session (map edits already applied stay applied — only their session record is lost)'));
+    assert.ok(/\*\*`r\/restart`\*\* +→ Discard the interrupted log and start a new session \(map edits already applied stay applied — only their session record is lost\)/.test(out));
   });
 
   it('session is loud when no active session exists', () => {
@@ -258,15 +275,14 @@ describe('render task-list', () => {
       '   · Remove wait-after-command',
       '   · Edge cases: none',
       '',
-      "=== MENU: task list gate (emit verbatim as markdown, then STOP for the user's response) ===",
-      DOTS,
-      'Approve this task list?',
+      '=== MENU: task list gate (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
+      '**`◆ Approve this task list?`**',
       '',
-      '- **`y`/`yes`** — Proceed to authoring',
-      '- **`a`/`auto`** — Approve this and all remaining task list gates automatically',
-      '- **Tell me what to change** — which tasks to reorder, split, merge, add, edit, or remove',
-      '- **Navigate** — Tell me where to go: a different phase or task, or the leading edge',
-      DOTS,
+      '**`y/yes`**                → Proceed to authoring',
+      '**`a/auto`**               → Approve this and all remaining task list gates automatically',
+      '**Tell me what to change** → which tasks to reorder, split, merge, add, edit, or remove',
+      '**Navigate**               → Tell me where to go: a different phase or task, or the leading edge',
       '',
     ].join('\n'));
   });
@@ -381,14 +397,13 @@ describe('render reroute-offer', () => {
     });
     const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      "=== MENU: reroute offer (emit verbatim as markdown, then STOP for the user's response) ===",
-      DOTS,
+      '=== MENU: reroute offer (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
       '**Whether the pipeline can expose click windows** belongs to a different topic, not this one.',
-      "It reads as **behavioural-ranking**'s ground, landing research-side — append a phase to override (e.g. `r discussion`).",
+      'It reads as **behavioural-ranking**\'s ground, landing research-side — append a phase to override (e.g. `r discussion`).',
       '',
-      '- **`r`/`reroute`** — Send it to the topic it belongs to; it picks it up later',
-      '- **`k`/`keep`** — Keep it here as a subtopic',
-      DOTS,
+      '**`r/reroute`** → Send it to the topic it belongs to; it picks it up later',
+      '**`k/keep`**    → Keep it here as a subtopic',
       '',
     ].join('\n'));
   });
@@ -396,7 +411,7 @@ describe('render reroute-offer', () => {
   it('renders the bare offer when no home is resolved', () => {
     const file = writePayload(dir, 'b.json', { concern: 'A stray worry' });
     const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
-    assert.match(out, /\*\*A stray worry\*\* belongs to a different topic, not this one\.\n\n- /);
+    assert.match(out, /\*\*A stray worry\*\* belongs to a different topic, not this one\.\n\n\*\*/);
     assert.ok(!out.includes('ground, landing'), 'no destination line without a resolved home');
   });
 
@@ -431,14 +446,13 @@ describe('render reroute-candidates', () => {
     assert.strictEqual(out, [
       "=== MENU: reroute candidates (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      'Where should "Click-window feasibility" land?',
+      '**`◆ Where should "Click-window feasibility" land?`**',
       '',
-      '- **`1`** — behavioural-ranking [decided]',
-      '- **`2`** — relevance-measurement [fresh]',
-      '- **`n`/`new`** — Create a new topic for it',
+      '**`1`**     → behavioural-ranking [decided]',
+      '**`2`**     → relevance-measurement [fresh]',
+      '**`n/new`** → Create a new topic for it',
       '',
       "It reads as an open question — I'd land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).",
-      DOTS,
       '',
     ].join('\n'));
   });
@@ -490,9 +504,8 @@ describe('render finding-batch', () => {
       '',
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      '- **`y`/`yes`** — Apply all 2, then move on',
-      "- **Ask** — Tell me a number to expand, or one you don't think is settled",
-      DOTS,
+      '**`y/yes`** → Apply all 2, then move on',
+      "**Ask**     → Tell me a number to expand, or one you don't think is settled",
       '',
     ].join('\n'));
   });
@@ -504,7 +517,7 @@ describe('render finding-batch', () => {
     });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
     assert.match(out, /^1\. → storage-and-sync$/m);
-    assert.match(out, /- \*\*`y`\/`yes`\*\* — Send all 1$/m);
+    assert.match(out, /\*\*`y\/yes`\*\* → Send all 1$/m);
     assert.match(out, /one that should stay here/);
     assert.ok(!out.includes(`${DOTS}\n\n`), 'a label-less menu opens straight on its options');
   });
@@ -572,8 +585,8 @@ describe('render concern', () => {
     ].join('\n')), out);
     assert.ok(out.includes("=== MENU: triage offer (emit verbatim as markdown, then STOP for the user's response) ==="));
     assert.ok(out.includes('Work through them now?'));
-    assert.ok(out.includes('- **`d`/`discuss`** — Surface and discuss them one at a time'));
-    assert.ok(out.includes('- **`l`/`later`** — Carry on with the session'));
+    assert.ok(/\*\*`d\/discuss`\*\* +→ Surface and discuss them one at a time/.test(out));
+    assert.ok(/\*\*`l\/later`\*\* +→ Carry on with the session/.test(out));
   });
 
   it('triage-offer refuses an empty queue, a short payload, and a payload naming a file the queue lacks', () => {
@@ -643,9 +656,9 @@ describe('render finding', () => {
     assert.ok(out.includes('=== DISPLAY: diff (emit verbatim as a diff code block (```diff fence)) ===\n **Solution**: shared adapter.\n+**Outcome**: lands at a live shell.\n **Do**:'));
     assert.ok(!/frame|╭|╰/.test(out), 'the fence is the frame — no drawn borders, no frame sections');
     assert.ok(out.includes('=== MENU: finding gate'));
-    assert.ok(out.includes('- **`v`/`view full`** — Show full Current and Proposed content'), 'diff findings offer view full');
-    assert.ok(out.includes('- **`y`/`yes`** — Apply to the plan verbatim'));
-    assert.ok(out.includes('- **Provide feedback** — Tell me what to change before approving'));
+    assert.ok(/\*\*`v\/view full`\*\* +→ Show full Current and Proposed content/.test(out), 'diff findings offer view full');
+    assert.ok(/\*\*`y\/yes`\*\* +→ Apply to the plan verbatim/.test(out));
+    assert.ok(/\*\*Provide feedback\*\* +→ Tell me what to change before approving/.test(out));
   });
 
   it('wide diff lines pass through untouched — no border, no wrap', () => {
@@ -724,15 +737,14 @@ describe('render proposed-task', () => {
       '**Tests**:',
       '- detach closes the adapter',
       '',
-      "=== MENU: task approval (emit verbatim as markdown, then STOP for the user's response) ===",
-      DOTS,
-      'Approve this task?',
+      '=== MENU: task approval (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
+      '**`◆ Approve this task?`**',
       '',
-      '- **`y`/`yes`** — Approve this task',
-      '- **`a`/`auto`** — Approve this and all remaining tasks automatically',
-      '- **`s`/`skip`** — Skip this task',
-      '- **Comment** — Tell me what to change',
-      DOTS,
+      '**`y/yes`**  → Approve this task',
+      '**`a/auto`** → Approve this and all remaining tasks automatically',
+      '**`s/skip`** → Skip this task',
+      '**Comment**  → Tell me what to change',
       '',
     ].join('\n'));
   });
@@ -740,7 +752,7 @@ describe('render proposed-task', () => {
   it('honours a custom comment hint and the auto gate', () => {
     const file = writePayload(dir, 'p.json', payload);
     const gated = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated', 'comment-hint': 'Provide feedback to adjust' });
-    assert.ok(gated.includes('- **Comment** — Provide feedback to adjust'));
+    assert.ok(/\*\*Comment\*\* +→ Provide feedback to adjust/.test(gated));
     const auto = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'auto' });
     assert.ok(auto.includes('=== DISPLAY: task auto-approved (emit verbatim as a code block after recording the approval) ===\nTask 2 of 3: Fix adapter leak — approved [auto].'));
     assert.ok(!auto.includes('MENU: task approval'));
@@ -794,15 +806,14 @@ describe('render author-task-gate', () => {
   it('renders the authoring menu byte-exactly', () => {
     const out = renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '5', title: 'Wrap command' });
     assert.strictEqual(out, [
-      "=== MENU: author task gate (emit verbatim as markdown, then STOP for the user's response) ===",
-      DOTS,
+      '=== MENU: author task gate (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
       '**Task 2 of 5: Wrap command**',
       '',
-      '- **`y`/`yes`** — Write it to the plan',
-      '- **`a`/`auto`** — Approve this and all remaining tasks automatically',
-      '- **Tell me what to change** — what to revise in this task',
-      '- **Navigate** — Tell me where to go: a different phase or task, or the leading edge',
-      DOTS,
+      '**`y/yes`**                → Write it to the plan',
+      '**`a/auto`**               → Approve this and all remaining tasks automatically',
+      '**Tell me what to change** → what to revise in this task',
+      '**Navigate**               → Tell me where to go: a different phase or task, or the leading edge',
       '',
     ].join('\n'));
   });
@@ -850,7 +861,7 @@ describe('render phase-tree', () => {
     });
     const out = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file, approve: '1' });
     assert.ok(out.includes('MENU: phase structure gate'));
-    assert.ok(out.includes('- **`y`/`yes`** — Proceed to task breakdown'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Proceed to task breakdown/.test(out));
     const lines = out.split('\n');
     const goalIdx = lines.findIndex((l) => l.startsWith('   ├─ Goal:'));
     assert.ok(lines[goalIdx + 1].startsWith('   │  goal'), 'wrapped detail carries the gutter');
@@ -871,8 +882,8 @@ describe('render task-list --variant existing', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', task_list_gate_mode: 'gated' } } } } });
     const file = writePayload(dir, 'tl.json', { phase: 1, phase_name: 'X', tasks: [{ name: 'A', summary: 'b' }] });
     const gated = renderSurface(dir, 'task-list', { dotpath: 'pay.planning.portal', file, variant: 'existing' });
-    assert.ok(gated.includes('- **Tell me what to change** — which tasks to revise in this phase'));
-    assert.ok(!gated.includes('`a`/`auto`'), 'existing variant offers no auto opt-in');
+    assert.ok(/\*\*Tell me what to change\*\* +→ which tasks to revise in this phase/.test(gated));
+    assert.ok(!gated.includes('`a/auto`'), 'existing variant offers no auto opt-in');
 
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', task_list_gate_mode: 'auto' } } } } });
     const auto = renderSurface(dir, 'task-list', { dotpath: 'pay.planning.portal', file, variant: 'existing' });
@@ -897,18 +908,17 @@ describe('selection projection', () => {
       '',
       '1 completed, 1 cancelled.',
       '',
-      "=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user's response) ===",
-      DOTS,
-      'Which bugfix would you like to continue?',
+      '=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
+      '**`◆ Which bugfix would you like to continue?`**',
       '',
-      '- **`1`** — Continue "Crash" — specification (in-progress)',
-      '- **`2`** — Continue "Leak" — investigation (in-progress)',
+      '**`1`**        → Continue "Crash" — specification (in-progress)',
+      '**`2`**        → Continue "Leak" — investigation (in-progress)',
       '',
-      '- **`3`** — View completed & cancelled bugfixes',
-      "- **`m`/`manage`** — Manage a bugfix's lifecycle",
+      '**`3`**        → View completed & cancelled bugfixes',
+      '**`m/manage`** → Manage a bugfix\'s lifecycle',
       '',
       'Select an option:',
-      DOTS,
       '',
     ].join('\n'));
   });
@@ -916,7 +926,7 @@ describe('selection projection', () => {
   it('epic variant sub-rows active phases and drops the phase label from options', () => {
     const out = selectionSections('epic', [{ name: 'payments', active_phases: ['discussion', 'specification'] }], { completed: 0, cancelled: 0 });
     assert.ok(out.includes('     └─ Discussion, Specification'));
-    assert.ok(out.includes('- **`1`** — Continue "Payments"'));
+    assert.ok(/\*\*`1`\*\* +→ Continue "Payments"/.test(out));
     assert.ok(!out.includes('Continue "Payments" —'));
     assert.ok(!out.includes('View completed'), 'no closed units, no view option');
   });
@@ -938,11 +948,11 @@ describe('bridge continuation surfaces', () => {
   it('gates render byte-stable menus', () => {
     const early = renderSurface(dir, 'early-completion-gate', { dotpath: 'pay' });
     assert.ok(early.includes('Implementation completed for "Pay".'));
-    assert.ok(early.includes('- **`d`/`done`** — Complete without review'));
+    assert.ok(/\*\*`d\/done`\*\* +→ Complete without review/.test(early));
 
     const revisit = renderSurface(dir, 'revisit-gate', { dotpath: 'pay', prev: 'specification', next: 'planning' });
     assert.ok(revisit.includes('Specification completed for "Pay".'));
-    assert.ok(revisit.includes('- **`y`/`yes`** — Proceed to planning'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Proceed to planning/.test(revisit));
 
     const allDone = renderSurface(dir, 'epic-all-done-gate', { dotpath: 'pay' });
     assert.ok(allDone.includes('All topics have completed review for "Pay".'));
@@ -1027,7 +1037,7 @@ describe('review fixes — gap coverage', () => {
   it('phase-tree --approve menu offers view full', () => {
     const file = writePayload(dir, 'pt.json', { phases: [{ name: 'X' }] });
     const out = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file, approve: '1' });
-    assert.ok(out.includes('- **`v`/`view full`** — Show the full phase structure — goals, ordering rationale, acceptance criteria'));
+    assert.ok(/\*\*`v\/view full`\*\* +→ Show the full phase structure — goals, ordering rationale, acceptance criteria/.test(out));
   });
 });
 
@@ -1289,7 +1299,7 @@ describe('single-source invariants', () => {
       }
     })(scriptsRoot);
     assert.deepStrictEqual(offenders, [path.join('domain', 'projections', 'surfaces.cjs')],
-      'menus must frame through surfaces.dotFrame — inline dot rules reintroduce the pre-consolidation drift class');
+      'menus must frame through surfaces.menuFrame — inline dot rules reintroduce the pre-consolidation drift class');
   });
 
   it('the option-line grammar exists in exactly one module — surfaces.cjs', () => {
@@ -1299,7 +1309,7 @@ describe('single-source invariants', () => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(p);
-        else if (entry.isFile() && p.endsWith('.cjs') && /- \*\*`/.test(fs.readFileSync(p, 'utf8'))) {
+        else if (entry.isFile() && p.endsWith('.cjs') && /\*\*\\?`[^`]+\\?`\*\* →/.test(fs.readFileSync(p, 'utf8'))) {
           offenders.push(path.relative(scriptsRoot, p));
         }
       }

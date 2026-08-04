@@ -135,11 +135,10 @@ Render the announce menu. `{shape}` is the lane split in one clause — the coun
 
 ```
 · · · · · · · · · · · ·
-Background {agent_type} returned — {N} finding(s): {shape}.
+**`◆ Background {agent_type} returned — {N} finding(s): {shape}.`**
 
-- **`n`/`now`** — Start on them
-- **`l`/`later`** — Keep pulling on the current thread, I'll raise them at the next pause
-· · · · · · · · · · · ·
+**`n/now`**   → Start on them
+**`l/later`** → Keep pulling on the current thread, I'll raise them at the next pause
 ```
 
 After rendering the menu, record the announce — skip the call when the row already reads `announced: true`:

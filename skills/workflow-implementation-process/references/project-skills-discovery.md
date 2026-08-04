@@ -49,11 +49,10 @@ Previous implementations used no project skills.
 
 ```
 · · · · · · · · · · · ·
-Skip project skills again?
+**`◆ Skip project skills again?`**
 
-- **`y`/`yes`** — Skip and proceed
-- **`n`/`no`** — Analyse for project skills
-· · · · · · · · · · · ·
+**`y/yes`** → Skip and proceed
+**`n/no`**  → Analyse for project skills
 ```
 
 **STOP.** Wait for user response.
@@ -85,11 +84,10 @@ Project skills found:
 
 ```
 · · · · · · · · · · · ·
-Use these project skills?
+**`◆ Use these project skills?`**
 
-- **`y`/`yes`** — Use and proceed
-- **`n`/`no`** — Re-discover and choose skills
-· · · · · · · · · · · ·
+**`y/yes`** → Use and proceed
+**`n/no`**  → Re-discover and choose skills
 ```
 
 **STOP.** Wait for user response.
@@ -158,12 +156,11 @@ Found these project skills that may be relevant to implementation:
 
 ```
 · · · · · · · · · · · ·
-Which project skills should be used?
+**`◆ Which project skills should be used?`**
 
-- **`a`/`all`** — Use all listed skills
-- **`n`/`none`** — Skip project skills
-- **List the ones you want** — e.g. "golang-pro, react-patterns"
-· · · · · · · · · · · ·
+**`a/all`**                → Use all listed skills
+**`n/none`**               → Skip project skills
+**List the ones you want** → e.g. "golang-pro, react-patterns"
 ```
 
 **STOP.** Wait for user response.

@@ -42,11 +42,10 @@ of functionality to build."}
 
 ```
 · · · · · · · · · · · ·
-Confirm this assessment?
+**`◆ Confirm this assessment?`**
 
-- **`y`/`yes`** — Confirm assessment
-- **Comment** — Suggest a different classification
-· · · · · · · · · · · ·
+**`y/yes`** → Confirm assessment
+**Comment** → Suggest a different classification
 ```
 
 **STOP.** Wait for user response.
@@ -111,11 +110,10 @@ If any show `status: pending`, work them now per **[spec-construction.md](spec-c
 
 ```
 · · · · · · · · · · · ·
-Ready to conclude?
+**`◆ Ready to conclude?`**
 
-- **`y`/`yes`** — Conclude specification and mark as completed
-- **Comment** — Add context before concluding
-· · · · · · · · · · · ·
+**`y/yes`** → Conclude specification and mark as completed
+**Comment** → Add context before concluding
 ```
 
 **STOP.** Wait for user response.

@@ -66,7 +66,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render epic-all-done-gate
 
 **STOP.** Wait for user response.
 
-**If user chose `y`/`yes`:**
+**If user chose `y/yes`:**
 
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
@@ -78,7 +78,7 @@ Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
-**If user chose `n`/`no`:**
+**If user chose `n/no`:**
 
 → Proceed to **E. Display and Menu**.
 

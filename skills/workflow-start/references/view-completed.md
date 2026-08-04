@@ -36,7 +36,7 @@ Emit the MENU section.
 
 **STOP.** Wait for user response.
 
-#### If user chose `b`/`back`
+#### If user chose `b/back`
 
 → Return to caller.
 
@@ -54,15 +54,14 @@ Store the selected work unit's `UNITS` row — its name and status.
 · · · · · · · · · · · ·
 **{selected.name:(titlecase)}** ({selected.status})
 
-- **`r`/`reactivate`** — Set status back to in-progress
-- **`b`/`back`** — Return to the list
-- **Ask** — Ask a question about this work unit
-· · · · · · · · · · · ·
+**`r/reactivate`** → Set status back to in-progress
+**`b/back`**       → Return to the list
+**Ask**            → Ask a question about this work unit
 ```
 
 **STOP.** Wait for user response.
 
-#### If user chose `r`/`reactivate`
+#### If user chose `r/reactivate`
 
 Run the reactivate transaction — one command restores `status: in-progress`, clears a stale `completed_at`, re-indexes the work unit's knowledge-base chunks when it was cancelled (completed units retain theirs), and commits:
 
@@ -74,7 +73,7 @@ Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLA
 
 → Return to caller.
 
-#### If user chose `b`/`back`
+#### If user chose `b/back`
 
 → Return to **A. Display List**.
 

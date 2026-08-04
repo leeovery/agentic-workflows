@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 const { titlecase, titlecaseLabel } = require('../conventions.cjs');
-const { section, dotFrame, cmdOption } = require('./surfaces.cjs');
+const { section, menuFrame, cmdOption } = require('./surfaces.cjs');
 
 /**
  * @typedef {object} SelectConfig
@@ -90,7 +90,7 @@ function selectionSections(type, units, counts) {
 
   return section('DISPLAY: selection', 'emit verbatim as a code block only at the select step', disp.join('\n'))
     + '\n'
-    + section('MENU: selection', "emit verbatim as markdown only at the select step, then STOP for the user's response", dotFrame(menuLines));
+    + section('MENU: selection', "emit verbatim as markdown only at the select step, then STOP for the user's response", menuFrame(menuLines));
 }
 
 /** Per-type wording for the invalid-selection terminal display. */

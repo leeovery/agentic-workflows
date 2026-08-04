@@ -4,7 +4,7 @@
 
 ---
 
-Shows when materialized specifications exist and no proposed groupings remain (every grouping has already been started). The tree, the menu, and the `ACTIONS` table share one ordering and numbering; concluded specs live behind `c`/`completed`.
+Shows when materialized specifications exist and no proposed groupings remain (every grouping has already been started). The tree, the menu, and the `ACTIONS` table share one ordering and numbering; concluded specs live behind `c/completed`.
 
 ## A. Display
 

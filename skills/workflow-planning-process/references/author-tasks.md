@@ -86,11 +86,10 @@ Task detail file:         {M} tasks — {internal IDs found in the file}
 
 ```
 · · · · · · · · · · · ·
-How would you like to proceed?
+**`◆ How would you like to proceed?`**
 
-- **`r`/`retry`** — Re-invoke the author agent once more
-- **Adjust** — Tell me what to correct (the task table or the detail file), and I'll apply it and re-validate
-· · · · · · · · · · · ·
+**`r/retry`** → Re-invoke the author agent once more
+**Adjust**    → Tell me what to correct (the task table or the detail file), and I'll apply it and re-validate
 ```
 
 **STOP.** Wait for user response.

@@ -42,7 +42,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render early-completion-g
 
 **STOP.** Wait for user response.
 
-**If user chose `d`/`done`:**
+**If user chose `d/done`:**
 
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
@@ -54,7 +54,7 @@ Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
-**If user chose `y`/`yes`:**
+**If user chose `y/yes`:**
 
 → Proceed to **C. Check for Earlier Phases**.
 
@@ -84,11 +84,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-gate {work
 
 **STOP.** Wait for user response.
 
-#### If user chose `y`/`yes`
+#### If user chose `y/yes`
 
 → Proceed to **F. Enter Plan Mode**.
 
-#### If user chose `r`/`revisit`
+#### If user chose `r/revisit`
 
 → Proceed to **E. Select Phase**.
 

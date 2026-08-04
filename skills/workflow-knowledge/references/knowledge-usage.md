@@ -56,11 +56,10 @@ If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not 
 
 ```
 · · · · · · · · · · · ·
-How should I proceed?
+**`◆ How should I proceed?`**
 
-- **`r`/`retry`** — I'll fix the issue; retry the query
-- **`s`/`skip`** — Proceed without knowledge context for this phase
-· · · · · · · · · · · ·
+**`r/retry`** → I'll fix the issue; retry the query
+**`s/skip`**  → Proceed without knowledge context for this phase
 ```
 
 **STOP.** Wait for user response.

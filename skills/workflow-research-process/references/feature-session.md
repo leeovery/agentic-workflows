@@ -48,11 +48,10 @@ Before concluding, check for in-flight agents — run `node .claude/skills/workf
 
 ```
 · · · · · · · · · · · ·
-There are still {N} background agents working.
+**`◆ There are still {N} background agents working.`**
 
-- **`w`/`wait`** — Wait for results before concluding
-- **`p`/`proceed`** — Conclude now (results will persist in cache for reference)
-· · · · · · · · · · · ·
+**`w/wait`**    → Wait for results before concluding
+**`p/proceed`** → Conclude now (results will persist in cache for reference)
 ```
 
 **STOP.** Wait for user response.
@@ -81,12 +80,11 @@ When a concern surfaces that's beyond this topic's scope, a single-topic work ty
 · · · · · · · · · · · ·
 **{concern}** is beyond this topic's scope.
 
-- **`l`/`log`** — Capture it as an idea in the inbox for later
+**`l/log`**    → Capture it as an idea in the inbox for later
 @if(work_type == 'feature')
-- **`p`/`pivot`** — Convert this work to an epic so it can hold the concern as its own topic
+**`p/pivot`**  → Convert this work to an epic so it can hold the concern as its own topic
 @endif
-- **`i`/`ignore`** — Note it in the research file and move on
-· · · · · · · · · · · ·
+**`i/ignore`** → Note it in the research file and move on
 ```
 
 **STOP.** Wait for user response.

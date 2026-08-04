@@ -50,11 +50,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-gate {work
 
 **STOP.** Wait for user response.
 
-#### If user chose `y`/`yes`
+#### If user chose `y/yes`
 
 → Proceed to **E. Enter Plan Mode**.
 
-#### If user chose `r`/`revisit`
+#### If user chose `r/revisit`
 
 → Proceed to **D. Select Phase**.
 

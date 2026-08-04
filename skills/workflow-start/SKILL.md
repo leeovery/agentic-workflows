@@ -112,11 +112,10 @@ Migrations Applied
 
 ```
 · · · · · · · · · · · ·
-Ready to continue?
+**`◆ Ready to continue?`**
 
-- **`c`/`continue`** — Proceed
-- **Ask** — Ask questions about the changes
-· · · · · · · · · · · ·
+**`c/continue`** → Proceed
+**Ask**          → Ask questions about the changes
 ```
 
 **STOP.** Wait for user response.

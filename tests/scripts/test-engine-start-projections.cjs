@@ -179,27 +179,26 @@ describe('start projections: menu', () => {
     const menu = startMenu(fullFixture(dir));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'What would you like to do?',
+      '**`◆ What would you like to do?`**',
       '',
-      '- **`1`** — Continue "Auth Flow" — feature, ready for specification',
-      '- **`2`** — Continue "Dark Mode" — feature, discussion (in-progress)',
-      '- **`3`** — Continue "Login Crash" — bugfix, ready for investigation',
-      '- **`4`** — Continue "Rename Api" — quick-fix, scoping (in-progress)',
-      '- **`5`** — Continue "Caching" — cross-cutting, discussion (in-progress)',
-      '- **`6`** — Continue "Quiz Competition V1" — epic',
+      '**`1`**               → Continue "Auth Flow" — feature, ready for specification',
+      '**`2`**               → Continue "Dark Mode" — feature, discussion (in-progress)',
+      '**`3`**               → Continue "Login Crash" — bugfix, ready for investigation',
+      '**`4`**               → Continue "Rename Api" — quick-fix, scoping (in-progress)',
+      '**`5`**               → Continue "Caching" — cross-cutting, discussion (in-progress)',
+      '**`6`**               → Continue "Quiz Competition V1" — epic',
       '',
-      '- **`s`/`start`** — Start something new (not sure what kind yet)',
-      '- **`f`/`feature`** — Start new feature',
-      '- **`e`/`epic`** — Start new epic',
-      '- **`b`/`bugfix`** — Start new bugfix',
-      '- **`q`/`quick-fix`** — Start new quick-fix',
-      '- **`c`/`cross-cutting`** — Start new cross-cutting concern',
-      '- **`i`/`inbox`** — View the inbox and start from an item',
-      '- **`v`/`view`** — View completed & cancelled work units',
-      '- **`m`/`manage`** — Manage a work unit\'s lifecycle',
+      '**`s/start`**         → Start something new (not sure what kind yet)',
+      '**`f/feature`**       → Start new feature',
+      '**`e/epic`**          → Start new epic',
+      '**`b/bugfix`**        → Start new bugfix',
+      '**`q/quick-fix`**     → Start new quick-fix',
+      '**`c/cross-cutting`** → Start new cross-cutting concern',
+      '**`i/inbox`**         → View the inbox and start from an item',
+      '**`v/view`**          → View completed & cancelled work units',
+      '**`m/manage`**        → Manage a work unit\'s lifecycle',
       '',
       'Select an option:',
-      '· · · · · · · · · · · ·',
     ].join('\n'));
   });
 
@@ -208,20 +207,19 @@ describe('start projections: menu', () => {
     const menu = startMenu(startDetail(dir));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'What would you like to do?',
+      '**`◆ What would you like to do?`**',
       '',
-      '- **`1`** — Continue "Auth Flow" — feature, ready for discussion',
+      '**`1`**               → Continue "Auth Flow" — feature, ready for discussion',
       '',
-      '- **`s`/`start`** — Start something new (not sure what kind yet)',
-      '- **`f`/`feature`** — Start new feature',
-      '- **`e`/`epic`** — Start new epic',
-      '- **`b`/`bugfix`** — Start new bugfix',
-      '- **`q`/`quick-fix`** — Start new quick-fix',
-      '- **`c`/`cross-cutting`** — Start new cross-cutting concern',
-      '- **`m`/`manage`** — Manage a work unit\'s lifecycle',
+      '**`s/start`**         → Start something new (not sure what kind yet)',
+      '**`f/feature`**       → Start new feature',
+      '**`e/epic`**          → Start new epic',
+      '**`b/bugfix`**        → Start new bugfix',
+      '**`q/quick-fix`**     → Start new quick-fix',
+      '**`c/cross-cutting`** → Start new cross-cutting concern',
+      '**`m/manage`**        → Manage a work unit\'s lifecycle',
       '',
       'Select an option:',
-      '· · · · · · · · · · · ·',
     ].join('\n'));
   });
 
@@ -234,7 +232,7 @@ describe('start projections: menu', () => {
       },
     });
     const menu = startMenu(startDetail(dir));
-    assert.ok(menu.rendered.includes('- **`1`** — Finalise "Caching" — cross-cutting, pipeline complete'));
+    assert.ok(/\*\*`1`\*\* +→ Finalise "Caching" — cross-cutting, pipeline complete/.test(menu.rendered));
     const entry = menu.keys.find((k) => k.key === '1');
     assert.strictEqual(entry.action, 'continue_work_unit');
     assert.strictEqual(entry.route, '/workflow-continue-cross-cutting caching');
@@ -298,17 +296,16 @@ describe('start projections: empty state', () => {
     const menu = emptyMenu(detail);
     assert.strictEqual(menu.rendered, [
       DOTS,
-      'What would you like to start?',
+      '**`◆ What would you like to start?`**',
       '',
-      "- **`s`/`start`** — Not sure what kind yet — describe it and we'll shape it",
-      '- **`f`/`feature`** — Single topic: (research →) discussion → spec → plan → implement → review',
-      '- **`e`/`epic`** — Multiple topics, multi-session, same pipeline per topic',
-      '- **`b`/`bugfix`** — Investigation → spec → plan → implement → review',
-      '- **`q`/`quick-fix`** — Scoping → implement → review (no formal planning)',
-      '- **`c`/`cross-cutting`** — (Research →) discussion → spec (patterns or policies that inform other work)',
+      "**`s/start`**         → Not sure what kind yet — describe it and we'll shape it",
+      '**`f/feature`**       → Single topic: (research →) discussion → spec → plan → implement → review',
+      '**`e/epic`**          → Multiple topics, multi-session, same pipeline per topic',
+      '**`b/bugfix`**        → Investigation → spec → plan → implement → review',
+      '**`q/quick-fix`**     → Scoping → implement → review (no formal planning)',
+      '**`c/cross-cutting`** → (Research →) discussion → spec (patterns or policies that inform other work)',
       '',
       'Select an option:',
-      DOTS,
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.pre_seed || null]),
@@ -336,8 +333,8 @@ describe('start projections: empty state', () => {
       '',
     ].join('\n'));
     const menu = emptyMenu(detail);
-    assert.ok(menu.rendered.includes('- **`i`/`inbox`** — View the inbox and start from an item (1 item)'));
-    assert.ok(menu.rendered.includes('- **`v`/`view`** — View completed & cancelled work units'));
+    assert.ok(/\*\*`i\/inbox`\*\* +→ View the inbox and start from an item \(1 item\)/.test(menu.rendered));
+    assert.ok(/\*\*`v\/view`\*\* +→ View completed & cancelled work units/.test(menu.rendered));
     assert.deepStrictEqual(
       menu.keys.map((k) => k.action).slice(6),
       ['view_inbox', 'view_completed']
@@ -387,12 +384,11 @@ describe('start projections: inbox pickup', () => {
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
-      'What would you like to do?',
+      '**`◆ What would you like to do?`**',
       '',
-      '- **`1`–`3`** — Select item(s) to work on (comma-separated for several)',
-      '- **`a`/`archived`** — View archived items (restore or delete)',
-      '- **`b`/`back`** — Return',
-      DOTS,
+      '**`1–3`**        → Select item(s) to work on (comma-separated for several)',
+      '**`a/archived`** → View archived items (restore or delete)',
+      '**`b/back`**     → Return',
     ].join('\n'));
   });
 
@@ -400,12 +396,11 @@ describe('start projections: inbox pickup', () => {
     createFile(dir, '.workflows/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
     const v = pickup(dir);
     assert.strictEqual(v.menu, [
-      DOTS,
-      'What would you like to do?',
+      '· · · · · · · · · · · ·',
+      '**`◆ What would you like to do?`**',
       '',
-      '- **`1`** — Select the item to work on',
-      '- **`b`/`back`** — Return',
-      DOTS,
+      '**`1`**      → Select the item to work on',
+      '**`b/back`** → Return',
     ].join('\n'));
   });
 
@@ -426,10 +421,9 @@ describe('start projections: inbox pickup', () => {
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
-      'What would you like to do?',
+      '**`◆ What would you like to do?`**',
       '',
-      '- **`b`/`back`** — Return',
-      DOTS,
+      '**`b/back`** → Return',
     ].join('\n'));
   });
 });
@@ -461,8 +455,7 @@ describe('start projections: archived store', () => {
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
-      'Select an item (enter number, or **`b`/`back`** to return):',
-      DOTS,
+      'Select an item (enter number, or **`b/back`** to return):',
     ].join('\n'));
   });
 
@@ -508,14 +501,13 @@ describe('start projections: working set', () => {
       'What would you like to do? Type a shortcut, or just tell me in',
       'your own words — e.g. "add 2 and 4", "drop the bug", "archive these".',
       '',
-      '- **`w`/`work`** — Proceed to discovery with this set',
-      '- **`a`/`add`** — Add another inbox item to the set',
-      '- **`d`/`drop`** — Drop item(s) from the set (keeps them in the inbox)',
-      '- **`r`/`archive`** — Archive the whole set out of the inbox',
-      '- **`v`/`view`** — View full content of the set',
-      '- **`b`/`back`** — Return to the inbox list',
-      '- **Ask** — Ask about the set',
-      DOTS,
+      '**`w/work`**    → Proceed to discovery with this set',
+      '**`a/add`**     → Add another inbox item to the set',
+      '**`d/drop`**    → Drop item(s) from the set (keeps them in the inbox)',
+      '**`r/archive`** → Archive the whole set out of the inbox',
+      '**`v/view`**    → View full content of the set',
+      '**`b/back`**    → Return to the inbox list',
+      '**Ask**         → Ask about the set',
     ].join('\n'));
     assert.strictEqual(v.sections, [
       '=== DISPLAY: add candidates (emit verbatim as a code block only at the add-items gate — never at the call) ===',
@@ -523,8 +515,7 @@ describe('start projections: working set', () => {
       '',
       '=== MENU: add gate (emit verbatim as markdown only at the add-items gate) ===',
       DOTS,
-      'Add which? (enter number(s), comma-separated, or **`b`/`back`**)',
-      DOTS,
+      'Add which? (enter number(s), comma-separated, or **`b/back`**)',
       '',
       '=== DISPLAY: drop candidates (emit verbatim as a code block only at the drop-items gate — never at the call) ===',
       '  1. Login Timeout (bug)',
@@ -532,8 +523,7 @@ describe('start projections: working set', () => {
       '',
       '=== MENU: drop gate (emit verbatim as markdown only at the drop-items gate) ===',
       DOTS,
-      'Drop which? (enter number(s), comma-separated, or **`b`/`back`**)',
-      DOTS,
+      'Drop which? (enter number(s), comma-separated, or **`b/back`**)',
       '',
     ].join('\n'));
   });
@@ -547,7 +537,7 @@ describe('start projections: working set', () => {
     assert.strictEqual(ws.uniform, false);
     assert.strictEqual(ws.set_type, 'mixed');
     const v = workingSetView(ws);
-    assert.ok(!v.menu.includes('`w`/`work`'));
+    assert.ok(!v.menu.includes('`w/work`'));
     assert.ok(v.data.includes('set_uniform: false'));
   });
 
@@ -615,8 +605,7 @@ describe('start projections: manage list', () => {
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
-      'Select a work unit (enter number, or **`b`/`back`** to return):',
-      DOTS,
+      'Select a work unit (enter number, or **`b/back`** to return):',
     ].join('\n'));
   });
 
@@ -657,11 +646,10 @@ describe('start projections: manage unit', () => {
       DOTS,
       '**Auth Flow** (feature)',
       '',
-      '- **`p`/`pivot`** — Convert to epic (enables multiple topics)',
-      '- **`c`/`cancel`** — Mark as cancelled',
-      '- **`b`/`back`** — Return',
-      '- **Ask** — Ask a question about this work unit',
-      DOTS,
+      '**`p/pivot`**  → Convert to epic (enables multiple topics)',
+      '**`c/cancel`** → Mark as cancelled',
+      '**`b/back`**   → Return',
+      '**Ask**        → Ask a question about this work unit',
     ].join('\n'));
     assert.strictEqual(v.sections, '');
   });
@@ -673,17 +661,16 @@ describe('start projections: manage unit', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
     createManifest(dir, 'v2', { work_type: 'epic' });
     const v = manageUnitView(manageDetail(dir, 'auth-flow'));
-    assert.ok(v.menu.includes('- **`a`/`absorb`** — Merge into an existing epic'));
+    assert.ok(/\*\*`a\/absorb`\*\* +→ Merge into an existing epic/.test(v.menu));
     assert.strictEqual(v.sections, [
       '=== MENU: absorb target (emit verbatim as markdown only at the absorb target gate — never at the call) ===',
-      DOTS,
-      'Select a target epic:',
+      '· · · · · · · · · · · ·',
+      '**`◆ Select a target epic:`**',
       '',
-      '- **`1`** — V1',
-      '- **`2`** — V2',
+      '**`1`**      → V1',
+      '**`2`**      → V2',
       '',
-      '- **`b`/`back`** — Return',
-      DOTS,
+      '**`b/back`** → Return',
       '',
     ].join('\n'));
   });
@@ -712,15 +699,14 @@ describe('start projections: manage unit', () => {
     });
     const v = manageUnitView(manageDetail(dir, 'hotfix'));
     assert.strictEqual(v.menu, [
-      DOTS,
+      '· · · · · · · · · · · ·',
       '**Hotfix** (quick-fix)',
       '',
-      '- **`d`/`done`** — Mark as completed',
-      '- **`v`/`view-plan`** — View the implementation plan',
-      '- **`c`/`cancel`** — Mark as cancelled',
-      '- **`b`/`back`** — Return',
-      '- **Ask** — Ask a question about this work unit',
-      DOTS,
+      '**`d/done`**      → Mark as completed',
+      '**`v/view-plan`** → View the implementation plan',
+      '**`c/cancel`**    → Mark as cancelled',
+      '**`b/back`**      → Return',
+      '**Ask**           → Ask a question about this work unit',
     ].join('\n'));
     assert.ok(!v.menu.includes('pivot'));
     assert.strictEqual(v.sections, '');
@@ -738,12 +724,11 @@ describe('start projections: manage unit', () => {
     const multi = manageUnitView(manageDetail(dir, 'v1'));
     assert.strictEqual(multi.sections, [
       '=== MENU: plan topics (emit verbatim as markdown only at the view-plan topic gate — never at the call) ===',
-      DOTS,
-      'Which plan would you like to view?',
+      '· · · · · · · · · · · ·',
+      '**`◆ Which plan would you like to view?`**',
       '',
-      '- **`1`** — Topic A — completed',
-      '- **`2`** — Topic B — in-progress',
-      DOTS,
+      '**`1`** → Topic A — completed',
+      '**`2`** → Topic B — in-progress',
       '',
     ].join('\n'));
     assert.ok(multi.data.includes('planning_topics: topic-a [completed], topic-b [in-progress]'));
@@ -798,10 +783,9 @@ describe('start projections: completed & cancelled', () => {
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
-      'Select a work unit for details, or **`b`/`back`** to return.',
+      'Select a work unit for details, or **`b/back`** to return.',
       '',
       'Select an option (enter number):',
-      DOTS,
     ].join('\n'));
   });
 

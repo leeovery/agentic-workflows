@@ -58,11 +58,10 @@ I've analyzed all {M} tasks and the natural execution order is already correct �
 
 ```
 · · · · · · · · · · · ·
-Approve the dependency graph?
+**`◆ Approve the dependency graph?`**
 
-- **`y`/`yes`** — Proceed
-- **Tell me what to change** — which priorities or dependencies to adjust
-· · · · · · · · · · · ·
+**`y/yes`**                → Proceed
+**Tell me what to change** → which priorities or dependencies to adjust
 ```
 
 **STOP.** Wait for user response.
@@ -129,11 +128,10 @@ I've analyzed and applied dependencies and priorities across all {M} tasks:
 
 ```
 · · · · · · · · · · · ·
-Approve the updated graph?
+**`◆ Approve the updated graph?`**
 
-- **`y`/`yes`** — Proceed
-- **Tell me what to change** — which priorities or dependencies to adjust
-· · · · · · · · · · · ·
+**`y/yes`**                → Proceed
+**Tell me what to change** → which priorities or dependencies to adjust
 ```
 
 **STOP.** Wait for user response.

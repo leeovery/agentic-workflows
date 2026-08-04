@@ -32,7 +32,7 @@ Re-run discovery to refresh state after potential changes.
 
 → Return to **A. Display and Select**.
 
-#### If user chose `m`/`manage`
+#### If user chose `m/manage`
 
 → Load **[manage-work-unit.md](../../workflow-start/references/manage-work-unit.md)** and follow its instructions as written.
 

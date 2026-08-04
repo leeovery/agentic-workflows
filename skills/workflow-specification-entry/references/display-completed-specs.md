@@ -4,7 +4,7 @@
 
 ---
 
-Loaded from the primary spec menu when the user picks `c`/`completed`. Render the concluded-specs sub-view:
+Loaded from the primary spec menu when the user picks `c/completed`. Render the concluded-specs sub-view:
 
 ```bash
 node .claude/skills/workflow-specification-entry/scripts/gateway.cjs completed-menu {work_unit}
