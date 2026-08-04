@@ -242,8 +242,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "review
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Applying the zero-risk fixes directly. Each touches no
-> executable logic, so it ships without the pipeline.
+> Applying the zero-risk fixes directly. Each touches no executable logic, so it ships without the pipeline.
 ```
 
 Apply every item in the `### Do now` subsection of `report.md`:

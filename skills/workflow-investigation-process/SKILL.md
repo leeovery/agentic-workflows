@@ -89,8 +89,7 @@ Set `resumed` = `false`.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An in-progress investigation file exists for this topic —
-> choose whether to pick it up or start fresh.
+> An in-progress investigation file exists for this topic — choose whether to pick it up or start fresh.
 ```
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/investigation/{topic}/ — content and agent state together)`, commit = `investigation({work_unit}): restart investigation`.
@@ -136,8 +135,7 @@ An earlier session already interviewed the user — don't re-interview. Fold in 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Gathering detailed symptoms — reproduction steps, error
-> messages, affected areas, and environmental context.
+> Gathering detailed symptoms — reproduction steps, error messages, affected areas, and environmental context.
 ```
 
 Read what the Symptoms section already holds — initialisation seeded it from the carrier, and that is the user's own account. Ask what it does not answer, and confirm rather than re-ask where it is thin. Putting a question they have already answered back to them reads as not having listened.
@@ -171,9 +169,7 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Forming hypotheses and agreeing where to look and how
-> collaboratively to work — or re-confirming the existing plan
-> when resuming — before deep tracing begins.
+> Forming hypotheses and agreeing where to look and how collaboratively to work — or re-confirming the existing plan when resuming — before deep tracing begins.
 ```
 
 Load **[investigation-plan.md](references/investigation-plan.md)** and follow its instructions as written.
@@ -193,8 +189,7 @@ Load **[investigation-plan.md](references/investigation-plan.md)** and follow it
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Tracing the bug through the codebase — following code
-> paths, checking state, and narrowing down the root cause.
+> Tracing the bug through the codebase — following code paths, checking state, and narrowing down the root cause.
 ```
 
 Load **[analysis-patterns.md](references/analysis-patterns.md)** for tracing techniques and **[analysis-checkpoints.md](references/analysis-checkpoints.md)** for the collaboration protocol — both govern this step.
@@ -218,8 +213,7 @@ When the root cause is identified and every hypothesis is resolved:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Synthesising findings into a clear root cause statement,
-> contributing factors, and blast radius.
+> Synthesising findings into a clear root cause statement, contributing factors, and blast radius.
 ```
 
 Synthesize findings into a clear root cause:
@@ -250,8 +244,7 @@ Document in the investigation file and commit.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Offering an independent validation pass on the root cause
-> before the findings are presented.
+> Offering an independent validation pass on the root cause before the findings are presented.
 ```
 
 Load **[root-cause-validation.md](references/root-cause-validation.md)** and follow its instructions as written.
@@ -271,8 +264,7 @@ Load **[root-cause-validation.md](references/root-cause-validation.md)** and fol
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Presenting the investigation findings for your sign-off
-> before we explore the fix.
+> Presenting the investigation findings for your sign-off before we explore the fix.
 ```
 
 Load **[findings-signoff.md](references/findings-signoff.md)** and follow its instructions as written.
@@ -312,8 +304,7 @@ Load **[fix-exploration.md](references/fix-exploration.md)** and follow its inst
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Offering an independent pressure-test of the agreed fix
-> direction before wrapping up.
+> Offering an independent pressure-test of the agreed fix direction before wrapping up.
 ```
 
 Load **[fix-validation.md](references/fix-validation.md)** and follow its instructions as written.
@@ -341,8 +332,7 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up. Final confirmation before marking the
-> investigation as complete.
+> Wrapping up. Final confirmation before marking the investigation as complete.
 ```
 
 Load **[conclude-investigation.md](references/conclude-investigation.md)** and follow its instructions as written.

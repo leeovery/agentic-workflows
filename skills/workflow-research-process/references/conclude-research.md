@@ -53,8 +53,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Research complete. The discussion phase will use these findings
-> to make decisions about architecture and approach.
+> Research complete. The discussion phase will use these findings to make decisions about architecture and approach.
 ```
 
 6. Invoke `/workflow-bridge {work_unit} research`.

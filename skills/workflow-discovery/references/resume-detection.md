@@ -31,8 +31,7 @@ The output is the in-progress session number string (e.g. `002`) — the prior s
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An earlier discovery session for this epic was left unfinished —
-> choose whether to pick it up or start fresh.
+> An earlier discovery session for this epic was left unfinished — choose whether to pick it up or start fresh.
 ```
 
 Render the resume menu and emit its section verbatim per its marker:

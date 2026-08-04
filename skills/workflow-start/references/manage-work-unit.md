@@ -51,10 +51,7 @@ The response carries demarcated sections:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Lifecycle actions for this work unit. Done marks it finished,
-> cancel abandons it, pivot converts a feature to an epic when the
-> scope grows beyond a single topic, absorb merges a feature's
-> discussion into an existing epic.
+> Lifecycle actions for this work unit. Done marks it finished, cancel abandons it, pivot converts a feature to an epic when the scope grows beyond a single topic, absorb merges a feature's discussion into an existing epic.
 ```
 
 Emit the MENU section.

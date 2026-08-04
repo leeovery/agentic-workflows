@@ -129,15 +129,13 @@ Rules:
 Guidance text rendered as markdown blockquotes. Used for phase entry context, pre-step guidance, post-phase closure, and explaining blockers or gates. Never for status data or interactive choices.
 
 ```
-> Your completed discussions will be synthesised into a formal spec.
-> Expect questions about gaps, contradictions, and missing edge cases.
-> The output is a standalone document that drives planning.
+> Your completed discussions will be synthesised into a formal spec. Expect questions about gaps, contradictions, and missing edge cases. The output is a standalone document that drives planning.
 ```
 
 Rules:
 - Rendered as markdown (use the markdown rendering instruction)
-- **Every line must start with `>`** — Claude Code only renders the blockquote border on lines that have the `>` prefix. A single long line will wrap without the border on subsequent lines. Wrap at ~70 characters per line (including the `> ` prefix) to keep the blockquote visually intact
-- **Plain text only** — no bold. The blockquote styling (indented, dimmed) already sets signposts apart visually. If bold is ever needed on multiple lines, each line must have its own `**` open and close — bold does not carry across `>` prefixed line breaks
+- **One authored line per paragraph** — never hand-wrap. The renderer reflows a long `>` line and carries the blockquote border across every soft-wrapped continuation, so the line is correct at any terminal width; a bare `>` line separates paragraphs
+- **Bold is available, with judgment** — it survives the wrap and renders understated inside a blockquote. Use it where an emphasis genuinely helps (`**Two decisions are owed** before this can close`), not as decoration
 - Lead phrases are freeform — no fixed vocabulary, chosen to fit the context
 - 1-3 sentences maximum — never compete with the actual content
 - Placement: after phase titles, before menus where context helps the decision, at phase transitions, explaining soft gates or blockers

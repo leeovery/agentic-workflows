@@ -77,8 +77,7 @@ A first start, not a resume — no session has ever run. Parked concerns wait in
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An in-progress research file exists for this topic — choose
-> whether to pick it up or start fresh.
+> An in-progress research file exists for this topic — choose whether to pick it up or start fresh.
 ```
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `research`, file = `.workflows/{work_unit}/research/{topic}.md`, continue_step = `Step 2`, restart_targets = `the research file and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/research/{topic}/ — content and agent state together) — stale agent results would poison the restarted session's review gates`, commit = `research({work_unit}): restart research`.
@@ -136,9 +135,7 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Starting the research session. This is open-ended exploration
-> — follow threads, surface options, and document findings.
-> No decisions needed at this stage.
+> Starting the research session. This is open-ended exploration — follow threads, surface options, and document findings. No decisions needed at this stage.
 ```
 
 Load **[route-session.md](references/route-session.md)** and follow its instructions as written.

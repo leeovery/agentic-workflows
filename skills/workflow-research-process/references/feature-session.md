@@ -106,8 +106,7 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This work is now an epic — continuing here with the current topic.
-> The concern is preserved for its own handling later.
+> This work is now an epic — continuing here with the current topic. The concern is preserved for its own handling later.
 ```
 
 → Return to **B. Session Loop**.

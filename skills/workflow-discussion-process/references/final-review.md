@@ -145,8 +145,7 @@ Findings from the current review are still being drained.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Dispatching a final review to catch any gaps before concluding.
-> This ensures the discussion is thorough for specification.
+> Dispatching a final review to catch any gaps before concluding. This ensures the discussion is thorough for specification.
 ```
 
 Record the dispatch — the engine allocates the id and answers with the content-file path:

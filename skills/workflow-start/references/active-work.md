@@ -25,8 +25,7 @@ Emit the DISPLAY section, then the signpost blockquote below, then the MENU sect
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Numbered items continue existing work. Letter commands below
-> start something new or manage lifecycle.
+> Numbered items continue existing work. Letter commands below start something new or manage lifecycle.
 ```
 
 **STOP.** Wait for user response.

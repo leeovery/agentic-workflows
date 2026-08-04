@@ -202,8 +202,7 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Specification complete. The specification is the final artifact
-> for a cross-cutting concern — the pipeline completes here.
+> Specification complete. The specification is the final artifact for a cross-cutting concern — the pipeline completes here.
 ```
 
 Invoke `/workflow-bridge {work_unit} specification`.
@@ -213,8 +212,7 @@ Invoke `/workflow-bridge {work_unit} specification`.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Specification complete. The planning phase will break this into
-> implementable tasks with dependencies and acceptance criteria.
+> Specification complete. The planning phase will break this into implementable tasks with dependencies and acceptance criteria.
 ```
 
 Invoke `/workflow-bridge {work_unit} specification`.

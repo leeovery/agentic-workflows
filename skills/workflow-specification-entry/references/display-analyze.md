@@ -17,9 +17,7 @@ Emit the DISPLAY section from the Step 1 snapshot verbatim as a code block.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> What happens next. Your discussions will be analyzed for natural
-> groupings. Each grouping becomes a proposed specification you can
-> start when ready. Results are cached and reused until discussions change.
+> What happens next. Your discussions will be analyzed for natural groupings. Each grouping becomes a proposed specification you can start when ready. Results are cached and reused until discussions change.
 
 · · · · · · · · · · · ·
 Proceed with analysis?
@@ -36,10 +34,7 @@ Proceed with analysis?
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Analysis outdated. A previous grouping analysis exists but
-> discussions have changed since it was created. Your discussions will
-> be re-analyzed for natural groupings. Results are cached and reused
-> until discussions change.
+> Analysis outdated. A previous grouping analysis exists but discussions have changed since it was created. Your discussions will be re-analyzed for natural groupings. Results are cached and reused until discussions change.
 
 · · · · · · · · · · · ·
 Proceed with analysis?

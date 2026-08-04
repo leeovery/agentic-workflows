@@ -13,8 +13,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {w
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Scoping complete. The implementation phase will execute
-> these tasks using the verification workflow.
+> Scoping complete. The implementation phase will execute these tasks using the verification workflow.
 ```
 
 **Pipeline continuation** — Invoke `/workflow-bridge {work_unit} scoping`.

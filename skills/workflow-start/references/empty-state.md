@@ -25,8 +25,7 @@ Emit the DISPLAY section, then the signpost blockquote below, then the MENU sect
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Pick a type if you know it, or start unsure and we'll figure out
-> the shape together. Each type follows its own pipeline.
+> Pick a type if you know it, or start unsure and we'll figure out the shape together. Each type follows its own pipeline.
 ```
 
 **STOP.** Wait for user response.

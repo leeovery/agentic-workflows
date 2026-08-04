@@ -24,11 +24,7 @@ Read the boot response's `system_config` object: `status` (`valid`, `absent`, or
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The knowledge base powers recall across work units and within
-> them — later phases draw on earlier work. It is required
-> infrastructure: no workflow runs until it is initialised. Your
-> machine already has a system configuration this project can
-> reuse.
+> The knowledge base powers recall across work units and within them — later phases draw on earlier work. It is required infrastructure: no workflow runs until it is initialised. Your machine already has a system configuration this project can reuse.
 
 · · · · · · · · · · · ·
 **`◆ Set up the knowledge base for this project:`**
@@ -83,9 +79,7 @@ A per-project deviation never touches the system-wide configuration. Keyword-onl
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Pick how this project's knowledge base should search. OpenAI
-> needs an API key — stored in your terminal, never pasted here.
-> Keyword-only needs no key and can be upgraded anytime.
+> Pick how this project's knowledge base should search. OpenAI needs an API key — stored in your terminal, never pasted here. Keyword-only needs no key and can be upgraded anytime.
 
 · · · · · · · · · · · ·
 **`◆ How should this project's knowledge base work?`**
@@ -186,9 +180,7 @@ this chat — run this in your terminal, then come back:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Do not paste the API key into this chat — not even partially.
-> Store it in your terminal with one of the commands above, then
-> come back here.
+> Do not paste the API key into this chat — not even partially. Store it in your terminal with one of the commands above, then come back here.
 
 · · · · · · · · · · · ·
 **`◆ Ready to retry?`**
@@ -254,8 +246,7 @@ Knowledge base ready — @if(provider) {provider} · {model} @else keyword-only 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The interactive wizard runs in your terminal. It walks provider
-> choice, key entry (input hidden), and project store setup.
+> The interactive wizard runs in your terminal. It walks provider choice, key entry (input hidden), and project store setup.
 ```
 
 > *Output the next fenced block as a code block:*

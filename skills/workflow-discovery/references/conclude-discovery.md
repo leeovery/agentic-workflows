@@ -28,8 +28,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discovery complete — entering plan mode to hand off the next
-> step in a clean context.
+> Discovery complete — entering plan mode to hand off the next step in a clean context.
 ```
 
 `next_phase` is the destination the endpoint supplied, or the literal `none` when it supplied nothing (the bridge treats `none` as absent and computes the destination itself).

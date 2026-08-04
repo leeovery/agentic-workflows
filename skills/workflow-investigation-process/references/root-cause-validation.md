@@ -11,8 +11,7 @@ An independent agent validates the root cause hypothesis by tracing the code fre
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An independent agent can trace the code fresh to validate the
-> root cause before the findings are presented for sign-off.
+> An independent agent can trace the code fresh to validate the root cause before the findings are presented for sign-off.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

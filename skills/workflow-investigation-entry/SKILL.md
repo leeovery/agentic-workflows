@@ -78,8 +78,7 @@ Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Collecting information about the bug — what's broken,
-> how it manifests, and any initial context.
+> Collecting information about the bug — what's broken, how it manifests, and any initial context.
 ```
 
 #### If a discovery session log exists for this work unit

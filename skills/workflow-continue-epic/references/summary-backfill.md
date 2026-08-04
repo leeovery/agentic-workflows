@@ -20,9 +20,7 @@ The caller passes:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discovery items missing summary or description. Drafting
-> them from the existing research and discussion files for
-> review.
+> Discovery items missing summary or description. Drafting them from the existing research and discussion files for review.
 ```
 
 For each item in `items_to_recover`:

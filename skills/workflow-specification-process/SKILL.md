@@ -84,8 +84,7 @@ Check if `.workflows/{work_unit}/specification/{topic}/specification.md` exists.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An in-progress specification exists for this topic — choose
-> whether to pick it up or start fresh.
+> An in-progress specification exists for this topic — choose whether to pick it up or start fresh.
 ```
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `specification`, file = `.workflows/{work_unit}/specification/{topic}/specification.md`, continue_step = `Step 3`, restart_targets = `the specification file and all review tracking files (review-*-tracking-c*.md) in .workflows/{work_unit}/specification/{topic}/`, restart_resets = `every sources.{name}.status and consult_references.{name}.status row under {work_unit}.specification.{topic} to pending via engine manifest set — initialization never overwrites an existing row, so without this reset the fresh file would never get its content re-extracted — and the tracking subtree deleted (engine manifest delete {work_unit}.specification.{topic} tracking) to match the deleted tracking files`, commit = `spec({work_unit}): restart specification`.
@@ -135,9 +134,7 @@ Load **[specification-principles.md](references/specification-principles.md)** a
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Building the specification. Topics from your source material will
-> be extracted and presented one at a time. Nothing gets written without
-> your explicit approval.
+> Building the specification. Topics from your source material will be extracted and presented one at a time. Nothing gets written without your explicit approval.
 ```
 
 Load **[spec-construction.md](references/spec-construction.md)** and follow its instructions as written.
@@ -163,8 +160,7 @@ Load **[spec-construction.md](references/spec-construction.md)** and follow its 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Recording cross-topic dependencies — for epics, specifications
-> may depend on each other.
+> Recording cross-topic dependencies — for epics, specifications may depend on each other.
 ```
 
 Load **[dependencies.md](references/dependencies.md)** and follow its instructions as written.
@@ -184,9 +180,7 @@ Load **[dependencies.md](references/dependencies.md)** and follow its instructio
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reviewing the specification. Agents will analyse it against
-> source material for gaps and inconsistencies. You'll approve or
-> dismiss each finding.
+> Reviewing the specification. Agents will analyse it against source material for gaps and inconsistencies. You'll approve or dismiss each finding.
 ```
 
 Load **[spec-review.md](references/spec-review.md)** and follow its instructions as written.
@@ -214,8 +208,7 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up. Final assessment, sign-off, and handover to the
-> planning phase.
+> Wrapping up. Final assessment, sign-off, and handover to the planning phase.
 ```
 
 Load **[spec-completion.md](references/spec-completion.md)** and follow its instructions as written.

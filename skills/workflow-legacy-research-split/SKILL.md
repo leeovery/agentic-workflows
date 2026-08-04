@@ -29,9 +29,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This epic pre-dates the discovery phase. Migration-seeded broad
-> research files are decomposed here into topic-scoped themes,
-> user-guided per source.
+> This epic pre-dates the discovery phase. Migration-seeded broad research files are decomposed here into topic-scoped themes, user-guided per source.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -43,8 +41,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Scanning the epic's research files for migration-seeded broad
-> sources that qualify for decomposition.
+> Scanning the epic's research files for migration-seeded broad sources that qualify for decomposition.
 ```
 
 Initialise `applied_count = 0`, `abandoned_count = 0`, `errored_count = 0`.
@@ -119,8 +116,7 @@ Qualifying source files (in-progress, migration-seeded):
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Iterating each qualifying source. Each iteration: identify
-> themes, draft cache files, propose, edit-loop, apply.
+> Iterating each qualifying source. Each iteration: identify themes, draft cache files, propose, edit-loop, apply.
 ```
 
 Load **[dialog.md](references/dialog.md)** and follow its instructions as written. dialog.md drives the per-source iteration until `remaining` is empty, updating counters on each outcome.
@@ -144,10 +140,7 @@ Evaluate the branches below in order — error reporting takes precedence over c
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> {errored_count} source file(s) aborted mid-apply; {applied_count}
-> decomposed; {abandoned_count} skipped. See "Recovery from
-> Interrupted Apply" below to clear stuck sentinels before you
-> reopen the epic via /workflow-start.
+> {errored_count} source file(s) aborted mid-apply; {applied_count} decomposed; {abandoned_count} skipped. See "Recovery from Interrupted Apply" below to clear stuck sentinels before you reopen the epic via /workflow-start.
 ```
 
 → Return to caller.
@@ -167,8 +160,7 @@ Evaluate the branches below in order — error reporting takes precedence over c
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Legacy broad research files decomposed. The discovery map now
-> reflects topic-scoped items.
+> Legacy broad research files decomposed. The discovery map now reflects topic-scoped items.
 ```
 
 → Return to caller.
@@ -178,9 +170,7 @@ Evaluate the branches below in order — error reporting takes precedence over c
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> {applied_count} source file(s) decomposed; {abandoned_count}
-> skipped. Skipped files remain on the map and can be revisited
-> next time you open the epic via /workflow-start.
+> {applied_count} source file(s) decomposed; {abandoned_count} skipped. Skipped files remain on the map and can be revisited next time you open the epic via /workflow-start.
 ```
 
 → Return to caller.
@@ -190,9 +180,7 @@ Evaluate the branches below in order — error reporting takes precedence over c
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> No source files decomposed — every qualifying file was skipped.
-> They remain on the map and can be revisited next time you open
-> the epic via /workflow-start.
+> No source files decomposed — every qualifying file was skipped. They remain on the map and can be revisited next time you open the epic via /workflow-start.
 ```
 
 → Return to caller.

@@ -135,9 +135,7 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Executing tasks from the plan. Each task is implemented
-> via TDD by an executor agent, then independently verified by
-> a reviewer agent. You'll approve each task before it proceeds.
+> Executing tasks from the plan. Each task is implemented via TDD by an executor agent, then independently verified by a reviewer agent. You'll approve each task before it proceeds.
 ```
 
 Load **[task-loop.md](references/task-loop.md)** and follow its instructions as written.
@@ -169,9 +167,7 @@ After the loop completes:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Analysing the implementation for gaps and issues.
-> Agents review what was built against the plan and spec.
-> New tasks may be created if problems are found.
+> Analysing the implementation for gaps and issues. Agents review what was built against the plan and spec. New tasks may be created if problems are found.
 ```
 
 Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instructions as written.
@@ -205,8 +201,7 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up. Final confirmation before marking
-> implementation as complete and moving to review.
+> Wrapping up. Final confirmation before marking implementation as complete and moving to review.
 ```
 
 Load **[conclude-implementation.md](references/conclude-implementation.md)** and follow its instructions as written.

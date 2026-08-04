@@ -103,8 +103,7 @@ Load **[check-prerequisites.md](references/check-prerequisites.md)** and follow 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Evaluating what discussions and specifications exist
-> to determine next steps.
+> Evaluating what discussions and specifications exist to determine next steps.
 ```
 
 Load **[route-scenario.md](references/route-scenario.md)** and follow its instructions as written.

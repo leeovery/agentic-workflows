@@ -173,9 +173,7 @@ The `description` field gives the discovery map context; the cache file gives th
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Cache files drafted. They're first-class artifacts — you can
-> `cat` or open them in your editor between renders, and your
-> edits will land on the next display.
+> Cache files drafted. They're first-class artifacts — you can `cat` or open them in your editor between renders, and your edits will land on the next display.
 ```
 
 For each theme in `plan.json`, read the cache file, count paragraphs (blank-line-separated blocks), and take the first ~60 chars of the first paragraph as `content_preview`.

@@ -15,9 +15,7 @@ Pull current values from the investigation file — the file is authoritative, n
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This is the sign-off on the investigation record — everything
-> below is read from the investigation file. Fix exploration
-> comes next.
+> This is the sign-off on the investigation record — everything below is read from the investigation file. Fix exploration comes next.
 ```
 
 Retell the investigation file's findings as a markdown narrative (not a code block, no structured template) in four beats:

@@ -15,9 +15,7 @@ The review agent catches *topical* gaps — areas that should have been explored
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reconciling the session conversation against the research file.
-> Checking for gaps, hallucinations, and accuracy drift before
-> concluding.
+> Reconciling the session conversation against the research file. Checking for gaps, hallucinations, and accuracy drift before concluding.
 ```
 
 ## A. Re-Read the Research Document
@@ -131,8 +129,7 @@ Summarise conversationally — do not dump a diff. One short paragraph or a hand
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Document review complete. {N} gap(s) captured, {M} correction(s)
-> applied. Proceeding to the final compliance check.
+> Document review complete. {N} gap(s) captured, {M} correction(s) applied. Proceeding to the final compliance check.
 ```
 
 → Return to caller.

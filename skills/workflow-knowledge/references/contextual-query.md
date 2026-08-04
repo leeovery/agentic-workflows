@@ -60,9 +60,7 @@ Briefly acknowledge surfaced context to the user before the main session starts:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Surfaced prior context from the knowledge base — incorporating
-> into this phase.
-> {One short line naming the most relevant piece, e.g. "auth-flow decided on UUID identity (spec, 2026-03-15)."}
+> Surfaced prior context from the knowledge base — incorporating into this phase. {One short line naming the most relevant piece, e.g. "auth-flow decided on UUID identity (spec, 2026-03-15)."}
 ```
 
 Carry the context forward into the phase. Do not dump the full chunk list to the user — summarise only if the user asks, or if a chunk materially changes how this phase should start.

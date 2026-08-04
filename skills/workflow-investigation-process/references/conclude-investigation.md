@@ -44,8 +44,7 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Investigation complete. The specification phase will formalise
-> the fix approach into a document that drives planning.
+> Investigation complete. The specification phase will formalise the fix approach into a document that drives planning.
 ```
 
 5. Invoke `/workflow-bridge {work_unit} investigation`.

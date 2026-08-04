@@ -77,8 +77,7 @@ A first start, not a resume — no session has ever run and no subtopics exist, 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An in-progress discussion file exists for this topic — choose
-> whether to pick it up or start fresh.
+> An in-progress discussion file exists for this topic — choose whether to pick it up or start fresh.
 ```
 
 Show the current map state so the continue-or-restart choice is informed:
@@ -136,9 +135,7 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discussion starting. I'll track our conversation on a Discussion
-> Map. You can lead wherever you want — I'll challenge thinking,
-> explore edge cases, and capture decisions as we go.
+> Discussion starting. I'll track our conversation on a Discussion Map. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.
 ```
 
 Load **[discussion-session.md](references/discussion-session.md)** and follow its instructions as written.
@@ -168,8 +165,7 @@ Load **[final-review.md](references/final-review.md)** and follow its instructio
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reconciling the session conversation against the discussion file
-> to catch substance that was discussed but never captured.
+> Reconciling the session conversation against the discussion file to catch substance that was discussed but never captured.
 ```
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
@@ -197,8 +193,7 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up. Final confirmation before marking the
-> discussion as complete.
+> Wrapping up. Final confirmation before marking the discussion as complete.
 ```
 
 Load **[conclude-discussion.md](references/conclude-discussion.md)** and follow its instructions as written.
