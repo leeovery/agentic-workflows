@@ -160,6 +160,21 @@ findings likewise.
 
 ## Log
 
+- 2026-08-04 — Final sweep, from the eleven-layer tip: 16 of 17 PASS,
+  including two consecutive clean research walks (flake retired) and
+  every formerly-red case. Walkers cite the canonical landing section
+  and the Lanes declarations by name; the reroute-offer surface was
+  observed emitting the named-destination consent gate in the wild.
+  Layers 8–11 closed the residues: the Move relay clause, the § B
+  restructure with both reroute gates rendered from new engine
+  surfaces (reroute-offer, reroute-candidates — off-topic-epic's
+  fence pin now zero, epic-session's tightened), and the route case's
+  amphibolous F2 sharpened. One FLAKY remains, outside this
+  programme's surface: coherence-analysis's prescribed manifest read
+  satisfied from derived map state by one walker — the
+  read-vs-context family, with compliance-check and the retired
+  topic-synthesis flake. Eight-item observation batch handed over.
+
 - 2026-08-04 — The stack walked: 17 affected cases, 14 PASS including
   the phase's first research-review walk and both new lane shapes.
   Walkers cite the canonical landing section by name; the three-owner
