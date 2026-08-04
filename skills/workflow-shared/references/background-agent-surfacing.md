@@ -64,7 +64,7 @@ Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase
 
 Read each finding's **lane** from its report section. Three lanes carry across every caller — the batched `apply`, the batched `route`, and the walked one, which a report names for its own phase (`decide` in discussion, `explore` in research). A report that declares no lanes is all-walk, as is any single finding whose section names none — an unlabelled finding is never assumed settled. Synthesis tensions are always walked, whatever the report says.
 
-Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding whose fix turns out to rest on a choice nobody has made moves to the walked lane. Never move a finding the other way.
+Re-classify before anything renders, in the one permitted direction (core rule 5): an `apply` finding the artifact itself contradicts — a subtopic the map records as open, a fix resting on a decision no section carries — moves to the walked lane and never reaches the batch screen. Never move a finding the other way.
 
 #### If the report has no findings (zero-gap case)
 
@@ -94,7 +94,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {ph
 
 ## C. Decide Action
 
-The row's `remaining` list is the unsurfaced set; `announced` and `surfaced` route what happens now.
+The row's `remaining` list is the unsurfaced set; `announced` and `surfaced` route what happens now. A row acknowledged in an earlier sitting arrives here unread — read its report and its lanes as **B** prescribes before rendering anything.
 
 #### If NOT a natural break
 
@@ -169,7 +169,7 @@ Do not re-ask. The user has already committed to working through the set.
 
 Lanes run in a fixed order — **apply, then the walk, then route**. The cheap lanes clear the deck first, and the route batch runs last so that a reroute raised *during* the walk joins the same send.
 
-Intersect the row's `remaining` with each finding's lane, and take the first lane in that order that still holds findings. A session that entered at **C** — a row acknowledged before this sitting — has not read the report yet: read it now, as **B** prescribes, before routing.
+Intersect the row's `remaining` with each finding's lane, and take the first lane in that order that still holds findings.
 
 #### If the lane is `apply`
 
@@ -302,7 +302,7 @@ Emit the lane marker once per visit to this section — on a re-render after a q
 ·· Belongs Elsewhere ····························
 ```
 
-Judge each finding's `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. Write the payload with the Write tool (`{"lane": "route", "items": [{"target": "…", "detail": "…"}]}`, one entry per finding: `target` is the owning topic, `detail` is what it says, why it is theirs, and which queue it lands in), then render it:
+Judge each finding's `landing_phase` from its nature — an open question needing exploration → `research`; a correction or decision owed → `discussion`. The target's own `routing` does not decide it: a question landing on a discussion-routed topic still lands research-side. Write the payload with the Write tool (`{"lane": "route", "items": [{"target": "…", "detail": "…"}]}`, one entry per finding: `target` is the owning topic, `detail` is what it says, why it is theirs, and which queue it lands in), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
@@ -314,7 +314,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 **If `yes`:**
 
-Deliver each finding in turn, with the context built here so its target resolves it from cold.
+Deliver each finding in turn, with the context built here so its target resolves it from cold. Write no reroute record and leave the Discussion Map untouched — the target's queue is the record.
 
 → Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`.
 
