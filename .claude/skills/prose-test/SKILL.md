@@ -65,6 +65,13 @@ passed.
 
 ## Rules
 
+- **Never run cases from a worktree-isolated session.** The harness's
+  worktree-isolation guard refuses the engine's `complete`-family
+  subcommands (`task complete`, `topic complete`, `workunit complete`)
+  inside the walkers' temp-dir worlds, failing every case on environment
+  rather than prose — and pushing walkers toward guard-bypass workarounds
+  the record then contradicts. Run from the primary checkout; exit any
+  worktree first.
 - **Never run cases against prose that is still under review.** While a
   PR's diff is moving — the author iterating, the reviewer commenting — a
   walk certifies bytes that may not survive the review, and each further
