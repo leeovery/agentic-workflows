@@ -610,16 +610,17 @@ describe('render concern', () => {
     writeQueue('measurement', { '001-a.md': 'x' });
     const out = renderSurface(dir, 'triage-block', { dotpath: 'wu.discussion.measurement' });
     assert.ok(out.startsWith([
-      '=== DISPLAY: triage block (emit verbatim as a code block) ===',
-      '  ⚑ Triage queue not empty — 1 rerouted concern awaiting discussion.',
-      '    Returning to the session to surface them before concluding.',
+      '=== DISPLAY: triage block (emit verbatim as a properties code block — ```properties fence) ===',
+      '⚑ Triage queue not empty — 1 rerouted concern awaiting discussion',
+      '=== DISPLAY: triage block guidance (emit verbatim as markdown) ===',
+      '> Returning to the session to surface them before concluding.',
     ].join('\n')), out);
     const rdir = path.join(dir, '.workflows', 'wu', 'research', '.triage', 'measurement');
     fs.mkdirSync(rdir, { recursive: true });
     fs.writeFileSync(path.join(rdir, '001-a.md'), 'x');
     fs.writeFileSync(path.join(rdir, '002-b.md'), 'y');
     const rout = renderSurface(dir, 'triage-block', { dotpath: 'wu.research.measurement' });
-    assert.ok(rout.includes('2 rerouted concerns awaiting exploration.'), rout);
+    assert.ok(rout.includes('2 rerouted concerns awaiting exploration'), rout);
   });
 });
 
@@ -1084,7 +1085,7 @@ describe('CLI boundary — engine render via subprocess', () => {
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
     assert.ok(run(['early-completion-gate', 'pay']).includes('Complete without review'));
     assert.ok(run(['epic-all-done-gate', 'pay']).includes('Mark this epic as completed'));
-    assert.ok(run(['entry-gate', 'pay.specification.pay', '--own']).includes('Specification Superseded'),
+    assert.ok(run(['entry-gate', 'pay.specification.pay', '--own']).includes('was consolidated into'),
       '--own must survive boolean-flag registration through argv');
     assert.ok(run(['phase-completed', 'pay', '--phase', 'scoping', '--paths']).includes('  Spec: .workflows/pay/specification/pay/specification.md'),
       '--paths must survive boolean-flag registration through argv');
@@ -1125,54 +1126,54 @@ describe('render entry-gate', () => {
 
   it('planning: every specification state maps to its blocker; completed is clear', () => {
     manifestWith({});
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification Missing\n\nNo specification found for "Auth"\./);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /⚑ No specification found for "Auth"/);
     manifestWith({ specification: { items: { auth: { status: 'in-progress' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification In Progress/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /⚑ The specification for "Auth" is not yet completed/);
     manifestWith({ specification: { items: { auth: { status: 'proposed' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification Not Started[\s\S]*proposed grouping/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /proposed grouping[\s\S]*Start the specification first/);
     manifestWith({ specification: { items: { auth: { status: 'superseded', superseded_by: 'core-auth' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification Superseded[\s\S]*"Core Auth"/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /consolidated into "Core Auth"[\s\S]*Plan the superseding specification/);
     manifestWith({ specification: { items: { auth: { status: 'promoted', promoted_to: 'cc-auth' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification Promoted[\s\S]*"cc-auth"/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /promoted to the cross-cutting work unit "cc-auth"/);
     manifestWith({ specification: { items: { auth: { status: 'completed' } } } });
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), '');
   });
 
   it('implementation and review derive their plan/implementation blockers', () => {
     manifestWith({});
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), /Plan Missing[\s\S]*A completed plan is required for implementation\./);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), /⚑ No plan found for "Auth"[\s\S]*A completed plan is required for implementation\./);
     manifestWith({ planning: { items: { auth: { status: 'in-progress' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), /Plan Not Completed/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), /⚑ The plan for "Auth" is not yet completed/);
     manifestWith({ planning: { items: { auth: { status: 'completed' } } } });
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), '');
 
     manifestWith({});
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /Plan Missing[\s\S]*plan and completed implementation are required for review\./);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /⚑ No plan found for "Auth"[\s\S]*plan and completed implementation are required for review\./);
     manifestWith({ planning: { items: { auth: { status: 'completed' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /Implementation Missing/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /⚑ No implementation found for "Auth"/);
     manifestWith({ planning: { items: { auth: { status: 'completed' } } }, implementation: { items: { auth: { status: 'in-progress' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /Implementation Not Complete/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /⚑ The implementation for "Auth" is not yet completed/);
     manifestWith({ planning: { items: { auth: { status: 'completed' } } }, implementation: { items: { auth: { status: 'completed' } } } });
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), '');
   });
 
   it('specification is work-type-aware: feature discussion, bugfix investigation, epic any-completed', () => {
     manifestWith({}, 'feature');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /Source Material Missing\n\nNo discussion found for "Pay"\./);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ No discussion found for "Pay"/);
     manifestWith({ discussion: { items: { auth: { status: 'in-progress' } } } }, 'feature');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /Discussion In Progress/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ The discussion for "Pay" is not yet completed/);
     manifestWith({ discussion: { items: { auth: { status: 'completed' } } } }, 'feature');
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
 
     manifestWith({}, 'bugfix');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /No investigation found/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ No investigation found/);
     manifestWith({ investigation: { items: { auth: { status: 'in-progress' } } } }, 'bugfix');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /Investigation In Progress/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ The investigation for "Pay" is not yet completed/);
 
     manifestWith({}, 'epic');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /No discussions found/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ No discussions found/);
     manifestWith({ discussion: { items: { a: { status: 'in-progress' }, b: { status: 'in-progress' } } } }, 'epic');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /No Completed Discussions[\s\S]*continue an in-progress discussion/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ No completed discussions found[\s\S]*continue an in-progress discussion/);
     manifestWith({ discussion: { items: { a: { status: 'completed' } } } }, 'epic');
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
   });
@@ -1195,16 +1196,15 @@ describe('render entry-gate --own', () => {
   it('renders the superseded and promoted terminals byte-exactly', () => {
     specWith({ status: 'superseded', superseded_by: 'core-auth' });
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }), [
-      '=== DISPLAY: entry blocker (emit verbatim as a code block, then STOP — terminal condition) ===',
-      'Specification Superseded',
-      '',
-      'The specification for "Auth" was consolidated into',
-      '"Core Auth". Work on that specification instead.',
+      '=== DISPLAY: entry blocker (emit verbatim as a properties code block — ```properties fence) ===',
+      '⚑ The specification for "Auth" was consolidated into "Core Auth"',
+      '=== DISPLAY: blocker guidance (emit verbatim as markdown, then STOP — terminal condition) ===',
+      '> Work on that specification instead.',
       '',
     ].join('\n'));
     specWith({ status: 'promoted', promoted_to: 'auth-platform' });
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }),
-      /Specification Promoted\n\n"Auth" was promoted to the cross-cutting work unit\n"auth-platform"\. Continue it from that work unit\./);
+      /⚑ "Auth" was promoted to the cross-cutting work unit "auth-platform"[\s\S]*> Continue it from that work unit\./);
   });
 
   it('is clear for live statuses and a missing item', () => {
@@ -1224,7 +1224,8 @@ describe('render entry-gate --own', () => {
   it('a promoted item missing its target degrades to an empty quoted name, never "undefined"', () => {
     specWith({ status: 'promoted' });
     const out = renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' });
-    assert.ok(out.includes('"". Continue it from that work unit.'));
+    assert.ok(out.includes('cross-cutting work unit ""'));
+    assert.ok(out.includes('> Continue it from that work unit.'));
     assert.ok(!out.includes('undefined'));
   });
 });
