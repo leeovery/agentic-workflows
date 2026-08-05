@@ -136,11 +136,8 @@ function box(title, { width = WIDTH } = {}) {
 // Shapes: tree (continuous-gutter, recursive)
 // ---------------------------------------------------------------------------
 
-// Marker introducing a row's trailing annotation. It is a comment opener in
-// the fence the tree is emitted into, which is what tints the annotation
-// apart from the row — the kernel only knows it as the string that precedes
-// a tag, never what the tag means.
-const TAG_MARKER = '# ';
+// A row's trailing annotation renders as `[tag]` in the aligned column — the
+// kernel only draws the brackets, never knows what the tag means.
 
 // Blank columns between the longest row and the tag column.
 const TAG_GAP = 4;
@@ -152,43 +149,50 @@ const TAG_GAP = 4;
 // one column. It knows nothing about glyphs, statuses, or provenance — the
 // caller composes those (see the domain ring's conventions.cjs).
 //
-//   ├─ ◐ Ai Content Engine        # researching   ← title + columnised tag
+//   ├─ ◐ Ai Content Engine        [researching]   ← title + columnised tag
 //   │  │  Summary text wrapped to the budget…      ← body[0], hanging off
 //   │  │  ↳ From exploration                       ← body[1], marker hangs
-//   │  ├─ ✓ Field Order           # decided        ← child
-//   │  └─ ◐ Truncation Rules      # exploring
-//   └─ ◐ Menu And Admin           # researching    ← last sibling drops the │
+//   │  ├─ ✓ Field Order           [decided]        ← child
+//   │  └─ ◐ Truncation Rules      [exploring]
+//   └─ ◐ Menu And Admin           [researching]    ← last sibling drops the │
 //         Summary with no children sits unconnected
 //
 // Every sub-line carries the accumulated gutter, so the │ runs unbroken at any
 // depth; the body wrap budget is width − gutter, so body can never orphan.
-/** @param {TreeNode[]} nodes @param {{width?: number}} [opts] @returns {string} */
-function renderTree(nodes, { width = displayWidth() } = {}) {
+// `gap` opens a gutter-only line between top-level siblings (children stay
+// dense) — for trees whose rows carry multi-line bodies. `childIndent` shifts
+// every child level right by N extra columns — trees whose rows lead with a
+// glyph pass the glyph width so subtrees drop from the title's first letter,
+// not from the glyph. `bodyIndent` is how many columns a childless row's body
+// sits past the child prefix (default 3; glyphless trees pass 1 so the body
+// lands one column past the title's first character).
+/** @param {TreeNode[]} nodes @param {{width?: number, gap?: boolean, childIndent?: number, bodyIndent?: number}} [opts] @returns {string} */
+function renderTree(nodes, { width = displayWidth(), gap = false, childIndent = 0, bodyIndent = 3 } = {}) {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     throw new Error('renderTree: nodes must be a non-empty array');
   }
   /** @type {{text: string, tag: string|null}[]} */
   const rows = [];
-  renderSiblings(nodes, '  ', width, rows);
+  renderSiblings(nodes, '  ', width, rows, gap, childIndent, bodyIndent);
   return columniseTags(rows, width).join('\n') + '\n';
 }
 
 // `prefix` is the accumulated gutter that precedes this level's branch glyphs.
-/** @param {TreeNode[]} nodes @param {string} prefix @param {number} width @param {{text: string, tag: string|null}[]} out */
-function renderSiblings(nodes, prefix, width, out) {
+/** @param {TreeNode[]} nodes @param {string} prefix @param {number} width @param {{text: string, tag: string|null}[]} out @param {boolean} [gap] @param {number} [childIndent] @param {number} [bodyIndent] */
+function renderSiblings(nodes, prefix, width, out, gap = false, childIndent = 0, bodyIndent = 3) {
   nodes.forEach((node, i) => {
     if (!node || !node.title) throw new Error(`renderTree: node ${i} needs a title`);
     const isLast = i === nodes.length - 1;
     out.push({ text: prefix + (isLast ? '└─ ' : '├─ ') + node.title, tag: node.tag || null });
     // Sub-content lives one level in. The last sibling drops the │ (blank) so
     // nothing dangles below └─.
-    const childPrefix = prefix + (isLast ? '   ' : '│  ');
+    const childPrefix = prefix + (isLast ? '   ' : '│  ') + ' '.repeat(childIndent);
     const hasChildren = !!(node.children && node.children.length);
     // With children, the connector runs from this node's glyph through its
     // body down to the last child, so the subtree visibly descends from its
     // parent rather than appearing at an indent. With none there is nothing
     // to connect to, so body indents to the content column instead.
-    const bodyPrefix = childPrefix + (hasChildren ? '│  ' : '   ');
+    const bodyPrefix = childPrefix + (hasChildren ? '│  ' : ' '.repeat(bodyIndent));
     for (const para of node.body || []) {
       const text = typeof para === 'string' ? para : para.text;
       const hang = typeof para === 'string' ? 0 : (para.hang || 0);
@@ -197,8 +201,9 @@ function renderSiblings(nodes, prefix, width, out) {
       }
     }
     if (node.children && node.children.length) {
-      renderSiblings(node.children, childPrefix, width, out);
+      renderSiblings(node.children, childPrefix, width, out, false, childIndent, bodyIndent);
     }
+    if (gap && !isLast) out.push({ text: prefix + '│', tag: null });
   });
 }
 
@@ -212,9 +217,9 @@ function columniseTags(rows, width) {
   const tagged = rows.filter((r) => r.tag);
   if (!tagged.length) return rows.map((r) => r.text);
   const longestRow = Math.max(...tagged.map((r) => r.text.length));
-  const longestTag = Math.max(...tagged.map((r) => TAG_MARKER.length + String(r.tag).length));
+  const longestTag = Math.max(...tagged.map((r) => String(r.tag).length + 2));
   const column = longestRow + TAG_GAP + longestTag <= width ? longestRow + TAG_GAP : longestRow + 1;
-  return rows.map((r) => (r.tag ? r.text.padEnd(column) + TAG_MARKER + r.tag : r.text));
+  return rows.map((r) => (r.tag ? r.text.padEnd(column) + `[${r.tag}]` : r.text));
 }
 
-module.exports = { WIDTH, TAG_MARKER, TAG_GAP, fillTo, wrap, wrapWithPrefix, signpost, box, renderTree };
+module.exports = { WIDTH, TAG_GAP, fillTo, wrap, wrapWithPrefix, signpost, box, renderTree };

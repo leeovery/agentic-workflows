@@ -16,7 +16,7 @@ node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_
 
 Arriving from routing, use the Step 1 snapshot as-is.
 
-Emit the DISPLAY section verbatim as a makefile code block (```makefile fence).
+Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code block.
 
 → Proceed to **B. Menu**.
 

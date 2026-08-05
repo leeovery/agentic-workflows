@@ -916,11 +916,8 @@ describe('selection projection', () => {
       '',
       '**`1`**        → Continue "Crash" — specification (in-progress)',
       '**`2`**        → Continue "Leak" — investigation (in-progress)',
-      '',
       '**`3`**        → View completed & cancelled bugfixes',
       '**`m/manage`** → Manage a bugfix\'s lifecycle',
-      '',
-      'Select an option:',
       '',
     ].join('\n'));
   });

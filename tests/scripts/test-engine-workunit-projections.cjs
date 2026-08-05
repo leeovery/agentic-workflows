@@ -518,8 +518,6 @@ describe('workunit projections: revisit phases section', () => {
       '**`2`**      → Specification — completed',
       '**`b/back`** → Return to the previous menu',
       '',
-      'Select an option:',
-      '',
     ].join('\n'));
   });
 

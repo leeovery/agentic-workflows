@@ -184,11 +184,8 @@ describe('workflow-continue-quickfix format', () => {
       '',
       '**`1`**        → Continue "Bump Dep" — scoping (in-progress)',
       '**`2`**        → Continue "Rename Api" — implementation (in-progress)',
-      '',
       '**`3`**        → View completed & cancelled quick-fixes',
       '**`m/manage`** → Manage a quick-fix\'s lifecycle',
-      '',
-      'Select an option:',
       '',
     ].join('\n'));
   });

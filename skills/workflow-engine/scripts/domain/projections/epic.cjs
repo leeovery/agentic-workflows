@@ -10,9 +10,9 @@
 // Layout goes through the kernel renderer — no character arithmetic here.
 // ---------------------------------------------------------------------------
 
-const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
+const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES } = require('../../kernel/manifest-schema.cjs');
-const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
+const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge } = require('../presence.cjs');
 
@@ -219,18 +219,20 @@ function stageMetaCallouts(detail, newArrivals) {
   return lines;
 }
 
-/** Discovery-map topic rows as kernel tree nodes. @param {EpicDetail} detail @param {Set<string>} heldTopics */
+// Discovery-map topic rows as kernel tree nodes. No tag column — the
+// lifecycle rides a `↳ state` line beneath the summary, so long titles never
+// stretch a shared column across the whole map.
+/** @param {EpicDetail} detail @param {Set<string>} heldTopics */
 function mapNodes(detail, heldTopics) {
   return detail.discovery_map.map((row) => {
     const body = [];
     if (row.summary) body.push(row.summary);
     if (row.source_provenance) body.push(derivedFrom(row.source_provenance));
-    const tag = heldTopics.has(row.name) ? `${lifecycleLabel(row)} · in session` : lifecycleLabel(row);
-    const node = {
+    body.push(stateNote(heldTopics.has(row.name) ? `${lifecycleLabel(row)} · in session` : lifecycleLabel(row)));
+    return {
       title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
-      tag,
+      body,
     };
-    return body.length ? { ...node, body } : node;
   });
 }
 
@@ -284,8 +286,8 @@ function plansNotReadyBlock(detail) {
   if (blocked.length === 0) return null;
   const parts = [
     '⚑ Plans not ready for implementation:\n'
-    + '  These plans have unresolved dependencies that must be\n'
-    + '  addressed first.',
+    + wrapWithPrefix('These plans have unresolved dependencies that must be addressed first.',
+      { width: TREE_WIDTH, prefix: '  ' }).join('\n'),
   ];
   for (const p of blocked) {
     parts.push(
@@ -312,7 +314,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
 
   // Brand-new epic — nothing started anywhere. Point at the one true door.
   if (!hasMap && phaseNames.length === 0) {
-    return box(titlecase(workUnit))
+    return ''
       + 'No work started yet.\n\n'
       + flaggedCallout('Run discovery to shape the topic map — research and discussion start from there.')
       + '\n';
@@ -331,7 +333,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
     const total = detail.map_summary ? detail.map_summary.total : detail.discovery_map.length;
     block += treeHeader(`RESEARCH & DISCUSSION (${total} topics${mapStatusSuffix(detail)})`) + '\n';
-    block += renderTree(mapNodes(detail, heldTopics), { width: TREE_WIDTH });
+    block += renderTree(mapNodes(detail, heldTopics), { width: TREE_WIDTH, gap: true });
     stages.push(block);
   }
 
@@ -345,7 +347,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     );
   }
 
-  let out = box(titlecase(workUnit)) + stages.join('\n');
+  let out = stages.join('\n');
 
   if (!hasMap) {
     const rec = displayRecommendation(detail);
@@ -362,43 +364,35 @@ function epicDashboard(workUnit, detail, opts = {}) {
 // Key
 // ---------------------------------------------------------------------------
 
-const KEY_TIER =
-  '    Discovery tier:\n'
-  + '      →  ready for next phase   ◐  in flight\n'
-  + '      ✓  decided                ○  fresh\n'
-  + '      ⊙  handled                ⊘  cancelled';
-
 const KEY_STATUS =
-  '    Status:\n'
-  + '      proposed    — analyzed grouping, not yet started\n'
-  + '      triaged     — rerouted concerns parked, topic not started\n'
-  + '      in-progress — work is ongoing\n'
-  + '      completed   — phase or implementation done\n'
-  + '      cancelled   — topic removed from active work\n'
-  + '      promoted    — moved to its own cross-cutting work unit';
+  '  Status:\n'
+  + '    proposed    — analyzed grouping, not yet started\n'
+  + '    triaged     — rerouted concerns parked, topic not started\n'
+  + '    in-progress — work is ongoing\n'
+  + '    completed   — phase or implementation done\n'
+  + '    cancelled   — topic removed from active work\n'
+  + '    promoted    — moved to its own cross-cutting work unit';
 
 const KEY_BLOCKING =
-  '    Blocking reason:\n'
-  + '      blocked by {plan}:{task} — depends on another plan\'s task\n'
-  + '      blocked by {plan}        — dependency unresolved';
-
-const KEY_SESSION =
-  '    Session:\n'
-  + '      in session — a live session elsewhere holds this topic';
+  '  Blocking reason:\n'
+  + '    blocked by {plan}:{task} — depends on another plan\'s task\n'
+  + '    blocked by {plan}        — dependency unresolved';
 
 const KEY_RECONCILE =
-  '    Cue:\n'
-  + '      input moved — an upstream artifact was revised since this item\n'
-  + '                    completed; the item\'s entry flow reconciles it';
+  '  Cue:\n'
+  + '    input moved — an upstream artifact was revised since this item\n'
+  + '                  completed; the item\'s entry flow reconciles it';
 
 /**
- * Section B — the Key block, showing only categories present in the display.
- * Empty string for a brand-new epic (the key is skipped on that branch).
+ * Section B — the Key block, showing only categories present in the display
+ * whose vocabulary the rows don't spell out themselves: phase-item status
+ * tags, the `input moved` cue, and blocking reasons. Map-row lifecycle and
+ * session state need no legend — their `↳` state lines carry the words.
+ * Empty string when nothing on screen earns a legend.
  * @param {EpicDetail} detail
- * @param {{presence?: PresenceRow[]}} [opts]
  * @returns {string}
  */
-function epicKey(detail, opts = {}) {
+function epicKey(detail) {
   const hasMap = detail.discovery_map.length > 0;
   const phaseNames = Object.keys(detail.phases);
   if (!hasMap && phaseNames.length === 0) return '';
@@ -413,16 +407,11 @@ function epicKey(detail, opts = {}) {
     .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined))
     || detail.discovery_map.some((r) => r.reconcile_pending === true);
   const blocks = [];
-  if (hasMap) {
-    blocks.push(KEY_TIER);
-    if (BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) blocks.push(KEY_STATUS);
-  } else {
-    blocks.push(KEY_STATUS);
-  }
+  if (!hasMap || BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) blocks.push(KEY_STATUS);
   if (anyFlagged) blocks.push(KEY_RECONCILE);
-  if (hasMap && heldSessions(opts.presence).length > 0) blocks.push(KEY_SESSION);
   if (anyBlocked) blocks.push(KEY_BLOCKING);
-  return '  Key:\n' + blocks.join('\n\n');
+  if (blocks.length === 0) return '';
+  return 'Key:\n' + blocks.join('\n\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -438,15 +427,15 @@ function topicRoute(action, workUnit, topic) {
 function discoveryEntryLabel(action, name, researchState, triageParked) {
   const t = titlecase(name);
   switch (action) {
-    case 'start_research': return triageParked ? `Start research for "${t}" — triage waiting` : `Start research for "${t}"`;
-    case 'start_discussion': return triageParked ? `Start discussion for "${t}" — triage waiting` : `Start discussion for "${t}"`;
-    case 'continue_research': return `Continue "${t}" — research`;
-    case 'continue_discussion': return `Continue "${t}" — discussion`;
+    case 'start_research': return triageParked ? `Start research for "${t}" — *triage waiting*` : `Start research for "${t}"`;
+    case 'start_discussion': return triageParked ? `Start discussion for "${t}" — *triage waiting*` : `Start discussion for "${t}"`;
+    case 'continue_research': return `Continue "${t}" — *research*`;
+    case 'continue_discussion': return `Continue "${t}" — *discussion*`;
     // start_discussion_after_research — superseded research is named as such,
     // never as completed (same rule as discoveryLifecycleLabel).
     default: return researchState === 'superseded'
-      ? `Start discussion for "${t}" — research superseded`
-      : `Start discussion for "${t}" — research completed`;
+      ? `Start discussion for "${t}" — *research superseded*`
+      : `Start discussion for "${t}" — *research completed*`;
   }
 }
 
@@ -456,13 +445,13 @@ function continueLabel(phase, item) {
   let label;
   if (phase === 'implementation' && item.current_phase != null) {
     if (item.current_task) {
-      label = `Continue "${t}" — implementation (Phase ${item.current_phase}, Task ${item.current_task})`;
+      label = `Continue "${t}" — *implementation (Phase ${item.current_phase}, Task ${item.current_task})*`;
     } else {
       const tasks = Array.isArray(item.completed_tasks) ? item.completed_tasks.length : 0;
-      label = `Continue "${t}" — implementation (Phase ${item.current_phase}, ${tasks} task(s) completed)`;
+      label = `Continue "${t}" — *implementation (Phase ${item.current_phase}, ${tasks} task(s) completed)*`;
     }
   } else {
-    label = `Continue "${t}" — ${phase} [in-progress]`;
+    label = `Continue "${t}" — *${phase} [in-progress]*`;
   }
   return item.reconcile_needed !== undefined ? `${label} · input moved` : label;
 }
@@ -475,10 +464,10 @@ function startVerbLabel(n, srcFlagged) {
     if (n.blocked) {
       return `Start implementation of "${t}" — blocked by ${(n.deps_blocking || []).map(depRef).join(', ')}${cue}`;
     }
-    return `Start implementation of "${t}" — ${n.label}${cue}`;
+    return `Start implementation of "${t}" — *${n.label}*${cue}`;
   }
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (n.action)];
-  return `Start ${phase} for "${t}" — ${n.label}${cue}`;
+  return `Start ${phase} for "${t}" — *${n.label}*${cue}`;
 }
 
 /** Continue entries for one phase's in-progress items. @param {string} workUnit @param {EpicDetail} detail @param {string} phase @returns {MenuKey[]} */
@@ -538,7 +527,7 @@ function commandOptions(workUnit, detail, hasMap) {
     opts.push({
       key: 's', word: 'spec', action: 'analyze_discussions', topic: null,
       route: `/workflow-specification-entry epic ${workUnit}`,
-      label: `Analyze / regroup discussions — ${desc}`,
+      label: `Analyze / regroup discussions — *${desc}*`,
     });
   }
   // Discovery is reachable in EVERY map state: with a map it refines the
@@ -749,11 +738,9 @@ function epicMenu(workUnit, detail, opts = {}) {
       : e.label;
     lines.push(cmdOption(e.key, null, `${label}${e.recommended ? ' (recommended)' : ''}`));
   }
-  if (hasMap && numbered.length > 0 && options.length > 0) lines.push('');
   for (const o of options) {
     lines.push(cmdOption(o.key, o.word, `${o.label}${o.recommended ? ' (recommended)' : ''}`));
   }
-  lines.push('', 'Select an option:');
 
   return { keys: [...numbered, ...options], rendered: menuFrame(lines) };
 }
@@ -843,7 +830,6 @@ function selectionSubView(heading, question, action, rows, opts = {}) {
   for (const k of keys) {
     menuLines.push(cmdOption(k.key, k.word, k.label));
   }
-  menuLines.push('', 'Select an option:');
 
   return { keys, display: displayLines.join('\n') + '\n', rendered: menuFrame(menuLines) };
 }
@@ -868,7 +854,7 @@ function epicCompletedMenu(workUnit, detail) {
       phase: item.phase,
       topic: item.name,
       row: title({ label: titlecase(item.name), tag: flagged ? 'completed · input moved' : 'completed' }),
-      label: `Resume "${titlecase(item.name)}" — ${item.phase}${flagged ? ' · input moved' : ''}`,
+      label: `Resume "${titlecase(item.name)}" — *${item.phase}*${flagged ? ' · input moved' : ''}`,
       route: topicRoute(`continue_${item.phase}`, workUnit, item.name),
     };
   });
@@ -891,7 +877,7 @@ function epicCancelMenu(detail) {
         phase,
         topic: item.name,
         row: title({ label: titlecase(item.name), tag: item.status }),
-        label: `Cancel "${titlecase(item.name)}" — ${phase} [${item.status}]`,
+        label: `Cancel "${titlecase(item.name)}" — *${phase} [${item.status}]*`,
         route: null,
       });
     }
@@ -913,7 +899,7 @@ function epicReactivateMenu(detail) {
       phase: item.phase,
       topic: item.name,
       row: `${title({ label: titlecase(item.name), tag: 'cancelled' })} ${was}`,
-      label: `Reactivate "${titlecase(item.name)}" — ${item.phase} ${was}`,
+      label: `Reactivate "${titlecase(item.name)}" — *${item.phase} ${was}*`,
       route: null,
     };
   });

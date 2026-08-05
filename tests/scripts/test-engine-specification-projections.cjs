@@ -553,7 +553,6 @@ describe('specification projections: menu goldens', () => {
       '   `Current groupings are discarded and rebuilt. Existing`',
       '   `specification names are preserved. You can provide guidance`',
       '   `in the next step.`',
-      '',
       '**`c/completed`** → Manage completed specifications — 1 completed',
       '',
       'Select an option:',
@@ -629,7 +628,6 @@ describe('specification projections: menu goldens', () => {
       '   `in the next step.`',
       '**`2`**           → Continue "Auth Spec" — in-progress',
       '**`3`**           → Continue "Data Spec" — 1 new source(s) to extract — 1 consult ref(s) pending',
-      '',
       '**`c/completed`** → Manage completed specifications — 1 completed',
       '',
       'Select an option:',
@@ -696,10 +694,12 @@ describe('specification projections: menu goldens', () => {
     createFile(dir, '.workflows/v1/specification/data-model/specification.md', '# D');
     const sub = specificationCompletedMenu(detailOf(dir, 'v1'));
     assert.strictEqual(sub.display, [
-      'Completed Specifications',
-      '  ├─ Auth Flow     # completed',
-      '  └─ Data Model    # completed',
+      '· · · · · · · · · · · ·',
+      '**`◆ Which completed specification would you like to refine?`**',
       '',
+      '**`1`**      → Refine "Auth Flow" — completed',
+      '**`2`**      → Refine "Data Model" — completed',
+      '**`b/back`** → Return to the specifications menu',
     ].join('\n'));
     assert.strictEqual(sub.rendered, [
       '· · · · · · · · · · · ·',

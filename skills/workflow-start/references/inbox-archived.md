@@ -17,10 +17,11 @@ node .claude/skills/workflow-start/scripts/gateway.cjs archived
 The output is one snapshot in three demarcated sections:
 
 - **DATA** — reasoning surface: `archived_count` and the `ITEMS` table — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
-- **DISPLAY** — the numbered archived list. Emit verbatim as a makefile code block (```makefile fence — it tints the status column). Never redraw, reflow, or trim it.
+- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
+- **DISPLAY** — the numbered archived list. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the selection prompt. Emit verbatim as markdown (not a code block). Empty when nothing is archived.
 
-Emit the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+Emit the TITLE section (markdown), then the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 #### If `archived_count` is 0
 
@@ -62,15 +63,17 @@ Selected: **{item.title}** ({item.type}, archived)
 
 #### If user chose `v/view`
 
-Read the file and render its full content.
+Read the file and render its full content — as markdown, not a code block, so the item's own headings and formatting render properly.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-  ── {item.title} ({item.type}) ──
+*[{item.type}] — {item.date}*
 
-  {item.full_content}
+{item.full_content}
 ```
+
+Emit the file content as-is — it is markdown and renders as such; its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
 
 → Return to **B. Action Menu**.
 

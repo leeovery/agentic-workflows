@@ -84,14 +84,14 @@ function pipelineNodes(cfg, unit) {
  */
 function workUnitStatus(type, unit) {
   const cfg = typeConfig(type);
-  let out = box(titlecase(unit.name));
+  let out = '';
   const callouts = [];
   if ((unit.seeds_count || 0) > 0) callouts.push('  · seeded from the inbox');
   if ((unit.imports_count || 0) > 0) {
     callouts.push(`  · ${unit.imports_count} import${unit.imports_count === 1 ? '' : 's'}`);
   }
   if (callouts.length > 0) out += callouts.join('\n') + '\n\n';
-  out += `  PIPELINE (${cfg.workType})\n`;
+  out += `PIPELINE (${cfg.workType})\n`;
   out += renderTree(pipelineNodes(cfg, unit), { width: TREE_WIDTH });
   for (const r of unit.reconcile_phases || []) {
     out += typeof r.from === 'string'
@@ -148,7 +148,7 @@ function workUnitMenu(type, unit) {
     // The statement is context above an explicit question — suppress the
     // frame's label glyph or a short work-unit name earns a second diamond.
     rendered = menuFrame([
-      `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — ${unit.phase_label}.`,
+      `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — *${unit.phase_label}*.`,
       '',
       '**`◆ Proceed?`**',
       '',
@@ -214,13 +214,14 @@ function revisitPhasesSection(phases) {
   const body = menuFrame([
     'Which phase would you like to revisit?',
     '',
-    ...phases.map((phase, i) => cmdOption(String(i + 1), null, `${titlecase(phase)} — completed`)),
+    ...phases.map((phase, i) => cmdOption(String(i + 1), null, `${titlecase(phase)} — *completed*`)),
     cmdOption('b', 'back', 'Return to the previous menu'),
-    '',
-    'Select an option:',
   ]);
   const marker = '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===';
   return `${marker}\n${body}\n`;
 }
 
-module.exports = { workUnitStatus, workUnitMenu, workUnitData, revisitablePhases, revisitPhasesSection };
+/** The view's chrome heading. @param {WorkUnitEntry} unit */
+function workUnitTitle(unit) { return titlecase(unit.name); }
+
+module.exports = { workUnitStatus, workUnitTitle, workUnitMenu, workUnitData, revisitablePhases, revisitPhasesSection };

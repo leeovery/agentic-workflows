@@ -187,7 +187,6 @@ describe('start projections: menu', () => {
       '**`4`**               → Continue "Rename Api" — quick-fix, scoping (in-progress)',
       '**`5`**               → Continue "Caching" — cross-cutting, discussion (in-progress)',
       '**`6`**               → Continue "Quiz Competition V1" — epic',
-      '',
       '**`s/start`**         → Start something new (not sure what kind yet)',
       '**`f/feature`**       → Start new feature',
       '**`e/epic`**          → Start new epic',
@@ -197,8 +196,6 @@ describe('start projections: menu', () => {
       '**`i/inbox`**         → View the inbox and start from an item',
       '**`v/view`**          → View completed & cancelled work units',
       '**`m/manage`**        → Manage a work unit\'s lifecycle',
-      '',
-      'Select an option:',
     ].join('\n'));
   });
 
@@ -210,7 +207,6 @@ describe('start projections: menu', () => {
       '**`◆ What would you like to do?`**',
       '',
       '**`1`**               → Continue "Auth Flow" — feature, ready for discussion',
-      '',
       '**`s/start`**         → Start something new (not sure what kind yet)',
       '**`f/feature`**       → Start new feature',
       '**`e/epic`**          → Start new epic',
@@ -218,8 +214,6 @@ describe('start projections: menu', () => {
       '**`q/quick-fix`**     → Start new quick-fix',
       '**`c/cross-cutting`** → Start new cross-cutting concern',
       '**`m/manage`**        → Manage a work unit\'s lifecycle',
-      '',
-      'Select an option:',
     ].join('\n'));
   });
 
@@ -289,9 +283,15 @@ describe('start projections: empty state', () => {
   it('renders the bare empty overview and start menu with no inbox and no closed units', () => {
     const detail = startDetail(dir);
     assert.strictEqual(emptyOverview(detail), [
-      ...BOX,
-      'No active work found.',
+      '· · · · · · · · · · · ·',
+      '**`◆ What would you like to start?`**',
       '',
+      '**`s/start`**         → Not sure what kind yet — describe it and we\'ll shape it',
+      '**`f/feature`**       → Single topic: (research →) discussion → spec → plan → implement → review',
+      '**`e/epic`**          → Multiple topics, multi-session, same pipeline per topic',
+      '**`b/bugfix`**        → Investigation → spec → plan → implement → review',
+      '**`q/quick-fix`**     → Scoping → implement → review (no formal planning)',
+      '**`c/cross-cutting`** → (Research →) discussion → spec (patterns or policies that inform other work)',
     ].join('\n'));
     const menu = emptyMenu(detail);
     assert.strictEqual(menu.rendered, [
@@ -756,13 +756,8 @@ describe('start projections: completed & cancelled', () => {
   it('renders both lists with continuous numbering and no filter line', () => {
     const v = completedView(closedFixture(dir));
     assert.strictEqual(v.data, [
-      'filter: (none)',
-      'completed_count: 2',
-      'cancelled_count: 1',
-      'UNITS (n  status  work_type  work_unit  last_phase):',
-      '  1  completed  cross-cutting  done-cc  specification',
-      '  2  completed  feature  done-feat  review',
-      '  3  cancelled  bugfix  dropped  none',
+      '· · · · · · · · · · · ·',
+      'Select a work unit (enter number) for details, or **`b/back`** to return.',
     ].join('\n'));
     assert.strictEqual(v.display, [
       '●───────────────────────────────────────────────●',

@@ -43,6 +43,7 @@ function view(workUnit) {
   const menu = engine.project.workUnitMenu(TYPE, unit);
   return [
     engine.gateway.dataBlock(engine.project.workUnitData(TYPE, unit, menu)),
+    engine.gateway.titleBlock(engine.project.workUnitTitle(unit)),
     engine.gateway.displayBlock(engine.project.workUnitStatus(TYPE, unit)),
     engine.gateway.menuBlock(menu.rendered),
     engine.project.revisitPhasesSection(engine.project.revisitablePhases(TYPE, unit)),

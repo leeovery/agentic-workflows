@@ -8,7 +8,7 @@ Auto-proceed path — only one completed discussion exists, so no selection menu
 
 ## Display
 
-Emit the DISPLAY section from the Step 1 snapshot verbatim as a makefile code block (```makefile fence).
+Emit the TITLE section (markdown), then the DISPLAY section from the Step 1 snapshot verbatim as a code block.
 
 ## After Display
 

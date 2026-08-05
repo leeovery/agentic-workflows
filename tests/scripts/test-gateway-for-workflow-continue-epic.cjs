@@ -1421,11 +1421,8 @@ describe('workflow-continue-epic format (index dump)', () => {
       '',
       '**`1`**        → Continue "V1"',
       '**`2`**        → Continue "V2"',
-      '',
       '**`3`**        → View completed & cancelled epics',
       '**`m/manage`** → Manage an epic\'s lifecycle',
-      '',
-      'Select an option:',
       '',
     ].join('\n'));
   });

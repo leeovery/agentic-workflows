@@ -115,6 +115,7 @@ function view() {
 
   return [
     engine.gateway.dataBlock(dataLines.join('\n')),
+    engine.gateway.titleBlock('Workflow Overview'),
     engine.gateway.displayBlock(empty ? engine.project.emptyOverview(detail) : engine.project.startOverview(detail)),
     engine.gateway.menuBlock(menu.rendered),
   ].join('\n');
@@ -127,6 +128,7 @@ function inboxView() {
   const v = engine.project.inboxPickupView(engine.detail.combinedInbox(detail.inbox), detail.state.has_archived);
   return [
     engine.gateway.dataBlock(v.data),
+    engine.gateway.titleBlock('Inbox'),
     engine.gateway.displayBlock(v.display),
     engine.gateway.menuBlock(v.menu),
   ].join('\n');
@@ -139,23 +141,41 @@ function archivedView() {
   const v = engine.project.archivedView(engine.detail.combinedInbox(detail.inbox.archived, { archived: true }));
   return [
     engine.gateway.dataBlock(v.data),
+    engine.gateway.titleBlock('Archived'),
     engine.gateway.displayBlock(v.display),
     engine.gateway.menuBlock(v.menu),
   ].join('\n');
 }
 
 // The working-set snapshot over the caller-held selection: DATA (set + addable
-// tables), the set menu, and the deferred add/drop gate sections.
-function workingSetView(...paths) {
+// tables), the set tree, the set menu, and the deferred blocker/add/drop gate
+// sections. `--summaries <file>` names a JSON payload of model-synthesised
+// item summaries keyed by inbox path — rows render without one.
+function workingSetView(...args) {
+  const paths = [];
+  let summaries = {};
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === '--summaries') {
+      i += 1;
+      try {
+        summaries = JSON.parse(require('fs').readFileSync(args[i], 'utf8'));
+      } catch (err) {
+        return engine.gateway.dataBlock({ error: `--summaries: ${err.message}` });
+      }
+    } else {
+      paths.push(args[i]);
+    }
+  }
   let ws;
   try {
     ws = engine.detail.workingSetDetail(process.cwd(), paths);
   } catch (err) {
     return engine.gateway.dataBlock({ error: err.message });
   }
-  const v = engine.project.workingSetView(ws);
+  const v = engine.project.workingSetView(ws, summaries);
   return [
     engine.gateway.dataBlock(v.data),
+    engine.gateway.displayBlock(v.display),
     engine.gateway.menuBlock(v.menu),
     v.sections,
   ].filter(Boolean).join('\n');
@@ -168,6 +188,7 @@ function manageView(workUnit) {
     const v = engine.project.manageListView(discover(process.cwd()));
     return [
       engine.gateway.dataBlock(v.data),
+      engine.gateway.titleBlock('Manage'),
       engine.gateway.displayBlock(v.display),
       engine.gateway.menuBlock(v.menu),
     ].join('\n');
@@ -194,6 +215,7 @@ function completedView(filter) {
   }
   return [
     engine.gateway.dataBlock(v.data),
+    engine.gateway.titleBlock('Completed & Cancelled'),
     engine.gateway.displayBlock(v.display),
     engine.gateway.menuBlock(v.menu),
   ].join('\n');

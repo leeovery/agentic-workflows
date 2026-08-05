@@ -446,15 +446,12 @@ describe('epic projections: menu', () => {
       '**`1`**           → Start specification for "Billing Grouping" — grouping ready (recommended)',
       '**`2`**           → Continue "Auth Spec" — specification [in-progress]',
       '**`3`**           → Start implementation of "Reporting" — blocked by core-features:core-2-3',
-      '',
       '**`s/spec`**      → Analyze / regroup discussions — 2 discussion(s) not yet grouped',
       '**`d/discuss`**   → Start a discussion on a new topic',
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
       '**`c/completed`** → Resume a completed topic',
       '**`a/cancel`**    → Cancel a topic (phase work)',
-      '',
-      'Select an option:',
     ].join('\n'));
   });
 
@@ -654,8 +651,6 @@ describe('epic projections: menu', () => {
       '**`i/discovery`** → Run discovery — shape the topic map (recommended)',
       '**`d/discuss`**   → Start new discussion',
       '**`r/research`**  → Start new research',
-      '',
-      'Select an option:',
     ].join('\n'));
   });
 });
@@ -767,18 +762,14 @@ describe('epic projections: selection sub-views', () => {
   it('completed-menu: unnumbered └─ rows grouped by phase, routes per entry', () => {
     const view = epicCompletedMenu('quiz-competition-v1', richDetail());
     assert.strictEqual(view.display, [
-      'Completed Topics',
+      '· · · · · · · · · · · ·',
+      '**`◆ Which topic would you like to resume?`**',
       '',
-      '  Research',
-      '    └─ Kitchen Hardware [completed]',
-      '',
-      '  Discussion',
-      '    ├─ Auth Flow [completed]',
-      '    └─ Session Storage [completed]',
-      '',
-      '  Specification',
-      '    └─ Roles And Permissions [completed]',
-      '',
+      '**`1`**      → Resume "Kitchen Hardware" — research',
+      '**`2`**      → Resume "Auth Flow" — discussion',
+      '**`3`**      → Resume "Session Storage" — discussion',
+      '**`4`**      → Resume "Roles And Permissions" — specification',
+      '**`b/back`** → Return to menu',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
@@ -807,22 +798,16 @@ describe('epic projections: selection sub-views', () => {
   it('cancel-menu: numbered rows, continuous across phases, cancelled/promoted excluded', () => {
     const view = epicCancelMenu(richDetail());
     assert.strictEqual(view.display, [
-      'Cancellable Topics',
+      '· · · · · · · · · · · ·',
+      '**`◆ Which topic would you like to cancel?`**',
       '',
-      '  Research',
-      '    1. Kitchen Hardware [completed]',
-      '    2. Menu Admin [in-progress]',
-      '',
-      '  Discussion',
-      '    3. Auth Flow [completed]',
-      '    4. Session Storage [completed]',
-      '',
-      '  Specification',
-      '    5. Roles And Permissions [completed]',
-      '',
-      '  Implementation',
-      '    6. Roles And Permissions [in-progress]',
-      '',
+      '**`1`**      → Cancel "Kitchen Hardware" — research [completed]',
+      '**`2`**      → Cancel "Menu Admin" — research [in-progress]',
+      '**`3`**      → Cancel "Auth Flow" — discussion [completed]',
+      '**`4`**      → Cancel "Session Storage" — discussion [completed]',
+      '**`5`**      → Cancel "Roles And Permissions" — specification [completed]',
+      '**`6`**      → Cancel "Roles And Permissions" — implementation [in-progress]',
+      '**`b/back`** → Return to menu',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
@@ -868,11 +853,11 @@ describe('epic projections: selection sub-views', () => {
   it('reactivate-menu: numbered rows with (was: previous_status)', () => {
     const view = epicReactivateMenu(richDetail());
     assert.strictEqual(view.display, [
-      'Cancelled Topics',
+      '· · · · · · · · · · · ·',
+      '**`◆ Which topic would you like to reactivate?`**',
       '',
-      '  Discussion',
-      '    1. Stale Topic [cancelled] (was: in-progress)',
-      '',
+      '**`1`**      → Reactivate "Stale Topic" — discussion (was: in-progress)',
+      '**`b/back`** → Return to menu',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
@@ -916,8 +901,6 @@ describe('epic projections: selection sub-views', () => {
       '**`◆ Which topic would you like to resume?`**',
       '',
       '**`b/back`** → Return to menu',
-      '',
-      'Select an option:',
     ].join('\n'));
     assert.deepStrictEqual(view.keys.map((k) => k.key), ['b']);
   });
@@ -955,8 +938,6 @@ describe('epic projections: selection sub-views', () => {
       '**`1`**      → Resume "Kitchen Hardware" — research',
       '**`2`**      → Resume "Auth Flow" — discussion',
       '**`b/back`** → Return to menu',
-      '',
-      'Select an option:',
       '',
     ].join('\n'));
   });

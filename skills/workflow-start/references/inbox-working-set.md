@@ -8,46 +8,27 @@ Build and act on a set of inbox items. The caller holds the **working set** — 
 
 ## A. Render the Working Set
 
-Fetch the working-set snapshot — pass every held item's inbox path, in set order:
+For each item in the set, read its file and synthesise a short summary — one or two sentences: what the item is and why it matters, in product terms (do not quote it verbatim). Write the summaries as one JSON object keyed by each item's inbox path to `.workflows/.cache/working-set-summaries.json`:
+
+```json
+{ "{path}": "{summary}", "{path}": "{summary}" }
+```
+
+Fetch the working-set snapshot — pass every held item's inbox path, in set order, plus the payload:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs working-set {path} [{path} …]
+node .claude/skills/workflow-start/scripts/gateway.cjs working-set {path} [{path} …] --summaries .workflows/.cache/working-set-summaries.json
 ```
 
 The response carries demarcated sections:
 
 - **DATA** — reasoning surface: `set_uniform` / `set_type`, `addable_count`, and the `SET` and `ADDABLE` tables — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
-- **MENU** — the set menu. Emit verbatim as markdown (not a code block) at this section's gate below. The `w/work` option renders only for a type-uniform set.
+- **DISPLAY** — the set tree, summaries rendered beneath each item. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **MENU** — the set menu. Emit verbatim as markdown (not a code block). The `w/work` option renders only for a type-uniform set.
+- **`DISPLAY: blocker`** — present only on a mixed-type set. Emit directly after the display, verbatim per its marker.
 - **Labelled sections** (`DISPLAY: add candidates`, `MENU: add gate`, `DISPLAY: drop candidates`, `MENU: drop gate`) — deferred: each is emitted only at the gate its marker names (**B** / **C**), never here.
 
-For each item in the set, read its file and synthesise a short summary — what the item is and why it matters, in product terms (do not quote it verbatim). Hold each item's title (the file's `#` heading, falling back to its slug).
-
-> *Output the next fenced block as a code block:*
-
-```
-  Working Set ({count} item{s}) — actions apply to all of them
-@if(set_uniform is false)
-
-  ⚑ Work is unavailable while the set mixes types — drop to a single
-    type to enable it.
-@endif
-
-@foreach(item in working_set)
-  {branch}• {item.title} ({item.type})
-@foreach(line in wrap(item.summary, 65))
-  {gutter}{line}
-@endforeach
-@endforeach
-```
-
-**Render rules:**
-
-- **Item row**: `{branch}• {item.title} ({item.type})`. `{branch}` is `┌─ ` for the first item, `└─ ` for the last, `├─ ` for the rest (trailing space included). **With a single item, `{branch}` is empty** — render `• {item.title}` with no connector; a lone `└─` would join nothing. The `•` is a fixed marker, not a status icon.
-- **Flag spacing**: the `⚑` block carries one blank line above and one below. The blank inside `@if` supplies the upper gap; the blank after `@endif` supplies the lower. When no flag renders, only the lower blank remains — the title-to-items gap stays a single line, never doubled.
-- **Summary sub-lines**: hard-wrap at 65 characters, capped at **3 lines** — if it would run longer, truncate the third line with `…` (`v/view` shows the full text). Each line is indented **two columns past the title text** so the description reads as subordinate, not aligned directly under the title.
-  - **`{gutter}`** (the template's 2-space lead precedes it): non-last item → `│` then 6 spaces; last item → 7 spaces (no `│`); single item → 4 spaces. The `│` sits under the branch character and runs continuously through every sub-line of non-last items so the tree never breaks.
-
-Emit the MENU section.
+Emit the DISPLAY section, then the `DISPLAY: blocker` section when present, then the MENU section.
 
 **STOP.** Wait for user response.
 
@@ -167,18 +148,21 @@ The working set is now empty.
 
 ## E. View Full Content
 
-Read each item in the set and render its full content.
+Read each item in the set and render its full content — as markdown, not a code block, so the items' own headings and formatting render properly.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 @foreach(item in working_set)
-  ── {item.title} ({item.type}) ──
+*[{item.type}] — {item.date}*
 
-  {item.full_content}
+{item.full_content}
 
 @endforeach
 ```
+
+- Emit each item's file content as-is — it is markdown and renders as such; its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
+- The italic type line above each item's content is its divider — nothing else separates items.
 
 → Return to **A. Render the Working Set**.
 

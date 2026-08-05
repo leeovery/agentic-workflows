@@ -266,8 +266,6 @@ describe('workflow-bridge format', () => {
       '**`3`**      → Specification — completed',
       '**`b/back`** → Return to the previous menu',
       '',
-      'Select an option:',
-      '',
     ].join('\n'));
   });
 
@@ -315,8 +313,6 @@ describe('workflow-bridge format', () => {
       '**`1`**      → Scoping — completed',
       '**`2`**      → Implementation — completed',
       '**`b/back`** → Return to the previous menu',
-      '',
-      'Select an option:',
       '',
     ].join('\n'));
   });

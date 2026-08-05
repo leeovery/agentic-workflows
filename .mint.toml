@@ -30,7 +30,7 @@ diff_exclude = [
 # The workflow-start banner byline carries the shipped version; mint mirrors the
 # new version onto that line at release time.
 version_file = "skills/workflow-start/SKILL.md"
-version_pattern = "Agentic Engineering Workflows (v{version})"
+version_pattern = "Agentic Engineering Workflows`** · *v{version}*"
 
 # Release-notes AI needs longer than the 60s default on big releases — the
 # v0.6.0 re-platforming diff (75 squashes) timed out twice at 60s. Seconds.
