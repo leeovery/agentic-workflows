@@ -34,6 +34,7 @@ Output: .workflows/{work_unit}/specification/{topic}/specification.md
 ```
 · · · · · · · · · · · ·
 **`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```
@@ -68,6 +69,7 @@ After completion:
 ```
 · · · · · · · · · · · ·
 **`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```

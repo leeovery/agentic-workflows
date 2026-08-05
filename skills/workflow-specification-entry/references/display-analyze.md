@@ -21,6 +21,7 @@ Emit the DISPLAY section from the Step 1 snapshot verbatim as a makefile code bl
 
 · · · · · · · · · · · ·
 **`◆ Proceed with analysis?`**
+
 **`y/yes`**
 **`n/no`**
 ```
@@ -38,6 +39,7 @@ Emit the DISPLAY section from the Step 1 snapshot verbatim as a makefile code bl
 
 · · · · · · · · · · · ·
 **`◆ Proceed with analysis?`**
+
 **`y/yes`**
 **`n/no`**
 ```

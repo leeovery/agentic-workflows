@@ -297,7 +297,7 @@ Key:
 
 ### Menus / Interactive Prompts
 
-Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. A question or contextual label opens the menu, followed by a blank line, then the options — compact yes/no prompts may omit the blank line. Selection menus may carry the prompt as a trailing `Select an option:` line after the options instead of (or in addition to) an opening label, as in the examples below. Verb-based labels for selection menus.
+Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. A question or contextual label opens the menu, followed by a blank line, then the options — always; the blank line is what marks the label as a label. Selection menus may carry the prompt as a trailing `Select an option:` line after the options instead of (or in addition to) an opening label, as in the examples below. Verb-based labels for selection menus.
 
 **The label carries the decision glyph.** A short plain label (≤60 characters, no markup) is wrapped as `**`◆ Label`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). A longer label, or one carrying its own emphasis or code spans, stays plain prose above the options — markup cannot nest inside the glyph span. Engine-rendered menus apply this rule in `surfaces.cjs`; prose-authored menus mirror it by hand.
 
@@ -345,6 +345,7 @@ Select an option (enter number):
 ```
 · · · · · · · · · · · ·
 **`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```
