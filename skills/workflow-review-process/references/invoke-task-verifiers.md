@@ -127,7 +127,7 @@ This enables incremental review detection on subsequent review sessions.
 
 ## G. Aggregate Findings
 
-1. Read all `.workflows/{work_unit}/review/{topic}/report-*.md` files
+1. Read every `.workflows/{work_unit}/review/{topic}/report-*.md` file from disk — the aggregation draws from the files as they stand, never from memory of the dispatches that produced them
 2. Synthesize findings from file contents:
    - Collect all tasks with `STATUS: incomplete` or `STATUS: issues_found` as blocking issues
    - Collect all test issues (under/over-tested)

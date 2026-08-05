@@ -138,6 +138,8 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > Discussion starting. I'll track our conversation on a Discussion Map. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.
 ```
 
+Both blocks above are emitted before the reference loads.
+
 Load **[discussion-session.md](references/discussion-session.md)** and follow its instructions as written.
 
 *Knowledge-base nudge — before committing to a direction on a new subtopic, or when a decision might echo one made elsewhere, run a quick query. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
