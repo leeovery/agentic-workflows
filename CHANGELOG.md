@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.42] - 2026-08-05
+
+🔧 Changed
+- Epic, spec, and inbox pick-menus (Completed Topics, Cancellable Topics, Cancelled Topics, Completed Specifications, Working Set) now render a distinct title heading above their list, separate from the display body.
+- Empty-state messages ("No completed topics.", "No cancellable topics.", "No cancelled topics.") now show instead of a blank list when there's nothing to pick from.
+- Discovery map, working set, and topic-count headers now use correct singular/plural wording for a count of one.
+- List displays across the epic dashboard, working set, manage view, and completed/cancelled snapshots were restyled with consistent tree-style branch glyphs and column alignment.
+- Seed and import callouts on work-unit and epic status screens are now grouped under a single "MATERIAL" header instead of appearing as loose bullets.
+
 ## [0.6.41] - 2026-08-05
 
 🔧 Changed
