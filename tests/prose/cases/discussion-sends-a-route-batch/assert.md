@@ -32,7 +32,9 @@ Presentation claims:
 
 - the two batch screens are separate turns with a stop each; the apply
   screen never shows route items and the route screen never shows the
-  applied one
+  applied one. The route screen follows the apply lane's one-line
+  confirmation in the same turn — approving the apply batch is not a
+  dead stop
 - neither batch raises an item individually: no scene, no worked
   example, no per-finding question
 - the route screen names each target topic against its item, so the
@@ -49,7 +51,11 @@ Further claims:
   section still reads `(none)`, its Discussion Map is unchanged, and no
   reroute record is written
 - no fresh review dispatch, no ack, no incorporate call
-- the walk stops after the sends; the conclusion gate is never entered
+- the sends confirm in one line total, and the drained row closes out
+  loud in the same turn — a line that the findings are worked through,
+  handing the conversation back
+- the walk stops after the drained close; the conclusion gate is never
+  entered
 
 EXPECTED WORLD — the fixture plus: the Decision clause amended in place
 and committed; a triage entry in each of synonym-handling's and

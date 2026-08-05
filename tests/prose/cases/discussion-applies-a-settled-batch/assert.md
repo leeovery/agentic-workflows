@@ -38,6 +38,10 @@ the behaviour under test:
   no worked example, no per-finding question, and no per-finding stop
 - exactly one stop gate stands between the announce and the applied
   batch: the batch menu itself
+- after the commits the confirmation is one line total, not a
+  per-finding recap, and the turn does not end silently on it: the row
+  is drained, so the same turn closes the review out loud — a line that
+  the findings are worked through — and hands the conversation back
 
 Further claims:
 
@@ -52,8 +56,8 @@ Further claims:
   amendment rather than a revision block preserving the original under
   an `#### Initial` heading. No subtopic is added, no map state changes,
   and the Options blocks are untouched
-- the walk stops after the commits; no new subtopic is opened and no
-  conclusion gate is entered
+- the walk stops after the drained close; no new subtopic is opened and
+  no conclusion gate is entered
 
 EXPECTED WORLD — the fixture plus: the agent store row `review-001`
 holds all three findings surfaced and stands `incorporated`; the
