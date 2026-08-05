@@ -18,6 +18,6 @@ An engineer who knows the product but not this codebase. Full engineering fluenc
 - **`file:line` refs as anchors.** Keep them — subordinate to the story, never its spine.
 - **Translate codebase-internal names.** Helpers, flags, and jargon are introduced on first use or replaced with what they do.
 
-## Fidelity
+## Depth
 
-A retelling, not a summary. Every substantive point in the underlying record appears; nothing softened, nothing dropped. The record file on disk stays fully technical and remains authoritative — the retelling presents it, never replaces it.
+A summary the user takes in at a glance — two or three short paragraphs, never a wall of text. Complete in coverage, compact in telling: every substantive point in the record is represented, in a sentence or two each, never at its full depth. Detail is deferred, not lost — the technical retelling and the record itself sit one option away at the site's gate. The record file on disk stays fully technical and remains authoritative — the summary presents it, never replaces it.
