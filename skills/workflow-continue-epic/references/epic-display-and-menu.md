@@ -64,6 +64,8 @@ Blocking dependencies:
 
 ```
 · · · · · · · · · · · ·
+**`◆ Unblock a dependency?`**
+
 **`u/unblock`** → Mark a dependency as satisfied externally
 **`b/back`**    → Return to menu
 ```
@@ -214,8 +216,7 @@ Store the selected entry's `phase` and `topic`. Confirm with the user:
 
 ```
 · · · · · · · · · · · ·
-Cancel "{topic:(titlecase)}" in {phase}? This will mark it as
-cancelled. You can reactivate it later.
+Cancel "{topic:(titlecase)}" in {phase}? This will mark it as cancelled. You can reactivate it later.
 
 **`y/yes`** → Confirm cancellation
 **`n/no`**  → Return to menu

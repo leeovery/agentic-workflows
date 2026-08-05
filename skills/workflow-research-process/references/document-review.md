@@ -88,8 +88,7 @@ Judge the target topic from the note's own addressing, and `landing_phase` per *
 
 ```
 · · · · · · · · · · · ·
-Land this note in "{target}"'s triage queue? If "{target}" is
-completed, landing reopens it.
+Land this note in "{target}"'s triage queue? If "{target}" is completed, landing reopens it.
 
 **`y/yes`**   → Land it there; this document keeps a reroute record
 **`s/skip`**  → Leave it as prose in this document

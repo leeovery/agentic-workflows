@@ -61,6 +61,8 @@ Proposed summaries for {N} topic(s):
 
 ```
 · · · · · · · · · · · ·
+**`◆ Accept these summaries?`**
+
 **`y/yes`**  → Accept all summaries as drafted (description is auto-drafted silently)
 **`e/edit`** → Edit one or more summary lines before accepting
 **`s/skip`** → Skip the whole batch (leave fields blank)

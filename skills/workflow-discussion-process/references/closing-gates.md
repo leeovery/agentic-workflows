@@ -52,8 +52,9 @@ A review has already run and drained; declining a fresh one forfeits nothing owe
 
 ```
 · · · · · · · · · · · ·
-The discussion has moved since the last review. A fresh gap review
-can catch what the movement opened — or skip it and move on.
+The discussion has moved since the last review. A fresh gap review can catch what the movement opened — or skip it and move on.
+
+**`◆ Run a fresh review?`**
 
 **`y/yes`**      → Run the fresh review
 **`s/skip`**     → Skip it and go to the conclude gate
@@ -107,8 +108,9 @@ Proceed?
 
 ```
 · · · · · · · · · · · ·
-Do you wish to conclude? I'll reconcile the document against our
-conversation, then confirm before marking complete.
+I'll reconcile the document against our conversation, then confirm before marking complete.
+
+**`◆ Do you wish to conclude?`**
 
 **`y/yes`** → Conclude — begin wrap-up
 **`n/no`**  → Continue the conversation

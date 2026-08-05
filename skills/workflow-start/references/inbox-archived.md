@@ -98,8 +98,7 @@ Deleting removes the file from the repo and cannot be undone — confirm first:
 
 ```
 · · · · · · · · · · · ·
-Permanently delete "{item.title}"? This removes the file from the
-repo and cannot be undone.
+Permanently delete "{item.title}"? This removes the file from the repo and cannot be undone.
 
 **`y/yes`** → Delete permanently
 **`n/no`**  → Return

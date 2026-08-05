@@ -40,6 +40,8 @@ Default topic name = `{selected.name}` (the feature's work unit name).
 · · · · · · · · · · · ·
 Topic name in **{target_epic:(titlecase)}**: **{selected.name}**
 
+**`◆ Is this name okay?`**
+
 **`y/yes`**  → Use this name
 **`b/back`** → Return
 **Rename** → Enter a different name (kebab-case)

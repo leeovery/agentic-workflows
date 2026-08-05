@@ -19,13 +19,14 @@ following threads have accumulated alongside the original scope:
   • {thread_1} — {brief description}
   • {thread_2} — {brief description}
 
-Want to split these into separate research files?
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
+**`◆ Want to split these into separate research files?`**
+
 **`y/yes`** → Split them out
 **`n/no`**  → Keep everything together for now
 ```

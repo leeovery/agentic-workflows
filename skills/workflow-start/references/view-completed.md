@@ -54,6 +54,8 @@ Store the selected work unit's `UNITS` row — its name and status.
 · · · · · · · · · · · ·
 **{selected.name:(titlecase)}** ({selected.status})
 
+**`◆ What would you like to do?`**
+
 **`r/reactivate`** → Set status back to in-progress
 **`b/back`**       → Return to the list
 **Ask**          → Ask a question about this work unit
