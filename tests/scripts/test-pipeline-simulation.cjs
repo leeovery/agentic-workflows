@@ -974,6 +974,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
+    assert.match(sim.sections, /MENU: task gate/, 'gated task gate carries its menu');
     const findings = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/findings.json`,
       { findings: [{ title: 'Loose end', severity: 'minor' }] });
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
@@ -981,7 +982,17 @@ describe('pipeline simulation', () => {
       'fix history is committed history, not purgeable cache');
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--next-task', `${wu}-1-2`]);
     sim.run(['task', 'analysis-cycle', wu, wu]);
+
+    // Auto gates render a continuation artifact — the loop never ends a turn by silence.
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode=auto', 'fix_gate_mode=auto']);
     sim.run(['task', 'start', wu, wu, `${wu}-1-2`]);
+    assert.match(sim.sections, /DISPLAY: task gate auto-approved/, 'auto task gate carries its continuation line');
+    assert.match(sim.sections, /approved \[auto\]\. Committing and moving to the next task\./,
+      'continuation line names the action that follows');
+    sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-2`, '--findings-file', findings]);
+    assert.match(sim.sections, /DISPLAY: fix gate auto-accepted/, 'auto fix gate carries its continuation line');
+    assert.match(sim.sections, /accepted \[auto\]\. Passing the findings to the executor\./,
+      'continuation line names the dispatch that follows');
     sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--next-task', '~', '--phase-complete']);
 
     // An analysis cycle's staging walks the manifest; all-skipped is a legal exit.

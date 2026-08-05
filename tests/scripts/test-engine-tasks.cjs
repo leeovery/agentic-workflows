@@ -688,12 +688,18 @@ describe('engine task gate sections', () => {
       taskGateMenu('auth-flow-1-1'));
   });
 
-  it('start under an auto task gate renders no sections', () => {
+  it('start under an auto task gate renders the continuation line', () => {
     seedGates('auto');
-    assert.strictEqual(engineRaw(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']).sections, '');
+    assert.strictEqual(
+      engineRaw(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']).sections,
+      [
+        '=== DISPLAY: task gate auto-approved (emit verbatim as a code block at the task gate, after the result summary — never before) ===',
+        'Task auth-flow-1-1 — approved [auto]. Committing and moving to the next task.',
+        '',
+      ].join('\n'));
   });
 
-  it('fix-attempt below the threshold: gated renders the fix menu, auto renders nothing', () => {
+  it('fix-attempt below the threshold: gated renders the fix menu, auto the continuation line', () => {
     seedGates('gated');
     assert.strictEqual(
       engineRaw(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1',
@@ -706,7 +712,11 @@ describe('engine task gate sections', () => {
     assert.strictEqual(
       engineRaw(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1',
         '--findings-file', writeFindings(dir, 'ISSUES:\n- two\n')]).sections,
-      '');
+      [
+        '=== DISPLAY: fix gate auto-accepted (emit verbatim as a code block at the fix evaluation, after the findings summary — never before) ===',
+        'Fix analysis for task auth-flow-1-1 — accepted [auto]. Passing the findings to the executor.',
+        '',
+      ].join('\n'));
   });
 
   it('fix-attempt at the threshold in gated mode renders the callout and the full menu', () => {

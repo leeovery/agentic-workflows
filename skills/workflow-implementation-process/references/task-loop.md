@@ -91,7 +91,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
-   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` opt-in is made by this flow itself, so you already know the current mode. When the task gate is `gated`, the response also carries the `MENU: task gate` section that **G. Task Gate** emits — never emit it here.
+   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` opt-in is made by this flow itself, so you already know the current mode. The response also carries the task-gate section that **G. Task Gate** emits — `MENU: task gate` when gated, `DISPLAY: task gate auto-approved` when auto — never emit it here.
 3. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 → Proceed to **B. Execute Task**.
@@ -184,7 +184,7 @@ Record the attempt via the engine (increments `fix_attempts` and appends the fin
 node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_unit} {topic} {internal_id} --findings-file .workflows/.cache/{work_unit}/implementation/{topic}/attempt-findings.md
 ```
 
-`{N}` below is the response's `attempts`. The response also carries the `MENU: fix gate` section that **F. Fix Approval Gate** emits — never emit it here.
+`{N}` below is the response's `attempts`. The response also carries a fix-gate section — `MENU: fix gate`, emitted by **F. Fix Approval Gate**, or `DISPLAY: fix gate auto-accepted`, emitted by this stage's auto branch — never emit it here.
 
 #### If the response's `threshold_reached` is `true`
 
@@ -215,6 +215,8 @@ Present the reviewer's findings as a product-lens summary (markdown, not a code 
 Branch on the response's `fix_gate_mode`.
 
 **If `fix_gate_mode` is `auto`:**
+
+Emit the `DISPLAY: fix gate auto-accepted` section from this task's most recent `fix-attempt` response, after the findings summary. The turn does not end here — the executor dispatch follows in the same turn.
 
 → Return to **B. Execute Task**.
 
@@ -285,6 +287,8 @@ Present the executor's SUMMARY as a product-lens summary (markdown, not a code b
 Branch on the `task_gate_mode` carried by this task's `start` response.
 
 #### If `task_gate_mode` is `auto`
+
+Emit the `DISPLAY: task gate auto-approved` section from this task's `start` response, after the result summary. The turn does not end here — the commit follows in the same turn.
 
 → Proceed to **H. Update Progress and Commit**.
 
