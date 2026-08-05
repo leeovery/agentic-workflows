@@ -226,7 +226,9 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`◆ Continuing "Auth Flow" — specification (in-progress).`**',
+      'Continuing "Auth Flow" — specification (in-progress).',
+      '',
+      '**`◆ Proceed?`**',
       '',
       '**`y/yes`**     → Proceed to specification',
       '**`r/revisit`** → Revisit an earlier phase',
@@ -259,7 +261,9 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('bugfix', unitOf(dir, 'bugfix', 'login-crash'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`◆ Continuing "Login Crash" — ready for specification.`**',
+      'Continuing "Login Crash" — ready for specification.',
+      '',
+      '**`◆ Proceed?`**',
       '',
       '**`y/yes`**     → Proceed to specification',
       '**`r/revisit`** → Revisit an earlier phase',
@@ -285,7 +289,9 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('quick-fix', unitOf(dir, 'quick-fix', 'hotfix-logs'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`◆ Continuing "Hotfix Logs" — implementation (in-progress).`**',
+      'Continuing "Hotfix Logs" — implementation (in-progress).',
+      '',
+      '**`◆ Proceed?`**',
       '',
       '**`y/yes`**     → Proceed to implementation',
       '**`r/revisit`** → Revisit an earlier phase',
@@ -326,7 +332,9 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`◆ Finalising "Auth Flow" — pipeline complete.`**',
+      'Finalising "Auth Flow" — pipeline complete.',
+      '',
+      '**`◆ Proceed?`**',
       '',
       '**`y/yes`**     → Mark the work unit completed',
       '**`r/revisit`** → Revisit an earlier phase',
@@ -377,7 +385,9 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`◆ Continuing "Caching" — ready for specification.`**',
+      'Continuing "Caching" — ready for specification.',
+      '',
+      '**`◆ Proceed?`**',
       '',
       '**`y/yes`**     → Proceed to specification',
       '**`r/revisit`** → Revisit an earlier phase',

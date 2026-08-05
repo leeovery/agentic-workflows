@@ -216,7 +216,9 @@ Store the selected entry's `phase` and `topic`. Confirm with the user:
 
 ```
 · · · · · · · · · · · ·
-Cancel "{topic:(titlecase)}" in {phase}? This will mark it as cancelled. You can reactivate it later.
+Cancelling **{topic:(titlecase)}** in {phase} will mark it as cancelled — it can be reactivated later.
+
+**`◆ Cancel it?`**
 
 **`y/yes`** → Confirm cancellation
 **`n/no`**  → Return to menu

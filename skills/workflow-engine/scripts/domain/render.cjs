@@ -923,7 +923,7 @@ function earlyCompletionGate(cwd, { dotpath }) {
     menu(label, [
       cmdOption('y', 'yes', 'Proceed to review'),
       cmdOption('d', 'done', 'Complete without review'),
-    ]),
+    ], { question: 'Proceed to review?' }),
   );
 }
 
@@ -942,7 +942,7 @@ function revisitGate(cwd, { dotpath, prev, next }) {
     menu(`${titlecase(prev)} completed for "${titlecase(workUnit)}".`, [
       cmdOption('y', 'yes', `Proceed to ${next}`),
       cmdOption('r', 'revisit', 'Revisit an earlier phase'),
-    ]),
+    ], { question: `Proceed to ${next}?` }),
   );
 }
 
@@ -959,7 +959,7 @@ function epicAllDoneGate(cwd, { dotpath }) {
     menu(`All topics have completed review for "${titlecase(workUnit)}".`, [
       cmdOption('y', 'yes', 'Mark this epic as completed'),
       cmdOption('n', 'no', 'Return to the epic menu'),
-    ]),
+    ], { question: 'Mark it completed?' }),
   );
 }
 

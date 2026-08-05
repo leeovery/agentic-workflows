@@ -773,6 +773,8 @@ function epicInSessionGate(entry) {
     menuFrame([
       `"${titlecase(entry.topic || '')}" is open in another session — last active ${fmtAge(entry.session_age ?? 0)} ago. Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`,
       '',
+      '**`◆ Proceed anyway?`**',
+      '',
       cmdOption('y', 'yes', 'Proceed anyway'),
       cmdOption('b', 'back', 'Return to menu'),
     ]),

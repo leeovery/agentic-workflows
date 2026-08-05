@@ -103,6 +103,8 @@ function discussionDeferGate(unresolvedCount) {
         ? 'There is still 1 subtopic not yet decided — shown on the map above.'
         : `There are still ${unresolvedCount} subtopics not yet decided — shown on the map above.`,
       '',
+      '**`◆ Defer and conclude?`**',
+      '',
       cmdOption('y', 'yes', one ? 'Defer it and move toward concluding' : 'Defer them and move toward concluding'),
       cmdOption('n', 'no', 'Continue discussing'),
     ]),
