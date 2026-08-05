@@ -18,6 +18,7 @@ Any of these qualifies:
 - A commit just landed AND the exchange prior to that commit resolved your outstanding question
 - The phase is about to conclude (convergence menu, final review, wrap-up)
 - The user explicitly asked about background-agent state ("anything come back yet?", "any review results?")
+- The session just opened or resumed and no conversation thread is underway yet — a pending announcement lands here, before momentum builds, rather than falling to **C**'s default
 
 ## B. Signals That It Is NOT a Natural Break
 

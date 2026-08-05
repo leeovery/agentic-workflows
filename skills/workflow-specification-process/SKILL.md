@@ -208,7 +208,7 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up. Final assessment, sign-off, and handover to the planning phase.
+> Wrapping up. Final assessment, sign-off, and @if(work_type is cross-cutting) closure — the pipeline completes here @else handover to the planning phase @endif.
 ```
 
 Load **[spec-completion.md](references/spec-completion.md)** and follow its instructions as written.
