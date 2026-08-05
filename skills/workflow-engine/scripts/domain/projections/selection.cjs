@@ -7,7 +7,8 @@
 // for the selection step.
 // ---------------------------------------------------------------------------
 
-const { titlecase, titlecaseLabel } = require('../conventions.cjs');
+const { renderTree } = require('../../kernel/render.cjs');
+const { TREE_WIDTH, titlecase, titlecaseLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption } = require('./surfaces.cjs');
 
 /**
@@ -67,14 +68,20 @@ function selectionSections(type, units, counts) {
   if (!cfg) throw new Error(`selectionSections: unknown type "${type}"`);
   if (!Array.isArray(units) || units.length === 0) return '';
 
-  const disp = [`${units.length} ${cfg.plural} in progress:`, ''];
-  units.forEach((u, i) => {
-    disp.push(`  ${i + 1}. ${titlecase(u.name)}`);
-    disp.push(`     └─ ${type === 'epic'
+  // Header at column 0 with the rows hanging two columns off it — the shape
+  // every engine list shares. The unit's phase state is the row's body, never
+  // a second `└─`: branch glyphs are positional, and a row that is the last of
+  // its group owns the only `└─` in it.
+  const rows = units.map((u, i) => ({
+    title: `${i + 1}. ${titlecase(u.name)}`,
+    body: [type === 'epic'
       ? ((u.active_phases || []).map(titlecase).join(', ') || '(no phases)')
-      : titlecaseLabel(u.phase_label || '')}`);
-    if (i < units.length - 1) disp.push('');
-  });
+      : titlecaseLabel(u.phase_label || '')],
+  }));
+  const disp = [
+    `${units.length} ${cfg.plural} in progress`,
+    renderTree(rows, { width: TREE_WIDTH, bodyIndent: 1 }).replace(/\n$/, ''),
+  ];
   const closed = (counts.completed || 0) + (counts.cancelled || 0) > 0;
   if (closed) disp.push('', `${counts.completed} completed, ${counts.cancelled} cancelled.`);
 

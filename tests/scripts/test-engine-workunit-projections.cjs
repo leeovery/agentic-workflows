@@ -32,6 +32,7 @@ describe('workunit projections: status display', () => {
       imports: [{ path: 'imports/a.md' }, { path: 'imports/b.md' }],
     });
     assert.strictEqual(workUnitStatus('feature', unitOf(dir, 'feature', 'auth-flow')), [
+      'MATERIAL',
       '  · seeded from the inbox',
       '  · 2 imports',
       '',
@@ -54,8 +55,15 @@ describe('workunit projections: status display', () => {
   it('feature: singular import callout', () => {
     createManifest(dir, 'dark-mode', { imports: [{ path: 'imports/a.md' }] });
     const out = workUnitStatus('feature', unitOf(dir, 'feature', 'dark-mode'));
-    assert.ok(out.startsWith('  · 1 import\n'));
+    assert.ok(out.startsWith('MATERIAL\n  · 1 import\n'));
     assert.ok(!out.includes('seeded from the inbox'));
+  });
+
+  it('feature: no seeds and no imports renders no MATERIAL block at all', () => {
+    createManifest(dir, 'plain', {});
+    const out = workUnitStatus('feature', unitOf(dir, 'feature', 'plain'));
+    assert.ok(out.startsWith('PIPELINE (feature)'), out);
+    assert.ok(!out.includes('MATERIAL'), out);
   });
 
   it('feature: a flagged completed phase carries the cue, the ⚑ line, and takes next_phase', () => {

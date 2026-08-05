@@ -205,11 +205,11 @@ describe('engine workunit promote — happy path', () => {
       '',
       '"[^"]+" has been promoted to its own cross-cutting work unit\\.',
       '',
-      '  Work unit: .+',
-      '  Source: .+',
-      '  Discussion files: moved',
-      '  Specification: moved',
-      '  Epic status: promoted',
+      '  • Work unit: .+',
+      '  • Source: .+',
+      '  • Discussion files: moved',
+      '  • Specification: moved',
+      '  • Epic status: promoted',
     ].join('\\n')));
 
     // The spec directory moved whole — tracking file included — and the

@@ -23,12 +23,13 @@ node .claude/skills/workflow-start/scripts/gateway.cjs working-set {path} [{path
 The response carries demarcated sections:
 
 - **DATA** — reasoning surface: `set_uniform` / `set_type`, `addable_count`, and the `SET` and `ADDABLE` tables — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
+- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
 - **DISPLAY** — the set tree, summaries rendered beneath each item. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the set menu. Emit verbatim as markdown (not a code block). The `w/work` option renders only for a type-uniform set.
 - **`DISPLAY: blocker`** — present only on a mixed-type set. Emit directly after the display, verbatim per its marker.
 - **Labelled sections** (`DISPLAY: add candidates`, `MENU: add gate`, `DISPLAY: drop candidates`, `MENU: drop gate`) — deferred: each is emitted only at the gate its marker names (**B** / **C**), never here.
 
-Emit the DISPLAY section, then the `DISPLAY: blocker` section when present, then the MENU section.
+Emit the TITLE section (markdown), then the DISPLAY section, then the `DISPLAY: blocker` section when present, then the MENU section.
 
 **STOP.** Wait for user response.
 

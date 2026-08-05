@@ -351,12 +351,15 @@ function tasksOverview(cwd, { dotpath, file }) {
   if (!Array.isArray(p.tasks) || p.tasks.length === 0) {
     throw new Error('render tasks-overview: "tasks" must be a non-empty array of {title, severity}');
   }
-  const lines = [`${p.label}: ${p.tasks.length} proposed task${p.tasks.length === 1 ? '' : 's'}`, ''];
+  // Its twin (findings-summary) is the canonical shape for a numbered
+  // payload list: em-dashed count header, rows at column 0 — nothing here
+  // hangs off anything, so nothing is indented.
+  const lines = [`${p.label} — ${p.tasks.length} proposed task${p.tasks.length === 1 ? '' : 's'}`, ''];
   p.tasks.forEach((t, i) => {
     if (!isFilled(t.title) || !isFilled(t.severity)) {
       throw new Error(`render tasks-overview: task ${i + 1} needs "title" and "severity"`);
     }
-    lines.push(`  ${i + 1}. ${t.title} (${t.severity})`);
+    lines.push(`${i + 1}. ${t.title} (${t.severity})`);
   });
   return section('DISPLAY: tasks overview', 'emit verbatim as a code block', lines.join('\n'));
 }

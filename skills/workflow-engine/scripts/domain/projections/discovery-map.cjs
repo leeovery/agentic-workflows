@@ -91,7 +91,8 @@ function proposedNodes(proposed) {
  */
 function discoveryMapView(workUnit, map) {
   const head = ''
-    + treeHeader(`Discovery Map (${map.summary.total} topics${breakdown(map.summary)})`) + '\n';
+    + treeHeader(`Discovery Map (${map.summary.total} topic${map.summary.total === 1 ? '' : 's'}`
+      + `${breakdown(map.summary)})`) + '\n';
   if (map.rows.length === 0) return head + '  (empty)\n';
   return head + renderTree(mapNodes(map.rows), { width: TREE_WIDTH, gap: true });
 }
@@ -113,17 +114,18 @@ function discoverySynthesisView(workUnit, map, proposed) {
   const parts = [`Synthesised Discovery Map — ${titlecase(workUnit)}\n`];
   const hasExisting = map.rows.length > 0;
 
-  parts.push(`${hasExisting ? 'New this session' : 'Proposed topics'} (${proposed.length}):`);
+  parts.push(`${hasExisting ? 'New this session' : 'Proposed topics'} (${proposed.length})`);
   parts.push(renderTree(proposedNodes(proposed), { width: TREE_WIDTH, gap: true }));
 
   if (hasExisting) {
-    parts.push(`Already on the map (${map.rows.length}):`);
+    parts.push(`Already on the map (${map.rows.length})`);
     parts.push(renderTree(mapNodes(map.rows), { width: TREE_WIDTH, gap: true }));
   }
 
-  const footer = `${proposed.length} topic(s). Summaries come from the exploration; `
-    + 'routing is my read of where each one goes next.';
-  parts.push(wrapWithPrefix(footer, { width: TREE_WIDTH, prefix: '  ' }).join('\n') + '\n');
+  // A closing sentence, not a detail of the tree above it — column 0.
+  const footer = `${proposed.length} topic${proposed.length === 1 ? '' : 's'}. `
+    + 'Summaries come from the exploration; routing is my read of where each one goes next.';
+  parts.push(wrapWithPrefix(footer, { width: TREE_WIDTH, prefix: '' }).join('\n') + '\n');
 
   return parts.join('\n');
 }

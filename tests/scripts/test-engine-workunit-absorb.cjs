@@ -204,7 +204,7 @@ describe('engine workunit absorb — happy path', () => {
     assert.match(engine.lastSections, new RegExp([
       'Absorbed into Epic',
       '',
-      '  Topic "Auth" added to Payments\\.',
+      'Topic "Auth" added to Payments\\.',
       '',
       '  • Discussion: moved',
       '  • Research: moved',

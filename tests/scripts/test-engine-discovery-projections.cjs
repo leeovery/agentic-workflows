@@ -194,7 +194,7 @@ describe('discoverySynthesisView', () => {
     assert.strictEqual(discoverySynthesisView('payments', mapOf(dir, 'payments'), PROPOSED), [
       'Synthesised Discovery Map — Payments',
       '',
-      'New this session (3):',
+      'New this session (3)',
       '  ├─ ○ Kitchen Printers',
       '  │     Print routing by station, failure handling, and offline',
       '  │     queueing for kitchen ticket printers across multiple',
@@ -211,15 +211,15 @@ describe('discoverySynthesisView', () => {
       '        Points and rewards',
       '        ↳ Routed to discussion',
       '',
-      'Already on the map (2):',
+      'Already on the map (2)',
       '  ├─ ✓ Onboarding Flow',
       '  │     ↳ Decided',
       '  │',
       '  └─ ◐ Payments Core',
       '        ↳ Researching',
       '',
-      '  3 topic(s). Summaries come from the exploration; routing is my',
-      '  read of where each one goes next.',
+      '3 topics. Summaries come from the exploration; routing is my read',
+      'of where each one goes next.',
       '',
     ].join('\n'));
   });
@@ -229,13 +229,13 @@ describe('discoverySynthesisView', () => {
     assert.strictEqual(discoverySynthesisView('payments', mapOf(dir, 'payments'), [PROPOSED[2]]), [
       'Synthesised Discovery Map — Payments',
       '',
-      'Proposed topics (1):',
+      'Proposed topics (1)',
       '  └─ ○ Loyalty',
       '        Points and rewards',
       '        ↳ Routed to discussion',
       '',
-      '  1 topic(s). Summaries come from the exploration; routing is my',
-      '  read of where each one goes next.',
+      '1 topic. Summaries come from the exploration; routing is my read',
+      'of where each one goes next.',
       '',
     ].join('\n'));
   });
@@ -289,8 +289,8 @@ describe('gateway.cjs adapter: map-view', () => {
     assert.match(res.stdout, /old-idea routing=research exists_on_map=false matches_dismissed=true legal_name=true/);
     assert.match(res.stdout, /bad\.name routing=research exists_on_map=false matches_dismissed=false legal_name=false/);
     assert.ok(res.stdout.includes('\nSynthesised Discovery Map — Payments'));
-    assert.ok(res.stdout.includes('\nNew this session (4):'));
-    assert.ok(res.stdout.includes('\nAlready on the map (7):'));
+    assert.ok(res.stdout.includes('\nNew this session (4)\n'));
+    assert.ok(res.stdout.includes('\nAlready on the map (7)\n'));
   });
 
   it('fails loudly on a missing, malformed, or empty proposed file', () => {

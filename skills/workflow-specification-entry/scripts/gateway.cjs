@@ -324,8 +324,8 @@ function view(workUnit) {
   return parts.join('\n');
 }
 
-// The concluded-specs sub-view: keys table as DATA, the heading as DISPLAY,
-// the Refine pick menu as MENU.
+// The concluded-specs sub-view: keys table as DATA, the view's heading as
+// TITLE, the spec list as DISPLAY, the Refine pick menu as MENU.
 function completedMenu(workUnit) {
   const { detail } = buildDetail(workUnit);
   const sub = engine.project.specificationCompletedMenu(detail);
@@ -335,6 +335,7 @@ function completedMenu(workUnit) {
   }
   return [
     engine.gateway.dataBlock(dataLines.join('\n')),
+    engine.gateway.titleBlock(sub.title),
     engine.gateway.displayBlock(sub.display),
     engine.gateway.menuBlock(sub.rendered),
   ].join('\n');

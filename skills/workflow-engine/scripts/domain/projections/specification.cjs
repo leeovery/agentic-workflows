@@ -381,11 +381,11 @@ function specificationMenu(detail) {
 }
 
 /**
- * The concluded-specs sub-view (`c/completed`): the heading with one row per
- * concluded spec, and flat Refine entries — no source detail, the specs have
- * no pending work.
+ * The concluded-specs sub-view (`c/completed`): one row per concluded spec,
+ * and flat Refine entries — no source detail, the specs have no pending work.
+ * The heading is the adapter's TITLE section, never drawn in the display.
  * @param {SpecificationDetail} detail
- * @returns {{keys: SpecMenuKey[], display: string, rendered: string}}
+ * @returns {{keys: SpecMenuKey[], title: string, display: string, rendered: string}}
  */
 function specificationCompletedMenu(detail) {
   if (detail.concluded.length === 0) {
@@ -404,10 +404,12 @@ function specificationCompletedMenu(detail) {
   }
   const rendered = menuFrame(lines);
 
-  const display = 'Completed Specifications\n'
-    + renderTree(detail.concluded.map((row) => ({ title: title({ label: titlecase(row.name) }), tag: 'completed' })), { width: TREE_WIDTH });
+  const display = renderTree(
+    detail.concluded.map((row) => ({ title: title({ label: titlecase(row.name) }), tag: 'completed' })),
+    { width: TREE_WIDTH },
+  );
 
-  return { keys, display, rendered };
+  return { keys, title: 'Completed Specifications', display, rendered };
 }
 
 module.exports = {

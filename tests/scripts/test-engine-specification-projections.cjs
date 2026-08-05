@@ -674,8 +674,8 @@ describe('specification projections: menu goldens', () => {
     createFile(dir, '.workflows/v1/specification/auth-flow/specification.md', '# A');
     createFile(dir, '.workflows/v1/specification/data-model/specification.md', '# D');
     const sub = specificationCompletedMenu(detailOf(dir, 'v1'));
+    assert.strictEqual(sub.title, 'Completed Specifications');
     assert.strictEqual(sub.display, [
-      'Completed Specifications',
       '  ├─ Auth Flow     [completed]',
       '  └─ Data Model    [completed]',
       '',
@@ -812,7 +812,7 @@ describe('specification adapter: gateway verbs', () => {
     createFile(dir, '.workflows/v1/specification/done-spec/specification.md', '# X');
     const out = run(['completed-menu', 'v1']);
     assert.ok(out.includes('  1  refine_spec  done-spec  Refining'));
-    assert.ok(out.includes('Completed Specifications'));
+    assert.ok(out.includes('# **`■ Completed Specifications`**'));
     assert.ok(/\*\*`1`\*\* +→ Refine "Done Spec" — \*completed\*/.test(out));
     assert.ok(/\*\*`b\/back`\*\* +→ Return to the specifications menu/.test(out));
   });

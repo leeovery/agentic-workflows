@@ -451,6 +451,14 @@ describe('start projections: working set', () => {
       'ADDABLE (n  type  date  slug  → path):',
       '  1  idea  2026-06-03  smart-retry  → .workflows/.inbox/ideas/2026-06-03--smart-retry.md',
     ].join('\n'));
+    // The heading is the adapter's TITLE section — the display opens on the tree.
+    assert.strictEqual(v.title, 'Working Set (2 items)');
+    assert.strictEqual(v.display, [
+      '  ├─ Login Timeout [bug]',
+      '  │',
+      '  └─ Crash On Save [bug]',
+      '',
+    ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
       'Type a shortcut, or just tell me in your own words — e.g. "add 2 and 4", "drop the bug", "archive these".',
@@ -538,21 +546,21 @@ describe('start projections: manage list', () => {
       '  6  epic  quiz-competition-v1',
     ].join('\n'));
     assert.strictEqual(v.display, [
-      'Features:',
-      '  1. Auth Flow',
-      '  2. Dark Mode',
+      'Features',
+      '  ├─ 1. Auth Flow',
+      '  └─ 2. Dark Mode',
       '',
-      'Bugfixes:',
-      '  3. Login Crash',
+      'Bugfixes',
+      '  └─ 3. Login Crash',
       '',
-      'Quick Fixes:',
-      '  4. Rename Api',
+      'Quick Fixes',
+      '  └─ 4. Rename Api',
       '',
-      'Cross-Cutting:',
-      '  5. Caching',
+      'Cross-Cutting',
+      '  └─ 5. Caching',
       '',
-      'Epics:',
-      '  6. Quiz Competition V1',
+      'Epics',
+      '  └─ 6. Quiz Competition V1',
       '',
     ].join('\n'));
     assert.strictEqual(v.menu, [
@@ -717,16 +725,15 @@ describe('start projections: completed & cancelled', () => {
       '  3  cancelled  bugfix  dropped  none',
     ].join('\n'));
     assert.strictEqual(v.display, [
-      'Completed:',
-      '  1. Done Cc',
-      '     └─ Completed after: specification',
+      'Completed',
+      '  ├─ 1. Done Cc',
+      '  │   Completed after: specification',
+      '  └─ 2. Done Feat',
+      '      Completed after: review',
       '',
-      '  2. Done Feat',
-      '     └─ Completed after: review',
-      '',
-      'Cancelled:',
-      '  3. Dropped',
-      '     └─ Cancelled during: none',
+      'Cancelled',
+      '  └─ 3. Dropped',
+      '      Cancelled during: none',
       '',
     ].join('\n'));
     assert.strictEqual(v.menu, [
@@ -740,9 +747,9 @@ describe('start projections: completed & cancelled', () => {
     assert.strictEqual(v.display, [
       'Showing: Features',
       '',
-      'Completed:',
-      '  1. Done Feat',
-      '     └─ Completed after: review',
+      'Completed',
+      '  └─ 1. Done Feat',
+      '      Completed after: review',
       '',
     ].join('\n'));
     assert.ok(v.data.includes('filter: feature'));

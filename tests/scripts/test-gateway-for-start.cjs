@@ -2,8 +2,12 @@
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
+const { execFileSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { discover, format } = require('../../skills/workflow-start/scripts/gateway.cjs');
+
+const ADAPTER = path.join(__dirname, '../../skills/workflow-start/scripts/gateway.cjs');
 
 describe('workflow-start discovery', () => {
   let dir;
@@ -527,5 +531,36 @@ describe('workflow-start format', () => {
     const out = format(discover(dir));
     assert.ok(!out.includes('  v1 ('));
     assert.ok(!out.includes('  auth ('));
+  });
+});
+
+describe('workflow-start sub-view sections', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** @param {string[]} args */
+  function run(args) {
+    return execFileSync('node', [ADAPTER, ...args], { cwd: dir, encoding: 'utf8' });
+  }
+
+  it('every list sub-view carries its heading as TITLE, above a display that opens on the list', () => {
+    createFile(dir, '.workflows/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
+    createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
+    createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
+
+    for (const [args, title, firstDisplayLine] of /** @type {[string[], string, string][]} */ ([
+      [['inbox'], 'Inbox', 'Bugs'],
+      [['manage'], 'Manage', 'Features'],
+      [['completed'], 'Completed & Cancelled', 'Completed'],
+      [['working-set', '.workflows/.inbox/bugs/2026-06-01--login-timeout.md'], 'Working Set (1 item)', '  └─ Login Timeout [bug]'],
+    ])) {
+      const out = run(args);
+      assert.ok(out.includes(`# **\`■ ${title}\`**`), `${args[0]}: ${out}`);
+      const display = out.split('=== DISPLAY (emit verbatim as a code block) ===\n')[1];
+      assert.ok(display, `${args[0]} has no DISPLAY section: ${out}`);
+      assert.strictEqual(display.split('\n')[0], firstDisplayLine, `${args[0]}: ${out}`);
+      assert.ok(!display.startsWith(title), `${args[0]} redraws its heading inside the fence: ${out}`);
+    }
   });
 });
