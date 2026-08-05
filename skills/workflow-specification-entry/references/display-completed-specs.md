@@ -10,7 +10,7 @@ Loaded from the primary spec menu when the user picks `c/completed`. Render the 
 node .claude/skills/workflow-specification-entry/scripts/gateway.cjs completed-menu {work_unit}
 ```
 
-Emit the DISPLAY section verbatim as a code block, then the MENU section verbatim as markdown (not a code block).
+Emit the TITLE section verbatim as markdown, then the DISPLAY section verbatim as a code block, then the MENU section verbatim as markdown (not a code block).
 
 **STOP.** Wait for user response.
 

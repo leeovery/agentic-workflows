@@ -175,6 +175,7 @@ function workingSetView(...args) {
   const v = engine.project.workingSetView(ws, summaries);
   return [
     engine.gateway.dataBlock(v.data),
+    engine.gateway.titleBlock(v.title),
     engine.gateway.displayBlock(v.display),
     engine.gateway.menuBlock(v.menu),
     v.sections,

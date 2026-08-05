@@ -93,7 +93,7 @@ engine.project.emptyOverview(detail)              // → empty-state overview bl
 engine.project.emptyMenu(detail)                  // → { keys, rendered } — empty-state start menu
 engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies
 engine.project.archivedView(items)                // → { data, display, menu } — archived store snapshot bodies
-engine.project.workingSetView(ws)                 // → { data, menu, sections } — set menu + deferred add/drop gates
+engine.project.workingSetView(ws)                 // → { data, title, display, menu, sections } — set tree, menu + deferred add/drop gates
 engine.project.manageListView(detail)             // → { data, display, menu, rows } — manage selection snapshot
 engine.project.manageUnitView(md)                 // → { data, menu, sections } — action menu + deferred absorb/plan gates
 engine.project.completedView(detail, filter)      // → { data, display, menu, rows } — completed & cancelled snapshot
@@ -104,7 +104,7 @@ engine.project.revisitablePhases(type, unit)      // → string[] — completed 
 engine.project.revisitPhasesSection(phases)       // → labelled `MENU: revisit phases` section ('' when none)
 engine.project.specificationDisplay(detail)       // → scenario overview block ('' when the scenario renders nothing)
 engine.project.specificationMenu(detail)          // → { keys, rendered } — grouping/spec menu; both empty for menu-less scenarios
-engine.project.specificationCompletedMenu(detail) // → { keys, display, rendered } — concluded-specs Refine sub-view
+engine.project.specificationCompletedMenu(detail) // → { keys, title, display, rendered } — concluded-specs Refine sub-view
 
 // gateway: adapter harness
 engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout

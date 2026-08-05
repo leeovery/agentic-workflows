@@ -901,13 +901,11 @@ describe('selection projection', () => {
       { completed: 1, cancelled: 1 });
     assert.strictEqual(out, [
       '=== DISPLAY: selection (emit verbatim as a code block only at the select step) ===',
-      '2 bugfix(es) in progress:',
-      '',
-      '  1. Crash',
-      '     └─ Specification (In-Progress)',
-      '',
-      '  2. Leak',
-      '     └─ Investigation (In-Progress)',
+      '2 bugfix(es) in progress',
+      '  ├─ 1. Crash',
+      '  │   Specification (In-Progress)',
+      '  └─ 2. Leak',
+      '      Investigation (In-Progress)',
       '',
       '1 completed, 1 cancelled.',
       '',
@@ -923,9 +921,9 @@ describe('selection projection', () => {
     ].join('\n'));
   });
 
-  it('epic variant sub-rows active phases and drops the phase label from options', () => {
+  it('epic variant bodies the active phases and drops the phase label from options', () => {
     const out = selectionSections('epic', [{ name: 'payments', active_phases: ['discussion', 'specification'] }], { completed: 0, cancelled: 0 });
-    assert.ok(out.includes('     └─ Discussion, Specification'));
+    assert.ok(out.includes('  └─ 1. Payments\n      Discussion, Specification'));
     assert.ok(/\*\*`1`\*\* +→ Continue "Payments"/.test(out));
     assert.ok(!out.includes('Continue "Payments" —'));
     assert.ok(!out.includes('View completed'), 'no closed units, no view option');

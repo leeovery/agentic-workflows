@@ -338,17 +338,19 @@ function archivedView(items) {
  * set, plus the deferred add/drop gates.
  * @param {WorkingSetDetail} ws
  * @param {Record<string, string>} [summaries]
- * @returns {{data: string, display: string, menu: string, sections: string}}
+ * @returns {{data: string, title: string, display: string, menu: string, sections: string}}
  */
 function workingSetView(ws, summaries = {}) {
-  const display = `Working Set (${ws.count} item${ws.count === 1 ? '' : 's'})\n`
-    + renderTree(ws.items.map((item) => {
-      const summary = summaries[item.path];
-      return {
-        title: `${item.title} [${item.type}]`,
-        ...(summary ? { body: [summary] } : {}),
-      };
-    }), { width: TREE_WIDTH, gap: true, bodyIndent: 1 });
+  // The heading is the adapter's TITLE section, as every sibling sub-view's
+  // is; the count rides it, since the set's size is what the screen is about.
+  const title = `Working Set (${ws.count} item${ws.count === 1 ? '' : 's'})`;
+  const display = renderTree(ws.items.map((item) => {
+    const summary = summaries[item.path];
+    return {
+      title: `${item.title} [${item.type}]`,
+      ...(summary ? { body: [summary] } : {}),
+    };
+  }), { width: TREE_WIDTH, gap: true, bodyIndent: 1 });
 
   const data = [
     `set_count: ${ws.count}`,
@@ -408,7 +410,7 @@ function workingSetView(ws, summaries = {}) {
     dotMenu(['Drop which? (enter number(s), comma-separated, or **`b/back`**)']),
   ));
 
-  return { data, display, menu, sections: sections.join('\n') };
+  return { data, title, display, menu, sections: sections.join('\n') };
 }
 
 // ---------------------------------------------------------------------------
@@ -435,11 +437,11 @@ function manageListView(detail) {
   for (const s of SECTIONS) {
     const units = detail[s.group].work_units;
     if (units.length === 0) continue;
-    displayLines.push(s.label);
-    for (const u of units) {
+    displayLines.push(s.label.replace(/:$/, ''));
+    units.forEach((u, i) => {
       rows.push({ n: rows.length + 1, work_type: s.type, work_unit: u.name });
-      displayLines.push(`  ${rows.length}. ${titlecase(u.name)}`);
-    }
+      displayLines.push(`  ${i === units.length - 1 ? '└─' : '├─'} ${rows.length}. ${titlecase(u.name)}`);
+    });
     displayLines.push('');
   }
 
@@ -566,6 +568,14 @@ const FILTER_LABELS = {
   epic: 'Epics',
 };
 
+/** One closed-set tree: numbered rows, the closing phase as each row's body. @param {ClosedRow[]} rows @param {string} label */
+function closedTree(rows, label) {
+  return renderTree(
+    rows.map((r) => ({ title: `${r.n}. ${titlecase(r.work_unit)}`, body: [`${label}: ${r.last_phase}`] })),
+    { width: TREE_WIDTH, bodyIndent: 1 },
+  ).replace(/\n$/, '');
+}
+
 /**
  * The completed & cancelled snapshot, optionally filtered to one work type
  * (the per-type navigation skills pass their own). Numbering is continuous
@@ -604,21 +614,18 @@ function completedView(detail, filter) {
       lines.push(`Showing: ${FILTER_LABELS[filter]}`);
       lines.push('');
     }
+    // Each list is one tree off its header: the closing phase is the row's
+    // body, so the branch glyphs stay positional (`└─` marks the last row of
+    // the group, never every row's sub-line).
     if (completedRows.length > 0) {
-      lines.push('Completed:');
-      for (const r of completedRows) {
-        lines.push(`  ${r.n}. ${titlecase(r.work_unit)}`);
-        lines.push(`     └─ Completed after: ${r.last_phase}`);
-        lines.push('');
-      }
+      lines.push('Completed');
+      lines.push(closedTree(completedRows, 'Completed after'));
+      lines.push('');
     }
     if (cancelledRows.length > 0) {
-      lines.push('Cancelled:');
-      for (const r of cancelledRows) {
-        lines.push(`  ${r.n}. ${titlecase(r.work_unit)}`);
-        lines.push(`     └─ Cancelled during: ${r.last_phase}`);
-        lines.push('');
-      }
+      lines.push('Cancelled');
+      lines.push(closedTree(cancelledRows, 'Cancelled during'));
+      lines.push('');
     }
     display += lines.join('\n').replace(/\n+$/, '\n');
   }
