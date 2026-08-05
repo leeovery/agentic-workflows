@@ -113,10 +113,12 @@ function topicLifecycleSections(verb, result) {
  * @returns {string}
  */
 function absorbSections(result) {
+  // Heading and sentence at column 0; only the fact list is indented, and it
+  // earns that by hanging off the sentence above it.
   const lines = [
     'Absorbed into Epic',
     '',
-    `  Topic "${titlecase(result.topic)}" added to ${titlecase(result.epic)}.`,
+    `Topic "${titlecase(result.topic)}" added to ${titlecase(result.epic)}.`,
     '',
     '  • Discussion: moved',
   ];
@@ -136,16 +138,17 @@ function absorbSections(result) {
  * @returns {string}
  */
 function promoteSections(result) {
+  // Same shape as its sibling above: column-0 sentence, bulleted facts.
   const lines = [
     'Promoted to Cross-Cutting',
     '',
     `"${titlecase(result.topic)}" has been promoted to its own cross-cutting work unit.`,
     '',
-    `  Work unit: ${result.cc_work_unit}`,
-    `  Source: ${result.work_unit}`,
-    '  Discussion files: moved',
-    '  Specification: moved',
-    '  Epic status: promoted',
+    `  • Work unit: ${result.cc_work_unit}`,
+    `  • Source: ${result.work_unit}`,
+    '  • Discussion files: moved',
+    '  • Specification: moved',
+    '  • Epic status: promoted',
   ];
   return joined([
     warningBlock('Knowledge warning', result.warnings,

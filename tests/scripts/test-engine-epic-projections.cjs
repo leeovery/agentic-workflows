@@ -133,7 +133,7 @@ describe('epic projections: dashboard (map branch)', () => {
       [
         '── DISCOVERY ────────────────────────────────────────────────────',
         '',
-        'RESEARCH & DISCUSSION (1 topics · 1 fresh)',
+        'RESEARCH & DISCUSSION (1 topic · 1 fresh)',
         '  └─ ○ Topic',
         '        ↳ Fresh · routed to research',
         '',
@@ -239,7 +239,7 @@ describe('epic projections: dashboard (map branch)', () => {
       },
     });
     const out = epicDashboard('v1', d);
-    assert.ok(out.includes('RESEARCH & DISCUSSION (1 topics · 1 fresh)'), out);
+    assert.ok(out.includes('RESEARCH & DISCUSSION (1 topic · 1 fresh)'), out);
     assert.match(out, /  └─ ○ Parked\n[\s\S]*?↳ Fresh · routed to research · triage waiting/, out);
   });
 });

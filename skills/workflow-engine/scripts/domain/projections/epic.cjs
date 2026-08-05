@@ -332,7 +332,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     const callouts = stageMetaCallouts(detail, newArrivals);
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
     const total = detail.map_summary ? detail.map_summary.total : detail.discovery_map.length;
-    block += treeHeader(`RESEARCH & DISCUSSION (${total} topics${mapStatusSuffix(detail)})`) + '\n';
+    block += treeHeader(`RESEARCH & DISCUSSION (${total} topic${total === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
     block += renderTree(mapNodes(detail, heldTopics), { width: TREE_WIDTH, gap: true });
     stages.push(block);
   }

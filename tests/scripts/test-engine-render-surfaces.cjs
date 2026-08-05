@@ -784,10 +784,10 @@ describe('render tasks-overview', () => {
     const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
     assert.strictEqual(out, [
       '=== DISPLAY: tasks overview (emit verbatim as a code block) ===',
-      'Analysis cycle 2: 2 proposed tasks',
+      'Analysis cycle 2 — 2 proposed tasks',
       '',
-      '  1. Fix leak (Important)',
-      '  2. Add test (Minor)',
+      '1. Fix leak (Important)',
+      '2. Add test (Minor)',
       '',
     ].join('\n'));
   });
