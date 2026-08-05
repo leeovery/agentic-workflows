@@ -35,7 +35,7 @@
   ],
   "answers": [
     "c — continue",
-    "n — now",
+    "y — yes, work through them now",
     "y — yes"
   ],
   "conduct": "The user returns to the relevance-measurement research after a day away. They have one thing to contribute: they checked, and the events pipeline retains ninety days of click logs — enough history to derive labels from. They share it, agree with how it is captured, and carry on. When the background review is offered they say yes to hearing it. Shown a one-item correction their own benchmark note determines, they approve it without asking for expansion. When the investigable thread is raised they read it with interest but the walk stops before they answer. They never ask for a deep-dive and never move to conclude.",
