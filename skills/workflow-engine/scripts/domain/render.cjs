@@ -135,10 +135,8 @@ function resumeGate(cwd, args) {
     parts.push(section(
       'DISPLAY: triage warning',
       'emit verbatim as a code block, directly above the menu',
-      callout([
-        `${n} rerouted concern(s) from other topics wait in this topic's`,
-        'triage queue. Restart leaves them queued — they surface next session.',
-      ]),
+      callout(`${n} rerouted concern(s) from other topics wait in this topic's `
+        + 'triage queue. Restart leaves them queued — they surface next session.'),
     ));
   }
   parts.push(section(

@@ -22,13 +22,14 @@ const { displayWidth } = require('../kernel/terminal.cjs');
 // kernel's canonical 49; trees wrap to this.
 const TREE_WIDTH = displayWidth();
 
-// Composed sub-header (`  LABEL (count summary)`) clamped to the tree width
-// budget: 2-space indent on every line, wrapped like tree body so a long
-// breakdown can never overflow the rows hanging beneath it. Returns the
-// wrapped lines joined, no trailing newline.
+// Composed sub-header (`LABEL (count summary)`) clamped to the tree width
+// budget: column 0, wrapped like tree body so a long breakdown can never
+// overflow the rows hanging beneath it — the tree indents 2 columns off the
+// header, the shape every engine view shares. Returns the wrapped lines
+// joined, no trailing newline.
 /** @param {string} text */
 function treeHeader(text) {
-  return wrapWithPrefix(text, { width: TREE_WIDTH, prefix: '  ' }).join('\n');
+  return wrapWithPrefix(text, { width: TREE_WIDTH, prefix: '' }).join('\n');
 }
 
 // Upper-case the first character (the rest is left untouched).
@@ -75,6 +76,14 @@ const PROVENANCE_HANG = '↳ '.length;
 
 /** @param {string} text @returns {{text: string, hang: number}} */
 function derivedFrom(text) {
+  return { text: '↳ ' + capitalise(String(text).trim()), hang: PROVENANCE_HANG };
+}
+
+// `↳ state` line — a row's computed lifecycle spelled out beneath its summary,
+// same marker and hang as provenance. The discovery views carry no tag column;
+// state rides here instead.
+/** @param {string} text @returns {{text: string, hang: number}} */
+function stateNote(text) {
   return { text: '↳ ' + capitalise(String(text).trim()), hang: PROVENANCE_HANG };
 }
 
@@ -185,7 +194,7 @@ const SPEC_LEGEND = {
 
 module.exports = {
   titlecaseLabel,
-  TREE_WIDTH, treeHeader, capitalise, titlecase, kebabcase, tag, derivedFrom, title,
+  TREE_WIDTH, treeHeader, capitalise, titlecase, kebabcase, tag, derivedFrom, stateNote, title,
   discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
   discussionGlyph, DISCUSSION_GLYPH, SPEC_LEGEND,
 };

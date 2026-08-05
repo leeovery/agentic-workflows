@@ -105,6 +105,10 @@ module.exports = {
     specificationDetail: specification.specificationDetail,
   },
   project: {
+    titlecase: conventions.titlecase,
+    workUnitTitle: workunitProjections.workUnitTitle,
+    discoveryTitle: discoveryProjections.discoveryTitle,
+    SPEC_TITLE: specificationProjections.SPEC_TITLE,
     selectionSections: selectionProjections.selectionSections,
     selectionNotFound: selectionProjections.selectionNotFound,
     epicDashboard: epicProjections.epicDashboard,

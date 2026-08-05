@@ -82,11 +82,10 @@ function selectionSections(type, units, counts) {
   units.forEach((u, i) => {
     menuLines.push(cmdOption(String(i + 1), null, type === 'epic'
       ? `Continue "${titlecase(u.name)}"`
-      : `Continue "${titlecase(u.name)}" — ${u.phase_label}`));
+      : `Continue "${titlecase(u.name)}" — *${u.phase_label}*`));
   });
-  menuLines.push('');
   if (closed) menuLines.push(cmdOption(String(units.length + 1), null, cfg.view));
-  menuLines.push(cmdOption('m', 'manage', cfg.manage), '', 'Select an option:');
+  menuLines.push(cmdOption('m', 'manage', cfg.manage));
 
   return section('DISPLAY: selection', 'emit verbatim as a code block only at the select step', disp.join('\n'))
     + '\n'

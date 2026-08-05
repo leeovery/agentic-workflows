@@ -83,7 +83,9 @@ function discussionMap(topic, manifest) {
   for (const { node, kids } of byName.values()) {
     if (kids.length) node.children = kids.sort(byRank).map((k) => k.node);
   }
-  return header + '\n' + renderTree(top.sort(byRank).map((t) => t.node), { width: TREE_WIDTH });
+  // childIndent 2 = the `✓ ` glyph width: subtrees drop from the parent's
+  // title, not from its status glyph.
+  return header + '\n' + renderTree(top.sort(byRank).map((t) => t.node), { width: TREE_WIDTH, childIndent: 2 });
 }
 
 /**

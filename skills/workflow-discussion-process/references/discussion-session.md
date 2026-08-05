@@ -112,7 +112,7 @@ node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_un
 The output is one snapshot in two demarcated sections:
 
 - **DATA** — reasoning surface: `counts`, `all_decided`, `unresolved`, `review_cycles`. Reason from it; never display or restate it.
-- **DISPLAY** — the rendered map. Emit verbatim as a makefile code block (```makefile fence — it tints the status column). Never redraw, reflow, or trim it.
+- **DISPLAY** — the rendered map. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 
 A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 

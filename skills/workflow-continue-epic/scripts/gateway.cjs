@@ -239,10 +239,11 @@ function view(workUnit, newArrivalsJson) {
   }
 
   const display = engine.project.epicDashboard(e.name, d, { newArrivals, presence });
-  const key = engine.project.epicKey(d, { presence });
+  const key = engine.project.epicKey(d);
 
   return [
     engine.gateway.dataBlock(dataLines.join('\n')),
+    engine.gateway.titleBlock(engine.project.titlecase(workUnit)),
     engine.gateway.displayBlock(key ? display + '\n' + key : display),
     engine.gateway.menuBlock(menu.rendered),
     // One confirm gate per entry a held session occupies — emitted by the

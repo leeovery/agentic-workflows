@@ -188,13 +188,10 @@ describe('workflow-continue-bugfix format', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Which bugfix would you like to continue?`**',
       '',
-      '**`1`**        → Continue "Crash" — specification (in-progress)',
-      '**`2`**        → Continue "Leak" — investigation (in-progress)',
-      '',
+      '**`1`**        → Continue "Crash" — *specification (in-progress)*',
+      '**`2`**        → Continue "Leak" — *investigation (in-progress)*',
       '**`3`**        → View completed & cancelled bugfixes',
       '**`m/manage`** → Manage a bugfix\'s lifecycle',
-      '',
-      'Select an option:',
       '',
     ].join('\n'));
   });

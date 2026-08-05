@@ -125,7 +125,8 @@ describe('render resume-gate', () => {
     assert.ok(out.startsWith([
       '=== DISPLAY: triage warning (emit verbatim as a code block, directly above the menu) ===',
       "  ⚑ 3 rerouted concern(s) from other topics wait in this topic's",
-      '    triage queue. Restart leaves them queued — they surface next session.',
+      '    triage queue. Restart leaves them queued — they surface next',
+      '    session.',
       '',
     ].join('\n')));
     assert.ok(out.includes('=== MENU: resume gate'));
@@ -914,13 +915,10 @@ describe('selection projection', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Which bugfix would you like to continue?`**',
       '',
-      '**`1`**        → Continue "Crash" — specification (in-progress)',
-      '**`2`**        → Continue "Leak" — investigation (in-progress)',
-      '',
+      '**`1`**        → Continue "Crash" — *specification (in-progress)*',
+      '**`2`**        → Continue "Leak" — *investigation (in-progress)*',
       '**`3`**        → View completed & cancelled bugfixes',
       '**`m/manage`** → Manage a bugfix\'s lifecycle',
-      '',
-      'Select an option:',
       '',
     ].join('\n'));
   });

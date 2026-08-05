@@ -79,7 +79,7 @@ engine.detail.workUnitIndex(type, detail)         // → labelled dump for the h
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
 engine.detail.specificationDetail(wu, result, { consultHints }) // → SpecificationDetail (entry scenario + grouping rows over one discover() result)
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
-engine.project.epicKey(detail)                    // → Key block ('' for a brand-new epic)
+engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
 engine.project.epicCompletedMenu(wu, detail)      // → { keys, display, rendered } — Completed Topics resume sub-view
 engine.project.epicCancelMenu(detail)             // → { keys, display, rendered } — Cancellable Topics pick menu

@@ -316,7 +316,10 @@ function view(workUnit) {
   const menu = engine.project.specificationMenu(detail);
   const display = engine.project.specificationDisplay(detail);
   const parts = [engine.gateway.dataBlock(viewData(result, detail, menu.keys))];
-  if (display) parts.push(engine.gateway.displayBlock(display));
+  if (display) {
+    parts.push(engine.gateway.titleBlock(engine.project.SPEC_TITLE));
+    parts.push(engine.gateway.displayBlock(display));
+  }
   if (menu.rendered) parts.push(engine.gateway.menuBlock(menu.rendered));
   return parts.join('\n');
 }

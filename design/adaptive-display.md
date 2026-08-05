@@ -252,12 +252,70 @@ through the stack.
 ## Open decisions
 
 - Whether dark blue (links) earns a use, or stays deliberately unspent.
-- Whether the opening dot rule on menus survives first contact — it is
-  retained for now on the grounds that menus interrupt more than
-  anything else does.
 - Headroom: one column or two below the detected width.
+- Strikethrough for other installs: auto-detection covers every modern
+  terminal except tmux (which masks the outer program) and Apple
+  Terminal (no support). The force var is read lazily, so a
+  `.claude/settings.json` env migration would work — but a README note
+  for tmux users is the lighter tool. Undecided.
 
 ## Log
+
+- 2026-08-05 (live review, third session) — the iteration session on
+  PR #778: Lee eyeballing the sandbox, changes accruing between his
+  screenshots. The big moves, each his call on presented options:
+  - **The green register is retired.** Its foundation failed on
+    contact: `private` is a GNU make keyword, so a topic summary
+    mentioning it rendered blue — the "makefile leaves prose alone"
+    claim was false, and no grammar colours controlled words without
+    eventually colouring uncontrolled ones (probed: makefile targets
+    and variables don't colour at all here; ini/toml/http/diff all
+    change the information shape). DISPLAY fences are now plain, tag
+    columns render `[term]` via one kernel constant, and colour lives
+    in markdown chrome, menus, and the surviving red blocker register.
+  - **Engine boxes died product-wide** — the "boxes at 49" open
+    question resolved by removing the class: every view emits a TITLE
+    section (markdown chrome above the fence), and the banner re-cut
+    as yaml-fenced art plus a markdown version line (mint's
+    version_pattern updated with it).
+  - **State lives once.** The overview flattened to a pure inventory
+    (flat name trees, inline `[type]` inbox rows); per-unit status
+    moved wholly into the menu tails — italic, after probes showed
+    plain-code light blue sat too close to the key lilac. Map rows
+    with bodies spell state on `↳` lines with gutter-gap breathing
+    room; dense single-line trees keep the bracket column. The epic
+    Key lost its tier and session legends to the same move.
+  - **Headers were split two ways and nobody had noticed** — treeHeader
+    views indented headers two columns (tree flush under the first
+    letter), hand-composed views sat headers at the edge (tree
+    indented off them). Lee caught it; normalised flush-left.
+  - **The last model-drawn display moved into the engine.** The
+    working-set tree — the only prose that drew branches — drifted a
+    column on its very next render after a template fix; the honest
+    fix was a summaries payload file into the gateway (the task-list
+    precedent), and the mixed-type blocker became a labelled red
+    section. CONVENTIONS now states the rule: displays are
+    engine-rendered, judgment content travels as payload.
+  - **The authored-wrap family**: the triage flag's premature break
+    turned out to be one of eight fixed-65 hard-wraps (spec not-ready,
+    Tip, stale-cache, coherence advisory, two blocked paragraphs, the
+    epic plans-not-ready flag) — all width-aware now, found by the
+    sibling audit Lee demanded rather than one-at-a-time.
+  - **Boot is two beats.** The pre-line and the signpost dump were the
+    same defect — Claude batches tools then narrates — so the fix is
+    structural, not exhortative: a BANNER FIRST rule (banner before
+    any tool call), one Initialisation beat, and the three routine
+    signposts collapsed into a single Discover and Route step. Steps
+    that render nothing were removed rather than annotated.
+  - **Raw ANSI is closed.** Escape bytes are stripped between model
+    and renderer (verified live — the payload arrived as visible
+    text); tool stdout is the one channel that keeps them and is not a
+    display surface. The register grammar is the ceiling, as designed.
+  - Smaller: discussion-map subtrees drop from the parent's title
+    (kernel childIndent = glyph width), the in-session strikethrough
+    renders for Lee via the dotfiles force var, inbox full-content
+    views render as markdown, and the pickup list grew type-grouped
+    trees with group-major numbering.
 
 - 2026-08-05 (live review, second session) — Lee's hand review of the
   stack drove a refinement round, all landed at the tip:

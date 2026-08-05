@@ -222,7 +222,9 @@ function mapView(workUnit, ...rest) {
     display = engine.project.discoveryMapView(workUnit, map);
   }
 
-  return engine.gateway.dataBlock(dataLines.join('\n')) + '\n' + engine.gateway.displayBlock(display);
+  return engine.gateway.dataBlock(dataLines.join('\n')) + '\n'
+    + engine.gateway.titleBlock(engine.project.discoveryTitle(workUnit)) + '\n'
+    + engine.gateway.displayBlock(display);
 }
 
 if (require.main === module) {
