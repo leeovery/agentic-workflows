@@ -134,6 +134,8 @@ Continue with the **Soft gate check** below.
 The system will re-analyse if you revisit later — proceeding
 now is safe, but may require rework.
 
+**`◆ Proceed anyway?`**
+
 **`y/yes`**  → Proceed anyway
 **`b/back`** → Return to menu
 ```

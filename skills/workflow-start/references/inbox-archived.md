@@ -50,6 +50,8 @@ Store the selected item's `ITEMS` row — its type, slug, date, and path.
 · · · · · · · · · · · ·
 Selected: **{item.title}** ({item.type}, archived)
 
+**`◆ What would you like to do with it?`**
+
 **`v/view`**      → View full content
 **`u/unarchive`** → Restore to the inbox
 **`d/delete`**    → Permanently delete (removes the file from git)
