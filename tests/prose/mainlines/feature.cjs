@@ -115,10 +115,26 @@ function specify(h) {
 }
 
 const TASKS = [
-  { id: `${WU}-1-1`, title: 'Create Payment Intent', description: 'Create a gateway payment intent when checkout begins and attach it to the order.' },
-  { id: `${WU}-1-2`, title: 'Handle Capture Webhooks', description: 'Consume gateway capture webhooks and mark the order paid; no polling path.' },
+  {
+    id: `${WU}-1-1`,
+    title: 'Create Payment Intent',
+    description: 'Create a gateway payment intent when checkout begins and attach it to the order.',
+    criteria: 'Intent created on checkout start; card-only enforced; gateway rejection surfaces as a user-visible checkout error; a duplicate start reuses the existing intent.',
+    tests: '`creates a card-only intent on checkout start` — rejection path shows the error; duplicate start does not mint a second intent.',
+  },
+  {
+    id: `${WU}-1-2`,
+    title: 'Handle Capture Webhooks',
+    description: 'Consume gateway capture webhooks and mark the order paid; no polling path.',
+    criteria: 'The webhook consumer marks the order paid; duplicate deliveries are idempotent; no polling path exists anywhere.',
+    tests: '`marks the order paid on capture webhook` — duplicates are idempotent; an unknown intent is logged and ignored.',
+  },
 ];
 
+// The body carries the authored register — the format write copies the
+// detail file's task content, so a real task file always holds its
+// acceptance criteria and named test (invoke-task-verifiers §B reads
+// both back at review).
 function taskFile(task, status) {
   return [
     '---',
@@ -131,6 +147,10 @@ function taskFile(task, status) {
     `# ${task.title}`,
     '',
     task.description,
+    '',
+    `**Acceptance Criteria**: ${task.criteria}`,
+    '',
+    `**Tests**: ${task.tests}`,
     '',
   ].join('\n');
 }
