@@ -34,6 +34,14 @@ A task whose edits land on another work unit's files under `.workflows/` correct
 
 ---
 
+## Comments Are Not Task Content
+
+**Do** steps direct code and tests, never commentary. Rationale, sequencing notes, and spec citations belong in the task's Problem/Context fields and the plan itself — never directed into source comments ("state in-source that…", "record why in a comment…"). A comment dictated by a task becomes an acceptance criterion the reviewer must police, and its claims go stale as later tasks land.
+
+A task may require a comment only where the code cannot express a constraint — a warning against a tempting wrong simplification, a non-obvious invariant — directed in one line ("comment that the discard must come last") with the wording left to the executor. Never direct comments that reference other tasks, phases, spec sections, or what tests cover.
+
+---
+
 ## Vertical Slicing
 
 Prefer **vertical slices** that deliver complete, testable functionality over horizontal slices that separate by technical layer.
