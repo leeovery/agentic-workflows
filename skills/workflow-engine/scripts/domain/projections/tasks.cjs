@@ -14,11 +14,19 @@
 //                       the session's latest when the loop stops on blocked
 //                       tasks)
 //   start             → MENU: task gate       (task_gate_mode gated)
+//                       DISPLAY: task gate auto-approved (task_gate_mode auto)
 //   fix-attempt       → DISPLAY: fix threshold (threshold reached)
 //                       MENU: fix gate         (gated or threshold reached;
 //                       the auto option renders only while the gate is gated)
+//                       DISPLAY: fix gate auto-accepted (auto, below threshold)
 //   analysis-cycle    → DISPLAY: cycle limit + MENU: cycle gate
 //                       (over the session limit)
+//
+// Every gate branch renders an artifact — a MENU where the loop stops, a
+// continuation DISPLAY where it must not. An auto branch that rendered
+// nothing would let the loop end a turn by silence, indistinguishable from
+// a stall; the continuation line is emitted last in the turn, pointing at
+// the action that follows in the same turn.
 // ---------------------------------------------------------------------------
 
 const { SESSION_CYCLE_LIMIT } = require('../tasks.cjs');
@@ -54,7 +62,13 @@ function completeSections() {
 
 /** @param {StartResult} result @returns {string} */
 function startSections(result) {
-  if (result.gates.task_gate_mode !== 'gated') return '';
+  if (result.gates.task_gate_mode !== 'gated') {
+    return section(
+      'DISPLAY: task gate auto-approved',
+      'emit verbatim as a code block at the task gate, after the result summary — never before',
+      `Task ${result.task} — approved [auto]. Committing and moving to the next task.`,
+    );
+  }
   return section(
     'MENU: task gate',
     'emit verbatim as markdown at the task gate — never before',
@@ -94,6 +108,12 @@ function fixAttemptSections(result, internalId) {
       'MENU: fix gate',
       'emit verbatim as markdown at the fix approval gate',
       menu(`Accept the reviewer's fix analysis for task ${internalId}?`, options),
+    ));
+  } else {
+    parts.push(section(
+      'DISPLAY: fix gate auto-accepted',
+      'emit verbatim as a code block at the fix evaluation, after the findings summary — never before',
+      `Fix analysis for task ${internalId} — accepted [auto]. Passing the findings to the executor.`,
     ));
   }
   return parts.join('\n');
