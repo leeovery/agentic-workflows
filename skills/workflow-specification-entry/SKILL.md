@@ -94,10 +94,10 @@ Load **[check-prerequisites.md](references/check-prerequisites.md)** and follow 
 
 ## Step 6: Route Based on State
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Route Based on State ─────────────────────────
+**`□ Route Based on State`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

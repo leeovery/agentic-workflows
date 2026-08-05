@@ -82,10 +82,10 @@ Load **[detection-core.md](references/detection-core.md)** and follow its instru
 
 ## Step 3: Open
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Open Discovery ───────────────────────────────
+**`□ Open Discovery`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -103,10 +103,10 @@ Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instru
 
 ## Step 4: Shape and Confirm the Work Type
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Shape and Confirm ────────────────────────────
+**`□ Shape and Confirm`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -124,10 +124,10 @@ Load **[shape-and-confirm.md](references/shape-and-confirm.md)** and follow its 
 
 ## Step 5: Confirm Trigger — Create the Work Unit
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Confirm Trigger ──────────────────────────────
+**`□ Confirm Trigger`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -197,10 +197,10 @@ Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follo
 
 ## Step 10: Session Loop
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Discovery Session ────────────────────────────
+**`□ Discovery Session`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -219,10 +219,10 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 
 ## Step 11: Document Review
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Document Review ──────────────────────────────
+**`□ Document Review`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -241,10 +241,10 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 
 ## Step 12: Confirm and Persist Topics
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Confirm and Persist ──────────────────────────
+**`□ Confirm and Persist`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -264,10 +264,10 @@ Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow 
 
 Reached only for single-phase work — feature, cross-cutting, bugfix, quick-fix — routed here by the confirm-trigger (Step 5). The epic topic path does not pass through here.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── First-Phase Routing ──────────────────────────
+**`□ First-Phase Routing`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -298,10 +298,10 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 
 The single exit for every work type — both paths arrive from the Step 14 compliance check.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Conclude Discovery ───────────────────────────
+**`□ Conclude Discovery`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

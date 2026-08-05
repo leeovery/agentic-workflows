@@ -22,10 +22,10 @@ The caller provides these via context before loading:
 
 ## A. Read Cache State
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-·· Cache Check ··································
+**`▪ Cache Check`**
 ```
 
 Run discovery for the work unit:
@@ -56,10 +56,10 @@ Research-analysis runs first so that a theme both analyses surface is already on
 
 #### If `analysis_caches.research_analysis.status` is `stale`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-·· Research Analysis ····························
+**`▪ Research Analysis`**
 ```
 
 **Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.research-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
@@ -96,10 +96,10 @@ No dispatch.
 
 #### If `analysis_caches.gap_analysis.status` is `stale`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-·· Gap Analysis ·································
+**`▪ Gap Analysis`**
 ```
 
 **Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.discovery-gap-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
@@ -136,10 +136,10 @@ No dispatch.
 
 #### If `analysis_caches.coherence_analysis.status` is `stale`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-·· Coherence Check ······························
+**`▪ Coherence Check`**
 ```
 
 **Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.coherence-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:

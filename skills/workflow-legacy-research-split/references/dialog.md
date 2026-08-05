@@ -16,10 +16,10 @@ Drive the per-source iteration: read source, identify themes, early sanity gate,
 
 Pop the next name from `remaining`. Set `current_source = name`.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-·· Processing {current_source} ··················
+**`▪ Processing {current_source}`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

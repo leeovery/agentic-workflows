@@ -22,10 +22,10 @@ No prior session is in progress. `session_number` will be set at Step 7 from dis
 
 The output is the in-progress session number string (e.g. `002`) — the prior session was interrupted before finalisation.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Resume Detection ─────────────────────────────
+**`□ Resume Detection`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

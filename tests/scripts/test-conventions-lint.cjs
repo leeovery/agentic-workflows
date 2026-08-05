@@ -131,15 +131,21 @@ function checkBorders(files) {
     }
     lines.forEach((line, i) => {
       const t = line.trim();
-      if (!/^●─+●$/.test(t)) return; // ● … ─ … ●
-      if (bannerLines.has(i)) return; // documented banner exception
-      const w = charLen(t);
-      if (w !== 49) {
+      // Drawn borders are retired from prose — the phase title is markdown
+      // chrome (`# **`■ Title`**`). Only the workflow-start banner keeps its
+      // bordered art (documented exception).
+      if (/^●─+●$/.test(t) && !bannerLines.has(i)) {
         out.push({
           file,
           line: i + 1,
-          message: `phase-title border must be 49 characters (● + 47 ─ + ●), found ${w}`,
+          message: 'drawn phase-title borders are retired — use `# **`■ Title`**` markdown chrome (banner excepted)',
         });
+        return;
+      }
+      // The markdown phase title must pair H1 with the filled square.
+      const h1 = /^# \*\*`(.)/.exec(t);
+      if (h1 && '■□▪○◐✓⊙⊘◆'.includes(h1[1]) && h1[1] !== '■') {
+        out.push({ file, line: i + 1, message: `phase-title chrome uses ■ — found ${h1[1]}` });
       }
     });
   }
@@ -159,17 +165,25 @@ function checkMarkers(files) {
     const lines = readLines(file);
     const { blocks } = parseFences(lines);
     for (const b of blocks) {
-      if (b.lines.length !== 1) continue; // sole-line fence only
+      if (b.lines.length !== 1) continue; // sole-line fence only — engine
+      // stage dividers live inside multi-line DISPLAY templates and are
+      // a different object (drawn, sized to their content).
       const { n, text } = b.lines[0];
-      if (!/^(── |·· )/.test(text)) continue;
-      const w = charLen(text);
-      if (w !== 49) {
+      // Drawn markers are retired — the chrome family is markdown.
+      if (/^── .+ ─+$/.test(text) || /^·· .+ ·+$/.test(text)) {
         const kind = text.startsWith('── ') ? 'step marker' : 'sub-step marker';
         out.push({
           file,
           line: n + 1,
-          message: `${kind} must be 49 characters, found ${w}`,
+          message: `drawn ${kind}s are retired — use **\`□ Name\`** / **\`▪ Name\`** markdown chrome`,
         });
+        continue;
+      }
+      // New-chrome shape: a sole-line marker fence must be exact, and the
+      // glyph must match its register (□ step, ▪ sub-step; ■ is the H1's).
+      const m = /^\*\*`(.) (.+)`\*\*$/.exec(text);
+      if (m && '■□▪'.includes(m[1]) && !'□▪'.includes(m[1])) {
+        out.push({ file, line: n + 1, message: `marker chrome uses □ or ▪ — ■ belongs to the phase title` });
       }
     }
   }
@@ -735,7 +749,8 @@ function countTemplatedSites(file) {
     while (k < lines.length && !/^\s*```/.test(lines[k])) k++;
     const content = lines.slice(start, k);
     const text = content.join('\n');
-    const isMarker = content.length === 1 && /^(── |·· )/.test(content[0]);
+    const isMarker = content.length === 1
+      && (/^(── |·· )/.test(content[0]) || /^(# )?\*\*`[■□▪] /.test(content[0]));
     const isSignpost = content.every((l) => l.trim() === '' || l.startsWith('>'));
     // Templated = any single-line braced token or directive. Deliberately
     // wider than the template-placeholder grammar: `{2 context lines}` and
@@ -871,12 +886,13 @@ for (const [label, fn] of CHECKS) {
 // must NOT flag the sanctioned edge cases it is designed to permit.
 // ---------------------------------------------------------------------------
 
-test('check 1 (borders) — catches wrong widths, skips the banner', () => {
+test('check 1 (borders) — bans drawn borders, skips the banner, pins the H1 glyph', () => {
   withTemp((dir) => {
+    // any drawn border in prose is retired — width no longer matters
     const bad = write(
       dir,
       'skills/x/SKILL.md',
-      '```\n●' + '─'.repeat(46) + '●\n  Too Short\n●' + '─'.repeat(46) + '●\n```\n'
+      '```\n●' + '─'.repeat(47) + '●\n  Overview\n●' + '─'.repeat(47) + '●\n```\n'
     );
     const v1 = checkBorders([bad]);
     assert.strictEqual(v1.length, 2, `expected 2 border violations, got ${v1.length}`);
@@ -889,19 +905,21 @@ test('check 1 (borders) — catches wrong widths, skips the banner', () => {
     );
     assert.strictEqual(checkBorders([banner]).length, 0, 'banner border must be exempt');
 
-    // a correct 49-char border → clean
-    const good = write(dir, 'skills/y/SKILL.md', '```\n●' + '─'.repeat(47) + '●\n  Overview\n●' + '─'.repeat(47) + '●\n```\n');
-    assert.strictEqual(checkBorders([good]).length, 0, 'valid 49-char border must pass');
+    // markdown phase title: ■ passes, any other family glyph is caught
+    const good = write(dir, 'skills/y/SKILL.md', '```\n# **`■ Overview`**\n```\n');
+    assert.strictEqual(checkBorders([good]).length, 0, 'markdown phase title must pass');
+    const wrongGlyph = write(dir, 'skills/z/SKILL.md', '```\n# **`□ Overview`**\n```\n');
+    assert.strictEqual(checkBorders([wrongGlyph]).length, 1, 'an H1 with a non-■ chrome glyph must be caught');
   });
 });
 
-test('check 2 (markers) — catches wrong widths, skips embedded dividers', () => {
+test('check 2 (markers) — bans drawn markers, skips embedded dividers, pins marker glyphs', () => {
   withTemp((dir) => {
-    const badStep = write(dir, 'skills/x/a.md', '```\n── Too Short ────\n```\n');
-    assert.strictEqual(checkMarkers([badStep]).length, 1, 'short step marker must be caught');
+    const drawnStep = write(dir, 'skills/x/a.md', '```\n── Construct Specification ────────\n```\n');
+    assert.strictEqual(checkMarkers([drawnStep]).length, 1, 'drawn step marker must be caught');
 
-    const badSub = write(dir, 'skills/x/b.md', '```\n·· Sub ' + '·'.repeat(60) + '\n```\n');
-    assert.strictEqual(checkMarkers([badSub]).length, 1, 'over-long sub-step marker must be caught');
+    const drawnSub = write(dir, 'skills/x/b.md', '```\n·· Sub ' + '·'.repeat(60) + '\n```\n');
+    assert.strictEqual(checkMarkers([drawnSub]).length, 1, 'drawn sub-step marker must be caught');
 
     // centered content divider embedded in a multi-line display fence → not a marker
     const divider = write(
@@ -911,12 +929,13 @@ test('check 2 (markers) — catches wrong widths, skips embedded dividers', () =
     );
     assert.strictEqual(checkMarkers([divider]).length, 0, 'embedded content divider must not be flagged');
 
-    // valid 49-char step marker → clean
-    const label = '── Construct Specification ';
-    const marker = label + '─'.repeat(49 - charLen(label));
-    assert.strictEqual(charLen(marker), 49);
-    const good = write(dir, 'skills/x/d.md', '```\n' + marker + '\n```\n');
-    assert.strictEqual(checkMarkers([good]).length, 0, 'valid marker must pass');
+    // markdown chrome: □ and ▪ pass; ■ in a marker fence belongs to the H1
+    const good = write(dir, 'skills/x/d.md', '```\n**`□ Construct Specification`**\n```\n');
+    assert.strictEqual(checkMarkers([good]).length, 0, 'markdown step marker must pass');
+    const goodSub = write(dir, 'skills/x/e.md', '```\n**`▪ Extract Sources`**\n```\n');
+    assert.strictEqual(checkMarkers([goodSub]).length, 0, 'markdown sub-step marker must pass');
+    const wrongGlyph = write(dir, 'skills/x/f.md', '```\n**`■ Construct Specification`**\n```\n');
+    assert.strictEqual(checkMarkers([wrongGlyph]).length, 1, 'a marker carrying the phase-title glyph must be caught');
   });
 });
 

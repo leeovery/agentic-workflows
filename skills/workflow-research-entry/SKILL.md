@@ -101,10 +101,10 @@ A first start — the session's triage check surfaces the parked concerns; seed 
 
 ## Step 4: Gather Context
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-── Gather Context ───────────────────────────────
+**`□ Gather Context`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

@@ -8,10 +8,10 @@ The review agent catches *topical* gaps — areas that should have been explored
 
 Discussion is higher-stakes than research for this check. The Context → Options → Journey → Decision structure creates pressure to polish rationale beyond what was actually said, Journey sections are usually written after-the-fact and easy to clean up post-hoc, and tentative leans can harden into documented decisions. The specification phase builds directly from this file — drift here compounds downstream.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-·· Document Review ······························
+**`▪ Document Review`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
