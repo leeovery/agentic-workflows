@@ -29,7 +29,8 @@
     "skills/workflow-planning-process/references/invoke-review-integrity.md",
     "skills/workflow-planning-process/references/process-review-findings.md",
     "skills/workflow-shared/references/compliance-check.md",
-    "skills/workflow-planning-process/references/conclude-plan.md"
+    "skills/workflow-planning-process/references/conclude-plan.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
   ],
   "answers": [
     "c — pick the plan up where it left off",

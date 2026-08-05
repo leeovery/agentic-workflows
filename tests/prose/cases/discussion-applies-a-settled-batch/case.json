@@ -25,11 +25,12 @@
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-shared/references/background-agent-surfacing.md",
     "skills/workflow-shared/references/natural-breaks.md",
-    "skills/workflow-discussion-process/references/template.md"
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-discussion-entry/references/gather-context.md"
   ],
   "answers": [
     "c — continue",
-    "n — now",
+    "y — yes, work through them now",
     "y — yes"
   ],
   "conduct": "The user is picking a card-payments discussion back up after most of a day away. They are brisk and want to spend their attention on decisions, not on bookkeeping. Asked whether to look at what the background review returned, they say yes. Shown a screen of corrections that the document's own decisions already determine, they read it, find nothing that surprises them, and approve the lot in one go without asking for any of them to be expanded. They offer no new material of their own and do not ask to move on to anything else.",

@@ -25,11 +25,12 @@
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-shared/references/background-agent-surfacing.md",
     "skills/workflow-shared/references/natural-breaks.md",
-    "skills/workflow-discussion-process/references/template.md"
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/final-review-menu.md"
   ],
   "answers": [
     "c — continue",
-    "n — now"
+    "y — yes, work through them now"
   ],
   "conduct": "The user is at the start of a card-payments discussion, back after most of a day away. They remember a background review returned while they were wrapping up and want to hear it before picking the threads back up. They opt in when offered, and they read the first raised area with interest — but the walk stops before they answer. They volunteer nothing new and do not steer the conversation anywhere else.",
   "invariants": {
