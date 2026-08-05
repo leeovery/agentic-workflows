@@ -148,7 +148,10 @@ Narrate these, each as its own entry, the moment it happens:
 
 1. Every prose section or arm entered: `file.md § Heading`, plus the
    quoted guard line that selected it.
-2. Every block the prose directed you to emit, quoted in full.
+2. Every block the prose directed you to emit, quoted in full. The one
+   exception is static branding — the `workflow-start` banner art —
+   recorded as `EMITTED: [banner]`: no assertion can rest on it, and the
+   art is heavy to reproduce.
 3. Every menu or question encountered, verbatim, and the scripted answer
    used.
 4. Every marker above.
