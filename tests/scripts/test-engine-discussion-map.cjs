@@ -430,9 +430,8 @@ describe('discussion adapter: map verb', () => {
       '· · · · · · · · · · · ·',
       'There is still 1 subtopic not yet decided — shown on the map above.',
       '',
-      '- **`y`/`yes`** — Defer it and move toward concluding',
-      '- **`n`/`no`** — Continue discussing',
-      '· · · · · · · · · · · ·',
+      '**`y/yes`** → Defer it and move toward concluding',
+      '**`n/no`**  → Continue discussing',
       '',
     ].join('\n'));
   });

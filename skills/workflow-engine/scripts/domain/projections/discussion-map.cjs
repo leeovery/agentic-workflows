@@ -14,7 +14,7 @@
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, discussionGlyph } = require('../conventions.cjs');
 const { mapState, subtopicsOf } = require('../discussion-map.cjs');
-const { section, dotFrame, cmdOption } = require('./surfaces.cjs');
+const { section, menuFrame, cmdOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
 /** @typedef {import('../discussion-map.cjs').SubtopicCounts} SubtopicCounts */
@@ -98,7 +98,7 @@ function discussionDeferGate(unresolvedCount) {
   return section(
     'MENU: defer gate',
     "emit verbatim as markdown only at the concluding step, then STOP for the user's response",
-    dotFrame([
+    menuFrame([
       one
         ? 'There is still 1 subtopic not yet decided — shown on the map above.'
         : `There are still ${unresolvedCount} subtopics not yet decided — shown on the map above.`,

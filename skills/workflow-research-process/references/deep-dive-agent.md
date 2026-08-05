@@ -49,9 +49,8 @@ Skip the offer — the user already asked.
 {Thread description} looks like it could use a deep dive.
 Want me to spin up a background investigation while we keep going?
 
-- **`y`/`yes`** — Dispatch a deep-dive agent
-- **`n`/`no`** — Skip, we'll cover it in conversation
-· · · · · · · · · · · ·
+**`y/yes`** → Dispatch a deep-dive agent
+**`n/no`**  → Skip, we'll cover it in conversation
 ```
 
 **STOP.** Wait for user response.

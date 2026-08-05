@@ -64,9 +64,8 @@ Blocking dependencies:
 
 ```
 · · · · · · · · · · · ·
-- **`u`/`unblock`** — Mark a dependency as satisfied externally
-- **`b`/`back`** — Return to menu
-· · · · · · · · · · · ·
+**`u/unblock`** → Mark a dependency as satisfied externally
+**`b/back`**    → Return to menu
 ```
 
 **STOP.** Wait for user response.
@@ -130,14 +129,13 @@ Continue with the **Soft gate check** below.
 
 ```
 · · · · · · · · · · · ·
-{Gate message}
+**`◆ {Gate message}`**
 
 The system will re-analyse if you revisit later — proceeding
 now is safe, but may require rework.
 
-- **`y`/`yes`** — Proceed anyway
-- **`b`/`back`** — Return to menu
-· · · · · · · · · · · ·
+**`y/yes`**  → Proceed anyway
+**`b/back`** → Return to menu
 ```
 
 Gate messages are self-contained first lines. Compose the count prefix into the message (e.g., "3 of 5 research topics still in-progress. Topic analysis works best with all research available.").
@@ -217,9 +215,8 @@ Store the selected entry's `phase` and `topic`. Confirm with the user:
 Cancel "{topic:(titlecase)}" in {phase}? This will mark it as
 cancelled. You can reactivate it later.
 
-- **`y`/`yes`** — Confirm cancellation
-- **`n`/`no`** — Return to menu
-· · · · · · · · · · · ·
+**`y/yes`** → Confirm cancellation
+**`n/no`**  → Return to menu
 ```
 
 **STOP.** Wait for user response.

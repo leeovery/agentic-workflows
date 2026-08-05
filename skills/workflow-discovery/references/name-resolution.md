@@ -24,11 +24,10 @@ Suggested {work-type} name: {work_unit}
 
 ```
 · · · · · · · · · · · ·
-Is this name okay?
+**`◆ Is this name okay?`**
 
-- **`y`/`yes`** — Use this name
-- **A different name** — Tell me what to call it instead
-· · · · · · · · · · · ·
+**`y/yes`**          → Use this name
+**A different name** → Tell me what to call it instead
 ```
 
 **STOP.** Wait for user response.
@@ -60,10 +59,9 @@ choose a different name to start fresh.
 
 ```
 · · · · · · · · · · · ·
-Choose a different name, or resume via /workflow-start.
+**`◆ Choose a different name, or resume via /workflow-start.`**
 
-- **A different name** — Tell me what to call it instead
-· · · · · · · · · · · ·
+**A different name** → Tell me what to call it instead
 ```
 
 **STOP.** Wait for user response.

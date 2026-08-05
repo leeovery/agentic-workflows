@@ -46,7 +46,7 @@ Code blocks are used for informational displays (overviews, status, keys, phase 
 
 ### Presentation Register
 
-Report-class content — findings, review summaries, validation gaps and risks, diagnostics, item summaries — renders as markdown narrative in the register defined by `skills/workflow-shared/references/product-lens.md`: manifestation first in product terms, `file:line` refs as anchors, full fidelity to the underlying record. A `t`/`technical` option retells the same report from the code's perspective per `skills/workflow-shared/references/technical-lens.md` — a lens shift driven by Claude, never a file dump; where a raw view earns a place, it is a separate `v`/`view` option rendering the record file as markdown. Artifact content the user approves as the thing itself (spec prose, plan phases, diffs) stays verbatim in its fence — see Content Dividers & Frames.
+Report-class content — findings, review summaries, validation gaps and risks, diagnostics, item summaries — renders as markdown narrative in the register defined by `skills/workflow-shared/references/product-lens.md`: manifestation first in product terms, `file:line` refs as anchors, full fidelity to the underlying record. A `t/technical` option retells the same report from the code's perspective per `skills/workflow-shared/references/technical-lens.md` — a lens shift driven by Claude, never a file dump; where a raw view earns a place, it is a separate `v/view` option rendering the record file as markdown. Artifact content the user approves as the thing itself (spec prose, plan phases, diffs) stays verbatim in its fence — see Content Dividers & Frames.
 
 ### Engine Output Sections
 
@@ -297,75 +297,73 @@ Key:
 
 ### Menus / Interactive Prompts
 
-Rendered as markdown (not code blocks). Framed with `· · · · · · · · · · · ·` dot separators at top and bottom — no blank lines between the dots and the content they frame. A question or contextual label opens the menu, followed by a blank line, then the options — compact yes/no prompts may omit the blank line. Selection menus may carry the prompt as a trailing `Select an option:` line after the options instead of (or in addition to) an opening label, as in the examples below. Verb-based labels for selection menus. No single-character icons.
+Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. A question or contextual label opens the menu, followed by a blank line, then the options — compact yes/no prompts may omit the blank line. Selection menus may carry the prompt as a trailing `Select an option:` line after the options instead of (or in addition to) an opening label, as in the examples below. Verb-based labels for selection menus.
+
+**The label carries the decision glyph.** A short plain label (≤60 characters, no markup) is wrapped as `**`◆ Label`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). A longer label, or one carrying its own emphasis or code spans, stays plain prose above the options — markup cannot nest inside the glyph span. Engine-rendered menus apply this rule in `surfaces.cjs`; prose-authored menus mirror it by hand.
 
 **Option types** — menus contain two kinds of option:
 
-- **Command option** (explicit): A discrete input the user types verbatim. Formatted with backtick-wrapped shorthand: **`y`/`yes`**, **`s`/`single`**, **`a`/`auto`**. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`a`/`approve`** and **`b`/`abort`**). The conditional branch uses the command value (e.g., `#### If \`yes\``).
+- **Command option** (explicit): A discrete input the user types verbatim. Key and word share one code span: **`y/yes`**, **`s/single`**, **`a/auto`** — the user may type either side. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`a/approve`** and **`b/abort`**). The conditional branch uses the command value (e.g., `#### If \`yes\``); inline references to a key elsewhere in prose use the same merged span (`` `b/back` ``).
 - **Prompt option** (implicit): The user responds naturally rather than issuing a command. Formatted with plain bold text (no backticks): **Keep going**, **Comment**, **Ask**. The conditional branch uses the label in lowercase (e.g., `#### If keep going`); where the bare label reads awkwardly as a condition, a descriptive form naming the intent is equally valid (`#### If the user provides feedback` for a **Provide feedback** option). Limit to one prompt option per menu to avoid ambiguity — since routing is intent-based, multiple prompt options would be hard to distinguish. A second prompt option is permitted only when the two intents are disjoint enough that natural responses cannot be confused and the flow genuinely routes on both (the implementation gate menus' **Ask** and **Comment**).
 
-Both types use `— description` to explain what the option does (unless self-evident, as with yes/no).
+**Option lines are bare, not bulleted, and the arrow is the separator**: `**`k/word`** → Label`. Arrows align into one column across the whole menu — pad with spaces *outside* the closing `**`, measured against the widest key in the block (blank lines inside the menu don't reset the column). A label may still carry ` — sub-detail` after its opening verb (statuses, positions); the arrow separates key from label, the em-dash stays available inside the label. Options stay on one authored line — never hand-wrap a label across lines; the renderer soft-wraps long lines itself.
 
 **Ordering — command options first, prompt option last.** Mixed menus list all command options before the (single) prompt option. The command set reads as a discrete vocabulary first; the prompt option then sits at the end as the "or respond naturally" tail.
 
-**Prompt option descriptions direct the user's response, not Claude's action.** For a command option, the option *is* the user's input — describing what Claude will do reads naturally (`**`y`/`yes`** — Conclude investigation`). For a prompt option, the user's *natural response* is the trigger — the description should tell them what to say. The format is `**{prompt label}** — {user-directive description}`.
+**Prompt option descriptions direct the user's response, not Claude's action.** For a command option, the option *is* the user's input — describing what Claude will do reads naturally (`**`y/yes`** → Conclude investigation`). For a prompt option, the user's *natural response* is the trigger — the description should tell them what to say. The format is `**{prompt label}** → {user-directive description}`.
 
-- ✗ `**Keep going** — Continue exploring` — describes Claude's action; ambiguous (should the user type "keep going" or respond naturally?)
-- ✓ `**Keep going** — Tell me what else to explore` — directs the user's response
+- ✗ `**Keep going** → Continue exploring` — describes Claude's action; ambiguous (should the user type "keep going" or respond naturally?)
+- ✓ `**Keep going** → Tell me what else to explore` — directs the user's response
 
-Sister patterns: `**Name them** — Tell me which to re-add`; `**Adjust** — Tell me what to change`. When the description starts with "Tell me…" or names the user's expected response, it lands correctly. When it starts with a verb describing Claude's action, it lands wrong.
+Sister patterns: `**Name them** → Tell me which to re-add`; `**Adjust** → Tell me what to change`. When the description starts with "Tell me…" or names the user's expected response, it lands correctly. When it starts with a verb describing Claude's action, it lands wrong.
 
 **Mixed prompt** — command and prompt options together:
 
 ```
 · · · · · · · · · · · ·
-Investigation complete. Ready to conclude?
+**`◆ Investigation complete. Ready to conclude?`**
 
-- **`y`/`yes`** — Conclude investigation
-- **Keep going** — Tell me what else to explore
-· · · · · · · · · · · ·
+**`y/yes`**    → Conclude investigation
+**Keep going** → Tell me what else to explore
 ```
 
-**Selection menu** — use concrete examples showing verb-to-state mapping. Numbered items use the same `- **`N`** —` format as command options so the menu has a unified visual style:
+**Selection menu** — use concrete examples showing verb-to-state mapping. Numbered items use the same format as command options so the menu has a unified visual style:
 
 ```
 · · · · · · · · · · · ·
-- **`1`** — Create "Auth Flow" — completed spec, no plan
-- **`2`** — Continue "Data Model" — plan in-progress
-- **`3`** — Review "Billing" — plan completed
+**`1`** → Create "Auth Flow" — completed spec, no plan
+**`2`** → Continue "Data Model" — plan in-progress
+**`3`** → Review "Billing" — plan completed
 
 Select an option (enter number):
-· · · · · · · · · · · ·
 ```
 
-**Single source of truth** — items appear once, inside the menu. Do not display items as a numbered list (or tree) above the menu and then re-list them as numbered options below. The menu IS the display. Sub-detail (statuses, sources, plan progress) goes inline on each option using `[term]` or `— description`. The exception is when items have rich multi-line child detail (blocking reasons, dependency chains) that genuinely doesn't fit a one-line option — in that case keep the tree display and reference it from a short prompt below, but this should be rare.
+**Single source of truth** — items appear once, inside the menu. Do not display items as a numbered list (or tree) above the menu and then re-list them as numbered options below. The menu IS the display. Sub-detail (statuses, sources, plan progress) goes inline on each option using `[term]` or ` — sub-detail`. The exception is when items have rich multi-line child detail (blocking reasons, dependency chains) that genuinely doesn't fit a one-line option — in that case keep the tree display and reference it from a short prompt below, but this should be rare.
 
 **Yes/no prompt:**
 
 ```
 · · · · · · · · · · · ·
-Proceed?
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`◆ Proceed?`**
+**`y/yes`**
+**`n/no`**
 ```
 
 **Multi-choice prompt:**
 
 ```
 · · · · · · · · · · · ·
-What scope would you like to review?
+**`◆ What scope would you like to review?`**
 
-- **`s`/`single`** — Review one plan's implementation
-- **`m`/`multi`** — Review selected plans
-- **`a`/`all`** — Review all implemented plans
-· · · · · · · · · · · ·
+**`s/single`** → Review one plan's implementation
+**`m/multi`**  → Review selected plans
+**`a/all`**    → Review all implemented plans
 ```
 
 **Meta options** in selection menus get backtick-wrapped descriptions:
 
 ```
-- **`3`** — Unify all into single specification
+**`3`** → Unify all into single specification
    `All discussions combined into one specification.`
    `Existing specifications are incorporated and superseded.`
 ```
@@ -600,7 +598,7 @@ Entry-point skills that invoke processing skills use this exact blockquote to pr
 
 ### Auto-Mode Gates
 
-Per-item approval gates can offer `a`/`auto` to let the user bypass repeated STOP gates. This pattern is used in implementation (task + fix gates), planning (task list approval + task authoring + review findings), and specification (construction + review findings).
+Per-item approval gates can offer `a/auto` to let the user bypass repeated STOP gates. This pattern is used in implementation (task + fix gates), planning (task list approval + task authoring + review findings), and specification (construction + review findings).
 
 **Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated` or `auto`) — every gate, no exceptions. This ensures they survive context refresh.
 
@@ -616,13 +614,13 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 
 **Lifecycle**:
 - Default: `gated` (set in manifest on creation)
-- Opt-in: user chooses `a`/`auto` at any per-item gate → manifest updated via `engine manifest` before next commit
+- Opt-in: user chooses `a/auto` at any per-item gate → manifest updated via `engine manifest` before next commit
 - Reset: entry-point skills reset gates to `gated` at session start — fresh invocation or resume. Auto opt-in is session-scoped, never carried across sessions
 - Context refresh: read gate modes from manifest and preserve (a refresh continues the same session — no reset)
 
 **Menu option format**: Add between the primary action and secondary options:
 ```
-- **`a`/`auto`** — Approve this and all remaining {items} automatically
+**`a/auto`** → Approve this and all remaining {items} automatically
 ```
 
 **Re-loop safety cap**: When auto-mode enables automatic re-analysis loops, cap at 5 cycles before escalating to the user. This prevents infinite cascading. At escalation, a convergence analysis diagnostic (shared reference at `skills/workflow-shared/references/convergence-analysis.md`) reads prior cycle tracking files and presents what's resolving, what's recurring, and a trend assessment to inform the user's decision.

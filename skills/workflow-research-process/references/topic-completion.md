@@ -18,11 +18,10 @@ The current topic is converging — tradeoffs are clear, it's approaching decisi
 
 ```
 · · · · · · · · · · · ·
-This topic looks ready to conclude.
+**`◆ This topic looks ready to conclude.`**
 
-- **`c`/`conclude`** — Mark this topic as complete, ready for discussion
-- **`k`/`keep`** — Keep digging, there's more to understand
-· · · · · · · · · · · ·
+**`c/conclude`** → Mark this topic as complete, ready for discussion
+**`k/keep`**     → Keep digging, there's more to understand
 ```
 
 **STOP.** Wait for user response.

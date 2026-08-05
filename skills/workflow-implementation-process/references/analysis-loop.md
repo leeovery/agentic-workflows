@@ -112,12 +112,11 @@ Pre-analysis checkpoint — unexpected files detected:
 
 ```
 · · · · · · · · · · · ·
-Include unexpected files in the checkpoint commit?
+**`◆ Include unexpected files in the checkpoint commit?`**
 
-- **`y`/`yes`** — Include all
-- **`s`/`skip`** — Exclude unexpected files, commit only implementation files
-- **Comment** — Specify which to include
-· · · · · · · · · · · ·
+**`y/yes`**  → Include all
+**`s/skip`** → Exclude unexpected files, commit only implementation files
+**Comment**  → Specify which to include
 ```
 
 **STOP.** Wait for user response.

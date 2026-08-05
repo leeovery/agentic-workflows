@@ -13,7 +13,7 @@
 
 const { box, renderTree, wrap } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
-const { dotFrame, cmdOption } = require('./surfaces.cjs');
+const { menuFrame, cmdOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -378,11 +378,11 @@ function specificationMenu(detail) {
   }
   lines.push('', 'Select an option:');
 
-  return { keys: [...numbered, ...options], rendered: dotFrame(lines) };
+  return { keys: [...numbered, ...options], rendered: menuFrame(lines) };
 }
 
 /**
- * The concluded-specs sub-view (`c`/`completed`): the heading with one row per
+ * The concluded-specs sub-view (`c/completed`): the heading with one row per
  * concluded spec, and flat Refine entries — no source detail, the specs have
  * no pending work.
  * @param {SpecificationDetail} detail
@@ -404,7 +404,7 @@ function specificationCompletedMenu(detail) {
     lines.push(cmdOption(k.key, k.word, k.label));
   }
   lines.push('', 'Select an option:');
-  const rendered = dotFrame(lines);
+  const rendered = menuFrame(lines);
 
   const display = 'Completed Specifications\n'
     + renderTree(detail.concluded.map((row) => ({ title: title({ label: titlecase(row.name) }), tag: 'completed' })), { width: TREE_WIDTH });

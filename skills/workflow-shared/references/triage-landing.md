@@ -122,10 +122,9 @@ Never stub over a concluded artefact, and never land an entry no session will su
 · · · · · · · · · · · ·
 "{target}" is @if(lifecycle == 'handled') marked handled — fanned out into other topics @else cancelled @endif, so it won't pick up rerouted concerns.
 
-- **`o`/`open`** — @if(lifecycle == 'handled') Clear the handled marker @else Reactivate it @endif and land the concern there
-- **`e`/`elsewhere`** — Pick a different target
-- **`d`/`drop`** — Drop the reroute; the concern stays with the current topic
-· · · · · · · · · · · ·
+**`o/open`**      → @if(lifecycle == 'handled') Clear the handled marker @else Reactivate it @endif and land the concern there
+**`e/elsewhere`** → Pick a different target
+**`d/drop`**      → Drop the reroute; the concern stays with the current topic
 ```
 
 **STOP.** Wait for user response.

@@ -31,13 +31,13 @@ Before starting any topic, identify ALL available reference material from prior 
 
 **This is a collaborative, interactive process. You MUST wait for explicit user approval before writing ANYTHING to the specification file.**
 
-> **CHECKPOINT**: If you are about to write to the specification file and haven't received explicit approval (e.g., `y`/`yes`) for this specific content, **STOP**. You are violating the workflow. Go back and present the content first.
+> **CHECKPOINT**: If you are about to write to the specification file and haven't received explicit approval (e.g., `y/yes`) for this specific content, **STOP**. You are violating the workflow. Go back and present the content first.
 
 ### Explicit Approval Required
 
 At every stop point, the user must explicitly approve before you proceed or log content.
 
-**What counts as approval:** `y`/`yes` or equivalent explicit confirmation: "Approved", "Add it", "That's good".
+**What counts as approval:** `y/yes` or equivalent explicit confirmation: "Approved", "Add it", "That's good".
 
 **What does NOT count as approval:**
 - Silence
@@ -94,7 +94,7 @@ Before ANY write operation to the specification, ask yourself:
 | Question | If No... |
 |----------|----------|
 | Did I present this specific content to the user? | **STOP**. Present it first. |
-| Did the user explicitly approve? (e.g., `y`/`yes`) | **STOP**. Wait for approval or ask. |
+| Did the user explicitly approve? (e.g., `y/yes`) | **STOP**. Wait for approval or ask. |
 | Am I writing exactly what was approved, with no additions? | **STOP**. Present any changes first. |
 
 > **If you have written to the specification file and cannot answer "yes" to all three questions above for that content, you have violated the workflow.** Every piece of content requires explicit user approval before logging. There are no exceptions.

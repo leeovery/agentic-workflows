@@ -91,7 +91,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
-   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a`/`auto` opt-in is made by this flow itself, so you already know the current mode. When the task gate is `gated`, the response also carries the `MENU: task gate` section that **G. Task Gate** emits — never emit it here.
+   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` opt-in is made by this flow itself, so you already know the current mode. When the task gate is `gated`, the response also carries the `MENU: task gate` section that **G. Task Gate** emits — never emit it here.
 3. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 → Proceed to **B. Execute Task**.
@@ -130,10 +130,9 @@ Task {internal_id}: {Task Name} — {blocked/failed}
 · · · · · · · · · · · ·
 Task {status:[blocked|failed]}. How would you like to proceed?
 
-- **`r`/`retry`** — Re-invoke the executor with your comments (provide below)
-- **`s`/`skip`** — Skip this task and move to the next
-- **`t`/`stop`** — Stop implementation entirely
-· · · · · · · · · · · ·
+**`r/retry`** → Re-invoke the executor with your comments (provide below)
+**`s/skip`**  → Skip this task and move to the next
+**`t/stop`**  → Stop implementation entirely
 ```
 
 **STOP.** Wait for user response.
@@ -227,7 +226,7 @@ Branch on the response's `fix_gate_mode`.
 
 ## F. Fix Approval Gate
 
-Emit the `MENU: fix gate` section from this task's most recent `fix-attempt` response. The `a`/`auto` option is present only while the fix gate is `gated` — a threshold-forced gate in auto mode omits it.
+Emit the `MENU: fix gate` section from this task's most recent `fix-attempt` response. The `a/auto` option is present only while the fix gate is `gated` — a threshold-forced gate in auto mode omits it.
 
 **STOP.** Wait for user response.
 

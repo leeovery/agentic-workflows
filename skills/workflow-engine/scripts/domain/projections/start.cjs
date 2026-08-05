@@ -17,7 +17,7 @@
 
 const { box } = require('../../kernel/render.cjs');
 const { titlecase, titlecaseLabel } = require('../conventions.cjs');
-const { dotFrame: dotMenu, cmdOption, promptOption, rangeOption, section: labelled } = require('./surfaces.cjs');
+const { menuFrame: dotMenu, cmdOption, promptOption, rangeOption, section: labelled } = require('./surfaces.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -309,7 +309,7 @@ function archivedView(items) {
     + (items.length > 0 ? pickupRows(items).join('\n') + '\n' : 'No archived items.\n');
 
   const menu = items.length > 0
-    ? dotMenu(['Select an item (enter number, or **`b`/`back`** to return):'])
+    ? dotMenu(['Select an item (enter number, or **`b/back`** to return):'])
     : '';
 
   return { data, display, menu };
@@ -320,7 +320,7 @@ function archivedView(items) {
 // ---------------------------------------------------------------------------
 
 /**
- * The working-set snapshot: the set menu (`w`/`work` renders only for a
+ * The working-set snapshot: the set menu (`w/work` renders only for a
  * type-uniform set) plus the deferred add/drop gates. The set's item render
  * (titles, summaries) stays with the session — summaries are synthesised
  * content the engine never writes.
@@ -364,7 +364,7 @@ function workingSetView(ws) {
     sections.push(labelled(
       'MENU: add gate',
       'emit verbatim as markdown only at the add-items gate',
-      dotMenu(['Add which? (enter number(s), comma-separated, or **`b`/`back`**)']),
+      dotMenu(['Add which? (enter number(s), comma-separated, or **`b/back`**)']),
     ));
   }
   sections.push(labelled(
@@ -375,7 +375,7 @@ function workingSetView(ws) {
   sections.push(labelled(
     'MENU: drop gate',
     'emit verbatim as markdown only at the drop-items gate',
-    dotMenu(['Drop which? (enter number(s), comma-separated, or **`b`/`back`**)']),
+    dotMenu(['Drop which? (enter number(s), comma-separated, or **`b/back`**)']),
   ));
 
   return { data, menu, sections: sections.join('\n') };
@@ -423,7 +423,7 @@ function manageListView(detail) {
     + (rows.length > 0 ? displayLines.join('\n') : 'No active work units.\n');
 
   const menu = rows.length > 0
-    ? dotMenu(['Select a work unit (enter number, or **`b`/`back`** to return):'])
+    ? dotMenu(['Select a work unit (enter number, or **`b/back`** to return):'])
     : '';
 
   return { data, display, menu, rows };
@@ -595,7 +595,7 @@ function completedView(detail, filter) {
 
   const menu = rows.length > 0
     ? dotMenu([
-      'Select a work unit for details, or **`b`/`back`** to return.',
+      'Select a work unit for details, or **`b/back`** to return.',
       '',
       'Select an option (enter number):',
     ])

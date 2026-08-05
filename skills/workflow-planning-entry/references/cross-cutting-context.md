@@ -51,20 +51,19 @@ These may contain architectural decisions relevant to this plan.
 
 ```
 · · · · · · · · · · · ·
-Proceed without these, or complete them first?
+**`◆ Proceed without these, or complete them first?`**
 
-- **`c`/`continue`** — Plan without them
-- **`s`/`stop`** — Complete them first
-· · · · · · · · · · · ·
+**`c/continue`** → Plan without them
+**`s/stop`**     → Complete them first
 ```
 
 **STOP.** Wait for user response.
 
-**If user chose `s`/`stop`:**
+**If user chose `s/stop`:**
 
 **STOP.** Do not proceed — terminal condition.
 
-**If user chose `c`/`continue`:**
+**If user chose `c/continue`:**
 
 → Proceed to **C. Query the knowledge base**.
 

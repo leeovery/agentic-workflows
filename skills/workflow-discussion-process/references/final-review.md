@@ -98,7 +98,7 @@ Doubt resolves to satisfied — declining forfeits nothing; a later attempt recl
 
 The dispatched agent hasn't returned.
 
-**If it was dispatched this session and the user chose `p`/`proceed` at the session's in-flight gate:**
+**If it was dispatched this session and the user chose `p/proceed` at the session's in-flight gate:**
 
 The wait was already declined for this row — do not watch it. Its results persist for a later session; the final-review gate proceeds without it.
 

@@ -33,9 +33,8 @@ Present the wrong claim, the evidence, and the proposed correction in the conver
 ```
 · · · · · · · · · · · ·
 Apply the correction protocol to {artifact path}?
-- **`y`/`yes`** — Edit in place + corrigendum + knowledge re-index
-- **`n`/`no`** — Leave the artifact as-is
-· · · · · · · · · · · ·
+**`y/yes`** → Edit in place + corrigendum + knowledge re-index
+**`n/no`**  → Leave the artifact as-is
 ```
 
 **STOP.** Wait for user response.

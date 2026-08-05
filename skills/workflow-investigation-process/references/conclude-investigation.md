@@ -10,11 +10,10 @@ The user has already reviewed findings and agreed on fix direction. This step co
 
 ```
 · · · · · · · · · · · ·
-Investigation complete. Ready to conclude?
+**`◆ Investigation complete. Ready to conclude?`**
 
-- **`y`/`yes`** — Conclude investigation
-- **Keep going** — Tell me what else to explore
-· · · · · · · · · · · ·
+**`y/yes`**    → Conclude investigation
+**Keep going** → Tell me what else to explore
 ```
 
 **STOP.** Wait for user response.

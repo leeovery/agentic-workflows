@@ -34,9 +34,8 @@ All sources extracted:
 ```
 · · · · · · · · · · · ·
 Proceed?
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.

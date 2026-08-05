@@ -10,12 +10,11 @@
 
 ```
 · · · · · · · · · · · ·
-Select an output format:
+**`◆ Select an output format:`**
 
-- **`1`** — Tick — CLI task management with a native dependency graph and priority; requires the Tick CLI. Best for AI-driven workflows needing structured task tracking.
-- **`2`** — Local Markdown — task files stored as markdown in the planning directory; no external tools. Best for simple features, small plans, quick iterations.
-- **`3`** — Linear — tasks managed as Linear issues in a Linear project; requires a Linear account and MCP server. Best for teams already using Linear.
-· · · · · · · · · · · ·
+**`1`** → Tick — CLI task management with a native dependency graph and priority; requires the Tick CLI. Best for AI-driven workflows needing structured task tracking.
+**`2`** → Local Markdown — task files stored as markdown in the planning directory; no external tools. Best for simple features, small plans, quick iterations.
+**`3`** → Linear — tasks managed as Linear issues in a Linear project; requires a Linear account and MCP server. Best for teams already using Linear.
 ```
 
 **STOP.** Wait for user response.

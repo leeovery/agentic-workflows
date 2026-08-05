@@ -4,7 +4,7 @@
 
 ---
 
-Build and act on a set of inbox items. The caller holds the **working set** — one or more items, each with a type and inbox path. Every action applies to the whole set; `d`/`drop` is the only way to narrow it. `w`/`work` carries the set into discovery as combined seed material.
+Build and act on a set of inbox items. The caller holds the **working set** — one or more items, each with a type and inbox path. Every action applies to the whole set; `d/drop` is the only way to narrow it. `w/work` carries the set into discovery as combined seed material.
 
 ## A. Render the Working Set
 
@@ -17,7 +17,7 @@ node .claude/skills/workflow-start/scripts/gateway.cjs working-set {path} [{path
 The response carries demarcated sections:
 
 - **DATA** — reasoning surface: `set_uniform` / `set_type`, `addable_count`, and the `SET` and `ADDABLE` tables — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
-- **MENU** — the set menu. Emit verbatim as markdown (not a code block) at this section's gate below. The `w`/`work` option renders only for a type-uniform set.
+- **MENU** — the set menu. Emit verbatim as markdown (not a code block) at this section's gate below. The `w/work` option renders only for a type-uniform set.
 - **Labelled sections** (`DISPLAY: add candidates`, `MENU: add gate`, `DISPLAY: drop candidates`, `MENU: drop gate`) — deferred: each is emitted only at the gate its marker names (**B** / **C**), never here.
 
 For each item in the set, read its file and synthesise a short summary — what the item is and why it matters, in product terms (do not quote it verbatim). Hold each item's title (the file's `#` heading, falling back to its slug).
@@ -44,36 +44,36 @@ For each item in the set, read its file and synthesise a short summary — what 
 
 - **Item row**: `{branch}• {item.title} ({item.type})`. `{branch}` is `┌─ ` for the first item, `└─ ` for the last, `├─ ` for the rest (trailing space included). **With a single item, `{branch}` is empty** — render `• {item.title}` with no connector; a lone `└─` would join nothing. The `•` is a fixed marker, not a status icon.
 - **Flag spacing**: the `⚑` block carries one blank line above and one below. The blank inside `@if` supplies the upper gap; the blank after `@endif` supplies the lower. When no flag renders, only the lower blank remains — the title-to-items gap stays a single line, never doubled.
-- **Summary sub-lines**: hard-wrap at 65 characters, capped at **3 lines** — if it would run longer, truncate the third line with `…` (`v`/`view` shows the full text). Each line is indented **two columns past the title text** so the description reads as subordinate, not aligned directly under the title.
+- **Summary sub-lines**: hard-wrap at 65 characters, capped at **3 lines** — if it would run longer, truncate the third line with `…` (`v/view` shows the full text). Each line is indented **two columns past the title text** so the description reads as subordinate, not aligned directly under the title.
   - **`{gutter}`** (the template's 2-space lead precedes it): non-last item → `│` then 6 spaces; last item → 7 spaces (no `│`); single item → 4 spaces. The `│` sits under the branch character and runs continuously through every sub-line of non-last items so the tree never breaks.
 
 Emit the MENU section.
 
 **STOP.** Wait for user response.
 
-The user types a shorthand (`w`/`a`/`d`/`r`/`v`/`b`) **or** describes the action in their own words. Map the response to one branch below; a message that only asks about the set, naming no action, is `Ask`. When the phrasing also names items (*"add 2 and 4"*, *"drop the bug"*), carry that selection into the action so **B**/**C** apply it without re-prompting. `w`/`work` can only be chosen when the menu offered it (`set_uniform` is `true`).
+The user types a shorthand (`w`/`a`/`d`/`r`/`v`/`b`) **or** describes the action in their own words. Map the response to one branch below; a message that only asks about the set, naming no action, is `Ask`. When the phrasing also names items (*"add 2 and 4"*, *"drop the bug"*), carry that selection into the action so **B**/**C** apply it without re-prompting. `w/work` can only be chosen when the menu offered it (`set_uniform` is `true`).
 
-#### If user chose `w`/`work`
+#### If user chose `w/work`
 
 → Proceed to **F. Work the Set**.
 
-#### If user chose `a`/`add`
+#### If user chose `a/add`
 
 → Proceed to **B. Add Items**.
 
-#### If user chose `d`/`drop`
+#### If user chose `d/drop`
 
 → Proceed to **C. Drop Items**.
 
-#### If user chose `r`/`archive`
+#### If user chose `r/archive`
 
 → Proceed to **D. Archive the Set**.
 
-#### If user chose `v`/`view`
+#### If user chose `v/view`
 
 → Proceed to **E. View Full Content**.
 
-#### If user chose `b`/`back`
+#### If user chose `b/back`
 
 → Return to caller.
 
@@ -109,7 +109,7 @@ Emit the `DISPLAY: add candidates` section verbatim as a code block, then the `M
 
 **STOP.** Wait for user response.
 
-**If user chose `b`/`back`:**
+**If user chose `b/back`:**
 
 → Return to **A. Render the Working Set**.
 
@@ -139,7 +139,7 @@ Emit the `DISPLAY: drop candidates` section verbatim as a code block, then the `
 
 **STOP.** Wait for user response.
 
-**If user chose `b`/`back`:**
+**If user chose `b/back`:**
 
 → Return to **A. Render the Working Set**.
 
@@ -184,7 +184,7 @@ Read each item in the set and render its full content.
 
 ## F. Work the Set
 
-Reached only for a type-uniform set — `w`/`work` is offered solely when `set_uniform` is `true`. The DATA `set_type` is the work-type pre-seed (all bugs → `bugfix`, all quick-fixes → `quick-fix`, all ideas → `none`).
+Reached only for a type-uniform set — `w/work` is offered solely when `set_uniform` is `true`. The DATA `set_type` is the work-type pre-seed (all bugs → `bugfix`, all quick-fixes → `quick-fix`, all ideas → `none`).
 
 Build `inbox_seeds` — the set items' inbox paths, comma-joined.
 

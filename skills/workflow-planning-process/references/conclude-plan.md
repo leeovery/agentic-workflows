@@ -10,11 +10,10 @@
 
 ```
 · · · · · · · · · · · ·
-Ready to conclude?
+**`◆ Ready to conclude?`**
 
-- **`y`/`yes`** — Conclude plan and mark as completed
-- **`n`/`no`** — Go back and make changes
-· · · · · · · · · · · ·
+**`y/yes`** → Conclude plan and mark as completed
+**`n/no`**  → Go back and make changes
 ```
 
 **STOP.** Wait for user response.

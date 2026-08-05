@@ -34,9 +34,8 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
 · · · · · · · · · · · ·
 **{concern}** belongs to a different topic, not this one.
 
-- **`r`/`reroute`** — Send it to the topic it belongs to; it picks it up later
-- **`k`/`keep`** — Keep exploring here for now
-· · · · · · · · · · · ·
+**`r/reroute`** → Send it to the topic it belongs to; it picks it up later
+**`k/keep`**    → Keep exploring here for now
 ```
 
 **STOP.** Wait for user response.
@@ -113,11 +112,10 @@ Before concluding, check for in-flight agents — run `node .claude/skills/workf
 
 ```
 · · · · · · · · · · · ·
-There are still {N} background agents working.
+**`◆ There are still {N} background agents working.`**
 
-- **`w`/`wait`** — Wait for results before concluding
-- **`p`/`proceed`** — Conclude now (results will persist in cache for reference)
-· · · · · · · · · · · ·
+**`w/wait`**    → Wait for results before concluding
+**`p/proceed`** → Conclude now (results will persist in cache for reference)
 ```
 
 **STOP.** Wait for user response.

@@ -24,7 +24,7 @@ Emit the DISPLAY section, then the MENU section. A section is everything beneath
 
 **STOP.** Wait for user response.
 
-#### If user chose `b`/`back`
+#### If user chose `b/back`
 
 → Return to caller.
 
@@ -63,7 +63,7 @@ Emit the MENU section.
 
 A branch below can only be chosen when the menu offered its option.
 
-#### If user chose `d`/`done`
+#### If user chose `d/done`
 
 Run the complete transaction — one command sets `status: completed`, stamps `completed_at`, and commits:
 
@@ -75,7 +75,7 @@ Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 → Return to caller.
 
-#### If user chose `p`/`pivot`
+#### If user chose `p/pivot`
 
 Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`, continuation_menu = `true` (pass `--continuation-menu` on the pivot command).
 
@@ -83,29 +83,29 @@ Emit the pivot response's `MENU: pivot continuation` section verbatim per its ma
 
 **STOP.** Wait for user response.
 
-**If user chose `c`/`continue`:**
+**If user chose `c/continue`:**
 
 Invoke the `/workflow-continue-epic` skill.
 
 **STOP.** Do not proceed — terminal condition.
 
-**If user chose `b`/`back`:**
+**If user chose `b/back`:**
 
 → Return to caller.
 
-#### If user chose `a`/`absorb`
+#### If user chose `a/absorb`
 
 → Load **[absorb-into-epic.md](absorb-into-epic.md)** and follow its instructions as written.
 
 → Return to caller.
 
-#### If user chose `v`/`view-plan`
+#### If user chose `v/view-plan`
 
 → Load **[view-plan.md](view-plan.md)** and follow its instructions as written.
 
 → Return to **B. Action Menu**.
 
-#### If user chose `c`/`cancel`
+#### If user chose `c/cancel`
 
 Run the cancel transaction — one command sets `status: cancelled`, removes the work unit's chunks from the knowledge base, and commits:
 
@@ -117,7 +117,7 @@ Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLA
 
 → Return to caller.
 
-#### If user chose `b`/`back`
+#### If user chose `b/back`
 
 → Return to caller.
 

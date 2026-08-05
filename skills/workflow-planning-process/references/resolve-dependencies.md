@@ -213,11 +213,10 @@ Reverse resolutions:
 
 ```
 · · · · · · · · · · · ·
-Approve the dependency resolution?
+**`◆ Approve the dependency resolution?`**
 
-- **`y`/`yes`** — Proceed
-- **Tell me what to change** — which resolutions to adjust or links to add
-· · · · · · · · · · · ·
+**`y/yes`**                → Proceed
+**Tell me what to change** → which resolutions to adjust or links to add
 ```
 
 **STOP.** Wait for user response.

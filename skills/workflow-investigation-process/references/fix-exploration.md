@@ -44,11 +44,10 @@ multiple approaches benefit from comparison structure.}
 
 ```
 · · · · · · · · · · · ·
-What are your thoughts?
+**`◆ What are your thoughts?`**
 
-- **`y`/`yes`** — Agree with this direction
-- **Provide feedback** — Tell me your thoughts: discuss, challenge, or suggest alternatives
-· · · · · · · · · · · ·
+**`y/yes`**          → Agree with this direction
+**Provide feedback** → Tell me your thoughts: discuss, challenge, or suggest alternatives
 ```
 
 **STOP.** Wait for user response.

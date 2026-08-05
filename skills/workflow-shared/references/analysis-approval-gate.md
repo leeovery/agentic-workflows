@@ -49,11 +49,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 ```
 · · · · · · · · · · · ·
-Review them now?
+**`◆ Review them now?`**
 
-- **`r`/`review`** — Review each candidate now
-- **`d`/`defer`** — Postpone all; review next time (nothing is written)
-· · · · · · · · · · · ·
+**`r/review`** → Review each candidate now
+**`d/defer`**  → Postpone all; review next time (nothing is written)
 ```
 
 **STOP.** Wait for user response.
@@ -114,13 +113,12 @@ Read `gate_mode` from the manifest's `analysis_staging.{analysis}` subtree (held
 
 ```
 · · · · · · · · · · · ·
-Add this topic to the map?
+**`◆ Add this topic to the map?`**
 
-- **`y`/`yes`** — Approve and add to the map
-- **`a`/`auto`** — Approve this and all remaining candidates automatically
-- **`s`/`skip`** — Skip and dismiss (won't be re-proposed)
-- **Comment** — Tell me what to change (routing, summary, or description)
-· · · · · · · · · · · ·
+**`y/yes`**  → Approve and add to the map
+**`a/auto`** → Approve this and all remaining candidates automatically
+**`s/skip`** → Skip and dismiss (won't be re-proposed)
+**Comment**  → Tell me what to change (routing, summary, or description)
 ```
 
 **STOP.** Wait for user response.
@@ -226,9 +224,8 @@ Not actionable — no offer. Record `fanout_offer` `declined` on every candidate
 Derived from research "{parent:(titlecase)}". Mark "{parent:(titlecase)}"
 handled — fanned out, keep on the map but stop prompting to discuss it?
 
-- **`y`/`yes`** — Mark "{parent:(titlecase)}" handled
-- **`n`/`no`** — Leave it actionable
-· · · · · · · · · · · ·
+**`y/yes`** → Mark "{parent:(titlecase)}" handled
+**`n/no`**  → Leave it actionable
 ```
 
 **STOP.** Wait for user response.

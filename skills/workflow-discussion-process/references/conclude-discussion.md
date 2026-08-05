@@ -26,11 +26,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 ```
 · · · · · · · · · · · ·
-Conclude this discussion and mark as completed?
+**`◆ Conclude this discussion and mark as completed?`**
 
-- **`y`/`yes`** — Conclude discussion
-- **`n`/`no`** — Continue discussing
-· · · · · · · · · · · ·
+**`y/yes`** → Conclude discussion
+**`n/no`**  → Continue discussing
 ```
 
 **STOP.** Wait for user response.

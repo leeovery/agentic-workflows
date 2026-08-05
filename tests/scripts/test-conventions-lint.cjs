@@ -193,6 +193,16 @@ function checkDotFrames(files) {
       if (dots < 3) return; // a lone "·" is a bullet, not a frame
       if (t !== MENU_FRAME) {
         out.push({ file, line: i + 1, message: `menu dot frame must be exactly "${MENU_FRAME}"` });
+        return;
+      }
+      // The frame is one-sided: an opening rule above the menu, never a
+      // closing rule beneath it. A dot rule directly below option-grammar
+      // content or a trailing prompt is a closing rule.
+      let j = i - 1;
+      while (j >= 0 && lines[j].trim() === '') j -= 1;
+      const prev = j >= 0 ? lines[j].trim() : '';
+      if (/^\*\*.+?\*\*( +→ |$)/.test(prev) || /^Select an option/.test(prev) || /to return\):?$/.test(prev)) {
+        out.push({ file, line: i + 1, message: 'menus open with one dot rule — a closing rule is banned (output stops for the response)' });
       }
     });
   }
@@ -231,6 +241,10 @@ function checkBannedNav(files) {
   for (const file of files) {
     const lines = readLines(file);
     lines.forEach((line, i) => {
+      // Menu option lines use ` → ` as their key/label separator (option
+      // grammar), so a label that happens to open with a navigation verb is
+      // not a navigation directive.
+      if (/^\s*\*\*.+?\*\* +→ /.test(line)) return;
       const m = line.match(BANNED_NAV);
       if (m) {
         out.push({ file, line: i + 1, message: `banned navigation verb "→ ${m[1].trim()}"` });
@@ -1143,7 +1157,7 @@ test('check 12 (inert load chrome) — catches unearned markers, skips interacti
 test('check 13 (templated-fence ratchet) — catches drift both ways, skips static/marker/signpost', () => {
   withTemp((dir) => {
     const instr = '> *Output the next fenced block as markdown (not a code block):*\n\n';
-    const templatedMenu = instr + '```\n· · · · · · · · · · · ·\nContinue "{topic}"?\n\n- **`y`/`yes`**\n· · · · · · · · · · · ·\n```\n';
+    const templatedMenu = instr + '```\n· · · · · · · · · · · ·\nContinue "{topic}"?\n\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n';
 
     const fresh = write(dir, 'skills/x/a.md', templatedMenu);
     const v1 = checkTemplatedRatchet([fresh], {});
@@ -1160,7 +1174,7 @@ test('check 13 (templated-fence ratchet) — catches drift both ways, skips stat
     assert.strictEqual(v3.length, 1, 'pin for a deleted file must be caught');
     assert.match(v3[0].message, /no longer exists/);
 
-    const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y`/`yes`**\n· · · · · · · · · · · ·\n```\n');
+    const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n');
     assert.strictEqual(checkTemplatedRatchet([statik], {}).length, 0, 'static menu is always fine');
 
     const chrome = write(

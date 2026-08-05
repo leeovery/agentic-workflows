@@ -64,7 +64,7 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
 
-`cancelled` is also disallowed for Remove because the discovery item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in `/workflow-continue-epic` is the right tool for stopping in-flight work.
+`cancelled` is also disallowed for Remove because the discovery item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a/cancel` flow in `/workflow-continue-epic` is the right tool for stopping in-flight work.
 
 `fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including a `triaged` stub of parked rerouted concerns (dump cue `triage=waiting`). Surface the engine's refusal as the rejection.
 
@@ -172,11 +172,10 @@ Updating {N} summary(ies):
 
 ```
 · · · · · · · · · · · ·
-Apply?
+**`◆ Apply?`**
 
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.
@@ -228,11 +227,10 @@ Remove "{name}" from the map.
 
 ```
 · · · · · · · · · · · ·
-Confirm removal?
+**`◆ Confirm removal?`**
 
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.
@@ -282,11 +280,10 @@ Rename "{old}" → "{new}".
 
 ```
 · · · · · · · · · · · ·
-Confirm rename?
+**`◆ Confirm rename?`**
 
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.
@@ -338,11 +335,10 @@ Change routing of "{name}": {old routing} → {new routing}.
 
 ```
 · · · · · · · · · · · ·
-Confirm routing change?
+**`◆ Confirm routing change?`**
 
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.
@@ -391,11 +387,10 @@ Updating {N} description(s):
 
 ```
 · · · · · · · · · · · ·
-Apply?
+**`◆ Apply?`**
 
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.
@@ -448,11 +443,10 @@ Mark "{name}" handled.
 
 ```
 · · · · · · · · · · · ·
-Confirm mark handled?
+**`◆ Confirm mark handled?`**
 
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.
@@ -500,11 +494,10 @@ Unhandle "{name}".
 
 ```
 · · · · · · · · · · · ·
-Confirm unhandle?
+**`◆ Confirm unhandle?`**
 
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.

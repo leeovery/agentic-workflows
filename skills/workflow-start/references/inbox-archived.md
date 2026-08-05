@@ -32,7 +32,7 @@ Emit the MENU section.
 
 **STOP.** Wait for user response.
 
-**If user chose `b`/`back`:**
+**If user chose `b/back`:**
 
 → Return to caller.
 
@@ -48,18 +48,17 @@ Store the selected item's `ITEMS` row — its type, slug, date, and path.
 
 ```
 · · · · · · · · · · · ·
-Selected: {item.title} ({item.type}, archived)
+**`◆ Selected: {item.title} ({item.type}, archived)`**
 
-- **`v`/`view`** — View full content
-- **`u`/`unarchive`** — Restore to the inbox
-- **`d`/`delete`** — Permanently delete (removes the file from git)
-- **`b`/`back`** — Return to the archived list
-· · · · · · · · · · · ·
+**`v/view`**      → View full content
+**`u/unarchive`** → Restore to the inbox
+**`d/delete`**    → Permanently delete (removes the file from git)
+**`b/back`**      → Return to the archived list
 ```
 
 **STOP.** Wait for user response.
 
-#### If user chose `v`/`view`
+#### If user chose `v/view`
 
 Read the file and render its full content.
 
@@ -73,7 +72,7 @@ Read the file and render its full content.
 
 → Return to **B. Action Menu**.
 
-#### If user chose `u`/`unarchive`
+#### If user chose `u/unarchive`
 
 Move the file back into its inbox folder and commit — one command:
 
@@ -89,7 +88,7 @@ Restored "{item.title}" to the inbox.
 
 → Return to **A. Select**.
 
-#### If user chose `d`/`delete`
+#### If user chose `d/delete`
 
 Deleting removes the file from the repo and cannot be undone — confirm first:
 
@@ -100,18 +99,17 @@ Deleting removes the file from the repo and cannot be undone — confirm first:
 Permanently delete "{item.title}"? This removes the file from the
 repo and cannot be undone.
 
-- **`y`/`yes`** — Delete permanently
-- **`n`/`no`** — Return
-· · · · · · · · · · · ·
+**`y/yes`** → Delete permanently
+**`n/no`**  → Return
 ```
 
 **STOP.** Wait for user response.
 
-**If user chose `n`/`no`:**
+**If user chose `n/no`:**
 
 → Return to **B. Action Menu**.
 
-**If user chose `y`/`yes`:**
+**If user chose `y/yes`:**
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox delete {item.path}
@@ -125,6 +123,6 @@ Deleted "{item.title}".
 
 → Return to **A. Select**.
 
-#### If user chose `b`/`back`
+#### If user chose `b/back`
 
 → Return to **A. Select**.

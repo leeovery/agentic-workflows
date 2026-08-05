@@ -41,9 +41,8 @@ Previously extracted (for reference):
 ```
 · · · · · · · · · · · ·
 Proceed?
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.
@@ -69,9 +68,8 @@ All sources extracted:
 ```
 · · · · · · · · · · · ·
 Proceed?
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.
@@ -104,9 +102,8 @@ Previously extracted (for reference):
 ```
 · · · · · · · · · · · ·
 Proceed?
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
+**`y/yes`**
+**`n/no`**
 ```
 
 **STOP.** Wait for user response.

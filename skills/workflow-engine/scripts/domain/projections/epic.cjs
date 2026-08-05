@@ -13,7 +13,7 @@
 const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
-const { section, dotFrame, cmdOption, callout } = require('./surfaces.cjs');
+const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge } = require('../presence.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
@@ -755,7 +755,7 @@ function epicMenu(workUnit, detail, opts = {}) {
   }
   lines.push('', 'Select an option:');
 
-  return { keys: [...numbered, ...options], rendered: dotFrame(lines) };
+  return { keys: [...numbered, ...options], rendered: menuFrame(lines) };
 }
 
 /**
@@ -770,7 +770,7 @@ function epicInSessionGate(entry) {
   return section(
     `MENU: in-session gate — ${entry.key}`,
     "emit verbatim as markdown only when the user selects this entry, then STOP for the user's response",
-    dotFrame([
+    menuFrame([
       `"${titlecase(entry.topic || '')}" is open in another session — last active ${fmtAge(entry.session_age ?? 0)} ago. Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`,
       '',
       cmdOption('y', 'yes', 'Proceed anyway'),
@@ -812,7 +812,7 @@ function backKey() {
 
 /**
  * Compose one selection sub-view from its rows: sequential numbering across
- * phase groups, blank line between groups, dotted pick menu with `b`/`back`.
+ * phase groups, blank line between groups, dotted pick menu with `b/back`.
  * @param {string} heading   the display block's first line
  * @param {string} question  the pick menu's first line
  * @param {string} action    the numbered entries' action key
@@ -843,7 +843,7 @@ function selectionSubView(heading, question, action, rows, opts = {}) {
   }
   menuLines.push('', 'Select an option:');
 
-  return { keys, display: displayLines.join('\n') + '\n', rendered: dotFrame(menuLines) };
+  return { keys, display: displayLines.join('\n') + '\n', rendered: menuFrame(menuLines) };
 }
 
 /** Group ItemRefs by phase in pipeline order. @param {ItemRef[]} items @returns {ItemRef[]} */

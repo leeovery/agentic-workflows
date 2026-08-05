@@ -55,10 +55,9 @@ A review has already run and drained; declining a fresh one forfeits nothing owe
 The discussion has moved since the last review. A fresh gap review
 can catch what the movement opened — or skip it and move on.
 
-- **`y`/`yes`** — Run the fresh review
-- **`s`/`skip`** — Skip it and go to the conclude gate
-- **Keep going** — Tell me what else to explore
-· · · · · · · · · · · ·
+**`y/yes`**    → Run the fresh review
+**`s/skip`**   → Skip it and go to the conclude gate
+**Keep going** → Tell me what else to explore
 ```
 
 **STOP.** Wait for user response.
@@ -88,9 +87,8 @@ At least one full review pass belongs to every discussion — this one cannot be
 Next: a final gap review before concluding — {reason}.
 Proceed?
 
-- **`y`/`yes`** — Run the final review
-- **Keep going** — Tell me what else to explore
-· · · · · · · · · · · ·
+**`y/yes`**    → Run the final review
+**Keep going** → Tell me what else to explore
 ```
 
 **STOP.** Wait for user response.
@@ -112,9 +110,8 @@ Proceed?
 Do you wish to conclude? I'll reconcile the document against our
 conversation, then confirm before marking complete.
 
-- **`y`/`yes`** — Conclude — begin wrap-up
-- **`n`/`no`** — Continue the conversation
-· · · · · · · · · · · ·
+**`y/yes`** → Conclude — begin wrap-up
+**`n/no`**  → Continue the conversation
 ```
 
 **STOP.** Wait for user response.
@@ -141,11 +138,10 @@ The last gate before leaving the session, whichever path led here. Run `node .cl
 
 ```
 · · · · · · · · · · · ·
-There are still {N} background agents working.
+**`◆ There are still {N} background agents working.`**
 
-- **`w`/`wait`** — Wait for results before concluding
-- **`p`/`proceed`** — Conclude now (results will persist in cache for reference)
-· · · · · · · · · · · ·
+**`w/wait`**    → Wait for results before concluding
+**`p/proceed`** → Conclude now (results will persist in cache for reference)
 ```
 
 **STOP.** Wait for user response.

@@ -54,12 +54,11 @@ Then, **separately from the diff above** (clear visual break):
 
 ```
 · · · · · · · · · · · ·
-Record this to the specification verbatim?
+**`◆ Record this to the specification verbatim?`**
 
-- **`y`/`yes`** — Apply changes to specification
-- **`v`/`view full`** — Show the full updated section, then decide
-- **Tell me what to change** — Revise before recording
-· · · · · · · · · · · ·
+**`y/yes`**                → Apply changes to specification
+**`v/view full`**          → Show the full updated section, then decide
+**Tell me what to change** → Revise before recording
 ```
 
 > **CHECKPOINT**: Even when resurfacing content, you MUST NOT update the specification until the user explicitly approves the change. STOP and wait for response.
@@ -140,12 +139,11 @@ Skip the menu and the STOP gate. The content presented above is logged exactly a
 
 ```
 · · · · · · · · · · · ·
-Record this to the specification verbatim?
+**`◆ Record this to the specification verbatim?`**
 
-- **`y`/`yes`** — Add exactly as shown, no modifications
-- **`a`/`auto`** — Approve this and all remaining topics automatically
-- **Tell me what to change** — Revise before recording
-· · · · · · · · · · · ·
+**`y/yes`**                → Add exactly as shown, no modifications
+**`a/auto`**               → Approve this and all remaining topics automatically
+**Tell me what to change** → Revise before recording
 ```
 
 **STOP.** Wait for user response.

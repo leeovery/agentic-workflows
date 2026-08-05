@@ -26,7 +26,7 @@ Planning translates the specification into actionable structure. This translatio
 
 At every stop point — phases, task lists, individual tasks, dependencies — the user must explicitly approve before you proceed or log content.
 
-**What counts as approval:** `y`/`yes` or equivalent explicit confirmation: "Approved", "That's good", "Looks right".
+**What counts as approval:** `y/yes` or equivalent explicit confirmation: "Approved", "That's good", "Looks right".
 
 **What does NOT count as approval:**
 - Silence

@@ -52,11 +52,10 @@ Previous implementations skipped linters.
 
 ```
 · · · · · · · · · · · ·
-Skip linters again?
+**`◆ Skip linters again?`**
 
-- **`y`/`yes`** — Skip and proceed
-- **`n`/`no`** — Run full linter discovery
-· · · · · · · · · · · ·
+**`y/yes`** → Skip and proceed
+**`n/no`**  → Run full linter discovery
 ```
 
 **STOP.** Wait for user response.
@@ -88,11 +87,10 @@ Linters found:
 
 ```
 · · · · · · · · · · · ·
-Use these linters?
+**`◆ Use these linters?`**
 
-- **`y`/`yes`** — Use and proceed
-- **`n`/`no`** — Re-discover linters
-· · · · · · · · · · · ·
+**`y/yes`** → Use and proceed
+**`n/no`**  → Re-discover linters
 ```
 
 **STOP.** Wait for user response.
@@ -148,12 +146,11 @@ Recommendations: {any suggested tools with install commands}
 
 ```
 · · · · · · · · · · · ·
-Approve these linters?
+**`◆ Approve these linters?`**
 
-- **`y`/`yes`** — Approve and proceed
-- **`c`/`change`** — Modify the linter list
-- **`s`/`skip`** — Skip linter setup (no linting during TDD)
-· · · · · · · · · · · ·
+**`y/yes`**    → Approve and proceed
+**`c/change`** → Modify the linter list
+**`s/skip`**   → Skip linter setup (no linting during TDD)
 ```
 
 **STOP.** Wait for user response.

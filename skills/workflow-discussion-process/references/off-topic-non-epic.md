@@ -14,10 +14,9 @@ The caller provides `work_type`, `work_unit`, `topic`, and the `concern` with it
 · · · · · · · · · · · ·
 **{concern}** is beyond this topic's scope.
 
-- **`l`/`log`** — Capture it as an idea in the inbox for later
-- **`p`/`pivot`** — Convert this work to an epic so it can hold the concern as its own topic
-- **`i`/`ignore`** — Note it in the Summary and move on
-· · · · · · · · · · · ·
+**`l/log`**    → Capture it as an idea in the inbox for later
+**`p/pivot`**  → Convert this work to an epic so it can hold the concern as its own topic
+**`i/ignore`** → Note it in the Summary and move on
 ```
 
 **STOP.** Wait for user response.
@@ -30,9 +29,8 @@ The caller provides `work_type`, `work_unit`, `topic`, and the `concern` with it
 · · · · · · · · · · · ·
 **{concern}** is beyond this topic's scope.
 
-- **`l`/`log`** — Capture it as an idea in the inbox for later
-- **`i`/`ignore`** — Note it in the Summary and move on
-· · · · · · · · · · · ·
+**`l/log`**    → Capture it as an idea in the inbox for later
+**`i/ignore`** → Note it in the Summary and move on
 ```
 
 **STOP.** Wait for user response.

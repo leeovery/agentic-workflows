@@ -31,12 +31,11 @@ Read the boot response's `system_config` object: `status` (`valid`, `absent`, or
 > reuse.
 
 · · · · · · · · · · · ·
-Set up the knowledge base for this project:
+**`◆ Set up the knowledge base for this project:`**
 
-- **`y`/`yes`** — Use the existing configuration (@if(system_config.provider) {system_config.provider} · {system_config.model} @else keyword-only @endif)
-- **`d`/`different`** — Choose a different mode for this project
-- **`t`/`terminal`** — Run the interactive wizard in your terminal instead
-· · · · · · · · · · · ·
+**`y/yes`**       → Use the existing configuration (@if(system_config.provider) {system_config.provider} · {system_config.model} @else keyword-only @endif)
+**`d/different`** → Choose a different mode for this project
+**`t/terminal`**  → Run the interactive wizard in your terminal instead
 ```
 
 **STOP.** Wait for user response.
@@ -59,13 +58,10 @@ A per-project deviation never touches the system-wide configuration. Keyword-onl
 
 ```
 · · · · · · · · · · · ·
-How should this project deviate?
+**`◆ How should this project deviate?`**
 
-- **`k`/`keyword`** — Keyword-only for this project (the system
-  configuration stays untouched for every other project)
-- **`t`/`terminal`** — Run the interactive wizard to change the
-  system-wide configuration
-· · · · · · · · · · · ·
+**`k/keyword`**  → Keyword-only for this project (the system configuration stays untouched for every other project)
+**`t/terminal`** → Run the interactive wizard to change the system-wide configuration
 ```
 
 **STOP.** Wait for user response.
@@ -92,13 +88,12 @@ How should this project deviate?
 > Keyword-only needs no key and can be upgraded anytime.
 
 · · · · · · · · · · · ·
-How should this project's knowledge base work?
+**`◆ How should this project's knowledge base work?`**
 
-- **`o`/`openai`** — OpenAI embeddings — full semantic search (recommended; needs an API key)
-- **`c`/`compatible`** — A local or self-hosted OpenAI-compatible endpoint (LM Studio, Ollama, vLLM)
-- **`k`/`keyword`** — Keyword-only search — the no-key backstop; upgrade anytime later
-- **`t`/`terminal`** — Run the interactive wizard in your terminal instead
-· · · · · · · · · · · ·
+**`o/openai`**     → OpenAI embeddings — full semantic search (recommended; needs an API key)
+**`c/compatible`** → A local or self-hosted OpenAI-compatible endpoint (LM Studio, Ollama, vLLM)
+**`k/keyword`**    → Keyword-only search — the no-key backstop; upgrade anytime later
+**`t/terminal`**   → Run the interactive wizard in your terminal instead
 ```
 
 **STOP.** Wait for user response.
@@ -196,11 +191,10 @@ this chat — run this in your terminal, then come back:
 > come back here.
 
 · · · · · · · · · · · ·
-Ready to retry?
+**`◆ Ready to retry?`**
 
-- **`d`/`done`** — The key is stored — re-run the setup
-- **`k`/`keyword`** — Skip the key for now — use keyword-only search instead
-· · · · · · · · · · · ·
+**`d/done`**    → The key is stored — re-run the setup
+**`k/keyword`** → Skip the key for now — use keyword-only search instead
 ```
 
 **STOP.** Wait for user response.
@@ -275,7 +269,7 @@ Run the wizard in your terminal:
   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
 
 It configures system defaults, initialises the project store, and
-runs the initial indexing pass. Say `d`/`done` here when it
+runs the initial indexing pass. Say `d/done` here when it
 completes.
 ```
 

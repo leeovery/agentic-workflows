@@ -8,11 +8,10 @@
 
 ```
 · · · · · · · · · · · ·
-Ready to mark implementation as completed?
+**`◆ Ready to mark implementation as completed?`**
 
-- **`y`/`yes`** — Mark as completed
-- **`n`/`no`** — Go back and make changes
-· · · · · · · · · · · ·
+**`y/yes`** → Mark as completed
+**`n/no`**  → Go back and make changes
 ```
 
 **STOP.** Wait for user response.
