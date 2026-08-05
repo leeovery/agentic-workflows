@@ -11,9 +11,7 @@ An independent agent pressure-tests the agreed fix direction — does it actuall
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An independent agent can pressure-test the agreed direction —
-> confirming it resolves the root cause and hunting for side
-> effects before the investigation concludes.
+> An independent agent can pressure-test the agreed direction — confirming it resolves the root cause and hunting for side effects before the investigation concludes.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

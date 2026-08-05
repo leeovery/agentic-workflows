@@ -40,7 +40,8 @@ Previously extracted (for reference):
 
 ```
 · · · · · · · · · · · ·
-Proceed?
+**`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```
@@ -67,7 +68,8 @@ All sources extracted:
 
 ```
 · · · · · · · · · · · ·
-Proceed?
+**`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```
@@ -101,7 +103,8 @@ Previously extracted (for reference):
 
 ```
 · · · · · · · · · · · ·
-Proceed?
+**`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```

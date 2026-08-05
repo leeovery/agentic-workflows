@@ -52,7 +52,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 Read the positional arguments:
 
-- `$0` — **work_type pre-seed**: one of `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none` (the `s`/start path, no hint). A hint, not a given — still confirmed in new mode.
+- `$0` — **work_type pre-seed**: one of `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none` (the `s/start` path, no hint). A hint, not a given — still confirmed in new mode.
 - `$1` — **work_unit**: an existing epic's name (existing-epic shaping, from `workflow-continue-epic`), or `none` (new work, from `workflow-start`).
 - `$2` — **inbox_seeds**: comma-joined path(s) to inbox file(s) consumed as the opening seed material — one or more, or `none`. Absent `$2` is treated as `none`. Split on commas into a list; a single path yields a one-element list. Held downstream as `inbox_seeds`.
 
@@ -91,8 +91,7 @@ Load **[detection-core.md](references/detection-core.md)** and follow its instru
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading anything you've already shared, then opening the
-> conversation about what you want to do.
+> Reading anything you've already shared, then opening the conversation about what you want to do.
 ```
 
 Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instructions as written.
@@ -112,8 +111,7 @@ Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instru
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Talking it through to settle what kind of work this is — brief
-> when it's already clear, longer when there's more to tease out.
+> Talking it through to settle what kind of work this is — brief when it's already clear, longer when there's more to tease out.
 ```
 
 Load **[shape-and-confirm.md](references/shape-and-confirm.md)** and follow its instructions as written.
@@ -133,8 +131,7 @@ Load **[shape-and-confirm.md](references/shape-and-confirm.md)** and follow its 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Now we know what this is — setting it up: giving it a name,
-> creating it, and saving any files or notes you shared.
+> Now we know what this is — setting it up: giving it a name, creating it, and saving any files or notes you shared.
 ```
 
 Load **[confirm-trigger.md](references/confirm-trigger.md)** and follow its instructions as written.
@@ -206,9 +203,7 @@ Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Mapping out the topics this epic breaks into. A new epic carries
-> on from what we've shaped so far; an existing map can be edited
-> here too. We name the topics once the picture feels complete.
+> Mapping out the topics this epic breaks into. A new epic carries on from what we've shaped so far; an existing map can be edited here too. We name the topics once the picture feels complete.
 ```
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
@@ -228,9 +223,7 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reconciling the session log against the conversation before
-> saving — catching anything that drifted, so what's recorded
-> matches what we discussed.
+> Reconciling the session log against the conversation before saving — catching anything that drifted, so what's recorded matches what we discussed.
 ```
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
@@ -250,8 +243,7 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Saving the agreed topics to the discovery map and closing out
-> the session log.
+> Saving the agreed topics to the discovery map and closing out the session log.
 ```
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
@@ -273,9 +265,7 @@ Reached only for single-phase work — feature, cross-cutting, bugfix, quick-fix
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discovery's done — routing this work to its first phase. Feature
-> and cross-cutting pick research or discussion; bugfix goes to
-> investigation, quick-fix to scoping.
+> Discovery's done — routing this work to its first phase. Feature and cross-cutting pick research or discussion; bugfix goes to investigation, quick-fix to scoping.
 ```
 
 Load **[first-phase-routing.md](references/first-phase-routing.md)** and follow its instructions as written.
@@ -307,8 +297,7 @@ The single exit for every work type — both paths arrive from the Step 14 compl
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up — committing, then handing off through the bridge to
-> the next step in a clean context.
+> Wrapping up — committing, then handing off through the bridge to the next step in a clean context.
 ```
 
 Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow its instructions as written.

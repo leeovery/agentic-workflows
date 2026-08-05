@@ -57,15 +57,9 @@ Mutations from A and B are already committed. Returning to the caller would cont
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Backfill work is recorded and committed. This pass was
-> context-heavy — decomposing legacy research files and
-> drafting missing discovery summaries from source content.
+> Backfill work is recorded and committed. This pass was context-heavy — decomposing legacy research files and drafting missing discovery summaries from source content.
 >
-> Run `/clear`, then `/workflow-start` to pick up with a clean
-> window. The backfill gates will be no-ops on the next pass:
-> legacy sources are now renamed and excluded, and populated
-> summaries skip the recovery filter — the normal epic flow
-> takes over immediately.
+> Run `/clear`, then `/workflow-start` to pick up with a clean window. The backfill gates will be no-ops on the next pass: legacy sources are now renamed and excluded, and populated summaries skip the recovery filter — the normal epic flow takes over immediately.
 ```
 
 **STOP.** Do not proceed — terminal condition. Do not return to the caller's Step 6.

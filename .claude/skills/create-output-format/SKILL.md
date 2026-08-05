@@ -107,7 +107,7 @@ For each file:
 1. **Menu** — append an option to the selection menu block, folding the format's identity into the description:
 
    ```
-   - **`{N}`** — {Format Name} — {one-line description}; {requirements, or "no external tools"}. Best for {ideal use cases}.
+   **`{N}`** → {Format Name} — {one-line description}; {requirements, or "no external tools"}. Best for {ideal use cases}.
    ```
 
 2. **Branch** — append a routing branch after the existing `#### If` branches:

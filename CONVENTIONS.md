@@ -26,7 +26,7 @@ All user-facing output uses five distinct visual tiers, each with a specific pur
 | 4 | Sub-step marker | Progress within a step | Markdown — `**`▪ Name`**` |
 | 5 | Status / menu | Data displays and interactive choices | Code block / markdown |
 
-The chrome family is the square glyphs at falling weight — `■` filled, `□` hollow, `▪` small — all in bold inline code so they render blue, the H1 adding its underline to the title alone. Squares are structure; circles (`○ ◐ ✓ ⊙ ⊘`) are item state, `◆` is a decision, `⚑` is an alert, and `⏺` belongs to the host UI's gutter.
+The chrome family is the square glyphs at falling weight — `■` filled, `□` hollow, `▪` small — all in bold inline code so they render blue, the H1 adding its underline to the title alone. Squares are structure; circles and arrows (`○ ◐ → ✓ ⊙ ⊘`) are item state, `◆` is a decision, `⚑` is an alert, and `⏺` belongs to the host UI's gutter.
 
 Every skill invocation should produce at most one phase title. Signpost blockquotes appear at phase entry, before steps where context helps, and at phase completion.
 
@@ -44,6 +44,8 @@ or:
 > *Output the next fenced block as markdown (not a code block):*
 ```
 
+A fence-language variant names the fence when colouring depends on it — `as a properties code block (```properties fence)` for a prose-authored blocker, `as a diff code block (```diff fence)` for change content.
+
 Code blocks are used for informational displays (overviews, status, keys) — they preserve indentation for tree structures and aligned lists. Markdown is used for chrome (phase titles, step and sub-step markers), interactive elements (menus, prompts), and signpost blockquotes, where the renderer's own styling does the work. When content benefits from rendered formatting (headings, checkboxes, bold) and indentation control isn't needed, prefer markdown rendering even for informational displays.
 
 ### Presentation Register
@@ -55,7 +57,7 @@ Report-class content — findings, review summaries, validation gaps and risks, 
 Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {work_unit}`) receive one snapshot in three demarcated sections. The section markers carry their own handling instruction, and the skill file restates it at the call site:
 
 - `=== DATA … ===` — reasoning surface. Read it to decide (flags, counts, the `ACTIONS` key table); never display or restate it, and never parse the rendered sections below for decisions.
-- `=== DISPLAY … ===` — emit verbatim **as a code block**. Indentation-dependent content (trees, aligned columns) breaks under markdown rendering.
+- `=== DISPLAY … ===` — emit verbatim **as the fence its marker names**. The shared gateway marker says `makefile` (the fence that tints the tree `# tag` column green while leaving prose alone); labelled sections may name others — `properties` for blockers, `diff` for change content — or a plain code block. Indentation-dependent content (trees, aligned columns) breaks under markdown rendering, so a DISPLAY section is never emitted as markdown.
 - `=== MENU … ===` — emit verbatim **as markdown (not a code block)** so option formatting (bold, backticks) renders.
 
 A section is everything beneath its marker up to the next marker; the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, trimmed, or re-derived. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
@@ -74,7 +76,7 @@ Rules:
 - Exactly this shape: `# ` + `**` + backtick + `■ ` + title + backtick + `**`
 - Title text is the phase or context name (e.g., "Workflow Overview", "Planning Overview")
 - **Emitted as markdown** (use the markdown rendering instruction) — the styling comes from the renderer, so the title is correct at any terminal width
-- The glyph is always `■`. Squares are structure (`■` phase, `□` step, `▪` sub-step); circles are item state (`○ ◐ ✓ ⊙ ⊘`), `◆` is a decision, and `⏺` is the host UI's own gutter — chrome never borrows another family's shape
+- The glyph is always `■`. Squares are structure (`■` phase, `□` step, `▪` sub-step); circles and arrows are item state (`○ ◐ → ✓ ⊙ ⊘`), `◆` is a decision, and `⏺` is the host UI's own gutter — chrome never borrows another family's shape
 
 Engine-rendered displays that carry a title inside their fenced DISPLAY section still draw the legacy bullet-bordered box — markdown cannot reach inside a fence. The workflow-start banner likewise keeps its bordered art (see Workflow Banner).
 
@@ -129,15 +131,13 @@ Rules:
 Guidance text rendered as markdown blockquotes. Used for phase entry context, pre-step guidance, post-phase closure, and explaining blockers or gates. Never for status data or interactive choices.
 
 ```
-> Your completed discussions will be synthesised into a formal spec.
-> Expect questions about gaps, contradictions, and missing edge cases.
-> The output is a standalone document that drives planning.
+> Your completed discussions will be synthesised into a formal spec. Expect questions about gaps, contradictions, and missing edge cases. The output is a standalone document that drives planning.
 ```
 
 Rules:
 - Rendered as markdown (use the markdown rendering instruction)
-- **Every line must start with `>`** — Claude Code only renders the blockquote border on lines that have the `>` prefix. A single long line will wrap without the border on subsequent lines. Wrap at ~70 characters per line (including the `> ` prefix) to keep the blockquote visually intact
-- **Plain text only** — no bold. The blockquote styling (indented, dimmed) already sets signposts apart visually. If bold is ever needed on multiple lines, each line must have its own `**` open and close — bold does not carry across `>` prefixed line breaks
+- **One authored line per paragraph** — never hand-wrap. The renderer reflows a long `>` line and carries the blockquote border across every soft-wrapped continuation, so the line is correct at any terminal width; a bare `>` line separates paragraphs
+- **Bold is available, with judgment** — it survives the wrap and renders understated inside a blockquote. Use it where an emphasis genuinely helps (`**Two decisions are owed** before this can close`), not as decoration
 - Lead phrases are freeform — no fixed vocabulary, chosen to fit the context
 - 1-3 sentences maximum — never compete with the actual content
 - Placement: after phase titles, before menus where context helps the decision, at phase transitions, explaining soft gates or blockers
@@ -146,7 +146,7 @@ Rules:
 
 ### Workflow Banner
 
-The `workflow-start` skill uses an ASCII art banner (see skill file for exact art). Uses the same bullet-border convention as phase titles, widened to accommodate the art — the only exception to the fixed-width rule.
+The `workflow-start` skill uses an ASCII art banner (see skill file for exact art), framed by wide `●───●` borders. It is the one place prose still draws borders — the art is fixed-width by nature, so the markdown-chrome rule does not apply to it.
 
 ### Template Placeholders
 
@@ -239,13 +239,13 @@ Unnumbered trees follow the same structure:
 
 ### Status Terms
 
-Item-level statuses use square brackets `[term]`. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
+Engine-rendered tree rows carry their status as a right-aligned `# term` column — one shared column per tree, computed against the longest row, which the makefile fence tints green (`├─ ◐ Menu Management    # researching`). Square brackets `[term]` remain the form everywhere a column can't exist: inline sub-detail on a menu option, plain list rows (selection sub-views, completed pickers), and prose references. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
 
-Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`, `deferred`. Phase-specific terms are fine but format is always `[term]` for items.
+Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`, `deferred`. Phase-specific terms are fine; the tree column and the bracket form never mix on one line.
 
 ### Callout Flag
 
-Advisory and gating messages inside code blocks use a `⚑` prefix to visually separate them from data. The flag sits at 2-space indent (aligned with phase headers). Multi-line callouts indent continuation lines to match (2-space, no flag).
+Advisory and gating messages inside code blocks use a `⚑` prefix to visually separate them from data. The flag sits at 2-space indent (aligned with phase headers). Multi-line callouts align continuation lines under the text (4-space, no flag), as in the example.
 
 ```
   ⚑ Pending discussion topic(s) from research remain.
@@ -264,9 +264,9 @@ Advisory and gating messages inside code blocks use a `⚑` prefix to visually s
 
 ### Content Dividers & Frames
 
-Inside a single DISPLAY/code block, centered `── {Title} ──` dividers separate grouped content (the epic dashboard's stage dividers, per-item boundaries in inbox views). They are content dividers, not step markers — no width rule, no signpost pairing.
+Inside a single DISPLAY/code block, `── {Title} ──` dividers separate grouped content — the epic dashboard's stage dividers (left-anchored, filled to the content width) and the short per-item boundaries in inbox views. They are content dividers, not step markers — engine-drawn, no signpost pairing.
 
-**The fence is the frame.** Artefact content — a proposed diff, spec-bound prose, anything the user is approving as the thing itself — is framed by its own fenced block, never by drawn borders: a ` ```diff ` fence for change content (colouring keys on column-0 `+`/`-` markers; context lines carry a leading space), a plain code block for prose. Narration stays outside the fence. Hand-drawn boxes are not used — fixed-width borders cannot know the terminal width, while fences re-flow.
+**The fence is the frame.** Artefact content — a proposed diff, spec-bound prose, anything the user is approving as the thing itself — is framed by its own fenced block, never by drawn borders: a ` ```diff ` fence for change content (colouring keys on column-0 `+`/`-` markers; context lines carry a leading space), a plain code block for prose. Narration stays outside the fence. Hand-drawn boxes never frame artefact content — prose cannot know the terminal width, while fences re-flow (the sanctioned boxes — engine DISPLAY titles, the banner — are chrome, not frames around content).
 
 ### Cross-Plan References
 
@@ -297,9 +297,23 @@ Key:
 
 ### Menus / Interactive Prompts
 
-Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. A question or contextual label opens the menu, followed by a blank line, then the options — compact yes/no prompts may omit the blank line. Selection menus may carry the prompt as a trailing `Select an option:` line after the options instead of (or in addition to) an opening label, as in the examples below. Verb-based labels for selection menus.
+Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. A question or contextual label opens the menu, followed by a blank line, then the options — always; the blank line is what marks the label as a label. Selection menus may carry the prompt as a trailing `Select an option:` line after the options instead of (or in addition to) an opening label, as in the examples below. Verb-based labels for selection menus.
 
-**The label carries the decision glyph.** A short plain label (≤60 characters, no markup) is wrapped as `**`◆ Label`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). A longer label, or one carrying its own emphasis or code spans, stays plain prose above the options — markup cannot nest inside the glyph span. Engine-rendered menus apply this rule in `surfaces.cjs`; prose-authored menus mirror it by hand.
+**The label carries the decision glyph.** A short plain label (≤60 characters, no markup, no template placeholders) is wrapped as `**`◆ Label`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). A longer label, or one carrying its own emphasis, code spans, or placeholders that could expand past the ceiling, stays plain prose above the options — markup cannot nest inside the glyph span. Engine-rendered menus apply this rule in `surfaces.cjs`; prose-authored menus mirror it by hand.
+
+**A yes/no gate asks its question.** When a menu's answer is yes/no (or yes/skip, yes/back — consent shapes), its glyphed label is a short question: `**`◆ Proceed?`**`, `**`◆ Mark it completed?`**`. When the situation needs explaining first, split it — the statement stays as plain prose context, a blank line, then the glyphed question, so the diamond rides the ask rather than the information:
+
+```
+· · · · · · · · · · · ·
+Cancelling **Auth Flow** in discussion will mark it as cancelled — it can be reactivated later.
+
+**`◆ Cancel it?`**
+
+**`y/yes`** → Confirm cancellation
+**`n/no`**  → Return to menu
+```
+
+Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. Statement-headed *route* menus (several destinations, no yes to answer — the off-topic reroute family, resume continue/restart gates) keep their statement: a question is the rule for consent gates, not for every menu.
 
 **Option types** — menus contain two kinds of option:
 
@@ -345,6 +359,7 @@ Select an option (enter number):
 ```
 · · · · · · · · · · · ·
 **`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```

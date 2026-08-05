@@ -29,7 +29,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} 
 The output is one snapshot in three demarcated sections:
 
 - **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(blocked: …)` / `(in session: …)` markers. Reason from it; never display or restate it.
-- **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **DISPLAY** — the dashboard and key. Emit verbatim as a makefile code block (```makefile fence — it tints the status column). Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
 
 When held sessions exist, the snapshot appends one `MENU: in-session gate — {key}` section per marked entry — emitted only where **B**'s in-session branch says so, never at the call.
@@ -64,6 +64,8 @@ Blocking dependencies:
 
 ```
 · · · · · · · · · · · ·
+**`◆ Unblock a dependency?`**
+
 **`u/unblock`** → Mark a dependency as satisfied externally
 **`b/back`**    → Return to menu
 ```
@@ -129,10 +131,12 @@ Continue with the **Soft gate check** below.
 
 ```
 · · · · · · · · · · · ·
-**`◆ {Gate message}`**
+{Gate message}
 
 The system will re-analyse if you revisit later — proceeding
 now is safe, but may require rework.
+
+**`◆ Proceed anyway?`**
 
 **`y/yes`**  → Proceed anyway
 **`b/back`** → Return to menu
@@ -212,8 +216,9 @@ Store the selected entry's `phase` and `topic`. Confirm with the user:
 
 ```
 · · · · · · · · · · · ·
-Cancel "{topic:(titlecase)}" in {phase}? This will mark it as
-cancelled. You can reactivate it later.
+Cancelling **{topic:(titlecase)}** in {phase} will mark it as cancelled — it can be reactivated later.
+
+**`◆ Cancel it?`**
 
 **`y/yes`** → Confirm cancellation
 **`n/no`**  → Return to menu

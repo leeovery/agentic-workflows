@@ -53,8 +53,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking the workflow system before anything runs — applying any
-> pending migrations, then confirming the knowledge base is ready.
+> Checking the workflow system before anything runs — applying any pending migrations, then confirming the knowledge base is ready.
 ```
 
 **Run the boot pipeline — this is mandatory. You must complete it before proceeding.**
@@ -115,7 +114,7 @@ Migrations Applied
 **`◆ Ready to continue?`**
 
 **`c/continue`** → Proceed
-**Ask**          → Ask questions about the changes
+**Ask**        → Ask questions about the changes
 ```
 
 **STOP.** Wait for user response.
@@ -173,8 +172,7 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Scanning your workflow directory. Looking for active work,
-> completed items, and inbox entries to show you the full picture.
+> Scanning your workflow directory. Looking for active work, completed items, and inbox entries to show you the full picture.
 ```
 
 !`node .claude/skills/workflow-start/scripts/gateway.cjs`
@@ -218,8 +216,7 @@ Display and routing derive from the `view` snapshot at Step 3 — this dump is t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Determining what to show you. Routing based on whether
-> active work was found.
+> Determining what to show you. Routing based on whether active work was found.
 ```
 
 #### If `state.has_any_work` is false

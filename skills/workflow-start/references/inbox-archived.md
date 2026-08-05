@@ -17,7 +17,7 @@ node .claude/skills/workflow-start/scripts/gateway.cjs archived
 The output is one snapshot in three demarcated sections:
 
 - **DATA** — reasoning surface: `archived_count` and the `ITEMS` table — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
-- **DISPLAY** — the numbered archived list. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **DISPLAY** — the numbered archived list. Emit verbatim as a makefile code block (```makefile fence — it tints the status column). Never redraw, reflow, or trim it.
 - **MENU** — the selection prompt. Emit verbatim as markdown (not a code block). Empty when nothing is archived.
 
 Emit the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
@@ -48,7 +48,9 @@ Store the selected item's `ITEMS` row — its type, slug, date, and path.
 
 ```
 · · · · · · · · · · · ·
-**`◆ Selected: {item.title} ({item.type}, archived)`**
+Selected: **{item.title}** ({item.type}, archived)
+
+**`◆ What would you like to do with it?`**
 
 **`v/view`**      → View full content
 **`u/unarchive`** → Restore to the inbox
@@ -96,8 +98,7 @@ Deleting removes the file from the repo and cannot be undone — confirm first:
 
 ```
 · · · · · · · · · · · ·
-Permanently delete "{item.title}"? This removes the file from the
-repo and cannot be undone.
+Permanently delete "{item.title}"? This removes the file from the repo and cannot be undone.
 
 **`y/yes`** → Delete permanently
 **`n/no`**  → Return

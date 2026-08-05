@@ -21,7 +21,7 @@ node .claude/skills/workflow-continue-bugfix/scripts/gateway.cjs view {work_unit
 The output is one snapshot in three demarcated sections:
 
 - **DATA** — reasoning surface: state flags (`next_phase`, `phase_label`, `finalising`, `completed_phases`, `revisit_available`) and the `ACTIONS` table — one line per key, `key  action  topic  → route`. Reason from it; never display or restate it.
-- **DISPLAY** — the status block. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **DISPLAY** — the status block. Emit verbatim as a makefile code block (```makefile fence — it tints the status column). Never redraw, reflow, or trim it.
 - **MENU** — the proceed/revisit menu. Emit verbatim as markdown (not a code block). Empty when there is nothing to revisit or finalise.
 - **MENU: revisit phases** — labelled deferred section, present when earlier phases can be revisited. Emitted only at **C. Select Phase**, never here.
 

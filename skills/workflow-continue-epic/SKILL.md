@@ -135,8 +135,7 @@ Then read `discovery_map` from the most recent discovery output and filter for r
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> One-time recovery work found — legacy research splits or
-> discovery-map rows missing a summary or description.
+> One-time recovery work found — legacy research splits or discovery-map rows missing a summary or description.
 ```
 
 Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, qualifying_sources = `{qualifying_sources}`, items_to_recover = `{items_to_recover}`.

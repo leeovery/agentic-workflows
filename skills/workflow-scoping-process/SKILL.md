@@ -70,8 +70,7 @@ ls .workflows/{work_unit}/specification/{topic}/specification.md 2>/dev/null && 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An in-progress scoping specification exists — choose whether
-> to pick it up or start fresh.
+> An in-progress scoping specification exists — choose whether to pick it up or start fresh.
 ```
 
 Read the plan and scoping statuses:
@@ -220,8 +219,7 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Understanding what needs changing — reading code, asking
-> clarifying questions, and building a picture of the change.
+> Understanding what needs changing — reading code, asking clarifying questions, and building a picture of the change.
 ```
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
@@ -259,8 +257,7 @@ Load **[complexity-check.md](references/complexity-check.md)** and follow its in
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Writing a lightweight specification for the change.
-> This captures what's changing and why.
+> Writing a lightweight specification for the change. This captures what's changing and why.
 ```
 
 Load **[write-specification.md](references/write-specification.md)** and follow its instructions as written.
@@ -300,8 +297,7 @@ Load **[select-format.md](references/select-format.md)** and follow its instruct
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Writing 1-2 task files for the change. Quick-fixes
-> are limited to two tasks maximum.
+> Writing 1-2 task files for the change. Quick-fixes are limited to two tasks maximum.
 ```
 
 Load **[write-tasks.md](references/write-tasks.md)** and follow its instructions as written.

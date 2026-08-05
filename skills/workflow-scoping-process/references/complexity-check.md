@@ -122,8 +122,7 @@ The promoted work unit re-enters the pipeline the way discovery hands off single
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Work type updated — entering plan mode to hand off the first
-> phase in a clean context.
+> Work type updated — entering plan mode to hand off the first phase in a clean context.
 ```
 
 Invoke `/workflow-bridge {work_unit} discovery {next_phase}` via the Skill tool.

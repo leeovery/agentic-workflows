@@ -13,9 +13,7 @@ Ask each question below **one at a time**. After each, stop and wait for the use
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Setting up the discussion. I'll ask a few questions to
-> understand the problem, constraints, and any relevant code
-> before we begin.
+> Setting up the discussion. I'll ask a few questions to understand the problem, constraints, and any relevant code before we begin.
 ```
 
 > *Output the next fenced block as a code block:*

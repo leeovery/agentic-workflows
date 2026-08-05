@@ -18,10 +18,10 @@ Two habits keep this conversation from sprawling. If a tangential concern surfac
 
 When the signals have converged and held steady, discovery states its read and the specific signals that drove it — concrete enough that you can challenge a particular cue — and asks:
 
-> **Have I read this right?**
-> - **`y`/`yes`** — that's the right shape, set it up
-> - **`o`/`other`** — it's something else (tell me what)
-> - **Keep shaping** — tell me what I'm missing
+> **`◆ Have I read this right?`**
+> **`y/yes`**       → that's the right shape, set it up
+> **`o/other`**     → it's something else (tell me what)
+> **Keep shaping** → tell me what I'm missing
 
 This gate is the single most important moment in discovery. **Until you say yes here, nothing exists on disk.** The entire shaping conversation is ephemeral — if you walk away before confirming, there is no half-created work, no stray files, nothing to clean up. The instant you confirm, everything persists at once, in a single commit: the work unit gets its own home and a name (which you confirm), your shared files are copied in as **imports**, any inbox notes that seeded the work are *moved* in as its **seeds** — its permanent record of origin — and a first session log captures the shaping conversation.
 
@@ -37,10 +37,10 @@ One rule you will feel: **topics are never named during the conversation.** Disc
 
 When the conversation converges, discovery drops a light, ambient invitation to harvest — woven into normal prose, requiring no answer, never repeated as a nagging check-in. **You** pull the harvest when you are ready ("let's pull topics," "that covers it," "good enough to start"); discovery never forces it. When you pull, it reads out the distinct surfaces the conversation named, merges the ones that share a domain or decision space, proposes a routing for each — research or discussion — and shows you the proposed topic set as a preview:
 
-> **Confirm to commit, or tell me what to adjust.**
-> - **`y`/`yes`** — commit these topics and conclude
-> - **`e`/`explore`** — go back to exploration; not ready yet
-> - **Adjust** — split, merge, rename, re-route, or reword
+> **`◆ Confirm to commit, or tell me what to adjust.`**
+> **`y/yes`**     → commit these topics and conclude
+> **`e/explore`** → go back to exploration; not ready yet
+> **Adjust**     → split, merge, rename, re-route, or reword
 
 There is no pressure toward completeness. Two topics is fine; twenty is fine. The map is expected to keep filling as the work progresses.
 

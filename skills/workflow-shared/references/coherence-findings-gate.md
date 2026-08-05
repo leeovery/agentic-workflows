@@ -125,10 +125,10 @@ Read `gate_mode` from the manifest's `analysis_staging.coherence-analysis` subtr
 · · · · · · · · · · · ·
 **`◆ Send this finding to "{target}" for resolution?`**
 
-**`y/yes`**  → Approve; reopen "{target}" with the finding in its triage
-**`a/auto`** → Approve this and all remaining findings automatically
-**`s/skip`** → Skip and dismiss (won't be re-surfaced)
-**Comment**  → Tell me what to change (target, summary, or context)
+**`y/yes`**   → Approve; reopen "{target}" with the finding in its triage
+**`a/auto`**  → Approve this and all remaining findings automatically
+**`s/skip`**  → Skip and dismiss (won't be re-surfaced)
+**Comment** → Tell me what to change (target, summary, or context)
 ```
 
 **STOP.** Wait for user response.

@@ -13,10 +13,7 @@
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reconciling the session log against the conversation before
-> persisting. The audit covers the durable record — Exploration
-> narrative, Edits structured entries, and the synthesised topic
-> set held in conversation memory.
+> Reconciling the session log against the conversation before persisting. The audit covers the durable record — Exploration narrative, Edits structured entries, and the synthesised topic set held in conversation memory.
 ```
 
 ## A. Check for an Active Log
@@ -78,8 +75,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "do
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Document review complete. {N} correction(s) applied to the
-> session log.
+> Document review complete. {N} correction(s) applied to the session log.
 ```
 
 → Return to caller.

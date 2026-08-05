@@ -20,9 +20,7 @@ The caller passes:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discovery items missing summary or description. Drafting
-> them from the existing research and discussion files for
-> review.
+> Discovery items missing summary or description. Drafting them from the existing research and discussion files for review.
 ```
 
 For each item in `items_to_recover`:
@@ -63,6 +61,8 @@ Proposed summaries for {N} topic(s):
 
 ```
 · · · · · · · · · · · ·
+**`◆ Accept these summaries?`**
+
 **`y/yes`**  → Accept all summaries as drafted (description is auto-drafted silently)
 **`e/edit`** → Edit one or more summary lines before accepting
 **`s/skip`** → Skip the whole batch (leave fields blank)

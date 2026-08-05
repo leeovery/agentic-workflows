@@ -835,15 +835,18 @@ function triageBlock(cwd, { dotpath }) {
   if (!files.length) throw new Error(`render triage-block: the ${topic} ${phase} triage queue is empty — nothing blocks conclusion`);
   const doing = phase === 'research' ? 'exploration' : 'discussion';
   // A true blocker — the red register (see blocker()), guidance as markdown.
-  return section(
-    'DISPLAY: triage block',
-    'emit verbatim as a properties code block — ```properties fence',
-    `⚑ Triage queue not empty — ${files.length} rerouted concern${files.length === 1 ? '' : 's'} awaiting ${doing}`,
-  ) + section(
-    'DISPLAY: triage block guidance',
-    'emit verbatim as markdown',
-    '> Returning to the session to surface them before concluding.',
-  );
+  return [
+    section(
+      'DISPLAY: triage block',
+      'emit verbatim as a properties code block — ```properties fence',
+      `⚑ Triage queue not empty — ${files.length} rerouted concern${files.length === 1 ? '' : 's'} awaiting ${doing}`,
+    ),
+    section(
+      'DISPLAY: triage block guidance',
+      'emit verbatim as markdown',
+      '> Returning to the session to surface them before concluding.',
+    ),
+  ].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -920,7 +923,7 @@ function earlyCompletionGate(cwd, { dotpath }) {
     menu(label, [
       cmdOption('y', 'yes', 'Proceed to review'),
       cmdOption('d', 'done', 'Complete without review'),
-    ]),
+    ], { question: 'Proceed to review?' }),
   );
 }
 
@@ -939,7 +942,7 @@ function revisitGate(cwd, { dotpath, prev, next }) {
     menu(`${titlecase(prev)} completed for "${titlecase(workUnit)}".`, [
       cmdOption('y', 'yes', `Proceed to ${next}`),
       cmdOption('r', 'revisit', 'Revisit an earlier phase'),
-    ]),
+    ], { question: `Proceed to ${next}?` }),
   );
 }
 
@@ -956,7 +959,7 @@ function epicAllDoneGate(cwd, { dotpath }) {
     menu(`All topics have completed review for "${titlecase(workUnit)}".`, [
       cmdOption('y', 'yes', 'Mark this epic as completed'),
       cmdOption('n', 'no', 'Return to the epic menu'),
-    ]),
+    ], { question: 'Mark it completed?' }),
   );
 }
 
@@ -1002,15 +1005,18 @@ function itemOf(manifest, phase, topic) {
 // markdown section as a signpost, so it reflows and stays calm.
 /** @param {string} fact @param {string} guidance */
 function blocker(fact, guidance) {
-  return section(
-    'DISPLAY: entry blocker',
-    'emit verbatim as a properties code block — ```properties fence',
-    `⚑ ${fact}`,
-  ) + section(
-    'DISPLAY: blocker guidance',
-    'emit verbatim as markdown, then STOP — terminal condition',
-    `> ${guidance}`,
-  );
+  return [
+    section(
+      'DISPLAY: entry blocker',
+      'emit verbatim as a properties code block — ```properties fence',
+      `⚑ ${fact}`,
+    ),
+    section(
+      'DISPLAY: blocker guidance',
+      'emit verbatim as markdown, then STOP — terminal condition',
+      `> ${guidance}`,
+    ),
+  ].join('\n');
 }
 
 /**

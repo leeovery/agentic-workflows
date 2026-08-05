@@ -33,7 +33,8 @@ Output: .workflows/{work_unit}/specification/{topic}/specification.md
 
 ```
 · · · · · · · · · · · ·
-Proceed?
+**`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```
@@ -67,7 +68,8 @@ After completion:
 
 ```
 · · · · · · · · · · · ·
-Proceed?
+**`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```

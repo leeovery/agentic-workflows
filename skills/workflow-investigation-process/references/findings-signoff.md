@@ -15,9 +15,7 @@ Pull current values from the investigation file — the file is authoritative, n
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This is the sign-off on the investigation record — everything
-> below is read from the investigation file. Fix exploration
-> comes next.
+> This is the sign-off on the investigation record — everything below is read from the investigation file. Fix exploration comes next.
 ```
 
 Retell the investigation file's findings as a markdown narrative (not a code block, no structured template) in four beats:
@@ -41,9 +39,9 @@ Every substantive point in those sections appears in the retelling — nothing s
 · · · · · · · · · · · ·
 **`◆ Do these findings match your understanding?`**
 
-**`y/yes`**          → Findings are correct, move to fix exploration
-**`t/technical`**    → Retell the findings from the code's perspective
-**`v/view`**         → Show the full investigation file
+**`y/yes`**            → Findings are correct, move to fix exploration
+**`t/technical`**      → Retell the findings from the code's perspective
+**`v/view`**           → Show the full investigation file
 **Provide feedback** → Tell me what's off or unclear
 ```
 

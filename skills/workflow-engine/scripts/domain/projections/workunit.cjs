@@ -145,11 +145,15 @@ function workUnitMenu(type, unit) {
   if (unit.finalising || revisitable.length > 0) {
     const options = [cmdOption('y', 'yes', keys[0].label)];
     if (revisitable.length > 0) options.push(cmdOption('r', 'revisit', 'Revisit an earlier phase'));
+    // The statement is context above an explicit question — suppress the
+    // frame's label glyph or a short work-unit name earns a second diamond.
     rendered = menuFrame([
       `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — ${unit.phase_label}.`,
       '',
+      '**`◆ Proceed?`**',
+      '',
       ...options,
-    ]);
+    ], { glyphLabel: false });
   }
 
   return { keys, rendered };

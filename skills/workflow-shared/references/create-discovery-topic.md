@@ -37,7 +37,7 @@ The rejection is already rendered by topic-name-validation.md. Offer the choice:
 · · · · · · · · · · · ·
 **`◆ How would you like to proceed?`**
 
-**`c/cancel`**   → Abandon creating this topic
+**`c/cancel`**     → Abandon creating this topic
 **Pick another** → Tell me a different name
 ```
 

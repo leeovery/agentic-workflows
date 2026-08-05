@@ -37,8 +37,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Implementation complete. The review phase will validate
-> your work against the specification and plan.
+> Implementation complete. The review phase will validate your work against the specification and plan.
 ```
 
 Invoke `/workflow-bridge {work_unit} implementation`.

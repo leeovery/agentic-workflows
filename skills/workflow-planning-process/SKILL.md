@@ -93,8 +93,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An in-progress plan exists for this topic — choose whether
-> to pick it up or start fresh.
+> An in-progress plan exists for this topic — choose whether to pick it up or start fresh.
 ```
 
 The subtree carries the current `phase` and `task` position (for the resume prompt below) and the `spec_commit` baseline (for spec-change detection).
@@ -194,9 +193,7 @@ Load **[verify-source-material.md](references/verify-source-material.md)** and f
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Building the plan. Designing phases with goals and acceptance
-> criteria, then authoring detailed tasks for each phase. You'll
-> approve task lists and individual tasks as we go.
+> Building the plan. Designing phases with goals and acceptance criteria, then authoring detailed tasks for each phase. You'll approve task lists and individual tasks as we go.
 ```
 
 Load **[plan-construction.md](references/plan-construction.md)** and follow its instructions as written.
@@ -216,8 +213,7 @@ Load **[plan-construction.md](references/plan-construction.md)** and follow its 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Analysing dependencies between tasks. Setting priority and
-> execution order based on what depends on what.
+> Analysing dependencies between tasks. Setting priority and execution order based on what depends on what.
 ```
 
 Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow its instructions as written.
@@ -243,8 +239,7 @@ Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow it
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for dependencies on other plans — tasks in one plan
-> may depend on tasks in another.
+> Checking for dependencies on other plans — tasks in one plan may depend on tasks in another.
 ```
 
 Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follow its instructions as written.
@@ -264,9 +259,7 @@ Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reviewing the plan. Agents will check that tasks are
-> well-scoped, dependencies are sound, and nothing from the
-> specification was missed.
+> Reviewing the plan. Agents will check that tasks are well-scoped, dependencies are sound, and nothing from the specification was missed.
 ```
 
 Load **[plan-review.md](references/plan-review.md)** and follow its instructions as written.
@@ -294,8 +287,7 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up. Final confirmation before marking the plan
-> as complete and handing off to implementation.
+> Wrapping up. Final confirmation before marking the plan as complete and handing off to implementation.
 ```
 
 Load **[conclude-plan.md](references/conclude-plan.md)** and follow its instructions as written.

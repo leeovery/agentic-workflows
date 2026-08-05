@@ -138,8 +138,10 @@ function detectColumns() {
 // drive the resolution order without fighting the memo.
 /** @returns {number} */
 function resolveDisplayWidth() {
-  const override = Number(process.env.WORKFLOWS_DISPLAY_WIDTH);
-  if (Number.isInteger(override) && override > 0) return clamp(override);
+  // Floor rather than reject a fractional override — an explicit ask, even a
+  // sloppy one, should never lose to detection.
+  const override = Math.floor(Number(process.env.WORKFLOWS_DISPLAY_WIDTH));
+  if (Number.isFinite(override) && override > 0) return clamp(override);
   const cols = detectColumns();
   if (cols) return clamp(cols - GUTTER - HEADROOM);
   return FALLBACK;

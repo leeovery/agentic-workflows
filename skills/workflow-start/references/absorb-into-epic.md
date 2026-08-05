@@ -11,9 +11,7 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This will move the feature's discussion, research, seed, and imports
-> into the selected epic as a new topic and delete the feature work unit.
-> Git history serves as provenance.
+> This will move the feature's discussion, research, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
 ```
 
 Emit the `MENU: absorb target` section from the caller's `manage {selected.name}` snapshot verbatim as markdown (not a code block). Its numbering follows the snapshot's `available_epics` order.
@@ -42,9 +40,11 @@ Default topic name = `{selected.name}` (the feature's work unit name).
 · · · · · · · · · · · ·
 Topic name in **{target_epic:(titlecase)}**: **{selected.name}**
 
+**`◆ Is this name okay?`**
+
 **`y/yes`**  → Use this name
 **`b/back`** → Return
-**Rename**   → Enter a different name (kebab-case)
+**Rename** → Enter a different name (kebab-case)
 ```
 
 **STOP.** Wait for user response.
@@ -172,7 +172,8 @@ Absorb Summary
 
 ```
 · · · · · · · · · · · ·
-Proceed?
+**`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```

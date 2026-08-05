@@ -22,8 +22,8 @@ Make the commit move. State the read as plain prose first — bucket name folded
 · · · · · · · · · · · ·
 **`◆ Have I read this right?`**
 
-**`y/yes`**      → That's the right shape, set it up
-**`o/other`**    → It's something else (tell me what)
+**`y/yes`**        → That's the right shape, set it up
+**`o/other`**      → It's something else (tell me what)
 **Keep shaping** → Tell me what I'm missing
 ```
 

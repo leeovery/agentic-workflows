@@ -33,7 +33,8 @@ Output: .workflows/{work_unit}/specification/unified/specification.md
 
 ```
 · · · · · · · · · · · ·
-Proceed?
+**`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```
@@ -61,7 +62,8 @@ Output: .workflows/{work_unit}/specification/unified/specification.md
 
 ```
 · · · · · · · · · · · ·
-Proceed?
+**`◆ Proceed?`**
+
 **`y/yes`**
 **`n/no`**
 ```

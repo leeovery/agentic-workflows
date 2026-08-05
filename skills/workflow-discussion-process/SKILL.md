@@ -40,7 +40,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 2. **Read the discussion file** at `.workflows/{work_unit}/discussion/{topic}.md`. This is the only working document this skill creates. The Discussion Map is your primary progress indicator — which subtopics are decided, exploring, converging, pending, or deferred. It lives in the manifest; read it with `node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}`.
 3. **Check agent state.** Run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}` — `in_flight` agents still running, `pending` results unread, `acknowledged` results partially surfaced.
 4. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-5. **Announce your position** to the user before continuing: render the current Discussion Map (the adapter call above — emit its DISPLAY section verbatim as a code block), state what step you believe you're at, and what comes next. Wait for confirmation.
+5. **Announce your position** to the user before continuing: render the current Discussion Map (the adapter call above — emit its DISPLAY section verbatim as a makefile code block (```makefile fence)), state what step you believe you're at, and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -77,8 +77,7 @@ A first start, not a resume — no session has ever run and no subtopics exist, 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An in-progress discussion file exists for this topic — choose
-> whether to pick it up or start fresh.
+> An in-progress discussion file exists for this topic — choose whether to pick it up or start fresh.
 ```
 
 Show the current map state so the continue-or-restart choice is informed:
@@ -87,7 +86,7 @@ Show the current map state so the continue-or-restart choice is informed:
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Emit the DISPLAY section verbatim as a code block — never the `===` marker lines.
+Emit the DISPLAY section verbatim as a makefile code block (```makefile fence) — never the `===` marker lines.
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `discussion`, file = `.workflows/{work_unit}/discussion/{topic}.md`, continue_step = `Step 2`, restart_targets = `the discussion file, the manifest's map state (node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discussion.{topic} subtopics), and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/discussion/{topic}/ — content and agent state together) — stale agent results would poison the restarted session's review gates`, commit = `discussion({work_unit}): restart discussion`.
 
@@ -136,9 +135,7 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discussion starting. I'll track our conversation on a Discussion
-> Map. You can lead wherever you want — I'll challenge thinking,
-> explore edge cases, and capture decisions as we go.
+> Discussion starting. I'll track our conversation on a Discussion Map. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.
 ```
 
 Load **[discussion-session.md](references/discussion-session.md)** and follow its instructions as written.
@@ -168,8 +165,7 @@ Load **[final-review.md](references/final-review.md)** and follow its instructio
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reconciling the session conversation against the discussion file
-> to catch substance that was discussed but never captured.
+> Reconciling the session conversation against the discussion file to catch substance that was discussed but never captured.
 ```
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
@@ -197,8 +193,7 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up. Final confirmation before marking the
-> discussion as complete.
+> Wrapping up. Final confirmation before marking the discussion as complete.
 ```
 
 Load **[conclude-discussion.md](references/conclude-discussion.md)** and follow its instructions as written.

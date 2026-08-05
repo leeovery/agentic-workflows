@@ -619,8 +619,8 @@ describe('engine task gate sections', () => {
       '**`y/yes`**       → Commit and continue to next task',
       '**`a/auto`**      → Approve this and all future tasks automatically',
       "**`t/technical`** → Retell the result from the code's perspective",
-      "**Ask**           → Ask questions about the implementation (doesn't approve or reject)",
-      '**Comment**       → Request changes (triggers a fix round)',
+      "**Ask**         → Ask questions about the implementation (doesn't approve or reject)",
+      '**Comment**     → Request changes (triggers a fix round)',
       '',
     ].join('\n');
   }
@@ -636,8 +636,8 @@ describe('engine task gate sections', () => {
       ...(auto ? [] : ['**`a/auto`**      → Accept and auto-approve future fix analyses']),
       '**`s/skip`**      → Override the reviewer and proceed as-is',
       "**`t/technical`** → Retell the review from the code's perspective",
-      "**Ask**           → Ask questions about the review (doesn't accept or reject)",
-      '**Comment**       → Accept with adjustments — pass your own direction alongside the review',
+      "**Ask**         → Ask questions about the review (doesn't accept or reject)",
+      '**Comment**     → Accept with adjustments — pass your own direction alongside the review',
       '',
     ].join('\n');
   }

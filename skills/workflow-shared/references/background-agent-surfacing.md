@@ -125,7 +125,7 @@ The user already knows the report is waiting. Silent return — no output. The n
 
 #### If a natural break
 
-Route on the row's `surfaced` list: empty means the user has not yet opted in; non-empty means they picked `now` on a prior iteration and more findings remain.
+Route on the row's `surfaced` list: empty means the user has not yet opted in; non-empty means they picked `yes` on a prior iteration and more findings remain.
 
 **If `surfaced` is empty (first time at a break):**
 
@@ -135,9 +135,11 @@ Render the announce menu. `{shape}` is the lane split in one clause — the coun
 
 ```
 · · · · · · · · · · · ·
-**`◆ Background {agent_type} returned — {N} finding(s): {shape}.`**
+Background {agent_type} returned — {N} finding(s): {shape}.
 
-**`n/now`**   → Start on them
+**`◆ Work through them now?`**
+
+**`y/yes`**   → Start on them
 **`l/later`** → Keep pulling on the current thread, I'll raise them at the next pause
 ```
 
@@ -149,7 +151,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit
 
 **STOP.** Wait for user response.
 
-**If `now`:**
+**If `yes`:**
 
 → Proceed to **D. Route by Lane**.
 

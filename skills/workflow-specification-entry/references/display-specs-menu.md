@@ -8,7 +8,7 @@ Shows when materialized specifications exist and no proposed groupings remain (e
 
 ## A. Display
 
-Emit the DISPLAY section from the Step 1 snapshot verbatim as a code block.
+Emit the DISPLAY section from the Step 1 snapshot verbatim as a makefile code block (```makefile fence).
 
 → Proceed to **B. Menu**.
 

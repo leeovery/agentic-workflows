@@ -17,7 +17,7 @@ node .claude/skills/workflow-start/scripts/gateway.cjs view
 The output is one snapshot in three demarcated sections:
 
 - **DATA** — reasoning surface: state flags, counts, and the `ACTIONS` table — one line per menu key, `key  action  work_unit  → route`, with `(pre_seed: …)` markers on start-new entries. Reason from it; never display or restate it.
-- **DISPLAY** — the empty-state overview. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **DISPLAY** — the empty-state overview. Emit verbatim as a makefile code block (```makefile fence — it tints the status column). Never redraw, reflow, or trim it.
 - **MENU** — the start menu. Emit verbatim as markdown (not a code block).
 
 Emit the DISPLAY section, then the signpost blockquote below, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
@@ -25,8 +25,7 @@ Emit the DISPLAY section, then the signpost blockquote below, then the MENU sect
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Pick a type if you know it, or start unsure and we'll figure out
-> the shape together. Each type follows its own pipeline.
+> Pick a type if you know it, or start unsure and we'll figure out the shape together. Each type follows its own pipeline.
 ```
 
 **STOP.** Wait for user response.

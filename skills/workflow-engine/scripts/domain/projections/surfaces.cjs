@@ -24,19 +24,29 @@ const MENU_GLYPH = '◆';
 // terminal-width chrome may not.
 const OPTION = /^(\*\*.+?\*\*) → (.*)$/;
 
+// The column aligns as RENDERED, not as authored: `**` and backticks are
+// markup the renderer consumes, and a cmdOption head carries two more markup
+// characters than a promptOption head — measuring source length would land
+// mixed blocks two columns apart on screen. Padding spaces sit outside the
+// markup, so rendered pad equals source pad.
+/** @param {string} head */
+function renderedLen(head) {
+  return head.replace(/\*\*/g, '').replace(/`/g, '').length;
+}
+
 /**
- * Pad option lines so their arrows share a column. Non-option lines pass
- * through untouched, so a block may mix options with plain text.
+ * Pad option lines so their arrows share a rendered column. Non-option lines
+ * pass through untouched, so a block may mix options with plain text.
  * @param {string[]} lines @returns {string[]}
  */
 function alignOptions(lines) {
-  const widths = lines.map((l) => { const m = OPTION.exec(l); return m ? m[1].length : -1; });
+  const widths = lines.map((l) => { const m = OPTION.exec(l); return m ? renderedLen(m[1]) : -1; });
   const column = Math.max(-1, ...widths);
-  if (column < 0) return lines;
+  if (column < 0) return lines.slice();
   return lines.map((l, i) => {
     if (widths[i] < 0) return l;
     const m = /** @type {RegExpExecArray} */ (OPTION.exec(l));
-    return `${m[1].padEnd(column)} → ${m[2]}`;
+    return `${m[1]}${' '.repeat(column - widths[i])} → ${m[2]}`;
   });
 }
 
@@ -58,11 +68,13 @@ function section(name, instruction, body) {
  * A leading label (first line, blank line beneath it) takes the decision
  * glyph here rather than in `menu`, so a menu reads the same whether its
  * options were grouped by `menu` or composed by the projection itself.
- * @param {string[]} lines @returns {string}
+ * `glyphLabel: false` suppresses that — a menu carrying an explicit question
+ * line treats its leading statement as context, never a label.
+ * @param {string[]} lines @param {{glyphLabel?: boolean}} [opts] @returns {string}
  */
-function menuFrame(lines) {
+function menuFrame(lines, { glyphLabel = true } = {}) {
   const body = alignOptions(lines);
-  if (body.length > 1 && body[1] === '' && isGlyphable(body[0])) {
+  if (glyphLabel && body.length > 1 && body[1] === '' && isGlyphable(body[0])) {
     body[0] = `**\`${MENU_GLYPH} ${body[0]}\`**`;
   }
   return [DOTS, ...body].join('\n');
@@ -87,13 +99,17 @@ function isGlyphable(label) {
  * opens straight on the options — the label-less selection menu, for gates
  * whose context is carried by the display directly above them.
  * @param {string} label @param {string[]} options
- * @param {{prompt?: string}} [opts]
+ * @param {{prompt?: string, question?: string}} [opts]
  * @returns {string}
  */
-function menu(label, options, { prompt } = {}) {
-  const lines = label ? [label, '', ...options] : [...options];
+function menu(label, options, { prompt, question } = {}) {
+  const lines = label ? [label, ''] : [];
+  // A yes/no gate whose label is a statement carries its ask separately: the
+  // statement stays context, the short question takes the decision glyph.
+  if (question) lines.push(`**\`${MENU_GLYPH} ${question}\`**`, '');
+  lines.push(...options);
   if (prompt) lines.push('', prompt);
-  return menuFrame(lines);
+  return menuFrame(lines, { glyphLabel: !question });
 }
 
 /**

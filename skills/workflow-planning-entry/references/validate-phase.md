@@ -18,8 +18,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 · · · · · · · · · · · ·
 Any additional context since the specification was completed?
 
-**`c/continue`** → Continue with the specification as-is
-**Add context**  → Tell me the priorities, constraints, or new considerations
+**`c/continue`**  → Continue with the specification as-is
+**Add context** → Tell me the priorities, constraints, or new considerations
 ```
 
 **STOP.** Wait for user response.

@@ -15,9 +15,7 @@ The review agent catches *topical* gaps — areas that should have been explored
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reconciling the session conversation against the research file.
-> Checking for gaps, hallucinations, and accuracy drift before
-> concluding.
+> Reconciling the session conversation against the research file. Checking for gaps, hallucinations, and accuracy drift before concluding.
 ```
 
 ## A. Re-Read the Research Document
@@ -90,12 +88,11 @@ Judge the target topic from the note's own addressing, and `landing_phase` per *
 
 ```
 · · · · · · · · · · · ·
-Land this note in "{target}"'s triage queue? If "{target}" is
-completed, landing reopens it.
+Land this note in "{target}"'s triage queue? If "{target}" is completed, landing reopens it.
 
-**`y/yes`**  → Land it there; this document keeps a reroute record
-**`s/skip`** → Leave it as prose in this document
-**Comment**  → Tell me what to change (target, phase, or content)
+**`y/yes`**   → Land it there; this document keeps a reroute record
+**`s/skip`**  → Leave it as prose in this document
+**Comment** → Tell me what to change (target, phase, or content)
 ```
 
 **STOP.** Wait for user response.
@@ -131,8 +128,7 @@ Summarise conversationally — do not dump a diff. One short paragraph or a hand
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Document review complete. {N} gap(s) captured, {M} correction(s)
-> applied. Proceeding to the final compliance check.
+> Document review complete. {N} gap(s) captured, {M} correction(s) applied. Proceeding to the final compliance check.
 ```
 
 → Return to caller.

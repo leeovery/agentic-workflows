@@ -52,7 +52,7 @@ Dismissed Topics
 · · · · · · · · · · · ·
 **`◆ Re-add any of these to the map?`**
 
-**`b/back`**  → Return to the session
+**`b/back`**    → Return to the session
 **Name them** → Tell me which to re-add (and routing if known)
 ```
 

@@ -76,7 +76,7 @@ You are confident-enough-to-**surface** a tentative read when: multiple convergi
 
 Below the threshold, keep exploring. **Every turn must earn its place** — it must be verifying or resolving shape. A shape-confirm turn earns its place; ceremony turns (a standalone import gate, a synthesis loop with nothing to synthesise) do not.
 
-**Pre-seeded vs open start.** A `workflow-start` menu pick pre-seeds the work type — trust it. You start *above* the threshold above, so this is a light confirm, not a re-derivation: head for the commit as soon as the description fits the pick. Reconsider only if a *clear, strong* signal says it's something else (per F) — don't go looking for one. `s`/start pre-seeds nothing — the loop *establishes* the type before it can commit. Same discipline; depth differs.
+**Pre-seeded vs open start.** A `workflow-start` menu pick pre-seeds the work type — trust it. You start *above* the threshold above, so this is a light confirm, not a re-derivation: head for the commit as soon as the description fits the pick. Reconsider only if a *clear, strong* signal says it's something else (per F) — don't go looking for one. `s/start` pre-seeds nothing — the loop *establishes* the type before it can commit. Same discipline; depth differs.
 
 ## F. Pivot / reroute watch
 

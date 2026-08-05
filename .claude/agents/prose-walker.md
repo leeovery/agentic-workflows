@@ -162,9 +162,9 @@ ENTERED: some-reference.md § A. Offer Something
 EMITTED:
   > An independent agent can trace the code fresh…
 EMITTED (menu):
-  Do the thing?
-  - **`y`/`yes`** — Do it
-  - **`s`/`skip`** — Skip it
+  **`◆ Do the thing?`**
+  **`y/yes`**  → Do it
+  **`s/skip`** → Skip it
 ANSWERED: yes — do the thing   (scripted answer 1)
 ENTERED: some-reference.md § A — #### If `yes`
   guard: "#### If `yes`"

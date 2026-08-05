@@ -66,15 +66,16 @@ Epics:
 
 Inbox: 2 ideas, 1 bug
 
+```
+
 · · · · · · · · · · · ·
 
-What would you like to do?
+**`◆ What would you like to do?`**
 
-- 1 — Continue "Api Rate Limiting"
-- 2 — Continue "Payments Overhaul"
-- s/start — Start something new
-- i/inbox — View the inbox
-```
+**`1`**       → Continue "Api Rate Limiting"
+**`2`**       → Continue "Payments Overhaul"
+**`s/start`** → Start something new
+**`i/inbox`** → View the inbox
 
 Every display is computed by the engine from state on disk and emitted byte-for-byte. Claude cannot editorialise your status.
 
