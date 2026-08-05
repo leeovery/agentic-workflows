@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const { box, renderTree } = require('../../kernel/render.cjs');
-const { TREE_WIDTH, titlecase, title } = require('../conventions.cjs');
+const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
 const { menuFrame, cmdOption } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
 
@@ -76,8 +76,8 @@ function pipelineNodes(cfg, unit) {
 }
 
 /**
- * Section A — the work-unit status display. One code-block string:
- * seed/import callouts (types that surface them), and the pipeline tree.
+ * Section A — the work-unit status display. One code-block string: the
+ * MATERIAL block (types that surface seeds/imports), and the pipeline tree.
  * The view's heading is the adapter's TITLE section, never drawn here.
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitEntry} unit
@@ -86,12 +86,8 @@ function pipelineNodes(cfg, unit) {
 function workUnitStatus(type, unit) {
   const cfg = typeConfig(type);
   let out = '';
-  const callouts = [];
-  if ((unit.seeds_count || 0) > 0) callouts.push('  · seeded from the inbox');
-  if ((unit.imports_count || 0) > 0) {
-    callouts.push(`  · ${unit.imports_count} import${unit.imports_count === 1 ? '' : 's'}`);
-  }
-  if (callouts.length > 0) out += callouts.join('\n') + '\n\n';
+  const material = materialBlock({ seeds: unit.seeds_count || 0, imports: unit.imports_count || 0 });
+  if (material) out += material + '\n\n';
   out += `PIPELINE (${cfg.workType})\n`;
   out += renderTree(pipelineNodes(cfg, unit), { width: TREE_WIDTH });
   for (const r of unit.reconcile_phases || []) {

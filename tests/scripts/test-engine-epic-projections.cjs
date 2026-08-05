@@ -58,8 +58,10 @@ describe('epic projections: dashboard (map branch)', () => {
   const EXPECTED_DASHBOARD = [
     '── DISCOVERY ────────────────────────────────────────────────────',
     '',
+    'MATERIAL',
     '  · seeded from the inbox',
     '  · 1 import',
+    '',
     '  ⚑ 1 new topic(s) added to the map from research-analysis.',
     '  ⚑ 1 discussion(s) reopened by coherence review.',
     '',

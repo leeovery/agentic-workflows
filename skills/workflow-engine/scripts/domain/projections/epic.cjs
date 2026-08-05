@@ -12,7 +12,7 @@
 
 const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES } = require('../../kernel/manifest-schema.cjs');
-const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
+const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge } = require('../presence.cjs');
 
@@ -200,12 +200,15 @@ function mapStatusSuffix(detail) {
   return parts.length ? ' · ' + parts.join(' · ') : '';
 }
 
-/** Stage-meta callouts above the map header (seeds / imports / new arrivals). @param {EpicDetail} detail @param {NewArrivals} newArrivals */
-function stageMetaCallouts(detail, newArrivals) {
-  const lines = [];
-  if (detail.seeds_count > 0) lines.push('  · seeded from the inbox');
+/** The MATERIAL block above the map header — what the epic carried in. @param {EpicDetail} detail */
+function stageMaterial(detail) {
   const showImports = detail.imports_count > 0 && detail.imports_count !== detail.discovery_map.length;
-  if (showImports) lines.push(`  · ${detail.imports_count} import${detail.imports_count === 1 ? '' : 's'}`);
+  return materialBlock({ seeds: detail.seeds_count, imports: showImports ? detail.imports_count : 0 });
+}
+
+/** Arrival callouts above the map header — what the analyses added this boot-up. @param {NewArrivals} newArrivals */
+function arrivalCallouts(newArrivals) {
+  const lines = [];
   for (const [field, label] of [['research_analysis', 'research-analysis'], ['gap_analysis', 'gap-analysis']]) {
     const names = newArrivals[/** @type {'research_analysis'|'gap_analysis'} */ (field)];
     if (Array.isArray(names) && names.length > 0) {
@@ -329,7 +332,12 @@ function epicDashboard(workUnit, detail, opts = {}) {
     // kernel's fixed chrome width, and the dashboard stays internally
     // consistent at any terminal width.
     let block = signpost('DISCOVERY', { width: TREE_WIDTH }) + '\n\n';
-    const callouts = stageMetaCallouts(detail, newArrivals);
+    // Material and arrivals are separate blocks: the ⚑ lines are alerts about
+    // the map, not things the epic carried in, so they never sit under the
+    // MATERIAL header.
+    const material = stageMaterial(detail);
+    if (material) block += material + '\n\n';
+    const callouts = arrivalCallouts(newArrivals);
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
     const total = detail.map_summary ? detail.map_summary.total : detail.discovery_map.length;
     block += treeHeader(`RESEARCH & DISCUSSION (${total} topic${total === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
