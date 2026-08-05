@@ -36,7 +36,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-# **`■ Agentic Engineering Workflows`** · *v0.6.39*
+# **`■ Agentic Engineering Workflows`** · *v0.6.40*
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

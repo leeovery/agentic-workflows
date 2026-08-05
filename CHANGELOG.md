@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.40] - 2026-08-05
+
+🔧 Changed
+- Task and fix-round gates in auto mode now print a visible confirmation line before moving on, so the loop never advances silently.
+- Product-lens reports (findings, review summaries, task summaries) render as tighter, glanceable summaries instead of exhaustive point-by-point retellings — full detail stays one click away via the technical/raw views.
+
 ## [0.6.39] - 2026-08-05
 
 🔧 Changed
