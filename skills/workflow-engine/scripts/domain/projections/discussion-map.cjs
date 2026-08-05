@@ -62,7 +62,7 @@ function discussionMap(topic, manifest) {
   const byName = new Map();
   for (const [name, sub] of Object.entries(subtopics)) {
     /** @type {TreeNode} */
-    const node = { title: title({ glyph: discussionGlyph(sub.status), label: titlecase(name), tag: sub.status }) };
+    const node = { title: title({ glyph: discussionGlyph(sub.status), label: titlecase(name) }), tag: sub.status };
     byName.set(name, { node, rank: rank(sub.status), kids: [] });
   }
 

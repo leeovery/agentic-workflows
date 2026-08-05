@@ -26,7 +26,11 @@
 
 const SECTION = {
   data:    '=== DATA (reason from this — never display or parse the sections below) ===',
-  display: '=== DISPLAY (emit verbatim as a code block) ===',
+  // The makefile fence is what tints a tree's `# tag` column apart from its
+  // rows. It is safe for arbitrary content — makefile highlighting leaves
+  // ordinary prose alone, unlike every language that treats English words as
+  // keywords — so a display carrying no tree renders exactly as it used to.
+  display: '=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ===',
   menu:    '=== MENU (emit verbatim as markdown) ===',
 };
 

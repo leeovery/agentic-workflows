@@ -47,8 +47,8 @@ describe('workunit projections: status display', () => {
       '  · 2 imports',
       '',
       '  PIPELINE (feature)',
-      '  ├─ ✓ Discussion [completed]',
-      '  └─ ◐ Specification [in-progress]',
+      '  ├─ ✓ Discussion       # completed',
+      '  └─ ◐ Specification    # in-progress',
       '',
     ].join('\n'));
   });
@@ -58,7 +58,7 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(workUnitStatus('feature', unitOf(dir, 'feature', 'dark-mode')), [
       ...boxOf('Dark Mode'),
       '  PIPELINE (feature)',
-      '  └─ → Discussion [ready]',
+      '  └─ → Discussion    # ready',
       '',
     ].join('\n'));
   });
@@ -82,9 +82,9 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(workUnitStatus('feature', unit), [
       ...boxOf('Auth Flow'),
       '  PIPELINE (feature)',
-      '  ├─ ✓ Discussion [completed]',
-      '  ├─ ✓ Specification [completed · input moved]',
-      '  └─ ✓ Planning [completed]',
+      '  ├─ ✓ Discussion       # completed',
+      '  ├─ ✓ Specification    # completed · input moved',
+      '  └─ ✓ Planning         # completed',
       '',
       '  ⚑ Specification input moved — discussion revised since it completed.',
       '',
@@ -104,8 +104,8 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(workUnitStatus('bugfix', unitOf(dir, 'bugfix', 'login-crash')), [
       ...boxOf('Login Crash'),
       '  PIPELINE (bugfix)',
-      '  ├─ ✓ Investigation [completed]',
-      '  └─ → Specification [ready]',
+      '  ├─ ✓ Investigation    # completed',
+      '  └─ → Specification    # ready',
       '',
     ].join('\n'));
   });
@@ -118,7 +118,7 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(workUnitStatus('quick-fix', unitOf(dir, 'quick-fix', 'rename-api')), [
       ...boxOf('Rename Api'),
       '  PIPELINE (quick-fix)',
-      '  └─ ◐ Scoping [in-progress]',
+      '  └─ ◐ Scoping    # in-progress',
       '',
     ].join('\n'));
   });
@@ -134,9 +134,9 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(workUnitStatus('cross-cutting', unitOf(dir, 'cross-cutting', 'caching')), [
       ...boxOf('Caching'),
       '  PIPELINE (cross-cutting)',
-      '  ├─ ✓ Research [completed]',
-      '  ├─ ✓ Discussion [completed]',
-      '  └─ → Specification [ready]',
+      '  ├─ ✓ Research         # completed',
+      '  ├─ ✓ Discussion       # completed',
+      '  └─ → Specification    # ready',
       '',
     ].join('\n'));
   });
@@ -152,8 +152,8 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(workUnitStatus('cross-cutting', unitOf(dir, 'cross-cutting', 'caching')), [
       ...boxOf('Caching'),
       '  PIPELINE (cross-cutting)',
-      '  ├─ ✓ Discussion [completed]',
-      '  └─ ✓ Specification [completed]',
+      '  ├─ ✓ Discussion       # completed',
+      '  └─ ✓ Specification    # completed',
       '',
       '  ⚑ All phases complete — ready to finalise.',
       '',
@@ -179,11 +179,11 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(workUnitStatus('feature', unit), [
       ...boxOf('Auth Flow'),
       '  PIPELINE (feature)',
-      '  ├─ ◐ Discussion [in-progress]',
-      '  ├─ ✓ Specification [completed]',
-      '  ├─ ✓ Planning [completed]',
-      '  ├─ ✓ Implementation [completed]',
-      '  └─ ✓ Review [completed]',
+      '  ├─ ◐ Discussion        # in-progress',
+      '  ├─ ✓ Specification     # completed',
+      '  ├─ ✓ Planning          # completed',
+      '  ├─ ✓ Implementation    # completed',
+      '  └─ ✓ Review            # completed',
       '',
     ].join('\n'));
   });
@@ -201,11 +201,11 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(workUnitStatus('feature', unitOf(dir, 'feature', 'auth-flow')), [
       ...boxOf('Auth Flow'),
       '  PIPELINE (feature)',
-      '  ├─ ◐ Discussion [in-progress]',
-      '  ├─ ✓ Specification [completed]',
-      '  ├─ ◐ Planning [in-progress]',
-      '  ├─ ✓ Implementation [completed]',
-      '  └─ ✓ Review [completed]',
+      '  ├─ ◐ Discussion        # in-progress',
+      '  ├─ ✓ Specification     # completed',
+      '  ├─ ◐ Planning          # in-progress',
+      '  ├─ ✓ Implementation    # completed',
+      '  └─ ✓ Review            # completed',
       '',
     ].join('\n'));
   });

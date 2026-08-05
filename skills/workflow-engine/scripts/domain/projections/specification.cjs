@@ -103,10 +103,10 @@ function itemBlock(number, row) {
   /** @type {TreeNode[]} */
   const nodes = [{ title: specLine(row) }];
   if (row.sources.length > 0) {
-    nodes.push({ title: 'Discussions:', children: row.sources.map((s) => ({ title: `${s.name} [${s.tag}]` })) });
+    nodes.push({ title: 'Discussions:', children: row.sources.map((s) => ({ title: s.name, tag: s.tag })) });
   }
   if (row.consult.length > 0) {
-    nodes.push({ title: 'Consult:', children: row.consult.map((c) => ({ title: `${c.name} [${c.status}]` })) });
+    nodes.push({ title: 'Consult:', children: row.consult.map((c) => ({ title: c.name, tag: c.status })) });
   }
   const tree = renderTree(nodes, { width: TREE_WIDTH })
     .replace(/\n+$/, '')
@@ -407,7 +407,7 @@ function specificationCompletedMenu(detail) {
   const rendered = dotFrame(lines);
 
   const display = 'Completed Specifications\n'
-    + renderTree(detail.concluded.map((row) => ({ title: title({ label: titlecase(row.name), tag: 'completed' }) })), { width: TREE_WIDTH });
+    + renderTree(detail.concluded.map((row) => ({ title: title({ label: titlecase(row.name) }), tag: 'completed' })), { width: TREE_WIDTH });
 
   return { keys, display, rendered };
 }

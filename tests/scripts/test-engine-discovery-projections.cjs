@@ -72,13 +72,13 @@ describe('discoveryMapView', () => {
       '',
       '  Discovery Map (7 topics — 1 decided · 1 in flight · 1 ready · 2',
       '  fresh · 1 handled · 1 cancelled)',
-      '  ├─ ✓ Ordering Flow [decided]',
-      '  ├─ → Kitchen Hardware [research complete · ready for discussion]',
-      '  ├─ ◐ Menu Management [researching]',
-      '  ├─ ○ Loyalty [fresh]',
-      '  ├─ ○ Operator Analytics [fresh · routed to research]',
-      '  ├─ ⊙ Umbrella [handled]',
-      '  └─ ⊘ Legacy Import [cancelled]',
+      '  ├─ ✓ Ordering Flow      # decided',
+      '  ├─ → Kitchen Hardware   # research complete · ready for discussion',
+      '  ├─ ◐ Menu Management    # researching',
+      '  ├─ ○ Loyalty            # fresh',
+      '  ├─ ○ Operator Analytics # fresh · routed to research',
+      '  ├─ ⊙ Umbrella           # handled',
+      '  └─ ⊘ Legacy Import      # cancelled',
       '',
     ].join('\n'));
   });
@@ -101,8 +101,8 @@ describe('discoveryMapView', () => {
       '●───────────────────────────────────────────────●',
       '',
       '  Discovery Map (2 topics)',
-      '  ├─ ○ Alpha [fresh · routed to research]',
-      '  └─ ○ Beta [fresh · routed to discussion]',
+      '  ├─ ○ Alpha    # fresh · routed to research',
+      '  └─ ○ Beta     # fresh · routed to discussion',
       '',
     ].join('\n'));
   });
@@ -145,9 +145,9 @@ describe('discoveryMapView', () => {
       '●───────────────────────────────────────────────●',
       '',
       '  Discovery Map (3 topics — 1 ready · 2 handled)',
-      '  ├─ → Split Parent [research superseded · ready for discussion]',
-      '  ├─ ⊙ No Research [handled]',
-      '  └─ ⊙ Umbrella [handled · research fanned out]',
+      '  ├─ → Split Parent # research superseded · ready for discussion',
+      '  ├─ ⊙ No Research  # handled',
+      '  └─ ⊙ Umbrella     # handled · research fanned out',
       '',
     ].join('\n'));
   });
@@ -190,20 +190,20 @@ describe('discoverySynthesisView', () => {
       '  Synthesised Discovery Map — Payments',
       '',
       '  New this session (3):',
-      '  ├─ ○ Kitchen Printers [discussion]',
+      '  ├─ ○ Kitchen Printers      # discussion',
       '  │     Print routing by station, failure handling, and offline',
       '  │     queueing for kitchen ticket printers across multiple',
       '  │     sites',
-      '  ├─ ○ Operator Analytics [research]',
+      '  ├─ ○ Operator Analytics    # research',
       '  │     Daily service dashboards for shift leads — covers order',
       '  │     throughput, voids, and prep-time drift with per-branch',
       '  │     comparison',
-      '  └─ ○ Loyalty [discussion]',
+      '  └─ ○ Loyalty               # discussion',
       '        Points and rewards',
       '',
       '  Already on the map (2):',
-      '  ├─ ✓ Onboarding Flow [decided]',
-      '  └─ ◐ Payments Core [researching]',
+      '  ├─ ✓ Onboarding Flow    # decided',
+      '  └─ ◐ Payments Core      # researching',
       '',
       '  3 topic(s). Summaries come from the exploration; routing is my',
       '  read of where each one goes next.',
@@ -217,7 +217,7 @@ describe('discoverySynthesisView', () => {
       '  Synthesised Discovery Map — Payments',
       '',
       '  Proposed topics (1):',
-      '  └─ ○ Loyalty [discussion]',
+      '  └─ ○ Loyalty    # discussion',
       '        Points and rewards',
       '',
       '  1 topic(s). Summaries come from the exploration; routing is my',
@@ -251,11 +251,11 @@ describe('gateway.cjs adapter: map-view', () => {
     const res = run(['map-view', 'payments']);
     assert.strictEqual(res.status, 0);
     assert.ok(res.stdout.includes('=== DATA (reason from this — never display or parse the sections below) ==='));
-    assert.ok(res.stdout.includes('=== DISPLAY (emit verbatim as a code block) ==='));
+    assert.ok(res.stdout.includes('=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ==='));
     assert.ok(!res.stdout.includes('=== MENU'));
     assert.match(res.stdout, /mode: map\n/);
     assert.match(res.stdout, /map: 7 topics — 1 decided, 1 in-flight, 1 ready, 2 fresh, 1 handled, 1 cancelled/);
-    assert.ok(res.stdout.includes('  ├─ → Kitchen Hardware [research complete · ready for discussion]'));
+    assert.ok(res.stdout.includes('  ├─ → Kitchen Hardware   # research complete · ready for discussion'));
   });
 
   it('--proposed-file renders the synthesis view and flags each proposed name in DATA', () => {

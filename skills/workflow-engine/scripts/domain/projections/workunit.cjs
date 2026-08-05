@@ -61,18 +61,15 @@ function pipelineNodes(cfg, unit) {
   for (const phase of cfg.pipeline) {
     if (unit.completed_phases.includes(phase)) {
       const tag = flaggedPhases.has(phase) ? 'completed · input moved' : 'completed';
-      nodes.push({ title: title({ glyph: '✓', label: titlecase(phase), tag }) });
+      nodes.push({ title: title({ glyph: '✓', label: titlecase(phase) }), tag });
     } else if (phase === unit.next_phase) {
       const started = nextPhaseStarted(unit);
       nodes.push({
-        title: title({
-          glyph: started ? '◐' : '→',
-          label: titlecase(phase),
-          tag: started ? 'in-progress' : 'ready',
-        }),
+        title: title({ glyph: started ? '◐' : '→', label: titlecase(phase) }),
+        tag: started ? 'in-progress' : 'ready',
       });
     } else if ((unit.in_progress_phases || []).includes(phase)) {
-      nodes.push({ title: title({ glyph: '◐', label: titlecase(phase), tag: 'in-progress' }) });
+      nodes.push({ title: title({ glyph: '◐', label: titlecase(phase) }), tag: 'in-progress' });
     }
   }
   return nodes;
