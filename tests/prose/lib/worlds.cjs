@@ -66,6 +66,10 @@ function recipeEnv() {
     GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z',
     GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z',
     TZ: 'UTC',
+    // Width is detected from the reader's terminal, and CLAUDE_PID reaches
+    // this env — without a pin, a recipe would render against whatever pane
+    // happened to be open, and resizing would move the snapshots.
+    WORKFLOWS_DISPLAY_WIDTH: '65',
   };
 }
 

@@ -10,6 +10,7 @@
 // ---------------------------------------------------------------------------
 
 const { wrap } = require('../../kernel/render.cjs');
+const { displayWidth } = require('../../kernel/terminal.cjs');
 
 const DOTS = '· · · · · · · · · · · ·';
 
@@ -85,7 +86,7 @@ function rangeOption(first, last, label) {
  * @param {{width?: number}} [opts]
  * @returns {string}
  */
-function callout(text, { width = 72 } = {}) {
+function callout(text, { width = displayWidth() } = {}) {
   const segs = Array.isArray(text) ? text : wrap(text, width - 4);
   return segs.map((l, i) => (i === 0 ? `  ⚑ ${l}` : `    ${l}`)).join('\n');
 }
@@ -97,7 +98,7 @@ function callout(text, { width = 72 } = {}) {
  * @param {{indent?: string, width?: number}} [opts]
  * @returns {string}
  */
-function subDetail(text, { indent = '   ', width = 72 } = {}) {
+function subDetail(text, { indent = '   ', width = displayWidth() } = {}) {
   const segs = wrap(text, width - indent.length - 2);
   return segs.map((s, i) => (i === 0 ? `${indent}· ${s}` : `${indent}  ${s}`)).join('\n');
 }
@@ -110,7 +111,7 @@ function subDetail(text, { indent = '   ', width = 72 } = {}) {
  * @param {{indent?: string, width?: number}} [opts]
  * @returns {string}
  */
-function treeList(items, { indent = '     ', width = 72 } = {}) {
+function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   const budget = width - indent.length - 3;
   const out = [];
   items.forEach((item, i) => {
