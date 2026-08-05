@@ -19,4 +19,4 @@ The same engineer — knows the product, and is now asking how the code produces
 
 ## Fidelity
 
-Same rule as product-lens: a retelling, not a summary — every substantive point in the underlying record appears; nothing softened, nothing dropped. The record file stays authoritative.
+A retelling, not a summary — every substantive point in the underlying record appears; nothing softened, nothing dropped. This is the detail path the product-lens summary defers to. The record file stays authoritative.

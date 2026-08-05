@@ -25,7 +25,7 @@ Retell the investigation file's findings as a markdown narrative (not a code blo
 3. **What else it touches** — the Blast Radius: which parts of the product share the broken path.
 4. **Why nobody caught it** — the testing gap, edge case, or recent change, plainly.
 
-Every substantive point in those sections appears in the retelling — nothing softened, nothing dropped. The code-perspective retelling is one `t` away; the record file itself one `v` away.
+Each beat lands in a paragraph the user takes in at a glance — complete in coverage, compact in telling. The code-perspective retelling is one `t` away; the record file itself one `v` away.
 
 → On return, proceed to **B. Sign-off Gate**.
 
