@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.38] - 2026-08-05
+
+✨ Added
+- Chrome (phase titles, step/sub-step markers, menus) now renders as coloured markdown instead of hand-drawn boxes and dividers — the display adapts to your actual terminal width instead of wrapping at a fixed 65 columns.
+- Yes/no menu prompts now carry a visible `◆` decision glyph and ask their question directly, rather than burying the ask in a statement.
+- Tree rows now show their status on a right-aligned `[term]` column or a `↳` state line beneath the row, instead of inline brackets that stretched with long names.
+- Blocked states (missing spec, missing plan, unmet prerequisites) now render as a red flagged message with separate guidance underneath, so "you can't proceed" reads clearly at a glance.
+
+🔧 Changed
+- The `workflow-start` overview is now a flat inventory of names — per-item status (phase, progress) moved into the menu options themselves rather than cluttering the list.
+- Inbox pickup items are now grouped by type (ideas, bugs, quick fixes) with per-group numbering instead of one flat list.
+- The working-set view now shows a rendered summary tree for each held item instead of a plain listing.
+- Menu option keys and their word form are now merged into a single `key/word` span (e.g. `y/yes`) instead of two separate backtick-wrapped pieces.
+- Signpost guidance blockquotes are now written as a single reflowing line instead of manually wrapped at ~70 characters.
+- The `workflow-start` boot sequence now emits its banner before any other output or tool call, closing a gap where narration or tool calls could jump ahead of it.
+
+🐛 Fixed
+- The epic dashboard's discovery legend no longer misfires on topic names that happen to contain a colouring keyword (e.g. "private").
+- Mixed menus (command options plus a free-text option) now align their arrows into one column instead of drifting apart.
+
 ## [0.6.37] - 2026-08-04
 
 ✨ Added
