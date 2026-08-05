@@ -18,6 +18,7 @@ You receive via the orchestrator's prompt:
 1. **Specification path** — The validated specification for design decision context
 2. **Task content** — Same task content the executor received: internal ID, phase, and all instructional content
 3. **Project skill paths** — Relevant `.claude/skills/` paths for checking framework convention adherence
+4. **code-quality.md path** — Quality standards, including the comment discipline
 
 ## Your Process
 
@@ -25,7 +26,8 @@ You receive via the orchestrator's prompt:
 2. **Check unstaged changes** — use `git diff` and `git status` to identify files changed by the executor
 3. **Read all changed files** — implementation code and test code
 4. **Read project skills** — understand framework conventions, testing patterns, architecture patterns
-5. **Evaluate all five review dimensions** (see below)
+5. **Read code-quality.md** — the quality standards the executor worked to, including its comment discipline
+6. **Evaluate all five review dimensions** (see below), classifying comment findings per **Comment Corrections**
 
 ## Review Dimensions
 
@@ -75,6 +77,14 @@ Is this a sound design decision? Will it compose well with future tasks?
 - Are there structural concerns that should be raised now rather than compounding?
 - Are concrete types used where data structures are known? Flag untyped escape hatches used where concrete types would be clearer and safer.
 
+## Comment Corrections
+
+Check every comment the diff introduced or touched against the code and against code-quality.md's comment discipline: claims the code falsifies, stale references, or content the discipline forbids (workflow vocabulary, claims about tests, cardinality claims, restated design argument).
+
+**Classify findings by their remedy, not their subject.** A finding whose entire remedy is comment text — no executable code, no test, no assertion changes — is a comment correction, never an ISSUE: report it under COMMENT_CORRECTIONS with verbatim OLD text and the replacement, and the orchestrator applies it without a fix round. A false comment whose remedy is a code change (the code violates the invariant the comment documents) is an ISSUE like any other.
+
+Corrections are mandatory findings — an incorrect comment never ships — but they never block: **compute the verdict from ISSUES alone.** Pre-existing comments the diff did not touch are outside the task's scope.
+
 ## Fix Recommendations (needs-changes only)
 
 When your verdict is `needs-changes`, you must also recommend how to fix each issue. You have full context — the spec, the task, the conventions, and the code — so use it.
@@ -103,6 +113,7 @@ When alternatives exist, explain the tradeoff briefly — don't just list option
 6. **Be specific** — Include file paths and line numbers for every issue. Vague findings are not actionable.
 7. **Proportional** — Prioritize by impact. Don't nitpick style when the architecture is wrong.
 8. **Task scope only** — Only review what's in the task. Don't flag issues outside the task's scope.
+9. **Comment fixes never block** — A finding whose entire remedy is comment text goes to COMMENT_CORRECTIONS, never ISSUES. The verdict is computed from ISSUES alone.
 
 ## Your Output
 
@@ -121,6 +132,10 @@ ISSUES:
   FIX: {recommended approach}
   ALTERNATIVE: {other valid approach with tradeoff — optional, only when multiple valid approaches exist}
   CONFIDENCE: {high | medium | low}
+COMMENT_CORRECTIONS:
+- {file:line} — {what is wrong, one clause}
+  OLD: {the comment text as it stands — verbatim, so the edit applies mechanically}
+  NEW: {the replacement text — empty to delete the comment}
 NOTES:
 - {non-blocking observations}
 ```
@@ -128,4 +143,5 @@ NOTES:
 - If VERDICT is `approved`, omit ISSUES entirely (or leave empty)
 - If VERDICT is `needs-changes`, ISSUES must contain specific, actionable items with file:line references AND fix recommendations
 - Each issue must include FIX and CONFIDENCE. ALTERNATIVE is optional — include only when genuinely multiple valid approaches exist
+- COMMENT_CORRECTIONS may accompany either verdict — omit the section when there are none. OLD must match the file byte-for-byte
 - NOTES are for non-blocking observations — things worth noting but not requiring changes
