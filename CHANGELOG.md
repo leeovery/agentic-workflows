@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.39] - 2026-08-05
+
+🔧 Changed
+- Surfacing turns now end on any open ask rather than one lane per turn — an approved batch confirms in a single line and rolls straight into the next lane instead of stopping.
+- A drained finding row now closes out loud with a one-line summary and hands the conversation back, instead of ending silently.
+- Batch and delivery confirmations are now a single summary line instead of a per-finding or per-delivery recap.
+
 ## [0.6.38] - 2026-08-05
 
 ✨ Added
