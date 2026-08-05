@@ -51,31 +51,28 @@ Parenthesised phases are optional.
 
 ## What it looks like
 
+# **`■ Workflow Overview`**
+
 ```
-●───────────────────────────────────────────────●
-  Workflow Overview
-●───────────────────────────────────────────────●
+Features
+  └─ 1. Api Rate Limiting
 
-Features:
-  1. Api Rate Limiting
-     └─ Specification (In-Progress)
+Epics
+  └─ 2. Payments Overhaul
 
-Epics:
-  2. Payments Overhaul
-     └─ Discussion, Specification
-
-Inbox: 2 ideas, 1 bug
-
+Inbox
+  ├─ Smart Retry [idea]
+  └─ Tooltip Flicker [bug]
 ```
 
 · · · · · · · · · · · ·
 
 **`◆ What would you like to do?`**
 
-**`1`**       → Continue "Api Rate Limiting"
-**`2`**       → Continue "Payments Overhaul"
+**`1`**       → Continue "Api Rate Limiting" — *feature, specification (in-progress)*
+**`2`**       → Continue "Payments Overhaul" — *epic*
 **`s/start`** → Start something new
-**`i/inbox`** → View the inbox
+**`i/inbox`** → View the inbox and start from an item
 
 Every display is computed by the engine from state on disk and emitted byte-for-byte. Claude cannot editorialise your status.
 
