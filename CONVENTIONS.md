@@ -299,7 +299,21 @@ Key:
 
 Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. A question or contextual label opens the menu, followed by a blank line, then the options — always; the blank line is what marks the label as a label. Selection menus may carry the prompt as a trailing `Select an option:` line after the options instead of (or in addition to) an opening label, as in the examples below. Verb-based labels for selection menus.
 
-**The label carries the decision glyph.** A short plain label (≤60 characters, no markup) is wrapped as `**`◆ Label`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). A longer label, or one carrying its own emphasis or code spans, stays plain prose above the options — markup cannot nest inside the glyph span. Engine-rendered menus apply this rule in `surfaces.cjs`; prose-authored menus mirror it by hand.
+**The label carries the decision glyph.** A short plain label (≤60 characters, no markup, no template placeholders) is wrapped as `**`◆ Label`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). A longer label, or one carrying its own emphasis, code spans, or placeholders that could expand past the ceiling, stays plain prose above the options — markup cannot nest inside the glyph span. Engine-rendered menus apply this rule in `surfaces.cjs`; prose-authored menus mirror it by hand.
+
+**A yes/no gate asks its question.** When a menu's answer is yes/no (or yes/skip, yes/back — consent shapes), its glyphed label is a short question: `**`◆ Proceed?`**`, `**`◆ Mark it completed?`**`. When the situation needs explaining first, split it — the statement stays as plain prose context, a blank line, then the glyphed question, so the diamond rides the ask rather than the information:
+
+```
+· · · · · · · · · · · ·
+Cancelling **Auth Flow** in discussion will mark it as cancelled — it can be reactivated later.
+
+**`◆ Cancel it?`**
+
+**`y/yes`** → Confirm cancellation
+**`n/no`**  → Return to menu
+```
+
+Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. Statement-headed *route* menus (several destinations, no yes to answer — the off-topic reroute family, resume continue/restart gates) keep their statement: a question is the rule for consent gates, not for every menu.
 
 **Option types** — menus contain two kinds of option:
 

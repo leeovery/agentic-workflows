@@ -259,6 +259,37 @@ through the stack.
 
 ## Log
 
+- 2026-08-05 (live review, second session) — Lee's hand review of the
+  stack drove a refinement round, all landed at the tip:
+  - **A yes/no gate asks its question** — the rule that emerged from
+    his three hand-found cases and then swept both surfaces: nine
+    prose menus gained a glyphed question, four hand-wrapped question
+    heads joined to one line, and the six statement-labelled engine
+    gates (defer, in-session, all-done, early-completion, revisit,
+    bridge continue) gained the statement-plus-question split via
+    `menu()`'s new `question` option. Statement-headed route menus
+    keep their statement deliberately. Codified in CONVENTIONS.
+  - **The blank line is law** — the "compact yes/no may omit it"
+    exception retired; label → blank → options everywhere, because
+    the blank is what marks a label as a label (menuFrame's own rule).
+  - **Two sweep over-reaches reverted**: the discussion-session
+    subtopic-state definition list shed the alignment column the
+    rendered-alignment pass wrongly gave it (option-shaped, but
+    documentation), and eleven compact prompts briefly de-glyphed on a
+    misread were restored.
+  - **Double-diamond bug** — the bridge menu's short statement earned
+    the frame's auto-glyph *and* the explicit question; the re-pin
+    script faithfully pinned the bug. Caught in validation, fixed with
+    `glyphLabel: false`, corpus-scanned: no golden carries two
+    diamonds in one menu.
+  - **The stack diverged and was rebased** — five design-log pushes to
+    the base branch after the stack was cut broke linearity (per-PR
+    mergeability stayed green, which is why the API check missed what
+    the stack UI showed). Server-side Rebase Stack restored it. Rule
+    forward: **once a stack is cut, its base is frozen** — design-log
+    entries land as tip commits editing this file, exactly as this
+    entry does.
+
 - 2026-08-05 — Five review agents swept the finished stack (conventions
   accuracy, straggler hunt, engine correctness with live repros, golden
   fidelity, prose readability). The golden audit — aimed at the known
