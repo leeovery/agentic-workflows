@@ -141,14 +141,14 @@ describe('discussion-map projection: golden renders', () => {
       'rollout-sequencing': { status: 'pending', parent: null },
     });
     assert.strictEqual(discussionMap('auth-flow', m), [
-      '  Discussion Map — Auth Flow (6 subtopics — 2 decided · 1',
-      '  converging · 1 exploring · 1 pending · 1 deferred)',
-      '  ├─ ✓ Subsystem Prefix Taxonomy    # decided',
-      '  ├─ → Info Line Shape              # converging',
-      '  │  ├─ ✓ Field Order               # decided',
-      '  │  └─ ◐ Truncation Rules          # exploring',
-      '  ├─ ○ Rollout Sequencing           # pending',
-      '  └─ ⊙ Context Preservation         # deferred',
+      'Discussion Map — Auth Flow (6 subtopics — 2 decided · 1',
+      'converging · 1 exploring · 1 pending · 1 deferred)',
+      '  ├─ ✓ Subsystem Prefix Taxonomy    [decided]',
+      '  ├─ → Info Line Shape              [converging]',
+      '  │    ├─ ✓ Field Order             [decided]',
+      '  │    └─ ◐ Truncation Rules        [exploring]',
+      '  ├─ ○ Rollout Sequencing           [pending]',
+      '  └─ ⊙ Context Preservation         [deferred]',
       '',
     ].join('\n'));
   });
@@ -162,11 +162,11 @@ describe('discussion-map projection: golden renders', () => {
       'info-line-shape': { status: 'converging', parent: null },
     });
     assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2), [
-      '  ├─ ✓ Subsystem Prefix Taxonomy    # decided',
-      '  ├─ → Info Line Shape              # converging',
-      '  ├─ ◐ Truncation Rules             # exploring',
-      '  ├─ ○ Rollout Sequencing           # pending',
-      '  └─ ⊙ Context Preservation         # deferred',
+      '  ├─ ✓ Subsystem Prefix Taxonomy    [decided]',
+      '  ├─ → Info Line Shape              [converging]',
+      '  ├─ ◐ Truncation Rules             [exploring]',
+      '  ├─ ○ Rollout Sequencing           [pending]',
+      '  └─ ⊙ Context Preservation         [deferred]',
       '',
     ]);
   });
@@ -179,12 +179,13 @@ describe('discussion-map projection: golden renders', () => {
       bravo: { status: 'decided', parent: null },
       charlie: { status: 'pending', parent: null },
     });
-    assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2, -1), [
-      '  ├─ ✓ Zulu       # decided',
-      '  ├─ ✓ Alpha      # decided',
-      '  ├─ ✓ Bravo      # decided',
-      '  ├─ ○ Mike       # pending',
-      '  └─ ○ Charlie    # pending',
+    // The column-0 header fits on one line at width 65, so the rows start at 1.
+    assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(1, -1), [
+      '  ├─ ✓ Zulu       [decided]',
+      '  ├─ ✓ Alpha      [decided]',
+      '  ├─ ✓ Bravo      [decided]',
+      '  ├─ ○ Mike       [pending]',
+      '  └─ ○ Charlie    [pending]',
     ]);
   });
 
@@ -196,10 +197,10 @@ describe('discussion-map projection: golden renders', () => {
       'field-order': { status: 'decided', parent: 'info-line-shape' },
     });
     assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2, -1), [
-      '  └─ ◐ Info Line Shape            # exploring',
-      '     ├─ ✓ Field Order             # decided',
-      '     ├─ ○ Truncation Rules        # pending',
-      '     └─ ⊙ Context Preservation    # deferred',
+      '  └─ ◐ Info Line Shape              [exploring]',
+      '       ├─ ✓ Field Order             [decided]',
+      '       ├─ ○ Truncation Rules        [pending]',
+      '       └─ ⊙ Context Preservation    [deferred]',
     ]);
   });
 
@@ -209,10 +210,11 @@ describe('discussion-map projection: golden renders', () => {
       'info-line-shape': { status: 'decided', parent: null },
       'field-order': { status: 'pending', parent: 'info-line-shape' },
     });
-    assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2, -1), [
-      '  ├─ ✓ Info Line Shape       # decided',
-      '  │  └─ ○ Field Order        # pending',
-      '  └─ ○ Rollout Sequencing    # pending',
+    // The column-0 header fits on one line at width 65, so the rows start at 1.
+    assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(1, -1), [
+      '  ├─ ✓ Info Line Shape       [decided]',
+      '  │    └─ ○ Field Order      [pending]',
+      '  └─ ○ Rollout Sequencing    [pending]',
     ]);
   });
 
@@ -222,8 +224,8 @@ describe('discussion-map projection: golden renders', () => {
       'info-line-shape': { status: 'exploring', parent: null },
     });
     assert.deepStrictEqual(discussionMap('auth-flow', m).split('\n').slice(2, -1), [
-      '  └─ ◐ Info Line Shape    # exploring',
-      '     └─ ✓ Field Order     # decided',
+      '  └─ ◐ Info Line Shape     [exploring]',
+      '       └─ ✓ Field Order    [decided]',
     ]);
   });
 
@@ -238,9 +240,9 @@ describe('discussion-map projection: golden renders', () => {
       'two': { status: 'pending', parent: null },
     });
     assert.strictEqual(discussionMap('auth-flow', m), [
-      '  Discussion Map — Auth Flow (2 subtopics)',
-      '  ├─ ○ One    # pending',
-      '  └─ ○ Two    # pending',
+      'Discussion Map — Auth Flow (2 subtopics)',
+      '  ├─ ○ One    [pending]',
+      '  └─ ○ Two    [pending]',
       '',
     ].join('\n'));
   });
@@ -248,8 +250,8 @@ describe('discussion-map projection: golden renders', () => {
   it('single subtopic — singular header, └─ row, no ┌─', () => {
     const m = manifestWith({ 'prefix-taxonomy': { status: 'pending', parent: null } });
     assert.strictEqual(discussionMap('auth-flow', m), [
-      '  Discussion Map — Auth Flow (1 subtopic)',
-      '  └─ ○ Prefix Taxonomy    # pending',
+      'Discussion Map — Auth Flow (1 subtopic)',
+      '  └─ ○ Prefix Taxonomy    [pending]',
       '',
     ].join('\n'));
   });
@@ -262,12 +264,12 @@ describe('discussion-map projection: golden renders', () => {
     });
     assert.deepStrictEqual(
       discussionMap('auth-flow', m).split('\n').slice(0, 2),
-      ['  Discussion Map — Auth Flow (3 subtopics — 2 decided · 1', '  exploring)']
+      ['Discussion Map — Auth Flow (3 subtopics — 2 decided · 1', 'exploring)']
     );
   });
 
   it('zero subtopics — header only', () => {
-    assert.strictEqual(discussionMap('auth-flow', manifestWith()), '  Discussion Map — Auth Flow (0 subtopics)\n');
+    assert.strictEqual(discussionMap('auth-flow', manifestWith()), 'Discussion Map — Auth Flow (0 subtopics)\n');
   });
 });
 
@@ -420,11 +422,11 @@ describe('discussion adapter: map verb', () => {
       'unresolved: ["token-refresh"]',
       'review_cycles: 1',
       '',
-      '=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ===',
-      '  Discussion Map — Auth Flow (2 subtopics — 1 decided · 1',
-      '  exploring)',
-      '  ├─ ✓ Session Storage    # decided',
-      '  └─ ◐ Token Refresh      # exploring',
+      '=== DISPLAY (emit verbatim as a code block) ===',
+      'Discussion Map — Auth Flow (2 subtopics — 1 decided · 1',
+      'exploring)',
+      '  ├─ ✓ Session Storage    [decided]',
+      '  └─ ◐ Token Refresh      [exploring]',
       '',
       '=== MENU: defer gate (emit verbatim as markdown only at the concluding step, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',

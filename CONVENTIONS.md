@@ -54,11 +54,14 @@ Report-class content — findings, review summaries, validation gaps and risks, 
 
 ### Engine Output Sections
 
-Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {work_unit}`) receive one snapshot in three demarcated sections. The section markers carry their own handling instruction, and the skill file restates it at the call site:
+Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {work_unit}`) receive one snapshot in demarcated sections. The section markers carry their own handling instruction, and the skill file restates it at the call site:
 
 - `=== DATA … ===` — reasoning surface. Read it to decide (flags, counts, the `ACTIONS` key table); never display or restate it, and never parse the rendered sections below for decisions.
-- `=== DISPLAY … ===` — emit verbatim **as the fence its marker names**. The shared gateway marker says `makefile` (the fence that tints the tree `# tag` column green while leaving prose alone); labelled sections may name others — `properties` for blockers, `diff` for change content — or a plain code block. Indentation-dependent content (trees, aligned columns) breaks under markdown rendering, so a DISPLAY section is never emitted as markdown.
+- `=== TITLE … ===` — the view's chrome heading (`# **`■ Title`**`). Emit verbatim as markdown, directly above the display.
+- `=== DISPLAY … ===` — emit verbatim **as the fence its marker names**. The shared gateway marker says a plain code block — no language; any grammar eventually colours a stray word in uncontrolled prose. Labelled sections may name a colouring fence where the register calls for it — `properties` for blockers, `diff` for change content. Indentation-dependent content (trees, aligned columns) breaks under markdown rendering, so a DISPLAY section is never emitted as markdown.
 - `=== MENU … ===` — emit verbatim **as markdown (not a code block)** so option formatting (bold, backticks) renders.
+
+**Displays are engine-rendered.** Prose never draws layout — trees, columns, wrapping — by hand; a hand-drawn display drifts where an engine render cannot. Judgment-authored content that must appear inside a display travels to the engine as a payload file (the planning task list, the working-set summaries).
 
 A section is everything beneath its marker up to the next marker; the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, trimmed, or re-derived. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
 
@@ -78,7 +81,7 @@ Rules:
 - **Emitted as markdown** (use the markdown rendering instruction) — the styling comes from the renderer, so the title is correct at any terminal width
 - The glyph is always `■`. Squares are structure (`■` phase, `□` step, `▪` sub-step); circles and arrows are item state (`○ ◐ → ✓ ⊙ ⊘`), `◆` is a decision, and `⏺` is the host UI's own gutter — chrome never borrows another family's shape
 
-Engine-rendered displays that carry a title inside their fenced DISPLAY section still draw the legacy bullet-bordered box — markdown cannot reach inside a fence. The workflow-start banner likewise keeps its bordered art (see Workflow Banner).
+Engine views carry their heading as a TITLE section — the same markdown H1 shape, emitted above the DISPLAY fence (see Engine Output Sections). Nothing draws boxes.
 
 ### Step Markers
 
@@ -146,7 +149,7 @@ Rules:
 
 ### Workflow Banner
 
-The `workflow-start` skill uses an ASCII art banner (see skill file for exact art), framed by wide `●───●` borders. It is the one place prose still draws borders — the art is fixed-width by nature, so the markdown-chrome rule does not apply to it.
+The `workflow-start` skill opens with an ASCII art banner (see skill file for exact art) emitted as a yaml code block — the fence is what colours the art — followed by a markdown title line carrying the product name and version (`# **`■ Agentic Engineering Workflows`** · *vN.N.N*`). No borders; the version rides the title line, where the release tooling pattern-matches it.
 
 ### Template Placeholders
 
@@ -202,7 +205,7 @@ Two styles, chosen by whether items have sub-detail.
   • data-model
 ```
 
-**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Branch glyphs are positional: `├─` for non-final children, `└─` for the last child only. A tree hangs directly off its heading line — no blank line between the header and the first row; the `├─` head is what reads as attachment. Depth is recursive — child items can have their own branches. **Blank line between each top-level item.** For numbered lists, show one full entry then `2. ...` to indicate repetition.
+**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Branch glyphs are positional: `├─` for non-final children, `└─` for the last child only. A tree hangs directly off its heading line — the header sits flush left, rows indent two columns beneath it, no blank line between the header and the first row; the `├─` head is what reads as attachment. Depth is recursive — child items can have their own branches. **Blank line between each top-level item** — engine trees whose rows carry bodies draw it as a gutter-only `│` line so the rail never breaks. Rows with bodies spell state and provenance as trailing `↳` lines beneath the body (`↳ From gap-analysis`, `↳ Discussing · in session`) rather than a tag column. For numbered lists, show one full entry then `2. ...` to indicate repetition.
 
 ```
 1. {topic:(titlecase)}
@@ -239,13 +242,13 @@ Unnumbered trees follow the same structure:
 
 ### Status Terms
 
-Engine-rendered tree rows carry their status as a right-aligned `# term` column — one shared column per tree, computed against the longest row, which the makefile fence tints green (`├─ ◐ Menu Management    # researching`). Square brackets `[term]` remain the form everywhere a column can't exist: inline sub-detail on a menu option, plain list rows (selection sub-views, completed pickers), and prose references. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
+Engine-rendered tree rows carry their status as a right-aligned `[term]` column — one shared column per tree, computed against the longest row (`├─ ◐ Menu Management    [researching]`). Rows that carry a body (summaries, provenance) skip the column and spell their state on a trailing `↳ State` line instead — see List Display. Square brackets `[term]` are also the form everywhere a column can't exist: plain list rows (selection sub-views, completed pickers, inbox items) and prose references. Menu options carry status as an italic metadata tail — see Menus. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
 
-Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`, `deferred`. Phase-specific terms are fine; the tree column and the bracket form never mix on one line.
+Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`, `deferred`. Phase-specific terms are fine; the tree column and an inline bracket form never mix on one line.
 
 ### Callout Flag
 
-Advisory and gating messages inside code blocks use a `⚑` prefix to visually separate them from data. The flag sits at 2-space indent (aligned with phase headers). Multi-line callouts align continuation lines under the text (4-space, no flag), as in the example.
+Advisory and gating messages inside code blocks use a `⚑` prefix to visually separate them from data. The flag sits at 2-space indent (aligned with tree rows). Multi-line callouts wrap at the display width and align continuation lines under the text (4-space, no flag), as in the example — never hand-wrapped at a fixed column.
 
 ```
   ⚑ Pending discussion topic(s) from research remain.
@@ -264,7 +267,7 @@ Advisory and gating messages inside code blocks use a `⚑` prefix to visually s
 
 ### Content Dividers & Frames
 
-Inside a single DISPLAY/code block, `── {Title} ──` dividers separate grouped content — the epic dashboard's stage dividers (left-anchored, filled to the content width) and the short per-item boundaries in inbox views. They are content dividers, not step markers — engine-drawn, no signpost pairing.
+Inside a single DISPLAY/code block, `── {Title} ──` dividers separate grouped content — the epic dashboard's stage dividers (left-anchored, filled to the content width). They are content dividers, not step markers — engine-drawn, no signpost pairing.
 
 **The fence is the frame.** Artefact content — a proposed diff, spec-bound prose, anything the user is approving as the thing itself — is framed by its own fenced block, never by drawn borders: a ` ```diff ` fence for change content (colouring keys on column-0 `+`/`-` markers; context lines carry a leading space), a plain code block for prose. Narration stays outside the fence. Hand-drawn boxes never frame artefact content — prose cannot know the terminal width, while fences re-flow (the sanctioned boxes — engine DISPLAY titles, the banner — are chrome, not frames around content).
 
@@ -297,7 +300,7 @@ Key:
 
 ### Menus / Interactive Prompts
 
-Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. A question or contextual label opens the menu, followed by a blank line, then the options — always; the blank line is what marks the label as a label. Selection menus may carry the prompt as a trailing `Select an option:` line after the options instead of (or in addition to) an opening label, as in the examples below. Verb-based labels for selection menus.
+Rendered as markdown (not code blocks). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. A question or contextual label opens the menu, followed by a blank line, then the options — always; the blank line is what marks the label as a label. A label-less selection menu carries the prompt as a trailing `Select an option:` line after the options instead — never both. Verb-based labels for selection menus.
 
 **The label carries the decision glyph.** A short plain label (≤60 characters, no markup, no template placeholders) is wrapped as `**`◆ Label`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). A longer label, or one carrying its own emphasis, code spans, or placeholders that could expand past the ceiling, stays plain prose above the options — markup cannot nest inside the glyph span. Engine-rendered menus apply this rule in `surfaces.cjs`; prose-authored menus mirror it by hand.
 
@@ -313,14 +316,14 @@ Cancelling **Auth Flow** in discussion will mark it as cancelled — it can be r
 **`n/no`**  → Return to menu
 ```
 
-Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. Statement-headed *route* menus (several destinations, no yes to answer — the off-topic reroute family, resume continue/restart gates) keep their statement: a question is the rule for consent gates, not for every menu.
+Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. Statement-headed *route* menus (several destinations, no yes to answer — the off-topic reroute family, resume continue/restart gates) keep their statement: a question is the rule for consent gates, not for every menu. The same statement/question split serves any menu whose opening needs both guidance and an ask — a conversational instruction line, a blank line, then the glyphed question (the working-set menu's shape).
 
 **Option types** — menus contain two kinds of option:
 
 - **Command option** (explicit): A discrete input the user types verbatim. Key and word share one code span: **`y/yes`**, **`s/single`**, **`a/auto`** — the user may type either side. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`a/approve`** and **`b/abort`**). The conditional branch uses the command value (e.g., `#### If \`yes\``); inline references to a key elsewhere in prose use the same merged span (`` `b/back` ``).
 - **Prompt option** (implicit): The user responds naturally rather than issuing a command. Formatted with plain bold text (no backticks): **Keep going**, **Comment**, **Ask**. The conditional branch uses the label in lowercase (e.g., `#### If keep going`); where the bare label reads awkwardly as a condition, a descriptive form naming the intent is equally valid (`#### If the user provides feedback` for a **Provide feedback** option). Limit to one prompt option per menu to avoid ambiguity — since routing is intent-based, multiple prompt options would be hard to distinguish. A second prompt option is permitted only when the two intents are disjoint enough that natural responses cannot be confused and the flow genuinely routes on both (the implementation gate menus' **Ask** and **Comment**).
 
-**Option lines are bare, not bulleted, and the arrow is the separator**: `**`k/word`** → Label`. Arrows align into one column across the whole menu — pad with spaces *outside* the closing `**`, measured against the widest key in the block (blank lines inside the menu don't reset the column). A label may still carry ` — sub-detail` after its opening verb (statuses, positions); the arrow separates key from label, the em-dash stays available inside the label. Options stay on one authored line — never hand-wrap a label across lines; the renderer soft-wraps long lines itself.
+**Option lines are bare, not bulleted, and the arrow is the separator**: `**`k/word`** → Label`. Arrows align into one column across the whole menu — pad with spaces *outside* the closing `**`, measured against the widest key in the block (blank lines inside the menu don't reset the column). A label may still carry ` — sub-detail` after its opening verb — **metadata tails render italic**: `— *feature, ready for specification*`, `— *research completed*`. The italics mark the tail as metadata against the plain label; alert cues (`· input moved`, `blocked by …`) and `(recommended)` markers stay plain so they read as flags, not state. Options stay on one authored line — never hand-wrap a label across lines; the renderer soft-wraps long lines itself.
 
 **Ordering — command options first, prompt option last.** Mixed menus list all command options before the (single) prompt option. The command set reads as a discrete vocabulary first; the prompt option then sits at the end as the "or respond naturally" tail.
 
@@ -345,9 +348,9 @@ Sister patterns: `**Name them** → Tell me which to re-add`; `**Adjust** → Te
 
 ```
 · · · · · · · · · · · ·
-**`1`** → Create "Auth Flow" — completed spec, no plan
-**`2`** → Continue "Data Model" — plan in-progress
-**`3`** → Review "Billing" — plan completed
+**`1`** → Create "Auth Flow" — *completed spec, no plan*
+**`2`** → Continue "Data Model" — *plan in-progress*
+**`3`** → Review "Billing" — *plan completed*
 
 Select an option (enter number):
 ```
@@ -375,12 +378,12 @@ Select an option (enter number):
 **`a/all`**    → Review all implemented plans
 ```
 
-**Meta options** in selection menus get backtick-wrapped descriptions:
+**Meta options** in selection menus get italic descriptions — the menu metadata register:
 
 ```
 **`3`** → Unify all into single specification
-   `All discussions combined into one specification.`
-   `Existing specifications are incorporated and superseded.`
+   *All discussions combined into one specification.*
+   *Existing specifications are incorporated and superseded.*
 ```
 
 ### Auto-Select

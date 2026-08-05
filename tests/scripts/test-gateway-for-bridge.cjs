@@ -261,9 +261,9 @@ describe('workflow-bridge format', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
       '',
-      '**`1`**      → Research — completed',
-      '**`2`**      → Discussion — completed',
-      '**`3`**      → Specification — completed',
+      '**`1`**      → Research — *completed*',
+      '**`2`**      → Discussion — *completed*',
+      '**`3`**      → Specification — *completed*',
       '**`b/back`** → Return to the previous menu',
       '',
     ].join('\n'));
@@ -310,8 +310,8 @@ describe('workflow-bridge format', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
       '',
-      '**`1`**      → Scoping — completed',
-      '**`2`**      → Implementation — completed',
+      '**`1`**      → Scoping — *completed*',
+      '**`2`**      → Implementation — *completed*',
       '**`b/back`** → Return to the previous menu',
       '',
     ].join('\n'));

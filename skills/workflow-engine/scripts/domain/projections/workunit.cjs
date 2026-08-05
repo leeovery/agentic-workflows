@@ -76,8 +76,9 @@ function pipelineNodes(cfg, unit) {
 }
 
 /**
- * Section A — the work-unit status display. One code-block string: box cap,
+ * Section A — the work-unit status display. One code-block string:
  * seed/import callouts (types that surface them), and the pipeline tree.
+ * The view's heading is the adapter's TITLE section, never drawn here.
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitEntry} unit
  * @returns {string}

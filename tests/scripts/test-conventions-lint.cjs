@@ -723,7 +723,7 @@ const RATCHET_PINS = {
   'skills/workflow-start/SKILL.md': 1,
   'skills/workflow-start/references/absorb-into-epic.md': 4,
   'skills/workflow-start/references/inbox-archived.md': 5,
-  'skills/workflow-start/references/inbox-working-set.md': 3,
+  'skills/workflow-start/references/inbox-working-set.md': 2,
   'skills/workflow-start/references/knowledge-gate.md': 4,
   'skills/workflow-start/references/view-completed.md': 1,
   'skills/workflow-start/references/view-plan.md': 2,

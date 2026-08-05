@@ -24,13 +24,6 @@ const { manageDetail } = require('../../skills/workflow-engine/scripts/domain/wo
 // and menu projections. Fixtures go through real manifests and inbox files in
 // temp dirs (the same shapes the discovery tests produce).
 
-const BOX = [
-  '●───────────────────────────────────────────────●',
-  '  Workflow Overview',
-  '●───────────────────────────────────────────────●',
-  '',
-];
-
 /** All five type sections populated, plus inbox and completed/cancelled. */
 function fullFixture(dir) {
   createManifest(dir, 'dark-mode', {
@@ -68,33 +61,28 @@ describe('start projections: overview', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('renders all five type sections, the inbox hint, and the counts line byte-for-byte', () => {
+  it('renders all five type sections, the inbox section, and the counts line byte-for-byte', () => {
     assert.strictEqual(startOverview(fullFixture(dir)), [
-      ...BOX,
-      'Features:',
-      '  1. Auth Flow',
-      '     └─ Ready For Specification',
+      'Features',
+      '  ├─ 1. Auth Flow',
+      '  └─ 2. Dark Mode',
       '',
-      '  2. Dark Mode',
-      '     └─ Discussion (In-Progress)',
+      'Bugfixes',
+      '  └─ 3. Login Crash',
       '',
-      'Bugfixes:',
-      '  3. Login Crash',
-      '     └─ Ready For Investigation',
+      'Quick Fixes',
+      '  └─ 4. Rename Api',
       '',
-      'Quick Fixes:',
-      '  4. Rename Api',
-      '     └─ Scoping (In-Progress)',
+      'Cross-Cutting',
+      '  └─ 5. Caching',
       '',
-      'Cross-Cutting:',
-      '  5. Caching',
-      '     └─ Discussion (In-Progress)',
+      'Epics',
+      '  └─ 6. Quiz Competition V1',
       '',
-      'Epics:',
-      '  6. Quiz Competition V1',
-      '     └─ Research, Discussion',
-      '',
-      'Inbox: 2 ideas, 1 bug',
+      'Inbox',
+      '  ├─ Smart Retry [idea]',
+      '  ├─ Dark Launch [idea]',
+      '  └─ Login Timeout [bug]',
       '',
       '1 completed, 1 cancelled.',
       '',
@@ -104,10 +92,8 @@ describe('start projections: overview', () => {
   it('renders a single populated section with no inbox and no counts line', () => {
     createManifest(dir, 'auth-flow', {});
     assert.strictEqual(startOverview(startDetail(dir)), [
-      ...BOX,
-      'Features:',
-      '  1. Auth Flow',
-      '     └─ Ready For Discussion',
+      'Features',
+      '  └─ 1. Auth Flow',
       '',
     ].join('\n'));
   });
@@ -117,42 +103,35 @@ describe('start projections: overview', () => {
     createManifest(dir, 'auth-flow', {});
     createManifest(dir, 'v1', { work_type: 'epic', phases: { research: { items: { exploration: { status: 'in-progress' } } } } });
     assert.strictEqual(startOverview(startDetail(dir)), [
-      ...BOX,
-      'Features:',
-      '  1. Auth Flow',
-      '     └─ Ready For Discussion',
+      'Features',
+      '  ├─ 1. Auth Flow',
+      '  └─ 2. Dark Mode',
       '',
-      '  2. Dark Mode',
-      '     └─ Ready For Discussion',
-      '',
-      'Epics:',
-      '  3. V1',
-      '     └─ Research',
+      'Epics',
+      '  └─ 3. V1',
       '',
     ].join('\n'));
   });
 
-  it('pluralises the inbox hint per category and singularises one-item counts', () => {
+  it('renders the inbox section rows with each item\'s bracketed type inline', () => {
     createManifest(dir, 'auth-flow', {});
     createFile(dir, '.workflows/.inbox/ideas/2026-06-01--one.md', '# One\n');
     createFile(dir, '.workflows/.inbox/quickfixes/2026-06-02--qf-a.md', '# A\n');
     createFile(dir, '.workflows/.inbox/quickfixes/2026-06-03--qf-b.md', '# B\n');
     const out = startOverview(startDetail(dir));
-    assert.ok(out.includes('\nInbox: 1 idea, 2 quick-fixes\n'));
+    assert.ok(out.includes('\nInbox\n  ├─ One [idea]\n  ├─ A [quick-fix]\n  └─ B [quick-fix]\n'));
   });
 
-  it('epic with no phase items and no map reports In Discovery', () => {
+  it('epic with no phase items renders a plain row (state lives in the menu tail)', () => {
     createManifest(dir, 'fresh-epic', { work_type: 'epic' });
     assert.strictEqual(startOverview(startDetail(dir)), [
-      ...BOX,
-      'Epics:',
-      '  1. Fresh Epic',
-      '     └─ In Discovery',
+      'Epics',
+      '  └─ 1. Fresh Epic',
       '',
     ].join('\n'));
   });
 
-  it('finalising unit renders the Finalising sub-row', () => {
+  it('finalising unit renders a plain row (finalising state lives in the menu tail)', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
@@ -161,10 +140,8 @@ describe('start projections: overview', () => {
       },
     });
     assert.strictEqual(startOverview(startDetail(dir)), [
-      ...BOX,
-      'Cross-Cutting:',
-      '  1. Caching',
-      '     └─ Finalising — Pipeline Complete',
+      'Cross-Cutting',
+      '  └─ 1. Caching',
       '',
     ].join('\n'));
   });
@@ -181,12 +158,12 @@ describe('start projections: menu', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**               → Continue "Auth Flow" — feature, ready for specification',
-      '**`2`**               → Continue "Dark Mode" — feature, discussion (in-progress)',
-      '**`3`**               → Continue "Login Crash" — bugfix, ready for investigation',
-      '**`4`**               → Continue "Rename Api" — quick-fix, scoping (in-progress)',
-      '**`5`**               → Continue "Caching" — cross-cutting, discussion (in-progress)',
-      '**`6`**               → Continue "Quiz Competition V1" — epic',
+      '**`1`**               → Continue "Auth Flow" — *feature, ready for specification*',
+      '**`2`**               → Continue "Dark Mode" — *feature, discussion (in-progress)*',
+      '**`3`**               → Continue "Login Crash" — *bugfix, ready for investigation*',
+      '**`4`**               → Continue "Rename Api" — *quick-fix, scoping (in-progress)*',
+      '**`5`**               → Continue "Caching" — *cross-cutting, discussion (in-progress)*',
+      '**`6`**               → Continue "Quiz Competition V1" — *epic*',
       '**`s/start`**         → Start something new (not sure what kind yet)',
       '**`f/feature`**       → Start new feature',
       '**`e/epic`**          → Start new epic',
@@ -206,7 +183,7 @@ describe('start projections: menu', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**               → Continue "Auth Flow" — feature, ready for discussion',
+      '**`1`**               → Continue "Auth Flow" — *feature, ready for discussion*',
       '**`s/start`**         → Start something new (not sure what kind yet)',
       '**`f/feature`**       → Start new feature',
       '**`e/epic`**          → Start new epic',
@@ -226,7 +203,7 @@ describe('start projections: menu', () => {
       },
     });
     const menu = startMenu(startDetail(dir));
-    assert.ok(/\*\*`1`\*\* +→ Finalise "Caching" — cross-cutting, pipeline complete/.test(menu.rendered));
+    assert.ok(/\*\*`1`\*\* +→ Finalise "Caching" — \*cross-cutting, pipeline complete\*/.test(menu.rendered));
     const entry = menu.keys.find((k) => k.key === '1');
     assert.strictEqual(entry.action, 'continue_work_unit');
     assert.strictEqual(entry.route, '/workflow-continue-cross-cutting caching');
@@ -282,17 +259,7 @@ describe('start projections: empty state', () => {
 
   it('renders the bare empty overview and start menu with no inbox and no closed units', () => {
     const detail = startDetail(dir);
-    assert.strictEqual(emptyOverview(detail), [
-      '· · · · · · · · · · · ·',
-      '**`◆ What would you like to start?`**',
-      '',
-      '**`s/start`**         → Not sure what kind yet — describe it and we\'ll shape it',
-      '**`f/feature`**       → Single topic: (research →) discussion → spec → plan → implement → review',
-      '**`e/epic`**          → Multiple topics, multi-session, same pipeline per topic',
-      '**`b/bugfix`**        → Investigation → spec → plan → implement → review',
-      '**`q/quick-fix`**     → Scoping → implement → review (no formal planning)',
-      '**`c/cross-cutting`** → (Research →) discussion → spec (patterns or policies that inform other work)',
-    ].join('\n'));
+    assert.strictEqual(emptyOverview(detail), 'No active work found.\n');
     const menu = emptyMenu(detail);
     assert.strictEqual(menu.rendered, [
       DOTS,
@@ -304,8 +271,6 @@ describe('start projections: empty state', () => {
       '**`b/bugfix`**        → Investigation → spec → plan → implement → review',
       '**`q/quick-fix`**     → Scoping → implement → review (no formal planning)',
       '**`c/cross-cutting`** → (Research →) discussion → spec (patterns or policies that inform other work)',
-      '',
-      'Select an option:',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.pre_seed || null]),
@@ -326,7 +291,6 @@ describe('start projections: empty state', () => {
     createFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
     const detail = startDetail(dir);
     assert.strictEqual(emptyOverview(detail), [
-      ...BOX,
       'No active work found.',
       '',
       '1 completed, 1 cancelled.',
@@ -373,13 +337,12 @@ describe('start projections: inbox pickup', () => {
       '  3  bug  2026-06-03  login-timeout  → .workflows/.inbox/bugs/2026-06-03--login-timeout.md',
     ].join('\n'));
     assert.strictEqual(v.display, [
-      '●───────────────────────────────────────────────●',
-      '  Inbox',
-      '●───────────────────────────────────────────────●',
+      'Ideas',
+      '  ├─ 1. Smart Retry [2026-06-01]',
+      '  └─ 2. Dark Launch [2026-06-02]',
       '',
-      '  1. Smart Retry (idea, 2026-06-01)',
-      '  2. Dark Launch (idea, 2026-06-02)',
-      '  3. Login Timeout (bug, 2026-06-03)',
+      'Bugs',
+      '  └─ 3. Login Timeout [2026-06-03]',
       '',
     ].join('\n'));
     assert.strictEqual(v.menu, [
@@ -411,14 +374,7 @@ describe('start projections: inbox pickup', () => {
       'has_archived: false',
       'ITEMS (n  type  date  slug  → path):',
     ].join('\n'));
-    assert.strictEqual(v.display, [
-      '●───────────────────────────────────────────────●',
-      '  Inbox',
-      '●───────────────────────────────────────────────●',
-      '',
-      'No inbox items.',
-      '',
-    ].join('\n'));
+    assert.strictEqual(v.display, 'No inbox items.\n');
     assert.strictEqual(v.menu, [
       DOTS,
       '**`◆ What would you like to do?`**',
@@ -445,12 +401,11 @@ describe('start projections: archived store', () => {
       '  2  quick-fix  2026-05-02  tidy-logs  → .workflows/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md',
     ].join('\n'));
     assert.strictEqual(v.display, [
-      '●───────────────────────────────────────────────●',
-      '  Archived',
-      '●───────────────────────────────────────────────●',
+      'Ideas',
+      '  └─ 1. Old Idea [2026-05-01]',
       '',
-      '  1. Old Idea (idea, 2026-05-01)',
-      '  2. Tidy Logs (quick-fix, 2026-05-02)',
+      'Quick Fixes',
+      '  └─ 2. Tidy Logs [2026-05-02]',
       '',
     ].join('\n'));
     assert.strictEqual(v.menu, [
@@ -498,8 +453,9 @@ describe('start projections: working set', () => {
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
-      'What would you like to do? Type a shortcut, or just tell me in',
-      'your own words — e.g. "add 2 and 4", "drop the bug", "archive these".',
+      'Type a shortcut, or just tell me in your own words — e.g. "add 2 and 4", "drop the bug", "archive these".',
+      '',
+      '**`◆ What would you like to do?`**',
       '',
       '**`w/work`**    → Proceed to discovery with this set',
       '**`a/add`**     → Add another inbox item to the set',
@@ -511,15 +467,15 @@ describe('start projections: working set', () => {
     ].join('\n'));
     assert.strictEqual(v.sections, [
       '=== DISPLAY: add candidates (emit verbatim as a code block only at the add-items gate — never at the call) ===',
-      '  1. Smart Retry (idea, 2026-06-03)',
+      '  1. Smart Retry [idea] — 2026-06-03',
       '',
       '=== MENU: add gate (emit verbatim as markdown only at the add-items gate) ===',
       DOTS,
       'Add which? (enter number(s), comma-separated, or **`b/back`**)',
       '',
       '=== DISPLAY: drop candidates (emit verbatim as a code block only at the drop-items gate — never at the call) ===',
-      '  1. Login Timeout (bug)',
-      '  2. Crash On Save (bug)',
+      '  1. Login Timeout [bug]',
+      '  2. Crash On Save [bug]',
       '',
       '=== MENU: drop gate (emit verbatim as markdown only at the drop-items gate) ===',
       DOTS,
@@ -582,10 +538,6 @@ describe('start projections: manage list', () => {
       '  6  epic  quiz-competition-v1',
     ].join('\n'));
     assert.strictEqual(v.display, [
-      '●───────────────────────────────────────────────●',
-      '  Manage',
-      '●───────────────────────────────────────────────●',
-      '',
       'Features:',
       '  1. Auth Flow',
       '  2. Dark Mode',
@@ -727,8 +679,8 @@ describe('start projections: manage unit', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Which plan would you like to view?`**',
       '',
-      '**`1`** → Topic A — completed',
-      '**`2`** → Topic B — in-progress',
+      '**`1`** → Topic A — *completed*',
+      '**`2`** → Topic B — *in-progress*',
       '',
     ].join('\n'));
     assert.ok(multi.data.includes('planning_topics: topic-a [completed], topic-b [in-progress]'));
@@ -756,14 +708,15 @@ describe('start projections: completed & cancelled', () => {
   it('renders both lists with continuous numbering and no filter line', () => {
     const v = completedView(closedFixture(dir));
     assert.strictEqual(v.data, [
-      '· · · · · · · · · · · ·',
-      'Select a work unit (enter number) for details, or **`b/back`** to return.',
+      'filter: (none)',
+      'completed_count: 2',
+      'cancelled_count: 1',
+      'UNITS (n  status  work_type  work_unit  last_phase):',
+      '  1  completed  cross-cutting  done-cc  specification',
+      '  2  completed  feature  done-feat  review',
+      '  3  cancelled  bugfix  dropped  none',
     ].join('\n'));
     assert.strictEqual(v.display, [
-      '●───────────────────────────────────────────────●',
-      '  Completed & Cancelled',
-      '●───────────────────────────────────────────────●',
-      '',
       'Completed:',
       '  1. Done Cc',
       '     └─ Completed after: specification',
@@ -778,19 +731,13 @@ describe('start projections: completed & cancelled', () => {
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
-      'Select a work unit for details, or **`b/back`** to return.',
-      '',
-      'Select an option (enter number):',
+      'Select a work unit (enter number) for details, or **`b/back`** to return.',
     ].join('\n'));
   });
 
   it('filters to one work type with the Showing line', () => {
     const v = completedView(closedFixture(dir), 'feature');
     assert.strictEqual(v.display, [
-      '●───────────────────────────────────────────────●',
-      '  Completed & Cancelled',
-      '●───────────────────────────────────────────────●',
-      '',
       'Showing: Features',
       '',
       'Completed:',

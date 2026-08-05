@@ -184,14 +184,14 @@ describe('render shape: renderTree (discovery map)', () => {
     // One shared tag column across the whole tree. The longest row sets it;
     // here the 40-char tag will not fit at width 65, so the column tightens
     // to a single space rather than pushing the tag past the edge.
-    assert.strictEqual(lines[0], '  ├─ ◐ Ai Content Engine    # researching');
+    assert.strictEqual(lines[0], '  ├─ ◐ Ai Content Engine    [researching]');
     assert.strictEqual(
       lines.find((l) => l.includes('Legal And Regulatory')),
-      '  ├─ → Legal And Regulatory # research complete · ready for discussion'
+      '  ├─ → Legal And Regulatory [research complete · ready for discussion]'
     );
     assert.strictEqual(
       lines.find((l) => l.includes('Menu And Admin')),
-      '  └─ ◐ Menu And Admin       # researching'
+      '  └─ ◐ Menu And Admin       [researching]'
     );
   });
 

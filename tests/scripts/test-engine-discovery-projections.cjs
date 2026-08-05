@@ -63,22 +63,31 @@ describe('discoveryMapView', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('renders the box, the tier breakdown, and one labelled row per topic in tier order', () => {
+  it('renders the header, the tier breakdown, and one state-noted row per topic in tier order', () => {
     richFixture(dir);
     assert.strictEqual(discoveryMapView('payments', mapOf(dir, 'payments')), [
-      '●───────────────────────────────────────────────●',
-      '  Discovery — Payments',
-      '●───────────────────────────────────────────────●',
-      '',
-      '  Discovery Map (7 topics — 1 decided · 1 in flight · 1 ready · 2',
-      '  fresh · 1 handled · 1 cancelled)',
-      '  ├─ ✓ Ordering Flow      # decided',
-      '  ├─ → Kitchen Hardware   # research complete · ready for discussion',
-      '  ├─ ◐ Menu Management    # researching',
-      '  ├─ ○ Loyalty            # fresh',
-      '  ├─ ○ Operator Analytics # fresh · routed to research',
-      '  ├─ ⊙ Umbrella           # handled',
-      '  └─ ⊘ Legacy Import      # cancelled',
+      'Discovery Map (7 topics — 1 decided · 1 in flight · 1 ready · 2',
+      'fresh · 1 handled · 1 cancelled)',
+      '  ├─ ✓ Ordering Flow',
+      '  │     ↳ Decided',
+      '  │',
+      '  ├─ → Kitchen Hardware',
+      '  │     ↳ Research complete · ready for discussion',
+      '  │',
+      '  ├─ ◐ Menu Management',
+      '  │     ↳ Researching',
+      '  │',
+      '  ├─ ○ Loyalty',
+      '  │     ↳ Fresh',
+      '  │',
+      '  ├─ ○ Operator Analytics',
+      '  │     ↳ Fresh · routed to research',
+      '  │',
+      '  ├─ ⊙ Umbrella',
+      '  │     ↳ Handled',
+      '  │',
+      '  └─ ⊘ Legacy Import',
+      '        ↳ Cancelled',
       '',
     ].join('\n'));
   });
@@ -96,13 +105,12 @@ describe('discoveryMapView', () => {
       },
     });
     assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
-      '●───────────────────────────────────────────────●',
-      '  Discovery — V1',
-      '●───────────────────────────────────────────────●',
-      '',
-      '  Discovery Map (2 topics)',
-      '  ├─ ○ Alpha    # fresh · routed to research',
-      '  └─ ○ Beta     # fresh · routed to discussion',
+      'Discovery Map (2 topics)',
+      '  ├─ ○ Alpha',
+      '  │     ↳ Fresh · routed to research',
+      '  │',
+      '  └─ ○ Beta',
+      '        ↳ Fresh · routed to discussion',
       '',
     ].join('\n'));
   });
@@ -110,11 +118,7 @@ describe('discoveryMapView', () => {
   it('renders (empty) for a map with no items', () => {
     createManifest(dir, 'v1', { work_type: 'epic', phases: {} });
     assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
-      '●───────────────────────────────────────────────●',
-      '  Discovery — V1',
-      '●───────────────────────────────────────────────●',
-      '',
-      '  Discovery Map (0 topics)',
+      'Discovery Map (0 topics)',
       '  (empty)',
       '',
     ].join('\n'));
@@ -140,14 +144,15 @@ describe('discoveryMapView', () => {
       },
     });
     assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
-      '●───────────────────────────────────────────────●',
-      '  Discovery — V1',
-      '●───────────────────────────────────────────────●',
-      '',
-      '  Discovery Map (3 topics — 1 ready · 2 handled)',
-      '  ├─ → Split Parent # research superseded · ready for discussion',
-      '  ├─ ⊙ No Research  # handled',
-      '  └─ ⊙ Umbrella     # handled · research fanned out',
+      'Discovery Map (3 topics — 1 ready · 2 handled)',
+      '  ├─ → Split Parent',
+      '  │     ↳ Research superseded · ready for discussion',
+      '  │',
+      '  ├─ ⊙ No Research',
+      '  │     ↳ Handled',
+      '  │',
+      '  └─ ⊙ Umbrella',
+      '        ↳ Handled · research fanned out',
       '',
     ].join('\n'));
   });
@@ -187,23 +192,31 @@ describe('discoverySynthesisView', () => {
       },
     });
     assert.strictEqual(discoverySynthesisView('payments', mapOf(dir, 'payments'), PROPOSED), [
-      '  Synthesised Discovery Map — Payments',
+      'Synthesised Discovery Map — Payments',
       '',
-      '  New this session (3):',
-      '  ├─ ○ Kitchen Printers      # discussion',
+      'New this session (3):',
+      '  ├─ ○ Kitchen Printers',
       '  │     Print routing by station, failure handling, and offline',
       '  │     queueing for kitchen ticket printers across multiple',
       '  │     sites',
-      '  ├─ ○ Operator Analytics    # research',
+      '  │     ↳ Routed to discussion',
+      '  │',
+      '  ├─ ○ Operator Analytics',
       '  │     Daily service dashboards for shift leads — covers order',
       '  │     throughput, voids, and prep-time drift with per-branch',
       '  │     comparison',
-      '  └─ ○ Loyalty               # discussion',
+      '  │     ↳ Routed to research',
+      '  │',
+      '  └─ ○ Loyalty',
       '        Points and rewards',
+      '        ↳ Routed to discussion',
       '',
-      '  Already on the map (2):',
-      '  ├─ ✓ Onboarding Flow    # decided',
-      '  └─ ◐ Payments Core      # researching',
+      'Already on the map (2):',
+      '  ├─ ✓ Onboarding Flow',
+      '  │     ↳ Decided',
+      '  │',
+      '  └─ ◐ Payments Core',
+      '        ↳ Researching',
       '',
       '  3 topic(s). Summaries come from the exploration; routing is my',
       '  read of where each one goes next.',
@@ -214,11 +227,12 @@ describe('discoverySynthesisView', () => {
   it('renders a first-session proposal with no existing-map section', () => {
     createManifest(dir, 'payments', { work_type: 'epic', phases: {} });
     assert.strictEqual(discoverySynthesisView('payments', mapOf(dir, 'payments'), [PROPOSED[2]]), [
-      '  Synthesised Discovery Map — Payments',
+      'Synthesised Discovery Map — Payments',
       '',
-      '  Proposed topics (1):',
-      '  └─ ○ Loyalty    # discussion',
+      'Proposed topics (1):',
+      '  └─ ○ Loyalty',
       '        Points and rewards',
+      '        ↳ Routed to discussion',
       '',
       '  1 topic(s). Summaries come from the exploration; routing is my',
       '  read of where each one goes next.',
@@ -251,11 +265,11 @@ describe('gateway.cjs adapter: map-view', () => {
     const res = run(['map-view', 'payments']);
     assert.strictEqual(res.status, 0);
     assert.ok(res.stdout.includes('=== DATA (reason from this — never display or parse the sections below) ==='));
-    assert.ok(res.stdout.includes('=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ==='));
+    assert.ok(res.stdout.includes('=== DISPLAY (emit verbatim as a code block) ==='));
     assert.ok(!res.stdout.includes('=== MENU'));
     assert.match(res.stdout, /mode: map\n/);
     assert.match(res.stdout, /map: 7 topics — 1 decided, 1 in-flight, 1 ready, 2 fresh, 1 handled, 1 cancelled/);
-    assert.ok(res.stdout.includes('  ├─ → Kitchen Hardware   # research complete · ready for discussion'));
+    assert.ok(res.stdout.includes('  ├─ → Kitchen Hardware\n  │     ↳ Research complete · ready for discussion'));
   });
 
   it('--proposed-file renders the synthesis view and flags each proposed name in DATA', () => {
@@ -274,9 +288,9 @@ describe('gateway.cjs adapter: map-view', () => {
     assert.match(res.stdout, /menu-management routing=research exists_on_map=true matches_dismissed=false legal_name=true/);
     assert.match(res.stdout, /old-idea routing=research exists_on_map=false matches_dismissed=true legal_name=true/);
     assert.match(res.stdout, /bad\.name routing=research exists_on_map=false matches_dismissed=false legal_name=false/);
-    assert.ok(res.stdout.includes('  Synthesised Discovery Map — Payments'));
-    assert.ok(res.stdout.includes('  New this session (4):'));
-    assert.ok(res.stdout.includes('  Already on the map (7):'));
+    assert.ok(res.stdout.includes('\nSynthesised Discovery Map — Payments'));
+    assert.ok(res.stdout.includes('\nNew this session (4):'));
+    assert.ok(res.stdout.includes('\nAlready on the map (7):'));
   });
 
   it('fails loudly on a missing, malformed, or empty proposed file', () => {

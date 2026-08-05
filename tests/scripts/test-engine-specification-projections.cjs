@@ -19,16 +19,6 @@ const ADAPTER = path.resolve(__dirname, '../../skills/workflow-specification-ent
 // dirs and the adapter's own discover(), so the goldens cover the full
 // derivation path (discovery result → detail → projection).
 
-/** @param {string} title */
-function boxOf(title) {
-  return [
-    '●───────────────────────────────────────────────●',
-    `  ${title}`,
-    '●───────────────────────────────────────────────●',
-    '',
-  ];
-}
-
 function detailOf(dir, workUnit, opts) {
   return specificationDetail(workUnit, discover(dir, workUnit), opts);
 }
@@ -200,22 +190,21 @@ describe('specification projections: display goldens', () => {
   it('groupings: plural trees with positional branches, ⚑ block, key, and tip', () => {
     groupingsFixture(dir);
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
-      ...boxOf('Specification Overview'),
       'Recommended breakdown for specifications with their source discussions.',
       '',
       '1. Auth Flow',
       '   ├─ Spec: [no spec]',
       '   └─ Discussions:',
-      '      ├─ auth-design      # ready',
-      '      └─ session-model    # ready',
+      '      ├─ auth-design      [ready]',
+      '      └─ session-model    [ready]',
       '',
       '2. Data Spec',
       '   ├─ Spec: in-progress (1 of 2 sources extracted)',
       '   ├─ Discussions:',
-      '   │  ├─ data-model       # pending',
-      '   │  └─ session-model    # extracted',
+      '   │  ├─ data-model       [pending]',
+      '   │  └─ session-model    [extracted]',
       '   └─ Consult:',
-      '      └─ billing          # pending',
+      '      └─ billing          [pending]',
       '',
       '⚑ Discussions not ready for specification:',
       '  These discussions are still in progress and must be completed',
@@ -273,7 +262,6 @@ describe('specification projections: display goldens', () => {
     createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth');
     createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data');
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
-      ...boxOf('Specification Overview'),
       '3 completed discussions found. 2 specifications exist.',
       '',
       'Existing specifications:',
@@ -281,13 +269,13 @@ describe('specification projections: display goldens', () => {
       '1. Auth Spec',
       '   ├─ Spec: in-progress (1 of 1 sources extracted)',
       '   └─ Discussions:',
-      '      └─ auth-design    # extracted, reopened',
+      '      └─ auth-design    [extracted, reopened]',
       '',
       '2. Data Spec',
       '   ├─ Spec: completed (1 of 2 sources extracted)',
       '   └─ Discussions:',
-      '      ├─ data-model    # extracted',
-      '      └─ billing       # pending',
+      '      ├─ data-model    [extracted]',
+      '      └─ billing       [pending]',
       '',
       'Completed discussions not in a specification:',
       '  • reports',
@@ -331,7 +319,6 @@ describe('specification projections: display goldens', () => {
     createFile(dir, '.workflows/v1/specification/s1/specification.md', '# S1');
     createFile(dir, '.workflows/v1/specification/s2/specification.md', '# S2');
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
-      ...boxOf('Specification Overview'),
       '2 completed discussions found. 2 specifications exist.',
       '',
       'All specifications are completed — see Manage completed specifications.',
@@ -355,7 +342,7 @@ describe('specification projections: display goldens', () => {
     });
     createFile(dir, '.workflows/v1/specification/s1/specification.md', '# S1');
     const out = specificationDisplay(detailOf(dir, 'v1'));
-    assert.ok(out.includes('\n2 completed discussions found. 1 specification exists.\n'), out);
+    assert.ok(out.startsWith('2 completed discussions found. 1 specification exists.\n'), out);
     assert.ok(!out.includes('1 specifications'), out);
   });
 
@@ -367,13 +354,12 @@ describe('specification projections: display goldens', () => {
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.single.variant, 'no-spec');
     assert.strictEqual(specificationDisplay(d), [
-      ...boxOf('Specification Overview'),
       'Single completed discussion found.',
       '',
       '1. V1',
       '   ├─ Spec: [no spec]',
       '   └─ Discussions:',
-      '      └─ solo    # ready',
+      '      └─ solo    [ready]',
       '',
       '⚑ Discussions not ready for specification:',
       '  These discussions are still in progress and must be completed',
@@ -405,13 +391,12 @@ describe('specification projections: display goldens', () => {
     assert.strictEqual(d.single.verb, 'Continuing');
     assert.strictEqual(d.single.proceed_name, 'v1');
     assert.strictEqual(specificationDisplay(d), [
-      ...boxOf('Specification Overview'),
       'Single completed discussion found with existing specification.',
       '',
       '1. V1',
       '   ├─ Spec: in-progress (1 of 1 sources extracted)',
       '   └─ Discussions:',
-      '      └─ solo    # extracted',
+      '      └─ solo    [extracted]',
       '',
       'Key:',
       '',
@@ -447,14 +432,13 @@ describe('specification projections: display goldens', () => {
     assert.strictEqual(d.single.verb, 'Refining');
     assert.strictEqual(d.single.proceed_name, 'combined-spec');
     assert.strictEqual(specificationDisplay(d), [
-      ...boxOf('Specification Overview'),
       'Single completed discussion found with existing multi-source specification.',
       '',
       '1. Combined Spec',
       '   ├─ Spec: completed (2 of 2 sources extracted)',
       '   └─ Discussions:',
-      '      ├─ solo     # extracted',
-      '      └─ other    # extracted, reopened',
+      '      ├─ solo     [extracted]',
+      '      └─ other    [extracted, reopened]',
       '',
       '⚑ Discussions not ready for specification:',
       '  These discussions are still in progress and must be completed',
@@ -484,7 +468,6 @@ describe('specification projections: display goldens', () => {
       },
     });
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
-      ...boxOf('Specification Overview'),
       '2 completed discussions found. No specifications exist yet.',
       '',
       'Completed discussions:',
@@ -503,12 +486,11 @@ describe('specification projections: display goldens', () => {
   it('blocked-no-discussions: verbatim terminal block', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
-      ...boxOf('Specification Overview'),
       'No discussions found.',
       '',
-      'The specification phase requires completed discussions to work from.',
-      'Discussions capture the technical decisions, edge cases, and rationale',
-      'that specifications are built upon.',
+      'The specification phase requires completed discussions to work',
+      'from. Discussions capture the technical decisions, edge cases,',
+      'and rationale that specifications are built upon.',
       '',
     ].join('\n'));
   });
@@ -519,7 +501,6 @@ describe('specification projections: display goldens', () => {
       phases: { discussion: { items: { a: { status: 'in-progress' }, b: { status: 'in-progress' } } } },
     });
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
-      ...boxOf('Specification Overview'),
       'No completed discussions found.',
       '',
       'The following discussions are still in progress:',
@@ -544,16 +525,16 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`1`**           → Start "Auth Flow" — 2 ready discussion(s)',
-      '**`2`**           → Continue "Data Spec" — 1 source(s) pending extraction — 1 consult ref(s) pending',
+      '**`1`**           → Start "Auth Flow" — *2 ready discussion(s)*',
+      '**`2`**           → Continue "Data Spec" — *1 source(s) pending extraction, 1 consult ref(s) pending*',
       '**`3`**           → Unify all into single specification',
-      '   `All discussions are combined into one specification. Existing`',
-      '   `specifications are incorporated and superseded.`',
+      '   *All discussions are combined into one specification. Existing*',
+      '   *specifications are incorporated and superseded.*',
       '**`4`**           → Re-analyze groupings',
-      '   `Current groupings are discarded and rebuilt. Existing`',
-      '   `specification names are preserved. You can provide guidance`',
-      '   `in the next step.`',
-      '**`c/completed`** → Manage completed specifications — 1 completed',
+      '   *Current groupings are discarded and rebuilt. Existing*',
+      '   *specification names are preserved. You can provide guidance*',
+      '   *in the next step.*',
+      '**`c/completed`** → Manage completed specifications — *1 completed*',
       '',
       'Select an option:',
     ].join('\n'));
@@ -587,10 +568,10 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`1`** → Start "Only Grp" — 2 ready discussion(s)',
+      '**`1`** → Start "Only Grp" — *2 ready discussion(s)*',
       '**`2`** → Re-analyze groupings',
-      '   `Current groupings are discarded and rebuilt. You can provide`',
-      '   `guidance in the next step.`',
+      '   *Current groupings are discarded and rebuilt. You can provide*',
+      '   *guidance in the next step.*',
       '',
       'Select an option:',
     ].join('\n'));
@@ -623,12 +604,12 @@ describe('specification projections: menu goldens', () => {
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
       '**`1`**           → Analyze for groupings (recommended)',
-      '   `All discussions are analyzed for natural groupings. Existing`',
-      '   `specification names are preserved. You can provide guidance`',
-      '   `in the next step.`',
-      '**`2`**           → Continue "Auth Spec" — in-progress',
-      '**`3`**           → Continue "Data Spec" — 1 new source(s) to extract — 1 consult ref(s) pending',
-      '**`c/completed`** → Manage completed specifications — 1 completed',
+      '   *All discussions are analyzed for natural groupings. Existing*',
+      '   *specification names are preserved. You can provide guidance*',
+      '   *in the next step.*',
+      '**`2`**           → Continue "Auth Spec" — *in-progress*',
+      '**`3`**           → Continue "Data Spec" — *1 new source(s) to extract, 1 consult ref(s) pending*',
+      '**`c/completed`** → Manage completed specifications — *1 completed*',
       '',
       'Select an option:',
     ].join('\n'));
@@ -674,7 +655,7 @@ describe('specification projections: menu goldens', () => {
     assert.strictEqual(sourceTag({ name: 'a', status: 'stale', discussion_status: 'completed' }), 'stale');
     const menu = specificationMenu(detail);
     const entry = menu.keys.find((k) => k.topic === 'moved-spec');
-    assert.strictEqual(entry.label, 'Continue "Moved Spec" — 1 new source(s) to extract, 1 stale source(s) to reconcile');
+    assert.strictEqual(entry.label, 'Continue "Moved Spec" — *1 new source(s) to extract, 1 stale source(s) to reconcile*');
   });
 
   it('completed sub-view: plural refine entries and back', () => {
@@ -694,22 +675,18 @@ describe('specification projections: menu goldens', () => {
     createFile(dir, '.workflows/v1/specification/data-model/specification.md', '# D');
     const sub = specificationCompletedMenu(detailOf(dir, 'v1'));
     assert.strictEqual(sub.display, [
-      '· · · · · · · · · · · ·',
-      '**`◆ Which completed specification would you like to refine?`**',
+      'Completed Specifications',
+      '  ├─ Auth Flow     [completed]',
+      '  └─ Data Model    [completed]',
       '',
-      '**`1`**      → Refine "Auth Flow" — completed',
-      '**`2`**      → Refine "Data Model" — completed',
-      '**`b/back`** → Return to the specifications menu',
     ].join('\n'));
     assert.strictEqual(sub.rendered, [
       '· · · · · · · · · · · ·',
       '**`◆ Which completed specification would you like to refine?`**',
       '',
-      '**`1`**      → Refine "Auth Flow" — completed',
-      '**`2`**      → Refine "Data Model" — completed',
+      '**`1`**      → Refine "Auth Flow" — *completed*',
+      '**`2`**      → Refine "Data Model" — *completed*',
       '**`b/back`** → Return to the specifications menu',
-      '',
-      'Select an option:',
     ].join('\n'));
     assert.deepStrictEqual(
       sub.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
@@ -769,21 +746,21 @@ describe('specification adapter: gateway verbs', () => {
     ].join('\n'));
     const out = run(['view', 'v1']);
     assert.ok(out.includes('=== DATA (reason from this — never display or parse the sections below) ==='));
-    assert.ok(out.includes('=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ==='));
+    assert.ok(out.includes('=== DISPLAY (emit verbatim as a code block) ==='));
     assert.ok(out.includes('=== MENU (emit verbatim as markdown) ==='));
     assert.ok(out.includes('scenario: groupings\n'));
     assert.ok(out.includes('discussions_checksum: (none)'));
     assert.ok(out.includes('    consult: billing (pending — pricing slice supersedes the auth draft)'));
     assert.ok(out.includes('ACTIONS (key  action  topic  verb):'));
     assert.ok(out.includes('  1  start_spec  auth-flow  Creating'));
-    assert.ok(/\*\*`1`\*\* +→ Start "Auth Flow" — 2 ready discussion\(s\) — 1 consult ref\(s\) pending/.test(out));
+    assert.ok(/\*\*`1`\*\* +→ Start "Auth Flow" — \*2 ready discussion\(s\), 1 consult ref\(s\) pending\*/.test(out));
   });
 
   it('view for a blocked work unit emits DATA + DISPLAY and no MENU', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
     const out = run(['view', 'v1']);
     assert.ok(out.includes('scenario: blocked-no-discussions'));
-    assert.ok(out.includes('=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ==='));
+    assert.ok(out.includes('=== DISPLAY (emit verbatim as a code block) ==='));
     assert.ok(!out.includes('=== MENU'));
     assert.ok(!out.includes('ACTIONS'));
   });
@@ -836,7 +813,7 @@ describe('specification adapter: gateway verbs', () => {
     const out = run(['completed-menu', 'v1']);
     assert.ok(out.includes('  1  refine_spec  done-spec  Refining'));
     assert.ok(out.includes('Completed Specifications'));
-    assert.ok(/\*\*`1`\*\* +→ Refine "Done Spec" — completed/.test(out));
+    assert.ok(/\*\*`1`\*\* +→ Refine "Done Spec" — \*completed\*/.test(out));
     assert.ok(/\*\*`b\/back`\*\* +→ Return to the specifications menu/.test(out));
   });
 
@@ -884,7 +861,7 @@ describe('specification projections: coherence advisory', () => {
     assert.strictEqual(detail.coherence_pending, 0);
     const out = specificationDisplay(detail);
     assert.ok(out.includes('⚑ Discussions have changed since decisions were last checked'));
-    assert.ok(out.includes('Continue the epic to re-run the coherence check'));
+    assert.ok(out.includes('Continue the epic to re-run the coherence\n    check before extracting.'));
   });
 
   it('pending findings outrank the stale message and carry the count', () => {

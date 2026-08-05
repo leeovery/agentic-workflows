@@ -56,10 +56,6 @@ describe('epic projections: dashboard (map branch)', () => {
   }
 
   const EXPECTED_DASHBOARD = [
-    '●───────────────────────────────────────────────●',
-    '  Quiz Competition V1',
-    '●───────────────────────────────────────────────●',
-    '',
     '── DISCOVERY ────────────────────────────────────────────────────',
     '',
     '  · seeded from the inbox',
@@ -67,30 +63,33 @@ describe('epic projections: dashboard (map branch)', () => {
     '  ⚑ 1 new topic(s) added to the map from research-analysis.',
     '  ⚑ 1 discussion(s) reopened by coherence review.',
     '',
-    '  RESEARCH & DISCUSSION (2 topics · 1 ready · 1 fresh)',
-    '  ├─ → Kitchen Hardware # research complete · ready for discussion',
+    'RESEARCH & DISCUSSION (2 topics · 1 ready · 1 fresh)',
+    '  ├─ → Kitchen Hardware',
     '  │     Receipt printing, KDS handoff, and the',
     '  │     fastest-cumulative-time-tiebreak-resolution-policy-and-of',
     '  │     fline-sync token that cannot break',
-    '  └─ ○ Menu Admin       # fresh · routed to discussion',
+    '  │     ↳ Research complete · ready for discussion',
+    '  │',
+    '  └─ ○ Menu Admin',
     '        Business-side menu modelling, admin shell (Filament vs',
     '        custom Vue/Nuxt), JustEat import, staff/roles',
     '        ↳ From exploration',
+    '        ↳ Fresh · routed to discussion',
     '',
     '── DEFINITION ───────────────────────────────────────────────────',
     '',
-    '  SPECIFICATION (1 completed)',
-    '  └─ Roles And Permissions    # completed',
-    '     ├─ Menu Admin            # incorporated',
-    '     └─ Auth Flow             # pending',
+    'SPECIFICATION (1 completed)',
+    '  └─ Roles And Permissions    [completed]',
+    '     ├─ Menu Admin            [incorporated]',
+    '     └─ Auth Flow             [pending]',
     '',
-    '  PLANNING (1 completed)',
-    '  └─ Roles And Permissions    # completed · tick',
+    'PLANNING (1 completed)',
+    '  └─ Roles And Permissions    [completed · tick]',
     '',
     '── DELIVERY ─────────────────────────────────────────────────────',
     '',
-    '  IMPLEMENTATION (1 in-progress)',
-    '  └─ Roles And Permissions    # in-progress',
+    'IMPLEMENTATION (1 in-progress)',
+    '  └─ Roles And Permissions    [in-progress]',
     '     └─ Phase 2, 3 task(s) completed',
     '',
   ].join('\n');
@@ -132,14 +131,11 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.strictEqual(
       epicDashboard('v1', d),
       [
-        '●───────────────────────────────────────────────●',
-        '  V1',
-        '●───────────────────────────────────────────────●',
-        '',
         '── DISCOVERY ────────────────────────────────────────────────────',
         '',
-        '  RESEARCH & DISCUSSION (1 topics · 1 fresh)',
-        '  └─ ○ Topic    # fresh · routed to research',
+        'RESEARCH & DISCUSSION (1 topics · 1 fresh)',
+        '  └─ ○ Topic',
+        '        ↳ Fresh · routed to research',
         '',
       ].join('\n')
     );
@@ -156,16 +152,16 @@ describe('epic projections: dashboard (map branch)', () => {
       },
     });
     const out = epicDashboard('v1', d);
-    assert.match(out, /Menu Admin\s+# completed · input moved/, out);
+    assert.match(out, /Menu Admin\s+\[completed · input moved\]/, out);
     const key = epicKey(d);
     assert.ok(key.includes('input moved — an upstream artifact was revised'), key);
     const { keys } = epicMenu('v1', d);
     const start = keys.find((k) => k.action === 'start_planning');
     assert.ok(start, 'start_planning entry present');
-    assert.strictEqual(start.label, 'Start planning for "Menu Admin" — spec completed · input moved');
+    assert.strictEqual(start.label, 'Start planning for "Menu Admin" — *spec completed* · input moved');
     const cont = keys.find((k) => k.action === 'continue_planning');
     assert.ok(cont, 'continue_planning entry present');
-    assert.strictEqual(cont.label, 'Continue "Other Topic" — planning [in-progress] · input moved');
+    assert.strictEqual(cont.label, 'Continue "Other Topic" — *planning [in-progress]* · input moved');
   });
 
   it('a flagged decided discussion cues input moved on its map row and the key', () => {
@@ -177,7 +173,7 @@ describe('epic projections: dashboard (map branch)', () => {
       },
     });
     const out = epicDashboard('v1', d);
-    assert.match(out, /✓ Fees\s+# decided · input moved/, out);
+    assert.match(out, /✓ Fees\s+↳ Decided · input moved/, out);
     const key = epicKey(d);
     assert.ok(key.includes('input moved — an upstream artifact was revised'), key);
   });
@@ -193,9 +189,9 @@ describe('epic projections: dashboard (map branch)', () => {
     const sub = epicCompletedMenu('v1', d);
     assert.ok(sub.display.includes('Fees [completed · input moved]'), sub.display);
     const entry = sub.keys.find((k) => k.phase === 'specification');
-    assert.strictEqual(entry.label, 'Resume "Fees" — specification · input moved');
+    assert.strictEqual(entry.label, 'Resume "Fees" — *specification* · input moved');
     const clean = sub.keys.find((k) => k.phase === 'discussion');
-    assert.strictEqual(clean.label, 'Resume "Fees" — discussion');
+    assert.strictEqual(clean.label, 'Resume "Fees" — *discussion*');
   });
 
   it('all-done-but-flagged: the reconcile route (resume completed) is the recommendation, not analyze/regroup', () => {
@@ -243,8 +239,8 @@ describe('epic projections: dashboard (map branch)', () => {
       },
     });
     const out = epicDashboard('v1', d);
-    assert.ok(out.includes('  RESEARCH & DISCUSSION (1 topics · 1 fresh)'), out);
-    assert.match(out, /  └─ ○ Parked\s+# fresh · routed to research · triage waiting/, out);
+    assert.ok(out.includes('RESEARCH & DISCUSSION (1 topics · 1 fresh)'), out);
+    assert.match(out, /  └─ ○ Parked\n[\s\S]*?↳ Fresh · routed to research · triage waiting/, out);
   });
 });
 
@@ -264,18 +260,14 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
     assert.strictEqual(
       epicDashboard('auth-overhaul', d),
       [
-        '●───────────────────────────────────────────────●',
-        '  Auth Overhaul',
-        '●───────────────────────────────────────────────●',
-        '',
         '── DISCOVERY ────────────────────────────────────────────────────',
         '',
-        '  RESEARCH (1 in-progress, 1 completed)',
-        '  ├─ Market Analysis    # in-progress',
-        '  └─ Competitor Scan    # completed',
+        'RESEARCH (1 in-progress, 1 completed)',
+        '  ├─ Market Analysis    [in-progress]',
+        '  └─ Competitor Scan    [completed]',
         '',
-        '  DISCUSSION (1 completed)',
-        '  └─ Auth Flow    # completed',
+        'DISCUSSION (1 completed)',
+        '  └─ Auth Flow    [completed]',
         '',
         '  ⚑ Consider completing remaining research before starting',
         '    discussion. Topic analysis works best with all research',
@@ -295,8 +287,8 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
     const out = epicDashboard('v1', d);
     assert.ok(out.endsWith([
       '⚑ Plans not ready for implementation:',
-      '  These plans have unresolved dependencies that must be',
-      '  addressed first.',
+      '  These plans have unresolved dependencies that must be addressed',
+      '  first.',
       '',
       '  Billing',
       '  └─ Blocked by auth',
@@ -309,10 +301,6 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
     assert.strictEqual(
       epicDashboard('fresh-epic', d),
       [
-        '●───────────────────────────────────────────────●',
-        '  Fresh Epic',
-        '●───────────────────────────────────────────────●',
-        '',
         'No work started yet.',
         '',
         '  ⚑ Run discovery to shape the topic map — research and',
@@ -328,36 +316,30 @@ describe('epic projections: key', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  const TIER = [
-    '    Discovery tier:',
-    '      →  ready for next phase   ◐  in flight',
-    '      ✓  decided                ○  fresh',
-    '      ⊙  handled                ⊘  cancelled',
-  ].join('\n');
   const STATUS = [
-    '    Status:',
-    '      proposed    — analyzed grouping, not yet started',
-    '      triaged     — rerouted concerns parked, topic not started',
-    '      in-progress — work is ongoing',
-    '      completed   — phase or implementation done',
-    '      cancelled   — topic removed from active work',
-    '      promoted    — moved to its own cross-cutting work unit',
+    '  Status:',
+    '    proposed    — analyzed grouping, not yet started',
+    '    triaged     — rerouted concerns parked, topic not started',
+    '    in-progress — work is ongoing',
+    '    completed   — phase or implementation done',
+    '    cancelled   — topic removed from active work',
+    '    promoted    — moved to its own cross-cutting work unit',
   ].join('\n');
   const BLOCKING = [
-    '    Blocking reason:',
-    "      blocked by {plan}:{task} — depends on another plan's task",
-    '      blocked by {plan}        — dependency unresolved',
+    '  Blocking reason:',
+    "    blocked by {plan}:{task} — depends on another plan's task",
+    '    blocked by {plan}        — dependency unresolved',
   ].join('\n');
 
-  it('map with no build items shows only the Discovery tier block', () => {
+  it('map with no build items produces no key (the ↳ state lines carry the words)', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: { discovery: { items: { topic: { routing: 'research', source: 'discovery', order: 1 } } } },
     });
-    assert.strictEqual(epicKey(d), '  Key:\n' + TIER);
+    assert.strictEqual(epicKey(d), '');
   });
 
-  it('map + build items + blocked plan shows all three categories', () => {
+  it('map + build items + blocked plan shows the Status and Blocking categories', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -365,15 +347,15 @@ describe('epic projections: key', () => {
         planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
       },
     });
-    assert.strictEqual(epicKey(d), '  Key:\n' + TIER + '\n\n' + STATUS + '\n\n' + BLOCKING);
+    assert.strictEqual(epicKey(d), 'Key:\n' + STATUS + '\n\n' + BLOCKING);
   });
 
-  it('no-map branch shows the Status block without the tier block', () => {
+  it('no-map branch shows the Status block', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
     });
-    assert.strictEqual(epicKey(d), '  Key:\n' + STATUS);
+    assert.strictEqual(epicKey(d), 'Key:\n' + STATUS);
   });
 
   it('brand-new epic produces no key (section B is skipped on that branch)', () => {
@@ -443,10 +425,10 @@ describe('epic projections: menu', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**           → Start specification for "Billing Grouping" — grouping ready (recommended)',
-      '**`2`**           → Continue "Auth Spec" — specification [in-progress]',
+      '**`1`**           → Start specification for "Billing Grouping" — *grouping ready* (recommended)',
+      '**`2`**           → Continue "Auth Spec" — *specification [in-progress]*',
       '**`3`**           → Start implementation of "Reporting" — blocked by core-features:core-2-3',
-      '**`s/spec`**      → Analyze / regroup discussions — 2 discussion(s) not yet grouped',
+      '**`s/spec`**      → Analyze / regroup discussions — *2 discussion(s) not yet grouped*',
       '**`d/discuss`**   → Start a discussion on a new topic',
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
@@ -511,7 +493,7 @@ describe('epic projections: menu', () => {
       [['1', 'start_discussion_after_research', 'ready']]
     );
     assert.strictEqual(numbered[0].recommended, true);
-    assert.ok(/\*\*`1`\*\* +→ Start discussion for "Ready" — research completed \(recommended\)/.test(rendered));
+    assert.ok(/\*\*`1`\*\* +→ Start discussion for "Ready" — \*research completed\* \(recommended\)/.test(rendered));
     assert.ok(/\*\*`e\/reactivate`\*\* +→ Reactivate a cancelled topic/.test(rendered), 'cancelled items exist');
     assert.ok(!rendered.includes('Umbrella'), 'handled row has no menu entry');
     assert.ok(!rendered.includes('Dropped'), 'cancelled row has no menu entry');
@@ -569,7 +551,7 @@ describe('epic projections: menu', () => {
     const { keys, rendered } = epicMenu('v1', d);
     const entry = keys.find((k) => k.action === 'start_discussion_after_research');
     assert.ok(entry, 'superseded research with no discussion still offers the discussion path');
-    assert.strictEqual(entry.label, 'Start discussion for "Handoff" — research superseded');
+    assert.strictEqual(entry.label, 'Start discussion for "Handoff" — *research superseded*');
     assert.ok(!rendered.includes('research completed'), 'superseded research must not be named completed');
   });
 
@@ -584,7 +566,7 @@ describe('epic projections: menu', () => {
       },
     });
     const { rendered } = epicMenu('v1', d);
-    assert.ok(rendered.includes('→ Continue "Roles" — implementation (Phase 2, Task r-2-2)'), rendered);
+    assert.ok(rendered.includes('→ Continue "Roles" — *implementation (Phase 2, Task r-2-2)*'), rendered);
     assert.ok(!rendered.includes('Task 3'), 'completed count must not masquerade as a task position');
   });
 
@@ -599,7 +581,7 @@ describe('epic projections: menu', () => {
       },
     });
     const { rendered } = epicMenu('v1', d);
-    assert.ok(rendered.includes('→ Continue "Roles" — implementation (Phase 2, 3 task(s) completed)'), rendered);
+    assert.ok(rendered.includes('→ Continue "Roles" — *implementation (Phase 2, 3 task(s) completed)*'), rendered);
   });
 
   it('a triaged stub is offered as Start with the triage waiting suffix — never Continue', () => {
@@ -613,7 +595,7 @@ describe('epic projections: menu', () => {
     const { keys, rendered } = epicMenu('v1', d);
     const entry = keys.find((k) => k.topic === 'parked');
     assert.strictEqual(entry.action, 'start_research');
-    assert.strictEqual(entry.label, 'Start research for "Parked" — triage waiting');
+    assert.strictEqual(entry.label, 'Start research for "Parked" — *triage waiting*');
     assert.strictEqual(entry.route, '/workflow-research-entry epic v1 parked');
     assert.ok(!rendered.includes('Continue "Parked"'), 'a stub must never be offered as a resume');
   });
@@ -629,7 +611,7 @@ describe('epic projections: menu', () => {
     const { keys } = epicMenu('v1', d);
     const entry = keys.find((k) => k.topic === 'parked');
     assert.strictEqual(entry.action, 'start_discussion');
-    assert.strictEqual(entry.label, 'Start discussion for "Parked" — triage waiting');
+    assert.strictEqual(entry.label, 'Start discussion for "Parked" — *triage waiting*');
   });
 
   it('an open discovery session leads the menu as resume, regardless of map state', () => {
@@ -688,7 +670,7 @@ describe('epic projections: presence join', () => {
       ]
     );
     assert.strictEqual(numbered[0].session_age, 120);
-    assert.ok(/\*\*`1`\*\* +→ ~~Continue "Topic A" — discussion~~ · in session \(last active 2m ago\)/.test(rendered), rendered);
+    assert.ok(/\*\*`1`\*\* +→ ~~Continue "Topic A" — \*discussion\*~~ · in session \(last active 2m ago\)/.test(rendered), rendered);
     assert.ok(/\*\*`2`\*\* +→ Start discussion for "Topic B" \(recommended\)/.test(rendered), rendered);
   });
 
@@ -728,14 +710,12 @@ describe('epic projections: presence join', () => {
     ].join('\n'));
   });
 
-  it('the dashboard cues held map rows and the key explains the cue', () => {
+  it('the dashboard cues held map rows on their ↳ state lines (no key legend needed)', () => {
     const d = twoTopicDetail();
     const out = epicDashboard('v1', d, { presence: [heldRow] });
-    assert.match(out, /Topic A\s+# discussing · in session/, out);
-    assert.doesNotMatch(out, /Topic B\s+# fresh · routed to discussion · in session/, out);
-    const key = epicKey(d, { presence: [heldRow] });
-    assert.ok(key.includes('    Session:\n      in session — a live session elsewhere holds this topic'), key);
-    assert.ok(!epicKey(d).includes('Session:'), 'no presence, no session key block');
+    assert.match(out, /◐ Topic A\n\s*│\s*↳ Discussing · in session/, out);
+    assert.doesNotMatch(out, /↳ Fresh · routed to discussion · in session/, out);
+    assert.strictEqual(epicKey(d), '', 'the ↳ state line carries the words — no session legend');
   });
 });
 
@@ -762,26 +742,28 @@ describe('epic projections: selection sub-views', () => {
   it('completed-menu: unnumbered └─ rows grouped by phase, routes per entry', () => {
     const view = epicCompletedMenu('quiz-competition-v1', richDetail());
     assert.strictEqual(view.display, [
-      '· · · · · · · · · · · ·',
-      '**`◆ Which topic would you like to resume?`**',
+      'Completed Topics',
       '',
-      '**`1`**      → Resume "Kitchen Hardware" — research',
-      '**`2`**      → Resume "Auth Flow" — discussion',
-      '**`3`**      → Resume "Session Storage" — discussion',
-      '**`4`**      → Resume "Roles And Permissions" — specification',
-      '**`b/back`** → Return to menu',
+      '  Research',
+      '    └─ Kitchen Hardware [completed]',
+      '',
+      '  Discussion',
+      '    ├─ Auth Flow [completed]',
+      '    └─ Session Storage [completed]',
+      '',
+      '  Specification',
+      '    └─ Roles And Permissions [completed]',
+      '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to resume?`**',
       '',
-      '**`1`**      → Resume "Kitchen Hardware" — research',
-      '**`2`**      → Resume "Auth Flow" — discussion',
-      '**`3`**      → Resume "Session Storage" — discussion',
-      '**`4`**      → Resume "Roles And Permissions" — specification',
+      '**`1`**      → Resume "Kitchen Hardware" — *research*',
+      '**`2`**      → Resume "Auth Flow" — *discussion*',
+      '**`3`**      → Resume "Session Storage" — *discussion*',
+      '**`4`**      → Resume "Roles And Permissions" — *specification*',
       '**`b/back`** → Return to menu',
-      '',
-      'Select an option:',
     ].join('\n'));
     assert.deepStrictEqual(
       view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.route]),
@@ -798,30 +780,34 @@ describe('epic projections: selection sub-views', () => {
   it('cancel-menu: numbered rows, continuous across phases, cancelled/promoted excluded', () => {
     const view = epicCancelMenu(richDetail());
     assert.strictEqual(view.display, [
-      '· · · · · · · · · · · ·',
-      '**`◆ Which topic would you like to cancel?`**',
+      'Cancellable Topics',
       '',
-      '**`1`**      → Cancel "Kitchen Hardware" — research [completed]',
-      '**`2`**      → Cancel "Menu Admin" — research [in-progress]',
-      '**`3`**      → Cancel "Auth Flow" — discussion [completed]',
-      '**`4`**      → Cancel "Session Storage" — discussion [completed]',
-      '**`5`**      → Cancel "Roles And Permissions" — specification [completed]',
-      '**`6`**      → Cancel "Roles And Permissions" — implementation [in-progress]',
-      '**`b/back`** → Return to menu',
+      '  Research',
+      '    1. Kitchen Hardware [completed]',
+      '    2. Menu Admin [in-progress]',
+      '',
+      '  Discussion',
+      '    3. Auth Flow [completed]',
+      '    4. Session Storage [completed]',
+      '',
+      '  Specification',
+      '    5. Roles And Permissions [completed]',
+      '',
+      '  Implementation',
+      '    6. Roles And Permissions [in-progress]',
+      '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to cancel?`**',
       '',
-      '**`1`**      → Cancel "Kitchen Hardware" — research [completed]',
-      '**`2`**      → Cancel "Menu Admin" — research [in-progress]',
-      '**`3`**      → Cancel "Auth Flow" — discussion [completed]',
-      '**`4`**      → Cancel "Session Storage" — discussion [completed]',
-      '**`5`**      → Cancel "Roles And Permissions" — specification [completed]',
-      '**`6`**      → Cancel "Roles And Permissions" — implementation [in-progress]',
+      '**`1`**      → Cancel "Kitchen Hardware" — *research [completed]*',
+      '**`2`**      → Cancel "Menu Admin" — *research [in-progress]*',
+      '**`3`**      → Cancel "Auth Flow" — *discussion [completed]*',
+      '**`4`**      → Cancel "Session Storage" — *discussion [completed]*',
+      '**`5`**      → Cancel "Roles And Permissions" — *specification [completed]*',
+      '**`6`**      → Cancel "Roles And Permissions" — *implementation [in-progress]*',
       '**`b/back`** → Return to menu',
-      '',
-      'Select an option:',
     ].join('\n'));
     // No routes — the flow continues to its confirmation gate.
     assert.deepStrictEqual(
@@ -847,26 +833,24 @@ describe('epic projections: selection sub-views', () => {
     }));
     assert.ok(view.display.includes('    1. Parked Topic [triaged]'), view.display);
     assert.ok(view.display.includes('    2. Menu Admin [in-progress]'), view.display);
-    assert.ok(/\*\*`1`\*\* +→ Cancel "Parked Topic" — research \[triaged\]/.test(view.rendered), view.rendered);
+    assert.ok(/\*\*`1`\*\* +→ Cancel "Parked Topic" — \*research \[triaged\]\*/.test(view.rendered), view.rendered);
   });
 
   it('reactivate-menu: numbered rows with (was: previous_status)', () => {
     const view = epicReactivateMenu(richDetail());
     assert.strictEqual(view.display, [
-      '· · · · · · · · · · · ·',
-      '**`◆ Which topic would you like to reactivate?`**',
+      'Cancelled Topics',
       '',
-      '**`1`**      → Reactivate "Stale Topic" — discussion (was: in-progress)',
-      '**`b/back`** → Return to menu',
+      '  Discussion',
+      '    1. Stale Topic [cancelled] (was: in-progress)',
+      '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to reactivate?`**',
       '',
-      '**`1`**      → Reactivate "Stale Topic" — discussion (was: in-progress)',
+      '**`1`**      → Reactivate "Stale Topic" — *discussion (was: in-progress)*',
       '**`b/back`** → Return to menu',
-      '',
-      'Select an option:',
     ].join('\n'));
     assert.deepStrictEqual(
       view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.route]),
@@ -922,7 +906,7 @@ describe('epic projections: selection sub-views', () => {
       '  2  resume  auth-flow  discussion  → /workflow-discussion-entry epic quiz-competition-v1 auth-flow',
       '  b  back  —  —  → (internal)',
       '',
-      '=== DISPLAY (emit verbatim as a makefile code block — ```makefile fence) ===',
+      '=== DISPLAY (emit verbatim as a code block) ===',
       'Completed Topics',
       '',
       '  Research',
@@ -935,8 +919,8 @@ describe('epic projections: selection sub-views', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to resume?`**',
       '',
-      '**`1`**      → Resume "Kitchen Hardware" — research',
-      '**`2`**      → Resume "Auth Flow" — discussion',
+      '**`1`**      → Resume "Kitchen Hardware" — *research*',
+      '**`2`**      → Resume "Auth Flow" — *discussion*',
       '**`b/back`** → Return to menu',
       '',
     ].join('\n'));

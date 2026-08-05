@@ -12,16 +12,6 @@ const { workUnitStatus, workUnitMenu, workUnitData, revisitablePhases, revisitPh
 // through real manifests in temp dirs (the same shapes the discovery tests
 // produce).
 
-/** @param {string} title */
-function boxOf(title) {
-  return [
-    '●───────────────────────────────────────────────●',
-    `  ${title}`,
-    '●───────────────────────────────────────────────●',
-    '',
-  ];
-}
-
 function unitOf(dir, type, name) {
   const detail = workUnitDetail(dir, type);
   return detail[typeConfig(type).resultKey].find((u) => u.name === name);
@@ -42,13 +32,12 @@ describe('workunit projections: status display', () => {
       imports: [{ path: 'imports/a.md' }, { path: 'imports/b.md' }],
     });
     assert.strictEqual(workUnitStatus('feature', unitOf(dir, 'feature', 'auth-flow')), [
-      ...boxOf('Auth Flow'),
       '  · seeded from the inbox',
       '  · 2 imports',
       '',
-      '  PIPELINE (feature)',
-      '  ├─ ✓ Discussion       # completed',
-      '  └─ ◐ Specification    # in-progress',
+      'PIPELINE (feature)',
+      '  ├─ ✓ Discussion       [completed]',
+      '  └─ ◐ Specification    [in-progress]',
       '',
     ].join('\n'));
   });
@@ -56,9 +45,8 @@ describe('workunit projections: status display', () => {
   it('feature: fresh unit renders a single ready row and no callouts', () => {
     createManifest(dir, 'dark-mode', {});
     assert.strictEqual(workUnitStatus('feature', unitOf(dir, 'feature', 'dark-mode')), [
-      ...boxOf('Dark Mode'),
-      '  PIPELINE (feature)',
-      '  └─ → Discussion    # ready',
+      'PIPELINE (feature)',
+      '  └─ → Discussion    [ready]',
       '',
     ].join('\n'));
   });
@@ -66,7 +54,7 @@ describe('workunit projections: status display', () => {
   it('feature: singular import callout', () => {
     createManifest(dir, 'dark-mode', { imports: [{ path: 'imports/a.md' }] });
     const out = workUnitStatus('feature', unitOf(dir, 'feature', 'dark-mode'));
-    assert.ok(out.includes('\n  · 1 import\n'));
+    assert.ok(out.startsWith('  · 1 import\n'));
     assert.ok(!out.includes('seeded from the inbox'));
   });
 
@@ -80,11 +68,10 @@ describe('workunit projections: status display', () => {
     });
     const unit = unitOf(dir, 'feature', 'auth-flow');
     assert.strictEqual(workUnitStatus('feature', unit), [
-      ...boxOf('Auth Flow'),
-      '  PIPELINE (feature)',
-      '  ├─ ✓ Discussion       # completed',
-      '  ├─ ✓ Specification    # completed · input moved',
-      '  └─ ✓ Planning         # completed',
+      'PIPELINE (feature)',
+      '  ├─ ✓ Discussion       [completed]',
+      '  ├─ ✓ Specification    [completed · input moved]',
+      '  └─ ✓ Planning         [completed]',
       '',
       '  ⚑ Specification input moved — discussion revised since it completed.',
       '',
@@ -102,10 +89,9 @@ describe('workunit projections: status display', () => {
       phases: { investigation: { items: { 'login-crash': { status: 'completed' } } } },
     });
     assert.strictEqual(workUnitStatus('bugfix', unitOf(dir, 'bugfix', 'login-crash')), [
-      ...boxOf('Login Crash'),
-      '  PIPELINE (bugfix)',
-      '  ├─ ✓ Investigation    # completed',
-      '  └─ → Specification    # ready',
+      'PIPELINE (bugfix)',
+      '  ├─ ✓ Investigation    [completed]',
+      '  └─ → Specification    [ready]',
       '',
     ].join('\n'));
   });
@@ -116,9 +102,8 @@ describe('workunit projections: status display', () => {
       phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } },
     });
     assert.strictEqual(workUnitStatus('quick-fix', unitOf(dir, 'quick-fix', 'rename-api')), [
-      ...boxOf('Rename Api'),
-      '  PIPELINE (quick-fix)',
-      '  └─ ◐ Scoping    # in-progress',
+      'PIPELINE (quick-fix)',
+      '  └─ ◐ Scoping    [in-progress]',
       '',
     ].join('\n'));
   });
@@ -132,11 +117,10 @@ describe('workunit projections: status display', () => {
       },
     });
     assert.strictEqual(workUnitStatus('cross-cutting', unitOf(dir, 'cross-cutting', 'caching')), [
-      ...boxOf('Caching'),
-      '  PIPELINE (cross-cutting)',
-      '  ├─ ✓ Research         # completed',
-      '  ├─ ✓ Discussion       # completed',
-      '  └─ → Specification    # ready',
+      'PIPELINE (cross-cutting)',
+      '  ├─ ✓ Research         [completed]',
+      '  ├─ ✓ Discussion       [completed]',
+      '  └─ → Specification    [ready]',
       '',
     ].join('\n'));
   });
@@ -150,10 +134,9 @@ describe('workunit projections: status display', () => {
       },
     });
     assert.strictEqual(workUnitStatus('cross-cutting', unitOf(dir, 'cross-cutting', 'caching')), [
-      ...boxOf('Caching'),
-      '  PIPELINE (cross-cutting)',
-      '  ├─ ✓ Discussion       # completed',
-      '  └─ ✓ Specification    # completed',
+      'PIPELINE (cross-cutting)',
+      '  ├─ ✓ Discussion       [completed]',
+      '  └─ ✓ Specification    [completed]',
       '',
       '  ⚑ All phases complete — ready to finalise.',
       '',
@@ -177,13 +160,12 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(unit.next_phase, 'discussion');
     assert.strictEqual(unit.phase_label, 'discussion (in-progress)');
     assert.strictEqual(workUnitStatus('feature', unit), [
-      ...boxOf('Auth Flow'),
-      '  PIPELINE (feature)',
-      '  ├─ ◐ Discussion        # in-progress',
-      '  ├─ ✓ Specification     # completed',
-      '  ├─ ✓ Planning          # completed',
-      '  ├─ ✓ Implementation    # completed',
-      '  └─ ✓ Review            # completed',
+      'PIPELINE (feature)',
+      '  ├─ ◐ Discussion        [in-progress]',
+      '  ├─ ✓ Specification     [completed]',
+      '  ├─ ✓ Planning          [completed]',
+      '  ├─ ✓ Implementation    [completed]',
+      '  └─ ✓ Review            [completed]',
       '',
     ].join('\n'));
   });
@@ -199,13 +181,12 @@ describe('workunit projections: status display', () => {
       },
     });
     assert.strictEqual(workUnitStatus('feature', unitOf(dir, 'feature', 'auth-flow')), [
-      ...boxOf('Auth Flow'),
-      '  PIPELINE (feature)',
-      '  ├─ ◐ Discussion        # in-progress',
-      '  ├─ ✓ Specification     # completed',
-      '  ├─ ◐ Planning          # in-progress',
-      '  ├─ ✓ Implementation    # completed',
-      '  └─ ✓ Review            # completed',
+      'PIPELINE (feature)',
+      '  ├─ ◐ Discussion        [in-progress]',
+      '  ├─ ✓ Specification     [completed]',
+      '  ├─ ◐ Planning          [in-progress]',
+      '  ├─ ✓ Implementation    [completed]',
+      '  └─ ✓ Review            [completed]',
       '',
     ].join('\n'));
   });
@@ -226,7 +207,7 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Auth Flow" — specification (in-progress).',
+      'Continuing "Auth Flow" — *specification (in-progress)*.',
       '',
       '**`◆ Proceed?`**',
       '',
@@ -261,7 +242,7 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('bugfix', unitOf(dir, 'bugfix', 'login-crash'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Login Crash" — ready for specification.',
+      'Continuing "Login Crash" — *ready for specification*.',
       '',
       '**`◆ Proceed?`**',
       '',
@@ -289,7 +270,7 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('quick-fix', unitOf(dir, 'quick-fix', 'hotfix-logs'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Hotfix Logs" — implementation (in-progress).',
+      'Continuing "Hotfix Logs" — *implementation (in-progress)*.',
       '',
       '**`◆ Proceed?`**',
       '',
@@ -332,7 +313,7 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Finalising "Auth Flow" — pipeline complete.',
+      'Finalising "Auth Flow" — *pipeline complete*.',
       '',
       '**`◆ Proceed?`**',
       '',
@@ -385,7 +366,7 @@ describe('workunit projections: menu', () => {
     const menu = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Caching" — ready for specification.',
+      'Continuing "Caching" — *ready for specification*.',
       '',
       '**`◆ Proceed?`**',
       '',
@@ -514,8 +495,8 @@ describe('workunit projections: revisit phases section', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
       '',
-      '**`1`**      → Discussion — completed',
-      '**`2`**      → Specification — completed',
+      '**`1`**      → Discussion — *completed*',
+      '**`2`**      → Specification — *completed*',
       '**`b/back`** → Return to the previous menu',
       '',
     ].join('\n'));
