@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.41] - 2026-08-05
+
+🔧 Changed
+- Recut the workflow-start banner as two-tone block art, rendered via a `properties` code fence instead of `yaml`.
+- Task-verifier aggregation now requires each report file to actually be read before its findings are cited, rather than allowing paraphrase from dispatch summaries.
+
 ## [0.6.40] - 2026-08-05
 
 🔧 Changed
