@@ -252,9 +252,9 @@ function view(workUnit, newArrivalsJson) {
   ].join('\n');
 }
 
-// One selection sub-view (sections D–F): the keys table as DATA, the grouped
-// list as DISPLAY, the pick menu as MENU.
-/** @param {string} workUnit @param {(name: string, detail: object) => {keys: object[], display: string, rendered: string}} projection */
+// One selection sub-view (sections D–F): the keys table as DATA, the view's
+// heading as TITLE, the grouped list as DISPLAY, the pick menu as MENU.
+/** @param {string} workUnit @param {(name: string, detail: object) => {keys: object[], title: string, display: string, rendered: string}} projection */
 function subView(workUnit, projection) {
   const result = discover(process.cwd(), workUnit);
   const e = result.epics[0];
@@ -272,6 +272,7 @@ function subView(workUnit, projection) {
 
   return [
     engine.gateway.dataBlock(dataLines.join('\n')),
+    engine.gateway.titleBlock(view.title),
     engine.gateway.displayBlock(view.display),
     engine.gateway.menuBlock(view.rendered),
   ].join('\n');

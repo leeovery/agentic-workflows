@@ -81,9 +81,9 @@ engine.detail.specificationDetail(wu, result, { consultHints }) // → Specifica
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
-engine.project.epicCompletedMenu(wu, detail)      // → { keys, display, rendered } — Completed Topics resume sub-view
-engine.project.epicCancelMenu(detail)             // → { keys, display, rendered } — Cancellable Topics pick menu
-engine.project.epicReactivateMenu(detail)         // → { keys, display, rendered } — Cancelled Topics reactivate menu
+engine.project.epicCompletedMenu(wu, detail)      // → { keys, title, display, rendered } — Completed Topics resume sub-view
+engine.project.epicCancelMenu(detail)             // → { keys, title, display, rendered } — Cancellable Topics pick menu
+engine.project.epicReactivateMenu(detail)         // → { keys, title, display, rendered } — Cancelled Topics reactivate menu
 engine.project.discoveryMapView(wu, map)          // → Discovery Map display block (box + tier header + rows)
 engine.project.discoverySynthesisView(wu, map, proposed) // → harvest proposal block (proposed set over the existing map)
 engine.project.discussionMap(topic, manifest)     // → Discussion Map display block

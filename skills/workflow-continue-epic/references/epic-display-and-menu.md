@@ -177,7 +177,7 @@ Render the completed-topics list and pick menu:
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs completed-menu {work_unit}
 ```
 
-Emit the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -201,7 +201,7 @@ Render the cancellable-topics list and pick menu:
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs cancel-menu {work_unit}
 ```
 
-Emit the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -253,7 +253,7 @@ Render the cancelled-topics list and pick menu:
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs reactivate-menu {work_unit}
 ```
 
-Emit the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 

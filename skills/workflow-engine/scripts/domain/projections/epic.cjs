@@ -789,7 +789,7 @@ function epicInSessionGate(entry) {
  * @typedef {object} SubViewRow
  * @property {string} phase
  * @property {string} topic
- * @property {string} row     display line (unindented; numbered rows get `{key}. ` prefixed)
+ * @property {string} row     display line (unindented; the branch glyph and `{key}. ` are prefixed)
  * @property {string} label   pick-menu option label
  * @property {string|null} route
  */
@@ -802,27 +802,32 @@ function backKey() {
 /**
  * Compose one selection sub-view from its rows: sequential numbering across
  * phase groups, blank line between groups, dotted pick menu with `b/back`.
- * @param {string} heading   the display block's first line
+ * The heading is the caller's TITLE section, never drawn here — so the phase
+ * header sits at column 0 with its rows hanging two columns off it, the shape
+ * every engine list shares. Picker rows are list rows: the `[tag]` rides
+ * inline rather than columnising, matching the inbox pickup.
+ * @param {string} title     the view's chrome heading (TITLE section)
+ * @param {string} empty     the display's stand-in when there are no rows
  * @param {string} question  the pick menu's first line
  * @param {string} action    the numbered entries' action key
  * @param {SubViewRow[]} rows  display order; grouped by contiguous `phase` runs
- * @param {{numberedRows?: boolean}} [opts]  prefix `{key}. ` to each row (vs `└─ `)
- * @returns {{keys: SubViewKey[], display: string, rendered: string}}
+ * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
-function selectionSubView(heading, question, action, rows, opts = {}) {
+function selectionSubView(title, empty, question, action, rows) {
   /** @type {SubViewKey[]} */
   const keys = [];
-  const displayLines = [heading];
+  const displayLines = [];
   let phase = null;
   rows.forEach((r, i) => {
     const key = String(i + 1);
     keys.push({ key, action, topic: r.topic, phase: r.phase, route: r.route, label: r.label });
     if (r.phase !== phase) {
-      displayLines.push('', `  ${titlecase(r.phase)}`);
+      if (displayLines.length) displayLines.push('');
+      displayLines.push(titlecase(r.phase));
       phase = r.phase;
     }
     const lastInGroup = i === rows.length - 1 || rows[i + 1].phase !== r.phase;
-    displayLines.push(`    ${opts.numberedRows ? `${key}. ` : (lastInGroup ? '└─ ' : '├─ ')}${r.row}`);
+    displayLines.push(`  ${lastInGroup ? '└─' : '├─'} ${key}. ${r.row}`);
   });
   keys.push(backKey());
 
@@ -831,7 +836,12 @@ function selectionSubView(heading, question, action, rows, opts = {}) {
     menuLines.push(cmdOption(k.key, k.word, k.label));
   }
 
-  return { keys, display: displayLines.join('\n') + '\n', rendered: menuFrame(menuLines) };
+  return {
+    keys,
+    title,
+    display: (rows.length ? displayLines.join('\n') : empty) + '\n',
+    rendered: menuFrame(menuLines),
+  };
 }
 
 /** Group ItemRefs by phase in pipeline order. @param {ItemRef[]} items @returns {ItemRef[]} */
@@ -845,7 +855,7 @@ function pipelineOrdered(items) {
  * to the topic's phase entry skill.
  * @param {string} workUnit
  * @param {EpicDetail} detail
- * @returns {{keys: SubViewKey[], display: string, rendered: string}}
+ * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicCompletedMenu(workUnit, detail) {
   const rows = pipelineOrdered(detail.completed).map((item) => {
@@ -858,14 +868,14 @@ function epicCompletedMenu(workUnit, detail) {
       route: topicRoute(`continue_${item.phase}`, workUnit, item.name),
     };
   });
-  return selectionSubView('Completed Topics', 'Which topic would you like to resume?', 'resume', rows);
+  return selectionSubView('Completed Topics', 'No completed topics.', 'Which topic would you like to resume?', 'resume', rows);
 }
 
 /**
  * Section E — the Cancellable Topics list and pick menu (non-cancelled,
  * non-promoted items). No routes — the flow continues to its confirmation gate.
  * @param {EpicDetail} detail
- * @returns {{keys: SubViewKey[], display: string, rendered: string}}
+ * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicCancelMenu(detail) {
   /** @type {SubViewRow[]} */
@@ -882,7 +892,7 @@ function epicCancelMenu(detail) {
       });
     }
   }
-  return selectionSubView('Cancellable Topics', 'Which topic would you like to cancel?', 'cancel', rows, { numberedRows: true });
+  return selectionSubView('Cancellable Topics', 'No cancellable topics.', 'Which topic would you like to cancel?', 'cancel', rows);
 }
 
 /**
@@ -890,7 +900,7 @@ function epicCancelMenu(detail) {
  * stashed `previous_status`. No routes — the flow runs the reactivate
  * transaction.
  * @param {EpicDetail} detail
- * @returns {{keys: SubViewKey[], display: string, rendered: string}}
+ * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicReactivateMenu(detail) {
   const rows = pipelineOrdered(detail.cancelled).map((item) => {
@@ -903,7 +913,7 @@ function epicReactivateMenu(detail) {
       route: null,
     };
   });
-  return selectionSubView('Cancelled Topics', 'Which topic would you like to reactivate?', 'reactivate', rows, { numberedRows: true });
+  return selectionSubView('Cancelled Topics', 'No cancelled topics.', 'Which topic would you like to reactivate?', 'reactivate', rows);
 }
 
 module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu };

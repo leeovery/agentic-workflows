@@ -739,20 +739,19 @@ describe('epic projections: selection sub-views', () => {
     });
   }
 
-  it('completed-menu: unnumbered └─ rows grouped by phase, routes per entry', () => {
+  it('completed-menu: numbered tree rows grouped by phase, routes per entry', () => {
     const view = epicCompletedMenu('quiz-competition-v1', richDetail());
+    assert.strictEqual(view.title, 'Completed Topics');
     assert.strictEqual(view.display, [
-      'Completed Topics',
+      'Research',
+      '  └─ 1. Kitchen Hardware [completed]',
       '',
-      '  Research',
-      '    └─ Kitchen Hardware [completed]',
+      'Discussion',
+      '  ├─ 2. Auth Flow [completed]',
+      '  └─ 3. Session Storage [completed]',
       '',
-      '  Discussion',
-      '    ├─ Auth Flow [completed]',
-      '    └─ Session Storage [completed]',
-      '',
-      '  Specification',
-      '    └─ Roles And Permissions [completed]',
+      'Specification',
+      '  └─ 4. Roles And Permissions [completed]',
       '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
@@ -779,22 +778,21 @@ describe('epic projections: selection sub-views', () => {
 
   it('cancel-menu: numbered rows, continuous across phases, cancelled/promoted excluded', () => {
     const view = epicCancelMenu(richDetail());
+    assert.strictEqual(view.title, 'Cancellable Topics');
     assert.strictEqual(view.display, [
-      'Cancellable Topics',
+      'Research',
+      '  ├─ 1. Kitchen Hardware [completed]',
+      '  └─ 2. Menu Admin [in-progress]',
       '',
-      '  Research',
-      '    1. Kitchen Hardware [completed]',
-      '    2. Menu Admin [in-progress]',
+      'Discussion',
+      '  ├─ 3. Auth Flow [completed]',
+      '  └─ 4. Session Storage [completed]',
       '',
-      '  Discussion',
-      '    3. Auth Flow [completed]',
-      '    4. Session Storage [completed]',
+      'Specification',
+      '  └─ 5. Roles And Permissions [completed]',
       '',
-      '  Specification',
-      '    5. Roles And Permissions [completed]',
-      '',
-      '  Implementation',
-      '    6. Roles And Permissions [in-progress]',
+      'Implementation',
+      '  └─ 6. Roles And Permissions [in-progress]',
       '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
@@ -831,18 +829,17 @@ describe('epic projections: selection sub-views', () => {
         research: { items: { 'parked-topic': { status: 'triaged' }, 'menu-admin': { status: 'in-progress' } } },
       },
     }));
-    assert.ok(view.display.includes('    1. Parked Topic [triaged]'), view.display);
-    assert.ok(view.display.includes('    2. Menu Admin [in-progress]'), view.display);
+    assert.ok(view.display.includes('  ├─ 1. Parked Topic [triaged]'), view.display);
+    assert.ok(view.display.includes('  └─ 2. Menu Admin [in-progress]'), view.display);
     assert.ok(/\*\*`1`\*\* +→ Cancel "Parked Topic" — \*research \[triaged\]\*/.test(view.rendered), view.rendered);
   });
 
   it('reactivate-menu: numbered rows with (was: previous_status)', () => {
     const view = epicReactivateMenu(richDetail());
+    assert.strictEqual(view.title, 'Cancelled Topics');
     assert.strictEqual(view.display, [
-      'Cancelled Topics',
-      '',
-      '  Discussion',
-      '    1. Stale Topic [cancelled] (was: in-progress)',
+      'Discussion',
+      '  └─ 1. Stale Topic [cancelled] (was: in-progress)',
       '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
@@ -868,18 +865,17 @@ describe('epic projections: selection sub-views', () => {
     });
     const view = epicReactivateMenu(d);
     assert.strictEqual(view.display, [
-      'Cancelled Topics',
-      '',
-      '  Research',
-      '    1. Dropped [cancelled] (was: unknown)',
+      'Research',
+      '  └─ 1. Dropped [cancelled] (was: unknown)',
       '',
     ].join('\n'));
   });
 
-  it('empty sub-view: heading only, menu offers only back', () => {
+  it('empty sub-view: the empty-state line stands in for the list, menu offers only back', () => {
     const d = detailFor(dir, 'fresh', { work_type: 'epic' });
     const view = epicCompletedMenu('fresh', d);
-    assert.strictEqual(view.display, 'Completed Topics\n');
+    assert.strictEqual(view.title, 'Completed Topics');
+    assert.strictEqual(view.display, 'No completed topics.\n');
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to resume?`**',
@@ -889,7 +885,7 @@ describe('epic projections: selection sub-views', () => {
     assert.deepStrictEqual(view.keys.map((k) => k.key), ['b']);
   });
 
-  it('adapter emits the DATA keys table plus DISPLAY and MENU for a sub-view verb', () => {
+  it('adapter emits the DATA keys table plus TITLE, DISPLAY and MENU for a sub-view verb', () => {
     createManifest(dir, 'quiz-competition-v1', {
       work_type: 'epic',
       phases: {
@@ -906,14 +902,15 @@ describe('epic projections: selection sub-views', () => {
       '  2  resume  auth-flow  discussion  → /workflow-discussion-entry epic quiz-competition-v1 auth-flow',
       '  b  back  —  —  → (internal)',
       '',
+      '=== TITLE (emit verbatim as markdown — the view\'s chrome heading) ===',
+      '# **`■ Completed Topics`**',
+      '',
       '=== DISPLAY (emit verbatim as a code block) ===',
-      'Completed Topics',
+      'Research',
+      '  └─ 1. Kitchen Hardware [completed]',
       '',
-      '  Research',
-      '    └─ Kitchen Hardware [completed]',
-      '',
-      '  Discussion',
-      '    └─ Auth Flow [completed]',
+      'Discussion',
+      '  └─ 2. Auth Flow [completed]',
       '',
       '=== MENU (emit verbatim as markdown) ===',
       '· · · · · · · · · · · ·',
