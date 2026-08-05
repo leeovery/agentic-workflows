@@ -1,0 +1,83 @@
+{
+  "origin": "the task loop's auto branches had no coverage, and three live stalls landed exactly where they continue by producing nothing — the loop ended its turn after a gate summary instead of looping. This walks both auto seams unattended: the fix gate opts into auto on task 1 and the task gate follows, so task 2 runs a full fix round and approval with no user input, emitting the engine's continuation lines and looping to completion",
+  "entry": "workflow-implementation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-implementation-entry/references/validate-phase.md",
+    "skills/workflow-implementation-entry/references/validate-dependencies.md",
+    "skills/workflow-implementation-entry/references/invoke-skill.md",
+    "skills/workflow-implementation-process/SKILL.md",
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-process/references/load-plan-adapter.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/updating.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-implementation-process/references/project-skills-discovery.md",
+    "skills/workflow-implementation-process/references/linter-setup.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-implementation-process/references/task-loop.md",
+    "skills/workflow-shared/references/product-lens.md",
+    "skills/workflow-implementation-process/references/task-normalisation.md",
+    "skills/workflow-implementation-process/references/invoke-executor.md",
+    "skills/workflow-implementation-process/references/invoke-reviewer.md"
+  ],
+  "answers": [
+    "y — skip project skills again",
+    "y — skip linters again",
+    "a — accept and auto-approve future fix analyses",
+    "a — approve this and all future tasks automatically"
+  ],
+  "stubs": {
+    "executor-task-complete": "each time the workflow-implementation-task-executor agent is dispatched — initial run or fix round alike — create the dispatched task's source and test files as the stub gives them and return that task's STATUS block; two firings per task",
+    "reviewer-task-flags-then-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — return the stub's first-firing needs-changes block the first time a task is reviewed and its approved block on that task's re-review; write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "engine.cjs commit pay -m impl(pay): start implementation",
+      "manifest get pay work_type",
+      "manifest get pay.planning.pay external_id",
+      "task start pay pay pay-1-1",
+      "task fix-attempt pay pay pay-1-1",
+      "fix_gate_mode auto",
+      "task_gate_mode auto",
+      "task start pay pay pay-1-2",
+      "task fix-attempt pay pay pay-1-2",
+      "task complete pay pay pay-1-1 --phase 1 --next-task pay-1-2",
+      "task complete pay pay pay-1-2 --phase 1 --next-task ~",
+      "--phase-complete",
+      "impl(pay): Tpay-1-1",
+      "impl(pay): Tpay-1-2"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "task start pay pay pay-1-1",
+      "task fix-attempt pay pay pay-1-1",
+      "fix_gate_mode auto",
+      "task_gate_mode auto",
+      "task complete pay pay pay-1-1",
+      "impl(pay): Tpay-1-1",
+      "task start pay pay pay-1-2",
+      "task fix-attempt pay pay pay-1-2",
+      "task complete pay pay pay-1-2",
+      "impl(pay): Tpay-1-2"
+    ],
+    "calls_exclude": [
+      "analysis-cycle",
+      "topic complete pay implementation",
+      "topic reopen",
+      "engine.cjs commit pay -m impl(pay): T",
+      "git add -A",
+      "git add --all"
+    ]
+  }
+}

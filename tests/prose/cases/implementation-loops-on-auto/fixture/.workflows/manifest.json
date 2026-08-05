@@ -1,0 +1,11 @@
+{
+  "work_units": {
+    "pay": {
+      "work_type": "feature"
+    }
+  },
+  "defaults": {
+    "project_skills": [],
+    "linters": []
+  }
+}
