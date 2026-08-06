@@ -137,7 +137,7 @@ Present the concern in your own voice — name its origin in a sentence, then br
 
 **STOP.** Wait for user response.
 
-Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer.
+Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it — the dispatch check's triage-queue box holds while entries remain, so no review launches mid-walk. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer.
 
 **If the discussion reaches an outcome** — a decision, a direction, or the user explicitly parking it as a deferred thread:
 
