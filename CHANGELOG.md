@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.45] - 2026-08-06
+
+✨ Added
+- Task-loop, transaction, and menu gates now fetch their own render surface at the moment they display, instead of carrying a section forward from an earlier response.
+- Discussion and research topic conclusion now blocks on a non-empty triage queue, pointing you to absorb rerouted concerns before closing out.
+- Review dispatch refuses when rerouted concerns are still queued, so a review never analyzes a document about to change.
+
+🔧 Changed
+- Rerouted triage entries with multiple independent asks are now split one-per-file and walked one at a time instead of landing as a single bundled entry.
+- `workunit complete`/`cancel`/`reactivate`/`pivot` and `topic complete`/`cancel`/`reactivate` now answer with plain JSON — their confirmation banners and warnings are fetched separately via `engine render`.
+- Navigation gateways (bugfix, feature, epic, cross-cutting, quick-fix) always re-run their index/state dump before emitting a selection or menu, rather than reusing a previously fetched snapshot.
+- Prescribed gates and menus must be rendered as their verbatim block, never routed through an interactive picker tool.
+
 ## [0.6.44] - 2026-08-06
 
 ✨ Added
