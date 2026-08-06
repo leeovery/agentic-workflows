@@ -64,7 +64,7 @@ Take the highest-numbered `review` row from the **A** scan and branch on its sta
 
 The prior review was fully drained. A fresh one is warranted only when the discussion moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close.
 
-**If the user declined the fresh review at this conclusion attempt's closing gate:**
+**If the user declined another final review at this conclusion attempt's closing gate:**
 
 The decline stands — do not re-litigate it. A later conclusion attempt classifies afresh and offers again.
 
