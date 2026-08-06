@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.46] - 2026-08-06
+
+🔧 Changed
+- Discussion review-gate wording now consistently calls the optional pass "another final review" instead of a "fresh" one, matching the fact that a full review has already run.
+
 ## [0.6.45] - 2026-08-06
 
 ✨ Added
