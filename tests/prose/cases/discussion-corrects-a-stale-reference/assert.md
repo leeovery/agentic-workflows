@@ -14,9 +14,10 @@ The prose should have taken this path:
    names no subtopic, so the subtopic whose recorded content it
    corrects, expansion-source, re-arms from decided to exploring; no
    discussion-map add is issued
-5. the concern renders whole — bold header, horizontal rules, verbatim
-   entry — the breakdown covers it alone, and a single question closes
-   the turn; the user accepts the correction as prescribed
+5. the concern's queue file is read as the session's own brief and
+   presented as a breakdown — the entry never emitted verbatim — that
+   covers it alone, and a single question closes the turn; the user
+   accepts the correction as prescribed
 6. the fold takes the pure-correction branch: the two citing sites are
    amended in place, each amendment a dated note naming
    behavioural-ranking's retiring decision, the stale table citations

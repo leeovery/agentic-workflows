@@ -14,8 +14,9 @@ The prose should have taken this path:
    step
 4. the session loop's first triage check reads the queue and renders
    the one-entry agenda with the offer menu; on the user's go the
-   concern is surfaced whole — its provenance and full body
-   presented, not a title. Because the concern's title names an
+   concern's queue file is read as the session's own brief and
+   presented as a breakdown — the entry never emitted verbatim, and
+   never from the title alone. Because the concern's title names an
    existing subtopic in a settled state, the ground re-arms at the
    raise: `expansion-source` is set to `exploring` before the
    discussion starts, and the map is no longer all-decided

@@ -12,9 +12,10 @@ The prose should have taken this path:
    the two-entry agenda — both titles with their origins, bodies
    unread — together with the offer menu, and stops for the user
 4. the user opts in; the first concern is armed on the map
-   (`discussion-map add` then set `exploring`), surfaced whole —
-   provenance line and full body, not a title — broken down, and
-   discussed to the baseline decision
+   (`discussion-map add` then set `exploring`), its queue file read
+   as the session's own brief, and presented as a breakdown — the
+   entry never emitted verbatim, and never from the title alone —
+   then discussed to the baseline decision
 5. the fold documents the decision: a new `##` section whose Context
    opens with the provenance line and the concern body, the map set
    `decided`, and the concern absorbed under its own commit naming

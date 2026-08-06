@@ -48,7 +48,6 @@
     "calls_include": [
       "manifest get search-relevance.discussion.synonym-handling status",
       "render triage-offer search-relevance.discussion.synonym-handling",
-      "render concern search-relevance.discussion.synonym-handling --file 001-expansion-source.md",
       "discussion-map set search-relevance synonym-handling expansion-source exploring",
       "discussion-map set search-relevance synonym-handling expansion-source decided",
       "absorb 001-expansion-source (from behavioural-ranking)",
@@ -63,6 +62,7 @@
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [
+      "render concern",
       "--kind perspective",
       "topic reopen",
       "topic start search-relevance discussion synonym-handling",

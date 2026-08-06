@@ -533,7 +533,7 @@ describe('render finding-batch', () => {
   });
 });
 
-describe('render concern', () => {
+describe('render triage surfaces', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -546,29 +546,6 @@ describe('render concern', () => {
     fs.mkdirSync(qdir, { recursive: true });
     for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(qdir, f), body);
   }
-
-  it('frames the queue file verbatim between horizontal rules under a markdown DISPLAY section', () => {
-    const entry = '### Offline metrics\n*From: ranking · discussion · 2026-08-02*\n\nBody with **bold** and\n\n> a quote.\n';
-    writeQueue('measurement', { '001-offline-metrics.md': entry });
-    const out = renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '001-offline-metrics.md' });
-    const lines = out.split('\n');
-    assert.strictEqual(lines[0], '=== DISPLAY: rerouted concern (emit verbatim as markdown) ===');
-    assert.strictEqual(lines[1], '**Rerouted concern**');
-    assert.strictEqual(lines[2], '');
-    assert.strictEqual(lines[3], '---');
-    assert.strictEqual(lines[4], '');
-    assert.ok(out.includes(entry.trimEnd()), 'entry content is byte-verbatim');
-    assert.deepStrictEqual(out.trimEnd().split('\n').slice(-2), ['', '---'], 'a blank line then a rule closes the frame — never a setext-heading collapse');
-    assert.ok(!out.includes(DOTS), 'dot rails stay menu vocabulary');
-  });
-
-  it('refuses a missing file, a path, an empty entry, and no --file', () => {
-    writeQueue('measurement', { '001-a.md': 'x', '002-empty.md': ' \n' });
-    assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '999-none.md' }), /not in the measurement discussion triage queue/);
-    assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '../001-a.md' }), /queue-file name, not a path/);
-    assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement', file: '002-empty.md' }), /is empty/);
-    assert.throws(() => renderSurface(dir, 'concern', { dotpath: 'wu.discussion.measurement' }), /--file <NNN-slug\.md> is required/);
-  });
 
   it('triage-offer renders the agenda in queue order and the discuss/later menu', () => {
     writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
@@ -1300,7 +1277,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, concern, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });
 });
 

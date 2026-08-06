@@ -723,9 +723,8 @@ function finding(cwd, { dotpath, file }) {
 
 // ---------------------------------------------------------------------------
 // Triage surfaces — the queue sidecar is engine-owned layout, so these
-// surfaces list it directly; entry *content* beyond the verbatim quotation
-// never populates a render from a parse — per-entry agenda values arrive as
-// a judgment payload.
+// surfaces list it directly; entry content never populates a render from a
+// parse — per-entry agenda values arrive as a judgment payload.
 // ---------------------------------------------------------------------------
 
 /**
@@ -739,37 +738,6 @@ function triageQueue(cwd, workUnit, phase, topic) {
     dir,
     files: fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort() : [],
   };
-}
-
-// concern — a rerouted triage-queue entry framed for markdown emission: a
-// bold header and horizontal rules top and tail the verbatim file content so
-// it reads as a bounded quotation, not the session's own voice (rules are
-// semantic markdown, not drawn borders; dot rails stay menu vocabulary). The
-// queue file is the payload; --file names the entry (basename only — the
-// engine owns the queue layout).
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function concern(cwd, { dotpath, file }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'concern');
-  if (!file) throw new Error('render concern: --file <NNN-slug.md> is required');
-  if (file !== path.basename(file) || !file.endsWith('.md')) {
-    throw new Error(`render concern: --file must be a queue-file name, not a path (got "${file}")`);
-  }
-  const queue = triageQueue(cwd, workUnit, phase, topic);
-  if (!queue.files.includes(file)) {
-    throw new Error(`render concern: "${file}" is not in the ${topic} ${phase} triage queue`);
-  }
-  const body = fs.readFileSync(path.join(queue.dir, file), 'utf8').replace(/\s+$/, '');
-  if (!body) throw new Error(`render concern: "${file}" is empty`);
-  return section(
-    'DISPLAY: rerouted concern',
-    'emit verbatim as markdown',
-    ['**Rerouted concern**', '', '---', '', ...body.split('\n'), '', '---'].join('\n'),
-  );
 }
 
 // triage-offer — the offer gate over a non-empty queue: the agenda (count
@@ -1192,7 +1160,6 @@ const SURFACES = {
   'findings-summary': findingsSummary,
   'finding-batch': findingBatch,
   'finding': finding,
-  'concern': concern,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,
   'reroute-offer': rerouteOffer,
