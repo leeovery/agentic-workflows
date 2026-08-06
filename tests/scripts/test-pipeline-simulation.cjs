@@ -545,6 +545,11 @@ describe('pipeline simulation', () => {
     const queue = sim.run(['topic', 'queue', wu, 'research', 'delta']);
     assert.strictEqual(queue.count, 1);
     assert.deepStrictEqual(queue.files, [parked.concern_path], 'the read verb lists the delivered concern');
+    // The dispatch gate: a review never launches over a non-empty queue —
+    // each queued concern is a pending change to the document a review
+    // would read. Other kinds stay ungated.
+    sim.refuses(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'review'], /review dispatch blocked/);
+    sim.run(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'deep-dive', '--label', 'scope']);
     // topic absorb — the delivery's mirror: deliver a second concern, absorb
     // it, and the self-committing response answers what remains.
     sim.write('.workflows/.cache/scratch/concern-scratch.md',
@@ -577,6 +582,11 @@ describe('pipeline simulation', () => {
     assert.strictEqual(flagged.reconcile_flagged, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.reconcile_needed, 'research');
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'completed');
+    // The dispatch gate clears the moment the queue drains.
+    sim.refuses(['agent', 'dispatch', wu, 'research', 'beta', '--kind', 'review'], /review dispatch blocked/);
+    sim.run(['topic', 'absorb', wu, 'research', 'beta',
+      '--file', '001-feasibility-question.md', '-m', `research(${wu}/beta): absorb 001-feasibility-question (from alpha)`]);
+    sim.run(['agent', 'dispatch', wu, 'research', 'beta', '--kind', 'review']);
     // Presence: a beat reads live and held (deferral territory for the
     // bridge, in-session territory for the epic view), the orderly clear
     // empties the scan.
