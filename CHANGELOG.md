@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.44] - 2026-08-06
+
+✨ Added
+- The workflow-start banner now stamps the shipped version directly into the ASCII art, right-aligned beneath the WS of WORKFLOWS.
+- A new triage-announce surface gives a fresh session a one-line, count-only heads-up about queued concerns instead of a full agenda.
+
+🔧 Changed
+- Discovery's confirmation prompts and README's example screens render as plain code blocks instead of bolded/backtick-styled markdown, matching what actually appears on screen.
+- A rerouted concern raised mid-discussion is now delivered through the assistant's own breakdown rather than quoted verbatim from the queue file.
+- Queued triage concerns are now announced only once a session finds its footing on its own material, rather than offered immediately at the start of every sitting.
+
 ## [0.6.43] - 2026-08-06
 
 ✨ Added
