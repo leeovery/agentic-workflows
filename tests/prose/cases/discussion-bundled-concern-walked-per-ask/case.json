@@ -1,0 +1,76 @@
+{
+  "origin": "the Fumi wall-of-text regression — a queue entry bundling three revisions to the positioning model was surfaced as one mega-breakdown spanning every ask plus a self-discovered fourth issue, and the user had to dismantle it by hand. The rework walks a bundled entry one ask at a time; this walk drives a three-ask entry and asserts three sequential raises, one fold, one absorb",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-discussion-entry/references/gather-context.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [],
+  "conduct": "The user is engaged and decides quickly. The sitting is fresh, so the queue arrives as a count-only announcement and the session opens on its own material; at the opening question they say the brief covers it and ask to deal with the queued concern now. Shown the one-entry agenda they say discuss. The entry bundles three asks. If the asks are raised one at a time — a one-line map of the three, then the first ask alone ending in its own question — they accept ask 1 as presented, accept ask 2, and for ask 3 they set the sampling refresh cadence to quarterly and otherwise accept; each answer engages only what was asked. If instead a raise spans more than one ask in a single breakdown, they push back that it is too much at once and ask to take it one thing at a time, then proceed as above from wherever the walk resumes. Once the entry is folded and absorbed they are out of time and end the session. They never conclude the discussion and never return.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.relevance-measurement status",
+      "topic start search-relevance discussion relevance-measurement",
+      "topic queue search-relevance discussion relevance-measurement",
+      "render triage-announce search-relevance.discussion.relevance-measurement",
+      "render triage-offer search-relevance.discussion.relevance-measurement",
+      "discussion-map add search-relevance relevance-measurement measurement-gates-for-ranking-changes",
+      "discussion-map set search-relevance relevance-measurement measurement-gates-for-ranking-changes exploring",
+      "discussion-map set search-relevance relevance-measurement measurement-gates-for-ranking-changes decided",
+      "absorb 001-measurement-gates-for-ranking-changes (from behavioural-ranking)"
+    ],
+    "calls_exclude": [
+      "render concern",
+      "topic complete search-relevance discussion relevance-measurement",
+      "topic reopen",
+      "--kind perspective",
+      "knowledge.cjs index"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.relevance-measurement status",
+      "topic start search-relevance discussion relevance-measurement",
+      "discussion-map add search-relevance relevance-measurement measurement-gates-for-ranking-changes",
+      "discussion-map set search-relevance relevance-measurement measurement-gates-for-ranking-changes exploring",
+      "discussion-map set search-relevance relevance-measurement measurement-gates-for-ranking-changes decided",
+      "absorb 001-measurement-gates-for-ranking-changes (from behavioural-ranking)"
+    ]
+  }
+}
