@@ -45,7 +45,8 @@
       "review(pay): complete review phase",
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
-      "workunit complete pay -m workflow(pay): complete feature pipeline --pipeline"
+      "workunit complete pay -m workflow(pay): complete feature pipeline",
+      "render workunit-receipt pay --verb complete --pipeline"
     ],
     "calls_in_order": [
       "render entry-gate pay.review.pay",
