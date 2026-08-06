@@ -25,8 +25,9 @@ The prose should have taken this path:
    gated: the pending closing work is read from the agent store, and
    the user is asked — another final review offered where the
    discussion moved since the last one, or the conclude ask where the
-   review is up to date — with the walk ending only after their answer(s). Nothing
-   passes silently from the wrap signal into the final review
+   review is up to date — with the walk ending only after their
+   answer(s). Nothing passes silently from the wrap signal into the
+   final review
 8. the walk stops before the final gap review step runs — no review
    executes after the wrap, document review and the compliance check
    never load, and the discussion is not completed

@@ -45,9 +45,9 @@ The prose should have taken this path:
 7. the user passes the review gate per their conduct (a mandatory
    review proceeds — the stubbed report comes back clean; the optional
    offer of another final review is skipped), confirms the conclude
-   gate, and the
-   final gap review and document review steps run without unwinding
-   the timeline — the revision landing survives reconciliation intact
+   gate, and the final gap review and document review steps run
+   without unwinding the timeline — the revision landing survives
+   reconciliation intact
 8. the conclusion marks the discussion complete (`topic complete`),
    commits, clears the session's presence heartbeat, finds no
    leavings to sweep, and the walk stops at the bridge invocation
