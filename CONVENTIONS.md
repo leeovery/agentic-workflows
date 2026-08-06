@@ -149,7 +149,7 @@ Rules:
 
 ### Workflow Banner
 
-The `workflow-start` skill opens with an ASCII art banner (see skill file for exact art) emitted as a properties code block — the fence is what colours the art: each line's first token renders turquoise and everything after the first space red, so the single space between the two words is load-bearing — followed by a markdown title line carrying the product name and version (`# **`■ Agentic Engineering Workflows`** · *vN.N.N*`). No borders; the version rides the title line, where the release tooling pattern-matches it.
+The `workflow-start` skill opens with an ASCII art banner (see skill file for exact art) emitted as a properties code block — the fence is what colours the art: each line's first token renders turquoise and everything after the first space red, so the single space between the two words is load-bearing. The shipped version stamps as a fourth line inside that block, right-aligned under the `WS` of `WORKFLOWS` (the art is 63 columns; `vN.N.NN` is exactly as wide as those two letters). The release tooling pattern-matches the bare token, so the padding is the skill's to own. No borders. The banner is branding, not chrome: the phase title beneath it (`# **`■ Workflow Start`**`) names where the user is, and never repeats what the art already says.
 
 ### Template Placeholders
 
