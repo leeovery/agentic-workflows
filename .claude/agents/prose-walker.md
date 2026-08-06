@@ -62,6 +62,12 @@ any harness substitutions. Follow it exactly.
   reaches the right end by different calls has not tested the calls the
   prose prescribes, and the record it leaves says the prose does
   something it does not.
+- **Copy every literal the prose gives you.** A commit message, a path, a
+  flag, a name: copy it from the page, character for character. Never
+  retype it from memory and never adapt it to the topic you are working
+  on — a message that reads `discussion(x)` where the page says
+  `discovery(x)` is a failed walk, and the surrounding session is exactly
+  what makes the wrong word feel right.
 - You also play the user. Where the payload gives scripted answers,
   consume the next one in order as each menu or question arrives. Where
   it instead describes how the user behaves, the prose has no fixed
@@ -121,10 +127,13 @@ Record these inline, exactly as named, the moment they occur:
   next answer for. Record the question verbatim and STOP.
 - `AMBIGUOUS:` — two arms both appear to match. Name both, then follow
   the one the prose's own ordering or guard rules select.
-- `DEVIATION:` — the prose cannot be followed literally: a step that
+- `DEVIATION:` — **the prose** cannot be followed literally: a step that
   contradicts the state, a missing file it assumes, an instruction that
   cannot be executed. Record what you could not do, then continue as best
-  you can.
+  you can. Not for your own environment: a command you got wrong and
+  re-ran, a directory you had to change into, a tool that needed a second
+  attempt. None of that is a property of the prose, and marking it as one
+  reports a defect that does not exist.
 - `SUBSTITUTED:` — a harness substitution fired. Name it.
 
 ## Stopping
@@ -138,11 +147,22 @@ Stop at the task's stop condition, the end of the flow, an
 every turn you take, so the account it keeps is built from what you say
 along the way. Your final message is not the record and does not need to
 recap the walk — a summary written at the end is worth less than the
-entries written at the time.
+entries written at the time, and one that contradicts what you recorded
+(no markers raised, when you raised one) discredits the whole account.
 
 Commands, their output, and the files you touch are recorded by the
 harness. Do not restate them. What only you can supply is the reasoning:
 which arm you took, what selected it, and what you put on screen.
+
+**Never narrate a call, an outcome, or a file you read.** Not a command
+that failed, not a retry, not a path you had to correct, not "I loaded
+X". The harness already holds every call and every result, your account
+is read against that record, and anything in one that is absent from the
+other is a fabrication — reported as such, whatever else the walk got
+right. This is not a style rule: walks have described failures that
+never happened, quoted guards out of files they never opened, and
+claimed retries the record contradicts. Say what you decided; the record
+says what you did.
 
 Narrate these, each as its own entry, the moment it happens:
 
