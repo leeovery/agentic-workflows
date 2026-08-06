@@ -94,7 +94,11 @@ Close the session — one engine transaction clears the active-session marker (r
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-session close {work_unit} -m "{message}"
 ```
 
-Emit the response's `DISPLAY: kb warning` section when present, verbatim per its marker — the session is closed and committed either way.
+When the response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` advisory — the session is closed and committed either way:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render session-receipt {work_unit} --warn
+```
 
 → Return to caller.
 

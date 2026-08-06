@@ -11,16 +11,19 @@ One engine transaction converts the feature: flips `work_type: epic` in the work
 The caller provides this via context before loading:
 
 - `work_unit` — the feature being converted. Its single topic shares the work unit's name.
-- `continuation_menu` (optional) — `true` when the caller's flow has a menu step for the pivot response's continuation section; omitted otherwise.
 
 ## A. Run the Pivot
 
-Pass `--continuation-menu` only when the caller's flow has a menu step for the response's `MENU: pivot continuation` section (the manage flow does; the off-topic reroute paths do not — they continue their session and must omit the flag).
-
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit pivot {work_unit} [--continuation-menu]
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit pivot {work_unit}
 ```
 
-Emit the response's `DISPLAY: kb warning` section when present, verbatim per its marker. (With `--continuation-menu`, the response also carries `MENU: pivot continuation` — the caller emits it at its menu step.)
+When the response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` advisory — the warning never blocks:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot --warn
+```
+
+A caller whose flow has a post-pivot menu step (the manage flow) fetches `render pivot-continuation {work_unit}` at that step; the off-topic reroute paths continue their session and fetch nothing.
 
 → Return to caller.

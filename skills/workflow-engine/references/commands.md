@@ -72,7 +72,7 @@ engine manifest resolve <work-unit>.<phase>[.<topic>]    # artifact paths for KB
 
 ```bash
 engine workunit create <work-unit> <work-type> --description <text> (--session-log-file <path> | --no-session-log) [--import <path> …] [--seed <path> …]
-engine workunit complete <work-unit> -m "<message>" [--pipeline [--skipped-review]]   # --pipeline: the bridge context — the confirmation section is the "{Type} Completed" banner
+engine workunit complete <work-unit> -m "<message>"
 engine workunit cancel <work-unit>
 engine workunit reactivate <work-unit>
 engine workunit pivot <work-unit>
@@ -184,7 +184,7 @@ engine commit --inbox -m "<message>"
 engine commit --workflows -m "<message>"
 ```
 
-**Transaction confirmation sections.** The lifecycle verbs append labelled sections after their JSON line, the same pattern as the `task` gate sections: `workunit complete`/`cancel`/`reactivate` carry `DISPLAY: confirmation` (cancel/reactivate preceded by `DISPLAY: kb warning` when `warnings` is non-empty); `topic cancel`/`reactivate` likewise; `topic complete` and `discovery-session close` carry `DISPLAY: kb warning` alone when `warnings` is non-empty — no confirmation line, the calling flow owns its own conclusion display; `workunit absorb` carries the post-absorption summary, `promote` the promotion summary, and `pivot` a `DISPLAY: kb warning` (when warranted) plus `MENU: pivot continuation`. The JSON line stays the machine contract; the calling flow emits each section verbatim at its marker's named moment and never parses it for decisions.
+**Transaction receipts.** The lifecycle verbs answer with their one-line JSON only. The user-facing receipt — `DISPLAY: confirmation`, the `DISPLAY: kb warning` advisory, the absorption/promotion summaries, the `MENU: pivot continuation` — is fetched by the calling flow right after the verb via the `render` receipt surfaces (`workunit-receipt`, `topic-receipt`, `absorb-receipt`, `promote-receipt`, `pivot-continuation`, `session-receipt`). Each surface validates that the state it renders from matches the verb it receipts and refuses loudly out of place; `--warn` prepends the knowledge advisory, set by the caller when the transaction's JSON carried `warnings` (the failure detail itself stays in the JSON line). The calling flow emits each section verbatim at its marker's named moment and never parses it for decisions.
 
 **`render`** — the surface catalogue (`domain/render.cjs`): named runtime surfaces returning demarcated `=== DISPLAY: … ===` / `=== MENU: … ===` sections the calling flow emits verbatim at each marker's named moment. Address-backed values come from the manifest (JSON state only — the engine never parses markdown artifacts); judgment content arrives as a JSON payload file written to the phase cache with the Write tool and validated loudly per-field. Gate-mode branching happens inside the surface: the response carries the menu when the mode is `gated` and the auto-proceed line when it is `auto` — the calling flow branches on which section arrived, never on the mode itself. No git commit; nothing is written.
 
@@ -215,6 +215,12 @@ engine render fix-threshold <wu>.implementation.<topic>           # the ⚑ esca
 engine render blocked-tasks                                       # the blocked-tasks stop menu — static; the blocked-task list is plan-format state the session renders, this menu carries the decision
 engine render cycle-limit <wu>.implementation.<topic>             # the ⚑ over-limit callout over analysis_cycle_session; refuses within the session limit
 engine render cycle-gate                                          # the analysis cycle-limit menu — static
+engine render workunit-receipt <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]  # lifecycle confirmation from manifest state (--pipeline: the bridge's "{Type} Completed" banner; pivot: advisory-only); refuses when the state doesn't match the verb
+engine render topic-receipt <wu>.<phase>.<topic> --verb complete|cancel|reactivate [--warn]  # topic lifecycle confirmation (complete: advisory-only, empty without --warn; reactivate reads the restored status)
+engine render absorb-receipt <epic> --topic <name> [--moved research,seeds,imports] [--warn]  # the post-absorption summary; --moved lists what the absorb's JSON reported moved
+engine render promote-receipt <wu>.specification.<topic> --to <cc-work-unit> [--warn]  # the promotion summary; refuses unless the spec item is promoted
+engine render pivot-continuation <wu>                             # the manage flow's post-pivot continue/back menu; refuses unless the unit is an epic
+engine render session-receipt <wu> [--warn]                       # discovery-session close advisory — empty without --warn
 ```
 
 The bridge continuation surfaces take a bare `<work_unit>` address (work-unit-level, type read from the manifest). The continue-* selection step is not a `render` surface: each navigation gateway's index dump appends `DISPLAY: selection` / `MENU: selection` sections from the shared selection projection — emitted only at the select step, per their markers.
@@ -223,4 +229,4 @@ The `finding` surface serves both review-findings loops (planning and specificat
 
 The `render` group also keeps its dev/debug primitives (`signpost`, `box`, `wrap`, `tree`) — authoring aids only, never called from skill flows.
 
-**Static chrome stays literal in skill prose; everything parameterised or state-branching renders in code** — adapter-side via projections, shared runtime surfaces via the `render` catalogue above, transaction chrome via the verbs' own appended sections. Only the `render` group's dev primitives (`signpost`, `box`, `wrap`, `tree`) are authoring aids never called from flows.
+**Static chrome stays literal in skill prose; everything parameterised or state-branching renders in code** — adapter-side via projections, shared runtime surfaces (gates, receipts, menus) via the `render` catalogue above. Transactions answer with one JSON line and render nothing. Only the `render` group's dev primitives (`signpost`, `box`, `wrap`, `tree`) are authoring aids never called from flows.

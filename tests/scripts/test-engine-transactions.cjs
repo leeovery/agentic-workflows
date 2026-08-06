@@ -69,6 +69,11 @@ function engine(dir, args) {
 }
 engine.lastSections = '';
 
+/** Run `engine render` expecting success; returns the whole stdout (sections). */
+function render(dir, args) {
+  return execFileSync('node', [ENGINE, 'render', ...args], { cwd: dir, encoding: 'utf8' });
+}
+
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
 function engineFails(dir, args) {
   const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
@@ -131,7 +136,9 @@ describe('engine topic cancel', () => {
       previous_order: 2,
     });
     assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel auth-flow (research)');
-    assert.match(engine.lastSections, /Cancelled "Auth Flow" in research\./);
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.match(render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'cancel', '--warn']),
+      /⚑ Knowledge removal warning[\s\S]*Cancelled "Auth Flow" in research\./);
   });
 
   it('rejects cancelling an already-cancelled topic', () => {
@@ -180,7 +187,9 @@ describe('engine topic reactivate', () => {
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index failed/);
     assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate session-model (discussion)');
-    assert.match(engine.lastSections, /⚑ Knowledge indexing warning[\s\S]*Reactivated "Session Model" in discussion\. Status restored to completed\./);
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.match(render(dir, ['topic-receipt', 'payments.discussion.session-model', '--verb', 'reactivate', '--warn']),
+      /⚑ Knowledge indexing warning[\s\S]*Reactivated "Session Model" in discussion\. Status restored to completed\./);
   });
 
   it('rejects reactivating a non-cancelled topic', () => {
@@ -580,8 +589,8 @@ describe('triaged guards across the other verbs', () => {
 });
 
 describe('pipeline completion banner matrix', () => {
-  const { workunitLifecycleSections } = require('../../skills/workflow-engine/scripts/domain/projections/transactions.cjs');
-  const banner = (wt, opts) => workunitLifecycleSections('complete', { work_unit: 'pay-x', work_type: wt }, { pipeline: true, ...opts });
+  const { workunitReceipt } = require('../../skills/workflow-engine/scripts/domain/projections/transactions.cjs');
+  const banner = (wt, opts) => workunitReceipt('complete', 'pay-x', wt, { pipeline: true, ...opts });
 
   it('every work-type label and both body variants render', () => {
     assert.ok(banner('feature').includes('Feature Completed\n\n"Pay X" has completed all pipeline phases.'));
@@ -598,7 +607,7 @@ describe('topic verbs without section folds', () => {
   beforeEach(() => { dir = setupEpicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('start, reopen, and supersede append nothing — only complete/cancel/reactivate fold sections', () => {
+  it('every topic verb appends nothing — receipts are render surfaces', () => {
     engine(dir, ['topic', 'start', 'payments', 'research', 'brand-new']);
     assert.strictEqual(engine.lastSections, '', 'start appends no sections');
     engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
@@ -623,8 +632,12 @@ describe('engine topic complete', () => {
     // No KB configured in the fixture — warn-don't-block.
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index failed/);
-    assert.match(engine.lastSections, /=== DISPLAY: kb warning \(emit verbatim as a code block\) ===\n  ⚑ Knowledge indexing warning\n(    .+\n)+    The artifact is saved\. Indexing can be retried later\./);
-    assert.ok(!engine.lastSections.includes('confirmation'), 'complete folds the warning only — the flow owns its conclusion display');
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    const advisory = render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'complete', '--warn']);
+    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block, above the confirmation\) ===\n  ⚑ Knowledge indexing warning\n    The artifact is saved\. Indexing can be retried later\./);
+    assert.ok(!advisory.includes('confirmation ==='), 'complete renders the advisory only — the flow owns its conclusion display');
+    assert.strictEqual(render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'complete']), '',
+      'no --warn, no advisory — an empty receipt');
 
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.research.items, {
@@ -1077,9 +1090,10 @@ describe('engine workunit complete', () => {
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): complete feature pipeline');
     // Scoped: the unrelated file stays uncommitted.
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
-    // Confirmation section rides after the JSON line; work_type now in the response.
     assert.strictEqual(res.work_type, 'feature');
-    assert.match(engine.lastSections, /=== DISPLAY: confirmation \(emit verbatim as a code block after the response\) ===\n"Auth Flow" marked as completed\./);
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'complete']),
+      /=== DISPLAY: confirmation \(emit verbatim as a code block after the response\) ===\n"Auth Flow" marked as completed\./);
   });
 
   it('purges the work unit\'s scratch cache on complete — untracked scratch leaves no dirt', () => {
@@ -1100,19 +1114,21 @@ describe('engine workunit complete', () => {
   });
 
   it('--pipeline renders the "{Type} Completed" banner instead of the one-liner; --skipped-review varies the body', () => {
-    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline', '--pipeline']);
-    assert.match(engine.lastSections, /Feature Completed\n\n"Auth Flow" has completed all pipeline phases\./);
-    assert.ok(!engine.lastSections.includes('marked as completed'));
-
-    engine(dir, ['workunit', 'reactivate', 'auth-flow']);
-    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): re-complete (review skipped)', '--pipeline', '--skipped-review']);
-    assert.match(engine.lastSections, /Feature Completed\n\n"Auth Flow" completed — review skipped\./);
+    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
+    const banner = render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'complete', '--pipeline']);
+    assert.match(banner, /Feature Completed\n\n"Auth Flow" has completed all pipeline phases\./);
+    assert.ok(!banner.includes('marked as completed'));
+    assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'complete', '--pipeline', '--skipped-review']),
+      /Feature Completed\n\n"Auth Flow" completed — review skipped\./);
   });
 
-  it('reactivate carries its confirmation section', () => {
+  it('reactivate renders its confirmation via the receipt surface', () => {
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
     engine(dir, ['workunit', 'reactivate', 'auth-flow']);
-    assert.match(engine.lastSections, /"Auth Flow" reactivated\./);
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'reactivate']), /"Auth Flow" reactivated\./);
+    assert.match(engineFails(dir, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'cancel']).error,
+      /not "cancelled" — the cancel has not run/);
   });
 
   it('rejects an already-completed unit and routes a cancelled unit through reactivate', () => {
@@ -1187,10 +1203,12 @@ describe('engine workunit cancel', () => {
     assert.strictEqual(m.status, 'cancelled');
     assert.strictEqual(m.completed_at, undefined);
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): mark as cancelled');
-    // Sections: warning above confirmation, both after the JSON line.
-    // Conventions-form callout: 2-space flag, 4-space continuations.
-    assert.match(engine.lastSections, /  ⚑ Knowledge removal warning\n(    .+\n)+    The work unit is cancelled\./);
-    assert.match(engine.lastSections, /"Auth Flow" marked as cancelled\./);
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    // Receipt: warning above confirmation, fetched from the cancelled state.
+    // Conventions-form callout: 2-space flag, 4-space continuation.
+    const receipt = render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'cancel', '--warn']);
+    assert.match(receipt, /  ⚑ Knowledge removal warning\n    The work unit is cancelled\./);
+    assert.match(receipt, /"Auth Flow" marked as cancelled\./);
   });
 
   it('rejects an already-cancelled unit and routes a completed unit through reactivate', () => {

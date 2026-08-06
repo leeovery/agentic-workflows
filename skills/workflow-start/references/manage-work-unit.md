@@ -69,15 +69,23 @@ Run the complete transaction — one command sets `status: completed`, stamps `c
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {selected.name} -m "workflow({selected.name}): mark as completed"
 ```
 
-Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
+Fetch and emit the receipt's `DISPLAY: confirmation` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb complete
+```
 
 → Return to caller.
 
 #### If user chose `p/pivot`
 
-Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`, continuation_menu = `true` (pass `--continuation-menu` on the pivot command).
+Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`.
 
-Emit the pivot response's `MENU: pivot continuation` section verbatim per its marker.
+On return, fetch and emit the `MENU: pivot continuation` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render pivot-continuation {selected.name}
+```
 
 **STOP.** Wait for user response.
 
@@ -111,7 +119,11 @@ Run the cancel transaction — one command sets `status: cancelled`, removes the
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit cancel {selected.name}
 ```
 
-Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb cancel
+```
 
 → Return to caller.
 

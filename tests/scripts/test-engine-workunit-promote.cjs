@@ -200,7 +200,11 @@ describe('engine workunit promote — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    assert.match(engine.lastSections, new RegExp([
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    const receipt = execFileSync('node',
+      [fix.engine, 'render', 'promote-receipt', 'payments.specification.caching-strategy', '--to', 'caching'],
+      { cwd: fix.project, encoding: 'utf8' });
+    assert.match(receipt, new RegExp([
       'Promoted to Cross-Cutting',
       '',
       '"[^"]+" has been promoted to its own cross-cutting work unit\\.',

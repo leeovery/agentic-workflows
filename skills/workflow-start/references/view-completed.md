@@ -72,7 +72,11 @@ Run the reactivate transaction — one command restores `status: in-progress`, c
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit reactivate {selected.name}
 ```
 
-Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb reactivate
+```
 
 → Return to caller.
 

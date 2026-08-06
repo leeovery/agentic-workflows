@@ -14,6 +14,7 @@ const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, menu, cmdOption, promptOption, callout, subDetail, treeList, numberedTreeList } = require('./projections/surfaces.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
+const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 
 /**
@@ -1258,6 +1259,107 @@ function cycleGate() {
   return cycleGateMenu();
 }
 
+// ---------------------------------------------------------------------------
+// Transaction receipts — fetched by the calling flow right after its
+// lifecycle verb, so the verb's stdout stays one JSON line. Each surface
+// validates that the state it renders from matches the verb it receipts:
+// a receipt fetched out of place refuses loudly. `--warn` prepends the
+// knowledge advisory — the caller sets it when the transaction's JSON
+// carried `warnings`.
+// ---------------------------------------------------------------------------
+
+const WORKUNIT_RECEIPT_STATUS = { complete: 'completed', cancel: 'cancelled', reactivate: 'in-progress' };
+
+/** @param {string} cwd @param {{dotpath: string, verb?: string, pipeline?: string, 'skipped-review'?: string, warn?: string}} args @returns {string} */
+function workunitReceiptSurface(cwd, args) {
+  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'workunit-receipt');
+  const verb = args.verb;
+  if (verb !== 'complete' && verb !== 'cancel' && verb !== 'reactivate' && verb !== 'pivot') {
+    throw new Error(`render workunit-receipt: --verb must be complete, cancel, reactivate, or pivot, got "${verb}"`);
+  }
+  if (verb === 'pivot') {
+    if (manifest.work_type !== 'epic') {
+      throw new Error(`render workunit-receipt: "${workUnit}" is not an epic — the pivot has not run`);
+    }
+  } else if (manifest.status !== WORKUNIT_RECEIPT_STATUS[verb]) {
+    throw new Error(`render workunit-receipt: "${workUnit}" is "${manifest.status}", not "${WORKUNIT_RECEIPT_STATUS[verb]}" — the ${verb} has not run`);
+  }
+  return workunitReceipt(verb, workUnit, manifest.work_type, {
+    pipeline: args.pipeline === '1',
+    skippedReview: args['skipped-review'] === '1',
+    warn: args.warn === '1',
+  });
+}
+
+/** @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string}} args @returns {string} */
+function topicReceiptSurface(cwd, args) {
+  const { phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'topic-receipt');
+  const verb = args.verb;
+  if (verb !== 'complete' && verb !== 'cancel' && verb !== 'reactivate') {
+    throw new Error(`render topic-receipt: --verb must be complete, cancel, or reactivate, got "${verb}"`);
+  }
+  const item = itemOf(manifest, phase, topic);
+  if (!item) throw new Error(`render topic-receipt: no ${phase} item "${topic}"`);
+  if (verb === 'complete' && item.status !== 'completed') {
+    throw new Error(`render topic-receipt: "${topic}" is "${item.status}", not "completed" — the complete has not run`);
+  }
+  if (verb === 'cancel' && item.status !== 'cancelled') {
+    throw new Error(`render topic-receipt: "${topic}" is "${item.status}", not "cancelled" — the cancel has not run`);
+  }
+  if (verb === 'reactivate' && item.status === 'cancelled') {
+    throw new Error(`render topic-receipt: "${topic}" is still "cancelled" — the reactivate has not run`);
+  }
+  return topicReceipt(verb, topic, phase, item.status, { warn: args.warn === '1' });
+}
+
+/** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, warn?: string}} args @returns {string} */
+function absorbReceiptSurface(cwd, args) {
+  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-receipt');
+  if (manifest.work_type !== 'epic') {
+    throw new Error(`render absorb-receipt: "${workUnit}" is not an epic`);
+  }
+  const topic = args.topic;
+  if (!topic) throw new Error('render absorb-receipt: --topic is required');
+  if (!itemOf(manifest, 'discussion', topic)) {
+    throw new Error(`render absorb-receipt: no discussion item "${topic}" on "${workUnit}" — the absorb has not run`);
+  }
+  const moved = (args.moved || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const unknown = moved.filter((m) => !['research', 'seeds', 'imports'].includes(m));
+  if (unknown.length > 0) {
+    throw new Error(`render absorb-receipt: --moved entries must be research, seeds, or imports, got "${unknown.join(', ')}"`);
+  }
+  return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1' });
+}
+
+/** @param {string} cwd @param {{dotpath: string, to?: string, warn?: string}} args @returns {string} */
+function promoteReceiptSurface(cwd, args) {
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'promote-receipt');
+  if (phase !== 'specification') {
+    throw new Error(`render promote-receipt: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
+  }
+  if (!args.to) throw new Error('render promote-receipt: --to is required');
+  const item = itemOf(manifest, 'specification', topic);
+  if (!item || item.status !== 'promoted') {
+    throw new Error(`render promote-receipt: "${topic}" is not "promoted" — the promotion has not run`);
+  }
+  return promoteReceipt(workUnit, topic, args.to, { warn: args.warn === '1' });
+}
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function pivotContinuation(cwd, args) {
+  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'pivot-continuation');
+  if (manifest.work_type !== 'epic') {
+    throw new Error(`render pivot-continuation: "${workUnit}" is not an epic — the pivot has not run`);
+  }
+  return pivotContinuationMenu(workUnit);
+}
+
+/** @param {string} cwd @param {{dotpath: string, warn?: string}} args @returns {string} */
+function sessionReceiptSurface(cwd, args) {
+  resolveWorkUnit(cwd, args.dotpath, 'session-receipt');
+  return sessionReceipt({ warn: args.warn === '1' });
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
@@ -1286,6 +1388,12 @@ const SURFACES = {
   'blocked-tasks': blockedTasks,
   'cycle-limit': cycleLimit,
   'cycle-gate': cycleGate,
+  'workunit-receipt': workunitReceiptSurface,
+  'topic-receipt': topicReceiptSurface,
+  'absorb-receipt': absorbReceiptSurface,
+  'promote-receipt': promoteReceiptSurface,
+  'pivot-continuation': pivotContinuation,
+  'session-receipt': sessionReceiptSurface,
 };
 
 /**

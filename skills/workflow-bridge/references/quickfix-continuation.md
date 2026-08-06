@@ -15,10 +15,14 @@ Quick-fix pipeline: Scoping → Implementation → Review
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline" --pipeline
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline"
 ```
 
-Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
+Fetch and emit the receipt's `DISPLAY: confirmation` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
+```
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -47,10 +51,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render early-completion-g
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline (review skipped)" --pipeline --skipped-review
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline (review skipped)"
 ```
 
-Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
+Fetch and emit the receipt's `DISPLAY: confirmation` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline --skipped-review
+```
 
 **STOP.** Do not proceed — terminal condition.
 
