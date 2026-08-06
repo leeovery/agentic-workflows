@@ -8,6 +8,24 @@
 
 The current topic is converging — tradeoffs are clear, it's approaching decision territory.
 
+First check the topic's triage queue — a queued concern is work the conclusion cannot pass, and a review dispatched over it would read a file the walk is about to move:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} research {topic}
+```
+
+**If `count` is non-zero:**
+
+Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.research.{topic}
+```
+
+→ Return to caller.
+
+**If `count` is `0`:**
+
 → Load **[final-review.md](final-review.md)** and follow its instructions as written.
 
 → Load **[document-review.md](document-review.md)** and follow its instructions as written.

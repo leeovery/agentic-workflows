@@ -6,6 +6,26 @@
 
 The passage from conversation to conclusion runs two gates: the **review gate** — is a final review owed, and does the user want it — then the **conclude gate**. Nothing here proceeds silently: whatever the classification, the user hears what comes next and answers.
 
+The triage queue precedes both gates — a queued concern is work the conclusion cannot pass, and a review dispatched over it would read a document the walk is about to move. Check it first:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} discussion {topic}
+```
+
+**If `count` is non-zero:**
+
+Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.discussion.{topic}
+```
+
+→ Return to caller for **B. Session Loop**.
+
+**If `count` is `0`:**
+
+→ Proceed to **A. Classify**.
+
 ## A. Classify
 
 Read the agent store:

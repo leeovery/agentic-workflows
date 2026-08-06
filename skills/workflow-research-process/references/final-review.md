@@ -138,6 +138,12 @@ Record the dispatch — the engine allocates the id and answers with the content
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind review
 ```
 
+**If the response is `ok: false` naming the triage queue** — a concern landed after the queue gate (a peer session's delivery): surface the engine's error verbatim; the queue owns the close now.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+
+**Otherwise:**
+
 **Agent path**: `../../../agents/workflow-research-review.md`
 
 Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
