@@ -50,8 +50,7 @@ Further claims:
   both files deleted by their absorbs, deletions staged by the absorb
   commits
 - git history holds two distinct absorb commits, each naming its
-  concern file and origin, and the delivery commits from the fixture
-  bracket them
+  concern file and origin
 - the manifest holds `discussion.relevance-measurement` as
   `completed`; no research item for it exists
 - neither sibling discussion document changed
