@@ -163,9 +163,9 @@ Task {status:[blocked|failed]}. How would you like to proceed?
 
 #### If `VERDICT` is `approved`
 
-**If the review carries COMMENT_CORRECTIONS:**
+**If the review carries `COMMENT_CORRECTIONS`:**
 
-Apply each correction now with the Edit tool — replace its OLD text with its NEW text at the named file, verbatim; an empty NEW deletes the comment. Corrections touch no executable logic, so nothing re-runs and no fix round opens. A correction whose OLD text no longer matches the file is dropped — name it in the result summary at **G**.
+Apply each correction now with the Edit tool — replace its OLD text with its NEW text at the named file, verbatim; an empty NEW deletes the comment. Corrections touch no executable logic, so nothing re-runs and no fix round opens. A correction whose OLD text no longer matches the file is dropped — name it in the result summary at **G. Task Gate**.
 
 → Proceed to **G. Task Gate**.
 
@@ -184,7 +184,7 @@ ISSUES:
 {copy ISSUES from reviewer output, including FIX, ALTERNATIVE, and CONFIDENCE per issue}
 
 COMMENT_CORRECTIONS:
-{copy COMMENT_CORRECTIONS from reviewer output — omit the section when the review carries none; the executor applies these during the fix round}
+{copy COMMENT_CORRECTIONS from reviewer output — omit the section when the review carries none}
 
 NOTES:
 {copy NOTES from reviewer output}
@@ -293,7 +293,7 @@ Task {internal_id}: {Task Name} — approved
 Phase: {phase number} — {phase name}
 ```
 
-Present the executor's SUMMARY as a product-lens summary (markdown, not a code block) in four beats: what this part of the product did before, what it does now, any issues hit on the way, and anything to watch. After a fix round, include what changed since the last gate. When comment corrections were applied at **D**, add a line saying so — naming any that were dropped.
+Present the executor's SUMMARY as a product-lens summary (markdown, not a code block) in four beats: what this part of the product did before, what it does now, any issues hit on the way, and anything to watch. After a fix round, include what changed since the last gate. When comment corrections were applied at **D. Review Task**, add a line saying so — naming any that were dropped.
 
 Branch on the `task_gate_mode` carried by this task's `start` response.
 
