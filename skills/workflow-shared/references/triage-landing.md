@@ -42,6 +42,8 @@ Each rerouted concern is one queue file. Pin this exact content shape — the fo
 
 Carry **everything** worked out about the concern — as many paragraphs as it takes. Do not summarise or trim: the target topic processes this entry from cold when it next runs, so it needs the whole context, not a one-line pointer. One paragraph or ten, write whatever conveys what was discussed. (In practice a concern caught early carries little; that's fine too.)
 
+**One ask per file.** Depth is unbounded; width is one decision. When the worked-out material makes several asks of the target — points it could accept or reject independently — each ask is its own concern: its own entry with its own title, delivered through **C** in turn under the one confirmed reroute, repeating whatever shared context each needs (every entry is read cold). A single ask with several consequences stays one file — the test is whether the target could take one part and refuse another, never paragraph count. The target surfaces queue entries one at a time; a bundled entry defeats that walk before it starts.
+
 ## A. Resolve the Target
 
 Resolution is computed against the **live** state at landing time, never cached — a target created earlier in the same session must resolve correctly:
