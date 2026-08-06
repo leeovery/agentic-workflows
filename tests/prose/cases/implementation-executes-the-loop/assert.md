@@ -31,8 +31,9 @@ The prose should have taken this path:
     the block menu never renders; the reviewer stub fires and its
     verdict is approved, so the fix machinery is never touched — no
     findings cache, no fix-attempt
-12. the task gate presents the result and emits the MENU carried by
-    pay-1-1's start response; the third scripted answer approves
+12. the task gate presents the result, fetches the gate via
+    `render task-gate`, and emits its MENU; the third scripted answer
+    approves
 13. progress lands for pay-1-1: frontmatter status flips to completed,
     the phase is not yet complete (pay-1-2 remains), the engine
     records completion naming pay-1-2 as next, and one raw git commit
@@ -53,8 +54,9 @@ Further claims:
 
 - each task produced exactly one executor dispatch and one reviewer
   dispatch — no retries, no re-invocations
-- both task-gate menus are the engine-rendered sections from the
-  start responses, emitted at the gate and never at the call itself
+- both task-gate menus are engine-rendered sections fetched via
+  `render task-gate` at the gate itself, emitted verbatim — never
+  hand-drawn and never carried from an earlier response
 - the per-task commits are raw git commits that include the task
   file's status change alongside the code and tests — the plan's
   state is not left uncommitted

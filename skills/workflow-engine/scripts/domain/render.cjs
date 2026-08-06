@@ -13,6 +13,8 @@ const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, menu, cmdOption, promptOption, callout, subDetail, treeList, numberedTreeList } = require('./projections/surfaces.cjs');
+const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
+const { FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -1172,6 +1174,90 @@ function entryGate(cwd, { dotpath, own }) {
   throw new Error(`render entry-gate: no prerequisite rules for phase "${phase}" (planning|implementation|review|specification)`);
 }
 
+// ---------------------------------------------------------------------------
+// Task-loop gates — fetched by the implementation loop at the exact stage
+// that displays them, so the section always sits in the tool result directly
+// above its emission. State-backed: the in-flight task and gate modes come
+// from the implementation item; gate-mode branching renders inside the
+// surface. `blocked-tasks` and `cycle-gate` are static menus and take no
+// address.
+// ---------------------------------------------------------------------------
+
+/** The item's gate mode, defaulting to `gated` when unset. @param {Record<string, any>} item @param {string} field @returns {string} */
+function gateModeOf(item, field) {
+  return typeof item[field] === 'string' ? item[field] : 'gated';
+}
+
+/**
+ * The implementation item at a `<wu>.implementation.<topic>` address, plus
+ * its in-flight task id. Loud when the address names another phase or no
+ * task is in flight — these surfaces serve the task loop, which always has
+ * a current task at its gates.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{item: Record<string, any>, taskId: string}}
+ */
+function implItemAt(cwd, dotpath, surface) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
+  if (phase !== 'implementation') {
+    throw new Error(`render ${surface}: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
+  }
+  const item = itemOf(manifest, 'implementation', topic);
+  if (!item) throw new Error(`render ${surface}: no implementation item "${topic}"`);
+  const taskId = item.current_task;
+  if (typeof taskId !== 'string' || taskId === '') {
+    throw new Error(`render ${surface}: no current task on "${topic}" — run \`task start\` first`);
+  }
+  return { item, taskId };
+}
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function taskGate(cwd, args) {
+  const { item, taskId } = implItemAt(cwd, args.dotpath, 'task-gate');
+  return taskGateSection(taskId, gateModeOf(item, 'task_gate_mode'));
+}
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function fixGate(cwd, args) {
+  const { item, taskId } = implItemAt(cwd, args.dotpath, 'fix-gate');
+  const attempts = typeof item.fix_attempts === 'number' ? item.fix_attempts : 0;
+  return fixGateSection(taskId, gateModeOf(item, 'fix_gate_mode'), attempts >= FIX_THRESHOLD);
+}
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function fixThreshold(cwd, args) {
+  const { item, taskId } = implItemAt(cwd, args.dotpath, 'fix-threshold');
+  const attempts = typeof item.fix_attempts === 'number' ? item.fix_attempts : 0;
+  if (attempts < FIX_THRESHOLD) {
+    throw new Error(`render fix-threshold: fix_attempts is ${attempts}, below the threshold of ${FIX_THRESHOLD}`);
+  }
+  return fixThresholdDisplay(attempts, taskId);
+}
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function cycleLimit(cwd, args) {
+  const { phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'cycle-limit');
+  if (phase !== 'implementation') {
+    throw new Error(`render cycle-limit: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
+  }
+  const item = itemOf(manifest, 'implementation', topic);
+  if (!item) throw new Error(`render cycle-limit: no implementation item "${topic}"`);
+  const session = typeof item.analysis_cycle_session === 'number' ? item.analysis_cycle_session : 0;
+  if (session <= SESSION_CYCLE_LIMIT) {
+    throw new Error(`render cycle-limit: analysis_cycle_session is ${session}, within the session limit of ${SESSION_CYCLE_LIMIT}`);
+  }
+  return cycleLimitDisplay(session, SESSION_CYCLE_LIMIT);
+}
+
+/** @returns {string} */
+function blockedTasks() {
+  return blockedTasksMenu();
+}
+
+/** @returns {string} */
+function cycleGate() {
+  return cycleGateMenu();
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
@@ -1194,6 +1280,12 @@ const SURFACES = {
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,
   'epic-all-done-gate': epicAllDoneGate,
+  'task-gate': taskGate,
+  'fix-gate': fixGate,
+  'fix-threshold': fixThreshold,
+  'blocked-tasks': blockedTasks,
+  'cycle-limit': cycleLimit,
+  'cycle-gate': cycleGate,
 };
 
 /**

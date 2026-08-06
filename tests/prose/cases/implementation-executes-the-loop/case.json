@@ -54,6 +54,7 @@
       "manifest get pay.planning.pay external_id",
       "task start pay pay pay-1-1",
       "task start pay pay pay-1-2",
+      "render task-gate pay.implementation.pay",
       "task complete pay pay pay-1-1 --phase 1 --next-task pay-1-2",
       "task complete pay pay pay-1-2 --phase 1 --next-task ~",
       "--phase-complete",

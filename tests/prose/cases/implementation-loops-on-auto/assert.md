@@ -15,34 +15,35 @@ The prose should have taken this path:
    stub's first firing returns needs-changes with one issue
 5. stage E writes the findings to the attempt cache and records the
    attempt via fix-attempt (attempt 1, threshold not reached); the
-   findings are presented as a glanceable summary and the fix gate
-   menu from the fix-attempt response is emitted — the gate is still
-   gated, so the loop stops
+   findings are presented as a glanceable summary, the fix gate is
+   fetched via `render fix-gate`, and its menu is emitted — the gate
+   is still gated, so the loop stops
 6. the third scripted answer opts into auto: fix_gate_mode is set to
    auto in the manifest and the executor is re-invoked as a fix round
    in the same flow — no second fix-attempt is recorded for this
    round's dispatch
 7. the executor's second firing completes; the reviewer's second
    firing for pay-1-1 approves; the task gate presents the result
-   summary and emits the MENU carried by pay-1-1's start response
+   summary, fetches the gate via `render task-gate`, and emits its
+   MENU
 8. the fourth scripted answer opts into auto: task_gate_mode is set
    to auto and progress lands in the same turn — frontmatter flips to
    completed, the engine records completion naming pay-1-2 as next,
    and one raw git commit lands as impl(pay): Tpay-1-1
 9. the loop returns to retrieval and selects pay-1-2, starts it, and
-   marks it in-progress — pay-1-2's start response carries the
-   DISPLAY: task gate auto-approved continuation section, not a menu
+   marks it in-progress
 10. the executor completes pay-1-2; the reviewer's first firing for
     pay-1-2 returns needs-changes; stage E records fix-attempt 1 for
-    pay-1-2, summarises the findings, emits the DISPLAY: fix gate
-    auto-accepted section from that response, and dispatches the fix
-    round in the same turn — no menu, no stop, no user input
+    pay-1-2, summarises the findings, fetches the fix gate via
+    `render fix-gate` and emits its DISPLAY: fix gate auto-accepted
+    continuation section, and dispatches the fix round in the same
+    turn — no menu, no stop, no user input
 11. the executor's fix round completes; the reviewer approves; the
-    task gate presents the summary, emits the DISPLAY: task gate
-    auto-approved section from pay-1-2's start response, and proceeds
-    to commit in the same turn — one raw git commit lands as
-    impl(pay): Tpay-1-2 with --phase-complete recorded and next
-    task ~
+    task gate presents the summary, fetches the gate via
+    `render task-gate` and emits its DISPLAY: task gate auto-approved
+    continuation section, and proceeds to commit in the same turn —
+    one raw git commit lands as impl(pay): Tpay-1-2 with
+    --phase-complete recorded and next task ~
 12. retrieval finds no available and no open tasks, reports all tasks
     complete, and returns to the caller — the walk stops before the
     analysis loop

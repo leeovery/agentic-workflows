@@ -25,7 +25,6 @@ const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
-const taskSections = require('./domain/projections/tasks.cjs');
 const txSections = require('./domain/projections/transactions.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
@@ -192,6 +191,12 @@ Commands:
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
   render epic-all-done-gate <wu>
+  render task-gate         <wu.implementation.topic>
+  render fix-gate          <wu.implementation.topic>
+  render fix-threshold     <wu.implementation.topic>
+  render blocked-tasks
+  render cycle-limit       <wu.implementation.topic>
+  render cycle-gate
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
@@ -648,9 +653,9 @@ function runTopic(argv) {
 // task — implementation-task bookkeeping: format-blind, manifest-side only.
 // The engine never touches a task backend; the session does the plan surgery,
 // these commands record it. No git commit — the per-task commit is the
-// session's. After the JSON line, each verb appends its state-derived gate
-// sections (domain/projections/tasks.cjs) — the task loop emits them verbatim
-// at the gate each marker names.
+// session's. Each verb answers with its one-line JSON only; the loop's gate
+// sections are fetched by their own `render` calls (task-gate, fix-gate,
+// blocked-tasks, cycle-gate) at the stage that displays them.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -664,26 +669,19 @@ function runTask(argv) {
       if (!workUnit || !topic) throw new Error(`Usage: engine task ${command} <work-unit> <topic>`);
       if (command === 'init') {
         respond(initTasks(cwd, workUnit, topic));
-        respondSections(taskSections.initSections());
       } else {
-        const result = analysisCycle(cwd, workUnit, topic);
-        respond(result);
-        respondSections(taskSections.analysisCycleSections(result));
+        respond(analysisCycle(cwd, workUnit, topic));
       }
     } else if (command === 'start') {
       if (!workUnit || !topic || !internalId) {
         throw new Error('Usage: engine task start <work-unit> <topic> <internal-id>');
       }
-      const result = startTask(cwd, workUnit, topic, internalId);
-      respond(result);
-      respondSections(taskSections.startSections(result));
+      respond(startTask(cwd, workUnit, topic, internalId));
     } else if (command === 'fix-attempt') {
       if (!workUnit || !topic || !internalId || !opts['findings-file']) {
         throw new Error('Usage: engine task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>');
       }
-      const result = fixAttempt(cwd, workUnit, topic, internalId, opts['findings-file']);
-      respond(result);
-      respondSections(taskSections.fixAttemptSections(result, internalId));
+      respond(fixAttempt(cwd, workUnit, topic, internalId, opts['findings-file']));
     } else if (command === 'complete') {
       if (!workUnit || !topic) {
         throw new Error('Usage: engine task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped] [--next-task <id|~>] [--phase <N>] [--phase-complete]');
@@ -704,7 +702,6 @@ function runTask(argv) {
         phaseComplete: flags.has('phase-complete'),
       });
       respond(result);
-      respondSections(taskSections.completeSections());
     } else {
       throw new Error('Usage: engine task <init|start|fix-attempt|complete|analysis-cycle> …');
     }

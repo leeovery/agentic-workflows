@@ -63,13 +63,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task analysis-cycle {work
 
 **Do NOT skip analysis autonomously.** This gate is an escape hatch for the user — not a signal to stop. The expected default is to continue running analysis until no issues are found. Present the choice and let the user decide.
 
-The response carries two rendered sections after its JSON line — emit each byte-for-byte where prescribed below: a section is everything beneath its `===` marker up to the next marker or the end of the response, the marker lines themselves never emitted. DISPLAY sections are emitted as a code block, MENU sections as markdown (not a code block).
+Fetch and emit the `DISPLAY: cycle limit` section verbatim as a code block (a section is everything beneath its `===` marker — the marker line itself is never emitted):
 
-Emit the response's `DISPLAY: cycle limit` section.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render cycle-limit {work_unit}.implementation.{topic}
+```
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `analysis`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-Emit the response's `MENU: cycle gate` section.
+Fetch the cycle gate and emit its `MENU: cycle gate` section verbatim as markdown (not a code block):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render cycle-gate
+```
 
 You MUST NOT choose on the user's behalf.
 

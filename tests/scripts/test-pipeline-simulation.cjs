@@ -203,6 +203,12 @@ class Sim {
     return rel;
   }
 
+  // Transactions answer with pure JSON — display artifacts belong to render
+  // surfaces fetched at their display point. These verb groups still append
+  // sections; the set shrinks as each converts, and empties when the
+  // separation is complete.
+  static SECTION_CARRYING = new Set(['workunit', 'topic', 'discovery-session', 'presence']);
+
   /** Engine mutation: expect ok:true JSON, then audit the whole state. */
   run(args) {
     this.step += 1;
@@ -215,6 +221,10 @@ class Sim {
     const parsed = JSON.parse(first);
     assert.strictEqual(parsed.ok, true, `[${label}] engine answered ok:false`);
     this.sections = nl === -1 ? '' : res.stdout.slice(nl + 1);
+    if (!Sim.SECTION_CARRYING.has(args[0])) {
+      assert.strictEqual(this.sections, '',
+        `[${label}] transaction verbs answer with pure JSON — display sections belong to render surfaces fetched at their display point`);
+    }
     auditState(this.dir, label);
     return parsed;
   }
@@ -985,24 +995,41 @@ describe('pipeline simulation', () => {
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
-    assert.match(sim.sections, /MENU: task gate/, 'gated task gate carries its menu');
+    // Gates are fetched at their own stage — the task verbs answer with pure JSON.
+    assert.match(sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
+      /MENU: task gate/, 'gated task gate renders its menu');
+    assert.match(sim.render(['blocked-tasks'], { expect: 'content' }),
+      /MENU: blocked tasks/, 'blocked-tasks stop renders its menu');
     const findings = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/findings.json`,
       { findings: [{ title: 'Loose end', severity: 'minor' }] });
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
     assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', wu, 'implementation', wu, `fix-tracking-${wu}-1-1.md`)),
       'fix history is committed history, not purgeable cache');
+    assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
+      /MENU: fix gate/, 'gated fix gate renders its menu');
+    // Two more attempts reach the fix threshold — the escalation callout renders.
+    sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
+    sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
+    assert.match(sim.render(['fix-threshold', `${wu}.implementation.${wu}`], { expect: 'content' }),
+      /DISPLAY: fix threshold/, 'threshold escalation renders its callout');
+    assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
+      /MENU: fix gate/, 'threshold-forced fix gate renders its menu');
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--next-task', `${wu}-1-2`]);
     sim.run(['task', 'analysis-cycle', wu, wu]);
+    assert.match(sim.render(['cycle-gate'], { expect: 'content' }),
+      /MENU: cycle gate/, 'cycle gate renders its menu');
 
     // Auto gates render a continuation artifact — the loop never ends a turn by silence.
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode=auto', 'fix_gate_mode=auto']);
     sim.run(['task', 'start', wu, wu, `${wu}-1-2`]);
-    assert.match(sim.sections, /DISPLAY: task gate auto-approved/, 'auto task gate carries its continuation line');
-    assert.match(sim.sections, /approved \[auto\]\. Committing and moving to the next task\./,
+    const taskGate = sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' });
+    assert.match(taskGate, /DISPLAY: task gate auto-approved/, 'auto task gate renders its continuation line');
+    assert.match(taskGate, /approved \[auto\]\. Committing and moving to the next task\./,
       'continuation line names the action that follows');
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-2`, '--findings-file', findings]);
-    assert.match(sim.sections, /DISPLAY: fix gate auto-accepted/, 'auto fix gate carries its continuation line');
-    assert.match(sim.sections, /accepted \[auto\]\. Passing the findings to the executor\./,
+    const fixGate = sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' });
+    assert.match(fixGate, /DISPLAY: fix gate auto-accepted/, 'auto fix gate renders its continuation line');
+    assert.match(fixGate, /accepted \[auto\]\. Passing the findings to the executor\./,
       'continuation line names the dispatch that follows');
     sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--next-task', '~', '--phase-complete']);
 
