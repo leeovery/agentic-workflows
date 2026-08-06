@@ -10,16 +10,17 @@ The prose should have taken this path:
    the two-entry agenda — titles and origins only, bodies unread —
    together with the offer menu, and stops for the user
 4. the user opts in; the first concern is armed on the map
-   (`discussion-map add` then set `exploring`), surfaced whole —
-   provenance line and full body — broken down, and discussed to a
-   resolution; the user answers with broad agreement that names "the
-   rest" of the queue
+   (`discussion-map add` then set `exploring`), its queue file read as
+   the session's own brief, and presented as a breakdown in the
+   session's voice — the entry never emitted verbatim — then discussed
+   to a resolution; the user answers with broad agreement that names
+   "the rest" of the queue
 5. the breadth of that agreement changes nothing beyond the concern on
    the table: the fold records the first concern alone — its section,
    its map state, its absorb commit — and nothing of the second
    concern is folded or absorbed on the strength of it
 6. the second concern is raised individually — armed on the map,
-   surfaced whole with its own breakdown, ending in its own single
+   presented with its own breakdown, ending in its own single
    question — and the walk stops there when the user leaves
 
 Further claims:
