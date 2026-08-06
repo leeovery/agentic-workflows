@@ -7,7 +7,7 @@
 // and archived lists, the working set, the manage flow, and the completed &
 // cancelled view. Sub-view projections return `{data, display, menu}` bodies
 // (the adapter wraps them in section markers); flows with later gates also
-// return labelled deferred `sections`, emitted only where their marker says.
+// return labelled `sections` emitted at the same call (the mixed-type blocker).
 //
 // Deterministic: same detail, same string. The overview is a flat list (one
 // numbered item + one └─ sub-row each, numbering continuous across the type
@@ -335,7 +335,8 @@ function archivedView(items) {
  * arrive via the caller's payload, keyed by inbox path — a row renders
  * without a body when its summary is missing), the set menu (`w/work` renders
  * only for a type-uniform set), a `DISPLAY: blocker` section on a mixed-type
- * set, plus the deferred add/drop gates.
+ * set. The add/drop gate sections are served by workingSetAddGate /
+ * workingSetDropGate, fetched by the gateway verbs at each gate.
  * @param {WorkingSetDetail} ws
  * @param {Record<string, string>} [summaries]
  * @returns {{data: string, title: string, display: string, menu: string, sections: string}}

@@ -26,14 +26,12 @@ When `new_arrivals` has any names, pass the tracker as a JSON argument instead:
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} '{"research_analysis":["{topic}", "{topic}"],"gap_analysis":[],"coherence_analysis":[]}'
 ```
 
-The output is one snapshot in three demarcated sections:
+The output is one snapshot in four demarcated sections:
 
 - **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(blocked: …)` / `(in session: …)` markers. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
 - **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
-
-When held sessions exist, the snapshot appends one `MENU: in-session gate — {key}` section per marked entry — emitted only where **B**'s in-session branch says so, never at the call.
 
 Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
@@ -105,7 +103,11 @@ Commit the change.
 
 **If the selected entry carries an `(in session: …)` marker:**
 
-Another live session holds this topic open. Emit the snapshot's `MENU: in-session gate — {key}` section for the selected entry — verbatim per its marker.
+Another live session holds this topic open. Fetch and emit the `MENU: in-session gate — {key}` section for the selected entry:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {work_unit} {key}
+```
 
 **STOP.** Wait for user response.
 
@@ -242,7 +244,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} 
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb cancel
+node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb cancel [--warn]
 ```
 
 → Return to **A. State Display and Menu**.
@@ -276,7 +278,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_un
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb reactivate
+node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb reactivate [--warn]
 ```
 
 → Return to **A. State Display and Menu**.

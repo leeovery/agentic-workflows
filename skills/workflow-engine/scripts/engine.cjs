@@ -204,6 +204,7 @@ Commands:
   render session-receipt   <wu> [--warn]
   render absorb-target     <feature>
   render plan-topics       <wu>
+  render revisit-phases    <wu>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)

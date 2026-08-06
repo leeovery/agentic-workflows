@@ -755,8 +755,8 @@ function epicMenu(workUnit, detail, opts = {}) {
 
 /**
  * Labelled confirm-gate section for one menu entry a held session occupies —
- * appended to the view snapshot per marked key, emitted by the flow only when
- * the user selects that entry.
+ * served by the gateway's `in-session-gate` verb, fetched by the flow at the
+ * gate that displays it.
  * @param {MenuKey} entry
  * @returns {string} one labelled MENU section
  */
@@ -764,7 +764,7 @@ function epicInSessionGate(entry) {
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (entry.action)];
   return section(
     `MENU: in-session gate — ${entry.key}`,
-    "emit verbatim as markdown only when the user selects this entry, then STOP for the user's response",
+    "emit verbatim as markdown, then STOP for the user's response",
     menuFrame([
       `"${titlecase(entry.topic || '')}" is open in another session — last active ${fmtAge(entry.session_age ?? 0)} ago. Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`,
       '',

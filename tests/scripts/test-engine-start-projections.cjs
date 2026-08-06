@@ -710,6 +710,23 @@ describe('start projections: manage unit', () => {
   it('manageDetail is null for a missing work unit', () => {
     assert.strictEqual(manageDetail(dir, 'ghost'), null);
   });
+
+  it('the absorb-target and plan-topics surfaces render the menus and refuse when their guards fail', () => {
+    const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
+    createManifest(dir, 'auth-flow', {
+      phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
+    });
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { planning: { items: { 'topic-a': { status: 'completed' }, 'topic-b': { status: 'in-progress' } } } },
+    });
+    assert.ok(renderSurface(dir, 'absorb-target', { dotpath: 'auth-flow' }).includes('MENU: absorb target'));
+    assert.ok(renderSurface(dir, 'plan-topics', { dotpath: 'v1' }).includes('MENU: plan topics'));
+    // Guards: an epic is not absorbable; a feature has no multi-topic plan.
+    assert.throws(() => renderSurface(dir, 'absorb-target', { dotpath: 'v1' }), /not absorbable/);
+    assert.throws(() => renderSurface(dir, 'plan-topics', { dotpath: 'auth-flow' }), /no multi-topic plan to choose from/);
+    assert.throws(() => renderSurface(dir, 'absorb-target', { dotpath: 'ghost' }), /not found/);
+  });
 });
 
 describe('start projections: completed & cancelled', () => {

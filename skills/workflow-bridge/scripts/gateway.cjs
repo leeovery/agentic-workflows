@@ -75,16 +75,14 @@ function format(result) {
   lines.push(`completed_phases: ${completed.join(', ') || '(none)'}`);
   lines.push(`reconcile_pending: ${(result.reconcile_pending || []).join(', ') || '(none)'}`);
 
-  let section = '';
   if (engine.detail.WORK_UNIT_TYPES[result.work_type]) {
     const revisitable = result.next_phase === 'done'
       ? []
       : engine.project.revisitablePhases(result.work_type, { next_phase: result.next_phase, completed_phases: completed });
     lines.push(`revisitable_phases: ${revisitable.join(', ') || '(none)'}`);
-    section = engine.project.revisitPhasesSection(revisitable);
   }
 
-  return lines.join('\n') + '\n' + (section ? section : '');
+  return lines.join('\n') + '\n';
 }
 
 if (require.main === module) {

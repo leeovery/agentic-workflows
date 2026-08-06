@@ -21,9 +21,10 @@ The prose should have taken this path:
    done
 7. routing selects the feature continuation, whose terminal check
    matches done first: the work unit is completed through the engine's
-   one-command completion — status, timestamp, and commit together —
-   with the pipeline flag
-8. the completion confirmation section is emitted verbatim and the walk
+   one-command completion — status, timestamp, and commit together
+8. the completion banner is fetched via render workunit-receipt with
+   the pipeline flag, its confirmation section is emitted verbatim,
+   and the walk
    stops at the terminal condition — no early-completion gate, no
    revisit offer, no plan mode, no plan file
 

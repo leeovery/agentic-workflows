@@ -246,10 +246,28 @@ function view(workUnit, newArrivalsJson) {
     engine.gateway.titleBlock(engine.project.titlecase(workUnit)),
     engine.gateway.displayBlock(key ? display + '\n' + key : display),
     engine.gateway.menuBlock(menu.rendered),
-    // One confirm gate per entry a held session occupies — emitted by the
-    // flow only when that entry is selected, never at the call.
-    ...menu.keys.filter((k) => k.in_session).map((k) => engine.project.epicInSessionGate(k)),
   ].join('\n');
+}
+
+// The in-session confirm gate for one held menu entry — fetched by the flow
+// at the gate that displays it, recomputed from the same detail and presence
+// the snapshot read.
+function inSessionGate(workUnit, key) {
+  const result = discover(process.cwd(), workUnit);
+  const e = result.epics[0];
+  if (!e) {
+    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' });
+  }
+  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions;
+  const menu = engine.project.epicMenu(e.name, e.detail, { presence });
+  const entry = menu.keys.find((k) => k.key === key);
+  if (!entry) {
+    return engine.gateway.dataBlock({ work_unit: e.name, error: `no menu entry with key "${key}"` });
+  }
+  if (!entry.in_session) {
+    return engine.gateway.dataBlock({ work_unit: e.name, error: `entry "${key}" is not held by another session — no gate to render` });
+  }
+  return engine.project.epicInSessionGate(entry);
 }
 
 // One selection sub-view (sections D–F): the keys table as DATA, the view's
@@ -305,6 +323,9 @@ if (require.main === module) {
     'completed-menu': subViewHandler('completed-menu', (name, d) => engine.project.epicCompletedMenu(name, d)),
     'cancel-menu': subViewHandler('cancel-menu', (name, d) => engine.project.epicCancelMenu(d)),
     'reactivate-menu': subViewHandler('reactivate-menu', (name, d) => engine.project.epicReactivateMenu(d)),
+    'in-session-gate': (workUnit, key, ...rest) => (!workUnit || !key || rest.length > 0
+      ? usageError('in-session-gate takes a work unit and a menu key')
+      : inSessionGate(workUnit, key)),
     fallback: (workUnit, ...rest) => (rest.length > 0
       ? usageError(`unknown verb "${workUnit}"`)
       : formatScoped(workUnit, discover(process.cwd(), workUnit))),

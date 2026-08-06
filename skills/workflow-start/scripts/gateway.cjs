@@ -10,9 +10,9 @@
 //                                       empty state — the snapshot follows has_any_work)
 //   gateway.cjs inbox                 → inbox pickup snapshot
 //   gateway.cjs archived              → archived store snapshot
-//   gateway.cjs working-set {path} …  → working-set snapshot + deferred add/drop gates
+//   gateway.cjs working-set {path} …  → working-set snapshot (add/drop gates via their own verbs)
 //   gateway.cjs manage                → manage selection snapshot
-//   gateway.cjs manage {work_unit}    → action-menu snapshot + deferred absorb/plan gates
+//   gateway.cjs manage {work_unit}    → action-menu snapshot (absorb/plan gates via render surfaces)
 //   gateway.cjs completed [{type}]    → completed & cancelled snapshot
 // ---------------------------------------------------------------------------
 
@@ -199,7 +199,7 @@ function workingSetGate(builder) {
 }
 
 // manage → the selection snapshot; manage {work_unit} → the unit's action-menu
-// snapshot with its deferred absorb-target / plan-topic gates.
+// snapshot; the absorb-target / plan-topic gates are render surfaces.
 function manageView(workUnit) {
   if (workUnit === undefined) {
     const v = engine.project.manageListView(discover(process.cwd()));

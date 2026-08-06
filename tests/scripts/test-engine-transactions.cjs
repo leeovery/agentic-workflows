@@ -634,7 +634,7 @@ describe('engine topic complete', () => {
     assert.match(res.warnings[0], /knowledge index failed/);
     assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
     const advisory = render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'complete', '--warn']);
-    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block, above the confirmation\) ===\n  ⚑ Knowledge indexing warning\n    The artifact is saved\. Indexing can be retried later\./);
+    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block\) ===\n  ⚑ Knowledge indexing warning\n    The artifact is saved\. Indexing can be retried later\./);
     assert.ok(!advisory.includes('confirmation ==='), 'complete renders the advisory only — the flow owns its conclusion display');
     assert.strictEqual(render(dir, ['topic-receipt', 'payments.research.auth-flow', '--verb', 'complete']), '',
       'no --warn, no advisory — an empty receipt');

@@ -221,7 +221,7 @@ describe('engine discovery-session close — happy path', () => {
     assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
     assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
     const receipt = execFileSync('node', [fix.engine, 'render', 'session-receipt', 'payments', '--warn'], { cwd: fix.project, encoding: 'utf8' });
-    assert.match(receipt, /=== DISPLAY: kb warning \(emit verbatim as a code block, above the confirmation\) ===\n  ⚑ Knowledge indexing warning\n    The session is closed\. Indexing can be retried later\./);
+    assert.match(receipt, /=== DISPLAY: kb warning \(emit verbatim as a code block\) ===\n  ⚑ Knowledge indexing warning\n    The session is closed\. Indexing can be retried later\./);
     assert.strictEqual(execFileSync('node', [fix.engine, 'render', 'session-receipt', 'payments'], { cwd: fix.project, encoding: 'utf8' }), '',
       'no --warn, no advisory — an empty receipt');
   });

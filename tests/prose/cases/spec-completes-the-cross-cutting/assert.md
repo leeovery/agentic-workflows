@@ -24,8 +24,9 @@ The prose should have taken this path:
    next_phase as done
 8. routing selects the cross-cutting continuation, whose terminal
    check matches done first: the work unit is completed through the
-   engine's one-command completion with the pipeline flag, the
-   confirmation section is emitted verbatim, and the walk stops at
+   engine's one-command completion, the completion banner is fetched
+   via render workunit-receipt with the pipeline flag and its
+   confirmation section emitted verbatim, and the walk stops at
    the terminal condition — no revisit offer, no plan mode, no
    planning phase
 

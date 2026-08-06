@@ -700,7 +700,7 @@ describe('epic projections: presence join', () => {
     const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [heldRow] });
     const marked = keys.find((k) => k.in_session);
     assert.strictEqual(epicInSessionGate(marked), [
-      '=== MENU: in-session gate — 1 (emit verbatim as markdown only when the user selects this entry, then STOP for the user\'s response) ===',
+      '=== MENU: in-session gate — 1 (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '"Topic A" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s.',
       '',

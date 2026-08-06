@@ -102,7 +102,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-gate {work
 
 ## E. Select Phase
 
-Emit the discovery output's `MENU: revisit phases` section verbatim as markdown (not a code block). Its numbering follows `revisitable_phases` order.
+Fetch and emit the `MENU: revisit phases` section (its numbering follows `revisitable_phases` order):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-phases {work_unit}
+```
 
 **STOP.** Wait for user response.
 

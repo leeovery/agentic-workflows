@@ -75,7 +75,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs workunit reactivate {sele
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb reactivate
+node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb reactivate [--warn]
 ```
 
 → Return to caller.
