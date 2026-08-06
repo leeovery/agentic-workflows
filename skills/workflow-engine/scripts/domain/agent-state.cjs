@@ -165,7 +165,10 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
     if (kind === 'review' && (phase === 'research' || phase === 'discussion')) {
       const queueDir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
       let queued = 0;
-      try { queued = fs.readdirSync(queueDir).filter((n) => n.endsWith('.md')).length; } catch { /* no queue — clear */ }
+      try {
+        queued = fs.readdirSync(queueDir, { withFileTypes: true })
+          .filter((e) => e.isFile() && e.name.endsWith('.md')).length;
+      } catch { /* no queue — clear */ }
       if (queued > 0) {
         throw new Error(`review dispatch blocked: ${queued} rerouted concern(s) wait in the ${phase}/${topic} triage queue — absorb them (topic absorb) before dispatching a review`);
       }

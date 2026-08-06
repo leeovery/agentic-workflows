@@ -114,9 +114,11 @@ describe('engine agent — lifecycle store', () => {
     const dive = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     assert.strictEqual(dive.id, 'deep-dive-001-auth');
     assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']).error, /review dispatch blocked/);
-    // Non-.md dirt (editor swap files, .DS_Store) never counts as a queued concern.
+    // Non-.md dirt (editor swap files, .DS_Store) and non-file entries never
+    // count as queued concerns — only what queueStatus itself would count.
     fs.unlinkSync(path.join(dir, '.workflows/pay/research/.triage/alpha/001-parked.md'));
     writeContent(dir, '.workflows/pay/research/.triage/alpha/.DS_Store', 'dirt');
+    fs.mkdirSync(path.join(dir, '.workflows/pay/research/.triage/alpha/nested.md'), { recursive: true });
     const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001');
   });
