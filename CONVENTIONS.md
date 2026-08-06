@@ -244,6 +244,8 @@ Unnumbered trees follow the same structure:
 
 Engine-rendered tree rows carry their status as a right-aligned `[term]` column — one shared column per tree, computed against the longest row (`├─ ◐ Menu Management    [researching]`). Rows that carry a body (summaries, provenance) skip the column and spell their state on a trailing `↳ State` line instead — see List Display. Square brackets `[term]` are also the form everywhere a column can't exist: plain list rows (selection sub-views, completed pickers, inbox items) and prose references. Menu options carry status as an italic metadata tail — see Menus. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
 
+**Which register applies is decided by the fence, not by taste.** Demoted content — status, provenance, the note under a row — reads italic in a menu and takes `↳` inside a display, because markdown emphasis inside a code fence renders as literal asterisks. A display that wants italics is a display that should not be fenced (`DISPLAY: proposed task`, `DISPLAY: finding`); a display that needs columns or a tree keeps its fence and its `↳`.
+
 Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`, `deferred`. Phase-specific terms are fine; the tree column and an inline bracket form never mix on one line.
 
 ### Callout Flag

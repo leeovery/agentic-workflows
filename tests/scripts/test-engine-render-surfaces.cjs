@@ -579,15 +579,35 @@ describe('render concern', () => {
     const out = renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file });
     assert.ok(out.startsWith([
       '=== DISPLAY: triage agenda (emit verbatim as a code block) ===',
-      "  ⚑ 2 rerouted concerns waiting in this topic's triage queue:",
-      '',
-      '  1. Offline metrics — from ranking (discussion, 2026-08-01)',
-      '  2. Expansion tracking — from synonyms (discussion, 2026-08-02)',
+      'Triage Queue (2 concerns)',
+      '  ├─ 1. Offline metrics',
+      '  │     ↳ From ranking · discussion · 2026-08-01',
+      '  └─ 2. Expansion tracking',
+      '        ↳ From synonyms · discussion · 2026-08-02',
     ].join('\n')), out);
     assert.ok(out.includes("=== MENU: triage offer (emit verbatim as markdown, then STOP for the user's response) ==="));
     assert.ok(out.includes('Work through them now?'));
     assert.ok(/\*\*`d\/discuss`\*\* +→ Surface and discuss them one at a time/.test(out));
     assert.ok(/\*\*`l\/later`\*\* +→ Carry on with the session/.test(out));
+  });
+
+  it('triage-offer wraps a sentence-length title under itself, with the note beneath', () => {
+    writeQueue('measurement', { '001-metrics.md': 'a' });
+    const file = writePayload(dir, 'offer.json', { items: [
+      { file: '001-metrics.md', title: 'A preset binding persists until broken — three revisions to the positioning model', origin: 'note-model', from_phase: 'discussion', from_date: '2026-07-30' },
+    ] });
+    const out = renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file });
+    assert.ok(out.includes([
+      'Triage Queue (1 concern)',
+      '  └─ 1. A preset binding persists until broken — three revisions',
+      '        to the positioning model',
+      '        ↳ From note-model · discussion · 2026-07-30',
+    ].join('\n')), out);
+    // No agenda row may overflow the pane the display was sized to. Scoped to
+    // the fenced section: markers and markdown menu lines reflow, and are not
+    // width-bound.
+    const agenda = out.split('=== MENU')[0].split('===\n')[1];
+    for (const line of agenda.split('\n')) assert.ok(line.length <= 65, `overflowing row: ${line}`);
   });
 
   it('triage-offer refuses an empty queue, a short payload, and a payload naming a file the queue lacks', () => {

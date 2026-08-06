@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, menu, cmdOption, promptOption, callout, subDetail, treeList, numberedTreeList } = require('./projections/surfaces.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -801,13 +801,15 @@ function triageOffer(cwd, { dotpath, file }) {
   if (byFile.size !== files.length || files.some((f) => !byFile.has(f))) {
     throw new Error(`render triage-offer: payload items must cover the queue exactly (queue: ${files.join(', ')})`);
   }
+  // Header carries the count, rows hang off it, provenance takes the `↳`
+  // line — the queue is a flat set of concerns from any number of topics, so
+  // origin belongs per row rather than folded into the header.
   const agenda = [
-    callout(`${files.length} rerouted concern${files.length === 1 ? '' : 's'} waiting in this topic's triage queue:`),
-    '',
-    ...files.map((f, i) => {
+    `Triage Queue (${files.length} concern${files.length === 1 ? '' : 's'})`,
+    numberedTreeList(files.map((f) => {
       const it = /** @type {NonNullable<ReturnType<typeof byFile.get>>} */ (byFile.get(f));
-      return `  ${i + 1}. ${it.title} — from ${it.origin} (${it.from_phase}, ${it.from_date})`;
-    }),
+      return { text: it.title, note: `From ${it.origin} · ${it.from_phase} · ${it.from_date}` };
+    })),
   ];
   return [
     section('DISPLAY: triage agenda', 'emit verbatim as a code block', agenda.join('\n')),
