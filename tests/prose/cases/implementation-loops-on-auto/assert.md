@@ -53,9 +53,9 @@ Further claims:
 - after the fourth scripted answer, no menu is rendered and no user
   input is consumed — pay-1-2's entire round trip (execute, review,
   fix round, re-review, approve, commit) runs unattended
-- both continuation sections are the engine-rendered lines from their
-  carrying responses (pay-1-2's start and fix-attempt), emitted after
-  the corresponding summary, never before it
+- both continuation sections are engine-rendered lines fetched via
+  `render task-gate` / `render fix-gate` at the gate itself, emitted
+  after the corresponding summary, never before it
 - the turn never ends on a bare summary: each auto gate's summary is
   followed by its continuation line and the action it names
 - each task produced exactly two executor dispatches and two reviewer
