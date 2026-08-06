@@ -51,9 +51,9 @@ Parenthesised phases are optional.
 
 ## What it looks like
 
-# **`■ Workflow Overview`**
-
 ```
+■ Workflow Overview
+
 Features
   └─ 1. Api Rate Limiting
 
@@ -63,16 +63,17 @@ Epics
 Inbox
   ├─ Smart Retry [idea]
   └─ Tooltip Flicker [bug]
-```
 
 · · · · · · · · · · · ·
+◆ What would you like to do?
 
-**`◆ What would you like to do?`**
+1       → Continue "Api Rate Limiting" — feature, specification (in-progress)
+2       → Continue "Payments Overhaul" — epic
+s/start → Start something new
+i/inbox → View the inbox and start from an item
+```
 
-**`1`**       → Continue "Api Rate Limiting" — *feature, specification (in-progress)*
-**`2`**       → Continue "Payments Overhaul" — *epic*
-**`s/start`** → Start something new
-**`i/inbox`** → View the inbox and start from an item
+In the terminal the chrome is coloured — the title blue and underlined, the keys and the `◆` highlighted, the metadata tails italic. One screen, not four blocks.
 
 Every display is computed by the engine from state on disk and emitted byte-for-byte. Claude cannot editorialise your status.
 
