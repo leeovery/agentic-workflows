@@ -64,6 +64,7 @@
       "topic reopen",
       "discovery-map add",
       "--kind perspective",
+      "--kind review",
       "knowledge.cjs index"
     ],
     "calls_in_order": [
