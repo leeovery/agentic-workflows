@@ -36,6 +36,26 @@ Prefer concrete types over language-level escape hatches that bypass the type sy
 - Prefer pure functions
 - Avoid hidden dependencies
 
+## Comments
+
+Code shows what; a comment earns its place only by carrying what the code cannot. Before writing one, try to make it unnecessary — rename, extract, simplify — and comment what survives. No comment is checked by any compiler or test: every claim one makes is a maintenance liability, so spend them sparingly and keep each claim small.
+
+**A comment is warranted for:**
+- **Why** — rationale, a rejected alternative, a constraint imposed from elsewhere
+- **Warnings** — deliberate-looking-wrong code that must not be "simplified", surprising behaviour, consequences ("not thread-safe", "order matters: the read precedes the discard"). Name the trap in a line or two
+- **Opaque what** — a regex, bit trick, or dense algorithm that stays opaque after refactoring
+- **Public/exported API doc comments** per the language's own conventions — what it does, inputs, outputs, error behaviour; never internal algorithm
+
+**Never in a comment:**
+- Links, URLs, issue ids, or any workflow vocabulary — task ids, phase numbers, spec-section citations. The comment must hold true for a reader with no knowledge of the process that produced the code, long after its artifacts are archived
+- Claims about tests — what a test pins, catches, or proves. A renamed test or moved assertion turns the claim into a confident lie
+- Cardinality claims — "the single caller", "the only site that…", "nothing consumes this yet". Falsified by ordinary additive change far from the comment
+- Worked examples and hand-traced values. An example worth keeping is a test, where it executes
+- The design argument. State the conclusion the code needs ("sorted before dedup — dedup keys on adjacency"), not the debate; the reasoning lives in the project's design artifacts
+- Restated adjacent code, changelog narration, attribution, commented-out code
+
+When a change makes a nearby comment false, fix it in the same edit — and prefer deleting the claim to re-arguing it.
+
 ## Anti-Patterns to Avoid
 - God classes
 - Magic numbers/strings

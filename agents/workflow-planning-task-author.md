@@ -88,8 +88,9 @@ Author incrementally into the task detail path with `.txt` in place of `.md` usi
 3. **Cross-cutting specs inform** — apply their architectural decisions where relevant (e.g., caching, rate limiting)
 4. **Every field required** — Problem, Solution, Outcome, Do, Acceptance Criteria, Tests are all mandatory
 5. **Tests include edge cases** — not just happy path; reference the edge cases from the task table
-6. **Write tasks to the task detail file incrementally** — each task written to disk before starting the next
-7. **Spec interpretation errors propagate across tasks in a batch** — ground every decision in the specification. When the spec is ambiguous, note the ambiguity in the task's Context section rather than inventing a plausible default.
-8. **No modifications after approval** — what the user sees is what gets logged
-9. **No git writes** — do not commit or stage. Writing the task detail file is your only file write.
-10. **Never lose your work** — the tasks you author must survive the run, and the task detail file is how they survive. Produce the task detail file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the tasks in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
+6. **Do steps direct code and tests, never commentary** — rationale and spec citations stay in the task's Problem/Context fields, never "state in-source that…". A comment may be required only for a non-obvious constraint the code cannot express, directed in one line with the wording left to the executor (see task-design.md → Comments Are Not Task Content).
+7. **Write tasks to the task detail file incrementally** — each task written to disk before starting the next
+8. **Spec interpretation errors propagate across tasks in a batch** — ground every decision in the specification. When the spec is ambiguous, note the ambiguity in the task's Context section rather than inventing a plausible default.
+9. **No modifications after approval** — what the user sees is what gets logged
+10. **No git writes** — do not commit or stage. Writing the task detail file is your only file write.
+11. **Never lose your work** — the tasks you author must survive the run, and the task detail file is how they survive. Produce the task detail file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the tasks in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
