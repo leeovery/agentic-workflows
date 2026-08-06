@@ -8,27 +8,30 @@ The prose should have taken this path:
    no map to render, no resume gate — and initialisation creates the
    discussion file from the template, registers the topic (`topic
    start` flips `triaged` to `in-progress`), and commits action-scoped
-3. the session loop's first triage check reads the queue and renders
-   the two-entry agenda — both titles with their origins, bodies
-   unread — together with the offer menu, and stops for the user
-4. the user opts in; the first concern is armed on the map
+3. the session loop's first triage check finds a fresh sitting: it
+   announces the queue in a single count-only line — no agenda, no
+   menu — and the session opens from the topic's own material
+4. the user asks for the queue — their explicit ask is the break: the
+   check offers the two-entry agenda — both titles with their origins,
+   bodies unread — with the offer menu, and stops for the user
+5. the user opts in; the first concern is armed on the map
    (`discussion-map add` then set `exploring`), its queue file read
    as the session's own brief, and presented as a breakdown — the
    entry never emitted verbatim, and never from the title alone —
    then discussed to the baseline decision
-5. the fold documents the decision: a new `##` section whose Context
+6. the fold documents the decision: a new `##` section whose Context
    opens with the provenance line and the concern body, the map set
    `decided`, and the concern absorbed under its own commit naming
    file and origin
-6. the second concern is raised without a fresh offer — the opt-in
+7. the second concern is raised without a fresh offer — the opt-in
    stands — through the same arm/surface/fold/absorb path, absorbing
    under its own distinct commit; with the queue empty the clear line
    renders
-7. with both settled the user wraps; the closing gates run the review
+8. with both settled the user wraps; the closing gates run the review
    machinery per the conduct (the stubbed review returns clean); the
    conclude gate reads the queue, finds it empty, and the discussion
    completes with the `--kb` commit
-8. presence clears, the sweep finds no leavings, and the walk stops at
+9. presence clears, the sweep finds no leavings, and the walk stops at
    the bridge invocation
 
 Further claims:

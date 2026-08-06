@@ -177,6 +177,7 @@ Commands:
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json>
   render finding-batch    <wu.phase.topic> --file <payload.json>
+  render triage-announce  <wu.phase.topic>
   render triage-offer     <wu.phase.topic> --file <payload.json>
   render triage-block     <wu.phase.topic>
   render reroute-offer    <wu.phase.topic> --file <payload.json>

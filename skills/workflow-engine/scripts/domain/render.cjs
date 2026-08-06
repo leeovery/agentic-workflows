@@ -136,7 +136,7 @@ function resumeGate(cwd, args) {
       'DISPLAY: triage warning',
       'emit verbatim as a code block, directly above the menu',
       callout(`${n} rerouted concern(s) from other topics wait in this topic's `
-        + 'triage queue. Restart leaves them queued — they surface next session.'),
+        + 'triage queue. Restart leaves them queued — the restarted session raises them.'),
     ));
   }
   parts.push(section(
@@ -792,6 +792,25 @@ function triageOffer(cwd, { dotpath, file }) {
   ].join('\n');
 }
 
+// triage-announce — the fresh-sitting notice over a non-empty queue: one
+// count-only line, no agenda — the session opens on its own material and
+// the queue is offered at its first genuine break.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function triageAnnounce(cwd, { dotpath }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'triage-announce');
+  const { files } = triageQueue(cwd, workUnit, phase, topic);
+  if (!files.length) throw new Error(`render triage-announce: the ${topic} ${phase} triage queue is empty — nothing to announce`);
+  const line = files.length === 1
+    ? "1 rerouted concern from another topic waits in this topic's triage queue — I'll raise it once the session finds its footing."
+    : `${files.length} rerouted concerns from other topics wait in this topic's triage queue — I'll raise them once the session finds its footing.`;
+  return section('DISPLAY: triage announce', 'emit verbatim as a code block', callout(line));
+}
+
 // triage-block — the conclusion blocker over a non-empty queue. Count comes
 // from the live queue; the awaiting-word follows the phase.
 
@@ -1160,6 +1179,7 @@ const SURFACES = {
   'findings-summary': findingsSummary,
   'finding-batch': findingBatch,
   'finding': finding,
+  'triage-announce': triageAnnounce,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,
   'reroute-offer': rerouteOffer,

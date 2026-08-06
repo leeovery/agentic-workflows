@@ -44,13 +44,27 @@ The previous concern's absorb is the natural break.
 
 #### If this is the session's first consult
 
-The session is starting: the offer precedes any session output — render it now, before the first question or thread.
+**If the sitting resumed existing work** (the artifact predates this session — a resume or reopen; after a context refresh, treat the sitting as resumed):
+
+Queued concerns may bear on the ground the session is about to build on: the offer precedes any session output — render it now, before the first question or thread.
 
 → Proceed to **B. Offer**.
 
+**If the sitting began at initialization** (a first start or restart — this session created the artifact):
+
+The topic has no conversational ground yet, and an agenda of other topics' concerns would seed the session away from its own material. Announce without offering — one line, count only, no titles:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render triage-announce {work_unit}.{phase}.{topic}
+```
+
+Emit its `DISPLAY: triage announce` section verbatim as a code block, then open the session from its own material. The first offer waits for a genuine break in the session's own thread — or the user asking for the queue; the natural-breaks checklist's just-opened signal never satisfies this deferral.
+
+→ Return to caller.
+
 #### If at a natural break
 
-A concern landed mid-session, or the user chose `later` earlier. Consult the natural-breaks checklist — a recent `later` defers the re-offer until the conversation has genuinely moved on.
+A concern landed mid-session, the user chose `later` earlier, or the sitting opened fresh with the queue announced. Consult the natural-breaks checklist — a recent `later` defers the re-offer until the conversation has genuinely moved on.
 
 → Proceed to **B. Offer**.
 

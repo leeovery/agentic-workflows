@@ -6,20 +6,23 @@ The prose should have taken this path:
 2. initialisation creates the discussion file from the template,
    registers the topic (`topic start` flips `triaged` to
    `in-progress`), and commits action-scoped
-3. the session loop's first triage check reads the queue and renders
-   the two-entry agenda — titles and origins only, bodies unread —
-   together with the offer menu, and stops for the user
-4. the user opts in; the first concern is armed on the map
+3. the session loop's first triage check finds a fresh sitting: it
+   announces the queue in a single count-only line — no agenda, no
+   menu — and the session opens from the topic's own material
+4. at the user's navigation cue the check offers: the two-entry
+   agenda — titles and origins only, bodies unread — with the offer
+   menu, stopping for the user
+5. the user opts in; the first concern is armed on the map
    (`discussion-map add` then set `exploring`), its queue file read as
    the session's own brief, and presented as a breakdown in the
    session's voice — the entry never emitted verbatim — then discussed
    to a resolution; the user answers with broad agreement that names
    "the rest" of the queue
-5. the breadth of that agreement changes nothing beyond the concern on
+6. the breadth of that agreement changes nothing beyond the concern on
    the table: the fold records the first concern alone — its section,
    its map state, its absorb commit — and nothing of the second
    concern is folded or absorbed on the strength of it
-6. the second concern is raised individually — armed on the map,
+7. the second concern is raised individually — armed on the map,
    presented with its own breakdown, ending in its own single
    question — and the walk stops there when the user leaves
 
