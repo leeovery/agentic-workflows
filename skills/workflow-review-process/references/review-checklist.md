@@ -43,6 +43,7 @@ Review as a senior architect would:
 - **Low complexity**: Reasonable cyclomatic complexity, clear code paths
 - **Modern idioms**: Uses current language features appropriately
 - **Readability**: Self-documenting code, clear intent
+- **Comment accuracy**: Comments in the changed code hold true against it — no claims the code falsifies, no restated code, no references to process artifacts (task ids, phases, spec sections)
 - **Security**: No obvious vulnerabilities (injection, exposure, etc.)
 - **Performance**: No obvious inefficiencies (N+1 queries, unnecessary loops, etc.)
 
@@ -95,6 +96,8 @@ For each phase:
 **Orphaned code**: Code added but not used or tested
 
 **Poor readability**: Code works but is hard to understand
+
+**Stale comment**: A comment contradicts the code it describes — a `[do-now]` note carrying the replacement text, never a blocking issue on its own
 
 ## Writing Feedback
 

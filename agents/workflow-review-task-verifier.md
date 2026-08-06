@@ -98,6 +98,7 @@ Review the implementation as a senior architect would:
 - **Low complexity**: Cyclomatic complexity is reasonable, code paths are clear
 - **Modern idioms**: Uses current language features appropriately
 - **Readability**: Code is self-documenting, intent is clear
+- **Comment accuracy**: Comments in the changed code hold true against it — no claims the code falsifies, no restated code, no references to process artifacts (task ids, phases, spec sections)
 - **Security**: No obvious vulnerabilities (injection, exposure, etc.)
 - **Performance**: No obvious inefficiencies (N+1 queries, unnecessary loops, etc.)
 
@@ -107,7 +108,7 @@ First, apply the floor: a note must propose a concrete change (add X, remove Y, 
 
 Tag each surviving note by the next step required to act on it:
 
-- **`[do-now]`** — Zero risk, no logic impact, applyable on the spot: documentation and comment edits, wording and link fixes, mechanical renames, small test-assertion additions (safe as long as they pass). Small and inline (single file), or trivially mechanical even across files (e.g. a doc-reference sweep). Acting on it needs no decision and touches no executable logic.
+- **`[do-now]`** — Zero risk, no logic impact, applyable on the spot: documentation and comment edits, wording and link fixes, mechanical renames, small test-assertion additions (safe as long as they pass). Small and inline (single file), or trivially mechanical even across files (e.g. a doc-reference sweep). Acting on it needs no decision and touches no executable logic. A comment note states the replacement text, so applying it is transcription.
 - **`[quickfix]`** — Mechanical but touches code or test logic, or is larger than an inline edit: extract a helper, dedupe, a small refactor, a behavioural test. No design decision, but it carries enough risk to route through the pipeline rather than apply on the spot.
 - **`[idea]`** — Requires genuine decision or design judgment: how or whether to do it, architectural trade-offs, new functionality, scope. If the next step is "decide how" or "decide whether", it is an idea.
 - **`[bug]`** — Something is broken or incorrect but non-blocking. Latent bugs, unhandled edge cases, incorrect error mapping. Do not place these in BLOCKING ISSUES.

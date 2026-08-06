@@ -16,6 +16,7 @@ Invoke `workflow-implementation-task-reviewer` with:
 2. **Task content**: same normalised task content the executor received
 3. **Project skill paths**: from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
 4. **Work type**: from the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type`) — `quick-fix` switches the reviewer to completeness-based criteria and verification-workflow checks
+5. **code-quality.md path**: `.claude/skills/workflow-implementation-process/references/code-quality.md` — the standards the executor worked to, including the comment discipline
 
 ---
 
@@ -36,11 +37,16 @@ ISSUES:
   FIX: {recommended approach}
   ALTERNATIVE: {other valid approach with tradeoff — optional}
   CONFIDENCE: {high | medium | low}
+COMMENT_CORRECTIONS:
+- {file:line} — {what is wrong}
+  OLD: {verbatim current comment text}
+  NEW: {replacement — empty to delete}
 NOTES:
 - {non-blocking observations}
 ```
 
 - `approved`: task passes all five review dimensions
 - `needs-changes`: ISSUES contains specific, actionable items with fix recommendations and confidence levels
+- COMMENT_CORRECTIONS may accompany either verdict: prose-only fixes the verdict never counts. On `approved`, stage **D** of the task loop applies them directly; on `needs-changes`, they travel to the executor with the findings
 
 → Return to caller.
