@@ -20,7 +20,7 @@ H. Update progress + phase check + commit
 → loop back to A until done
 ```
 
-**Engine gate sections**: `engine task` responses carry rendered `=== DISPLAY … ===` / `=== MENU … ===` sections after their JSON line — the loop's state-derived gates, parameterised from manifest state. Emit a section only where a stage below prescribes it: DISPLAY verbatim as a code block, MENU verbatim as markdown (not a code block). A section is everything beneath its `===` marker up to the next marker or the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
+**Engine gate sections**: the loop's state-derived gates render via `engine render` calls — each stage below fetches its own gate at the moment it displays it and emits what returns, so the section always sits in the tool result directly above its emission. DISPLAY sections are emitted verbatim as a code block, MENU sections verbatim as markdown (not a code block). A section is everything beneath its `===` marker up to the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
 
 → Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written — the register and depth for the review and task-result summaries in **E** and **G**. Findings cache files and records stay fully technical.
 
@@ -62,7 +62,11 @@ No ready tasks remain, but {N} task(s) are still open — blocked:
   ...
 ```
 
-Emit the `MENU: blocked tasks` section carried by this session's most recent `task init` or `task complete` response.
+Fetch the blocked-tasks menu and emit its `MENU: blocked tasks` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render blocked-tasks
+```
 
 **STOP.** Wait for user response.
 
@@ -91,7 +95,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
-   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` opt-in is made by this flow itself, so you already know the current mode. The response also carries the task-gate section that **G. Task Gate** emits — `MENU: task gate` when gated, `DISPLAY: task gate auto-approved` when auto — never emit it here.
+   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` opt-in is made by this flow itself, so you already know the current mode.
 3. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 → Proceed to **B. Execute Task**.
@@ -195,11 +199,15 @@ Record the attempt via the engine (increments `fix_attempts` and appends the fin
 node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_unit} {topic} {internal_id} --findings-file .workflows/.cache/{work_unit}/implementation/{topic}/attempt-findings.md
 ```
 
-`{N}` below is the response's `attempts`. The response also carries a fix-gate section — `MENU: fix gate`, emitted by **F. Fix Approval Gate**, or `DISPLAY: fix gate auto-accepted`, emitted by this stage's auto branch — never emit it here.
+`{N}` below is the response's `attempts`.
 
 #### If the response's `threshold_reached` is `true`
 
-Emit the response's `DISPLAY: fix threshold` section.
+Fetch and emit the `DISPLAY: fix threshold` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render fix-threshold {work_unit}.implementation.{topic}
+```
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`.
 
@@ -227,7 +235,13 @@ Branch on the response's `fix_gate_mode`.
 
 **If `fix_gate_mode` is `auto`:**
 
-Emit the `DISPLAY: fix gate auto-accepted` section from this task's most recent `fix-attempt` response, after the findings summary. The turn does not end here — the executor dispatch follows in the same turn.
+After the findings summary, fetch the fix gate and emit its `DISPLAY: fix gate auto-accepted` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
+```
+
+The turn does not end here — the executor dispatch follows in the same turn.
 
 → Return to **B. Execute Task**.
 
@@ -239,7 +253,11 @@ Emit the `DISPLAY: fix gate auto-accepted` section from this task's most recent 
 
 ## F. Fix Approval Gate
 
-Emit the `MENU: fix gate` section from this task's most recent `fix-attempt` response. The `a/auto` option is present only while the fix gate is `gated` — a threshold-forced gate in auto mode omits it.
+Fetch the fix gate and emit its `MENU: fix gate` section (the `a/auto` option renders only while the fix gate is `gated` — a threshold-forced gate in auto mode omits it):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
+```
 
 **STOP.** Wait for user response.
 
@@ -299,13 +317,23 @@ Branch on the `task_gate_mode` carried by this task's `start` response.
 
 #### If `task_gate_mode` is `auto`
 
-Emit the `DISPLAY: task gate auto-approved` section from this task's `start` response, after the result summary. The turn does not end here — the commit follows in the same turn.
+After the result summary, fetch the task gate and emit its `DISPLAY: task gate auto-approved` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate {work_unit}.implementation.{topic}
+```
+
+The turn does not end here — the commit follows in the same turn.
 
 → Proceed to **H. Update Progress and Commit**.
 
 #### If `task_gate_mode` is `gated`
 
-Emit the `MENU: task gate` section from this task's `start` response.
+Fetch the task gate and emit its `MENU: task gate` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate {work_unit}.implementation.{topic}
+```
 
 **STOP.** Wait for user response.
 
@@ -353,8 +381,6 @@ Include the user's feedback when re-invoking.
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {N} --next-task '{next_task_id or ~}' [--skipped] [--phase-complete]
 ```
-
-The response also carries the `MENU: blocked tasks` section that **A. Retrieve Next Task** emits — never emit it here.
 
 **Internal ID convention**: The internal ID used with the engine and in commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If only the format adapter's external ID is at hand, pass `--external {external_id}` in place of `{internal_id}` — the engine resolves it through the plan's task map and reports the internal id in its response.
 

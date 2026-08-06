@@ -47,6 +47,8 @@
       "manifest get pay.planning.pay external_id",
       "task start pay pay pay-1-1",
       "task fix-attempt pay pay pay-1-1",
+      "render fix-gate pay.implementation.pay",
+      "render task-gate pay.implementation.pay",
       "fix_gate_mode auto",
       "task_gate_mode auto",
       "task start pay pay pay-1-2",
