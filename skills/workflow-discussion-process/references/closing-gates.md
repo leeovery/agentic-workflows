@@ -66,18 +66,18 @@ No review to offer — the conclude gate is next.
 
 ## B. Review Gate — Optional
 
-A review has already run and drained; declining a fresh one forfeits nothing owed.
+A review has already run and drained; declining another forfeits nothing owed.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-The discussion has moved since the last review. A fresh gap review can catch what the movement opened — or skip it and move on.
+The discussion has moved since the last final review. Another pass can catch what that movement opened — or conclude on the review you've already had.
 
-**`◆ Run a fresh review?`**
+**`◆ Run another final review?`**
 
-**`y/yes`**      → Run the fresh review
-**`s/skip`**     → Skip it and go to the conclude gate
+**`y/yes`**      → Run another final review
+**`s/skip`**     → Conclude on the last review — the movement stays unreviewed
 **Keep going** → Tell me what else to explore
 ```
 
@@ -89,7 +89,7 @@ The discussion has moved since the last review. A fresh gap review can catch wha
 
 **If `skip`:**
 
-The fresh review is declined for this conclusion attempt — Step 6 honours the decline, and a later attempt classifies afresh and offers again.
+Another final review is declined for this conclusion attempt — Step 6 honours the decline, and a later attempt classifies afresh and offers again.
 
 → Proceed to **D. Conclude Gate**.
 

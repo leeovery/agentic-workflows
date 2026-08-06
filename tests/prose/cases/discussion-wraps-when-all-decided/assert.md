@@ -23,9 +23,9 @@ The prose should have taken this path:
 7. on the user's wrap-up the map is read through the gateway and comes
    back fully decided — and the closing work is still classified and
    gated: the pending closing work is read from the agent store, and
-   the user is asked — a fresh review offered where the discussion
-   moved since the last one, or the conclude ask where the review is up
-   to date — with the walk ending only after their answer(s). Nothing
+   the user is asked — another final review offered where the
+   discussion moved since the last one, or the conclude ask where the
+   review is up to date — with the walk ending only after their answer(s). Nothing
    passes silently from the wrap signal into the final review
 8. the walk stops before the final gap review step runs — no review
    executes after the wrap, document review and the compliance check

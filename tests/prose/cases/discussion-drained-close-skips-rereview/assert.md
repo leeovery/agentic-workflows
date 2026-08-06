@@ -25,7 +25,7 @@ The prose should have taken this path:
    review-001 drain marker, so the residue is empty and the
    classification is satisfied — deterministically, with no
    meaningfulness judgment
-8. no fresh review is offered: the close goes straight to the conclude
+8. no further review is offered: the close goes straight to the conclude
    gate — the "discussion has moved" menu never renders. (Had it been
    offered, this user would have accepted — the absence of any
    dispatch is the classification holding, not the user declining)
