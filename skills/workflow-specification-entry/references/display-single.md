@@ -8,7 +8,13 @@ Auto-proceed path — only one completed discussion exists, so no selection menu
 
 ## Display
 
-Emit the TITLE section (markdown), then the DISPLAY section from the Step 1 snapshot verbatim as a code block.
+Re-run the scoped snapshot — the emission draws from this response, never a carried one:
+
+```bash
+node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_unit}
+```
+
+Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code block.
 
 ## After Display
 

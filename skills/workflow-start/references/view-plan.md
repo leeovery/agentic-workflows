@@ -32,7 +32,11 @@ Set `topic` to that topic.
 
 **If multiple topics exist:**
 
-Emit the `MENU: plan topics` section from the same snapshot verbatim as markdown (not a code block). Its numbering follows `planning_topics` order.
+Fetch and emit the `MENU: plan topics` section (its numbering follows `planning_topics` order):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-topics {selected.name}
+```
 
 **STOP.** Wait for user response.
 

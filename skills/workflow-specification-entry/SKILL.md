@@ -51,9 +51,7 @@ node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_
 The output is one snapshot in up to three demarcated sections:
 
 - **DATA** — reasoning surface: `scenario`, counts, `cache_status`, `discussions_checksum`, the discussion/specification detail (statuses, sources, consult references with slice hints), and — for scenarios with a menu — the `ACTIONS` key table (`key  action  topic  verb`). Reason from it; never display or restate it.
-- **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
-- **DISPLAY** — the scenario's overview block. Emitted verbatim as a code block, only where a later step directs.
-- **MENU** — the scenario's selection menu. Emitted verbatim as markdown (not a code block), only where a later step directs. Absent for menu-less scenarios.
+- **TITLE** / **DISPLAY** / **MENU** — the scenario's rendered surfaces. Never emitted from this call: the display reference each scenario routes to re-runs the view at its own emission point and emits from that response.
 
 A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 

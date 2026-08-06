@@ -148,9 +148,10 @@ function archivedView() {
 }
 
 // The working-set snapshot over the caller-held selection: DATA (set + addable
-// tables), the set tree, the set menu, and the deferred blocker/add/drop gate
-// sections. `--summaries <file>` names a JSON payload of model-synthesised
-// item summaries keyed by inbox path — rows render without one.
+// tables), the set tree, the set menu, and the mixed-type blocker.
+// `--summaries <file>` names a JSON payload of model-synthesised item
+// summaries keyed by inbox path — rows render without one. The add/drop gate
+// sections are served by their own verbs below, fetched at each gate.
 function workingSetView(...args) {
   const paths = [];
   let summaries = {};
@@ -182,6 +183,21 @@ function workingSetView(...args) {
   ].filter(Boolean).join('\n');
 }
 
+// The add/drop gates over the caller-held selection — fetched at the gate
+// that displays them, so the candidate lists are computed fresh from the
+// same paths the snapshot took.
+function workingSetGate(builder) {
+  return (...paths) => {
+    let ws;
+    try {
+      ws = engine.detail.workingSetDetail(process.cwd(), paths);
+      return builder(ws);
+    } catch (err) {
+      return engine.gateway.dataBlock({ error: err.message });
+    }
+  };
+}
+
 // manage → the selection snapshot; manage {work_unit} → the unit's action-menu
 // snapshot with its deferred absorb-target / plan-topic gates.
 function manageView(workUnit) {
@@ -202,8 +218,7 @@ function manageView(workUnit) {
   return [
     engine.gateway.dataBlock(v.data),
     engine.gateway.menuBlock(v.menu),
-    v.sections,
-  ].filter(Boolean).join('\n');
+  ].join('\n');
 }
 
 // The completed & cancelled snapshot, optionally filtered to one work type.
@@ -229,6 +244,8 @@ if (require.main === module) {
     inbox: inboxView,
     archived: archivedView,
     'working-set': workingSetView,
+    'working-set-add-gate': workingSetGate(engine.project.workingSetAddGate),
+    'working-set-drop-gate': workingSetGate(engine.project.workingSetDropGate),
     manage: manageView,
     completed: completedView,
     fallback: () => format(discover(process.cwd())),

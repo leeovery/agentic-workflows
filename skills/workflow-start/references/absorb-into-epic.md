@@ -14,7 +14,11 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > This will move the feature's discussion, research, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
 ```
 
-Emit the `MENU: absorb target` section from the caller's `manage {selected.name}` snapshot verbatim as markdown (not a code block). Its numbering follows the snapshot's `available_epics` order.
+Fetch and emit the `MENU: absorb target` section (its numbering follows the manage snapshot's `available_epics` order):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-target {selected.name}
+```
 
 **STOP.** Wait for user response.
 

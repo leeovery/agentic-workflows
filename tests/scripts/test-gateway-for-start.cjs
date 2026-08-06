@@ -563,4 +563,22 @@ describe('workflow-start sub-view sections', () => {
       assert.ok(!display.startsWith(title), `${args[0]} redraws its heading inside the fence: ${out}`);
     }
   });
+
+  it('the add and drop gates render on demand over the caller-held set — never on the snapshot', () => {
+    createFile(dir, '.workflows/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
+    createFile(dir, '.workflows/.inbox/ideas/2026-06-02--smart-retry.md', '# Smart Retry\n');
+    const set = ['.workflows/.inbox/bugs/2026-06-01--login-timeout.md'];
+
+    const snapshot = run(['working-set', ...set]);
+    assert.ok(!snapshot.includes('add gate') && !snapshot.includes('drop gate'),
+      'the snapshot carries no gate sections');
+
+    const add = run(['working-set-add-gate', ...set]);
+    assert.ok(add.includes('DISPLAY: add candidates') && add.includes('MENU: add gate'), add);
+    assert.ok(add.includes('Smart Retry [idea]'), 'candidates computed fresh from the same paths');
+
+    const drop = run(['working-set-drop-gate', ...set]);
+    assert.ok(drop.includes('DISPLAY: drop candidates') && drop.includes('MENU: drop gate'), drop);
+    assert.ok(drop.includes('Login Timeout [bug]'), drop);
+  });
 });
