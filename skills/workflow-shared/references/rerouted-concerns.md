@@ -133,19 +133,19 @@ Route on the ground the concern reopens — the subtopic its title names (`{titl
 
 - `exploring` or `converging` — already live. Leave it.
 
-Present the concern in your own voice — name its origin in a sentence, then break it down. The reopened ground may be days old and the reader cold — the entry is the record, the breakdown is what makes it workable: what the concern actually asks of this topic, how it sits against what this topic already decided, and a concrete rendering of the problem — a worked example in the topic's own terms, a small diagram where shape or flow helps, a before/after. Every substantive point in the entry surfaces in the breakdown — the user decides from the substance, never from the title. Keep it simple and engineer-level, sized to the concern, and vary the shape across a multi-concern queue — identical breakdowns read as a template, not a colleague. The breakdown covers this concern alone: no other queued concern, open item, or finding rides along, and the closing question spans nothing the user hasn't seen. The test: the user can picture the problem before the first question arrives. End in a single opening question.
+Present the concern in your own voice — name its origin in a sentence, then break it down. The reopened ground may be days old and the reader cold — the entry is the record, the breakdown is what makes it workable: what the concern actually asks of this topic, how it sits against what this topic already decided, and a concrete rendering of the problem — a worked example in the topic's own terms, a small diagram where shape or flow helps, a before/after. Every substantive point in the entry surfaces before the concern folds — the user decides from the substance, never from the title. An entry carrying one ask surfaces whole. An entry carrying several distinct asks — points the user could accept or reject independently — is walked one ask at a time: open with a one-line map of what the entry brings (titles only), then break down the first ask alone; each later ask waits for the one before it to resolve and gets its own full breakdown when its turn comes. Keep it simple and engineer-level, sized to the ask on the table, and vary the shape across a multi-concern queue — identical breakdowns read as a template, not a colleague. The breakdown covers this concern alone — for a walked entry, this ask alone: no other queued concern, open item, or finding rides along; a gap you spot while preparing the breakdown is your finding, not the entry's — it parks as a tangent (below), never joins the raise. The closing question spans nothing the user hasn't seen. The test: the user can picture the problem before the first question arrives. End in a single opening question.
 
 **STOP.** Wait for user response.
 
 Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it — the dispatch check's triage-queue box holds while entries remain, so no review launches mid-walk. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer.
 
-**If the discussion reaches an outcome** — a decision, a direction, or the user explicitly parking it as a deferred thread:
+**If the discussion reaches an outcome** — a decision, a direction, or the user explicitly parking it as a deferred thread; for a walked entry, when its last ask resolves (earlier asks' outcomes are documented and committed by the loop's machinery as they land):
 
 → Proceed to **D. Fold**.
 
 **If the user moves on without engaging it** — they bounce to another subtopic, another concern, or the main thread:
 
-The concern stays queued, untouched, and the opt-in is cleared. Follow them; the check re-offers at a later break, and the conclusion gate holds until the queue is empty.
+The concern stays queued and the opt-in is cleared — a half-walked entry keeps its unresolved asks, and its re-raise resumes at the first of them. Follow them; the check re-offers at a later break, and the conclusion gate holds until the queue is empty.
 
 → Return to caller.
 
