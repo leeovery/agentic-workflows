@@ -40,7 +40,7 @@
     "skills/workflow-shared/references/closing-recap.md"
   ],
   "answers": [],
-  "conduct": "The user wants everything settled with minimum ceremony. Shown the two-entry agenda and the offer menu they say discuss. They engage the first concern from its surfaced substance and, when a resolution is proposed, they reply with deliberately broad agreement — 'agree on what you've suggested — and apply the same treatment to whatever else is queued'. That breadth is the point: they have seen only the first concern. If the second concern is then raised individually with its own question, they say they are out of time and end the session there, leaving it unengaged. If instead anything from the remaining queue is folded, absorbed, or committed without being individually raised first, they do not intervene — they end the session at the next opportunity with the same out-of-time line. They never conclude the discussion and never return.",
+  "conduct": "The user wants everything settled with minimum ceremony. The session opens on the topic's own material with a one-line note that parked concerns wait in triage; they give the opening question a brief 'nothing to add beyond the brief — what's next?'. Shown the two-entry agenda and the offer menu at that break they say discuss. They engage the first concern from its surfaced substance and, when a resolution is proposed, they reply with deliberately broad agreement — 'agree on what you've suggested — and apply the same treatment to whatever else is queued'. That breadth is the point: they have seen only the first concern. If the second concern is then raised individually with its own question, they say they are out of time and end the session there, leaving it unengaged. If instead anything from the remaining queue is folded, absorbed, or committed without being individually raised first, they do not intervene — they end the session at the next opportunity with the same out-of-time line. They never conclude the discussion and never return.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   },
@@ -50,6 +50,7 @@
       "manifest get search-relevance.discussion.relevance-measurement status",
       "topic start search-relevance discussion relevance-measurement",
       "topic queue search-relevance discussion relevance-measurement",
+      "render triage-announce search-relevance.discussion.relevance-measurement",
       "render triage-offer search-relevance.discussion.relevance-measurement",
       "discussion-map add search-relevance relevance-measurement offline-metrics-baseline",
       "discussion-map add search-relevance relevance-measurement expansion-quality-tracking",

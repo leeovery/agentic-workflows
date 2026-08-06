@@ -558,12 +558,13 @@ describe('pipeline simulation', () => {
     assert.strictEqual(absorbed.remaining, 1, 'the absorb answers the post-deletion count');
     assert.ok(absorbed.committed, 'absorb self-commits');
     assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/${wu}/research/.triage/delta/002-second-parked.md`)), 'queue file deleted');
-    // The raise's display surfaces: the offer gate (agenda payload validated
-    // against the live queue) and the conclusion blocker — the entry itself
-    // is read by the session, never rendered.
+    // The raise's display surfaces: the fresh-sitting notice, the offer gate
+    // (agenda payload validated against the live queue), and the conclusion
+    // blocker — the entry itself is read by the session, never rendered.
     sim.write('.workflows/.cache/scratch/triage-offer.json', JSON.stringify({
       items: [{ file: '001-parked-concern.md', title: 'Parked concern', origin: 'alpha', from_phase: 'discussion', from_date: '2026-07-23' }],
     }));
+    sim.render(['triage-announce', `${wu}.research.delta`], { expect: 'content' });
     sim.render(['triage-offer', `${wu}.research.delta`, '--file', '.workflows/.cache/scratch/triage-offer.json'], { expect: 'content' });
     sim.render(['triage-block', `${wu}.research.delta`], { expect: 'content' });
     // Judgment landing: a research-side delivery beneath beta's completed

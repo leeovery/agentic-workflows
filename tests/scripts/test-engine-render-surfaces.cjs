@@ -125,8 +125,8 @@ describe('render resume-gate', () => {
     assert.ok(out.startsWith([
       '=== DISPLAY: triage warning (emit verbatim as a code block, directly above the menu) ===',
       "  ⚑ 3 rerouted concern(s) from other topics wait in this topic's",
-      '    triage queue. Restart leaves them queued — they surface next',
-      '    session.',
+      '    triage queue. Restart leaves them queued — the restarted',
+      '    session raises them.',
       '',
     ].join('\n')));
     assert.ok(out.includes('=== MENU: resume gate'));
@@ -546,6 +546,17 @@ describe('render triage surfaces', () => {
     fs.mkdirSync(qdir, { recursive: true });
     for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(qdir, f), body);
   }
+
+  it('triage-announce derives the count with verb agreement, refusing an empty queue', () => {
+    assert.throws(() => renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' }), /queue is empty — nothing to announce/);
+    writeQueue('measurement', { '001-a.md': 'x' });
+    const one = renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' });
+    assert.ok(one.startsWith('=== DISPLAY: triage announce (emit verbatim as a code block) ==='), one);
+    assert.ok(one.includes('1 rerouted concern from another topic waits'), one);
+    writeQueue('measurement', { '002-b.md': 'y' });
+    const two = renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' });
+    assert.ok(two.includes('2 rerouted concerns from other topics wait'), two);
+  });
 
   it('triage-offer renders the agenda in queue order and the discuss/later menu', () => {
     writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
@@ -1277,7 +1288,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });
 });
 
