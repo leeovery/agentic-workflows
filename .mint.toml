@@ -27,10 +27,14 @@ diff_exclude = [
 ]
 
 [release]
-# The workflow-start banner byline carries the shipped version; mint mirrors the
-# new version onto that line at release time.
+# The workflow-start banner stamps the shipped version inside the art block,
+# right-aligned under the WS of WORKFLOWS; mint mirrors the new version there at
+# release time. The pattern is deliberately just the token: the match is an
+# unanchored substring and the rewrite replaces only the matched span, so the
+# stamp's leading padding is none of mint's business and stays put. `v0.6.43` is
+# the only semver in the file, so the short pattern is unambiguous.
 version_file = "skills/workflow-start/SKILL.md"
-version_pattern = "Agentic Engineering Workflows`** · *v{version}*"
+version_pattern = "v{version}"
 
 # Release-notes AI needs longer than the 60s default on big releases — the
 # v0.6.0 re-platforming diff (75 squashes) timed out twice at 60s. Seconds.
