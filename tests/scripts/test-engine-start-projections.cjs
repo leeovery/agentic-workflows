@@ -13,8 +13,12 @@ const {
   inboxPickupView,
   archivedView,
   workingSetView,
+  workingSetAddGate,
+  workingSetDropGate,
   manageListView,
   manageUnitView,
+  absorbTargetMenu,
+  planTopicsMenu,
   completedView,
 } = require('../../skills/workflow-engine/scripts/domain/projections/start.cjs');
 const { combinedInbox, workingSetDetail } = require('../../skills/workflow-engine/scripts/domain/inbox-set.cjs');
@@ -433,7 +437,7 @@ describe('start projections: working set', () => {
     createFile(d, '.workflows/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart Retry\n');
   }
 
-  it('uniform bug set: offers work, maps the bugfix pre-seed, and defers add/drop gates', () => {
+  it('uniform bug set: offers work, maps the bugfix pre-seed, and carries no gate sections', () => {
     seedInbox(dir);
     const ws = workingSetDetail(dir, [
       '.workflows/.inbox/bugs/2026-06-01--login-timeout.md',
@@ -473,19 +477,22 @@ describe('start projections: working set', () => {
       '**`b/back`**    → Return to the inbox list',
       '**Ask**       → Ask about the set',
     ].join('\n'));
-    assert.strictEqual(v.sections, [
-      '=== DISPLAY: add candidates (emit verbatim as a code block only at the add-items gate — never at the call) ===',
+    assert.strictEqual(v.sections, '', 'the snapshot carries no gate sections');
+    assert.strictEqual(workingSetAddGate(ws), [
+      '=== DISPLAY: add candidates (emit verbatim as a code block) ===',
       '  1. Smart Retry [idea] — 2026-06-03',
       '',
-      '=== MENU: add gate (emit verbatim as markdown only at the add-items gate) ===',
+      "=== MENU: add gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       'Add which? (enter number(s), comma-separated, or **`b/back`**)',
       '',
-      '=== DISPLAY: drop candidates (emit verbatim as a code block only at the drop-items gate — never at the call) ===',
+    ].join('\n'));
+    assert.strictEqual(workingSetDropGate(ws), [
+      '=== DISPLAY: drop candidates (emit verbatim as a code block) ===',
       '  1. Login Timeout [bug]',
       '  2. Crash On Save [bug]',
       '',
-      '=== MENU: drop gate (emit verbatim as markdown only at the drop-items gate) ===',
+      "=== MENU: drop gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       'Drop which? (enter number(s), comma-separated, or **`b/back`**)',
       '',
@@ -505,15 +512,15 @@ describe('start projections: working set', () => {
     assert.ok(v.data.includes('set_uniform: false'));
   });
 
-  it('idea set maps the none pre-seed; a fully-selected inbox defers no add gate', () => {
+  it('idea set maps the none pre-seed; a fully-selected inbox refuses the add gate', () => {
     createFile(dir, '.workflows/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart Retry\n');
     const ws = workingSetDetail(dir, ['.workflows/.inbox/ideas/2026-06-03--smart-retry.md']);
     assert.strictEqual(ws.set_type, 'none');
     const v = workingSetView(ws);
     assert.ok(v.data.includes('addable_count: 0'));
-    assert.ok(!v.sections.includes('add candidates'));
-    assert.ok(!v.sections.includes('add gate'));
-    assert.ok(v.sections.includes('DISPLAY: drop candidates'));
+    assert.strictEqual(v.sections, '', 'the snapshot carries no gate sections');
+    assert.throws(() => workingSetAddGate(ws), /nothing addable/);
+    assert.ok(workingSetDropGate(ws).includes('DISPLAY: drop candidates'));
   });
 
   it('quick-fix set maps the quick-fix pre-seed', () => {
@@ -611,19 +618,21 @@ describe('start projections: manage unit', () => {
       '**`b/back`**   → Return',
       '**Ask**      → Ask a question about this work unit',
     ].join('\n'));
-    assert.strictEqual(v.sections, '');
+    assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
   });
 
-  it('absorbable feature: absorb option plus the deferred target menu', () => {
+  it('absorbable feature: absorb option; the target menu renders via its builder', () => {
     createManifest(dir, 'auth-flow', {
       phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
     });
     createManifest(dir, 'v1', { work_type: 'epic' });
     createManifest(dir, 'v2', { work_type: 'epic' });
-    const v = manageUnitView(manageDetail(dir, 'auth-flow'));
+    const md = manageDetail(dir, 'auth-flow');
+    const v = manageUnitView(md);
     assert.ok(/\*\*`a\/absorb`\*\* +→ Merge into an existing epic/.test(v.menu));
-    assert.strictEqual(v.sections, [
-      '=== MENU: absorb target (emit verbatim as markdown only at the absorb target gate — never at the call) ===',
+    assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
+    assert.strictEqual(absorbTargetMenu(md), [
+      "=== MENU: absorb target (emit verbatim as markdown, then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Select a target epic:`**',
       '',
@@ -645,7 +654,7 @@ describe('start projections: manage unit', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
     const v = manageUnitView(manageDetail(dir, 'auth-flow'));
     assert.ok(!v.menu.includes('absorb'));
-    assert.strictEqual(v.sections, '');
+    assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
   });
 
   it('completed implementation offers done; a plan offers view-plan', () => {
@@ -669,10 +678,10 @@ describe('start projections: manage unit', () => {
       '**Ask**         → Ask a question about this work unit',
     ].join('\n'));
     assert.ok(!v.menu.includes('pivot'));
-    assert.strictEqual(v.sections, '');
+    assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
   });
 
-  it('multi-plan epic defers the plan-topics menu; a single plan does not', () => {
+  it('multi-plan epic renders the plan-topics menu via its builder', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { planning: { items: { 'topic-a': { status: 'completed' }, 'topic-b': { status: 'in-progress' } } } },
@@ -681,9 +690,11 @@ describe('start projections: manage unit', () => {
       work_type: 'epic',
       phases: { planning: { items: { solo: { status: 'in-progress' } } } },
     });
-    const multi = manageUnitView(manageDetail(dir, 'v1'));
-    assert.strictEqual(multi.sections, [
-      '=== MENU: plan topics (emit verbatim as markdown only at the view-plan topic gate — never at the call) ===',
+    const multiMd = manageDetail(dir, 'v1');
+    const multi = manageUnitView(multiMd);
+    assert.strictEqual(multi.sections, undefined, 'the manage snapshot carries no deferred sections');
+    assert.strictEqual(planTopicsMenu(multiMd), [
+      "=== MENU: plan topics (emit verbatim as markdown, then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which plan would you like to view?`**',
       '',
@@ -693,7 +704,7 @@ describe('start projections: manage unit', () => {
     ].join('\n'));
     assert.ok(multi.data.includes('planning_topics: topic-a [completed], topic-b [in-progress]'));
     const single = manageUnitView(manageDetail(dir, 'v2'));
-    assert.ok(!single.sections.includes('plan topics'));
+    assert.strictEqual(single.sections, undefined, 'the manage snapshot carries no deferred sections');
   });
 
   it('manageDetail is null for a missing work unit', () => {

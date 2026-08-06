@@ -129,6 +129,8 @@ module.exports = {
     inboxPickupView: startProjections.inboxPickupView,
     archivedView: startProjections.archivedView,
     workingSetView: startProjections.workingSetView,
+    workingSetAddGate: startProjections.workingSetAddGate,
+    workingSetDropGate: startProjections.workingSetDropGate,
     manageListView: startProjections.manageListView,
     manageUnitView: startProjections.manageUnitView,
     completedView: startProjections.completedView,

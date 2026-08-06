@@ -202,6 +202,8 @@ Commands:
   render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--warn]
   render pivot-continuation <wu>
   render session-receipt   <wu> [--warn]
+  render absorb-target     <feature>
+  render plan-topics       <wu>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)

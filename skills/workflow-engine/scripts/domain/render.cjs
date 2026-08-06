@@ -15,6 +15,8 @@ const { titlecase } = require('./conventions.cjs');
 const { section, menu, cmdOption, promptOption, callout, subDetail, treeList, numberedTreeList } = require('./projections/surfaces.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
+const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
+const { manageDetail } = require('./workunit-manage.cjs');
 const { FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 
 /**
@@ -1360,6 +1362,33 @@ function sessionReceiptSurface(cwd, args) {
   return sessionReceipt({ warn: args.warn === '1' });
 }
 
+// ---------------------------------------------------------------------------
+// Manage-flow gates — scoped selections the manage sub-flows fetch at their
+// own gate, computed fresh from the same detail the manage snapshot reads.
+// ---------------------------------------------------------------------------
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function absorbTarget(cwd, args) {
+  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-target');
+  const md = manageDetail(cwd, workUnit);
+  if (!md) throw new Error(`render absorb-target: work unit "${workUnit}" not found`);
+  if (!md.absorb_available) {
+    throw new Error(`render absorb-target: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
+  }
+  return absorbTargetMenu(md);
+}
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function planTopics(cwd, args) {
+  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'plan-topics');
+  const md = manageDetail(cwd, workUnit);
+  if (!md) throw new Error(`render plan-topics: work unit "${workUnit}" not found`);
+  if (!(md.work_type === 'epic' && md.has_plan && md.planning_topics.length > 1)) {
+    throw new Error(`render plan-topics: "${workUnit}" has no multi-topic plan to choose from`);
+  }
+  return planTopicsMenu(md);
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
@@ -1394,6 +1423,8 @@ const SURFACES = {
   'promote-receipt': promoteReceiptSurface,
   'pivot-continuation': pivotContinuation,
   'session-receipt': sessionReceiptSurface,
+  'absorb-target': absorbTarget,
+  'plan-topics': planTopics,
 };
 
 /**

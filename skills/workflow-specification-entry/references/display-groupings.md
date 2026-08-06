@@ -8,13 +8,11 @@ Shows when proposed groupings exist (directly from routing) or after analysis co
 
 ## A. Display
 
-Arriving from **[analysis-flow.md](analysis-flow.md)**, the manifest changed since the last snapshot — re-run it first:
+Re-run the scoped snapshot — the emission draws from this response, never a carried one:
 
 ```bash
 node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_unit}
 ```
-
-Arriving from routing, use the Step 1 snapshot as-is.
 
 Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code block.
 

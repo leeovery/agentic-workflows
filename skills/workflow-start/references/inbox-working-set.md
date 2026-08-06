@@ -27,7 +27,6 @@ The response carries demarcated sections:
 - **DISPLAY** — the set tree, summaries rendered beneath each item. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the set menu. Emit verbatim as markdown (not a code block). The `w/work` option renders only for a type-uniform set.
 - **`DISPLAY: blocker`** — present only on a mixed-type set. Emit directly after the display, verbatim per its marker.
-- **Labelled sections** (`DISPLAY: add candidates`, `MENU: add gate`, `DISPLAY: drop candidates`, `MENU: drop gate`) — deferred: each is emitted only at the gate its marker names (**B** / **C**), never here.
 
 Emit the TITLE section (markdown), then the DISPLAY section, then the `DISPLAY: blocker` section when present, then the MENU section.
 
@@ -87,7 +86,11 @@ Match each named item against the `ADDABLE` table — by title, or by the number
 
 #### Otherwise
 
-Emit the `DISPLAY: add candidates` section verbatim as a code block, then the `MENU: add gate` section verbatim as markdown (not a code block).
+Fetch the add gate over the current set and emit its `DISPLAY: add candidates` section verbatim as a code block, then its `MENU: add gate` section verbatim as markdown (not a code block):
+
+```bash
+node .claude/skills/workflow-start/scripts/gateway.cjs working-set-add-gate {path} [{path} …]
+```
 
 **STOP.** Wait for user response.
 
@@ -117,7 +120,11 @@ Resolve each named item against the working set by title or description. If any 
 
 #### Otherwise
 
-Emit the `DISPLAY: drop candidates` section verbatim as a code block, then the `MENU: drop gate` section verbatim as markdown (not a code block).
+Fetch the drop gate over the current set and emit its `DISPLAY: drop candidates` section verbatim as a code block, then its `MENU: drop gate` section verbatim as markdown (not a code block):
+
+```bash
+node .claude/skills/workflow-start/scripts/gateway.cjs working-set-drop-gate {path} [{path} …]
+```
 
 **STOP.** Wait for user response.
 

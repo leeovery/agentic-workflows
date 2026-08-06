@@ -47,7 +47,6 @@ The response carries demarcated sections:
 
 - **DATA** — reasoning surface: lifecycle flags (`implementation_completed`, `has_plan`, `absorb_available`, …), `available_epics`, `planning_topics`, and the `ACTIONS` key table. Reason from it; never display or restate it.
 - **MENU** — the action menu, offering exactly the actions this work unit's state allows. Emit verbatim as markdown (not a code block) at this section's gate below.
-- **Labelled sections** (`MENU: absorb target`, `MENU: plan topics`) — deferred: each is emitted only at the gate its marker names (inside **[absorb-into-epic.md](absorb-into-epic.md)** / **[view-plan.md](view-plan.md)**), never here.
 
 > *Output the next fenced block as markdown (not a code block):*
 

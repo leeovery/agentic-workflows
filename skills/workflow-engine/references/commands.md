@@ -221,6 +221,8 @@ engine render absorb-receipt <epic> --topic <name> [--moved research,seeds,impor
 engine render promote-receipt <wu>.specification.<topic> --to <cc-work-unit> [--warn]  # the promotion summary; refuses unless the spec item is promoted
 engine render pivot-continuation <wu>                             # the manage flow's post-pivot continue/back menu; refuses unless the unit is an epic
 engine render session-receipt <wu> [--warn]                       # discovery-session close advisory — empty without --warn
+engine render absorb-target <feature>                             # the absorb flow's target-epic selection menu; refuses when the absorb guard doesn't hold
+engine render plan-topics <wu>                                    # the view-plan topic selection menu; refuses without a multi-topic epic plan
 ```
 
 The bridge continuation surfaces take a bare `<work_unit>` address (work-unit-level, type read from the manifest). The continue-* selection step is not a `render` surface: each navigation gateway's index dump appends `DISPLAY: selection` / `MENU: selection` sections from the shared selection projection — emitted only at the select step, per their markers.
