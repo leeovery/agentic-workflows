@@ -18,11 +18,11 @@ The prose should have taken this path:
    offers it; the user says later; the concern stays queued untouched
    and the session continues
 6. at the following break the check re-offers — later meant not now,
-   never not this session — and the user takes it; the concern is
-   new ground, so its raise arms the map (`discussion-map add` then
-   set `exploring`) before its queue file is read as the session's
-   own brief and presented as a breakdown — the entry never emitted
-   verbatim — then discussed to a decision
+   never not this session — and the user takes it; the raise reads
+   the queue file as the session's own brief, arms the map — the
+   concern is new ground (`discussion-map add` then set `exploring`)
+   — and presents a breakdown — the entry never emitted verbatim —
+   then the concern is discussed to a decision
 7. the fold writes the armed subtopic: a provenance-led Context, the
    decision documented, the map set `decided`, and the concern
    absorbed under its own commit naming file and origin

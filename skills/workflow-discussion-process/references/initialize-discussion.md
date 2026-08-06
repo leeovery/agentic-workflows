@@ -24,7 +24,7 @@ The seed just read, the brief or carrier the entry skill read at Gather Context,
 
    Populate from the seed, handoff context, and user input. Derive initial subtopics from whatever context is available — the seed, the user's description, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map grows during discussion.
 
-   Either way, the triage queue is never a seeding source: parked concerns enter through the session loop's triage check — surfaced whole and discussed — and pre-adding their titles to the map forces every fold into the wrong branch.
+   Either way, the triage queue is never a seeding source: parked concerns enter through the session loop's triage check — raised with their full context and discussed — and pre-adding their titles to the map forces every fold into the wrong branch.
 
 5. Seed the Discussion Map — record each initial subtopic (kebab-case name; new subtopics start `pending`):
    ```bash
