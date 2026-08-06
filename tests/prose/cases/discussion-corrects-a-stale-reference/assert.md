@@ -10,14 +10,14 @@ The prose should have taken this path:
    contextual query; the session loop's first triage check reads the
    queue and renders the one-entry agenda with the offer menu, and
    stops for the user
-4. the user opts in; the raise arms the map — the correction's title
-   names no subtopic, so the subtopic whose recorded content it
+4. the user opts in; the raise reads the concern's queue file as the
+   session's own brief, then arms the map from it — the correction's
+   title names no subtopic, so the subtopic whose recorded content it
    corrects, expansion-source, re-arms from decided to exploring; no
    discussion-map add is issued
-5. the concern's queue file is read as the session's own brief and
-   presented as a breakdown — the entry never emitted verbatim — that
-   covers it alone, and a single question closes the turn; the user
-   accepts the correction as prescribed
+5. the concern is presented as a breakdown — the entry never emitted
+   verbatim — that covers it alone, and a single question closes the
+   turn; the user accepts the correction as prescribed
 6. the fold takes the pure-correction branch: the two citing sites are
    amended in place, each amendment a dated note naming
    behavioural-ranking's retiring decision, the stale table citations

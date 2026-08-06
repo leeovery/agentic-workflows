@@ -108,9 +108,9 @@ No opt-in. The check re-offers at a later break; the conclusion gate holds regar
 
 ## C. Raise One Concern
 
-Take the lowest-numbered concern still queued — or whichever the user asks for.
+Take the lowest-numbered concern still queued — or whichever the user asks for. Read its queue file — `.workflows/{work_unit}/{phase}/.triage/{topic}/{NNN-slug}.md` — with the Read tool. The entry is your brief, never the user's display: it reaches the conversation only through your breakdown, and the raw entry is shown only when the user asks.
 
-**If `phase` is `discussion`, arm the Discussion Map first** — the map tells the truth while the concern is live. Read the subtopic states:
+**If `phase` is `discussion`, arm the Discussion Map before presenting** — the map tells the truth while the concern is live, and routing a correction needs the body just read. Read the subtopic states:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} subtopics
@@ -133,9 +133,7 @@ Route on the ground the concern reopens — the subtopic its title names (`{titl
 
 - `exploring` or `converging` — already live. Leave it.
 
-Read the concern's queue file — `.workflows/{work_unit}/{phase}/.triage/{topic}/{NNN-slug}.md` — with the Read tool. The entry is your brief, never the user's display: the origin session carried everything it worked out, and the entry reaches the conversation only through your presentation of it — the fold writes the body into the record, and the raw entry is shown only when the user asks for it.
-
-Present the concern in your own voice — name its origin in a sentence, then break it down. The reopened ground may be days old and the reader cold — the entry is the record, the breakdown is what makes it workable: what the concern actually asks of this topic, how it sits against what this topic already decided, and a concrete rendering of the problem — a worked example in the topic's own terms, a small diagram where shape or flow helps, a before/after. Every substantive point in the entry surfaces in the breakdown — the user decides from the substance, never from the title, and the breakdown is where they meet it. Keep it simple and engineer-level, sized to the concern, and vary the shape across a multi-concern queue — identical breakdowns read as a template, not a colleague. The breakdown covers this concern alone: no other queued concern, open item, or finding rides along, and the closing question spans nothing the user hasn't seen. The test: the user can picture the problem before the first question arrives. End in a single opening question.
+Present the concern in your own voice — name its origin in a sentence, then break it down. The reopened ground may be days old and the reader cold — the entry is the record, the breakdown is what makes it workable: what the concern actually asks of this topic, how it sits against what this topic already decided, and a concrete rendering of the problem — a worked example in the topic's own terms, a small diagram where shape or flow helps, a before/after. Every substantive point in the entry surfaces in the breakdown — the user decides from the substance, never from the title. Keep it simple and engineer-level, sized to the concern, and vary the shape across a multi-concern queue — identical breakdowns read as a template, not a colleague. The breakdown covers this concern alone: no other queued concern, open item, or finding rides along, and the closing question spans nothing the user hasn't seen. The test: the user can picture the problem before the first question arrives. End in a single opening question.
 
 **STOP.** Wait for user response.
 

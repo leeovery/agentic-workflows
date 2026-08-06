@@ -12,9 +12,9 @@ The prose should have taken this path:
 4. at the user's navigation cue the check offers: the two-entry
    agenda — titles and origins only, bodies unread — with the offer
    menu, stopping for the user
-5. the user opts in; the first concern is armed on the map
-   (`discussion-map add` then set `exploring`), its queue file read as
-   the session's own brief, and presented as a breakdown in the
+5. the user opts in; the first concern's queue file is read as the
+   session's own brief, the concern armed on the map (`discussion-map
+   add` then set `exploring`), and presented as a breakdown in the
    session's voice — the entry never emitted verbatim — then discussed
    to a resolution; the user answers with broad agreement that names
    "the rest" of the queue

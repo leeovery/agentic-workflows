@@ -14,9 +14,9 @@ The prose should have taken this path:
 4. the user asks for the queue — their explicit ask is the break: the
    check offers the two-entry agenda — both titles with their origins,
    bodies unread — with the offer menu, and stops for the user
-5. the user opts in; the first concern is armed on the map
-   (`discussion-map add` then set `exploring`), its queue file read
-   as the session's own brief, and presented as a breakdown — the
+5. the user opts in; the first concern's queue file is read as the
+   session's own brief, the concern armed on the map (`discussion-map
+   add` then set `exploring`), and presented as a breakdown — the
    entry never emitted verbatim, and never from the title alone —
    then discussed to the baseline decision
 6. the fold documents the decision: a new `##` section whose Context
