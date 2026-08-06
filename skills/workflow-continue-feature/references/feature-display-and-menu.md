@@ -59,10 +59,14 @@ Store the entry's `action` and `route`.
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete feature pipeline" --pipeline
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete feature pipeline"
 ```
 
-Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
+Fetch and emit the receipt's `DISPLAY: confirmation` section:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
+```
 
 **STOP.** Do not proceed — terminal condition.
 

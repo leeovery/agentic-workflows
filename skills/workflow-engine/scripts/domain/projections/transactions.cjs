@@ -1,33 +1,34 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: transaction confirmation sections — the DISPLAY/MENU blocks that follow a
-// lifecycle verb's JSON response (the labelled-section pattern the task verbs
-// established). The response line stays the machine contract; these sections
-// are the user-facing confirmation the calling flow emits verbatim at its
-// prescribed moment. Warnings render above confirmations, exactly as the
-// prose templates they replace.
+// Domain ring: transaction receipts — the DISPLAY/MENU blocks the `render`
+// receipt surfaces serve after a lifecycle verb runs. The verb's one-line
+// JSON is the machine contract; the receipt is fetched by the calling flow
+// at the call site and emitted verbatim. Warnings render as a state-class
+// advisory above the confirmation (the `--warn` flag, set by the caller when
+// the transaction's JSON carried `warnings`) — the failure detail itself
+// stays in the JSON line, already on screen one tool result up.
 // ---------------------------------------------------------------------------
 
 const { titlecase } = require('../conventions.cjs');
 const { section, callout, menu, cmdOption } = require('./surfaces.cjs');
 
 /**
- * The ⚑ warning block: label line, one indented line per warning, and the
- * reassurance tail. Null when there are no warnings.
- * @param {string} label @param {string[] | undefined} warnings @param {string} tail
- * @param {string} [instruction]
- * @returns {string | null}
+ * The ⚑ advisory block: label line and reassurance tail.
+ * @param {string} label @param {string} tail
+ * @returns {string}
  */
-function warningBlock(label, warnings, tail, instruction = 'emit verbatim as a code block, above the confirmation') {
-  if (!Array.isArray(warnings) || warnings.length === 0) return null;
-  const lines = [label, ...warnings.flatMap((w) => String(w).split('\n')), tail];
-  return section('DISPLAY: kb warning', instruction, callout(lines));
+function warningBlock(label, tail) {
+  return section(
+    'DISPLAY: kb warning',
+    'emit verbatim as a code block, above the confirmation',
+    callout([label, tail]),
+  );
 }
 
-/** @param {string} body @param {string} [instruction] */
-function confirmation(body, instruction = 'emit verbatim as a code block after the response') {
-  return section('DISPLAY: confirmation', instruction, body);
+/** @param {string} body */
+function confirmation(body) {
+  return section('DISPLAY: confirmation', 'emit verbatim as a code block after the response', body);
 }
 
 /** @param {(string | null)[]} parts */
@@ -45,156 +46,152 @@ const TYPE_LABELS = {
 };
 
 /**
- * workunit complete / cancel / reactivate. `complete` in pipeline context
- * (the bridge) renders the full "{Type} Completed" banner instead of the
- * one-line confirmation — one transaction, its own chrome.
- * @param {'complete'|'cancel'|'reactivate'} verb
- * @param {{work_unit: string, work_type?: string, warnings?: string[]}} result
- * @param {{pipeline?: boolean, skippedReview?: boolean}} [opts]
+ * workunit complete / cancel / reactivate / pivot receipts. `complete` in
+ * pipeline context (the bridge) renders the full "{Type} Completed" banner
+ * instead of the one-line confirmation. `pivot` is advisory-only — its
+ * user-facing continuation is the pivot-continuation menu, owned by the
+ * caller's menu step.
+ * @param {'complete'|'cancel'|'reactivate'|'pivot'} verb
+ * @param {string} workUnit @param {string|undefined} workType
+ * @param {{pipeline?: boolean, skippedReview?: boolean, warn?: boolean}} [opts]
  * @returns {string}
  */
-function workunitLifecycleSections(verb, result, { pipeline = false, skippedReview = false } = {}) {
-  const name = titlecase(result.work_unit);
+function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedReview = false, warn = false } = {}) {
+  const name = titlecase(workUnit);
   if (verb === 'complete') {
     if (!pipeline) return confirmation(`"${name}" marked as completed.`);
-    const typeLabel = TYPE_LABELS[result.work_type || ''] || titlecase(String(result.work_type || ''));
+    const typeLabel = TYPE_LABELS[workType || ''] || titlecase(String(workType || ''));
     const body = skippedReview
       ? `"${name}" completed — review skipped.`
-      : result.work_type === 'epic'
+      : workType === 'epic'
         ? `"${name}" has completed all topics through review.`
         : `"${name}" has completed all pipeline phases.`;
     return confirmation(`${typeLabel} Completed\n\n${body}`);
   }
   if (verb === 'cancel') {
     return joined([
-      warningBlock('Knowledge removal warning', result.warnings,
-        'The work unit is cancelled. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.'),
+      warn ? warningBlock('Knowledge removal warning',
+        'The work unit is cancelled. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.') : null,
       confirmation(`"${name}" marked as cancelled.`),
     ]);
   }
-  return joined([
-    warningBlock('Knowledge indexing warning', result.warnings, 'Indexing can be retried later.'),
-    confirmation(`"${name}" reactivated.`),
-  ]);
+  if (verb === 'reactivate') {
+    return joined([
+      warn ? warningBlock('Knowledge indexing warning', 'Indexing can be retried later.') : null,
+      confirmation(`"${name}" reactivated.`),
+    ]);
+  }
+  return warn
+    ? warningBlock('Knowledge indexing warning', 'The pivot is complete. Indexing can be retried later.')
+    : '';
 }
 
 /**
- * topic complete / cancel / reactivate. `complete` carries no confirmation
- * line — the calling flow owns its own conclusion display; only the
- * non-blocking indexing warning folds here.
+ * topic complete / cancel / reactivate receipts. `complete` carries no
+ * confirmation line — the calling flow owns its own conclusion display; it
+ * renders the indexing advisory alone, empty without `--warn`.
  * @param {'complete'|'cancel'|'reactivate'} verb
- * @param {{topic: string, phase: string, status?: string|null, warnings?: string[]}} result
+ * @param {string} topic @param {string} phase @param {string|undefined} status
+ * @param {{warn?: boolean}} [opts]
  * @returns {string}
  */
-function topicLifecycleSections(verb, result) {
-  const name = titlecase(result.topic);
+function topicReceipt(verb, topic, phase, status, { warn = false } = {}) {
+  const name = titlecase(topic);
   if (verb === 'complete') {
-    return joined([
-      warningBlock('Knowledge indexing warning', result.warnings,
-        'The artifact is saved. Indexing can be retried later.', 'emit verbatim as a code block'),
-    ]);
+    return warn
+      ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.')
+      : '';
   }
   if (verb === 'cancel') {
     return joined([
-      warningBlock('Knowledge removal warning', result.warnings,
-        'The topic is cancelled. You can run knowledge remove manually later.'),
-      confirmation(`Cancelled "${name}" in ${result.phase}.`),
+      warn ? warningBlock('Knowledge removal warning', 'The topic is cancelled. You can run knowledge remove manually later.') : null,
+      confirmation(`Cancelled "${name}" in ${phase}.`),
     ]);
   }
   return joined([
-    warningBlock('Knowledge indexing warning', result.warnings, 'The artifact is saved. Indexing can be retried later.'),
-    confirmation(`Reactivated "${name}" in ${result.phase}. Status restored to ${result.status}.`),
+    warn ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.') : null,
+    confirmation(`Reactivated "${name}" in ${phase}. Status restored to ${status}.`),
   ]);
 }
 
 /**
  * workunit absorb — the post-absorption summary.
- * @param {{feature: string, epic: string, topic: string, research?: unknown[], seeds?: unknown[], imports?: unknown[], warnings?: string[]}} result
+ * @param {string} epic @param {string} topic @param {string[]} moved
+ * @param {{warn?: boolean}} [opts]
  * @returns {string}
  */
-function absorbSections(result) {
+function absorbReceipt(epic, topic, moved, { warn = false } = {}) {
   // Heading and sentence at column 0; only the fact list is indented, and it
   // earns that by hanging off the sentence above it.
   const lines = [
     'Absorbed into Epic',
     '',
-    `Topic "${titlecase(result.topic)}" added to ${titlecase(result.epic)}.`,
+    `Topic "${titlecase(topic)}" added to ${titlecase(epic)}.`,
     '',
     '  • Discussion: moved',
   ];
-  if (Array.isArray(result.research) && result.research.length > 0) lines.push('  • Research: moved');
-  if (Array.isArray(result.seeds) && result.seeds.length > 0) lines.push('  • Seed: moved');
-  if (Array.isArray(result.imports) && result.imports.length > 0) lines.push('  • Imports: moved');
+  if (moved.includes('research')) lines.push('  • Research: moved');
+  if (moved.includes('seeds')) lines.push('  • Seed: moved');
+  if (moved.includes('imports')) lines.push('  • Imports: moved');
   lines.push('  • Feature: removed');
   return joined([
-    warningBlock('Knowledge sync warning', result.warnings, 'The feature is absorbed. Indexing can be retried later.'),
+    warn ? warningBlock('Knowledge sync warning', 'The feature is absorbed. Indexing can be retried later.') : null,
     confirmation(lines.join('\n')),
   ]);
 }
 
 /**
  * workunit promote — the promotion summary.
- * @param {{work_unit: string, topic: string, cc_work_unit: string, warnings?: string[]}} result
+ * @param {string} workUnit @param {string} topic @param {string} ccWorkUnit
+ * @param {{warn?: boolean}} [opts]
  * @returns {string}
  */
-function promoteSections(result) {
+function promoteReceipt(workUnit, topic, ccWorkUnit, { warn = false } = {}) {
   // Same shape as its sibling above: column-0 sentence, bulleted facts.
   const lines = [
     'Promoted to Cross-Cutting',
     '',
-    `"${titlecase(result.topic)}" has been promoted to its own cross-cutting work unit.`,
+    `"${titlecase(topic)}" has been promoted to its own cross-cutting work unit.`,
     '',
-    `  • Work unit: ${result.cc_work_unit}`,
-    `  • Source: ${result.work_unit}`,
+    `  • Work unit: ${ccWorkUnit}`,
+    `  • Source: ${workUnit}`,
     '  • Discussion files: moved',
     '  • Specification: moved',
     '  • Epic status: promoted',
   ];
   return joined([
-    warningBlock('Knowledge warning', result.warnings,
-      'The promotion is committed. The knowledge base will catch up on the next sync.'),
+    warn ? warningBlock('Knowledge warning', 'The promotion is committed. The knowledge base will catch up on the next sync.') : null,
     confirmation(lines.join('\n')),
   ]);
 }
 
 /**
- * workunit pivot — the kb warning, plus the continuation menu only when the
- * caller asked for it (`--continuation-menu`, the manage flow's menu step).
- * The off-topic reroute paths pivot mid-session with no menu step — an
- * unconditional menu would derail them.
- * @param {{work_unit: string, warnings?: string[]}} result
- * @param {{continuationMenu?: boolean}} [opts]
+ * The pivot continuation menu — the manage flow's post-pivot decision.
+ * @param {string} workUnit
  * @returns {string}
  */
-function pivotSections(result, { continuationMenu = false } = {}) {
-  const name = titlecase(result.work_unit);
-  return joined([
-    warningBlock('Knowledge indexing warning', result.warnings,
-      'The pivot is complete. Indexing can be retried later.', 'emit verbatim as a code block'),
-    continuationMenu
-      ? section(
-          'MENU: pivot continuation',
-          "emit verbatim as markdown, then STOP for the user's response",
-          menu(`**${name}** converted from feature to epic.`, [
-            cmdOption('c', 'continue', `Continue ${name} as epic`),
-            cmdOption('b', 'back', 'Return to previous view'),
-          ]),
-        )
-      : null,
-  ]);
+function pivotContinuationMenu(workUnit) {
+  const name = titlecase(workUnit);
+  return section(
+    'MENU: pivot continuation',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`**${name}** converted from feature to epic.`, [
+      cmdOption('c', 'continue', `Continue ${name} as epic`),
+      cmdOption('b', 'back', 'Return to previous view'),
+    ]),
+  );
 }
 
 /**
- * discovery-session close — the non-blocking indexing warning; the session
- * is closed and committed either way.
- * @param {{warnings?: string[]}} result
+ * discovery-session close — the indexing advisory; the session is closed and
+ * committed either way. Empty without `--warn`.
+ * @param {{warn?: boolean}} [opts]
  * @returns {string}
  */
-function discoverySessionCloseSections(result) {
-  return joined([
-    warningBlock('Knowledge indexing warning', result.warnings,
-      'The session is closed. Indexing can be retried later.', 'emit verbatim as a code block'),
-  ]);
+function sessionReceipt({ warn = false } = {}) {
+  return warn
+    ? warningBlock('Knowledge indexing warning', 'The session is closed. Indexing can be retried later.')
+    : '';
 }
 
-module.exports = { workunitLifecycleSections, topicLifecycleSections, absorbSections, promoteSections, pivotSections, discoverySessionCloseSections };
+module.exports = { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt };

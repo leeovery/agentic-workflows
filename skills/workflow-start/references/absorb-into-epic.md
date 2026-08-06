@@ -222,7 +222,11 @@ The command succeeded.
 
 ## H. Post-Absorption
 
-Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), and `--warn` rides when the response's `warnings` is non-empty:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} --moved {moved}
+```
 
 > *Output the next fenced block as markdown (not a code block):*
 

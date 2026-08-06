@@ -204,10 +204,10 @@ class Sim {
   }
 
   // Transactions answer with pure JSON — display artifacts belong to render
-  // surfaces fetched at their display point. These verb groups still append
-  // sections; the set shrinks as each converts, and empties when the
-  // separation is complete.
-  static SECTION_CARRYING = new Set(['workunit', 'topic', 'discovery-session', 'presence']);
+  // surfaces fetched at their display point. The one section-bearing group
+  // left is presence: its scan is a read-only snapshot whose deferral
+  // advisory rides the dump, the view-family pattern.
+  static SECTION_CARRYING = new Set(['presence']);
 
   /** Engine mutation: expect ok:true JSON, then audit the whole state. */
   run(args) {
@@ -376,9 +376,11 @@ describe('pipeline simulation', () => {
 
     sim.render(['early-completion-gate', wu], { expect: 'content' });
     sim.render(['revisit-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
-    const done = sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`, '--pipeline']);
+    const done = sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
     assert.strictEqual(done.status, 'completed');
     assert.strictEqual(sim.manifest(wu).status, 'completed');
+    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'complete', '--pipeline'], { expect: 'content' }),
+      /Feature Completed/, 'pipeline completion renders the banner receipt');
   });
 
   it('feature: review skipped at the early-completion gate', () => {
@@ -388,8 +390,10 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     walkDeliveryPhasesToImplementation(sim, wu, wu);
     sim.render(['early-completion-gate', wu], { expect: 'content' });
-    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): complete feature pipeline (review skipped)`, '--pipeline', '--skipped-review']);
+    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): complete feature pipeline (review skipped)`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
+    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'complete', '--pipeline', '--skipped-review'], { expect: 'content' }),
+      /review skipped/, 'skipped-review completion renders its banner');
   });
 
   it('bugfix: investigation → spec (source pinned to topic) → delivery → complete', () => {
@@ -414,7 +418,7 @@ describe('pipeline simulation', () => {
     // The bugfix spec source name is pinned to the topic.
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
 
-    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`, '--pipeline']);
+    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
   });
 
@@ -455,7 +459,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'review', wu]);
     sim.run(['topic', 'complete', wu, 'review', wu]);
 
-    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`, '--pipeline']);
+    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
   });
 
   it('quick-fix promotion: work_type flips to feature and the pipeline continues', () => {
@@ -529,10 +533,14 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
     sim.run(['topic', 'start', wu, 'research', 'gamma-prime']);
     sim.run(['topic', 'cancel', wu, 'research', 'gamma-prime']);
+    assert.match(sim.render(['topic-receipt', `${wu}.research.gamma-prime`, '--verb', 'cancel'], { expect: 'content' }),
+      /Cancelled "Gamma Prime" in research/, 'topic cancel receipt renders from the cancelled item');
     const cancelled = sim.manifest(wu).phases.discovery.items['gamma-prime'];
     assert.ok(!('order' in cancelled), 'cancel stashes the map order');
     assert.strictEqual(cancelled.previous_order, 3);
     sim.run(['topic', 'reactivate', wu, 'research', 'gamma-prime']);
+    assert.match(sim.render(['topic-receipt', `${wu}.research.gamma-prime`, '--verb', 'reactivate'], { expect: 'content' }),
+      /Reactivated "Gamma Prime" in research/, 'topic reactivate receipt renders from the restored item');
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['gamma-prime'].order, 3,
       'reactivate restores the map order');
     sim.run(['topic', 'cancel', wu, 'research', 'gamma-prime']);
@@ -913,8 +921,12 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).completed_at, undefined, 'reactivate clears the stamp');
     sim.run(['workunit', 'cancel', wu]);
     assert.strictEqual(sim.manifest(wu).status, 'cancelled');
+    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'cancel', '--warn'], { expect: 'content' }),
+      /marked as cancelled/, 'cancel receipt renders from the cancelled state');
     sim.run(['workunit', 'reactivate', wu]);
     assert.strictEqual(sim.manifest(wu).status, 'in-progress');
+    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'reactivate'], { expect: 'content' }),
+      /reactivated/, 'reactivate receipt renders from the restored state');
   });
 
   it('pivot: a feature with a discussion becomes an epic and its topic keeps working', () => {
@@ -927,6 +939,8 @@ describe('pipeline simulation', () => {
 
     sim.run(['workunit', 'pivot', wu]);
     assert.strictEqual(sim.manifest(wu).work_type, 'epic');
+    assert.match(sim.render(['pivot-continuation', wu], { expect: 'content' }),
+      /MENU: pivot continuation/, 'the manage flow can fetch the continuation menu post-pivot');
 
     // The pivoted epic's map and phases still derive; the topic completes.
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
@@ -948,6 +962,8 @@ describe('pipeline simulation', () => {
     assert.strictEqual(m.phases.discussion.items['stray-topic'].status, 'in-progress');
     assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'discussion', 'stray-topic.md')),
       'discussion file moved into the epic');
+    assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic'], { expect: 'content' }),
+      /Absorbed into Epic/, 'absorb receipt renders from the epic post-state');
   });
 
   it('spec promotion: a cross-cutting concern leaves the epic and the spec item goes terminal', () => {
@@ -968,6 +984,8 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'promote', wu, 'logging', '--to', 'logging-cc', '--description', 'Logging, project-wide']);
     assert.strictEqual(sim.manifest('logging-cc').work_type, 'cross-cutting');
     assert.strictEqual(sim.manifest(wu).phases.specification.items.logging.status, 'promoted');
+    assert.match(sim.render(['promote-receipt', `${wu}.specification.logging`, '--to', 'logging-cc'], { expect: 'content' }),
+      /Promoted to Cross-Cutting/, 'promote receipt renders from the promoted item');
 
     // Promotion is terminal on the source item.
     sim.refuses(['topic', 'start', wu, 'specification', 'logging'], /promoted/);

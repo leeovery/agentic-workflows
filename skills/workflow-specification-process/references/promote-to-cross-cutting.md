@@ -38,7 +38,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs workunit promote {work_un
 
 ## C. Display
 
-Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary — adding `--warn` when the response's `warnings` is non-empty:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render promote-receipt {work_unit}.specification.{topic} --to {cc_work_unit}
+```
 
 Invoke the bridge for the EPIC (not the cc work unit — the epic continues its pipeline):
 

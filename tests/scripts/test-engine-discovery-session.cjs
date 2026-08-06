@@ -212,14 +212,18 @@ describe('engine discovery-session close — happy path', () => {
     assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
   });
 
-  it('KB failure is a warning, never a block — the close still lands, commits, and appends the kb-warning section', () => {
+  it('KB failure is a warning, never a block — the close still lands and commits, pure JSON', () => {
     fix = setupFixture();
     const res = engine(fix, CLOSE, { STUB_KNOWLEDGE_EXIT: '1' });
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /knowledge index \(discovery\/sessions\/session-002\.md\) failed/);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
-    assert.match(engine.lastSections, /=== DISPLAY: kb warning \(emit verbatim as a code block\) ===\n  ⚑ Knowledge indexing warning\n(    .+\n)+    The session is closed\. Indexing can be retried later\./);
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    const receipt = execFileSync('node', [fix.engine, 'render', 'session-receipt', 'payments', '--warn'], { cwd: fix.project, encoding: 'utf8' });
+    assert.match(receipt, /=== DISPLAY: kb warning \(emit verbatim as a code block, above the confirmation\) ===\n  ⚑ Knowledge indexing warning\n    The session is closed\. Indexing can be retried later\./);
+    assert.strictEqual(execFileSync('node', [fix.engine, 'render', 'session-receipt', 'payments'], { cwd: fix.project, encoding: 'utf8' }), '',
+      'no --warn, no advisory — an empty receipt');
   });
 });
 

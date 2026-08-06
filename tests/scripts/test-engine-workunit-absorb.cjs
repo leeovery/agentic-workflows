@@ -201,7 +201,11 @@ describe('engine workunit absorb — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    assert.match(engine.lastSections, new RegExp([
+    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
+    const receipt = execFileSync('node',
+      [fix.engine, 'render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports'],
+      { cwd: fix.project, encoding: 'utf8' });
+    assert.match(receipt, new RegExp([
       'Absorbed into Epic',
       '',
       'Topic "Auth" added to Payments\\.',
