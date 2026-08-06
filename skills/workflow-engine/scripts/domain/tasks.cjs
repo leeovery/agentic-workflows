@@ -195,7 +195,7 @@ function initTasks(cwd, workUnit, topic) {
  * task), report the gate modes the task loop branches on. When the internal
  * id IS already `current_task` AND its tracking file exists — a true resume:
  * a crash-resumed session restarting the task in flight, or a post-compaction
- * re-run to re-fetch the gate sections — both survive untouched: the attempt
+ * re-run — both survive untouched: the attempt
  * count and the tracking file are that task's convergence history, and wiping
  * them would evade the fix threshold. Anything else (a different task, or the
  * same id with no tracking file — e.g. freshly handed over by `complete
@@ -410,4 +410,4 @@ function analysisCycle(cwd, workUnit, topic) {
   });
 }
 
-module.exports = { initTasks, startTask, fixAttempt, completeTask, analysisCycle, FIX_THRESHOLD, SESSION_CYCLE_LIMIT };
+module.exports = { initTasks, startTask, fixAttempt, completeTask, analysisCycle, gateOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT };

@@ -229,4 +229,4 @@ function workUnitIndex(type, detail) {
   return lines.join('\n') + '\n';
 }
 
-module.exports = { WORK_UNIT_TYPES, typeConfig, unitsOf, workUnitDetail, workUnitIndex };
+module.exports = { WORK_UNIT_TYPES, typeConfig, unitsOf, completedPhases, workUnitDetail, workUnitIndex };

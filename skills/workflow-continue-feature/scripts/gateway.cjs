@@ -46,8 +46,7 @@ function view(workUnit) {
     engine.gateway.titleBlock(engine.project.workUnitTitle(unit)),
     engine.gateway.displayBlock(engine.project.workUnitStatus(TYPE, unit)),
     engine.gateway.menuBlock(menu.rendered),
-    engine.project.revisitPhasesSection(engine.project.revisitablePhases(TYPE, unit)),
-  ].filter(Boolean).join('\n');
+  ].join('\n');
 }
 
 const USAGE = 'Usage: gateway.cjs | gateway.cjs view {work_unit}';

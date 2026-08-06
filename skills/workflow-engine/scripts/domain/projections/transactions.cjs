@@ -14,16 +14,13 @@ const { titlecase } = require('../conventions.cjs');
 const { section, callout, menu, cmdOption } = require('./surfaces.cjs');
 
 /**
- * The ⚑ advisory block: label line and reassurance tail.
- * @param {string} label @param {string} tail
+ * The ⚑ advisory block: label line and reassurance tail. The instruction
+ * names the confirmation only when the receipt renders one beneath it.
+ * @param {string} label @param {string} tail @param {string} [instruction]
  * @returns {string}
  */
-function warningBlock(label, tail) {
-  return section(
-    'DISPLAY: kb warning',
-    'emit verbatim as a code block, above the confirmation',
-    callout([label, tail]),
-  );
+function warningBlock(label, tail, instruction = 'emit verbatim as a code block, above the confirmation') {
+  return section('DISPLAY: kb warning', instruction, callout([label, tail]));
 }
 
 /** @param {string} body */
@@ -82,7 +79,7 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
     ]);
   }
   return warn
-    ? warningBlock('Knowledge indexing warning', 'The pivot is complete. Indexing can be retried later.')
+    ? warningBlock('Knowledge indexing warning', 'The pivot is complete. Indexing can be retried later.', 'emit verbatim as a code block')
     : '';
 }
 
@@ -99,7 +96,7 @@ function topicReceipt(verb, topic, phase, status, { warn = false } = {}) {
   const name = titlecase(topic);
   if (verb === 'complete') {
     return warn
-      ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.')
+      ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.', 'emit verbatim as a code block')
       : '';
   }
   if (verb === 'cancel') {
@@ -190,7 +187,7 @@ function pivotContinuationMenu(workUnit) {
  */
 function sessionReceipt({ warn = false } = {}) {
   return warn
-    ? warningBlock('Knowledge indexing warning', 'The session is closed. Indexing can be retried later.')
+    ? warningBlock('Knowledge indexing warning', 'The session is closed. Indexing can be retried later.', 'emit verbatim as a code block')
     : '';
 }
 

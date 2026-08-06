@@ -161,9 +161,17 @@ describe('engine workunit pivot — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    // The continuation menu is opt-in (--continuation-menu, the manage flow);
-    // the off-topic reroute paths run the bare verb and must see no menu.
-    assert.ok(!engine.lastSections.includes('MENU: pivot continuation'), 'bare pivot must not emit the continuation menu');
+    // The transaction is pure JSON; the continuation menu and the kb
+    // advisory are receipt surfaces fetched only by flows with a use for them.
+    assert.strictEqual(engine.lastSections, '', 'pivot answers with pure JSON');
+    const menu = execFileSync('node', [fix.engine, 'render', 'pivot-continuation', 'auth-flow'], { cwd: fix.project, encoding: 'utf8' });
+    assert.ok(menu.includes("=== MENU: pivot continuation (emit verbatim as markdown, then STOP for the user's response) ==="), menu);
+    assert.ok(menu.includes('**Auth Flow** converted from feature to epic.'), menu);
+    const advisory = execFileSync('node', [fix.engine, 'render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot', '--warn'], { cwd: fix.project, encoding: 'utf8' });
+    assert.match(advisory, /=== DISPLAY: kb warning \(emit verbatim as a code block\) ===\n  ⚑ Knowledge indexing warning\n    The pivot is complete\. Indexing can be retried later\./);
+    assert.strictEqual(
+      execFileSync('node', [fix.engine, 'render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot'], { cwd: fix.project, encoding: 'utf8' }),
+      '', 'no --warn, no advisory — an empty receipt');
 
     const m = readManifest(fix, 'auth-flow');
     assert.strictEqual(m.work_type, 'epic');

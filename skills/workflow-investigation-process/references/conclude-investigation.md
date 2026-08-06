@@ -33,11 +33,11 @@ The user has already reviewed findings and agreed on fix direction. This step co
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): complete {topic} investigation"
    ```
 
-When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` advisory — the warning never blocks:
+   When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` advisory — the warning never blocks:
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.investigation.{topic} --verb complete --warn
-```
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.investigation.{topic} --verb complete --warn
+   ```
 
 3. Closing recap:
 

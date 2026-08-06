@@ -16,8 +16,11 @@ const { section, menu, cmdOption, promptOption, callout, subDetail, treeList, nu
 const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
+const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
+const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
+const { computeNextPhase } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
-const { FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
+const { gateOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -1186,11 +1189,6 @@ function entryGate(cwd, { dotpath, own }) {
 // address.
 // ---------------------------------------------------------------------------
 
-/** The item's gate mode, defaulting to `gated` when unset. @param {Record<string, any>} item @param {string} field @returns {string} */
-function gateModeOf(item, field) {
-  return typeof item[field] === 'string' ? item[field] : 'gated';
-}
-
 /**
  * The implementation item at a `<wu>.implementation.<topic>` address, plus
  * its in-flight task id. Loud when the address names another phase or no
@@ -1216,14 +1214,14 @@ function implItemAt(cwd, dotpath, surface) {
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
 function taskGate(cwd, args) {
   const { item, taskId } = implItemAt(cwd, args.dotpath, 'task-gate');
-  return taskGateSection(taskId, gateModeOf(item, 'task_gate_mode'));
+  return taskGateSection(taskId, gateOf(item, 'task_gate_mode'));
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
 function fixGate(cwd, args) {
   const { item, taskId } = implItemAt(cwd, args.dotpath, 'fix-gate');
   const attempts = typeof item.fix_attempts === 'number' ? item.fix_attempts : 0;
-  return fixGateSection(taskId, gateModeOf(item, 'fix_gate_mode'), attempts >= FIX_THRESHOLD);
+  return fixGateSection(taskId, gateOf(item, 'fix_gate_mode'), attempts >= FIX_THRESHOLD);
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
@@ -1281,7 +1279,7 @@ function workunitReceiptSurface(cwd, args) {
   }
   if (verb === 'pivot') {
     if (manifest.work_type !== 'epic') {
-      throw new Error(`render workunit-receipt: "${workUnit}" is not an epic — the pivot has not run`);
+      throw new Error(`render workunit-receipt: "${workUnit}" is not an epic — nothing to receipt for a pivot`);
     }
   } else if (manifest.status !== WORKUNIT_RECEIPT_STATUS[verb]) {
     throw new Error(`render workunit-receipt: "${workUnit}" is "${manifest.status}", not "${WORKUNIT_RECEIPT_STATUS[verb]}" — the ${verb} has not run`);
@@ -1379,6 +1377,22 @@ function absorbTarget(cwd, args) {
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function revisitPhasesSurface(cwd, args) {
+  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'revisit-phases');
+  const type = manifest.work_type;
+  if (!WORK_UNIT_TYPES[type]) {
+    throw new Error(`render revisit-phases: "${workUnit}" is ${type ? `a ${type}` : 'untyped'} — the revisit menu serves the linear work types`);
+  }
+  const cfg = workUnitTypeConfig(type);
+  const { next_phase } = computeNextPhase(manifest);
+  const phases = revisitablePhases(type, { next_phase, completed_phases: completedPhases(cfg, manifest) });
+  if (phases.length === 0) {
+    throw new Error(`render revisit-phases: "${workUnit}" has no completed earlier phase to revisit`);
+  }
+  return revisitPhasesSection(phases);
+}
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
 function planTopics(cwd, args) {
   const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'plan-topics');
   const md = manageDetail(cwd, workUnit);
@@ -1425,6 +1439,7 @@ const SURFACES = {
   'session-receipt': sessionReceiptSurface,
   'absorb-target': absorbTarget,
   'plan-topics': planTopics,
+  'revisit-phases': revisitPhasesSurface,
 };
 
 /**

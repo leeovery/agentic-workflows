@@ -200,9 +200,9 @@ function revisitablePhases(type, unit) {
 }
 
 /**
- * The labelled deferred revisit-phase menu — one numbered option per phase,
- * numbering matching the `revisit_phase` keys. Empty string when there is
- * nothing to revisit.
+ * The revisit-phase menu, served by `render revisit-phases` at the gate that
+ * displays it — one numbered option per phase, numbering matching the
+ * `revisit_phase` keys. Empty string when there is nothing to revisit.
  * @param {string[]} phases  revisitablePhases order
  * @returns {string}
  */
@@ -214,7 +214,7 @@ function revisitPhasesSection(phases) {
     ...phases.map((phase, i) => cmdOption(String(i + 1), null, `${titlecase(phase)} — *completed*`)),
     cmdOption('b', 'back', 'Return to the previous menu'),
   ]);
-  const marker = '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===';
+  const marker = "=== MENU: revisit phases (emit verbatim as markdown, then STOP for the user's response) ===";
   return `${marker}\n${body}\n`;
 }
 

@@ -14,7 +14,7 @@ Render the manage selection snapshot:
 node .claude/skills/workflow-start/scripts/gateway.cjs manage
 ```
 
-The output is one snapshot in three demarcated sections:
+The output is one snapshot in four demarcated sections:
 
 - **DATA** — reasoning surface: the `UNITS` table — one line per work unit, `n  work_type  work_unit`, numbering matching the overview. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
@@ -78,7 +78,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 #### If user chose `p/pivot`
 
-Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`.
+→ Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`.
 
 On return, fetch and emit the `MENU: pivot continuation` section:
 
@@ -121,7 +121,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs workunit cancel {selected
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb cancel
+node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb cancel [--warn]
 ```
 
 → Return to caller.

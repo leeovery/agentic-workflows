@@ -257,14 +257,6 @@ describe('workflow-bridge format', () => {
       'completed_phases: research, discussion, specification',
       'reconcile_pending: (none)',
       'revisitable_phases: research, discussion, specification',
-      '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===',
-      '· · · · · · · · · · · ·',
-      '**`◆ Which phase would you like to revisit?`**',
-      '',
-      '**`1`**      → Research — *completed*',
-      '**`2`**      → Discussion — *completed*',
-      '**`3`**      → Specification — *completed*',
-      '**`b/back`** → Return to the previous menu',
       '',
     ].join('\n'));
   });
@@ -306,7 +298,12 @@ describe('workflow-bridge format', () => {
       'completed_phases: scoping, specification, planning, implementation',
       'reconcile_pending: (none)',
       'revisitable_phases: scoping, implementation',
-      '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===',
+      '',
+    ].join('\n'));
+    // The menu itself is the revisit-phases render surface, filtered the same way.
+    const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
+    assert.strictEqual(renderSurface(dir, 'revisit-phases', { dotpath: 'rename-api' }), [
+      "=== MENU: revisit phases (emit verbatim as markdown, then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
       '',

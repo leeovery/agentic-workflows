@@ -24,6 +24,4 @@ When the response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb war
 node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot --warn
 ```
 
-A caller whose flow has a post-pivot menu step (the manage flow) fetches `render pivot-continuation {work_unit}` at that step; the off-topic reroute paths continue their session and fetch nothing.
-
 → Return to caller.

@@ -93,9 +93,13 @@ engine.project.emptyOverview(detail)              // → empty-state overview bl
 engine.project.emptyMenu(detail)                  // → { keys, rendered } — empty-state start menu
 engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies
 engine.project.archivedView(items)                // → { data, display, menu } — archived store snapshot bodies
-engine.project.workingSetView(ws)                 // → { data, title, display, menu, sections } — set tree, menu + deferred add/drop gates
+engine.project.workingSetView(ws)                 // → { data, title, display, menu, sections } — set tree, menu, mixed-type blocker
+engine.project.workingSetAddGate(ws)              // → add-candidates display + add-gate menu — the gateway working-set-add-gate verb
+engine.project.workingSetDropGate(ws)             // → drop-candidates display + drop-gate menu — the gateway working-set-drop-gate verb
 engine.project.manageListView(detail)             // → { data, display, menu, rows } — manage selection snapshot
-engine.project.manageUnitView(md)                 // → { data, menu, sections } — action menu + deferred absorb/plan gates
+engine.project.manageUnitView(md)                 // → { data, menu } — the action menu
+engine.project.absorbTargetMenu(md)               // → MENU: absorb target — the render absorb-target surface
+engine.project.planTopicsMenu(md)                 // → MENU: plan topics — the render plan-topics surface
 engine.project.completedView(detail, filter)      // → { data, display, menu, rows } — completed & cancelled snapshot
 engine.project.workUnitStatus(type, unit)         // → status display block (box + pipeline tree)
 engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit
