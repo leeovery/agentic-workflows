@@ -98,6 +98,29 @@ describe('engine agent — lifecycle store', () => {
     assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review', '--label', 'a/b']).error, /Invalid label/);
   });
 
+  it('review dispatch refuses while the triage queue holds entries, clears when it drains', () => {
+    writeContent(dir, '.workflows/pay/discussion/.triage/alpha/001-parked.md', '### Parked\n');
+    const err = runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error;
+    assert.match(err, /review dispatch blocked: 1 rerouted concern/);
+    assert.match(err, /topic absorb/, 'the refusal names the recovery path');
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/pay/discussion/alpha/state.json')), 'nothing recorded');
+    fs.unlinkSync(path.join(dir, '.workflows/pay/discussion/.triage/alpha/001-parked.md'));
+    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
+    assert.strictEqual(a.id, 'review-001', 'a drained queue dispatches normally');
+  });
+
+  it('the triage guard holds review dispatches only — other kinds pass a full queue', () => {
+    writeContent(dir, '.workflows/pay/research/.triage/alpha/001-parked.md', '### Parked\n');
+    const dive = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.strictEqual(dive.id, 'deep-dive-001-auth');
+    assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']).error, /review dispatch blocked/);
+    // Non-.md dirt (editor swap files, .DS_Store) never counts as a queued concern.
+    fs.unlinkSync(path.join(dir, '.workflows/pay/research/.triage/alpha/001-parked.md'));
+    writeContent(dir, '.workflows/pay/research/.triage/alpha/.DS_Store', 'dirt');
+    const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    assert.strictEqual(a.id, 'review-001');
+  });
+
   it('scan promotes in-flight to pending only once the content file exists with content', () => {
     const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     let scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);

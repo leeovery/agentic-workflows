@@ -131,6 +131,9 @@ function requireRow(state, phase, topic, id) {
  * Dispatch: allocate the next id for this kind, record the row in-flight,
  * and answer with the content-file path the sub-agent must write. No file
  * is created — the content file's later existence is the completion signal.
+ * A review dispatch refuses while the topic's triage queue holds entries —
+ * a queued rerouted concern is a pending change to the document the review
+ * would read, so the report would be stale on arrival.
  * Numbering starts after both existing rows AND any legacy files already in
  * the cache dir (pre-programme skeletons keep their names; ids never collide).
  * @param {string} cwd @param {string} workUnit @param {string} phase
@@ -159,6 +162,14 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
     throw new Error('a synthesis takes no --label — its identity is synthesis-{set}');
   }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+    if (kind === 'review' && (phase === 'research' || phase === 'discussion')) {
+      const queueDir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
+      let queued = 0;
+      try { queued = fs.readdirSync(queueDir).filter((n) => n.endsWith('.md')).length; } catch { /* no queue — clear */ }
+      if (queued > 0) {
+        throw new Error(`review dispatch blocked: ${queued} rerouted concern(s) wait in the ${phase}/${topic} triage queue — absorb them (topic absorb) before dispatching a review`);
+      }
+    }
     const state = loadState(cwd, workUnit, phase, topic);
     const dir = agentDir(cwd, workUnit, phase, topic);
     const inTopic = Object.values(state.agents);
