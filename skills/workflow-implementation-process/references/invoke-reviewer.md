@@ -47,6 +47,6 @@ NOTES:
 
 - `approved`: task passes all five review dimensions
 - `needs-changes`: ISSUES contains specific, actionable items with fix recommendations and confidence levels
-- COMMENT_CORRECTIONS may accompany either verdict: prose-only fixes the verdict never counts. On `approved`, stage **D** of the task loop applies them directly; on `needs-changes`, they travel to the executor with the findings
+- COMMENT_CORRECTIONS may accompany either verdict — prose-only fixes that never count toward the verdict. On `approved`, the orchestrator applies them directly; on `needs-changes`, they travel to the executor with the findings
 
 → Return to caller.
