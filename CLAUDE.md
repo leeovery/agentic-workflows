@@ -12,6 +12,10 @@ Agentic Engineering Workflows for Claude Code. Installed via `npx agntc add leeo
 
 Always create a feature branch **before** the first commit. Never commit to main and move commits after. The only exception is when explicitly told to commit to main.
 
+## Reviewing Work
+
+`/review-work` is the standing review pass — run it when asked to review the work, check for regressions, or verify convention adherence. It dispatches one `workflow-reviewer` agent per dimension (`.claude/skills/review-work/references/dimensions.md`), verifies the findings, and lands the fixes. Where those fixes go depends on review state: commits onto a PR whose review is live, a new top-of-stack PR once a layer is signed off, folded into the owning PR while nothing has been reviewed yet.
+
 ## Ideas
 
 Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`.
