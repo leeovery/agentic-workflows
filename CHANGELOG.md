@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.50] - 2026-08-07
+
+🔧 Changed
+- Topic granularity now treats how a source framed material (a user's "split them", a document's section breaks) as input to the independence test, not a verdict — genuine overrides route through the confirmation gate instead of being taken at face value.
+
 ## [0.6.49] - 2026-08-07
 
 ✨ Added
