@@ -34,7 +34,7 @@
     "a — approve this and all future tasks automatically"
   ],
   "stubs": {
-    "executor-task-complete": "each time the workflow-implementation-task-executor agent is dispatched — initial run or fix round alike — create the dispatched task's source and test files as the stub gives them and return that task's STATUS block; two firings per task",
+    "executor-task-complete": "each time the workflow-implementation-task-executor agent is invoked — the task's initial fresh dispatch and its fix-round continuation of that same executor alike — create the task's source and test files as the stub gives them and return that task's STATUS block; one fresh dispatch plus one continuation per task",
     "reviewer-task-flags-then-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — return the stub's first-firing needs-changes block the first time a task is reviewed and its approved block on that task's re-review; write no file"
   },
   "invariants": {

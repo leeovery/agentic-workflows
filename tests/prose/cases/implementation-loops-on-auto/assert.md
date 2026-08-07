@@ -19,13 +19,13 @@ The prose should have taken this path:
    fetched via `render fix-gate`, and its menu is emitted — the gate
    is still gated, so the loop stops
 6. the third scripted answer opts into auto: fix_gate_mode is set to
-   auto in the manifest and the executor is re-invoked as a fix round
-   in the same flow — no second fix-attempt is recorded for this
-   round's dispatch
-7. the executor's second firing completes; the reviewer's second
-   firing for pay-1-1 approves; the task gate presents the result
-   summary, fetches the gate via `render task-gate`, and emits its
-   MENU
+   auto in the manifest and the fix round continues pay-1-1's own
+   executor in the same flow — no fresh executor dispatch, and no
+   second fix-attempt is recorded for this round
+7. the executor's fix-round firing completes; the reviewer's second
+   firing for pay-1-1 is a fresh dispatch and approves; the task gate
+   presents the result summary, fetches the gate via
+   `render task-gate`, and emits its MENU
 8. the fourth scripted answer opts into auto: task_gate_mode is set
    to auto and progress lands in the same turn — frontmatter flips to
    completed, the engine records completion naming pay-1-2 as next,
@@ -36,8 +36,8 @@ The prose should have taken this path:
     pay-1-2 returns needs-changes; stage E records fix-attempt 1 for
     pay-1-2, summarises the findings, fetches the fix gate via
     `render fix-gate` and emits its DISPLAY: fix gate auto-accepted
-    continuation section, and dispatches the fix round in the same
-    turn — no menu, no stop, no user input
+    continuation section, and continues pay-1-2's executor for the
+    fix round in the same turn — no menu, no stop, no user input
 11. the executor's fix round completes; the reviewer approves; the
     task gate presents the summary, fetches the gate via
     `render task-gate` and emits its DISPLAY: task gate auto-approved
@@ -58,8 +58,10 @@ Further claims:
   after the corresponding summary, never before it
 - the turn never ends on a bare summary: each auto gate's summary is
   followed by its continuation line and the action it names
-- each task produced exactly two executor dispatches and two reviewer
-  dispatches — one initial, one fix round each
+- each task produced exactly one fresh executor dispatch, continued
+  once for its fix round — never a second fresh executor — and exactly
+  two fresh reviewer dispatches, the re-review never continuing the
+  first reviewer
 - exactly one fix-attempt is recorded per task — attempts reset with
   each task start, and the threshold display never renders
 - fix-tracking files exist for both tasks and ride their task commits
