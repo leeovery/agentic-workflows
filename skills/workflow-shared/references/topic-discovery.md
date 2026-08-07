@@ -62,6 +62,12 @@ Research-analysis runs first so that a theme both analyses surface is already on
 **`▪ Research Analysis`**
 ```
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Reading your completed research for follow-up themes that deserve a topic of their own. Each candidate comes to you for approval before anything lands on the map.
+```
+
 **Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.research-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
 
 → Load **[research-analysis.md](research-analysis.md)** with work_unit = `{work_unit}`.
@@ -102,6 +108,12 @@ No dispatch.
 **`▪ Gap Analysis`**
 ```
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Reading all completed research and discussions together, looking for what none of them owns — cross-cutting themes, decisions that interact with no topic covering the join. Approved candidates land on the map as new topics.
+```
+
 **Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.discovery-gap-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
 
 → Load **[discovery-gap-analysis.md](discovery-gap-analysis.md)** with work_unit = `{work_unit}`.
@@ -140,6 +152,12 @@ No dispatch.
 
 ```
 **`▪ Coherence Check`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Re-reading the full discussion corpus for decisions that no longer cohere — unacknowledged conflicts, references to since-changed decisions, ambiguities someone owns. Approved findings reopen the owning discussion through triage.
 ```
 
 **Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.coherence-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
