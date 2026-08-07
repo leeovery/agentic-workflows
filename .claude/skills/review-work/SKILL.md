@@ -135,6 +135,15 @@ Then read the coverage the agents reported back. A dimension that returned
 nothing was **unexamined** as often as it was clean, and this is worth
 saying out loud rather than converting into a clean bill of health.
 
+**Present the bring-to-user findings now, before applying anything** —
+each with its options and your recommendation — and wait for the answers.
+An answer can change the routing or the shape of the fixes you thought
+were settled: a "restore it" turns a prose correction into a revert, a
+"do it properly" turns a patch into a new layer. Resynthesise the whole
+fix set against the answers before touching a file. Only when nothing
+needs the user — every surviving finding unambiguous — does the pass
+proceed straight to Step 5.
+
 → Proceed to **Step 5**.
 
 ## Step 5: Apply the fixes
