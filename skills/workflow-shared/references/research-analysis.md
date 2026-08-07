@@ -125,7 +125,7 @@ source: research-analysis:{parent}
 parent: {parent}
 ```
 
-`routing` is the value decided per-candidate in **B** (`discussion` or `research`). `source` carries the `parent` so provenance renders as `from {parent}`. `description` is a paragraph or two extracted from the analysis output for this topic — richer context than the one-line summary, loaded by entry skills as opening context when the user later picks the topic up. Do not write to the discovery map and do not append to any tracker here — the approval gate writes approved candidates and tracks them.
+`routing` is the value decided per-candidate in **B** (`discussion` or `research`). `source` carries the `parent` so provenance renders as `from {parent}`. `description` is a paragraph or two extracted from the analysis output for this topic — richer context than the one-line summary, read as opening context at the next phase's initialisation when the user later picks the topic up. Do not write to the discovery map and do not append to any tracker here — the approval gate writes approved candidates and tracks them.
 
 ---
 

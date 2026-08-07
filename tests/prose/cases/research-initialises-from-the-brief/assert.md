@@ -7,21 +7,21 @@ The prose should have taken this path:
 3. the research status reads empty, so the walk takes the new-entry arm
    — phase validation is for entries that already exist
 4. the epic context arm reads the item's source, finds it map-shaped
-   rather than direct-start, and reads the discovery brief in full as
-   the starting context — recording the read on the map item without a
-   commit; the gather-context interview never runs
+   rather than direct-start, and gathers nothing — the brief is the
+   processing skill's to read at initialisation, and the
+   gather-context interview never runs
 5. the handoff is constructed on the carrier-seeded shape — the work
-   type named, the map item's description appended, and no
-   interview-shaped context fields — and the processing skill's
-   instructions are followed
+   type named, session identity only, no interview-shaped context
+   fields — and the processing skill's instructions are followed
 6. the process re-reads the research status and finds no research file
    — a fresh start, no resume choice
-7. initialisation reads the work's seed and no-ops — an epic's seed
-   surfaces per topic through the knowledge base, not here; the brief
-   is already in context from the entry's read and is not re-read; the
-   research file is created from the template, its Starting Point
-   populated from the brief-fed context; the topic is registered
-   through the engine and one commit lands
+7. initialisation reads its inputs: the work's seed no-ops — an epic's
+   seed surfaces per topic through the knowledge base, not here — then
+   the topic's brief pointer and the brief file are read in full,
+   recording the read on the map item without a commit; the research
+   file is created from the template, its Starting Point populated
+   from the brief; the topic is registered through the engine and one
+   commit lands
 8. the walk stops there — no knowledge query runs, and the research
    session never starts
 

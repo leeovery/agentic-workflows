@@ -46,7 +46,7 @@ Skills organised in tiers:
 
 **Navigation skills** (`workflow-continue-{epic,feature,bugfix,quickfix,cross-cutting}`): model-only (`user-invocable: false`). Per-type resume/dashboard — show state and route to the right phase. `workflow-continue-epic` also delegates map refinement to discovery and triggers the analytical bridge enrichment. Step 0 renders the phase title only (migrations + the knowledge gate are guaranteed by `workflow-start`).
 
-**Phase entry skills** (`workflow-*-entry`): internal (`user-invocable: false`). Invoked by discovery, `workflow-continue-*`, and the bridge with work_type and work_unit always provided. Handle phase-specific validation, bootstrap questions, processing skill invocation. New single-phase work seeds from the durable carrier (session log + manifest `description`).
+**Phase entry skills** (`workflow-*-entry`): internal (`user-invocable: false`). Invoked by discovery, `workflow-continue-*`, and the bridge with work_type and work_unit always provided. Handle phase-specific validation, bootstrap questions, processing skill invocation. Durable phase inputs — the seed, an epic topic's brief, the discovery carrier (session log + manifest `description`), completed research — are read by the processing skills at initialisation, never relayed through the handoff.
 
 **Processing skills** (`workflow-*-process`): model-invocable. Assume pipeline context — work_type set, prior phases complete, artifacts in expected locations.
 

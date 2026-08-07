@@ -4,35 +4,13 @@
 
 ---
 
-This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill.
-
----
-
-## Load the Carrier Description
-
-For every source branch except `continue`, read the `description` discovery left as the seed carrier, to append it to the handoff. Where it lives depends on the work type — read the matching source (empty stdout means absent):
-
-- **Epic** — the discovery map item carries it:
-
-  ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} description
-  ```
-
-- **Feature / cross-cutting** — the work-unit manifest carries it (single-phase types have no discovery map item):
-
-  ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
-  ```
-
-When the read returns non-empty, append the Description block shown in each source branch below. When it returns empty, omit the Description block entirely — no header, no empty body.
+This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill. The handoff carries session identity plus any interview answers — the durable inputs (carrier description, discovery brief) are read by the processing skill at initialisation, never added to the handoff.
 
 ---
 
 ## Handoff
 
 #### If source is `continue`
-
-No description load for `continue` — resuming an existing session, no need to re-prime.
 
 Invoke the **workflow-research-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
@@ -47,7 +25,7 @@ Output: .workflows/{work_unit}/research/{resolved_filename}
 
 #### If the context was gathered by interview
 
-gather-context ran at Step 4 — its answers fill the Context block. The `Description:` block is omitted when `description` is null or empty.
+gather-context ran at Step 4 — its answers fill the Context block, the one input only this session holds.
 
 Invoke the **workflow-research-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
@@ -63,14 +41,11 @@ Context:
 - Already knows: {any initial thoughts or research, or "starting fresh"}
 - Starting point: {technical feasibility, market, business model, or general direction}
 - Constraints: {any constraints mentioned, or "none"}
-
-Description:
-{description text — paragraph or two, preserved as-is}
 ```
 
 #### Otherwise
 
-The carrier seeded the context — a feature's discovery record, or an epic topic's brief. No interview ran, so there are no gathered answers to relay: the process re-reads the carrier itself at initialisation, and the description carries the record. The `Description:` block is omitted when `description` is null or empty.
+The carrier seeded this topic — a feature's discovery record, or an epic topic's brief. No interview ran, so there are no gathered answers to relay: the processing skill reads the carrier itself at initialisation.
 
 Invoke the **workflow-research-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
@@ -80,8 +55,4 @@ Work unit: {work_unit}
 Work type: {work_type}
 
 Output: .workflows/{work_unit}/research/{resolved_filename}
-
-Description:
-{description text — paragraph or two, preserved as-is}
 ```
-

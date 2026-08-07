@@ -40,7 +40,7 @@ For each readable file:
 
 ## B. Batch Review
 
-Render the proposed summaries as a single batch. Description is drafted silently in the background — paragraphs would bloat the batch view, and entry skills will use whatever the auto-draft produces. The user can edit a description later via a follow-up discovery session.
+Render the proposed summaries as a single batch. Description is drafted silently in the background — paragraphs would bloat the batch view, and downstream phases use whatever the auto-draft produces. The user can edit a description later via a follow-up discovery session.
 
 > *Output the next fenced block as a code block:*
 

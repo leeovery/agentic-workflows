@@ -69,21 +69,11 @@ Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `
 
 ## Step 3: Gather Bug Context
 
-> *Output the next fenced block as markdown (not a code block):*
+Decide whether a context interview is needed — the durable carrier is seeded by the processing skill, never from here.
 
-```
-**`□ Gather Bug Context`**
-```
+#### If `.workflows/{work_unit}/discovery/sessions/session-001.md` exists
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Collecting information about the bug — what's broken, how it manifests, and any initial context.
-```
-
-#### If a discovery session log exists for this work unit
-
-The bug was shaped in discovery. Read the durable carrier as the seed — the manifest `description` and the latest discovery session log (`.workflows/{work_unit}/discovery/sessions/session-NNN.md`, highest-numbered) — and seed the investigation from it. Do not re-ask; live conversation context, when present, supplements the carrier.
+The bug was shaped in discovery — the durable carrier (manifest `description` + that session log) is read by the processing skill at initialisation. Nothing to gather.
 
 Render and emit the section verbatim:
 

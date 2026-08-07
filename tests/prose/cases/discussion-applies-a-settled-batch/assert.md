@@ -2,8 +2,8 @@ The prose should have taken this path:
 
 1. the entry reads the discussion status, finds it in progress, emits
    the resuming phase note, checks the reconcile flag (absent —
-   silent), re-reads the carrier without asking the user anything, and
-   hands off with source: existing discussion
+   silent), finds the carrier usable without asking the user anything,
+   and hands off with source: existing discussion
 2. the process reads the status again, finds the file, renders resume
    detection — the current map shown, then the continue-or-restart gate
    — and the user continues

@@ -2,9 +2,9 @@ The prose should have taken this path:
 
 1. the entry reads the discussion status, finds it in progress (the
    reopen left it so), emits the resuming phase note, checks the
-   reconcile flag (absent — silent), re-reads the carrier without
-   asking the user anything, and hands off with source: existing
-   discussion
+   reconcile flag (absent — silent), reads the map item's source and
+   gathers nothing — asking the user nothing — and hands off with
+   source: existing discussion
 2. the process reads the status again, finds the file, renders resume
    detection — the current map shown with result-caching open — and
    the user continues

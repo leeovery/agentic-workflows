@@ -39,6 +39,7 @@
       "manifest get search-relevance.discussion.behavioural-ranking status",
       "manifest get search-relevance.discovery.behavioural-ranking brief_path",
       "manifest set search-relevance.discovery.behavioural-ranking brief_incorporated true",
+      "manifest get search-relevance.research.behavioural-ranking status",
       "topic start search-relevance discussion behavioural-ranking",
       "discussion-map add search-relevance behavioural-ranking",
       "discussion(search-relevance): initialize behavioural-ranking discussion"
@@ -50,6 +51,7 @@
       "discovery-map sequence search-relevance",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
       "manifest get search-relevance.discovery.behavioural-ranking brief_path",
+      "manifest get search-relevance.research.behavioural-ranking status",
       "topic start search-relevance discussion behavioural-ranking",
       "discussion-map add search-relevance behavioural-ranking",
       "discussion(search-relevance): initialize behavioural-ranking discussion"

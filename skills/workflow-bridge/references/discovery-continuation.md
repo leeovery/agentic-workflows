@@ -53,7 +53,7 @@ Discovery has shaped this {work_type}. Begin its first phase in a clean context.
 
 Invoke `/workflow-{next_phase}-entry {work_type} {work_unit}`
 
-The entry skill reads the durable carrier — the discovery session log and the manifest `description` — as its seed; it does not depend on this session's context.
+The durable carrier — the discovery session log and the manifest `description` — is read at the start of the first phase; nothing depends on this session's context.
 
 ## How to proceed
 

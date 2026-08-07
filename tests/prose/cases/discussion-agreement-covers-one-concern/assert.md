@@ -1,11 +1,11 @@
 The prose should have taken this path:
 
 1. the entry reads the discussion status and finds it `triaged` — a
-   first start: the entry proceeds through its new-entry path seeding
-   from the topic's brief
-2. initialisation creates the discussion file from the template,
-   registers the topic (`topic start` flips `triaged` to
-   `in-progress`), and commits action-scoped
+   first start: the entry proceeds through its new-entry path gathering
+   nothing
+2. initialisation reads the topic's brief, creates the discussion file
+   from the template, registers the topic (`topic start` flips
+   `triaged` to `in-progress`), and commits action-scoped
 3. the session loop's first triage check finds a fresh sitting: it
    announces the queue in a single count-only line — no agenda, no
    menu — and the session opens from the topic's own material

@@ -135,9 +135,30 @@ Then read the coverage the agents reported back. A dimension that returned
 nothing was **unexamined** as often as it was clean, and this is worth
 saying out loud rather than converting into a clean bill of health.
 
+**Present the bring-to-user findings now, before applying anything** —
+each with its options and your recommendation — and wait for the answers.
+An answer can change the routing or the shape of the fixes you thought
+were settled: a "restore it" turns a prose correction into a revert, a
+"do it properly" turns a patch into a new layer. Resynthesise the whole
+fix set against the answers before touching a file. Only when nothing
+needs the user — every surviving finding unambiguous — does the pass
+proceed straight to Step 5.
+
 → Proceed to **Step 5**.
 
 ## Step 5: Apply the fixes
+
+**A fix is held to the same bar the review ran.** Verifying that a
+finding is real says nothing about the fix a finder proposed alongside
+it — finders invent guards, defensive checks, and conventions the
+project does not hold. Before authoring any fix, synthesise the finding
+into the shape this project already uses (engine-owned state is trusted,
+never re-checked in prose; patterns come from CONVENTIONS.md and two
+in-repo siblings, never from the finder's suggestion), and re-check the
+authored fix against the same dimensions the review dispatched —
+conventions, historical artefacts, routing. A fix that fails that check
+is itself a finding: drop it or bring it to the user. Applying reviewer
+prose verbatim is how a review pass becomes a circle of fixes.
 
 Prose flows are dense conditional graphs with no compiler, and a locally
 correct edit collides with a return path three sections away.

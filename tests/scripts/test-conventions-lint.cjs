@@ -533,7 +533,7 @@ function checkLoadFooters(files) {
     let loadSeen = false;
     lines.forEach((line, i) => {
       if (inFence[i] || /^\s*```/.test(line)) return;
-      if (/^#{1,6}\s/.test(line) || /\*\*STOP\.\*\*/.test(line) || /^\*\*If /.test(line)) {
+      if (/^#{1,6}\s/.test(line) || /\*\*STOP\.\*\*/.test(line) || /^\*\*(If |Otherwise)/.test(line)) {
         loadSeen = false;
         return;
       }
@@ -656,7 +656,6 @@ const RATCHET_PINS = {
   'skills/workflow-discovery/references/show-dismissed.md': 1,
   'skills/workflow-discussion-entry/references/gather-context-continue.md': 1,
   'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
-  'skills/workflow-discussion-entry/references/gather-context.md': 1,
   'skills/workflow-discussion-process/references/closing-gates.md': 2,
   'skills/workflow-discussion-process/references/off-topic-non-epic.md': 2,
   'skills/workflow-discussion-process/references/perspective-agents.md': 2,
@@ -1128,6 +1127,13 @@ test('check 11 (load footers) — catches bare proceed after a load, permits gat
       '## A. First\n\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n**If nothing to recover:**\n\n→ Proceed to **B. Next**.\n\n## B. Next\n'
     );
     assert.strictEqual(checkLoadFooters([branch]).length, 0, 'bold conditional between load and proceed must pass');
+
+    const otherwise = write(
+      dir,
+      'skills/x/otherwise.md',
+      '## A. First\n\n**If shaped:**\n\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n→ On return, proceed to **B. Next**.\n\n**Otherwise:**\n\n→ Proceed to **B. Next**.\n\n## B. Next\n'
+    );
+    assert.strictEqual(checkLoadFooters([otherwise]).length, 0, 'bold Otherwise between load and proceed must pass');
 
     const fenced = write(
       dir,

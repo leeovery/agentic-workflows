@@ -4,9 +4,61 @@
 
 ---
 
+## A. Read the Phase Inputs
+
+The durable inputs live in the manifest and at fixed paths — read them here; the handoff never carries them.
+
 → Load **[seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
 
-The seed just read, the brief or carrier the entry skill read at Gather Context, and the handoff's description are this discussion's **inherited position**, not a list of questions to re-ask. Decisions discovery already reached with the user carry forward as working ground: record them, build on them, let this discussion's own findings test them. Softness means such a decision *can* move when something surfaced here contradicts it, or when the user reopens it — never that it gets re-elicited on entry. Re-running settled scope as a fresh options weigh-up spends the user's time on ground they covered and puts alternatives they already rejected back into the document as live material.
+→ Load **[read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
+
+#### If `work_type` is not `epic`
+
+The carrier discovery left has two halves — read both. First the manifest `description`:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
+```
+
+Then the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/sessions/session-001.md`. A legacy work unit may have no log, or a placeholder whose **Exploration** is absent or `(none)`.
+
+→ Proceed to **B. Check for Research**.
+
+#### Otherwise
+
+The brief just read is the carrier — nothing more to read here.
+
+→ Proceed to **B. Check for Research**.
+
+## B. Check for Research
+
+Read the topic's research status:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
+```
+
+#### If status is `completed`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Completed research was found for this topic — reading it in full to seed the discussion.
+```
+
+Read `.workflows/{work_unit}/research/{topic}.md` in full.
+
+→ Proceed to **C. Create and Register**.
+
+#### Otherwise
+
+No completed research for this topic.
+
+→ Proceed to **C. Create and Register**.
+
+## C. Create and Register
+
+The inputs just read — the seed, the brief or carrier, and any completed research — are this discussion's **inherited position**, not a list of questions to re-ask. Decisions discovery already reached with the user carry forward as working ground: record them, build on them, let this discussion's own findings test them. Softness means such a decision *can* move when something surfaced here contradicts it, or when the user reopens it — never that it gets re-elicited on entry. Re-running settled scope as a fresh options weigh-up spends the user's time on ground they covered and puts alternatives they already rejected back into the document as live material.
 
 1. Ensure the discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Register the discussion in the manifest (the map commands below require the item to exist):
@@ -16,13 +68,13 @@ The seed just read, the brief or carrier the entry skill read at Gather Context,
 3. Load **[template.md](template.md)** — use it to create the discussion file at `.workflows/{work_unit}/discussion/{topic}.md`. When the file already exists, keep its content and write the template's working sections around it.
 4. Populate the Context section and derive the initial subtopics:
 
-   **If the handoff includes a `Research files:` section:**
+   **If the topic's research was read at B:**
 
-   Read each listed research file using the Read tool. Use the full research content — guided by the `Topic context` field — to populate the Context section and derive initial subtopics. Seed subtopics should represent the key concerns, decisions, and questions that emerged from research.
+   Use the full research content together with the inputs read at **A** — the brief or carrier still carries decisions the research does not restate. Seed subtopics should represent the key concerns, decisions, and questions that emerged from research.
 
    **Otherwise:**
 
-   Populate from the seed, handoff context, and user input. Derive initial subtopics from whatever context is available — the seed, the user's description, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map grows during discussion.
+   Populate from the inputs read at **A**, any interview answers, and anything the user said in the conversation that launched this session. Derive initial subtopics from whatever context is available — the seed, the brief or carrier, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map grows during discussion.
 
    Either way, the triage queue is never a seeding source: parked concerns enter through the session loop's triage check — raised with their full context and discussed — and pre-adding their titles to the map forces every fold into the wrong branch.
 

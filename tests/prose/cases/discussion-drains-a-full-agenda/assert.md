@@ -2,10 +2,10 @@ The prose should have taken this path:
 
 1. the entry reads the discussion status and finds it `triaged` — a
    first start, not a resume: parked concerns wait in the queue, and
-   the entry proceeds through its new-entry path seeding from the
-   topic's brief without re-asking settled ground
+   the entry proceeds through its new-entry path gathering nothing
 2. the process's own status read routes the same way — no file exists,
-   no map to render, no resume gate — and initialisation creates the
+   no map to render, no resume gate — and initialisation reads the
+   topic's brief without re-asking settled ground, creates the
    discussion file from the template, registers the topic (`topic
    start` flips `triaged` to `in-progress`), and commits action-scoped
 3. the session loop's first triage check finds a fresh sitting: it

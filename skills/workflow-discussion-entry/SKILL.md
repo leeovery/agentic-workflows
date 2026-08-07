@@ -1,7 +1,7 @@
 ---
 name: workflow-discussion-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
 Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.
@@ -95,39 +95,15 @@ Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `
 
 ## Step 3: Gather Context
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Gather Context`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Collecting the context needed before starting the discussion.
-```
+Decide whether a context interview is needed. The durable inputs — the carrier, the discovery brief, completed research — are seeded by the processing skill, never from here; any read below only decides the route.
 
 #### If `work_type` is not `epic`
 
-Single-phase work (feature, cross-cutting) shaped in discovery. The carrier has two halves — read both. First the manifest `description`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
-```
-
-Then the discovery session log. Single-phase work has exactly one, at a fixed path — it has no resumable loop to create others. Read `.workflows/{work_unit}/discovery/sessions/session-001.md`. A legacy work unit may have no log, or a placeholder log whose **Exploration** is absent or `(none)`.
+Single-phase work (feature, cross-cutting) shaped in discovery leaves its carrier in the discovery session log. Single-phase work has exactly one, at a fixed path — it has no resumable loop to create others. Read `.workflows/{work_unit}/discovery/sessions/session-001.md` and check its **Exploration** section. A legacy work unit may have no log, or a placeholder log whose **Exploration** is absent or `(none)`.
 
 **If the log's `Exploration` section has content (not absent or `(none)`):**
 
-Seed the discussion from the `description` and that **Exploration**. Do not re-ask; live conversation context, when present, supplements the carrier.
-
-Then, when `source` is `topic-provided`, read the research item statuses:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{work_unit}.research.*' status
-```
-
-When any item is `completed`, list the research files via `ls .workflows/{work_unit}/research/*.md` and set `source = "topic-provided-with-research"` so the handoff carries them.
+A usable carrier exists — nothing to gather.
 
 → Proceed to **Step 4**.
 
@@ -141,15 +117,15 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 #### If `work_type` is `epic`
 
-The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it:
+The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it, storing the result as `map_source`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} source
 ```
 
-**If `source` is exactly `direct-start`:**
+**If `map_source` is exactly `direct-start`:**
 
-The topic was started fresh, not shaped on the map — there is no curated carrier to seed from.
+The topic was started fresh, not shaped on the map — there is no curated carrier, so gather context.
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
@@ -157,13 +133,9 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 **Otherwise:**
 
-The topic was shaped on the discovery map. Read its discovery brief as the starting context:
+The topic was shaped on the discovery map — nothing to gather. A new discussion reads the brief at initialisation; a resumed one already carries its position in the discussion file.
 
-Load **[read-brief-context.md](../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
-
-Do not re-ask; live conversation context, when present, supplements the carrier.
-
-→ On return, proceed to **Step 4**.
+→ Proceed to **Step 4**.
 
 ---
 

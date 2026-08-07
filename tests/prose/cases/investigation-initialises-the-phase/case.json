@@ -20,6 +20,7 @@
     "calls_include": [
       "manifest get crash-fix.investigation.crash-fix status",
       "manifest get crash-fix seeds",
+      "manifest get crash-fix description",
       "topic start crash-fix investigation crash-fix"
     ],
     "calls_in_order": [
