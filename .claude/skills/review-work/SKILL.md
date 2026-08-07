@@ -21,10 +21,18 @@ The user reads the chat reply and nothing else.
 
 Three things, before any agent is dispatched.
 
-**The diff.** `git log main..HEAD --oneline` and `git diff main...HEAD
---stat`. If a stack is open, `gh pr list --state open` for its shape and
-each PR's branch. Name the files under review explicitly — a review with
-an unstated scope reports on whatever the agents happened to open.
+**The diff.** If a stack is open, `gh pr list --state open` for its shape,
+then diff each PR against **its own base** — diffing a mid-stack branch
+against main pulls in the layers below it and reviews them again.
+Otherwise `git log main..HEAD --oneline` and `git diff main...HEAD --stat`.
+
+Include what is not in a PR yet: `git status` for uncommitted work and
+`git log @{u}..HEAD` for unpushed commits. Work built this session is
+routinely still sitting in the tree, and it is the part most worth
+reviewing.
+
+Name the files under review explicitly — a review with an unstated scope
+reports on whatever the agents happened to open.
 
 **The intent.** The `design/` document or `ideas/` entry this work came
 from, plus what was agreed in this session. The review tests the work
@@ -58,7 +66,10 @@ that destroys the before/after boundary the stack exists to preserve.
 
 **Nothing has been reviewed yet.** Fold each fix into the PR that owns the
 code it corrects, so the user reviews the whole thing once instead of
-finding a defect in PR 1 that a later PR already fixed.
+finding a defect in PR 1 that a later PR already fixed. A fix folded into a
+layer below the top leaves every layer above it behind — the children need
+restacking onto the moved branch, through the `pr-stacked` skill, before
+the stack is coherent again. Say so in the report.
 
 **Mixed.** A fix belongs to the layer it corrects: into that PR while its
 layer is unreviewed, onto a new top-of-stack PR once the layer is frozen
@@ -69,9 +80,9 @@ dispatching — the answer changes where every fix goes, and moving them
 afterwards is expensive. Offer the regime you believe applies first,
 labelled as recommended, and say which layers you think are signed off.
 
-Stack operations — creating, appending, linking — go through the
-`pr-stacked` skill. `gh stack link` after `gh pr create` is mandatory;
-skipping it loses the child branch silently.
+Stack operations — creating, appending, linking, restacking — go through
+the `pr-stacked` skill. Load it rather than hand-rolling the git and `gh`
+calls; a mislinked child branch is lost silently.
 
 → Proceed to **Step 3**.
 
@@ -88,7 +99,8 @@ for the seam between two files, which is where this project's defects live.
 Each agent's prompt carries: the dimension and its checks, the file and
 commit scope from Step 1, the design source, and the instruction to assume
 more defects exist and search **farthest from whatever it has already
-found**. Pass an explicit `model:` on every dispatch.
+found**. The agent declares its own model — override it only deliberately,
+never as a habit, and never downward on a dimension carrying judgement.
 
 Scale the fleet to the blast radius. A one-file prose fix warrants two
 dimensions; a change touching the engine, the prose, and the tests
@@ -147,7 +159,12 @@ simulation if the change moved an engine verb, a prose call sequence, a
 phase ordering, or a manifest field. Where a finding describes a failure
 the tests would not have caught, add the case that would have caught it.
 
-Commit and push without being asked. If the diff touched skill prose, run
+Commit and push without being asked — but never onto main, and never onto
+whatever branch happens to be checked out. Where the fix lands was settled
+in Step 2; when that is a new layer, the branch is created before the first
+commit, not after it.
+
+If the diff touched skill prose, run
 `node tests/prose/run.cjs select --diff main` and suggest the intersecting
 cases in the report — never run the walks as part of this pass.
 
@@ -155,8 +172,9 @@ cases in the report — never run the walks as part of this pass.
 
 ## Step 6: Report
 
-In the chat reply. Not a PR body — the user does not read those. Not Bash
-output, not a design document.
+In the chat reply. Not Bash output, not a design document, and not a PR
+body — PR bodies still earn the full reasoning for the repo's record, but
+the user does not read them, so nothing they must act on can live there.
 
 - **Open questions first**, before anything else, each with the options
   and your recommendation. This is what the user asked to be brought to
