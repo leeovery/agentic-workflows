@@ -32,13 +32,23 @@ The brief just read is the carrier — nothing more to read here.
 
 ## B. Check for Research
 
-Read the topic's research status:
+Completed research reaches a topic two ways: under the topic's own name, and through provenance — a topic spawned by research analysis carries `research-analysis:{parent}` in its discovery item's `source`, naming the research that contributed it.
+
+Read the topic's own research status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
 ```
 
-#### If status is `completed`
+Then the topic's provenance (empty for non-epic work — no discovery map item):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} source
+```
+
+Each `research-analysis:{parent}` entry (values comma-accumulate) names a contributing research topic — read each parent's `{work_unit}.research.{parent}` status the same way.
+
+#### If any status read is `completed`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -46,7 +56,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 > Completed research was found for this topic — reading it in full to seed the discussion.
 ```
 
-Read `.workflows/{work_unit}/research/{topic}.md` in full.
+Read each completed file in full — `.workflows/{work_unit}/research/{topic}.md` and every completed parent's `.workflows/{work_unit}/research/{parent}.md`, each file once.
 
 → Proceed to **C. Create and Register**.
 
@@ -68,13 +78,15 @@ The inputs just read — the seed, the brief or carrier, and any completed resea
 3. Load **[template.md](template.md)** — use it to create the discussion file at `.workflows/{work_unit}/discussion/{topic}.md`. When the file already exists, keep its content and write the template's working sections around it.
 4. Populate the Context section and derive the initial subtopics:
 
-   **If the topic's research was read at B:**
+   **If research was read at B:**
 
    Use the full research content together with the inputs read at **A** — the brief or carrier still carries decisions the research does not restate. Seed subtopics should represent the key concerns, decisions, and questions that emerged from research.
 
    **Otherwise:**
 
    Populate from the inputs read at **A**, any interview answers, and anything the user said in the conversation that launched this session. Derive initial subtopics from whatever context is available — the seed, the brief or carrier, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map grows during discussion.
+
+   The Context section carries the substance of what was read — the brief's soft decisions, rejected paths, and open questions land here, not a pointer to them: this file is what a resumed session inherits. List each input read — the brief, research file(s), seed file(s) — under Context → References, so a later session can re-open what seeded this discussion.
 
    Either way, the triage queue is never a seeding source: parked concerns enter through the session loop's triage check — raised with their full context and discussed — and pre-adding their titles to the map forces every fold into the wrong branch.
 
