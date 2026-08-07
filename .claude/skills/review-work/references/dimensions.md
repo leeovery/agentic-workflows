@@ -4,8 +4,8 @@ One finder agent per dimension. Each agent gets its dimension's checks
 verbatim, the file and commit scope, and the design source.
 
 Pick the dimensions the diff can actually violate — a change that touches
-no engine code does not need **F**; a change that touches no prose does not
-need **B** or **C**. When in doubt, dispatch it.
+no code does not need **F** or **H**; a change that touches no prose does
+not need **B** or **C**. When in doubt, dispatch it.
 
 ---
 
@@ -139,3 +139,65 @@ A change lands in one place and is owed in several. Enumerate them.
   `src/knowledge/` change.
 - Where a finding in any other dimension describes a failure the gates
   would not have caught, the missing case is itself a finding.
+
+## H. Code structure
+
+The code surfaces carry established conventions of their own — the engine's
+three rings, the gateway contract, the knowledge subsystem, the migrations,
+the tests. Read `skills/workflow-engine/SKILL.md` and
+`references/library-and-gateway.md` before the diff; they are where the
+architecture is stated.
+
+**Layering.** Kernel is mechanism and the manifest's on-disk contract;
+domain is the workflow ontology; the gateway is the verb-dispatch harness.
+Code sits in the ring that owns it — workflow semantics leaking into
+`kernel/`, or render mechanism reimplemented in `domain/`, is a finding.
+Derivations may require reads; never the reverse.
+
+**Single home.** Each mechanism exists once. The wrap budget lives in the
+render kernel so a gutter-overflow bug can exist in only one place; every
+manifest writer flows through `manifest-io.cjs` for its read, its atomic
+write, and its lock; `manifest-schema.cjs` is the sole vocabulary of legal
+work types, phases, and statuses. A second implementation of any of these
+is a finding even when it is correct today.
+
+**Reuse over reimplementation.** A derivation, read, or projection that
+already exists in `lib.cjs` is called, not rewritten locally. Two functions
+computing the same thing from the same state will diverge.
+
+**Doors and directions.** Writes go through the CLI, reads through the
+library. `DATA` is for reasoning and is never displayed; `DISPLAY` and
+`MENU` are emitted verbatim and never parsed for a decision. Anything
+parameterised or state-branching renders in code, not in prose. The engine
+never parses markdown artifacts to populate a render — address-backed
+values are JSON state, judgment content is a validated payload file.
+
+**Locking and ordering.** Every load → mutate → save holds the manifest
+lock. Knowledge syncs and commits run after the lock is released, never
+inside it.
+
+**Failing loudly.** Bad input fails where it is detected rather than
+producing a silently wrong result — the width primitive throwing on an
+impossible gutter is the pattern. Look for swallowed errors, empty catch
+blocks, and defaults substituted for a value that should have been an error.
+
+**Types.** JSDoc annotations are real contracts here — `checkJs` and
+`strictNullChecks` are on. A new export without them, or an `any` widening
+that hides a nullable, weakens the one mechanical check this code has.
+
+**Adapters.** Each per-skill `gateway.cjs` registers handlers and calls
+`runGateway`. The prose names the verb; the adapter never infers what a
+call is for and never branches on argv shape.
+
+**Migrations.** Read and write `manifest.json` directly, never through
+`engine manifest`. Outcome is signalled only through `reportUpdate` and
+`reportSkip` — never stdout. Idempotent, and shipped migrations are never
+edited.
+
+**Knowledge.** `src/knowledge/` is the source; the committed CLI is a
+bundle. A source change without the rebuilt bundle committed alongside it
+ships a stale binary.
+
+**Dead weight.** Code the diff orphaned — an export nothing imports, a
+branch nothing reaches, a parameter every caller passes the same value for,
+a helper left behind by the change that replaced it.

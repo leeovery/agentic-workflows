@@ -24,10 +24,11 @@ code that are **instructions Claude executes at runtime**, not documentation
 humans read. A misspelled route target, a section nothing reaches, a
 sentence that can be read two ways — each is a live defect, not a typo.
 
-Read **CLAUDE.md** and, for any dimension touching skill prose,
-**CONVENTIONS.md** — in full, before the diff. They are dense and exact,
-and inferring the rules from sibling files is how non-compliant work gets
-certified as compliant.
+Read **CLAUDE.md** before the diff, then whichever your dimension needs:
+**CONVENTIONS.md** for skill prose, `skills/workflow-engine/SKILL.md` and
+its `references/library-and-gateway.md` for code. In full. They are dense
+and exact, and inferring the rules from sibling files is how non-compliant
+work gets certified as compliant.
 
 ## How to search
 
