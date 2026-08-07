@@ -20,11 +20,13 @@ You receive file paths and context via the orchestrator's prompt:
 5. **Task content** — Internal ID, phase, and all instructional content: goal, implementation steps, acceptance criteria, tests, edge cases, context, notes. This is your scope.
 6. **Linter commands** (if configured) — linter commands to run after refactoring
 
-On **re-invocation after review feedback**, you receive all of the above, plus:
+A **fix round for the same task** usually arrives as a follow-up message in your session: the approved review notes and specific issues to address, or the user's comments. You already hold the task and the code you wrote — address the new material within the task's existing scope, following the same workflow rules.
+
+After a session interruption, a fix round arrives as a fresh dispatch instead, carrying all of the above plus:
 7. **User-approved review notes** — may be the reviewer's original notes, modified by user, or user's own notes
 8. **Specific issues to address**
 
-You are stateless — each invocation starts fresh. The full task content is always provided so you can see what was asked, what was done, and what needs fixing.
+A fresh dispatch starts with no memory — the full task content is provided so you can see what was asked, what was done, and what needs fixing.
 
 ## Your Process
 
