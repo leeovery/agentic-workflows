@@ -4,6 +4,18 @@
 
 ---
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Gather Context`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Picking the discussion back up — a quick focus check before the session resumes.
+```
+
 Read the existing discussion document first, then ask:
 
 > *Output the next fenced block as a code block:*

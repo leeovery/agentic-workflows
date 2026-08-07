@@ -140,7 +140,7 @@ routing: {routing-from-C}
 source: gap-analysis
 ```
 
-`routing` is the value decided per-candidate in **C** (`discussion` or `research`). Gap-analysis keeps the bare `gap-analysis` source (no single-parent semantics — it synthesises across artifacts) and stages no `parent` or `fanout_offer`. `description` is a paragraph or two extracted from the gap analysis for this topic — richer context than the one-line summary, loaded by entry skills as opening context when the user later picks the topic up. Do not write to the discovery map and do not append to any tracker here — the approval gate writes approved candidates and tracks them.
+`routing` is the value decided per-candidate in **C** (`discussion` or `research`). Gap-analysis keeps the bare `gap-analysis` source (no single-parent semantics — it synthesises across artifacts) and stages no `parent` or `fanout_offer`. `description` is a paragraph or two extracted from the gap analysis for this topic — richer context than the one-line summary, read as opening context at the next phase's initialisation when the user later picks the topic up. Do not write to the discovery map and do not append to any tracker here — the approval gate writes approved candidates and tracks them.
 
 ---
 

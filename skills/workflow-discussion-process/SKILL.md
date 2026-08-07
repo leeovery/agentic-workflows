@@ -21,7 +21,7 @@ The decision phase, entered from discovery — or from research when it ran. Deb
 
 - **Topic** (required) - What technical area to discuss/document
 - **Work type** (required) - `epic`, `feature`, or `cross-cutting`. Determines session behaviour — off-topic concerns reroute between an epic's topics but log or pivot on single-topic work
-- **Context** (optional) - Prior research, constraints, existing decisions
+- **Context** (optional) - Interview answers or live conversation context; prior research, the discovery brief, and the carrier are read at initialisation
 - **Seed concerns** (optional) - Initial subtopics or architectural questions to explore
 
 ---

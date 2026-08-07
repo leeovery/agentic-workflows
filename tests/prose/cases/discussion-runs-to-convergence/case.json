@@ -37,6 +37,7 @@
     "engine_before_write": true,
     "calls_include": [
       "manifest get pay.discussion.pay status",
+      "manifest get pay.research.pay status",
       "manifest get pay description",
       "topic start pay discussion pay",
       "discussion-map add pay pay",

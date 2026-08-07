@@ -1,14 +1,16 @@
 The prose should have taken this path:
 
 1. the entry finds no discussion recorded, takes the new-entry arm,
-   no-ops the discovery-item ensure for a feature, seeds from the
-   carrier without asking the user anything, and hands off with the
-   description appended
+   no-ops the discovery-item ensure for a feature, checks the session
+   log's Exploration and finds a usable carrier — asking the user
+   nothing — and hands off with session identity only
 2. the process reads the status again, finds no discussion file, and
    starts fresh — no resume choice
-3. initialisation registers the discussion through the engine before
-   the file exists, creates it from the template, seeds initial
-   subtopics as pending, and commits once
+3. initialisation reads its inputs — the empty seed, the carrier's
+   description and Exploration, the research status (none) — then
+   registers the discussion through the engine before the file exists,
+   creates it from the template, seeds initial subtopics as pending,
+   and commits once
 4. the guidelines load and the knowledge base is addressed once as a
    contextual query; with an empty store the session proceeds silently;
    the session loop's triage check no-ops on an empty queue

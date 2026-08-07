@@ -95,7 +95,7 @@ Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `
 
 ## Step 3: Gather Context
 
-Decide whether a context interview is needed. The durable inputs — the carrier, the discovery brief, completed research — are read by the processing skill at initialisation, never gathered here.
+Decide whether a context interview is needed. The durable inputs — the carrier, the discovery brief, completed research — are seeded by the processing skill, never from here; any read below only decides the route.
 
 #### If `work_type` is not `epic`
 
@@ -117,13 +117,13 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 #### If `work_type` is `epic`
 
-The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it:
+The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it, storing the result as `map_source`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} source
 ```
 
-**If `source` is exactly `direct-start`:**
+**If `map_source` is exactly `direct-start`:**
 
 The topic was started fresh, not shaped on the map — there is no curated carrier, so gather context.
 
@@ -133,7 +133,7 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 **Otherwise:**
 
-The topic was shaped on the discovery map — its discovery brief is the starting context, read by the processing skill at initialisation. Nothing to gather.
+The topic was shaped on the discovery map — nothing to gather. A new discussion reads the brief at initialisation; a resumed one already carries its position in the discussion file.
 
 → Proceed to **Step 4**.
 

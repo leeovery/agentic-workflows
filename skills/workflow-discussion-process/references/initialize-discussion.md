@@ -20,7 +20,7 @@ The carrier discovery left has two halves — read both. First the manifest `des
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
 ```
 
-Then the latest discovery session log's **Exploration** when one exists (`.workflows/{work_unit}/discovery/sessions/session-NNN.md`, highest-numbered). A legacy work unit may have no log, or a placeholder whose **Exploration** is absent or `(none)`.
+Then the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/sessions/session-001.md`. A legacy work unit may have no log, or a placeholder whose **Exploration** is absent or `(none)`.
 
 → Proceed to **B. Check for Research**.
 
@@ -70,11 +70,11 @@ The inputs just read — the seed, the brief or carrier, and any completed resea
 
    **If the topic's research was read at B:**
 
-   Use the full research content to populate the Context section and derive initial subtopics. Seed subtopics should represent the key concerns, decisions, and questions that emerged from research.
+   Use the full research content together with the inputs read at **A** — the brief or carrier still carries decisions the research does not restate. Seed subtopics should represent the key concerns, decisions, and questions that emerged from research.
 
    **Otherwise:**
 
-   Populate from the inputs read at A and any interview answers in context. Derive initial subtopics from whatever context is available — the seed, the brief or carrier, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map grows during discussion.
+   Populate from the inputs read at **A**, any interview answers, and anything the user said in the conversation that launched this session. Derive initial subtopics from whatever context is available — the seed, the brief or carrier, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map grows during discussion.
 
    Either way, the triage queue is never a seeding source: parked concerns enter through the session loop's triage check — raised with their full context and discussed — and pre-adding their titles to the map forces every fold into the wrong branch.
 

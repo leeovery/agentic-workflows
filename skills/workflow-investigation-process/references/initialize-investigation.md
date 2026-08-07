@@ -14,7 +14,7 @@ The carrier discovery left has two halves — read both. First the manifest `des
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
 ```
 
-Then the latest discovery session log's **Exploration** when one exists (`.workflows/{work_unit}/discovery/sessions/session-NNN.md`, highest-numbered). A logless bugfix has none.
+Then the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/sessions/session-001.md`. A logless bugfix has none.
 
 → Load **[seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
 

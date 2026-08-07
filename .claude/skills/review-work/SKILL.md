@@ -139,6 +139,18 @@ saying out loud rather than converting into a clean bill of health.
 
 ## Step 5: Apply the fixes
 
+**A fix is held to the same bar the review ran.** Verifying that a
+finding is real says nothing about the fix a finder proposed alongside
+it — finders invent guards, defensive checks, and conventions the
+project does not hold. Before authoring any fix, synthesise the finding
+into the shape this project already uses (engine-owned state is trusted,
+never re-checked in prose; patterns come from CONVENTIONS.md and two
+in-repo siblings, never from the finder's suggestion), and re-check the
+authored fix against the same dimensions the review dispatched —
+conventions, historical artefacts, routing. A fix that fails that check
+is itself a finding: drop it or bring it to the user. Applying reviewer
+prose verbatim is how a review pass becomes a circle of fixes.
+
 Prose flows are dense conditional graphs with no compiler, and a locally
 correct edit collides with a return path three sections away.
 

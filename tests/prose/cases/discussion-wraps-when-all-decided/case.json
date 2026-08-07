@@ -36,6 +36,7 @@
     "engine_before_write": true,
     "calls_include": [
       "manifest get pay.discussion.pay status",
+      "manifest get pay.research.pay status",
       "topic start pay discussion pay",
       "discussion(pay): initialize pay discussion",
       "knowledge.cjs query",

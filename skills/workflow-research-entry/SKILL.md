@@ -101,7 +101,7 @@ A first start — the session's triage check surfaces the parked concerns; seed 
 
 ## Step 4: Gather Context
 
-Decide whether a context interview is needed. The durable inputs — the carrier and the discovery brief — are read by the processing skill at initialisation, never gathered here.
+Decide whether a context interview is needed. The durable inputs — the carrier and the discovery brief — are seeded by the processing skill, never from here; any read below only decides the route.
 
 #### If `work_type` is not `epic`
 
@@ -123,13 +123,13 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 #### If `work_type` is `epic`
 
-The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it:
+The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it, storing the result as `map_source`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} source
 ```
 
-**If `source` is exactly `direct-start`:**
+**If `map_source` is exactly `direct-start`:**
 
 The topic was started fresh, not shaped on the map — there is no curated carrier, so gather context.
 
