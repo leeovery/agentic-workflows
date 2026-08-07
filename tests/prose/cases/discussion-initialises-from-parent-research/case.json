@@ -1,0 +1,52 @@
+{
+  "origin": "the provenance half of the research→discussion carriage had no coverage — a topic spawned by research analysis must reach its parent's research through the manifest's source field, not under its own name",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/template.md"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.judgment-collection status",
+      "manifest get search-relevance.discovery.judgment-collection source",
+      "manifest get search-relevance.discovery.judgment-collection brief_path",
+      "manifest get search-relevance.discovery.judgment-collection description",
+      "manifest set search-relevance.discovery.judgment-collection brief_incorporated true",
+      "manifest get search-relevance.research.judgment-collection status",
+      "manifest get search-relevance.research.relevance-measurement status",
+      "topic start search-relevance discussion judgment-collection",
+      "discussion-map add search-relevance judgment-collection",
+      "discussion(search-relevance): initialize judgment-collection discussion"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.judgment-collection status",
+      "manifest get search-relevance.discovery.judgment-collection source",
+      "manifest get search-relevance.discovery.judgment-collection brief_path",
+      "manifest get search-relevance.research.judgment-collection status",
+      "manifest get search-relevance.research.relevance-measurement status",
+      "topic start search-relevance discussion judgment-collection",
+      "discussion-map add search-relevance judgment-collection",
+      "discussion(search-relevance): initialize judgment-collection discussion"
+    ],
+    "calls_exclude": [
+      "discovery-map add",
+      "topic complete",
+      "topic reopen",
+      "knowledge.cjs query",
+      "knowledge.cjs index",
+      "workunit create"
+    ]
+  }
+}
