@@ -33,6 +33,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 rm -f {staging_file}
 ```
 
+> *Output the next fenced block as a code block:*
+
+```
+Nothing new to review.
+```
+
 → Return to caller.
 
 #### If `K` is `1` or more

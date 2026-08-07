@@ -22,12 +22,6 @@ The caller provides these via context before loading:
 
 ## A. Read Cache State
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`▪ Cache Check`**
-```
-
 Run discovery for the work unit:
 
 ```bash
@@ -59,10 +53,26 @@ Research-analysis runs first so that a theme both analyses surface is already on
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-**`▪ Research Analysis`**
+**`□ Research Analysis`**
 ```
 
-**Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.research-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
+**Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.research-analysis`.
+
+**If any candidate there is `pending`** — the analysis was deferred on a prior boot. Reuse the staged file and skip staging; nothing is re-read:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Presenting the follow-up topic candidates you deferred last boot — the analysis has not re-run.
+```
+
+**Otherwise** — stage fresh:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Reading your completed research for follow-up themes that deserve a topic of their own. Each candidate comes to you for approval before anything lands on the map.
+```
 
 → Load **[research-analysis.md](research-analysis.md)** with work_unit = `{work_unit}`.
 
@@ -99,10 +109,26 @@ No dispatch.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-**`▪ Gap Analysis`**
+**`□ Gap Analysis`**
 ```
 
-**Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.discovery-gap-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
+**Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.discovery-gap-analysis`.
+
+**If any candidate there is `pending`** — the analysis was deferred on a prior boot. Reuse the staged file and skip staging; nothing is re-read:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Presenting the gap candidates you deferred last boot — the analysis has not re-run.
+```
+
+**Otherwise** — stage fresh:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Reading all completed research and discussions together for what fell between them — themes no discussion picked up, deferred threads, and decisions that interact where no topic covers the join. Approved candidates join the map as new topics.
+```
 
 → Load **[discovery-gap-analysis.md](discovery-gap-analysis.md)** with work_unit = `{work_unit}`.
 
@@ -139,10 +165,26 @@ No dispatch.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-**`▪ Coherence Check`**
+**`□ Coherence Check`**
 ```
 
-**Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.coherence-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
+**Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.coherence-analysis`.
+
+**If any candidate there is `pending`** — the analysis was deferred on a prior boot. Reuse the staged file and skip staging; nothing is re-read:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Presenting the coherence findings you deferred last boot — the analysis has not re-run.
+```
+
+**Otherwise** — stage fresh:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Re-reading the full discussion corpus for decisions that no longer cohere — unacknowledged conflicts, references to since-changed decisions, ambiguities with one clear home document. Approved findings reopen the yielding discussion through triage.
+```
 
 → Load **[coherence-analysis.md](coherence-analysis.md)** with work_unit = `{work_unit}`.
 

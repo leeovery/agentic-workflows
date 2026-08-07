@@ -18,12 +18,6 @@ The caller provides these via context before loading:
 
 ## A. Read Artifacts
 
-> *Output the next fenced block as a code block:*
-
-```
-Analyzing completed discussions for conflicting or stale decisions...
-```
-
 Read `.workflows/{work_unit}/discussion/{name}.md` for each `completed_discussion` name. Skip files missing on disk. Items with `triaged`, `in-progress`, or `cancelled` status are not in the input set.
 
 For each discussion, note:
