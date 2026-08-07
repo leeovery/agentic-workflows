@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.49] - 2026-08-07
+
+✨ Added
+- Discussion sessions now surface an inline note when completed research is found and read in for context.
+- Deferred discovery-map analyses (research, gap, coherence) show a note distinguishing reused deferred candidates from a fresh re-read.
+- Discussion documents record a References list (brief, research, seed) so a resumed session can trace what seeded it.
+
+🔧 Changed
+- Durable phase inputs (seed, discovery brief, carrier description, completed research) are now read by each processing skill at its own initialisation instead of being gathered and relayed through the entry skill's handoff.
+- Epic backfill recovery no longer forces a session restart when nothing was actually written — it only advises `/clear` when recovery work landed, and continues straight to the dashboard otherwise.
+- Discovery's document review step now shows its progress marker only when there's an active session log to reconcile.
+
+🐛 Fixed
+- Analysis approval gates (discovery, coherence) now confirm "nothing new to review" instead of silently returning when there are no candidates.
+
 ## [0.6.48] - 2026-08-07
 
 ✨ Added — none
