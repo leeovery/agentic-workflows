@@ -18,12 +18,6 @@ The caller provides these via context before loading:
 
 ## A. Identify Themes
 
-> *Output the next fenced block as a code block:*
-
-```
-Analyzing research documents...
-```
-
 **CRITICAL**: This analysis is the foundation for every downstream phase. The themes extracted here drive topic definition, which drives discussion, which drives specification, planning, and implementation. Anything missed here is invisible to the rest of the pipeline.
 
 Read `.workflows/{work_unit}/research/{name}.md` for each completed item from the precondition set. Skip files missing on disk. Items with `triaged`, `in-progress`, `superseded`, or `cancelled` status are not in the input set.

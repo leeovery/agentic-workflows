@@ -35,6 +35,12 @@ A processed gate's state is spent — approved candidates live on the map, skipp
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.{analysis}
 ```
 
+> *Output the next fenced block as a code block:*
+
+```
+Nothing new to review.
+```
+
 → Return to caller.
 
 #### If `K` is `1` or more
