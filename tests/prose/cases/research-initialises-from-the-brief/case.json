@@ -31,6 +31,7 @@
       "manifest get search-relevance.discovery.relevance-measurement source",
       "manifest get search-relevance.discovery.relevance-measurement brief_path",
       "manifest set search-relevance.discovery.relevance-measurement brief_incorporated true",
+      "write:.workflows/search-relevance/research/relevance-measurement.md",
       "topic start search-relevance research relevance-measurement",
       "research(search-relevance): initialize relevance-measurement research"
     ],

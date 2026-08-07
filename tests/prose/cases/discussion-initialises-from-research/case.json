@@ -35,6 +35,7 @@
       "manifest set search-relevance.discovery.relevance-measurement brief_incorporated true",
       "manifest get search-relevance.research.relevance-measurement status",
       "topic start search-relevance discussion relevance-measurement",
+      "write:.workflows/search-relevance/discussion/relevance-measurement.md",
       "discussion-map add search-relevance relevance-measurement",
       "discussion(search-relevance): initialize relevance-measurement discussion"
     ],

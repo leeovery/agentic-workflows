@@ -22,6 +22,15 @@
 //     "calls_in_order": ["a", "b"]      // and these in this sequence
 //   }
 //
+// A calls_in_order entry starting `write:` is a token, not a command: it
+// stands for the path's FIRST recorded write, which must sit at this
+// point in the sequence. First, not next — a file created too early and
+// edited again later would satisfy a lenient match, and that early
+// creation is exactly what the token exists to catch (a topic registered
+// before its artifact exists, and the inverse). Tokens are
+// calls_in_order-only; in the presence checks a `write:` entry could
+// only mislead, so declaration validation rejects it there.
+//
 // A check that could not have failed reports N/A rather than PASS. A
 // green tick for "there was nothing to examine" is how a corpus comes to
 // look covered while enforcing nothing.
@@ -148,17 +157,35 @@ function callsExclude(rows, forbidden) {
     : { ok: true, detail: `ran none of: ${forbidden.join(', ')}` };
 }
 
+const WRITE_TOKEN = 'write:';
+
 /**
  * Order carries meaning a presence check cannot: a gate read after the arm
  * it was supposed to select proves the arm was chosen some other way. The
- * declared commands must appear as a subsequence — other calls may fall
- * between them, but never out of sequence.
+ * declared entries must appear as a subsequence — other actions may fall
+ * between them, but never out of sequence. A command entry matches a Bash
+ * call. A `write:<path>` token stands for the path's first recorded write:
+ * later edits to the same file never satisfy it, so a file created out of
+ * order fails however many times it is touched afterwards.
  */
 function callsInOrder(rows, sequence) {
-  const ran = commands(rows);
+  const events = rows.filter((r) => r.event === 'PreToolUse');
   let at = 0;
   for (const wanted of sequence) {
-    const found = ran.findIndex((c, i) => i >= at && ranMatch(c, wanted));
+    let found;
+    if (wanted.startsWith(WRITE_TOKEN)) {
+      const path = bare(wanted.slice(WRITE_TOKEN.length));
+      found = events.findIndex((r) => isWrite(r) && bare(r.detail).includes(path));
+      if (found !== -1 && found < at) {
+        const prefix = sequence.slice(0, sequence.indexOf(wanted));
+        return {
+          ok: false,
+          detail: `"${wanted}" — the path's first write landed before ${prefix.map((s) => `"${s}"`).join(' → ')}`,
+        };
+      }
+    } else {
+      found = events.findIndex((r, i) => i >= at && r.tool === 'Bash' && ranMatch(r.detail, wanted));
+    }
     if (found === -1) {
       const seen = sequence.slice(0, sequence.indexOf(wanted));
       return {
@@ -228,6 +255,12 @@ function declarationErrors(declared) {
     }
     if (key === 'calls_in_order' && value.length < 2) {
       errors.push('calls_in_order needs at least two commands — one has no order');
+    }
+    if (key !== 'calls_in_order' && value.some((v) => v.startsWith(WRITE_TOKEN))) {
+      errors.push(`${key} cannot carry write: tokens — a write is ordered, never merely present; use calls_in_order`);
+    }
+    if (key === 'calls_in_order' && value.some((v) => v.startsWith(WRITE_TOKEN) && !v.slice(WRITE_TOKEN.length).trim())) {
+      errors.push('a write: token needs a path');
     }
   }
   return errors;
