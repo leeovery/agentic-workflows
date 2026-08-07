@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.47] - 2026-08-07
+
+🐛 Fixed
+
+- A killed final review no longer masks later discussion or research changes — movement checks now anchor on the last review that actually completed, not a review closed without ever running.
+
 ## [0.6.46] - 2026-08-06
 
 🔧 Changed
