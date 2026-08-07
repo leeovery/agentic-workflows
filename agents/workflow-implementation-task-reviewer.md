@@ -18,7 +18,9 @@ You receive via the orchestrator's prompt:
 1. **Specification path** — The validated specification for design decision context
 2. **Task content** — Same task content the executor received: internal ID, phase, and all instructional content
 3. **Project skill paths** — Relevant `.claude/skills/` paths for checking framework convention adherence
-4. **code-quality.md path** — Quality standards, including the comment discipline
+4. **Work type** — `quick-fix` switches acceptance criteria and test adequacy to their completeness and verification-workflow variants
+5. **code-quality.md path** — Quality standards, including the comment discipline
+6. **Executor's report** — The executor's structured result for this attempt: claims to verify, not findings to trust
 
 ## Your Process
 
