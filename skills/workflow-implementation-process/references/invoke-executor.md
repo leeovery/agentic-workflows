@@ -45,7 +45,7 @@ A fresh dispatch starts with no memory — this payload is everything the execut
 
 → Proceed to **Expected Result**.
 
-#### If an executor already ran for the current task (fix round or retry)
+#### If an executor already ran for the current task (fix round, retry, or gate comment)
 
 Continue that same executor — it already holds the task, the codebase context it explored, and the code it wrote. Send only the round's new material:
 
@@ -53,7 +53,7 @@ Continue that same executor — it already holds the task, the codebase context 
 - **Task-gate comment (from G)**: the user's feedback
 - **Retry (from C)**: the user's comments
 
-If the task's executor is no longer available — a context refresh or session restart since its dispatch — dispatch a fresh executor with items 1–6 above plus the round's material as items 7 (**User-approved review notes**: verbatim or as modified by the user) and 8 (**Specific issues to address**: the ISSUES from the review); the full payload restores everything the continued executor would have held.
+If the task's executor is no longer available — a context refresh or session restart since its dispatch — dispatch a fresh executor with items 1–6 above plus the round's material as items 7 (**User-approved review notes**: verbatim or as modified by the user) and 8 (**Specific issues to address**: the ISSUES from the review); the full payload restores everything the continued executor would have held. When the conversation no longer holds the round's material, read it from the latest `## Attempt {N}` section of the task's fix tracking file (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`).
 
 → Proceed to **Expected Result**.
 
