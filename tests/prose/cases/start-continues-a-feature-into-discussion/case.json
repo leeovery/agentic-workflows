@@ -32,7 +32,7 @@
       "workflow-continue-feature/scripts/gateway.cjs",
       "manifest get pay.discussion.pay status",
       "manifest get pay description",
-      "pay.research.*",
+      "manifest get pay.research.pay status",
       "topic start pay discussion pay",
       "discussion-map add pay pay",
       "discussion(pay): initialize pay discussion"

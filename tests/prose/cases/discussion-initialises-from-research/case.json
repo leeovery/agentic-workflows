@@ -1,0 +1,50 @@
+{
+  "origin": "the epic research→discussion edge silently dropped completed research (idea 36) — the discussion process must fetch the topic's research itself at initialisation, never depend on the entry relaying it",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/template.md"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.relevance-measurement status",
+      "manifest get search-relevance.discovery.relevance-measurement source",
+      "manifest get search-relevance.discovery.relevance-measurement brief_path",
+      "manifest set search-relevance.discovery.relevance-measurement brief_incorporated true",
+      "manifest get search-relevance.research.relevance-measurement status",
+      "topic start search-relevance discussion relevance-measurement",
+      "discussion-map add search-relevance relevance-measurement",
+      "discussion(search-relevance): initialize relevance-measurement discussion"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.relevance-measurement status",
+      "manifest get search-relevance.discovery.relevance-measurement source",
+      "manifest get search-relevance.discovery.relevance-measurement brief_path",
+      "manifest set search-relevance.discovery.relevance-measurement brief_incorporated true",
+      "manifest get search-relevance.research.relevance-measurement status",
+      "topic start search-relevance discussion relevance-measurement",
+      "discussion-map add search-relevance relevance-measurement",
+      "discussion(search-relevance): initialize relevance-measurement discussion"
+    ],
+    "calls_exclude": [
+      "discovery-map add",
+      "topic complete",
+      "topic reopen",
+      "knowledge.cjs query",
+      "knowledge.cjs index",
+      "workunit create"
+    ]
+  }
+}

@@ -3,9 +3,9 @@ The prose should have taken this path:
 1. resolves the topic to the work unit, investigation being bugfix work
 2. reads the investigation status, finds nothing, sets the source to new
    and skips phase validation entirely
-3. finds a discovery session log, so seeds the bug context from the
-   manifest description and that log — the context-gathering questions
-   are not asked
+3. finds a discovery session log, so the context-gathering questions
+   are not asked — the carrier is the processing skill's to read at
+   initialisation, not gathered here
 4. renders the phase note for the investigation phase through the engine,
    with the verb Starting — the wording is the engine's, not the skill's
 5. hands off to the investigation processing skill for crash-fix

@@ -4,6 +4,18 @@
 
 ---
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Gather Context`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Collecting initial context to seed the research session.
+```
+
 ## A. Seed Idea
 
 Ask each question below **one at a time**. After each, stop and wait for the user's response before proceeding.

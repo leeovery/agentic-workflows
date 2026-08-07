@@ -83,7 +83,7 @@ Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `
 
 #### If a discovery session log exists for this work unit
 
-The bug was shaped in discovery. Read the durable carrier as the seed — the manifest `description` and the latest discovery session log (`.workflows/{work_unit}/discovery/sessions/session-NNN.md`, highest-numbered) — and seed the investigation from it. Do not re-ask; live conversation context, when present, supplements the carrier.
+The bug was shaped in discovery — the durable carrier (manifest `description` + session log) is read by the processing skill at initialisation. Nothing to gather.
 
 Render and emit the section verbatim:
 
