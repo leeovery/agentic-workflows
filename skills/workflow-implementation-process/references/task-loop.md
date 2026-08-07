@@ -22,6 +22,8 @@ H. Update progress + phase check + commit
 
 **Engine gate sections**: the loop's state-derived gates render via `engine render` calls — each stage below fetches its own gate at the moment it displays it and emits what returns, so the section always sits in the tool result directly above its emission. DISPLAY sections are emitted verbatim as a code block, MENU sections verbatim as markdown (not a code block). A section is everything beneath its `===` marker up to the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
 
+**Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round or retry. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
+
 → Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written — the register and depth for the review and task-result summaries in **E** and **G**. Findings cache files and records stay fully technical.
 
 Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** consumes it from session context rather than re-reading it per invocation:

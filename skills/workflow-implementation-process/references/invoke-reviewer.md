@@ -10,6 +10,8 @@ This step invokes the `workflow-implementation-task-reviewer` agent (`../../../a
 
 ## Invoke the Agent
 
+Every review dispatches a **fresh** `workflow-implementation-task-reviewer` agent — including the re-review after a fix round. Never continue a previous reviewer: the review is independent verification, and a continued reviewer checks the fix against its own prior findings instead of reading the result fresh. The numbered payload is the reviewer's complete input — prior review findings and fix history stay out; they would anchor the fresh read.
+
 Invoke `workflow-implementation-task-reviewer` with:
 
 1. **Specification path**: same path given to the executor

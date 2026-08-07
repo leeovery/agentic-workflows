@@ -28,7 +28,11 @@ Use **tdd-workflow.md** (`.claude/skills/workflow-implementation-process/referen
 
 ## Invoke the Agent
 
-**Every invocation** — initial or re-attempt — includes these file paths:
+#### If this is the current task's first executor dispatch
+
+Dispatch a **fresh** `workflow-implementation-task-executor` agent. Never continue an executor from an earlier task — the task content below is this task's complete framing, and an executor still carrying the previous task's context erodes that boundary.
+
+The dispatch includes these file paths:
 
 1. **Workflow reference**: the file determined above
 2. **code-quality.md**: `.claude/skills/workflow-implementation-process/references/code-quality.md`
@@ -37,11 +41,21 @@ Use **tdd-workflow.md** (`.claude/skills/workflow-implementation-process/referen
 5. **Task content**: normalised task content (see [task-normalisation.md](task-normalisation.md))
 6. **Linter commands**: from session context — the `linters` configured in Step 4 (Linter Discovery), if any
 
-**Re-attempts after review feedback** additionally include:
-7. **User-approved review notes**: verbatim or as modified by the user
-8. **Specific issues to address**: the ISSUES from the review
+A fresh dispatch starts with no memory — this payload is everything the executor sees.
 
-The executor is stateless — each invocation starts fresh with no memory of previous attempts. Always pass the full task content so the executor can see what was asked, what was done, and what needs fixing.
+→ Proceed to **Expected Result**.
+
+#### If an executor already ran for the current task (fix round or retry)
+
+Continue that same executor — it already holds the task, the codebase context it explored, and the code it wrote. Send only the round's new material:
+
+- **Fix round (from E or F)**: the review notes as approved — verbatim, or as the user modified them — and the ISSUES to address; on F `comment`, the user's commentary as well
+- **Task-gate comment (from G)**: the user's feedback
+- **Retry (from C)**: the user's comments
+
+If the task's executor is no longer available — a context refresh or session restart since its dispatch — dispatch a fresh executor with items 1–6 above plus the round's material as items 7 (**User-approved review notes**: verbatim or as modified by the user) and 8 (**Specific issues to address**: the ISSUES from the review); the full payload restores everything the continued executor would have held.
+
+→ Proceed to **Expected Result**.
 
 ---
 
