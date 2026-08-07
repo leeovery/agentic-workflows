@@ -1,7 +1,7 @@
 The prose should have taken this path:
 
-1. the entry finds no scoping recorded, reads the carrier — the
-   description and the session log's exploration — and hands off with it;
+1. the entry finds no scoping recorded and hands off with session
+   identity only — the carrier is the processing skill's to read;
    the entry itself creates and asks nothing
 2. no specification exists, so the pass starts fresh with no resume
    choice put to the user

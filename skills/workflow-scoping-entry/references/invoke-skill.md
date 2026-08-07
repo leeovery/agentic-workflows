@@ -4,28 +4,11 @@
 
 ---
 
-This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill.
-
----
-
-## Handoff
-
-Read the durable carrier discovery left, to seed the scoping session. It has two halves — read **both**:
-
-1. The manifest `description`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
-```
-
-2. The latest discovery session log when one exists (`.workflows/{work_unit}/discovery/sessions/session-NNN.md`, highest-numbered) — read its **Exploration** so discovery's shaped context is in hand for scoping-process. A logless quick-fix (e.g. one created before phase-17) has none; scoping-process then gathers from scratch.
-
-Construct the handoff:
+This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill. The handoff carries session identity only — the durable carrier (manifest `description` + session log) is read by the processing skill, never added to the handoff.
 
 Invoke the **workflow-scoping-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
 ```
 Scoping session for: {topic}
 Work unit: {work_unit}
-Description: {description}
 ```
