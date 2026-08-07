@@ -62,7 +62,7 @@ Take the highest-numbered `review` row from the **A** scan and branch on its sta
 
 #### If it is `incorporated`
 
-The prior review was fully drained. A fresh one is warranted only when the discussion moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close.
+The prior review was fully drained. A fresh one is warranted only when the discussion moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. The movement check anchors on the last **real** review: the highest-numbered `review` row whose report exists on disk (`.workflows/.cache/{work_unit}/discussion/{topic}/{id}.md`, non-empty) — an `incorporated` row with no report is a killed dispatch closed as bookkeeping, never a review.
 
 **If the user declined another final review at this conclusion attempt's closing gate:**
 
@@ -70,9 +70,13 @@ The decline stands — do not re-litigate it. A later conclusion attempt classif
 
 → Return to caller.
 
-**If no decline was given:**
+**If no review row has a report** (every review was killed — none ever completed):
 
-List what landed after that review's dispatch — `{created}` is the row's `created` timestamp, on every scan row; git does the time comparison — then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) or a `(deferral)` marker — engagement writes and the conclusion's own deferral write are not new work:
+→ Proceed to **C. Dispatch Final Review**.
+
+**If a report exists and no decline was given:**
+
+List what landed after the anchor row's dispatch — `{created}` is the anchor's `created` timestamp, on its scan row; git does the time comparison — then drop commits whose subject carries a `review-` or `synthesis-` drain marker (e.g. `(review-003 F2)`) or a `(deferral)` marker — engagement writes and the conclusion's own deferral write are not new work:
 
 ```bash
 git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/discussion/{topic}.md

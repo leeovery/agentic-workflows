@@ -1,0 +1,70 @@
+{
+  "origin": "the killed-dispatch anchor gap — a review dispatched at a dying close attempt and closed as bookkeeping occupied the only slot, and the classifier took its incorporated status as proof a review had run: a skip-happy user could then conclude with no review ever reading the document; this walk pins the reclassification — a row with no report is not a review, so the close still owes the mandatory pass",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user settled how card payments at checkout should work in earlier sessions and is returning only to close the discussion out. Everything they cared about is decided and documented — capture confirmed by gateway webhooks, hosted fields keeping card data off their servers, a pinned retry policy — and they add nothing new: picking the session back up they confirm in a sentence that nothing has changed for them, say that covers it, and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: another final review is skipped when offered, offers of new threads are declined. They never introduce new material.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "knowledge.cjs query",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "agent scan pay discussion pay",
+      "agent dispatch pay discussion pay --kind review",
+      "--clean",
+      "topic complete pay discussion pay"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "agent scan pay discussion pay",
+      "agent dispatch pay discussion pay --kind review",
+      "topic complete pay discussion pay"
+    ],
+    "calls_exclude": [
+      "--kind perspective",
+      "topic reopen",
+      "knowledge.cjs index"
+    ]
+  }
+}

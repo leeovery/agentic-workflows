@@ -56,7 +56,15 @@ Take the highest-numbered `review` row from the **A** scan and branch on its sta
 
 #### If it is `incorporated`
 
-The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. List what landed after that review's dispatch — `{created}` is the row's `created` timestamp, on every scan row; git does the time comparison — then drop commits whose subject carries a `review-` drain marker (e.g. `(review-003 F2)`) — engagement writes are not new work. Commits carrying a `deep-dive-` prefixed id are kept: they fold agent-researched substance the review never saw:
+The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. The movement check anchors on the last **real** review: the highest-numbered `review` row whose report exists on disk (`.workflows/.cache/{work_unit}/research/{topic}/{id}.md`, non-empty) — an `incorporated` row with no report is a killed dispatch closed as bookkeeping, never a review.
+
+**If no review row has a report** (every review was killed — none ever completed):
+
+→ Proceed to **C. Dispatch Final Review**.
+
+**If a report exists:**
+
+List what landed after the anchor row's dispatch — `{created}` is the anchor's `created` timestamp, on its scan row; git does the time comparison — then drop commits whose subject carries a `review-` drain marker (e.g. `(review-003 F2)`) — engagement writes are not new work. Commits carrying a `deep-dive-` prefixed id are kept: they fold agent-researched substance the review never saw:
 
 ```bash
 git log --since='{created}' --format='%h %s' -- .workflows/{work_unit}/research/{topic}.md
