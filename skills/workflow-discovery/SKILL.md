@@ -214,18 +214,6 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 
 ## Step 11: Document Review
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Document Review`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reconciling the session log against the conversation before saving — catching anything that drifted, so what's recorded matches what we discussed.
-```
-
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 12**.

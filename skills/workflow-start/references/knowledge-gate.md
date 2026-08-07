@@ -240,7 +240,7 @@ Knowledge base ready — @if(provider) {provider} · {model} @else keyword-only 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-# **`■ Knowledge Base Setup`**
+**`▪ Knowledge Base Setup`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

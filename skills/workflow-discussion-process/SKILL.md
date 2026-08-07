@@ -158,18 +158,6 @@ Load **[final-review.md](references/final-review.md)** and follow its instructio
 
 ## Step 7: Document Review
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Document Review`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reconciling the session conversation against the discussion file to catch substance that was discussed but never captured.
-```
-
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 8**.

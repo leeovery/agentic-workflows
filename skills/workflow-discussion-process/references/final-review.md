@@ -143,7 +143,7 @@ Findings from the current review are still being drained.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-**`▪ Dispatch Final Review`**
+**`□ Dispatch Final Review`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

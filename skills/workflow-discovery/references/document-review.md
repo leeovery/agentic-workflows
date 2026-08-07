@@ -4,18 +4,6 @@
 
 ---
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`▪ Document Review`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reconciling the session log against the conversation before persisting. The audit covers the durable record — Exploration narrative, Edits structured entries, and the synthesised topic set held in conversation memory.
-```
-
 ## A. Check for an Active Log
 
 The session log is created lazily — if no Exploration write, edit, or topic synthesis produced content, no file exists and there is nothing to reconcile.
@@ -35,6 +23,18 @@ Document review — no log file (browse only). Nothing to reconcile.
 → Return to caller.
 
 #### Otherwise
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Document Review`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Reconciling the session log against the conversation before persisting. The audit covers the durable record — Exploration narrative, Edits structured entries, and the synthesised topic set held in conversation memory.
+```
 
 → Proceed to **B. Re-Read the Session Log**.
 
