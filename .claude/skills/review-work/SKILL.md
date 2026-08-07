@@ -174,9 +174,6 @@ the water is empty.
 
 ## Rules
 
-- **Never review from a worktree-isolated session** — exit any worktree
-  first, so the gates and the prose-test selection run against the real
-  checkout.
 - **Finders never fix.** They are read-only by definition; every edit is
   made by you, after verification, in Step 5.
 - **Never widen the work.** A review pass fixes what it finds and stops.
