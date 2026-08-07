@@ -600,7 +600,7 @@ function checkInertLoadChrome(files) {
       }
       let markerLine = -1;
       for (let j = start; j < end; j++) {
-        if (inFence[j] && /^── .+ ─+$/.test(lines[j])) markerLine = j;
+        if (inFence[j] && /^\*\*`[□▪] .+`\*\*$/.test(lines[j])) markerLine = j;
       }
       if (markerLine === -1) continue;
       const substance = [];
@@ -1146,9 +1146,9 @@ test('check 11 (load footers) — catches bare proceed after a load, permits gat
 
 test('check 12 (inert load chrome) — catches unearned markers, skips interactive/structured shapes', () => {
   withTemp((dir) => {
-    const marker = ('── Load Things ').padEnd(49, '─');
+    const marker = '**`□ Load Things`**';
     const step = (body) =>
-      '## Step 1: Load Things\n\n> *Output the next fenced block as a code block:*\n\n```\n' +
+      '## Step 1: Load Things\n\n> *Output the next fenced block as markdown (not a code block):*\n\n```\n' +
       marker +
       '\n```\n\n> *Output the next fenced block as markdown (not a code block):*\n\n```\n> Loading things.\n```\n\n' +
       body +
