@@ -205,6 +205,78 @@ describe('calls_in_order — presence is not sequence', () => {
     assert.equal(invariants.check(rows, { calls_in_order: ['a', 'b'] })[0].ok, true);
   });
 
+  it('orders a write: token against the calls around it', () => {
+    const rows = [
+      bash(`${ENGINE} topic start pay discussion pay`),
+      wrote('./.workflows/pay/discussion/pay.md'),
+      bash(`${ENGINE} commit pay -m "discussion(pay): initialize pay discussion"`),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: [
+        'topic start pay discussion pay',
+        'write:.workflows/pay/discussion/pay.md',
+        'discussion(pay): initialize pay discussion',
+      ],
+    });
+    assert.equal(result.ok, true);
+  });
+
+  it('fails when the artifact was written before the registration it must follow', () => {
+    const rows = [
+      wrote('./.workflows/pay/discussion/pay.md'),
+      bash(`${ENGINE} topic start pay discussion pay`),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['topic start pay discussion pay', 'write:.workflows/pay/discussion/pay.md'],
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /first write landed before "topic start pay discussion pay"/);
+  });
+
+  it('never lets a later edit rescue a file created out of order — first write decides', () => {
+    const rows = [
+      wrote('./.workflows/pay/discussion/pay.md'),
+      bash(`${ENGINE} topic start pay discussion pay`),
+      wrote('./.workflows/pay/discussion/pay.md'),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['topic start pay discussion pay', 'write:.workflows/pay/discussion/pay.md'],
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /first write landed before/);
+  });
+
+  it('fails when the declared write never happened at all', () => {
+    const rows = [bash(`${ENGINE} topic start pay discussion pay`)];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['topic start pay discussion pay', 'write:.workflows/pay/discussion/pay.md'],
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.detail, /never ran after/);
+  });
+
+  it('matches a write: token against a shell write, not only the write tools', () => {
+    const rows = [
+      bash(`${ENGINE} topic start pay discussion pay`),
+      bash('cat template.md > ./.workflows/pay/discussion/pay.md'),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['topic start pay discussion pay', 'write:.workflows/pay/discussion/pay.md'],
+    });
+    assert.equal(result.ok, true);
+  });
+
+  it('never lets a Bash call that merely names the path satisfy a write: token', () => {
+    const rows = [
+      bash(`${ENGINE} topic start pay discussion pay`),
+      bash('git add .workflows/pay/discussion/pay.md'),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['topic start pay discussion pay', 'write:.workflows/pay/discussion/pay.md'],
+    });
+    assert.equal(result.ok, false);
+  });
+
   it('fails when a declared call never ran at all', () => {
     const rows = [bash(`${ENGINE} a`)];
     const [result] = invariants.check(rows, { calls_in_order: ['a', 'b'] });
@@ -279,6 +351,22 @@ describe('declaration validation', () => {
 
   it('rejects a declaration that is not an object', () => {
     assert.match(invariants.declarationErrors(['engine_before_write'])[0], /must be an object/);
+  });
+
+  it('rejects write: tokens outside calls_in_order, where they could only mislead', () => {
+    assert.match(
+      invariants.declarationErrors({ calls_include: ['write:.workflows/pay/discussion/pay.md'] })[0],
+      /cannot carry write: tokens/,
+    );
+    assert.match(
+      invariants.declarationErrors({ calls_exclude: ['write:.workflows/pay/discussion/pay.md'] })[0],
+      /cannot carry write: tokens/,
+    );
+  });
+
+  it('rejects a write: token with no path', () => {
+    const errors = invariants.declarationErrors({ calls_in_order: ['topic start', 'write:'] });
+    assert.match(errors[0], /write: token needs a path/);
   });
 });
 

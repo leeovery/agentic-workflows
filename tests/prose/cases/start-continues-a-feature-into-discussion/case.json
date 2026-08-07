@@ -43,6 +43,7 @@
       "workflow-continue-feature/scripts/gateway.cjs",
       "manifest get pay.discussion.pay status",
       "topic start pay discussion pay",
+      "write:.workflows/pay/discussion/pay.md",
       "discussion-map add pay pay",
       "discussion(pay): initialize pay discussion"
     ],

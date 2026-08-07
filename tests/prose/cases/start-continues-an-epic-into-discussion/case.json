@@ -53,6 +53,7 @@
       "manifest get search-relevance.discovery.behavioural-ranking brief_path",
       "manifest get search-relevance.research.behavioural-ranking status",
       "topic start search-relevance discussion behavioural-ranking",
+      "write:.workflows/search-relevance/discussion/behavioural-ranking.md",
       "discussion-map add search-relevance behavioural-ranking",
       "discussion(search-relevance): initialize behavioural-ranking discussion"
     ],

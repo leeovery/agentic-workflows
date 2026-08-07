@@ -50,6 +50,7 @@
     "calls_in_order": [
       "manifest get pay.discussion.pay status",
       "topic start pay discussion pay",
+      "write:.workflows/pay/discussion/pay.md",
       "discussion(pay): initialize pay discussion",
       "knowledge.cjs query",
       "agent dispatch pay discussion pay --kind review",
