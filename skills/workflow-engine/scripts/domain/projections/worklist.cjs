@@ -21,16 +21,17 @@
 
 const { wrap } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
+const { WORKLIST_GLYPH } = require('../conventions.cjs');
 
 const NBSP = '\u00a0';
 
-// Walk-state vocabulary — the item-state glyph family (never chrome squares).
-const WORKLIST_GLYPH = { pending: '○', approved: '✓', skipped: '⊘' };
 const DECIDED = new Set(['approved', 'skipped']);
 
+// `<`/`>` join the set for the markdown renderers that pass raw HTML
+// through — an unescaped `<!-- -->` in a note would vanish entirely.
 /** Backslash-escape markdown-active characters in plain prose. @param {string} text */
 function escapeMarkdown(text) {
-  return String(text).replace(/[\\`*_~[\]]/g, (c) => `\\${c}`);
+  return String(text).replace(/[\\`*_~[\]<>]/g, (c) => `\\${c}`);
 }
 
 /**
@@ -54,12 +55,20 @@ function wrapEscaped(text, budget) {
  * @returns {string}
  */
 function worklist({ heading, intro, items, walked = false, walkLine = false }) {
+  if (!heading === !intro) {
+    throw new Error('worklist: exactly one of "heading"/"intro" must open the list');
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('worklist: "items" must be a non-empty array');
+  }
   const width = displayWidth();
   const lines = [];
 
+  // States are validated wherever they appear — a wrong value on an
+  // unwalked list is a caller bug, not a value to count silently.
   const states = items.map((it) => {
     const state = it.state || 'pending';
-    if (walked && !(state in WORKLIST_GLYPH)) {
+    if (!(state in WORKLIST_GLYPH)) {
       throw new Error(`worklist: unknown state "${state}" (expected ${Object.keys(WORKLIST_GLYPH).join('/')})`);
     }
     return state;
@@ -68,8 +77,9 @@ function worklist({ heading, intro, items, walked = false, walkLine = false }) {
   if (heading) {
     const n = items.length;
     let head = `**${escapeMarkdown(heading.label)}** — ${n} ${heading.noun}${n === 1 ? '' : 's'}`;
+    // Only a walked list owns walk-state; an unwalked heading never counts.
     const remaining = states.filter((s) => !DECIDED.has(s)).length;
-    if (remaining < n) head += ` · ${remaining} remaining`;
+    if (walked && remaining < n) head += ` · ${remaining} remaining`;
     lines.push(head, '');
   } else {
     lines.push(intro || '', '');
@@ -79,19 +89,33 @@ function worklist({ heading, intro, items, walked = false, walkLine = false }) {
   items.forEach((it, i) => {
     const state = states[i];
     const struck = walked && DECIDED.has(state);
-    const num = String(i + 1).padStart(numWidth);
+    // Number padding leads an unglyphed row, so it must be NBSP — a real
+    // leading space is stripped by a markdown renderer and the column dies.
+    const num = String(i + 1).padStart(numWidth, walked ? ' ' : NBSP);
     // `1\.` — the escaped dot keeps an unglyphed row from parsing as a
     // markdown ordered-list item; the backslash renders at zero width.
     const head = walked ? `${WORKLIST_GLYPH[state]} ${num}. ` : `${num}\\. `;
     const headWidth = walked ? 2 + numWidth + 2 : numWidth + 2;
+    const budget = width - headWidth;
 
-    const segs = wrapEscaped(it.title, width - headWidth).map((s) => (struck ? `~~${s}~~` : s));
+    // Wrap raw, then escape — budgets count rendered columns, and escapes
+    // render at zero width. The tag joins the last segment only when its
+    // rendered width (brackets and a space; backticks are zero) still fits
+    // the budget; otherwise it takes its own line at the title column.
+    const rawSegs = wrap(it.title, budget);
+    const segs = rawSegs.map(escapeMarkdown).map((s) => (struck ? `~~${s}~~` : s));
+    let tagLine = null;
     if (it.tag) {
       if (it.tag.includes('`')) throw new Error('worklist: a tag must not contain backticks');
-      segs[segs.length - 1] += ` \`[${it.tag}]\``;
+      if (rawSegs[rawSegs.length - 1].length + it.tag.length + 3 <= budget) {
+        segs[segs.length - 1] += ` \`[${it.tag}]\``;
+      } else {
+        tagLine = NBSP.repeat(headWidth) + `\`[${it.tag}]\``;
+      }
     }
     lines.push(head + segs[0]);
     for (const seg of segs.slice(1)) lines.push(NBSP.repeat(headWidth) + seg);
+    if (tagLine) lines.push(tagLine);
 
     // A decided row sheds its note — the list collapses toward what's left.
     if (it.note && !struck) {
@@ -106,4 +130,4 @@ function worklist({ heading, intro, items, walked = false, walkLine = false }) {
   return lines.join('\n');
 }
 
-module.exports = { worklist, escapeMarkdown, WORKLIST_GLYPH };
+module.exports = { worklist };

@@ -73,6 +73,9 @@ cache paths. Genuine this-turn judgment payloads are rare.
 5. **Output shape**: the existing demarcated-section contract —
    `=== DISPLAY ===` emitted verbatim as a code block, `=== MENU ===` verbatim
    as markdown. No new emission rules for skills to learn.
+   (Superseded in part by the worklist family and the proposed-task/finding
+   presentations — a DISPLAY marker may now name markdown as its form; the
+   marker's instruction is authoritative.)
 6. **One builder.** Every surface renders through shared primitives in
    `domain/projections` (menu, dot frame, callout, key, boxed frame). Boxed
    frames compute borders from content width — fixing the findings-frame

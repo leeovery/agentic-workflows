@@ -33,8 +33,11 @@ Read the tracking file at the path returned by the agent (`TRACKING_FILE`).
 Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json` with the Write tool — one item per finding from the tracking file:
 
 ```json
-{"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "{type or severity}", "summary": "{change_type} — {1-2 line summary from the Details field}"}]}
+{"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "…", "summary": "{1-2 line summary from the Details field}", "status": "…"}]}
 ```
+
+- `tag` — one short term: the Severity for an integrity finding; for a traceability finding, the Type's token — `missing` (Missing from plan), `hallucinated` (Hallucinated content), `incomplete` (Incomplete coverage). The tracking file keeps the full phrase.
+- `status` — the finding's Resolution: `Fixed` → `approved`, `Skipped` → `skipped`, unset → `pending`.
 
 Render and emit the section verbatim:
 

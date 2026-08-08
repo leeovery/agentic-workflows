@@ -5,6 +5,9 @@
 // menu, callout, and content frame flows through. The skill-visible formatting
 // rules (CONVENTIONS.md: menu frames, option syntax, callout flags) exist in
 // code exactly once, here; restyling a surface class is a one-place change.
+// The one sibling: the worklist shape (CONVENTIONS.md: Worklists) lives in
+// worklist.cjs — markdown-emitted, so none of the fenced primitives here
+// serve it.
 // Artefact content is framed by its emission fence, never by drawn borders
 // (D8) — fences re-flow with the terminal; fixed-width borders cannot.
 // ---------------------------------------------------------------------------
