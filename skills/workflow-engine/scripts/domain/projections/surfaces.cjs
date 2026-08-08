@@ -59,6 +59,15 @@ function section(name, instruction, body) {
   return `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
 }
 
+// The instruction for a DISPLAY that is the whole response and does not
+// gate: emitting it leaves the turn open. A section whose response also
+// carries a MENU needs none of this — the menu's own instruction ends the
+// turn — so this belongs only where the display stands alone. It names no
+// next step: where the flow goes next is the prose's to own, and an engine
+// string that duplicated it would be a second routing source to keep in
+// sync.
+const CONTINUE_INSTRUCTION = 'emit verbatim as a code block, then proceed without a gate';
+
 /**
  * The menu frame: an opening dot rule above the content. One-sided by
  * design — output stops while the user chooses, so their own input closes
@@ -219,4 +228,4 @@ function numberedTreeList(items, { indent = '  ', width = displayWidth() } = {})
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList, numberedTreeList };
+module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList, numberedTreeList };

@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { titlecase } = require('../conventions.cjs');
-const { section, callout, menu, cmdOption } = require('./surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, callout, menu, cmdOption } = require('./surfaces.cjs');
 
 /**
  * The ⚑ advisory block: label line and reassurance tail. The instruction
@@ -79,7 +79,7 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
     ]);
   }
   return warn
-    ? warningBlock('Knowledge indexing warning', 'The pivot is complete. Indexing can be retried later.', 'emit verbatim as a code block')
+    ? warningBlock('Knowledge indexing warning', 'The pivot is complete. Indexing can be retried later.', CONTINUE_INSTRUCTION)
     : '';
 }
 
@@ -96,7 +96,7 @@ function topicReceipt(verb, topic, phase, status, { warn = false } = {}) {
   const name = titlecase(topic);
   if (verb === 'complete') {
     return warn
-      ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.', 'emit verbatim as a code block')
+      ? warningBlock('Knowledge indexing warning', 'The artifact is saved. Indexing can be retried later.', CONTINUE_INSTRUCTION)
       : '';
   }
   if (verb === 'cancel') {
@@ -187,7 +187,7 @@ function pivotContinuationMenu(workUnit) {
  */
 function sessionReceipt({ warn = false } = {}) {
   return warn
-    ? warningBlock('Knowledge indexing warning', 'The session is closed. Indexing can be retried later.', 'emit verbatim as a code block')
+    ? warningBlock('Knowledge indexing warning', 'The session is closed. Indexing can be retried later.', CONTINUE_INSTRUCTION)
     : '';
 }
 

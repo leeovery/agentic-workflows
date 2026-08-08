@@ -820,7 +820,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['fix-threshold', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: fix threshold (emit verbatim as a code block) ===',
+        '=== DISPLAY: fix threshold (emit verbatim as a code block, then proceed without a gate) ===',
         '⚑ Fix attempt 3 for task auth-flow-1-1 — escalation threshold reached.',
         '',
       ].join('\n'));
@@ -843,7 +843,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['cycle-limit', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: cycle limit (emit verbatim as a code block) ===',
+        '=== DISPLAY: cycle limit (emit verbatim as a code block, then proceed without a gate) ===',
         '⚑ Analysis cycle 4 this session — over the session limit of 3.',
         '',
       ].join('\n'));

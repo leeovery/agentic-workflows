@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, menu, cmdOption, promptOption, callout, subDetail, treeList, numberedTreeList } = require('./projections/surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList, numberedTreeList } = require('./projections/surfaces.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
@@ -369,7 +369,13 @@ function tasksOverview(cwd, { dotpath, file }) {
     }
     lines.push(`${i + 1}. ${t.title} (${t.severity})`);
   });
-  return section('DISPLAY: tasks overview', 'emit verbatim as a code block', lines.join('\n'));
+  // The walk statement its twin also carries — the overview's own answer to
+  // "what happens now", so the flow never has to compose one. Numberless
+  // where the twin names #1: this surface has a resume path (a mid-approval
+  // cycle re-renders the whole set with some rows already decided), and the
+  // next pending task is not always the first.
+  lines.push('', "Let's work through these one at a time.");
+  return section('DISPLAY: tasks overview', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -518,7 +524,7 @@ function findingsSummary(cwd, { dotpath, file }) {
     if (i < p.items.length - 1) lines.push('');
   });
   lines.push('', "Let's work through these one at a time, starting with #1.");
-  return section('DISPLAY: findings summary', 'emit verbatim as a code block', lines.join('\n'));
+  return section('DISPLAY: findings summary', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
 
 // reroute-offer — the off-topic reroute's consent gate. The concern and,
@@ -816,7 +822,7 @@ function triageAnnounce(cwd, { dotpath }) {
   const line = files.length === 1
     ? "1 rerouted concern from another topic waits in this topic's triage queue — I'll raise it once the session finds its footing."
     : `${files.length} rerouted concerns from other topics wait in this topic's triage queue — I'll raise them once the session finds its footing.`;
-  return section('DISPLAY: triage announce', 'emit verbatim as a code block', callout(line));
+  return section('DISPLAY: triage announce', CONTINUE_INSTRUCTION, callout(line));
 }
 
 // triage-block — the conclusion blocker over a non-empty queue. Count comes
@@ -890,7 +896,7 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
     : '';
   return section(
     'DISPLAY: phase completed',
-    'emit verbatim as a code block',
+    CONTINUE_INSTRUCTION,
     `${titlecase(phase)} completed for "${titlecase(workUnit)}".${artefacts}`,
   );
 }
@@ -977,7 +983,7 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
   if (!isFilled(verb)) throw new Error('render phase-note: --verb is required (e.g. Resuming, Reopening, Starting)');
   return section(
     'DISPLAY: phase note',
-    'emit verbatim as a code block',
+    CONTINUE_INSTRUCTION,
     `${verb} ${isFilled(noun) ? noun : phase}: ${titlecase(topic)}`,
   );
 }
