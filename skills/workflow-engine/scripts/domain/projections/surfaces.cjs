@@ -68,8 +68,10 @@ function section(name, instruction, body) {
 // for a real gate the user's a/auto choice bypasses, and says exactly
 // that. Neither names a next step: where the flow goes is the prose's to
 // own, and an engine string that duplicated it would be a second routing
-// source to keep in sync.
+// source to keep in sync. The markdown variant serves worklist surfaces,
+// whose register (strikethrough, code-span tags) cannot live in a fence.
 const CONTINUE_INSTRUCTION = 'emit verbatim as a code block — do not stop; continue as the workflow instructs';
+const CONTINUE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — do not stop; continue as the workflow instructs';
 const AUTO_GATE_INSTRUCTION = 'emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs';
 
 /**
@@ -204,32 +206,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-/**
- * Numbered tree list (`├─ N. text`): selection rows whose text is a sentence
- * rather than a name, so it wraps — under itself, past the number, never back
- * under the glyph. `note` renders as a `↳` line beneath the row, the demoted
- * register a fence can carry (markdown emphasis renders literally inside one,
- * so provenance and status take `↳` here and italics only in menus).
- * @param {{text: string, note?: string}[]} items
- * @param {{indent?: string, width?: number}} [opts]
- * @returns {string}
- */
-function numberedTreeList(items, { indent = '  ', width = displayWidth() } = {}) {
-  const out = [];
-  items.forEach((item, i) => {
-    const isLast = i === items.length - 1;
-    const head = `${indent}${isLast ? '└─' : '├─'} ${i + 1}. `;
-    // The gutter sits at the indent column; the rest pads out to the text
-    // column, so a wrapped sentence and its note both hang under the title.
-    const cont = `${indent}${isLast ? ' ' : '│'}${' '.repeat(head.length - indent.length - 1)}`;
-    const segs = wrap(item.text, width - head.length);
-    out.push(head + segs[0]);
-    for (const seg of segs.slice(1)) out.push(cont + seg);
-    if (item.note) {
-      for (const seg of wrap(`↳ ${item.note}`, width - cont.length)) out.push(cont + seg);
-    }
-  });
-  return out.join('\n');
-}
+module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList };
 
-module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList, numberedTreeList };

@@ -12,7 +12,8 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList, numberedTreeList } = require('./projections/surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { worklist } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
@@ -357,25 +358,23 @@ function tasksOverview(cwd, { dotpath, file }) {
   const p = readJsonPayload(cwd, file, 'tasks-overview');
   if (!isFilled(p.label)) throw new Error('render tasks-overview: "label" must be a non-empty string');
   if (!Array.isArray(p.tasks) || p.tasks.length === 0) {
-    throw new Error('render tasks-overview: "tasks" must be a non-empty array of {title, severity}');
+    throw new Error('render tasks-overview: "tasks" must be a non-empty array of {title, severity, status?}');
   }
-  // Its twin (findings-summary) is the canonical shape for a numbered
-  // payload list: em-dashed count header, rows at column 0 — nothing here
-  // hangs off anything, so nothing is indented.
-  const lines = [`${p.label} — ${p.tasks.length} proposed task${p.tasks.length === 1 ? '' : 's'}`, ''];
   p.tasks.forEach((t, i) => {
     if (!isFilled(t.title) || !isFilled(t.severity)) {
       throw new Error(`render tasks-overview: task ${i + 1} needs "title" and "severity"`);
     }
-    lines.push(`${i + 1}. ${t.title} (${t.severity})`);
   });
-  // The walk statement its twin also carries — the overview's own answer to
-  // "what happens now", so the flow never has to compose one. Numberless
-  // where the twin names #1: this surface has a resume path (a mid-approval
-  // cycle re-renders the whole set with some rows already decided), and the
-  // next pending task is not always the first.
-  lines.push('', "Let's work through these one at a time.");
-  return section('DISPLAY: tasks overview', CONTINUE_INSTRUCTION, lines.join('\n'));
+  // Statuses come from the cycle's staging subtree — on a mid-approval
+  // resume the decided rows render struck, so the re-render shows where the
+  // walk stands rather than presenting the whole set as fresh.
+  const body = worklist({
+    heading: { label: p.label, noun: 'proposed task' },
+    items: p.tasks.map((t) => ({ title: t.title, tag: t.severity, state: t.status })),
+    walked: true,
+    walkLine: true,
+  });
+  return section('DISPLAY: tasks overview', CONTINUE_MARKDOWN_INSTRUCTION, body);
 }
 
 // ---------------------------------------------------------------------------
@@ -514,17 +513,18 @@ function findingsSummary(cwd, { dotpath, file }) {
   if (!Array.isArray(p.items) || p.items.length === 0) {
     throw new Error('render findings-summary: "items" must be a non-empty array of {title, tag, summary}');
   }
-  const lines = [`${p.review_label} — ${p.items.length} item${p.items.length === 1 ? '' : 's'} found`, ''];
   p.items.forEach((it, i) => {
     for (const field of ['title', 'tag', 'summary']) {
       if (!isFilled(it[field])) throw new Error(`render findings-summary: item ${i + 1} is missing "${field}"`);
     }
-    lines.push(`${i + 1}. ${it.title} (${it.tag})`);
-    lines.push(subDetail(it.summary));
-    if (i < p.items.length - 1) lines.push('');
   });
-  lines.push('', "Let's work through these one at a time, starting with #1.");
-  return section('DISPLAY: findings summary', CONTINUE_INSTRUCTION, lines.join('\n'));
+  const body = worklist({
+    heading: { label: p.review_label, noun: 'finding' },
+    items: p.items.map((it) => ({ title: it.title, tag: it.tag, note: it.summary })),
+    walked: true,
+    walkLine: true,
+  });
+  return section('DISPLAY: findings summary', CONTINUE_MARKDOWN_INSTRUCTION, body);
 }
 
 // reroute-offer — the off-topic reroute's consent gate. The concern and,
@@ -605,21 +605,19 @@ function rerouteCandidates(cwd, { dotpath, file }) {
 // The lane fixes the chrome; the payload carries only judgment content, so
 // the screen is one call and the prose holds no template.
 
-/** @type {Record<string, {intro: string, confirm: (n: number) => string, ask: string, line: (it: any, i: number) => string, fields: string[]}>} */
+/** @type {Record<string, {intro: string, confirm: (n: number) => string, ask: string, fields: string[]}>} */
 const BATCH_LANES = {
   apply: {
     intro: "The fix follows from what's already decided. Nothing here is a choice.",
     confirm: (n) => `Apply all ${n}, then move on`,
     ask: "Tell me a number to expand, or one you don't think is settled",
     fields: ['title', 'detail'],
-    line: (it, i) => `${i + 1}. ${it.title}`,
   },
   route: {
     intro: "Not this topic's to answer. Each goes to its owner's triage queue as a concern, carrying the context built here.",
     confirm: (n) => `Send all ${n}`,
     ask: 'Tell me a number to expand, or one that should stay here',
-    fields: ['target', 'detail'],
-    line: (it, i) => `${i + 1}. → ${it.target}`,
+    fields: ['title', 'target', 'detail'],
   },
 };
 
@@ -639,17 +637,19 @@ function findingBatch(cwd, { dotpath, file }) {
   if (!Array.isArray(p.items) || p.items.length === 0) {
     throw new Error(`render finding-batch: "items" must be a non-empty array of {${lane.fields.join(', ')}}`);
   }
-  const lines = [lane.intro, ''];
   p.items.forEach((it, i) => {
     for (const field of lane.fields) {
       if (!isFilled(it[field])) throw new Error(`render finding-batch: item ${i + 1} is missing "${field}"`);
     }
-    lines.push(lane.line(it, i));
-    lines.push(subDetail(it.detail));
-    if (i < p.items.length - 1) lines.push('');
+  });
+  // Batch rows carry no walk-state — the lane is all-or-nothing, so no
+  // glyph column. A route row's destination rides the tag slot.
+  const body = worklist({
+    intro: lane.intro,
+    items: p.items.map((it) => ({ title: it.title, tag: it.target ? `→ ${it.target}` : undefined, note: it.detail })),
   });
   return [
-    section('DISPLAY: finding batch', 'emit verbatim as a code block', lines.join('\n')),
+    section('DISPLAY: finding batch', 'emit verbatim as markdown', body),
     section(
       'MENU: finding batch',
       "emit verbatim as markdown, then STOP for the user's response",
@@ -783,18 +783,20 @@ function triageOffer(cwd, { dotpath, file }) {
   if (byFile.size !== files.length || files.some((f) => !byFile.has(f))) {
     throw new Error(`render triage-offer: payload items must cover the queue exactly (queue: ${files.join(', ')})`);
   }
-  // Header carries the count, rows hang off it, provenance takes the `↳`
-  // line — the queue is a flat set of concerns from any number of topics, so
-  // origin belongs per row rather than folded into the header.
-  const agenda = [
-    `Triage Queue (${files.length} concern${files.length === 1 ? '' : 's'})`,
-    numberedTreeList(files.map((f) => {
+  // The queue is a flat set of concerns from any number of topics, so
+  // provenance belongs per row — the `↳` note — rather than folded into the
+  // header. Every row is pending by definition: a handled concern's file
+  // leaves the queue.
+  const agenda = worklist({
+    heading: { label: 'Triage queue', noun: 'concern' },
+    items: files.map((f) => {
       const it = /** @type {NonNullable<ReturnType<typeof byFile.get>>} */ (byFile.get(f));
-      return { text: it.title, note: `From ${it.origin} · ${it.from_phase} · ${it.from_date}` };
-    })),
-  ];
+      return { title: it.title, note: `From ${it.origin} · ${it.from_phase} · ${it.from_date}` };
+    }),
+    walked: true,
+  });
   return [
-    section('DISPLAY: triage agenda', 'emit verbatim as a code block', agenda.join('\n')),
+    section('DISPLAY: triage agenda', 'emit verbatim as markdown', agenda),
     section(
       'MENU: triage offer',
       "emit verbatim as markdown, then STOP for the user's response",
