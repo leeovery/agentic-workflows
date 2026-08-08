@@ -379,9 +379,123 @@ describe('render findings-summary', () => {
     ].join('\n'));
   });
 
+  it('renders a resumed review — decided rows struck and note-shed, remaining counted', () => {
+    const file = writePayload(dir, 'r.json', {
+      review_label: 'Integrity Review',
+      items: [
+        { title: 'Missing Outcome field', tag: 'Minor', summary: 'Task 1-1 lacks the Outcome field.', status: 'approved' },
+        { title: 'Orphaned dependency', tag: 'Important', summary: 'Task 2-3 depends on a removed task.', status: 'skipped' },
+        { title: 'Duplicated criteria', tag: 'Minor', summary: 'Two tasks share one criterion.', status: 'pending' },
+      ],
+    });
+    const out = renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file });
+    assert.strictEqual(out, [
+      '=== DISPLAY: findings summary (emit verbatim as markdown, then proceed without a gate) ===',
+      '**Integrity Review** — 3 findings · 1 remaining',
+      '',
+      '✓ 1. ~~Missing Outcome field~~ `[Minor]`',
+      '⊘ 2. ~~Orphaned dependency~~ `[Important]`',
+      '○ 3. Duplicated criteria `[Minor]`',
+      `${NB(7)}↳ Two tasks share one criterion.`,
+      '',
+      "Let's work through these one at a time.",
+      '',
+    ].join('\n'));
+  });
+
   it('validates loudly', () => {
     assert.throws(() => renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'a.json', { review_label: 'X', items: [] }) }), /"items" must be a non-empty array/);
     assert.throws(() => renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'b.json', { review_label: 'X', items: [{ title: 't', tag: 'g' }] }) }), /item 1 is missing "summary"/);
+    assert.throws(() => renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'c.json', { review_label: 'X', items: [{ title: 't', tag: 'g', summary: 's', status: 'Fixed' }] }) }), /render findings-summary: item 1 carries unknown status "Fixed"/);
+  });
+});
+
+describe('worklist shape', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  // Rendered width: escapes and code-span backticks are zero-width, `~~` is
+  // consumed — byte length over-counts a correct row, so width properties
+  // are asserted on the rendered measure.
+  const renderedLen = (line) => line.replace(/\\(.)/g, '$1').replace(/~~/g, '').replace(/`/g, '').length;
+
+  it('a tag that cannot fit the last title line drops to its own line at the title column', () => {
+    const file = writePayload(dir, 't.json', { label: 'Cycle', tasks: [
+      { title: 'The traceability matrix omits three acceptance criteria', severity: 'Important' },
+    ] });
+    const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
+    const body = out.split('===\n')[1].split('\n');
+    assert.ok(body.some((l) => l === `${NB(5)}\`[Important]\``), `tag line missing: ${JSON.stringify(body)}`);
+    for (const line of body) assert.ok(renderedLen(line) <= 65, `overflowing row: ${line}`);
+  });
+
+  it('every worklist surface holds the rendered width, tags and escapes included', () => {
+    const long = 'Collapse the *duplicated* retry_budget into one constant shared by both callers';
+    const file = writePayload(dir, 'w.json', { label: 'Cycle', tasks: [
+      { title: long, severity: 'Important' },
+      { title: 'Short', severity: 'low' },
+    ] });
+    const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
+    for (const line of out.split('===\n')[1].split('\n')) {
+      assert.ok(renderedLen(line) <= 65, `overflowing row: ${line}`);
+    }
+  });
+
+  it('unglyphed rows pad 10+ numbering with NBSP, never a leading space', () => {
+    writeManifest(dir, 'wu2', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
+    const items = Array.from({ length: 11 }, (_, i) => ({ title: `Item ${i + 1}`, detail: `Detail ${i + 1}` }));
+    const file = writePayload(dir, 'b.json', { lane: 'apply', items });
+    const out = renderSurface(dir, 'finding-batch', { dotpath: 'wu2.discussion.checkout', file });
+    assert.ok(out.includes(`${NB(1)}1\\. Item 1`), 'single-digit row pads with NBSP');
+    assert.ok(out.includes('11\\. Item 11'), 'two-digit row unpadded');
+    for (const line of out.split('\n')) {
+      assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);
+    }
+  });
+
+  it('escapes markdown-active characters in the label, title, and note', () => {
+    const file = writePayload(dir, 'e.json', {
+      review_label: 'Rev *2* [beta]',
+      items: [{ title: 'Escape <script> and ~tilde~', tag: 'low', summary: 'see foo_bar and [link] and \\slash' }],
+    });
+    writeManifest(dir, 'pay2', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
+    const out = renderSurface(dir, 'findings-summary', { dotpath: 'pay2.planning.portal', file });
+    assert.ok(out.includes('**Rev \\*2\\* \\[beta\\]**'), 'label escaped');
+    assert.ok(out.includes('Escape \\<script\\> and \\~tilde\\~'), 'title escaped, angle brackets included');
+    assert.ok(out.includes('↳ see foo\\_bar and \\[link\\] and \\\\slash'), 'note escaped');
+  });
+
+  it('a wrapped note hangs its continuation two columns past the arrow', () => {
+    writeManifest(dir, 'pay3', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'n.json', {
+      review_label: 'Rev',
+      items: [{ title: 'T', tag: 'low', summary: 'This note is deliberately long enough that the wrap point lands inside it and produces a continuation line beneath the arrow.' }],
+    });
+    const out = renderSurface(dir, 'findings-summary', { dotpath: 'pay3.planning.portal', file });
+    const lines = out.split('\n');
+    const noteAt = lines.findIndex((l) => l.includes('↳ '));
+    assert.ok(noteAt > 0, 'note rendered');
+    assert.ok(lines[noteAt].startsWith(`${NB(7)}↳ `), 'note at title column + 2');
+    assert.ok(lines[noteAt + 1].startsWith(NB(9)), 'continuation hangs past the arrow');
+  });
+
+  it('worklist fails loudly on shape errors its callers cannot reach', () => {
+    const { worklist } = require('../../skills/workflow-engine/scripts/domain/projections/worklist.cjs');
+    assert.throws(() => worklist({ items: [{ title: 'x' }] }), /exactly one of "heading"\/"intro"/);
+    assert.throws(() => worklist({ heading: { label: 'H', noun: 'x' }, intro: 'I', items: [{ title: 'x' }] }), /exactly one of "heading"\/"intro"/);
+    assert.throws(() => worklist({ intro: 'I', items: [] }), /"items" must be a non-empty array/);
+    assert.throws(() => worklist({ intro: 'I', items: [{ title: 'x', state: 'banana' }] }), /unknown state "banana"/);
+    assert.throws(() => worklist({ intro: 'I', items: [{ title: 'x', tag: 'has`tick' }] }), /a tag must not contain backticks/);
+  });
+
+  it('an unwalked heading never counts remaining', () => {
+    const { worklist } = require('../../skills/workflow-engine/scripts/domain/projections/worklist.cjs');
+    const out = worklist({ heading: { label: 'H', noun: 'item' }, items: [{ title: 'a', state: 'approved' }, { title: 'b' }] });
+    assert.ok(out.startsWith('**H** — 2 items\n'), `unexpected header: ${out.split('\n')[0]}`);
   });
 });
 
@@ -836,7 +950,7 @@ describe('render tasks-overview', () => {
     const file = writePayload(dir, 'o.json', { label: 'X', tasks: [{ title: 't' }] });
     assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file }), /task 1 needs "title" and "severity"/);
     const bad = writePayload(dir, 'b.json', { label: 'X', tasks: [{ title: 't', severity: 's', status: 'done' }] });
-    assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: bad }), /unknown state "done"/);
+    assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: bad }), /render tasks-overview: task 1 carries unknown status "done" \(expected pending\/approved\/skipped\)/);
   });
 });
 

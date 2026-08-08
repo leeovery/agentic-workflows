@@ -812,6 +812,22 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.1', 'approved']);
     sim.refuses(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.2', 'later'], /Invalid staging task status/);
+    // The approval overview joins the staging read to the render — the exact
+    // sequence the loop prose prescribes: read statuses, build the payload
+    // with them, render the worklist. A staging value the renderer rejects
+    // would break here, not on the user's screen.
+    const cycle = JSON.parse(sim.read(['manifest', 'get', `${wu}.review.unified`, 'staging.c1']));
+    sim.write('.workflows/.cache/scratch/tasks-overview.json', JSON.stringify({
+      label: 'Review synthesis cycle 1',
+      tasks: Object.keys(cycle.tasks).map((n) => ({ title: `Task ${n}`, severity: 'Important', status: cycle.tasks[n] })),
+    }));
+    const overview = sim.render(['tasks-overview', `${wu}.review.unified`, '--file', '.workflows/.cache/scratch/tasks-overview.json'], { expect: 'content' });
+    assert.match(overview, /1 remaining/, 'the approved row moves the remaining count');
+    sim.write('.workflows/.cache/scratch/findings-summary.json', JSON.stringify({
+      review_label: 'Integrity Review',
+      items: [{ title: 'Missing Outcome field', tag: 'Minor', summary: 'Task 1-1 lacks the Outcome field.', status: 'approved' }],
+    }));
+    sim.render(['findings-summary', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' });
     // The review restart clears its staging subtree (exists-guarded delete) so a
     // stale cycle can never hijack the post-restart loop's crash-resume guards.
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.unified`, 'staging']).trim(), 'true');
@@ -1114,6 +1130,17 @@ describe('pipeline simulation', () => {
       items: [{ title: 'a', detail: 'follows from the tier decision' }, { title: 'b', detail: 'retracted rationale, unstruck' }],
     }));
     sim.render(['finding-batch', `${wu}.research.alpha`, '--file', payload], { expect: 'content' });
+    // The route lane requires each item's title alongside its target — a
+    // producer still writing the bare {target, detail} pair fails here.
+    const routePayload = `.workflows/.cache/${wu}/research/alpha/batch-route.json`;
+    sim.write(routePayload, JSON.stringify({
+      lane: 'route',
+      items: [{ title: 'c', target: 'beta', detail: 'their subtopic owns the claim' }],
+    }));
+    assert.match(sim.render(['finding-batch', `${wu}.research.alpha`, '--file', routePayload], { expect: 'content' }),
+      /\[→ beta\]/, 'the destination rides the tag slot');
+    sim.write(routePayload, JSON.stringify({ lane: 'route', items: [{ target: 'beta', detail: 'd' }] }));
+    sim.refuses(['render', 'finding-batch', `${wu}.research.alpha`, '--file', routePayload], /item 1 is missing "title"/);
     const applied = sim.run(['agent', 'surface', wu, 'research', 'alpha', laned.id, 'F1,F2']);
     assert.deepStrictEqual(applied.remaining, ['F3'], 'a batch drains its lane and leaves the rest');
     const walked = sim.run(['agent', 'surface', wu, 'research', 'alpha', laned.id, 'F3']);

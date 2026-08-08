@@ -14,6 +14,12 @@ const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { worklist } = require('./projections/worklist.cjs');
+const { WORKLIST_GLYPH } = require('./conventions.cjs');
+
+// The payload-facing status vocabulary — the staging values the two
+// overview surfaces accept, validated here so the error names the surface
+// and the row; the worklist's own throw is the backstop.
+const WORKLIST_STATUSES = Object.keys(WORKLIST_GLYPH);
 const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
@@ -364,6 +370,9 @@ function tasksOverview(cwd, { dotpath, file }) {
     if (!isFilled(t.title) || !isFilled(t.severity)) {
       throw new Error(`render tasks-overview: task ${i + 1} needs "title" and "severity"`);
     }
+    if (t.status !== undefined && !WORKLIST_STATUSES.includes(t.status)) {
+      throw new Error(`render tasks-overview: task ${i + 1} carries unknown status "${t.status}" (expected ${WORKLIST_STATUSES.join('/')})`);
+    }
   });
   // Statuses come from the cycle's staging subtree — on a mid-approval
   // resume the decided rows render struck, so the re-render shows where the
@@ -517,10 +526,15 @@ function findingsSummary(cwd, { dotpath, file }) {
     for (const field of ['title', 'tag', 'summary']) {
       if (!isFilled(it[field])) throw new Error(`render findings-summary: item ${i + 1} is missing "${field}"`);
     }
+    if (it.status !== undefined && !WORKLIST_STATUSES.includes(it.status)) {
+      throw new Error(`render findings-summary: item ${i + 1} carries unknown status "${it.status}" (expected ${WORKLIST_STATUSES.join('/')})`);
+    }
   });
+  // Statuses come from the tracking file's resolutions — a re-entry over a
+  // partially-processed review shows which findings are already settled.
   const body = worklist({
     heading: { label: p.review_label, noun: 'finding' },
-    items: p.items.map((it) => ({ title: it.title, tag: it.tag, note: it.summary })),
+    items: p.items.map((it) => ({ title: it.title, tag: it.tag, note: it.summary, state: it.status })),
     walked: true,
     walkLine: true,
   });
