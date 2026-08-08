@@ -246,7 +246,7 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
   if (gateMode === 'auto') {
     parts.push(section(
       'DISPLAY: task list auto-approved',
-      'emit verbatim as a code block, then proceed without a gate',
+      CONTINUE_INSTRUCTION,
       variant === 'existing'
         ? `Phase ${payload.phase}: ${payload.phase_name} — task list confirmed. Proceeding to authoring.`
         : `Phase ${payload.phase}: ${payload.phase_name} — task list approved. Proceeding to authoring.`,
