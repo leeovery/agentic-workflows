@@ -316,7 +316,7 @@ Emit the lane marker once per visit to this section — on a re-render after a q
 **`▪ Belongs Elsewhere`**
 ```
 
-Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"target": "…", "detail": "…"}]}`, one entry per finding: `target` is the owning topic, `detail` is what it says, why it is theirs, and which queue it lands in), then render it:
+Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}]}`, one entry per finding: `title` is the report's own claim, `target` is the owning topic, `detail` is why it is theirs and which queue it lands in), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
