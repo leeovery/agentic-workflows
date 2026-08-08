@@ -8,6 +8,10 @@ const path = require('path');
 
 const { DOTS, section, menuFrame, menu, callout, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
+
+// Worklist leading indents are non-breaking spaces (a 4-space lead is a code
+// block to a markdown renderer) — goldens spell them explicitly.
+const NB = (n) => '\u00a0'.repeat(n);
 const { selectionSections } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
 
 function setup() {
@@ -352,26 +356,25 @@ describe('render findings-summary', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders the numbered overview with subDetail summaries byte-exactly', () => {
+  it('renders the worklist overview byte-exactly — glyphs, tags, notes', () => {
     const file = writePayload(dir, 's.json', {
       review_label: 'Integrity Review',
       items: [
-        { title: 'Missing Outcome field', tag: 'Minor — add-to-task', summary: 'Task 1-1 lacks the required Outcome field.' },
-        { title: 'Orphaned dependency', tag: 'Important — update-task', summary: 'Task 2-3 depends on a removed task.' },
+        { title: 'Missing Outcome field', tag: 'Minor', summary: 'add-to-task — Task 1-1 lacks the Outcome field.' },
+        { title: 'Orphaned dependency', tag: 'Important', summary: 'update-task — Task 2-3 depends on a removed task.' },
       ],
     });
     const out = renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: findings summary (emit verbatim as a code block, then proceed without a gate) ===',
-      'Integrity Review — 2 items found',
+      '=== DISPLAY: findings summary (emit verbatim as markdown, then proceed without a gate) ===',
+      '**Integrity Review** — 2 findings',
       '',
-      '1. Missing Outcome field (Minor — add-to-task)',
-      '   · Task 1-1 lacks the required Outcome field.',
+      '○ 1. Missing Outcome field `[Minor]`',
+      `${NB(7)}↳ add-to-task — Task 1-1 lacks the Outcome field.`,
+      '○ 2. Orphaned dependency `[Important]`',
+      `${NB(7)}↳ update-task — Task 2-3 depends on a removed task.`,
       '',
-      '2. Orphaned dependency (Important — update-task)',
-      '   · Task 2-3 depends on a removed task.',
-      '',
-      "Let's work through these one at a time, starting with #1.",
+      "Let's work through these one at a time.",
       '',
     ].join('\n'));
   });
@@ -484,7 +487,7 @@ describe('render finding-batch', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders the apply lane — fixed intro, numbered claims, subDetail, y/Ask menu', () => {
+  it('renders the apply lane — fixed intro, unglyphed worklist rows, y/Ask menu', () => {
     const file = writePayload(dir, 'a.json', {
       lane: 'apply',
       items: [
@@ -494,14 +497,13 @@ describe('render finding-batch', () => {
     });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: finding batch (emit verbatim as a code block) ===',
+      '=== DISPLAY: finding batch (emit verbatim as markdown) ===',
       "The fix follows from what's already decided. Nothing here is a choice.",
       '',
-      '1. Self-containment is holed by `excluded`',
-      '   · Restate the invariant as ownership, not transport.',
-      '',
-      '2. A retracted rationale survives unmarked',
-      '   · Superseded when copy-only won; mark it superseded.',
+      '1\\. Self-containment is holed by \\`excluded\\`',
+      `${NB(5)}↳ Restate the invariant as ownership, not transport.`,
+      '2\\. A retracted rationale survives unmarked',
+      `${NB(5)}↳ Superseded when copy-only won; mark it superseded.`,
       '',
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
@@ -511,13 +513,13 @@ describe('render finding-batch', () => {
     ].join('\n'));
   });
 
-  it('renders the route lane — targets arrowed, send wording, no label line', () => {
+  it('renders the route lane — destination in the tag slot, send wording, no label line', () => {
     const file = writePayload(dir, 'r.json', {
       lane: 'route',
-      items: [{ target: 'storage-and-sync', detail: 'The spec-readiness claim rests on their window_state subtopic.' }],
+      items: [{ title: 'Spec readiness rests on window_state', target: 'storage-and-sync', detail: 'Their subtopic owns the claim.' }],
     });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
-    assert.match(out, /^1\. → storage-and-sync$/m);
+    assert.match(out, /^1\\\. Spec readiness rests on window\\_state `\[→ storage-and-sync\]`$/m);
     assert.match(out, /\*\*`y\/yes`\*\* → Send all 1$/m);
     assert.match(out, /one that should stay here/);
     assert.ok(!out.includes(`${DOTS}\n\n`), 'a label-less menu opens straight on its options');
@@ -528,7 +530,7 @@ describe('render finding-batch', () => {
     assert.throws(() => bad('l.json', { lane: 'decide', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, route/);
     assert.throws(() => bad('e.json', { lane: 'apply', items: [] }), /"items" must be a non-empty array of \{title, detail\}/);
     assert.throws(() => bad('m.json', { lane: 'apply', items: [{ title: 't' }] }), /item 1 is missing "detail"/);
-    assert.throws(() => bad('t.json', { lane: 'route', items: [{ detail: 'd' }] }), /item 1 is missing "target"/);
+    assert.throws(() => bad('t.json', { lane: 'route', items: [{ title: 't', detail: 'd' }] }), /item 1 is missing "target"/);
     assert.throws(() => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout' }), /--file <payload\.json> is required/);
   });
 });
@@ -566,12 +568,13 @@ describe('render triage surfaces', () => {
     ] });
     const out = renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file });
     assert.ok(out.startsWith([
-      '=== DISPLAY: triage agenda (emit verbatim as a code block) ===',
-      'Triage Queue (2 concerns)',
-      '  ├─ 1. Offline metrics',
-      '  │     ↳ From ranking · discussion · 2026-08-01',
-      '  └─ 2. Expansion tracking',
-      '        ↳ From synonyms · discussion · 2026-08-02',
+      '=== DISPLAY: triage agenda (emit verbatim as markdown) ===',
+      '**Triage queue** — 2 concerns',
+      '',
+      '○ 1. Offline metrics',
+      `${NB(7)}↳ From ranking · discussion · 2026-08-01`,
+      '○ 2. Expansion tracking',
+      `${NB(7)}↳ From synonyms · discussion · 2026-08-02`,
     ].join('\n')), out);
     assert.ok(out.includes("=== MENU: triage offer (emit verbatim as markdown, then STOP for the user's response) ==="));
     assert.ok(out.includes('Work through them now?'));
@@ -586,14 +589,15 @@ describe('render triage surfaces', () => {
     ] });
     const out = renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file });
     assert.ok(out.includes([
-      'Triage Queue (1 concern)',
-      '  └─ 1. A preset binding persists until broken — three revisions',
-      '        to the positioning model',
-      '        ↳ From note-model · discussion · 2026-07-30',
+      '**Triage queue** — 1 concern',
+      '',
+      '○ 1. A preset binding persists until broken — three revisions to',
+      `${NB(5)}the positioning model`,
+      `${NB(7)}↳ From note-model · discussion · 2026-07-30`,
     ].join('\n')), out);
-    // No agenda row may overflow the pane the display was sized to. Scoped to
-    // the fenced section: markers and markdown menu lines reflow, and are not
-    // width-bound.
+    // No agenda row may overflow the width the display was sized to —
+    // engine-wrapped even as markdown, so a soft-wrap never restarts a
+    // continuation at column zero. Markers and menu lines reflow freely.
     const agenda = out.split('=== MENU')[0].split('===\n')[1];
     for (const line of agenda.split('\n')) assert.ok(line.length <= 65, `overflowing row: ${line}`);
   });
@@ -787,24 +791,52 @@ describe('render tasks-overview', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders the cycle overview byte-exactly', () => {
+  it('renders a fresh cycle byte-exactly — all rows pending, no remaining count', () => {
     const file = writePayload(dir, 'o.json', { label: 'Analysis cycle 2', tasks: [{ title: 'Fix leak', severity: 'Important' }, { title: 'Add test', severity: 'Minor' }] });
     const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: tasks overview (emit verbatim as a code block, then proceed without a gate) ===',
-      'Analysis cycle 2 — 2 proposed tasks',
+      '=== DISPLAY: tasks overview (emit verbatim as markdown, then proceed without a gate) ===',
+      '**Analysis cycle 2** — 2 proposed tasks',
       '',
-      '1. Fix leak (Important)',
-      '2. Add test (Minor)',
+      '○ 1. Fix leak `[Important]`',
+      '○ 2. Add test `[Minor]`',
       '',
       "Let's work through these one at a time.",
       '',
     ].join('\n'));
   });
 
+  it('renders a mid-walk resume — decided rows struck, remaining counted', () => {
+    const file = writePayload(dir, 'r.json', { label: 'Analysis cycle 1', tasks: [
+      { title: 'Fix leak', severity: 'Important', status: 'approved' },
+      { title: 'Add test', severity: 'Minor', status: 'skipped' },
+      { title: 'Type the selector', severity: 'Minor', status: 'pending' },
+    ] });
+    const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
+    assert.strictEqual(out, [
+      '=== DISPLAY: tasks overview (emit verbatim as markdown, then proceed without a gate) ===',
+      '**Analysis cycle 1** — 3 proposed tasks · 1 remaining',
+      '',
+      '✓ 1. ~~Fix leak~~ `[Important]`',
+      '⊘ 2. ~~Add test~~ `[Minor]`',
+      '○ 3. Type the selector `[Minor]`',
+      '',
+      "Let's work through these one at a time.",
+      '',
+    ].join('\n'));
+  });
+
+  it('escapes markdown-active title text', () => {
+    const file = writePayload(dir, 'e.json', { label: 'Cycle', tasks: [{ title: 'Collapse *both* fakes', severity: 'low' }] });
+    const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
+    assert.match(out, /○ 1\. Collapse \\\*both\\\* fakes `\[low\]`/);
+  });
+
   it('validates loudly', () => {
     const file = writePayload(dir, 'o.json', { label: 'X', tasks: [{ title: 't' }] });
     assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file }), /task 1 needs "title" and "severity"/);
+    const bad = writePayload(dir, 'b.json', { label: 'X', tasks: [{ title: 't', severity: 's', status: 'done' }] });
+    assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: bad }), /unknown state "done"/);
   });
 });
 

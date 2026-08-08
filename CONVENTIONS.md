@@ -58,7 +58,7 @@ Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {wor
 
 - `=== DATA … ===` — reasoning surface. Read it to decide (flags, counts, the `ACTIONS` key table); never display or restate it, and never parse the rendered sections below for decisions.
 - `=== TITLE … ===` — the view's chrome heading (`# **`■ Title`**`). Emit verbatim as markdown, directly above the display.
-- `=== DISPLAY … ===` — emit verbatim **as the fence its marker names**. The shared gateway marker says a plain code block — no language; any grammar eventually colours a stray word in uncontrolled prose. Labelled sections may name a colouring fence where the register calls for it — `properties` for blockers, `diff` for change content. Indentation-dependent content (trees, aligned columns) breaks under markdown rendering, so a DISPLAY section is never emitted as markdown.
+- `=== DISPLAY … ===` — emit verbatim **as the form its marker names**. The shared gateway marker says a plain code block — no language; any grammar eventually colours a stray word in uncontrolled prose. Labelled sections may name a colouring fence where the register calls for it — `properties` for blockers, `diff` for change content — or markdown where the register needs rendered formatting (worklists, the proposed-task and finding presentations). Indentation-dependent content (trees, aligned columns) breaks under markdown rendering and always keeps its fence.
 - `=== MENU … ===` — emit verbatim **as markdown (not a code block)** so option formatting (bold, backticks) renders.
 
 **Displays are engine-rendered.** Prose never draws layout — trees, columns, wrapping — by hand; a hand-drawn display drifts where an engine render cannot. Judgment-authored content that must appear inside a display travels to the engine as a payload file (the planning task list, the working-set summaries).
@@ -240,11 +240,31 @@ Unnumbered trees follow the same structure:
   └─ Blocked by auth
 ```
 
+### Worklists
+
+A **worklist** is a transient list the session works through and throws away — proposed-task cycles, review-findings overviews, surfacing batches, the triage agenda. It is one engine shape (`domain/projections/worklist.cjs`), emitted **as markdown**: the register needs strikethrough and code-span tags, and a flat list has no indentation for a fence to protect. Never hand-draw one.
+
+```
+**Analysis cycle 1** — 8 proposed tasks · 4 remaining
+
+✓ 1. ~~Extract the shared restyle sequence~~ `[high]`
+⊘ 2. ~~Add the missing persister round trip~~ `[medium]`
+○ 3. Split the loader's panel-assembly responsibility `[medium]`
+     ↳ The loader assembles the panel and enumerates themes.
+```
+
+- **Header**: bold label, em dash, count — plus ` · N remaining` once any row is decided.
+- **Rows**: walked lists carry a state glyph (`○` pending, `✓` approved, `⊘` skipped); decided rows strike through and shed their `↳` note, so the list collapses toward what's left. Batch lists (all-or-nothing, never walked) carry no glyph column.
+- **Strikethrough means done here.** The epic menu's struck option means *held by another live session* — the two never share a surface.
+- **Tags**: one short term in a backticked bracket — `` `[high]` ``, `` `[→ target]` `` for a route row's destination. One term only; compound tags are how sibling surfaces drift apart. Anything longer belongs in the `↳` note.
+- **The `↳` note** is the one home for row detail and provenance — a summary, `From {topic} · {phase} · {date}` — indented past the title column.
+- Layout stays engine-owned: every line wraps at the detected display width with continuations aligned under the text, and leading indents are non-breaking spaces (four leading real spaces reads as a code block). Row text is markdown-escaped by the renderer.
+
 ### Status Terms
 
 Engine-rendered tree rows carry their status as a right-aligned `[term]` column — one shared column per tree, computed against the longest row (`├─ ◐ Menu Management    [researching]`). Rows that carry a body (summaries, provenance) skip the column and spell their state on a trailing `↳ State` line instead — see List Display. Square brackets `[term]` are also the form everywhere a column can't exist: plain list rows (selection sub-views, completed pickers, inbox items) and prose references. Menu options carry status as an italic metadata tail — see Menus. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
 
-**Which register applies is decided by the fence, not by taste.** Demoted content — status, provenance, the note under a row — reads italic in a menu and takes `↳` inside a display, because markdown emphasis inside a code fence renders as literal asterisks. A display that wants italics is a display that should not be fenced (`DISPLAY: proposed task`, `DISPLAY: finding`); a display that needs columns or a tree keeps its fence and its `↳`.
+**Which register applies is decided by the fence, not by taste.** Demoted content — status, provenance, the note under a row — reads italic in a menu, takes `↳` inside a fenced display, and takes the backticked `[term]` tag plus `↳` note in a markdown worklist, because markdown emphasis inside a code fence renders as literal asterisks. A display that wants italics is a display that should not be fenced (`DISPLAY: proposed task`, `DISPLAY: finding`); a display that needs columns or a tree keeps its fence and its `↳`.
 
 Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`, `deferred`. Phase-specific terms are fine; the tree column and an inline bracket form never mix on one line.
 

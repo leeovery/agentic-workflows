@@ -33,7 +33,7 @@ Read the tracking file at the path returned by the agent (`TRACKING_FILE`).
 Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json` with the Write tool — one item per finding from the tracking file:
 
 ```json
-{"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "{type or severity} — {change_type}", "summary": "{1-2 line summary from the Details field}"}]}
+{"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "{type or severity}", "summary": "{change_type} — {1-2 line summary from the Details field}"}]}
 ```
 
 Render and emit the section verbatim:
