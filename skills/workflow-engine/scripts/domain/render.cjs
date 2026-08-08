@@ -327,7 +327,7 @@ function proposedTask(cwd, args) {
   if (gate === 'auto') {
     parts.push(section(
       'DISPLAY: task auto-approved',
-      'emit verbatim as a code block after recording the approval',
+      `after recording the approval: ${CONTINUE_INSTRUCTION}`,
       `Task ${p.current} of ${p.total}: ${p.title} — approved [auto].`,
     ));
   } else {
@@ -715,7 +715,7 @@ function finding(cwd, { dotpath, file }) {
   if (gateMode === 'auto') {
     parts.push(section(
       'DISPLAY: finding auto-approved',
-      'emit verbatim as a code block after applying the fix',
+      `after applying the fix: ${CONTINUE_INSTRUCTION}`,
       `Finding ${p.n} of ${p.total}: ${p.title} — ${appliedLabel}`,
     ));
   } else {

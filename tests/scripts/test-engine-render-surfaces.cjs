@@ -688,7 +688,7 @@ describe('render finding', () => {
     });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
     assert.ok(out.includes('=== DISPLAY: finding content (emit verbatim as a code block) ===\nProposed Addition:\n\nNew spec section body.'));
-    assert.ok(out.includes('=== DISPLAY: finding auto-approved (emit verbatim as a code block after applying the fix) ===\nFinding 1 of 2: Missing Outcome field — approved. Added to specification.'));
+    assert.ok(out.includes('=== DISPLAY: finding auto-approved (after applying the fix: emit verbatim as a code block, then proceed without a gate) ===\nFinding 1 of 2: Missing Outcome field — approved. Added to specification.'));
     assert.ok(!out.includes('MENU: finding gate'));
     assert.ok(!out.includes('view full'));
   });
@@ -765,7 +765,7 @@ describe('render proposed-task', () => {
     const gated = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated', 'comment-hint': 'Provide feedback to adjust' });
     assert.ok(/\*\*Comment\*\* +→ Provide feedback to adjust/.test(gated));
     const auto = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'auto' });
-    assert.ok(auto.includes('=== DISPLAY: task auto-approved (emit verbatim as a code block after recording the approval) ===\nTask 2 of 3: Fix adapter leak — approved [auto].'));
+    assert.ok(auto.includes('=== DISPLAY: task auto-approved (after recording the approval: emit verbatim as a code block, then proceed without a gate) ===\nTask 2 of 3: Fix adapter leak — approved [auto].'));
     assert.ok(!auto.includes('MENU: task approval'));
   });
 

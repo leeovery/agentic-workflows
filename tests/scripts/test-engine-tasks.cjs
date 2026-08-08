@@ -771,7 +771,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['task-gate', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: task gate auto-approved (emit verbatim as a code block after the result summary) ===',
+        '=== DISPLAY: task gate auto-approved (after the result summary: emit verbatim as a code block, then proceed without a gate) ===',
         'Task auth-flow-1-1 — approved [auto]. Committing and moving to the next task.',
         '',
       ].join('\n'));
@@ -787,7 +787,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['fix-gate', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: fix gate auto-accepted (emit verbatim as a code block after the findings summary) ===',
+        '=== DISPLAY: fix gate auto-accepted (after the findings summary: emit verbatim as a code block, then proceed without a gate) ===',
         'Fix analysis for task auth-flow-1-1 — accepted [auto]. Passing the findings to the executor.',
         '',
       ].join('\n'));

@@ -57,7 +57,7 @@ function taskGateSection(taskId, gateMode) {
   if (gateMode !== 'gated') {
     return section(
       'DISPLAY: task gate auto-approved',
-      'emit verbatim as a code block after the result summary',
+      `after the result summary: ${CONTINUE_INSTRUCTION}`,
       `Task ${taskId} — approved [auto]. Committing and moving to the next task.`,
     );
   }
@@ -86,7 +86,7 @@ function fixGateSection(internalId, gateMode, thresholdReached) {
   if (!thresholdReached && gateMode !== 'gated') {
     return section(
       'DISPLAY: fix gate auto-accepted',
-      'emit verbatim as a code block after the findings summary',
+      `after the findings summary: ${CONTINUE_INSTRUCTION}`,
       `Fix analysis for task ${internalId} — accepted [auto]. Passing the findings to the executor.`,
     );
   }
