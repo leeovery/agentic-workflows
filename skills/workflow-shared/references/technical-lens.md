@@ -6,6 +6,8 @@
 
 The code-perspective counterpart to [product-lens.md](product-lens.md): the same report retold from the code's side. A perspective shift, not a dump — never raw file contents, never a jargon chain.
 
+Engine-emitted sections sit outside it entirely: `=== DISPLAY … ===` and `=== MENU … ===` content is emitted byte-for-byte, and a gate re-emitted after a retell is not part of the retelling. The register stops at the section boundary.
+
 ## Audience
 
 The same engineer — knows the product, and is now asking how the code produces what they saw. Full engineering fluency; codebase structures are introduced as the story needs them, then called by their real names.
