@@ -24,7 +24,11 @@ Set `review_cycle` to 1 via `engine manifest` (`node .claude/skills/workflow-eng
 
 Record the current cycle number — used for tracking file naming (`c{N}`).
 
-Commit the updated manifest.
+Commit the updated manifest:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): begin review cycle {N}"
+```
 
 → Proceed to **C. Phase 1 — Input Review**.
 
@@ -34,7 +38,11 @@ Increment `review_cycle` by 1 via `engine manifest` (`node .claude/skills/workfl
 
 Record the current cycle number — used for tracking file naming (`c{N}`).
 
-Commit the updated manifest.
+Commit the updated manifest:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): begin review cycle {N}"
+```
 
 → Proceed to **B. Cycle Gate**.
 
