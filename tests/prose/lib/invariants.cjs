@@ -141,12 +141,26 @@ function engineBeforeWrite(rows) {
   return { ok: true, detail: 'every workflow write followed an engine call' };
 }
 
+// The recorder caps the detail column to keep the asserter's prompt
+// bounded, and marks every cut. A cut falls on the tail — where a
+// command's distinguishing flags live — so a needle absent from a clipped
+// record is unanswered, not answered "no". Saying "never ran" there
+// reports a walk's failure for a recorder's limit, on the one check that
+// is supposed to rest on no judgement.
+const CLIPPED = '…[truncated]';
+
 function callsInclude(rows, wanted) {
   const ran = commands(rows);
   const missing = wanted.filter((w) => !ran.some((c) => ranMatch(c, w)));
-  return missing.length
-    ? { ok: false, detail: `never ran: ${missing.join(', ')}` }
-    : { ok: true, detail: `ran all of: ${wanted.join(', ')}` };
+  if (!missing.length) return { ok: true, detail: `ran all of: ${wanted.join(', ')}` };
+  const clipped = ran.filter((c) => c.includes(CLIPPED));
+  return clipped.length
+    ? {
+      ok: false,
+      detail: `unproven — the record is clipped, so these are unfindable rather than absent: ${missing.join(', ')}`
+        + ` (${clipped.length} clipped row${clipped.length === 1 ? '' : 's'})`,
+    }
+    : { ok: false, detail: `never ran: ${missing.join(', ')}` };
 }
 
 function callsExclude(rows, forbidden) {
