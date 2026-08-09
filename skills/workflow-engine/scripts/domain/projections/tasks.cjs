@@ -30,7 +30,7 @@
 // the action that follows in the same turn.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption } = require('./surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption } = require('./surfaces.cjs');
 
 const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
 
@@ -57,7 +57,7 @@ function taskGateSection(taskId, gateMode) {
   if (gateMode !== 'gated') {
     return section(
       'DISPLAY: task gate auto-approved',
-      'emit verbatim as a code block after the result summary',
+      `after the result summary: ${AUTO_GATE_INSTRUCTION}`,
       `Task ${taskId} — approved [auto]. Committing and moving to the next task.`,
     );
   }
@@ -86,7 +86,7 @@ function fixGateSection(internalId, gateMode, thresholdReached) {
   if (!thresholdReached && gateMode !== 'gated') {
     return section(
       'DISPLAY: fix gate auto-accepted',
-      'emit verbatim as a code block after the findings summary',
+      `after the findings summary: ${AUTO_GATE_INSTRUCTION}`,
       `Fix analysis for task ${internalId} — accepted [auto]. Passing the findings to the executor.`,
     );
   }
@@ -116,7 +116,7 @@ function fixGateSection(internalId, gateMode, thresholdReached) {
 function fixThresholdDisplay(attempts, internalId) {
   return section(
     'DISPLAY: fix threshold',
-    'emit verbatim as a code block',
+    CONTINUE_INSTRUCTION,
     `⚑ Fix attempt ${attempts} for task ${internalId} — escalation threshold reached.`,
   );
 }
@@ -129,7 +129,7 @@ function fixThresholdDisplay(attempts, internalId) {
 function cycleLimitDisplay(session, limit) {
   return section(
     'DISPLAY: cycle limit',
-    'emit verbatim as a code block',
+    CONTINUE_INSTRUCTION,
     `⚑ Analysis cycle ${session} this session — over the session limit of ${limit}.`,
   );
 }

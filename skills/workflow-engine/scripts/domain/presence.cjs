@@ -19,6 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { section, CONTINUE_INSTRUCTION, callout } = require('./projections/surfaces.cjs');
 
 const STALE_AFTER_SECONDS = 900;
 const PHASES = ['research', 'discussion'];
@@ -235,10 +236,10 @@ function cleanupPresence(cwd, sessionId) {
 function deferralSection(scan) {
   if (scan.live === 0) return '';
   const names = scan.sessions.filter((r) => r.live).map((r) => `${r.phase}/${r.topic}`).join(', ');
-  return (
-    '=== DISPLAY: presence deferral — emit verbatim as a code block, only at the analysis-dispatch deferral ===\n' +
-    `  ⚑ Analyses deferred — ${scan.live} live session(s): ${names}.\n` +
-    '    They re-run at the next entry once those sessions conclude.\n'
+  return section(
+    'DISPLAY: presence deferral',
+    `only at the analysis-dispatch deferral: ${CONTINUE_INSTRUCTION}`,
+    callout(`Analyses deferred — ${scan.live} live session(s): ${names}. They re-run at the next entry once those sessions conclude.`),
   );
 }
 
