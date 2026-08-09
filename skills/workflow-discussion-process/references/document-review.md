@@ -40,7 +40,7 @@ Don't rely on your memory of what you wrote earlier. Pay particular attention to
 
 ## B. Compare and Reconcile
 
-Walk the conversation against the document and check five dimensions:
+Walk the conversation against the document and check six dimensions (the sixth sweeps the document alone):
 
 1. **Undocumented substance** — threads, tangents, trade-offs, edge cases, provisional positions, or concerns that came up in conversation but never made it into a subtopic section or the Summary. Not verbatim — the *substance* of what was explored. This is the most common failure mode as sessions grow long and later exchanges crowd out earlier ones. Journey sections are especially vulnerable: they're supposed to capture the arc of how a decision was reached, and it's easy to write them tersely after the fact in a way that skips the actual back-and-forth.
 
@@ -52,6 +52,8 @@ Walk the conversation against the document and check five dimensions:
 
 5. **Misdirected knowledge** (epics only) — prose addressed to another topic instead of recording this topic's own ground: notes to carry forward ("→ {topic}: …"), corrections owed to a sibling whose decided text this session's decisions superseded, "tell {topic} about X" asides. Usually stranded in Summary → Open Threads, but check everywhere. A citation of a sibling's decision as context is fine — only knowledge *owed to* another document qualifies. The sanctioned path for these is the session's own reroute at the moment the correction is known; anything found here is a miss to repair, not a convention to preserve.
 
+6. **Pipeline meta** — the document stating its own pipeline position: readiness declarations ("ready for specification"), decided-subtopic counts, review-cycle tallies — whether written this session or in an earlier sitting. Usually lands in Summary → Current State, but check everywhere except earlier dated entries and the wrapped `#### Initial`, which stay as written. Per-subtopic resolution prose ("X decided — {substance}") is substance and stays; the aggregate goes. The manifest carries that state.
+
 **Apply the reconciliation.** For each finding:
 
 - Gap → add the missing substance to the discussion file at the appropriate place (subtopic section, Journey, or Summary)
@@ -59,6 +61,7 @@ Walk the conversation against the document and check five dimensions:
 - Drift → rewrite to faithfully reflect the conversation; correct Discussion Map states where needed (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}`)
 - Mislanded re-decision → restructure the block into the timeline shape (wrap the original prose as `#### Initial`, place the dated entry above it); restore any edited earlier entry from git
 - Misdirected knowledge → set aside for **C. Route Misdirected Knowledge** — never silently deleted, never landed without the gate
+- Pipeline meta → remove it — fold any genuine substance it carries back into the document (an open condition becomes an Open Thread), never the status itself
 
 Commit the changes (`engine commit {work_unit} --topic discussion/{topic} -m "..."`) with a descriptive message (e.g., `docs(discussion): capture undocumented trade-off thread`, `docs(discussion): correct drift on caching decision`, `docs(discussion): soften Map state to converging`).
 

@@ -36,7 +36,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 #### If `yes`
 
-1. Ensure the Summary section is populated — Key Insights, Open Threads, Current State
+1. Ensure the Summary section is populated — Key Insights, Open Threads, Current State (substance only — never readiness declarations, decided counts, or review-cycle tallies)
 2. Mark the discussion completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} discussion {topic}

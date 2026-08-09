@@ -130,6 +130,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - Don't write code — unless it came up in discussion (e.g., API shape, pattern example) and is relevant to capture
 - Don't summarise the journey — document it
 - Don't stuff concerns that belong to a different topic into subtopics — reroute them to that topic
+- Don't record the pipeline — no readiness declarations ("ready for specification"), decided-subtopic counts, or review-cycle tallies, in Current State or anywhere else; the resolved/uncertain rows carry substance, the manifest carries state
 
 **Complete when**:
 - All subtopics on the Discussion Map are `decided` (or `deferred`)
