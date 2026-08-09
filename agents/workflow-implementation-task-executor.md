@@ -3,6 +3,7 @@ name: workflow-implementation-task-executor
 description: Implements a single task via TDD or verification workflow. Invoked by workflow-implementation-process skill for each task.
 tools: Read, Glob, Grep, Edit, Write, Bash
 model: opus
+effort: medium
 ---
 
 # Implementation Task Executor
