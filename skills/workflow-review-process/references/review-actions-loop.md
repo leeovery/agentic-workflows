@@ -214,7 +214,7 @@ No actionable tasks synthesized. Review complete.
 
 Read the staging file from `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md` (task content) and the cycle's state from `manifest get {work_unit}.review.{topic} staging.c{N}` (statuses + `gate_mode`).
 
-Write the overview payload to `.workflows/.cache/{work_unit}/review/{topic}/tasks-overview.json` with the Write tool (`{"label": "Review synthesis cycle {N}", "tasks": [{"title": "…", "severity": "…"}]}`), render, and emit the section verbatim:
+Write the overview payload to `.workflows/.cache/{work_unit}/review/{topic}/tasks-overview.json` with the Write tool (`{"label": "Review synthesis cycle {N}", "tasks": [{"title": "…", "severity": "…", "status": "…"}]}` — each task's `status` is its `staging.c{N}.tasks.{n}` value: `pending`, `approved`, or `skipped`), render, and emit the section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/tasks-overview.json

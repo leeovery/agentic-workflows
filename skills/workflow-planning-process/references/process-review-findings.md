@@ -33,10 +33,13 @@ Read the tracking file at the path returned by the agent (`TRACKING_FILE`).
 Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json` with the Write tool — one item per finding from the tracking file:
 
 ```json
-{"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "{type or severity} — {change_type}", "summary": "{1-2 line summary from the Details field}"}]}
+{"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "…", "summary": "{1-2 line summary from the Details field}", "status": "…"}]}
 ```
 
-Render and emit the section verbatim:
+- `tag` — one short term: the Severity for an integrity finding; for a traceability finding, the Type's token — `missing` (Missing from plan), `hallucinated` (Hallucinated content), `incomplete` (Incomplete coverage). The tracking file keeps the full phrase.
+- `status` — the finding's Resolution: `Fixed` → `approved`, `Skipped` → `skipped`, `Pending` or unset → `pending`.
+
+Render and emit the section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json
@@ -48,7 +51,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each finding **sequentially**. For each finding: present it, show the proposed fix, then route through the gate.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Fixed` or `Skipped` was settled in an earlier sitting; never re-present or re-apply it. For each finding: present it, show the proposed fix, then route through the gate.
 
 ### Present Finding
 

@@ -170,6 +170,11 @@ function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked
   return label;
 }
 
+// Worklist glyph vocabulary — walk states on a transient list (the
+// worklist projection's rows). Distinct from its two siblings: a symbol
+// set shared with the discovery tiers, keyed to approval outcomes.
+const WORKLIST_GLYPH = { pending: '○', approved: '✓', skipped: '⊘' };
+
 // Discussion-map glyph vocabulary — subtopic states. Distinct from the
 // discovery tiers: the symbol sets evolve independently.
 const DISCUSSION_GLYPH = {
@@ -209,5 +214,5 @@ module.exports = {
   titlecaseLabel,
   TREE_WIDTH, treeHeader, capitalise, titlecase, kebabcase, tag, derivedFrom, stateNote, title, materialBlock,
   discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
-  discussionGlyph, DISCUSSION_GLYPH, SPEC_LEGEND,
+  discussionGlyph, DISCUSSION_GLYPH, WORKLIST_GLYPH, SPEC_LEGEND,
 };

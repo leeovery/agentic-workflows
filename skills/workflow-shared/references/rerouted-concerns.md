@@ -90,7 +90,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-offer {work
 
 **If the response is `ok: false`** — the queue moved beneath the payload (a peer session landed a concern): re-run **A. Check**'s queue command, rebuild the payload over the fresh queue, and render again.
 
-Emit its `DISPLAY: triage agenda` section verbatim as a code block, then its `MENU: triage offer` section verbatim as markdown (not a code block).
+Emit its `DISPLAY: triage agenda` section verbatim as markdown (not a code block), then its `MENU: triage offer` section verbatim as markdown (not a code block).
 
 **STOP.** Wait for user response.
 
