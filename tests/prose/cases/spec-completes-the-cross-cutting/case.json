@@ -45,7 +45,8 @@
       "spec(error-handling): conclude specification",
       "manifest get error-handling work_type",
       "workflow-bridge/scripts/gateway.cjs error-handling",
-      "workunit complete error-handling -m workflow(error-handling): complete cross-cutting pipeline --pipeline"
+      "workunit complete error-handling -m workflow(error-handling): complete cross-cutting pipeline",
+      "render workunit-receipt error-handling --verb complete --pipeline"
     ],
     "calls_in_order": [
       "render entry-gate error-handling.specification.error-handling",
