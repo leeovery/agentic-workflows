@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.54] - 2026-08-09
+
+🔧 Changed
+- Discussion sessions no longer add a map entry for a concern the user rules out of scope on the spot — it's just acknowledged and the conversation moves on.
+- The discussion and research review triggers now skip dispatching a fresh review once the user has signalled they're wrapping up, leaving that final review to the closing gate.
+- Task-executor continuation now tracks the agent by id and resumes it directly, only falling back to a fresh dispatch when the send actually fails.
+- Gate menus are now explicitly re-emitted from their live surface in the turn they're shown, closing a gap where a remembered menu could drift from the real options.
+
 ## [0.6.53] - 2026-08-09
 
 ✨ Added
