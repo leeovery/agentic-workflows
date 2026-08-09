@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.52] - 2026-08-09
+
+🔧 Changed
+- Discussion, research, and specification review agents no longer suggest artifacts state their own pipeline position (readiness declarations, decided/subtopic counts, review-cycle tallies) — that state stays in the manifest, keeping documents focused on substance.
+- Discussion and research document review now sweeps for pipeline-position statements already in a document and strips them, preserving any genuine substance underneath.
+- Discussion templates and shared prose-writing rules now explicitly forbid recording readiness declarations, decided counts, or review-cycle tallies in work artifacts.
+- Specification review cycle commits now use an explicit `engine commit` call with a descriptive message instead of an unspecified commit step.
+
 ## [0.6.51] - 2026-08-09
 
 ✨ Added
