@@ -99,7 +99,36 @@ Another final review is declined for this conclusion attempt — Step 6 honours 
 
 ## C. Review Gate — Mandatory
 
-At least one full review pass belongs to every discussion — this one cannot be skipped, only postponed by keeping the conversation open. `{reason}` is the matched classification's quoted description.
+At least one full review pass belongs to every discussion — this one cannot be skipped, only postponed by keeping the conversation open.
+
+#### If the classification is `findings-owed`
+
+Nothing new runs on `yes` — background findings have already come back, and Step 6 walks them. The gate says that plainly, so "another review" is never the reading the user answers to.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Background findings have come back and are still to be walked — they must be heard before concluding.
+Walk them now?
+
+**`y/yes`**      → Walk what came back
+**Keep going** → Tell me what else to explore
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+→ Proceed to **E. In-Flight Agent Check**.
+
+**If keep going:**
+
+→ Return to caller for **B. Session Loop**.
+
+#### Otherwise
+
+`{reason}` is the matched classification's quoted description.
 
 > *Output the next fenced block as markdown (not a code block):*
 
