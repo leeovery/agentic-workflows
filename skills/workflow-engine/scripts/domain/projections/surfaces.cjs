@@ -59,14 +59,18 @@ function section(name, instruction, body) {
   return `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
 }
 
-// The instruction for a DISPLAY that is the whole response and does not
-// gate: emitting it leaves the turn open. A section whose response also
-// carries a MENU needs none of this — the menu's own instruction ends the
-// turn — so this belongs only where the display stands alone. It names no
-// next step: where the flow goes next is the prose's to own, and an engine
-// string that duplicated it would be a second routing source to keep in
-// sync.
-const CONTINUE_INSTRUCTION = 'emit verbatim as a code block, then proceed without a gate';
+// The instructions for a DISPLAY that is the whole response: emitting it
+// leaves the turn open, and the marker says so — a section whose response
+// also carries a MENU needs none of this, because the menu's own
+// instruction ends the turn. Two facts, two strings, never blurred:
+// CONTINUE is for displays where no gate exists at all (the word "gate"
+// never appears — naming one would imply something to skip); AUTO_GATE is
+// for a real gate the user's a/auto choice bypasses, and says exactly
+// that. Neither names a next step: where the flow goes is the prose's to
+// own, and an engine string that duplicated it would be a second routing
+// source to keep in sync.
+const CONTINUE_INSTRUCTION = 'emit verbatim as a code block — do not stop; continue as the workflow instructs';
+const AUTO_GATE_INSTRUCTION = 'emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs';
 
 /**
  * The menu frame: an opening dot rule above the content. One-sided by
@@ -228,4 +232,4 @@ function numberedTreeList(items, { indent = '  ', width = displayWidth() } = {})
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList, numberedTreeList };
+module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList, numberedTreeList };

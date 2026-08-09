@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList, numberedTreeList } = require('./projections/surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList, numberedTreeList } = require('./projections/surfaces.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
@@ -246,7 +246,7 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
   if (gateMode === 'auto') {
     parts.push(section(
       'DISPLAY: task list auto-approved',
-      CONTINUE_INSTRUCTION,
+      AUTO_GATE_INSTRUCTION,
       variant === 'existing'
         ? `Phase ${payload.phase}: ${payload.phase_name} — task list confirmed. Proceeding to authoring.`
         : `Phase ${payload.phase}: ${payload.phase_name} — task list approved. Proceeding to authoring.`,
@@ -327,7 +327,7 @@ function proposedTask(cwd, args) {
   if (gate === 'auto') {
     parts.push(section(
       'DISPLAY: task auto-approved',
-      `after recording the approval: ${CONTINUE_INSTRUCTION}`,
+      `after recording the approval: ${AUTO_GATE_INSTRUCTION}`,
       `Task ${p.current} of ${p.total}: ${p.title} — approved [auto].`,
     ));
   } else {
@@ -715,7 +715,7 @@ function finding(cwd, { dotpath, file }) {
   if (gateMode === 'auto') {
     parts.push(section(
       'DISPLAY: finding auto-approved',
-      `after applying the fix: ${CONTINUE_INSTRUCTION}`,
+      `after applying the fix: ${AUTO_GATE_INSTRUCTION}`,
       `Finding ${p.n} of ${p.total}: ${p.title} — ${appliedLabel}`,
     ));
   } else {

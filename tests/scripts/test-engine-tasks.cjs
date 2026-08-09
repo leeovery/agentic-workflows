@@ -771,7 +771,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['task-gate', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: task gate auto-approved (after the result summary: emit verbatim as a code block, then proceed without a gate) ===',
+        '=== DISPLAY: task gate auto-approved (after the result summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
         'Task auth-flow-1-1 — approved [auto]. Committing and moving to the next task.',
         '',
       ].join('\n'));
@@ -787,7 +787,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['fix-gate', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: fix gate auto-accepted (after the findings summary: emit verbatim as a code block, then proceed without a gate) ===',
+        '=== DISPLAY: fix gate auto-accepted (after the findings summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
         'Fix analysis for task auth-flow-1-1 — accepted [auto]. Passing the findings to the executor.',
         '',
       ].join('\n'));
@@ -820,7 +820,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['fix-threshold', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: fix threshold (emit verbatim as a code block, then proceed without a gate) ===',
+        '=== DISPLAY: fix threshold (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
         '⚑ Fix attempt 3 for task auth-flow-1-1 — escalation threshold reached.',
         '',
       ].join('\n'));
@@ -843,7 +843,7 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(
       render(['cycle-limit', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: cycle limit (emit verbatim as a code block, then proceed without a gate) ===',
+        '=== DISPLAY: cycle limit (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
         '⚑ Analysis cycle 4 this session — over the session limit of 3.',
         '',
       ].join('\n'));

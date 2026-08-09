@@ -293,7 +293,7 @@ describe('render task-list', () => {
     const file = writePayload(dir, 'tl.json', { ...payload, tasks: [payload.tasks[0]] });
     const out = renderSurface(dir, 'task-list', { dotpath: 'pay.planning.portal', file });
     assert.ok(out.includes('Phase 1: Adapter Wrapper — 1 task.'));
-    assert.ok(out.includes('=== DISPLAY: task list auto-approved (emit verbatim as a code block, then proceed without a gate) ==='));
+    assert.ok(out.includes('=== DISPLAY: task list auto-approved (emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ==='));
     assert.ok(out.includes('Phase 1: Adapter Wrapper — task list approved. Proceeding to authoring.'));
     assert.ok(!out.includes('MENU: task list gate'));
   });
@@ -362,7 +362,7 @@ describe('render findings-summary', () => {
     });
     const out = renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: findings summary (emit verbatim as a code block, then proceed without a gate) ===',
+      '=== DISPLAY: findings summary (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
       'Integrity Review — 2 items found',
       '',
       '1. Missing Outcome field (Minor — add-to-task)',
@@ -551,7 +551,7 @@ describe('render triage surfaces', () => {
     assert.throws(() => renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' }), /queue is empty — nothing to announce/);
     writeQueue('measurement', { '001-a.md': 'x' });
     const one = renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' });
-    assert.ok(one.startsWith('=== DISPLAY: triage announce (emit verbatim as a code block, then proceed without a gate) ==='), one);
+    assert.ok(one.startsWith('=== DISPLAY: triage announce (emit verbatim as a code block — do not stop; continue as the workflow instructs) ==='), one);
     assert.ok(one.includes('1 rerouted concern from another topic waits'), one);
     writeQueue('measurement', { '002-b.md': 'y' });
     const two = renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' });
@@ -688,7 +688,7 @@ describe('render finding', () => {
     });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
     assert.ok(out.includes('=== DISPLAY: finding content (emit verbatim as a code block) ===\nProposed Addition:\n\nNew spec section body.'));
-    assert.ok(out.includes('=== DISPLAY: finding auto-approved (after applying the fix: emit verbatim as a code block, then proceed without a gate) ===\nFinding 1 of 2: Missing Outcome field — approved. Added to specification.'));
+    assert.ok(out.includes('=== DISPLAY: finding auto-approved (after applying the fix: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\nFinding 1 of 2: Missing Outcome field — approved. Added to specification.'));
     assert.ok(!out.includes('MENU: finding gate'));
     assert.ok(!out.includes('view full'));
   });
@@ -765,7 +765,7 @@ describe('render proposed-task', () => {
     const gated = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated', 'comment-hint': 'Provide feedback to adjust' });
     assert.ok(/\*\*Comment\*\* +→ Provide feedback to adjust/.test(gated));
     const auto = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'auto' });
-    assert.ok(auto.includes('=== DISPLAY: task auto-approved (after recording the approval: emit verbatim as a code block, then proceed without a gate) ===\nTask 2 of 3: Fix adapter leak — approved [auto].'));
+    assert.ok(auto.includes('=== DISPLAY: task auto-approved (after recording the approval: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\nTask 2 of 3: Fix adapter leak — approved [auto].'));
     assert.ok(!auto.includes('MENU: task approval'));
   });
 
@@ -791,7 +791,7 @@ describe('render tasks-overview', () => {
     const file = writePayload(dir, 'o.json', { label: 'Analysis cycle 2', tasks: [{ title: 'Fix leak', severity: 'Important' }, { title: 'Add test', severity: 'Minor' }] });
     const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: tasks overview (emit verbatim as a code block, then proceed without a gate) ===',
+      '=== DISPLAY: tasks overview (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
       'Analysis cycle 2 — 2 proposed tasks',
       '',
       '1. Fix leak (Important)',
@@ -1115,7 +1115,7 @@ describe('render phase-note', () => {
 
   it('renders the one-liner with the phase noun by default and an override when given', () => {
     assert.strictEqual(renderSurface(dir, 'phase-note', { dotpath: 'pay.research.auth-flow', verb: 'Resuming' }),
-      '=== DISPLAY: phase note (emit verbatim as a code block, then proceed without a gate) ===\nResuming research: Auth Flow\n');
+      '=== DISPLAY: phase note (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===\nResuming research: Auth Flow\n');
     assert.ok(renderSurface(dir, 'phase-note', { dotpath: 'pay.planning.auth-flow', verb: 'Reopening', noun: 'plan' })
       .includes('Reopening plan: Auth Flow'));
     assert.throws(() => renderSurface(dir, 'phase-note', { dotpath: 'pay.research.auth-flow' }), /--verb is required/);
@@ -1248,7 +1248,7 @@ describe('render phase-completed --paths', () => {
 
   it('appends the derived spec and plan paths', () => {
     assert.strictEqual(renderSurface(dir, 'phase-completed', { dotpath: 'hotfix', phase: 'scoping', paths: '1' }), [
-      '=== DISPLAY: phase completed (emit verbatim as a code block, then proceed without a gate) ===',
+      '=== DISPLAY: phase completed (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
       'Scoping completed for "Hotfix".',
       '',
       '  Spec: .workflows/hotfix/specification/hotfix/specification.md',
@@ -1334,7 +1334,7 @@ describe('single-source invariants', () => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(p);
-        else if (entry.isFile() && p.endsWith('.cjs') && fs.readFileSync(p, 'utf8').includes('then proceed without a gate')) {
+        else if (entry.isFile() && p.endsWith('.cjs') && fs.readFileSync(p, 'utf8').includes('do not stop; continue as the workflow instructs')) {
           offenders.push(path.relative(scriptsRoot, p));
         }
       }
