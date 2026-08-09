@@ -221,6 +221,8 @@ Review for Task {internal_id}: {Task Name} — needs changes (attempt {N})
 
 Present the reviewer's findings as a product-lens summary (markdown, not a code block): each issue in a sentence or two — what is wrong or at risk in what was built and the proposed fix, with the alternative or the reviewer's confidence only where it changes the call; non-blocking notes in one line.
 
+The turn does not end here — the gate menu follows in the same turn.
+
 → On return, proceed to **F. Fix Approval Gate**.
 
 #### If the response's `threshold_reached` is `false`
@@ -249,11 +251,15 @@ The turn does not end here — the executor dispatch follows in the same turn.
 
 **If `fix_gate_mode` is `gated`:**
 
+The turn does not end here — the gate menu follows in the same turn.
+
 → Proceed to **F. Fix Approval Gate**.
 
 ---
 
 ## F. Fix Approval Gate
+
+Every arrival emits the menu in the turn it arrives — from **E**, and back from a retell or an answer alike.
 
 Fetch the fix gate and emit its `MENU: fix gate` section (the `a/auto` option renders only while the fix gate is `gated` — a threshold-forced gate in auto mode omits it):
 
