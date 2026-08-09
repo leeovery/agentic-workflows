@@ -390,7 +390,7 @@ describe('render findings-summary', () => {
     });
     const out = renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file });
     assert.strictEqual(out, [
-      '=== DISPLAY: findings summary (emit verbatim as markdown, then proceed without a gate) ===',
+      '=== DISPLAY: findings summary (emit verbatim as markdown — do not stop; continue as the workflow instructs) ===',
       '**Integrity Review** — 3 findings · 1 remaining',
       '',
       '✓ 1. ~~Missing Outcome field~~ `[Minor]`',
