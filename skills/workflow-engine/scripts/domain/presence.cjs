@@ -19,7 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { section, CONTINUE_INSTRUCTION } = require('./projections/surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, callout } = require('./projections/surfaces.cjs');
 
 const STALE_AFTER_SECONDS = 900;
 const PHASES = ['research', 'discussion'];
@@ -239,8 +239,7 @@ function deferralSection(scan) {
   return section(
     'DISPLAY: presence deferral',
     `only at the analysis-dispatch deferral: ${CONTINUE_INSTRUCTION}`,
-    `  ⚑ Analyses deferred — ${scan.live} live session(s): ${names}.\n`
-    + '    They re-run at the next entry once those sessions conclude.',
+    callout(`Analyses deferred — ${scan.live} live session(s): ${names}. They re-run at the next entry once those sessions conclude.`),
   );
 }
 
