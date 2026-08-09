@@ -13,6 +13,7 @@ These instructions are loaded into context at the start of the research session.
 - □ Not the first commit? (the research needs enough content to review)
 - □ At least 2-3 conversational exchanges since the last review dispatch?
 - □ Triage queue empty? (`topic queue` shows `count: 0` — the session loop's triage check reads it each iteration; a queued rerouted concern is a pending change to the research, so a review dispatched over it is stale on arrival; self-healing like the drain block — the first meaningful commit after the queue empties re-fires the check)
+- □ The user hasn't signalled conclusion? (a wrap-up signal hands review duty to the final review at topic conclusion — it covers the closing commit; a dispatch now lands `pending` there)
 
 **Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being explored produces stale analysis — the research will look different once those findings are incorporated, and the new review would be critiquing a version the user is already extending. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check and dispatch a fresh review, so no trigger is lost. If the session ends before drainage completes, the final review at topic conclusion picks up the outstanding findings via the shared surfacing protocol.
 

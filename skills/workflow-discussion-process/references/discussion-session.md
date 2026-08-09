@@ -35,7 +35,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
    ```
 
-   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**.
+   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on.
 3. **Navigate** — When a subtopic feels explored or a decision lands, record the transition and guide the user to what's still open:
 
    ```bash
@@ -85,7 +85,7 @@ You own transitions between subtopics. The goal is natural flow, not rigid seque
 
 **When a tangent surfaces a new concern:**
 
-Record it on the map as `pending` (`discussion-map add`, session loop step 2). If it's closely related to the current subtopic, it might become a child (`--parent`). If it's independent, it sits at the top level.
+Record it on the map as `pending` (`discussion-map add`, session loop step 2). If it's closely related to the current subtopic, it might become a child (`--parent`). If it's independent, it sits at the top level. A tangent the user waves out of scope gets no entry — acknowledge and move on.
 
 > "Good catch — I've added {new subtopic} to the map. Let's finish {current} first and we can pick that up after."
 
