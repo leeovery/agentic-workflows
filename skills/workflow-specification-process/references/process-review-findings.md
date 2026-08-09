@@ -39,7 +39,7 @@ Write the summary payload to `.workflows/.cache/{work_unit}/specification/{topic
 - `tag` — the Category's token: `enhancement` (Enhancement to existing topic), `new-topic` (New topic), `gap` (Gap/Ambiguity), `duplication` (Duplication). The tracking file keeps the full phrase.
 - `status` — the finding's Resolution: `Approved` or `Adjusted` → `approved`, `Skipped` → `skipped`, `Pending` or unset → `pending`.
 
-Render and emit the section verbatim:
+Render and emit the section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/findings-summary.json
@@ -51,7 +51,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each finding **sequentially**. For each finding: present it, show the proposed content, then route through the gate.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, or `Skipped` was settled in an earlier sitting; never re-present or re-apply it. For each finding: present it, show the proposed content, then route through the gate.
 
 ### Present Finding
 

@@ -2,13 +2,15 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the worklist — the one shape for a transient list the session
-// works through and throws away (proposed-task cycles, review findings, the
-// surfacing batches, the triage agenda). Emitted as markdown, never fenced:
+// works through and throws away (the analysis and review synthesis cycles,
+// review-findings overviews, the surfacing batches, the triage agenda).
+// Emitted as markdown, never fenced:
 // the register needs strikethrough for decided rows and code-span state
 // tags, and a flat list has no indentation for a fence to protect.
 //
-// Layout is engine-owned all the same: every line is wrapped here to
-// displayWidth(), continuations aligned under the text column. Leading
+// Layout is engine-owned all the same: rows and notes are wrapped here to
+// displayWidth(), continuations aligned under the text column; the header
+// and a batch intro are prose lines left to soft-wrap in the display. Leading
 // indents are non-breaking spaces — four leading real spaces is a code
 // block to a markdown renderer, and a soft-wrapped line would restart at
 // column zero. Do not "fix" them back to spaces.
@@ -27,8 +29,8 @@ const NBSP = '\u00a0';
 
 const DECIDED = new Set(['approved', 'skipped']);
 
-// `<`/`>` join the set for the markdown renderers that pass raw HTML
-// through — an unescaped `<!-- -->` in a note would vanish entirely.
+// Angle brackets are escaped alongside the markdown set: a renderer that
+// passes raw HTML through would swallow an unescaped `<!-- -->` whole.
 /** Backslash-escape markdown-active characters in plain prose. @param {string} text */
 function escapeMarkdown(text) {
   return String(text).replace(/[\\`*_~[\]<>]/g, (c) => `\\${c}`);
@@ -66,7 +68,10 @@ function worklist({ heading, intro, items, walked = false, walkLine = false }) {
 
   // States are validated wherever they appear — a wrong value on an
   // unwalked list is a caller bug, not a value to count silently.
-  const states = items.map((it) => {
+  const states = items.map((it, i) => {
+    if (typeof it.title !== 'string' || !it.title) {
+      throw new Error(`worklist: item ${i + 1} needs a non-empty string "title"`);
+    }
     const state = it.state || 'pending';
     if (!(state in WORKLIST_GLYPH)) {
       throw new Error(`worklist: unknown state "${state}" (expected ${Object.keys(WORKLIST_GLYPH).join('/')})`);
@@ -89,9 +94,11 @@ function worklist({ heading, intro, items, walked = false, walkLine = false }) {
   items.forEach((it, i) => {
     const state = states[i];
     const struck = walked && DECIDED.has(state);
-    // Number padding leads an unglyphed row, so it must be NBSP — a real
-    // leading space is stripped by a markdown renderer and the column dies.
-    const num = String(i + 1).padStart(numWidth, walked ? ' ' : NBSP);
+    // Number padding is NBSP on both row forms — it leads an unglyphed row
+    // (a real leading space is stripped by a markdown renderer and the
+    // column dies) and sits interior on a glyphed one, where NBSP renders
+    // identically to a space and cannot be collapsed.
+    const num = String(i + 1).padStart(numWidth, NBSP);
     // `1\.` — the escaped dot keeps an unglyphed row from parsing as a
     // markdown ordered-list item; the backslash renders at zero width.
     const head = walked ? `${WORKLIST_GLYPH[state]} ${num}. ` : `${num}\\. `;
@@ -107,6 +114,9 @@ function worklist({ heading, intro, items, walked = false, walkLine = false }) {
     let tagLine = null;
     if (it.tag) {
       if (it.tag.includes('`')) throw new Error('worklist: a tag must not contain backticks');
+      if (headWidth + it.tag.length + 2 > width) {
+        throw new Error(`worklist: tag "[${it.tag}]" cannot fit the display width — tags are one short term`);
+      }
       if (rawSegs[rawSegs.length - 1].length + it.tag.length + 3 <= budget) {
         segs[segs.length - 1] += ` \`[${it.tag}]\``;
       } else {

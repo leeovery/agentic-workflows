@@ -825,9 +825,14 @@ describe('pipeline simulation', () => {
     assert.match(overview, /1 remaining/, 'the approved row moves the remaining count');
     sim.write('.workflows/.cache/scratch/findings-summary.json', JSON.stringify({
       review_label: 'Integrity Review',
-      items: [{ title: 'Missing Outcome field', tag: 'Minor', summary: 'Task 1-1 lacks the Outcome field.', status: 'approved' }],
+      items: [
+        { title: 'Missing Outcome field', tag: 'Minor', summary: 'Task 1-1 lacks the Outcome field.', status: 'approved' },
+        { title: 'Orphaned dependency', tag: 'Minor', summary: 'Task 2-3 depends on a removed task.' },
+      ],
     }));
-    sim.render(['findings-summary', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' });
+    const summary = sim.render(['findings-summary', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' });
+    assert.match(summary, /~~Missing Outcome field~~/, 'the resolved finding renders struck');
+    assert.match(summary, /1 remaining/, 'the pending finding moves the remaining count');
     // The review restart clears its staging subtree (exists-guarded delete) so a
     // stale cycle can never hijack the post-restart loop's crash-resume guards.
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.unified`, 'staging']).trim(), 'true');

@@ -73,9 +73,9 @@ cache paths. Genuine this-turn judgment payloads are rare.
 5. **Output shape**: the existing demarcated-section contract —
    `=== DISPLAY ===` emitted verbatim as a code block, `=== MENU ===` verbatim
    as markdown. No new emission rules for skills to learn.
-   (Superseded in part by the worklist family and the proposed-task/finding
+   *(Superseded in part by the worklist family and the proposed-task/finding
    presentations — a DISPLAY marker may now name markdown as its form; the
-   marker's instruction is authoritative.)
+   marker's instruction is authoritative.)*
 6. **One builder.** Every surface renders through shared primitives in
    `domain/projections` (menu, dot frame, callout, key, boxed frame). Boxed
    frames compute borders from content width — fixing the findings-frame
@@ -359,3 +359,15 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   phase-completed, early-completion-gate, revisit-gate, epic-all-done-gate);
   titlecaseLabel promoted to conventions. Bare work-unit addressing joins
   the grammar. Stack: main → #490 → #491 → #492 → #493.
+- 2026-08-09 — Worklist family + continuation instructions (stack #846:
+  #844 → #845). The four transient-list surfaces (tasks-overview,
+  findings-summary, finding-batch, triage agenda) converge on one
+  markdown-emitted projection (`domain/projections/worklist.cjs`): state
+  glyphs, struck decided rows that shed their `↳` notes, backticked
+  one-term tags with route targets in the tag slot, NBSP indents,
+  engine-wrapped rows. Sole-section DISPLAY markers carry explicit turn
+  semantics via three single-sourced instruction constants — no-gate
+  ("do not stop; continue as the workflow instructs"), its markdown twin,
+  and the auto-gate form naming the user's a/auto choice — guarded by a
+  single-source invariant. Contract item 5's code-block-only output shape
+  is superseded accordingly (marked in place).

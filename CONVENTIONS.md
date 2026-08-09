@@ -245,21 +245,21 @@ Unnumbered trees follow the same structure:
 A **worklist** is a transient list the session works through and throws away — the analysis and review synthesis cycles, review-findings overviews, surfacing batches, the triage agenda. It is one engine shape (`domain/projections/worklist.cjs`), emitted **as markdown**: the register needs strikethrough and code-span tags, and a flat list has no indentation for a fence to protect. Never hand-draw one.
 
 ```
-**Analysis cycle 1** — 3 proposed tasks · 1 remaining
+**Integrity Review** — 3 findings · 1 remaining
 
-✓ 1. ~~Extract the shared restyle sequence~~ `[high]`
-⊘ 2. ~~Add the missing persister round trip~~ `[medium]`
-○ 3. Split the loader's panel-assembly responsibility `[medium]`
+✓ 1. ~~Extract the shared restyle sequence~~ `[Minor]`
+⊘ 2. ~~Add the missing persister round trip~~ `[Important]`
+○ 3. Split the loader's panel-assembly responsibility `[Minor]`
        ↳ The loader assembles the panel and enumerates themes.
 ```
 
-- **Header**: bold label, em dash, count — plus ` · N remaining` once any walked row is decided. A batch list opens on its lane's intro sentence instead — no header, no counts.
+- **Header**: bold label, em dash, count — plus ` · N remaining` once any walked row is decided. A batch list opens on its lane's intro line instead — no header, no counts.
 - **Rows**: walked lists carry a state glyph (`○` pending, `✓` approved, `⊘` skipped); decided rows strike through and shed their `↳` note, so the list collapses toward what's left. Batch lists (all-or-nothing, never walked) carry no glyph column; their rows open on an escaped number (`1\.`) so a markdown renderer never parses them as an ordered list, padded with NBSP for 10+-row alignment.
 - **Strikethrough means done here.** The epic menu's struck option means *held by another live session* — the two never share a surface.
 - **Tags**: one short term in a backticked bracket — `` `[high]` ``, `` `[→ target]` `` for a route row's destination. One term only; compound tags are how sibling surfaces drift apart, and multi-word source vocabularies map to short tokens at the payload site. Anything longer belongs in the `↳` note. A tag that cannot fit its row's last line drops to its own line at the title column.
 - **The `↳` note** is the one home for row detail and provenance — a summary, `From {topic} · {phase} · {date}` — indented two columns past the title column.
-- **Walked lists close on the walk statement** ("Let's work through these one at a time.") — numberless, because a resume re-renders with rows already decided.
-- Layout stays engine-owned: rows and notes wrap at the detected display width with continuations aligned under the text, and leading indents are non-breaking spaces (four leading real spaces reads as a code block). The header and a batch intro are prose lines the renderer reflows. Row text is markdown-escaped by the renderer.
+- **A walked list that flows straight into its walk closes on the walk statement** ("Let's work through these one at a time.") — numberless, because a resume re-renders with rows already decided. A walked list handed to a gate menu (the triage agenda's offer) closes on that menu instead; the menu's own option carries the walk.
+- Layout stays engine-owned: rows and notes wrap at the detected display width with continuations aligned under the text, and leading indents are non-breaking spaces (four leading real spaces reads as a code block). The header and a batch intro are prose lines left to soft-wrap in the display. Row text is markdown-escaped by the engine.
 
 ### Status Terms
 

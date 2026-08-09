@@ -65,7 +65,7 @@ function section(name, instruction, body) {
 // The instructions for a DISPLAY that is the whole response: emitting it
 // leaves the turn open, and the marker says so — a section whose response
 // also carries a MENU needs none of this, because the menu's own
-// instruction ends the turn. Two facts, two strings, never blurred:
+// instruction ends the turn. Two facts, never blurred:
 // CONTINUE is for displays where no gate exists at all (the word "gate"
 // never appears — naming one would imply something to skip); AUTO_GATE is
 // for a real gate the user's a/auto choice bypasses, and says exactly

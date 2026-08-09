@@ -11,15 +11,9 @@
 const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
-const { titlecase } = require('./conventions.cjs');
+const { titlecase, WORKLIST_GLYPH } = require('./conventions.cjs');
 const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { worklist } = require('./projections/worklist.cjs');
-const { WORKLIST_GLYPH } = require('./conventions.cjs');
-
-// The payload-facing status vocabulary — the staging values the two
-// overview surfaces accept, validated here so the error names the surface
-// and the row; the worklist's own throw is the backstop.
-const WORKLIST_STATUSES = Object.keys(WORKLIST_GLYPH);
 const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
@@ -28,6 +22,11 @@ const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = req
 const { computeNextPhase } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
+
+// The payload-facing status vocabulary — the staging values the two
+// overview surfaces accept, validated here so the error names the surface
+// and the row; the worklist's own throw is the backstop.
+const WORKLIST_STATUSES = Object.keys(WORKLIST_GLYPH);
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit

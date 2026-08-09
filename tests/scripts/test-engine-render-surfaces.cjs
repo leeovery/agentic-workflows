@@ -420,8 +420,9 @@ describe('worklist shape', () => {
 
   // Rendered width: escapes and code-span backticks are zero-width, `~~` is
   // consumed — byte length over-counts a correct row, so width properties
-  // are asserted on the rendered measure.
+  // are asserted on the rendered measure, against the resolved width.
   const renderedLen = (line) => line.replace(/\\(.)/g, '$1').replace(/~~/g, '').replace(/`/g, '').length;
+  const { displayWidth } = require('../../skills/workflow-engine/scripts/kernel/terminal.cjs');
 
   it('a tag that cannot fit the last title line drops to its own line at the title column', () => {
     const file = writePayload(dir, 't.json', { label: 'Cycle', tasks: [
@@ -430,19 +431,46 @@ describe('worklist shape', () => {
     const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
     const body = out.split('===\n')[1].split('\n');
     assert.ok(body.some((l) => l === `${NB(5)}\`[Important]\``), `tag line missing: ${JSON.stringify(body)}`);
-    for (const line of body) assert.ok(renderedLen(line) <= 65, `overflowing row: ${line}`);
+    for (const line of body) assert.ok(renderedLen(line) <= displayWidth(), `overflowing row: ${line}`);
   });
 
   it('every worklist surface holds the rendered width, tags and escapes included', () => {
     const long = 'Collapse the *duplicated* retry_budget into one constant shared by both callers';
-    const file = writePayload(dir, 'w.json', { label: 'Cycle', tasks: [
+    const width = displayWidth();
+    const holdWidth = (out) => {
+      // Rows, continuations, and notes hold the width; the header and a
+      // batch intro are prose lines left to soft-wrap, so they are exempt.
+      for (const line of out.split('===\n')[1].split('\n')) {
+        if (!/^[○✓⊘\d ]/.test(line)) continue;
+        assert.ok(renderedLen(line) <= width, `overflowing row: ${line}`);
+      }
+    };
+    holdWidth(renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: writePayload(dir, 'w.json', { label: 'Cycle', tasks: [
       { title: long, severity: 'Important' },
       { title: 'Short', severity: 'low' },
-    ] });
-    const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
-    for (const line of out.split('===\n')[1].split('\n')) {
-      assert.ok(renderedLen(line) <= 65, `overflowing row: ${line}`);
-    }
+    ] }) }));
+    writeManifest(dir, 'wu3', { phases: { planning: { items: { portal: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
+    holdWidth(renderSurface(dir, 'findings-summary', { dotpath: 'wu3.planning.portal', file: writePayload(dir, 'w2.json', { review_label: 'Integrity Review', items: [
+      { title: long, tag: 'Important', summary: 'A summary long enough to wrap beneath the arrow and hold its hang.' },
+    ] }) }));
+    holdWidth(renderSurface(dir, 'finding-batch', { dotpath: 'wu3.discussion.checkout', file: writePayload(dir, 'w3.json', { lane: 'route', items: [
+      { title: long, target: 'payments-reconciliation-storage', detail: 'Their subtopic owns the claim.' },
+    ] }) }));
+  });
+
+  it('the tag-fit boundary is exact — at budget it stays inline, one over it drops', () => {
+    // Walked 1-digit head is 5 columns; budget 60 at width 65. Tag
+    // `Important` costs 12 rendered (space + brackets + 9 letters). A
+    // 48-char title fits inline at exactly the width; 49 forces the drop.
+    const at = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: writePayload(dir, 'fit.json', { label: 'C', tasks: [
+      { title: 'x'.repeat(48), severity: 'Important' },
+    ] }) });
+    assert.ok(at.includes('x'.repeat(48) + ' `[Important]`'), `expected inline tag: ${at}`);
+    const over = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: writePayload(dir, 'over.json', { label: 'C', tasks: [
+      { title: 'x'.repeat(49), severity: 'Important' },
+    ] }) });
+    assert.ok(over.includes(`${NB(5)}\`[Important]\``), `expected dropped tag: ${over}`);
+    assert.ok(!over.includes('x `[Important]`'), 'tag not inline past the boundary');
   });
 
   it('unglyphed rows pad 10+ numbering with NBSP, never a leading space', () => {
@@ -490,6 +518,16 @@ describe('worklist shape', () => {
     assert.throws(() => worklist({ intro: 'I', items: [] }), /"items" must be a non-empty array/);
     assert.throws(() => worklist({ intro: 'I', items: [{ title: 'x', state: 'banana' }] }), /unknown state "banana"/);
     assert.throws(() => worklist({ intro: 'I', items: [{ title: 'x', tag: 'has`tick' }] }), /a tag must not contain backticks/);
+    assert.throws(() => worklist({ intro: 'I', items: [{ detail: 'no title' }] }), /item 1 needs a non-empty string "title"/);
+    assert.throws(() => worklist({ intro: 'I', items: [{ title: 'x', tag: 'y'.repeat(70) }] }), /cannot fit the display width/);
+  });
+
+  it('walked rows pad 10+ numbering with NBSP too', () => {
+    const { worklist } = require('../../skills/workflow-engine/scripts/domain/projections/worklist.cjs');
+    const items = Array.from({ length: 11 }, (_, i) => ({ title: `T${i + 1}` }));
+    const out = worklist({ heading: { label: 'H', noun: 'item' }, items, walked: true });
+    assert.ok(out.includes(`○ ${NB(1)}1. T1`), `walked pad is NBSP: ${out.split('\n')[2]}`);
+    assert.ok(out.includes('○ 11. T11'), 'two-digit walked row unpadded');
   });
 
   it('an unwalked heading never counts remaining', () => {

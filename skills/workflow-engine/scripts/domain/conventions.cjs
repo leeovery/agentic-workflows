@@ -171,8 +171,8 @@ function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked
 }
 
 // Worklist glyph vocabulary — walk states on a transient list (the
-// worklist projection's rows). Distinct from its two siblings above and
-// below: the same symbols, but keyed to approval outcomes.
+// worklist projection's rows). Distinct from its two siblings: a symbol
+// set shared with the discovery tiers, keyed to approval outcomes.
 const WORKLIST_GLYPH = { pending: '○', approved: '✓', skipped: '⊘' };
 
 // Discussion-map glyph vocabulary — subtopic states. Distinct from the
