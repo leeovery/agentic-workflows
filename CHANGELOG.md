@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.53] - 2026-08-09
+
+✨ Added
+- New design log tracks a programme to speed up implementation without weakening review gates, starting from a transcript analysis of a 9-day Portal feature build.
+
+🔧 Changed
+- The implementation task executor now runs at medium reasoning effort instead of inheriting the full session effort — faster task execution since spec and plan already carry the design decisions.
+- Discussion review gates now recognize when background findings are already owed and route straight to walking them instead of asking to run "another" review.
+- Perspective-agent triggers now look at whether the user actually disputes and remains unsettled on a challenge, rather than treating any disagreement or known competing-paradigm topic as a trigger on its own.
+
 ## [0.6.52] - 2026-08-09
 
 🔧 Changed
