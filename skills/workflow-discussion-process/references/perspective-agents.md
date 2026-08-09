@@ -12,7 +12,7 @@ Signals:
 - Multiple defensible approaches with no clear winner
 - The user expresses uncertainty ("I'm not sure which...", "they both seem fine")
 - The domain has known competing paradigms (e.g., relational vs document, monolith vs microservices, sync vs async)
-- Explicit disagreement between orchestrator and user on the best approach
+- The user disputes a challenge and remains unsettled — a decisive answer to a challenge is settled, not disagreement
 
 Signals are read from the conversation, never from domain shape alone — a known competing-paradigm pair is not a trigger until the user has engaged the decision and the ambiguity has shown itself. Do not fire when the decision is straightforward, the tradeoffs are already well understood, or the user has already made a confident decision.
 
