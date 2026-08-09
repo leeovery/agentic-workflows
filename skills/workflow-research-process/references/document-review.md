@@ -31,7 +31,7 @@ Pull the current state fresh into context — don't rely on your memory of what 
 
 ## B. Compare and Reconcile
 
-Walk the conversation against the document and check five dimensions:
+Walk the conversation against the document and check five dimensions (the fifth sweeps the document alone):
 
 1. **Undocumented substance** — threads, insights, constraints, open questions, tradeoffs, or preliminary positions that came up in conversation but never made it into the document. Not verbatim — the *substance* of what was explored. This is the most common failure mode as sessions grow long and later exchanges crowd out earlier ones.
 
@@ -41,7 +41,7 @@ Walk the conversation against the document and check five dimensions:
 
 4. **Misdirected knowledge** (epics only) — prose addressed to another topic instead of recording this topic's own ground: notes to carry forward ("→ {topic}: …"), findings owed to a sibling, "tell {topic} about X" asides, wherever they sit. A citation of a sibling's conclusions as context is fine — only knowledge *owed to* another document qualifies. The sanctioned path for these is the session's own reroute at the moment the finding is known; anything found here is a miss to repair, not a convention to preserve.
 
-5. **Pipeline meta** — the document stating its own pipeline position: completion or readiness notes, coverage tallies, review-cycle counts — whether written this session or inherited from an earlier one. The manifest carries that state; as prose it rots.
+5. **Pipeline meta** — the document stating its own pipeline position: notes that the research is complete or ready for discussion, review-cycle counts — whether written this session or in an earlier session. The manifest carries that state.
 
 **Apply the reconciliation.** For each finding:
 
@@ -49,7 +49,7 @@ Walk the conversation against the document and check five dimensions:
 - Hallucination → remove or correct to match what was discussed
 - Drift → rewrite to faithfully reflect the conversation
 - Misdirected knowledge → set aside for **C. Route Misdirected Knowledge** — never silently deleted, never landed without the gate
-- Pipeline meta → strike it — rehome any genuine substance it carries, never the status itself
+- Pipeline meta → remove it — fold any genuine substance it carries into the research file at the appropriate place, never the status itself
 
 Commit the changes (`engine commit {work_unit} --topic research/{topic} -m "..."`) with a descriptive message (e.g., `docs(research): capture undocumented tradeoff thread`, `docs(research): correct drift on storage preference`).
 

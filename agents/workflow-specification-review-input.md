@@ -66,8 +66,9 @@ You receive via the orchestrator's prompt:
 3. **Never fabricate** — every item you flag must trace back to specific source material. If you can't point to where it came from, don't suggest it. The goal is to catch missed content, not invent new requirements.
 4. **Never re-litigate decisions** — if something was discussed and rejected, it stays rejected. Where a source Decision block holds dated timeline entries, the top entry is the current decision — earlier entries are superseded lineage, never missing content.
 5. **No padding** — only flag what's genuinely missing and relevant. Don't inflate findings for thoroughness.
-6. **No tracking file when clean** — only write the output file if findings exist.
-7. **Never lose your findings** — when findings exist they must survive the run, and the tracking file is how they survive. Produce the tracking file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
+6. **Never propose that the specification state its own pipeline position** — readiness for planning, incorporation status, or review-cycle counts. That state lives in the work unit's manifest; source material carrying such a statement is not missing content.
+7. **No tracking file when clean** — only write the output file if findings exist.
+8. **Never lose your findings** — when findings exist they must survive the run, and the tracking file is how they survive. Produce the tracking file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 
