@@ -14,7 +14,7 @@ Signals:
 - The domain has known competing paradigms (e.g., relational vs document, monolith vs microservices, sync vs async)
 - Explicit disagreement between orchestrator and user on the best approach
 
-Do not fire when the decision is straightforward, the tradeoffs are already well understood, or the user has already made a confident decision.
+Signals are read from the conversation, never from domain shape alone — a known competing-paradigm pair is not a trigger until the user has engaged the decision and the ambiguity has shown itself. Do not fire when the decision is straightforward, the tradeoffs are already well understood, or the user has already made a confident decision.
 
 When these conditions are met → Proceed to **A. Select Polarity Pair**.
 
