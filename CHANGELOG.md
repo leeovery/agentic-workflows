@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.51] - 2026-08-09
+
+✨ Added
+- Review-findings overviews, task-cycle overviews, and the triage agenda now render as trackable worklists — walked findings/tasks show strikethrough and a remaining count, so resuming a review or triage shows what's already settled.
+
+🔧 Changed
+- Interrupted spec/plan review and specification review-findings passes now resume without re-presenting or re-applying already-settled findings.
+- Route entries in surfacing batches and carried-over discussion notes now carry their own title instead of just a target and detail.
+
 ## [0.6.50] - 2026-08-07
 
 🔧 Changed
