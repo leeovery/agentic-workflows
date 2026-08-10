@@ -122,6 +122,28 @@ describe('calls_include / calls_exclude', () => {
     assert.equal(invariants.check(rows, { calls_include: ['task init', 'boot'] })[0].ok, true);
   });
 
+  it('says unproven, not never-ran, when the record was clipped', () => {
+    // Measured: a two-seed promotion recorded past the detail cap lost its
+    // second --seed, and the check reported never-ran on a call whose own
+    // response listed both seeds landed. The cut falls on the tail, which
+    // is where a command's distinguishing flags live.
+    const rows = [bash(`${ENGINE} workunit create saved-filters feature --seed .workflows/.inbox/idea…[truncated]`)];
+    const [result] = invariants.check(rows, { calls_include: ['--seed .workflows/.inbox/ideas/b.md'] });
+    assert.equal(result.ok, false, 'still not a pass — the record cannot answer');
+    assert.match(result.detail, /unproven/, 'named as unanswered');
+    assert.ok(!result.detail.includes('never ran'), 'never asserts a walk omission it cannot see');
+    assert.match(result.detail, /1 clipped row/, 'points at how much of the record is unreadable');
+  });
+
+  it('still says never-ran when the record is whole', () => {
+    // The clipped branch must not swallow real omissions: no marker
+    // anywhere means absence is absence.
+    const rows = [bash(`${ENGINE} boot`)];
+    const [result] = invariants.check(rows, { calls_include: ['task init'] });
+    assert.match(result.detail, /never ran: task init/);
+    assert.ok(!result.detail.includes('unproven'));
+  });
+
   it('fails when a forbidden command ran — the walk went too far', () => {
     const rows = [bash(`${ENGINE} task init pay pay`), bash(`${ENGINE} task start pay pay`)];
     const [result] = invariants.check(rows, { calls_exclude: ['task start'] });
