@@ -1051,12 +1051,12 @@ describe('pipeline simulation', () => {
       { phase: '1 — Core', position: '1 of 2 in phase · 1 of 2 overall' });
     assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'needs-changes'], { expect: 'content' }),
       /\*\*◐ Needs changes\*\* — \*attempt 1, escalates at 3\*/, 'below-threshold needs-changes renders the calm verdict');
-    // Two more attempts reach the fix threshold — the red verdict leads the header.
+    // Two more attempts reach the fix threshold — the verdict names it.
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
-    const escalated = sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'needs-changes'], { expect: 'content' });
-    assert.match(escalated, /DISPLAY: task verdict/, 'threshold-forced needs-changes leads with the red verdict section');
-    assert.match(escalated, /⚑ Needs changes — attempt 3, escalation threshold reached/);
+    assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'needs-changes'], { expect: 'content' }),
+      /\*\*◐ Needs changes\*\* — \*attempt 3, escalation threshold reached\*/,
+      'threshold-forced needs-changes names the reached threshold');
     assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'approved'], { expect: 'content' }),
       /\*\*✓ Approved\*\* — \*3 fix rounds\*/, 'approval after fix rounds names the count');
     assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),

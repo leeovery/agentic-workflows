@@ -204,7 +204,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_un
 
 #### If the response's `threshold_reached` is `true`
 
-→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes` — the render leads with the red threshold verdict.
+→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes` — the render names the reached threshold.
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`.
 

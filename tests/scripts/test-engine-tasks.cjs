@@ -815,7 +815,6 @@ describe('engine render task surfaces', () => {
   });
 
   const RESULT_MD = 'emit verbatim as markdown — do not stop; continue as the workflow instructs';
-  const RESULT_RED = 'emit verbatim as a properties code block (```properties fence) — do not stop; continue as the workflow instructs';
 
   /** Write a task-result payload into the fixture; returns its relative path. */
   function writeResultPayload(payload) {
@@ -877,30 +876,28 @@ describe('engine render task surfaces', () => {
       ].join('\n'));
   });
 
-  it('task-result needs-changes at the threshold leads with the red verdict section', () => {
+  it('task-result needs-changes at the threshold names the reached threshold', () => {
     seedGates('gated', 3);
     const file = writeResultPayload({ phase: '1 — Core' });
     assert.strictEqual(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'needs-changes']),
       [
-        `=== DISPLAY: task verdict (${RESULT_RED}) ===`,
-        '⚑ Needs changes — attempt 3, escalation threshold reached',
-        '',
         `=== DISPLAY: task result (${RESULT_MD}) ===`,
+        '**◐ Needs changes** — *attempt 3, escalation threshold reached*',
+        '',
         '- **Id**: `auth-flow-1-1`',
         '- **Phase**: 1 — Core',
         '',
       ].join('\n'));
   });
 
-  it('task-result blocked and failed lead with their red verdicts regardless of attempts', () => {
+  it('task-result blocked and failed lead with the alert verdict regardless of attempts', () => {
     seedGates('gated', 0);
     const file = writeResultPayload({ phase: '1 — Core' });
     const blocked = render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'blocked']);
-    assert.match(blocked, /=== DISPLAY: task verdict /);
-    assert.match(blocked, /⚑ Blocked — the executor stopped before completing this task/);
+    assert.match(blocked, /\*\*⚑ Blocked\*\* — \*the executor stopped before completing this task\*/);
     const failed = render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'failed']);
-    assert.match(failed, /⚑ Failed — the executor could not complete this task/);
+    assert.match(failed, /\*\*⚑ Failed\*\* — \*the executor could not complete this task\*/);
   });
 
   it('task-result refuses out-of-place calls and malformed payloads', () => {

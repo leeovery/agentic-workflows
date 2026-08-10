@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase, WORKLIST_GLYPH } = require('./conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, CONTINUE_PROPERTIES_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { worklist } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
@@ -1233,10 +1233,9 @@ function implItemAt(cwd, dotpath, surface) {
 }
 
 // The result vocabulary — how the loop's presentation moments name what
-// happened. `approved` and below-threshold `needs-changes` render calm;
-// blocked, failed, and threshold-forced needs-changes render the red
-// verdict (a `properties` fence — the blocked-state register), because the
-// loop cannot converge on its own from there.
+// happened. One markdown section whatever the result: the verdict line
+// leads (✓ approved, ◐ needs changes, ⚑ blocked/failed), the meta rows
+// follow.
 const TASK_RESULTS = ['approved', 'needs-changes', 'blocked', 'failed'];
 
 /**
@@ -1277,27 +1276,17 @@ function taskResult(cwd, args) {
   const meta = [`- **Id**: ${idRow}`, `- **Phase**: ${p.phase}`];
   if (p.position !== undefined) meta.push(`- **Position**: ${p.position}`);
 
-  const thresholdReached = attempts >= FIX_THRESHOLD;
-  const redLine = result === 'blocked'
-    ? '⚑ Blocked — the executor stopped before completing this task'
+  const verdict = result === 'blocked'
+    ? '**⚑ Blocked** — *the executor stopped before completing this task*'
     : result === 'failed'
-      ? '⚑ Failed — the executor could not complete this task'
-      : result === 'needs-changes' && thresholdReached
-        ? `⚑ Needs changes — attempt ${attempts}, escalation threshold reached`
-        : null;
-
-  if (redLine !== null) {
-    return [
-      section('DISPLAY: task verdict', CONTINUE_PROPERTIES_INSTRUCTION, redLine),
-      section('DISPLAY: task result', CONTINUE_MARKDOWN_INSTRUCTION, meta.join('\n')),
-    ].join('\n');
-  }
-
-  const verdict = result === 'approved'
-    ? attempts > 0
-      ? `**✓ Approved** — *${attempts} fix round${attempts === 1 ? '' : 's'}*`
-      : '**✓ Approved**'
-    : `**◐ Needs changes** — *attempt ${attempts}, escalates at ${FIX_THRESHOLD}*`;
+      ? '**⚑ Failed** — *the executor could not complete this task*'
+      : result === 'needs-changes'
+        ? attempts >= FIX_THRESHOLD
+          ? `**◐ Needs changes** — *attempt ${attempts}, escalation threshold reached*`
+          : `**◐ Needs changes** — *attempt ${attempts}, escalates at ${FIX_THRESHOLD}*`
+        : attempts > 0
+          ? `**✓ Approved** — *${attempts} fix round${attempts === 1 ? '' : 's'}*`
+          : '**✓ Approved**';
   return section('DISPLAY: task result', CONTINUE_MARKDOWN_INSTRUCTION, [verdict, '', ...meta].join('\n'));
 }
 

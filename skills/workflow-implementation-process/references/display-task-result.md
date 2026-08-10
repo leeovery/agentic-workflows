@@ -30,6 +30,6 @@ Render and emit each section verbatim at its marked instruction:
 node .claude/skills/workflow-engine/scripts/engine.cjs render task-result {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/task-result.json --result {result}
 ```
 
-The verdict line — approved with its fix rounds, needs-changes with its attempt count, the red line for blocked, failed, or a reached escalation threshold — derives from engine state; the payload above is all the session supplies.
+The verdict line — approved with its fix rounds, needs-changes with its attempt count and any reached escalation threshold, blocked, failed — derives from engine state; the payload above is all the session supplies.
 
 → Return to caller.
