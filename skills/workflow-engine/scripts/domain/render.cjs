@@ -21,7 +21,7 @@ const { revisitablePhases, revisitPhasesSection } = require('./projections/worku
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
-const { gateOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
+const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
 // overview surfaces accept, validated here so the error names the surface
@@ -1202,11 +1202,12 @@ function entryGate(cwd, { dotpath, own }) {
 }
 
 // ---------------------------------------------------------------------------
-// Task-loop gates — fetched by the implementation loop at the exact stage
-// that displays them, so the section always sits in the tool result directly
-// above its emission. State-backed: the in-flight task and gate modes come
-// from the implementation item; gate-mode branching renders inside the
-// surface. `blocked-tasks` and `cycle-gate` are static menus and take no
+// Task-loop surfaces — the result header and its gates, fetched by the
+// implementation loop at the exact stage that displays them, so the section
+// always sits in the tool result directly above its emission. State-backed:
+// the in-flight task, gate modes, and fix attempts come from the
+// implementation item; gate-mode branching renders inside the gate
+// surfaces. `blocked-tasks` and `cycle-gate` are static menus and take no
 // address.
 // ---------------------------------------------------------------------------
 
@@ -1214,7 +1215,7 @@ function entryGate(cwd, { dotpath, own }) {
  * The implementation item at a `<wu>.implementation.<topic>` address, plus
  * its in-flight task id. Loud when the address names another phase or no
  * task is in flight — these surfaces serve the task loop, which always has
- * a current task at its gates.
+ * a current task at its presentation moments and gates.
  * @param {string} cwd @param {string} dotpath @param {string} surface
  * @returns {{item: Record<string, any>, taskId: string}}
  */
@@ -1232,20 +1233,31 @@ function implItemAt(cwd, dotpath, surface) {
   return { item, taskId };
 }
 
-// The result vocabulary — how the loop's presentation moments name what
-// happened. One markdown section whatever the result: the verdict line
-// leads (✓ approved, ◐ needs changes, ⚑ blocked/failed), the meta rows
-// follow.
-const TASK_RESULTS = ['approved', 'needs-changes', 'blocked', 'failed'];
+// ---------------------------------------------------------------------------
+// task-result — the task loop's result header: one shape for every
+// presentation moment. The verdict vocabulary and its lines are one table,
+// so membership and rendering cannot drift apart — an unknown result
+// refuses rather than borrowing another verdict's line. Verdict detail is
+// state-derived (`fix_attempts` against the threshold); the plan phase
+// label, in-phase position, and the format's display identifier ride in
+// the payload. The result itself is a flag — blocked/failed is executor
+// knowledge the manifest never holds. The header names the task; the gate
+// surfaces below it never repeat the id.
+// ---------------------------------------------------------------------------
+
+/** @type {Record<string, (attempts: number) => string>} */
+const TASK_RESULT_VERDICTS = {
+  approved: (attempts) => attempts > 0
+    ? `**✓ Approved** — *${attempts} fix round${attempts === 1 ? '' : 's'}*`
+    : '**✓ Approved**',
+  'needs-changes': (attempts) => attempts >= FIX_THRESHOLD
+    ? `**◐ Needs changes** — *attempt ${attempts}, escalation threshold reached*`
+    : `**◐ Needs changes** — *attempt ${attempts}, escalates at ${FIX_THRESHOLD}*`,
+  blocked: () => '**⚑ Blocked** — *the executor stopped before completing this task*',
+  failed: () => '**⚑ Failed** — *the executor could not complete this task*',
+};
 
 /**
- * The task-loop result header: one shape for every presentation moment —
- * approved, needs-changes, blocked, failed. Verdict and attempt counts are
- * state-derived (`fix_attempts` against the threshold); what the engine
- * cannot know rides in the payload: the plan phase label, the position
- * among the plan's tasks, and the format's display identifier. The result
- * itself is a flag — blocked/failed is executor knowledge the manifest
- * never holds.
  * @param {string} cwd
  * @param {{dotpath: string, file?: string, result?: string}} args
  * @returns {string}
@@ -1253,8 +1265,9 @@ const TASK_RESULTS = ['approved', 'needs-changes', 'blocked', 'failed'];
 function taskResult(cwd, args) {
   const { dotpath, file, result } = args;
   if (!file) throw new Error('render task-result: --file <payload.json> is required');
-  if (result === undefined || !TASK_RESULTS.includes(result)) {
-    throw new Error(`render task-result: --result must be ${TASK_RESULTS.join(', ').replace(/, ([^,]+)$/, ', or $1')}`);
+  const verdictOf = result === undefined ? undefined : TASK_RESULT_VERDICTS[result];
+  if (!verdictOf) {
+    throw new Error(`render task-result: --result must be approved, needs-changes, blocked, or failed, got "${result}"`);
   }
   const { item, taskId } = implItemAt(cwd, dotpath, 'task-result');
   const p = readJsonPayload(cwd, file, 'task-result');
@@ -1267,7 +1280,7 @@ function taskResult(cwd, args) {
     throw new Error('render task-result: "external" must be {label, id} when present');
   }
 
-  const attempts = typeof item.fix_attempts === 'number' ? item.fix_attempts : 0;
+  const attempts = counterOf(item, 'fix_attempts');
   if (result === 'needs-changes' && attempts < 1) {
     throw new Error('render task-result: fix_attempts is 0 — run `task fix-attempt` before a needs-changes result');
   }
@@ -1276,18 +1289,7 @@ function taskResult(cwd, args) {
   const meta = [`- **Id**: ${idRow}`, `- **Phase**: ${p.phase}`];
   if (p.position !== undefined) meta.push(`- **Position**: ${p.position}`);
 
-  const verdict = result === 'blocked'
-    ? '**⚑ Blocked** — *the executor stopped before completing this task*'
-    : result === 'failed'
-      ? '**⚑ Failed** — *the executor could not complete this task*'
-      : result === 'needs-changes'
-        ? attempts >= FIX_THRESHOLD
-          ? `**◐ Needs changes** — *attempt ${attempts}, escalation threshold reached*`
-          : `**◐ Needs changes** — *attempt ${attempts}, escalates at ${FIX_THRESHOLD}*`
-        : attempts > 0
-          ? `**✓ Approved** — *${attempts} fix round${attempts === 1 ? '' : 's'}*`
-          : '**✓ Approved**';
-  return section('DISPLAY: task result', CONTINUE_MARKDOWN_INSTRUCTION, [verdict, '', ...meta].join('\n'));
+  return section('DISPLAY: task result', CONTINUE_MARKDOWN_INSTRUCTION, [verdictOf(attempts), '', ...meta].join('\n'));
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */

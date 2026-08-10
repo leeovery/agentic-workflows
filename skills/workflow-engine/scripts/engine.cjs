@@ -642,8 +642,8 @@ function runTopic(argv) {
 // these commands record it. No git commit — the per-task commit is the
 // session's. Each verb answers with its one-line JSON only; the loop's
 // result header and gate sections are fetched by their own `render` calls
-// (task-result, task-gate, fix-gate, blocked-tasks, cycle-gate) at the
-// stage that displays them.
+// (task-result, task-gate, fix-gate, blocked-tasks, cycle-limit,
+// cycle-gate) at the stage that displays them.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */

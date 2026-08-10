@@ -71,8 +71,9 @@ function section(name, instruction, body) {
 // for a real gate the user's a/auto choice bypasses, and says exactly
 // that. Neither names a next step: where the flow goes is the prose's to
 // own, and an engine string that duplicated it would be a second routing
-// source to keep in sync. The markdown variant serves worklist surfaces,
-// whose register (strikethrough, code-span tags) cannot live in a fence.
+// source to keep in sync. The markdown variant serves surfaces whose
+// register cannot live in a fence — worklist strikethrough and code-span
+// tags, the result header's emphasis.
 const CONTINUE_INSTRUCTION = 'emit verbatim as a code block — do not stop; continue as the workflow instructs';
 const CONTINUE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — do not stop; continue as the workflow instructs';
 const AUTO_GATE_INSTRUCTION = 'emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs';

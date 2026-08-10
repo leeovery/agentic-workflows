@@ -144,7 +144,7 @@ engine presence scan <work-unit>
 engine presence cleanup [session-id]                # SessionEnd hook target; reads stdin JSON when no argument
 ```
 
-**`task`** — implementation-task bookkeeping: format-blind, manifest-side only. The engine never reads or writes a task backend and knows no plan-format names — the session does the plan surgery, these commands record it against `phases.implementation.items.{topic}`. Each command is load → apply → save plus one decision-ready JSON line; no git commit (the session's per-task commit cadence picks the manifest change up). The loop's gate sections are served by their own `render` surfaces (`task-gate`, `fix-gate`, `blocked-tasks`, `cycle-gate`), fetched at the stage that displays them.
+**`task`** — implementation-task bookkeeping: format-blind, manifest-side only. The engine never reads or writes a task backend and knows no plan-format names — the session does the plan surgery, these commands record it against `phases.implementation.items.{topic}`. Each command is load → apply → save plus one decision-ready JSON line; no git commit (the session's per-task commit cadence picks the manifest change up). The loop's result header and gate sections are served by their own `render` surfaces (`task-result`, `task-gate`, `fix-gate`, `blocked-tasks`, `cycle-limit`, `cycle-gate`), fetched at the stage that displays them.
 
 ```bash
 engine task init <work-unit> <topic>                       # create-or-resume the implementation item

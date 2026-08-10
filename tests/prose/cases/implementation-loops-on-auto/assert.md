@@ -15,17 +15,19 @@ The prose should have taken this path:
    stub's first firing returns needs-changes with one issue
 5. stage E writes the findings to the attempt cache and records the
    attempt via fix-attempt (attempt 1, threshold not reached); the
-   findings are presented as a glanceable summary, the fix gate is
-   fetched via `render fix-gate`, and its menu is emitted — the gate
-   is still gated, so the loop stops
+   result header renders via `render task-result … --result
+   needs-changes`, the findings are presented as a glanceable
+   summary, the fix gate is fetched via `render fix-gate`, and its
+   menu is emitted — the gate is still gated, so the loop stops
 6. the third scripted answer opts into auto: fix_gate_mode is set to
    auto in the manifest and the fix round continues pay-1-1's own
    executor in the same flow — no fresh executor dispatch, and no
    second fix-attempt is recorded for this round
 7. the executor's fix-round firing completes; the reviewer's second
-   firing for pay-1-1 is a fresh dispatch and approves; the task gate
-   presents the result summary, fetches the gate via
-   `render task-gate`, and emits its MENU
+   firing for pay-1-1 is a fresh dispatch and approves; the result
+   header renders via `render task-result … --result approved`, the
+   summary follows, the gate is fetched via `render task-gate`, and
+   its MENU emitted
 8. the fourth scripted answer opts into auto: task_gate_mode is set
    to auto and progress lands in the same turn — frontmatter flips to
    completed, the engine records completion naming pay-1-2 as next,
@@ -34,15 +36,16 @@ The prose should have taken this path:
    marks it in-progress
 10. the executor completes pay-1-2; the reviewer's first firing for
     pay-1-2 returns needs-changes; stage E records fix-attempt 1 for
-    pay-1-2, summarises the findings, fetches the fix gate via
-    `render fix-gate` and emits its DISPLAY: fix gate auto-accepted
-    continuation section, and continues pay-1-2's executor for the
-    fix round in the same turn — no menu, no stop, no user input
+    pay-1-2, renders the result header, summarises the findings,
+    fetches the fix gate via `render fix-gate` and emits its
+    DISPLAY: fix gate auto-accepted continuation section, and
+    continues pay-1-2's executor for the fix round in the same turn —
+    no menu, no stop, no user input
 11. the executor's fix round completes; the reviewer approves; the
-    task gate presents the summary, fetches the gate via
-    `render task-gate` and emits its DISPLAY: task gate auto-approved
-    continuation section, and proceeds to commit in the same turn —
-    one raw git commit lands as impl(pay): Tpay-1-2 with
+    result header renders, the summary follows, the gate is fetched
+    via `render task-gate` and its DISPLAY: task gate auto-approved
+    continuation section emitted, and the commit proceeds in the same
+    turn — one raw git commit lands as impl(pay): Tpay-1-2 with
     --phase-complete recorded and next task ~
 12. retrieval finds no available and no open tasks, reports all tasks
     complete, and returns to the caller — the walk stops before the
@@ -63,8 +66,11 @@ Further claims:
   two fresh reviewer dispatches, the re-review never continuing the
   first reviewer
 - exactly one fix-attempt is recorded per task — attempts reset with
-  each task start, and the threshold display never renders
-- fix-tracking files exist for both tasks and ride their task commits
+  each task start, and every needs-changes verdict reads attempt 1,
+  escalates at 3 — the escalation-threshold wording never renders
+- fix-tracking files exist for both tasks and ride their task
+  commits; the task-result payload cache file under .workflows/.cache
+  is expected residue of the result renders
 - the manifest's implementation item ends with both internal ids in
   completed_tasks, current_task null, phase 1 in completed_phases,
   and both gate modes auto

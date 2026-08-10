@@ -12,7 +12,7 @@ The task loop stalled repeatedly (10+ times over two days on Portal, 2026-08) at
 
 - Skill-scoped hook in `workflow-implementation-process` frontmatter — precedent: `workflow-discussion-process` ships a `SessionEnd` hook the same way. Fires only while the skill is active; can't misfire in other phases.
 - Guard conditions, roughly: this session owns a live implementation topic (presence records session → topic, though implementation doesn't beat yet — a two-line addition), the manifest's `current_task` is set, and the last assistant message carries no legitimate stop artifact. Block with a reason naming the stage's next action.
-- Every legitimate stop in the task loop ends with a rendered gate artifact (blocked-tasks menu, executor-block menu, fix gate, task gate, threshold, cycle gate) — that's the discriminator. **The marker must be chosen after the menu-structure rework settles** — the dotted `· · ·` rule is being redesigned, so don't inherit it; the continuation-line work made "last turn contains a gate artifact" the invariant to key on.
+- Every legitimate stop in the task loop ends with a rendered gate artifact (blocked-tasks menu, executor-block menu, fix gate, task gate, cycle gate) — that's the discriminator. **The marker must be chosen after the menu-structure rework settles** — the dotted `· · ·` rule is being redesigned, so don't inherit it; the continuation-line work made "last turn contains a gate artifact" the invariant to key on.
 
 ## Open Verification
 

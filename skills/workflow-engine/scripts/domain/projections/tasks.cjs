@@ -23,8 +23,8 @@
 //   render cycle-gate    → MENU: cycle gate      (static)
 //
 // The result header the gates follow (`render task-result`) lives in
-// render.cjs — it mixes payload content with the state read here. Its header
-// names the task, so the gates below never repeat the id.
+// render.cjs — it mixes payload content with the state read here. The
+// header names the in-flight task, so the gates never repeat the id.
 //
 // Every gate branch renders an artifact — a MENU where the loop stops, a
 // continuation DISPLAY where it must not. An auto branch that rendered
@@ -51,8 +51,8 @@ function blockedTasksMenu() {
 }
 
 /**
- * The task gate: menu when gated, continuation line when auto. The task is
- * named by the result header directly above — the gate never repeats the id.
+ * The task gate: menu when gated, continuation line when auto. The result
+ * header names the in-flight task — the gate never repeats the id.
  * @param {string} gateMode  `task_gate_mode`
  * @returns {string}
  */
@@ -79,8 +79,8 @@ function taskGateSection(gateMode) {
 
 /**
  * The fix gate: menu when gated or threshold-forced, continuation line when
- * auto and below the threshold. The task is named by the result header
- * directly above — the gate never repeats the id.
+ * auto and below the threshold. The result header names the in-flight task
+ * — the gate never repeats the id.
  * @param {string} gateMode  `fix_gate_mode`
  * @param {boolean} thresholdReached  `fix_attempts` at or past the threshold
  * @returns {string}

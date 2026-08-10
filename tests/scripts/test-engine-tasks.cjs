@@ -829,7 +829,7 @@ describe('engine render task surfaces', () => {
     seedGates('gated', 0);
     const file = writeResultPayload({
       phase: '1 — Core',
-      position: '1 of 2 in phase · 1 of 3 overall',
+      position: '1 of 2 in phase',
       external: { label: 'tick', id: 'TCK-1' },
     });
     assert.strictEqual(
@@ -840,9 +840,22 @@ describe('engine render task surfaces', () => {
         '',
         '- **Id**: `auth-flow-1-1` · tick `TCK-1`',
         '- **Phase**: 1 — Core',
-        '- **Position**: 1 of 2 in phase · 1 of 3 overall',
+        '- **Position**: 1 of 2 in phase',
         '',
       ].join('\n'));
+  });
+
+  it('task-result renders from an item that has never recorded a fix attempt', () => {
+    const phases = planPhases();
+    phases.implementation = { items: { 'auth-flow': { status: 'in-progress', current_task: 'auth-flow-1-1' } } };
+    createManifest(dir, 'auth', { phases });
+    const file = writeResultPayload({ phase: '1 — Core' });
+    assert.match(
+      render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']),
+      /\*\*✓ Approved\*\*\n/);
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'needs-changes']).error,
+      /fix_attempts is 0/);
   });
 
   it('task-result approved after fix rounds names the count — singular and plural', () => {
@@ -876,7 +889,7 @@ describe('engine render task surfaces', () => {
       ].join('\n'));
   });
 
-  it('task-result needs-changes at the threshold names the reached threshold', () => {
+  it('task-result needs-changes at and past the threshold names the reached threshold', () => {
     seedGates('gated', 3);
     const file = writeResultPayload({ phase: '1 — Core' });
     assert.strictEqual(
@@ -889,6 +902,14 @@ describe('engine render task surfaces', () => {
         '- **Phase**: 1 — Core',
         '',
       ].join('\n'));
+
+    cleanupFixture(dir);
+    dir = setupFixture();
+    seedGates('gated', 4);
+    const file2 = writeResultPayload({ phase: '1 — Core' });
+    assert.match(
+      render(['task-result', 'auth.implementation.auth-flow', '--file', file2, '--result', 'needs-changes']),
+      /\*\*◐ Needs changes\*\* — \*attempt 4, escalation threshold reached\*/);
   });
 
   it('task-result blocked and failed lead with the alert verdict regardless of attempts', () => {
@@ -898,6 +919,15 @@ describe('engine render task surfaces', () => {
     assert.match(blocked, /\*\*⚑ Blocked\*\* — \*the executor stopped before completing this task\*/);
     const failed = render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'failed']);
     assert.match(failed, /\*\*⚑ Failed\*\* — \*the executor could not complete this task\*/);
+
+    cleanupFixture(dir);
+    dir = setupFixture();
+    seedGates('gated', 3);
+    const file2 = writeResultPayload({ phase: '1 — Core' });
+    assert.match(
+      render(['task-result', 'auth.implementation.auth-flow', '--file', file2, '--result', 'blocked']),
+      /\*\*⚑ Blocked\*\* — \*the executor stopped before completing this task\*\n/,
+      'a blocked verdict never carries attempt detail');
   });
 
   it('task-result refuses out-of-place calls and malformed payloads', () => {
@@ -908,7 +938,7 @@ describe('engine render task surfaces', () => {
       /fix_attempts is 0/);
     assert.match(
       renderFails(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'shipped']).error,
-      /--result must be approved, needs-changes, blocked, or failed/);
+      /--result must be approved, needs-changes, blocked, or failed, got "shipped"/);
     assert.match(
       renderFails(['task-result', 'auth.implementation.auth-flow', '--result', 'approved']).error,
       /--file <payload\.json> is required/);
@@ -923,13 +953,14 @@ describe('engine render task surfaces', () => {
       /"external" must be \{label, id\}/);
   });
 
-  it('task-result refuses a missing in-flight task and a wrong-phase address', () => {
+  it('task-result refuses a missing in-flight task, a wrong-phase address, and an unknown work unit', () => {
     const phases = planPhases();
     phases.implementation = { items: { 'auth-flow': { status: 'in-progress' } } };
     createManifest(dir, 'auth', { phases });
     const file = writeResultPayload({ phase: '1 — Core' });
     assert.match(renderFails(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']).error, /no current task/);
     assert.match(renderFails(['task-result', 'auth.planning.auth-flow', '--file', file, '--result', 'approved']).error, /must be <work_unit>\.implementation\.<topic>/);
+    assert.match(renderFails(['task-result', 'ghost.implementation.auth-flow', '--file', file, '--result', 'approved']).error, /not found/);
   });
 
   it('cycle-limit renders the over-limit callout, refuses within the limit', () => {

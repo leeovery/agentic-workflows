@@ -20,11 +20,11 @@ H. Update progress + phase check + commit
 → loop back to A until done
 ```
 
-**Engine gate sections**: the loop's state-derived gates render via `engine render` calls — each stage below fetches its own gate at the moment it displays it and emits what returns, so the section always sits in the tool result directly above its emission. DISPLAY sections are emitted verbatim as a code block, MENU sections verbatim as markdown (not a code block). A section is everything beneath its `===` marker up to the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
+**Engine sections**: the loop's state-derived sections — the result header and its gates — render via `engine render` calls — each stage below fetches its own section at the moment it displays it and emits what returns, so the section always sits in the tool result directly above its emission. Each section is emitted verbatim as the form its marker names. A section is everything beneath its `===` marker up to the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
 
 **Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round, a retry, or a gate comment round. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
 
-→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written — the register and depth for the review and task-result summaries in **E** and **G**. Findings cache files and records stay fully technical.
+→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written — the register and depth for the review and result summaries in **E** and **G**. Findings cache files and records stay fully technical.
 
 Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** consumes it from session context rather than re-reading it per invocation:
 
@@ -93,7 +93,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
 #### If a task is available
 
 1. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
-2. Note the task's position from the listing used to determine availability: its ordinal and total across the plan (`{task_number}` of `{task_total}`) and within its plan phase (`{phase_task_number}` of `{phase_task_total}`) — **[display-task-result.md](display-task-result.md)** presents them at every result moment.
+2. Note the task's position for the result presentation (**[display-task-result.md](display-task-result.md)**): list every task in plan order via the format's **reading.md** listing procedure — completed and skipped included — and record this task's ordinal and the total across the plan (`{task_number}` of `{task_total}`) and within its plan phase (`{phase_task_number}` of `{phase_task_total}`). When the format's listing cannot yield the counts, skip them — the presentation renders without.
 3. Start the task via the engine (records the task as `current_task`; a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; re-starting the in-flight task — already `current_task` with its tracking file on disk — preserves both, so a re-run is safe):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
@@ -123,7 +123,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
 
 ## C. Handle Executor Block
 
-→ Load **[display-task-result.md](display-task-result.md)** with result = the executor's `STATUS` (`blocked` or `failed`).
+→ Load **[display-task-result.md](display-task-result.md)** with result = `{the executor's STATUS: blocked or failed}`.
 
 > *Output the next fenced block as a code block:*
 
@@ -135,7 +135,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
 
 ```
 · · · · · · · · · · · ·
-Task {status:[blocked|failed]}. How would you like to proceed?
+**`◆ How would you like to proceed?`**
 
 **`r/retry`** → Re-invoke the executor with your comments (provide below)
 **`s/skip`**  → Skip this task and move to the next
@@ -202,9 +202,9 @@ Record the attempt via the engine (increments `fix_attempts` and appends the fin
 node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_unit} {topic} {internal_id} --findings-file .workflows/.cache/{work_unit}/implementation/{topic}/attempt-findings.md
 ```
 
-#### If the response's `threshold_reached` is `true`
+→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
 
-→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes` — the render names the reached threshold.
+#### If the response's `threshold_reached` is `true`
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`.
 
@@ -215,8 +215,6 @@ The turn does not end here — the gate menu follows in the same turn.
 → On return, proceed to **F. Fix Approval Gate**.
 
 #### If the response's `threshold_reached` is `false`
-
-→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
 
 Present the reviewer's findings as a product-lens summary (markdown, not a code block): each issue in a sentence or two — what is wrong or at risk in what was built and the proposed fix, with the alternative or the reviewer's confidence only where it changes the call; non-blocking notes in one line.
 
