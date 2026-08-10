@@ -22,7 +22,7 @@ Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/task-
 
 - `phase` — the task's plan phase, number and name, from the normalised task content (its `PHASE` line).
 - `position` — the in-phase ordinal from the same stage-A listing; omit the field when the listing did not yield the counts.
-- `external` — the plan's display identifier: the `task_map` entry for this internal id (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map`), labelled with the plan's `format` value. Include it only when the mapped id differs from the internal id and is a key a person would recognise — never a UUID or a file path; omit the field otherwise.
+- `external` — the plan format's display identifier, obtained as its **reading.md** → Display Identifier section instructs, labelled with the plan's `format` value. Omit the field when the format declares none.
 
 Render and emit its `DISPLAY: task result` section verbatim at its marked instruction:
 

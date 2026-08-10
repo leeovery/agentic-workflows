@@ -1,5 +1,9 @@
 # Local Markdown: Reading
 
+## Display Identifier
+
+None. The internal id is the task's only identifier; user-facing task displays show it alone.
+
 ## Listing Tasks
 
 To retrieve all tasks for a plan:

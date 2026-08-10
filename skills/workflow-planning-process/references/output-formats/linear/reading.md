@@ -9,6 +9,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
 ```
 
+## Display Identifier
+
+None. `task_map` holds issue UUIDs — machine handles, not identifiers a person recognises. User-facing task displays show the internal id alone.
+
 ## Listing Tasks
 
 To retrieve all tasks for a plan:
