@@ -175,8 +175,77 @@ top repeated file reads. Currently a scratchpad script from the
 2026-08-09 investigation; banked into the repo when step 1's first
 measurement window opens.
 
+## Step 1 measured (2026-08-10)
+
+Two measurement windows, same feature, same day the change landed.
+
+**Live tail (phase 12, easy class)** — five tasks at medium against the
+phase-11 xhigh baseline on the same cleanup task class: executor median
+13.2 → 7.2 min (−45%), full cycles ~24 → 13–22 min, first-pass
+approvals 4/4 against a 14/15 baseline, review findings comment-prose
+only. One 49-min outlier (12-7) was task shape, not effort — a
+193-edit comment sweep, turn-bound; its xhigh sibling (11-3) ran ~97
+min.
+
+**Replay (phase 4, hard class)** — the controlled experiment: a
+worktree wound back to the phase-3-complete commit with the current
+workflows overlaid, re-running the feature's hardest phase at medium
+against the banked xhigh originals. Method: same spec, plan and task
+content; only the executor effort differs; reviewer stays xhigh;
+per-task baselines from the original transcripts and fix-tracking
+files. Results over 4-1..4-3 (stopped there — question answered):
+
+- 4-1: 9.7 vs 16.2 exec min; bounced in both eras. Two fix rounds vs
+  one, but round 2 was a defect the original review *waived*
+  ("practically unreachable") and main shipped — reviewer strictness
+  variance, not executor quality. Both executors independently missed
+  the identical `Styles.NoItems` residue.
+- 4-2: 11.5 vs 20.3 exec min; approved first-pass in both eras, and
+  both executors independently performed the same deviation
+  archaeology (recovered deleted tapes, found the task's fixture
+  under-count, resolved it the same way).
+- 4-3: ~18 vs 91.4 min total agent time (−80%); first-pass approval
+  vs five attempts. The approving review was full-depth — 53 tool
+  calls, independent mutation testing in a scratch copy.
+
+**The finding that outranks the headline**: 4-3's original marathon
+was not executor weakness and not comment noise (all four rounds were
+mutation-proven test-vacuity holes — the comment-lane hypothesis was
+checked and refuted). Porting the original rounds' mutations into the
+replay's guard showed its first draft closed 2 of the 4 holes and
+retained 2 — and the original's first xhigh draft had the same class
+of holes, which is why its rounds existed. The quality delta between
+one attempt and five is **number of independent reviewer samplings**,
+each fresh xhigh reviewer finding roughly one new hole; executor
+effort showed no quality signal anywhere in the phase. Review
+sampling count/diversity, not executor thinking depth, is the knob
+that bought the guard its depth. This is now the design input for
+steps 2 and 5: a reviewer-effort change cannot be judged by a small
+replay (it would measure sampling noise on its own axis) — step 2
+ships as designed and is read over a full feature's worth of live
+reviews.
+
+Step 1 verdict: **holds — stays in.** No rollback trigger approached;
+executor time down 40–80% by task class with judgment behaviours
+(deviation detection, spec conformance, convention adherence) at
+parity across both windows.
+
+Replay evidence: Portal branch `replay/phase-4-medium` (local,
+unpushed — commits for 4-1..4-3 including the migration and overlay
+setup); transcripts under
+`~/.claude/projects/-Users-leeovery-Code-portal-replay-phase4/`. The
+rig is reusable: new experiment → new worktree at a new path, so
+transcript dirs stay attributable.
+
 ## Status log
 
 - **2026-08-09** — Programme opened. Portal theming-system transcript
   analysis (this document's Motivation) is the shared baseline.
   Step 1 shipped: `effort: medium` on the executor agent definition.
+- **2026-08-10** — Step 1 measured over both windows (see Step 1
+  measured): verdict holds, stays in. Review-sampling insight banked
+  as the design input for steps 2 and 5. Side catches filed in
+  Portal's inbox: the ArabicPagination theming bug (found by the
+  replay reviewer, waived in the original run), the oversized-file
+  split idea. Executor-continuation prose fix shipped separately
+  (#856) after both eras showed the warm-reuse path never fired.
