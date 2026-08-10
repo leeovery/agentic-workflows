@@ -32,4 +32,16 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit
 
 **Never overwrite an existing status** — only untracked references enter the payload, so an already-`addressed` reference stays `addressed`. This runs every session: references newly declared on a continue are picked up while prior progress is preserved.
 
+## Reconcile Stale Sources First
+
+Read the sources map (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources`).
+
+#### If any row reads `stale`
+
+Its discussion was re-decided after extraction — a spec that paused for that discussion pulls the revision in now, not at sign-off. Work each stale row per **[spec-construction.md](spec-construction.md) → Reconcile Stale Sources** before construction resumes. A row whose discussion is still `in-progress` defers there and stays `stale` — construction can proceed on other topics, but conclusion will wait for it.
+
+→ Return to caller.
+
+#### Otherwise
+
 → Return to caller.

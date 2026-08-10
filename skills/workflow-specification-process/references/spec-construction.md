@@ -23,6 +23,8 @@ F. Topic complete → loop back to A or exit
 
 When working with multiple sources, search each one — information about a single topic may be scattered across documents.
 
+Every chunk must be derivable from its sources. When source material disagrees — with itself, or with another source — or is too unclear to extract without assumption, never silently pick a side: work it per **Resolve Source Incoherence** below, in the moment it surfaces. Tension notes carried in from the grouping analysis (the consolidation cache's `**Tension**` lines) are raised the same way when their chunk arrives.
+
 ### Context Resurfacing
 
 This gate stays gated even when `construction_gate_mode` is `auto` — it changes already-approved content, so it always stops for confirmation.
@@ -233,5 +235,69 @@ First check the source discussion's status (`engine manifest get {work_unit}.dis
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): reconcile stale source {source-name}"
 ```
+
+→ Return to caller.
+
+---
+
+## Resolve Source Incoherence
+
+Entered by name from **A** when source material disagrees — with itself, or with another source — or cannot be extracted without assumption. Specification makes decisions clear; it never makes them.
+
+#### If the timeline resolves it
+
+One side is acknowledged supersession — a dated Decision-block entry, or prose the newer decision names as changed. Not incoherence: extract the governing decision.
+
+→ Return to **A. Exhaustive Extraction**.
+
+#### If it is a repair of record
+
+The decisions cohere; one document's prose relies, as current, on a value or mechanism another document has since moved, and the citing conclusion survives the correction. No choice exists — no stop, on either gate mode.
+
+→ Proceed to **Landing a Resolution** with resolution = `{the repair}`, doc = `{the citing document}`. On return, carry a one-line note into the next **B** presentation, above the content block and never inside it: `Resolved along the way: {what was repaired}.` The doc diff and its commit are the durable record; the note is the courtesy.
+
+→ Return to **A. Exhaustive Extraction**.
+
+#### If a decision is owed
+
+The sources decide incompatibly, or the material is unclear in a way only a choice can settle. **This stop overrides `auto`** — like Context Resurfacing, it exists precisely because no choice is ever made without the user. Present both sides with verbatim quotes cited file + section, what breaks if extraction proceeds anyway, and the options with a recommendation.
+
+**STOP.** Wait for user response.
+
+**If the user settles it:**
+
+→ Proceed to **Landing a Resolution** with resolution = `{the settled decision}`, doc = `{the owning document}`. On return, the chunk continues against the updated source.
+
+→ Return to **A. Exhaustive Extraction**.
+
+**If the user rules it a gap** — there is no decision to make clear; the ground needs real discussion:
+
+→ Proceed to **The Gap Exit**.
+
+#### If it is a gap
+
+Nothing was ever decided, and the chunk cannot be written until it is.
+
+→ Proceed to **The Gap Exit**.
+
+### The Gap Exit
+
+Land the concern in the owning discussion's triage queue:
+
+→ Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{owning discussion}`, concern = `{the gap: what the chunk needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
+
+The landing reopens the discussion and flips this spec's source row to `stale`. Commit the session's work (`node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — {gap} routed to {owning discussion}"`), then tell the user: this specification waits on that discussion — have it there, re-enter the spec after, and the stale row reconciles at re-entry. Do not run document dependencies, review, or conclusion.
+
+**STOP.** Do not proceed — terminal condition.
+
+### Landing a Resolution
+
+The resolution is written into the owning discussion document as if decided then — the decision layer, plus any citing prose the resolution invalidates. No meta-narration, no provenance breadcrumbs: the document reads as its own record.
+
+1. **Check presence**: `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}`. If the owning discussion's row is `held` and `live`, do not edit — a live session owns that document. Land the resolution as a triage concern instead (the Gap Exit's delivery, concern = the agreed resolution), tell the user this chunk waits on that session folding it, and move to the next topic or stop as they prefer.
+2. **Edit the document** — targeted, as if decided in its own session.
+3. **Reindex it**: `node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/discussion/{doc}.md` — the knowledge base serves the resolution for the rest of the epic.
+4. **Stale the other extractions**: `node .claude/skills/workflow-engine/scripts/engine.cjs sources stale {work_unit} {doc} --except {topic}` — every other spec that incorporated this discussion now reconciles before it concludes. When the response's `staled` is non-empty, tell the user in one line which specification(s) it named.
+5. **Commit**: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}/{doc}): {what the resolution settled} — resolved at specification"`.
 
 → Return to caller.

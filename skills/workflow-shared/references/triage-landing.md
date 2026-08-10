@@ -1,12 +1,12 @@
 # Triage Landing
 
-*Shared reference. Loaded by `workflow-discussion-process` (off-topic concerns) and `workflow-research-process` (topic awareness) when a concern must be rerouted to a different topic.*
+*Shared reference. Loaded by `workflow-discussion-process` (off-topic concerns), `workflow-research-process` (topic awareness), and `workflow-specification-process` (gaps and resolutions routed to a source discussion) when a concern must be rerouted to a different topic.*
 
 ---
 
 Lands a rerouted concern in a target topic's **triage queue** — one engine-numbered file per concern, installed and committed by the engine — so the target surfaces it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to route to; their callers ignore the concern, surface it to the inbox, or pivot to an epic, and never load this reference.
 
-The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a concern that belongs to the current topic is normal subtopic or thread work, not a reroute). The delivery is a self-committing engine transaction — the concern file and manifest land action-scoped under the reroute message; the caller commits nothing for the landing itself. (`topic reactivate` in **D** likewise commits itself.)
+The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a concern that belongs to the current topic is normal subtopic or thread work, not a reroute). A specification raiser is the exception: its target is a source discussion — a different phase item even when it shares the spec topic's name. The delivery is a self-committing engine transaction — the concern file and manifest land action-scoped under the reroute message; the caller commits nothing for the landing itself. (`topic reactivate` in **D** likewise commits itself.)
 
 ## Parameters
 
@@ -16,7 +16,7 @@ The caller provides these via context before loading:
 - `target` — the destination topic the concern belongs to (an existing map name, or a new kebab-case name the caller proposed and confirmed).
 - `concern` — the concern as a short title, plus the full context discussed about it.
 - `origin` — the topic the concern surfaced in (the current session's topic).
-- `phase` — the current session's phase, `research` or `discussion`. Recorded in the entry.
+- `phase` — the current session's phase, `research`, `discussion`, or `specification`. Recorded in the entry.
 - `landing_phase` — where the concern lands on the target, `research` or `discussion`: judged by the origin session per **Judging the Landing Phase** below, recommended and confirmed at the caller's gate. Any target state is legal — the delivery parks, leaves live work untouched, or reopens completed work as needed.
 - `date` — today's date.
 

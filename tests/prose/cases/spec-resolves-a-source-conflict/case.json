@@ -1,0 +1,63 @@
+{
+  "origin": "the spec-side incoherence discipline had no prose coverage — this walks construction meeting a seeded cross-document conflict: the always-stop raise, the resolution landing in the owning discussion as if decided then, the reindex, the sources-stale safety valve, and the discussion never reopening",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/dependencies.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/compliance-check.md"
+  ],
+  "conduct": "The user is specifying the expansion pipeline from their two completed discussions and knows both records cold. When the batch-vs-live-stream conflict is raised they engage on the merits: the live click-signal stream will never be built — behavioural-ranking settled that — so they settle expansion as behaviour-driven computed from the nightly batch aggregates, refreshing daily; they accept the recommendation if it says exactly that, and correct it if it does not. They expect the fix to land in the discussion's own record and would object to being asked to reopen a discussion for it. Otherwise they check each presented piece against what was decided — faithful content gets an explicit yes; invention gets corrected before writing. They keep approving one piece at a time when offered auto. They answer questions concretely, never add scope, and never reopen decided questions beyond the one conflict raised to them. Asked to confirm dependencies, the assessment, or the conclusion, they read and confirm; offered optional extras, they decline.",
+  "stubs": {
+    "spec-review-clean": "each time the prose dispatches a specification review agent via the Task tool — both the input review and the gap analysis return the content below and write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.specification.expansion status",
+      "topic start search-relevance specification expansion",
+      "presence scan search-relevance",
+      "knowledge.cjs index .workflows/search-relevance/discussion/synonym-handling.md",
+      "sources stale search-relevance synonym-handling --except expansion",
+      "sources.behavioural-ranking.status incorporated",
+      "sources.synonym-handling.status incorporated",
+      "topic complete search-relevance specification expansion"
+    ],
+    "calls_in_order": [
+      "topic start search-relevance specification expansion",
+      "presence scan search-relevance",
+      "write:.workflows/search-relevance/discussion/synonym-handling.md",
+      "knowledge.cjs index .workflows/search-relevance/discussion/synonym-handling.md",
+      "sources stale search-relevance synonym-handling --except expansion",
+      "topic complete search-relevance specification expansion"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic triage",
+      "topic supersede",
+      "construction_gate_mode auto",
+      "finding_gate_mode auto",
+      "workunit create"
+    ]
+  }
+}
