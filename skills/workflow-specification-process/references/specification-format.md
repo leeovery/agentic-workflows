@@ -61,6 +61,8 @@ Lifecycle `status` transitions go through the engine, not `set` — `engine topi
 
 Bracketed lines are placeholders, not content — create the file with the headings and leave the sections empty; never copy placeholder text into the file. Topic content nests beneath `## Specification` as `###` sections — never as sibling `##` headings.
 
+A corrected specification may additionally carry a `## Corrigenda` section as its final section — the durable record of post-completion amendments, written only through `workflow-shared/references/correcting-historical-artifacts.md`, never during specification work. Leave it in place, always last, and never fold its entries into the body.
+
 ---
 
 ## Sources and Incorporation Status

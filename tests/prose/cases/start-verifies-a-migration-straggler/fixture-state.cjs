@@ -47,9 +47,17 @@ module.exports = {
     h.engine('commit', WU, '--topic', 'discussion/synonym-handling', '-m',
       `discussion(${WU}): reopen synonym-handling with a stale parked concern`);
 
-    // Un-record 054 so the walk's boot runs it against this world.
-    h.write('.workflows/.state/migrations',
-      Array.from({ length: 53 }, (_, i) => String(i + 1).padStart(3, '0')).join('\n') + '\n');
+    // Record every shipped migration except 054, so the walk's boot runs
+    // exactly 054 against this world — durable as new migrations land.
+    const migrationsDir = require('path').join(
+      __dirname, '..', '..', '..', '..',
+      'skills', 'workflow-migrate', 'scripts', 'migrations'
+    );
+    const recorded = require('fs').readdirSync(migrationsDir)
+      .map((f) => (f.match(/^(\d+)-/) || [])[1])
+      .filter((id) => id && id !== '054')
+      .sort();
+    h.write('.workflows/.state/migrations', recorded.join('\n') + '\n');
     h.engine('commit', '--workflows', '-m', 'chore: rewind migration state for the walk');
   },
 };

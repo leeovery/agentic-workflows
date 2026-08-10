@@ -22,7 +22,7 @@ There is deliberate restraint about *when* it looks. During the phases meant to 
 
 ## When memory needs correcting
 
-A finished document sometimes turns out to be wrong after the fact. The correction is made in the document itself — edited in place, with a dated note recording what changed and why — and the memory then re-indexes that document, so recall serves the corrected text rather than the version that misled. Nothing is corrected by deletion: the note keeps the correction itself part of the record, and the citation trail stays honest.
+A specification sometimes turns out to be wrong after the fact. As the record of validated decisions — the one kind of document that never fades — it is the only document that gets corrected: edited in place, with a dated note recording what changed and why, and the memory then re-indexes it so recall serves the corrected text rather than the version that misled. Nothing is corrected by deletion: the note keeps the correction itself part of the record, and the citation trail stays honest. Everything else — research, discussions, investigations — is left as it was written; a claim overtaken by events simply fades as the project moves on.
 
 ## Why old material fades
 
