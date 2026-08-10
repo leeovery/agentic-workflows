@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.57] - 2026-08-10
+
+🔧 Changed
+- Corrigenda now live in a `## Corrigenda` section at the bottom of a specification instead of a blockquote under the title — keeps the intro chunk clean for search and lets each correction stand as its own indexed chunk.
+- Only specifications get corrected after a work unit completes — research, discussion, and investigation are left as-written and simply age out of the knowledge base instead of being edited.
+- A large correction to a completed spec can now be reviewed before applying — the confirmation prompt gains a `v/view` option to see the full list of changes first.
+- A mechanical rename or path change spanning many lines now records as one corrigendum entry (old → new) instead of one entry per edited line.
+
+🐛 Fixed
+- Existing specifications with corrigenda under the title are automatically migrated to the new bottom-section format on upgrade.
+
 ## [0.6.56] - 2026-08-10
 
 ✨ Added
