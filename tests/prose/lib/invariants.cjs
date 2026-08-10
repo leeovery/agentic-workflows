@@ -90,8 +90,30 @@ function undeclaredProse(rows, declared) {
 }
 
 /** The commands the walk ran, in order. */
+// Searching for a string is not running it. A walker greps the repo to
+// orient itself — `grep -rl "topic triage" .claude/skills` — and because
+// both sides of a match drop quotes, that search argument is
+// indistinguishable from the call it names. A case failed `calls_exclude`
+// on a command no walk ran, and the asserter could see the string was
+// only ever a grep argument while being unable to overturn a computed
+// check. So a statement that is a search leaves the substrate.
+//
+// Only whole statements go — a pipeline like `engine … | grep foo` still
+// ran the engine call at its head, and dropping the row would trade this
+// false positive for a false negative.
+const SEARCH_HEAD = /^(grep|egrep|fgrep|rg|ag|find)\b/;
+
+function withoutSearches(detail) {
+  return detail
+    .split(/\s*(?:&&|;)\s*/)
+    .filter((segment) => !SEARCH_HEAD.test(segment.trim()))
+    .join(' && ');
+}
+
 function commands(rows) {
-  return rows.filter((r) => r.tool === 'Bash' && r.event === 'PreToolUse').map((r) => r.detail);
+  return rows
+    .filter((r) => r.tool === 'Bash' && r.event === 'PreToolUse')
+    .map((r) => withoutSearches(r.detail));
 }
 
 /**

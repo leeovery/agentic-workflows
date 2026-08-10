@@ -144,6 +144,28 @@ describe('calls_include / calls_exclude', () => {
     assert.ok(!result.detail.includes('unproven'));
   });
 
+  it('does not count a grep argument as the call it names', () => {
+    // Measured: a walk grepped the repo to orient — the string appeared
+    // only inside the search pattern — and calls_exclude reported it as
+    // run. Quotes are stripped on both sides of a match, so the argument
+    // and the invocation look identical.
+    const rows = [bash('cd . && grep -rl "topic triage" .claude/skills')];
+    const [result] = invariants.check(rows, { calls_exclude: ['topic triage'] });
+    assert.equal(result.ok, true, 'searching for a call is not running it');
+  });
+
+  it('still sees a real call in a statement alongside a search', () => {
+    const rows = [bash(`grep -n triage docs.md && ${ENGINE} topic triage pay discussion pay`)];
+    const [result] = invariants.check(rows, { calls_exclude: ['topic triage'] });
+    assert.equal(result.ok, false, 'the engine call is still there to find');
+  });
+
+  it('keeps a command that merely pipes into a search', () => {
+    // The head of the pipeline ran; only whole search statements go.
+    const rows = [bash(`${ENGINE} task init pay pay | grep ok`)];
+    assert.equal(invariants.check(rows, { calls_include: ['task init'] })[0].ok, true);
+  });
+
   it('fails when a forbidden command ran — the walk went too far', () => {
     const rows = [bash(`${ENGINE} task init pay pay`), bash(`${ENGINE} task start pay pay`)];
     const [result] = invariants.check(rows, { calls_exclude: ['task start'] });
