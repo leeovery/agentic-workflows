@@ -702,12 +702,11 @@ describe('engine render task surfaces', () => {
     '',
   ].join('\n');
 
-  /** @param {string} id */
-  function taskGateMenu(id) {
+  function taskGateMenu() {
     return [
       `=== MENU: task gate (${MENU_INSTRUCTION}) ===`,
       '· · · · · · · · · · · ·',
-      `**\`◆ Approve task ${id}?\`**`,
+      '**`◆ Approve this task?`**',
       '',
       '**`y/yes`**       → Commit and continue to next task',
       '**`a/auto`**      → Approve this and all future tasks automatically',
@@ -718,12 +717,12 @@ describe('engine render task surfaces', () => {
     ].join('\n');
   }
 
-  /** @param {string} id @param {{auto?: boolean}} [opts] */
-  function fixGateMenu(id, { auto = false } = {}) {
+  /** @param {{auto?: boolean}} [opts] */
+  function fixGateMenu({ auto = false } = {}) {
     return [
       `=== MENU: fix gate (${MENU_INSTRUCTION}) ===`,
       '· · · · · · · · · · · ·',
-      `**\`◆ Accept the reviewer's fix analysis for task ${id}?\`**`,
+      "**`◆ Accept the reviewer's fix analysis?`**",
       '',
       '**`y/yes`**       → Pass to executor',
       ...(auto ? [] : ['**`a/auto`**      → Accept and auto-approve future fix analyses']),
@@ -761,9 +760,9 @@ describe('engine render task surfaces', () => {
     assert.strictEqual(render(['cycle-gate']), CYCLE_MENU);
   });
 
-  it('task-gate under a gated mode renders the approval menu named for the in-flight task', () => {
+  it('task-gate under a gated mode renders the approval menu', () => {
     seedGates('gated');
-    assert.strictEqual(render(['task-gate', 'auth.implementation.auth-flow']), taskGateMenu('auth-flow-1-1'));
+    assert.strictEqual(render(['task-gate', 'auth.implementation.auth-flow']), taskGateMenu());
   });
 
   it('task-gate under an auto mode renders the continuation line', () => {
@@ -772,14 +771,14 @@ describe('engine render task surfaces', () => {
       render(['task-gate', 'auth.implementation.auth-flow']),
       [
         '=== DISPLAY: task gate auto-approved (after the result summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
-        'Task auth-flow-1-1 — approved [auto]. Committing and moving to the next task.',
+        'Task approved [auto]. Committing and moving to the next task.',
         '',
       ].join('\n'));
   });
 
   it('fix-gate below the threshold: gated renders the full menu, auto the continuation line', () => {
     seedGates('gated', 1);
-    assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu('auth-flow-1-1'));
+    assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu());
 
     cleanupFixture(dir);
     dir = setupFixture();
@@ -788,21 +787,21 @@ describe('engine render task surfaces', () => {
       render(['fix-gate', 'auth.implementation.auth-flow']),
       [
         '=== DISPLAY: fix gate auto-accepted (after the findings summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
-        'Fix analysis for task auth-flow-1-1 — accepted [auto]. Passing the findings to the executor.',
+        'Fix analysis accepted [auto]. Passing the findings to the executor.',
         '',
       ].join('\n'));
   });
 
   it('fix-gate at the threshold renders the menu in both modes — auto omits the auto option', () => {
     seedGates('gated', 3);
-    assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu('auth-flow-1-1'));
+    assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu());
 
     cleanupFixture(dir);
     dir = setupFixture();
     seedGates('auto', 3);
     assert.strictEqual(
       render(['fix-gate', 'auth.implementation.auth-flow']),
-      fixGateMenu('auth-flow-1-1', { auto: true }));
+      fixGateMenu({ auto: true }));
   });
 
   it('task-gate and fix-gate refuse a missing in-flight task, a wrong-phase address, and an unknown work unit', () => {
@@ -815,25 +814,125 @@ describe('engine render task surfaces', () => {
     assert.match(renderFails(['fix-gate', 'ghost.implementation.auth-flow']).error, /not found/);
   });
 
-  it('fix-threshold renders the escalation callout at and past the threshold, refuses below it', () => {
-    seedGates('auto', 3);
+  const RESULT_MD = 'emit verbatim as markdown — do not stop; continue as the workflow instructs';
+  const RESULT_RED = 'emit verbatim as a properties code block (```properties fence) — do not stop; continue as the workflow instructs';
+
+  /** Write a task-result payload into the fixture; returns its relative path. */
+  function writeResultPayload(payload) {
+    const rel = path.join('.workflows', '.cache', 'auth', 'implementation', 'auth-flow', 'task-result.json');
+    const abs = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, JSON.stringify(payload));
+    return rel;
+  }
+
+  it('task-result approved: the calm verdict plus every payload meta row', () => {
+    seedGates('gated', 0);
+    const file = writeResultPayload({
+      phase: '1 — Core',
+      position: '1 of 2 in phase · 1 of 3 overall',
+      external: { label: 'tick', id: 'TCK-1' },
+    });
     assert.strictEqual(
-      render(['fix-threshold', 'auth.implementation.auth-flow']),
+      render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']),
       [
-        '=== DISPLAY: fix threshold (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
-        '⚑ Fix attempt 3 for task auth-flow-1-1 — escalation threshold reached.',
+        `=== DISPLAY: task result (${RESULT_MD}) ===`,
+        '**✓ Approved**',
+        '',
+        '- **Id**: `auth-flow-1-1` · tick `TCK-1`',
+        '- **Phase**: 1 — Core',
+        '- **Position**: 1 of 2 in phase · 1 of 3 overall',
         '',
       ].join('\n'));
+  });
 
-    cleanupFixture(dir);
-    dir = setupFixture();
-    seedGates('gated', 4);
-    assert.match(render(['fix-threshold', 'auth.implementation.auth-flow']), /⚑ Fix attempt 4 for task auth-flow-1-1/);
+  it('task-result approved after fix rounds names the count — singular and plural', () => {
+    seedGates('gated', 1);
+    const file = writeResultPayload({ phase: '1 — Core' });
+    assert.match(
+      render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']),
+      /\*\*✓ Approved\*\* — \*1 fix round\*/);
 
     cleanupFixture(dir);
     dir = setupFixture();
     seedGates('gated', 2);
-    assert.match(renderFails(['fix-threshold', 'auth.implementation.auth-flow']).error, /below the threshold/);
+    const file2 = writeResultPayload({ phase: '1 — Core' });
+    assert.match(
+      render(['task-result', 'auth.implementation.auth-flow', '--file', file2, '--result', 'approved']),
+      /\*\*✓ Approved\*\* — \*2 fix rounds\*/);
+  });
+
+  it('task-result needs-changes below the threshold: the calm verdict with the attempt count, optional rows omitted', () => {
+    seedGates('gated', 1);
+    const file = writeResultPayload({ phase: '2 — Analysis (Cycle 1)' });
+    assert.strictEqual(
+      render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'needs-changes']),
+      [
+        `=== DISPLAY: task result (${RESULT_MD}) ===`,
+        '**◐ Needs changes** — *attempt 1, escalates at 3*',
+        '',
+        '- **Id**: `auth-flow-1-1`',
+        '- **Phase**: 2 — Analysis (Cycle 1)',
+        '',
+      ].join('\n'));
+  });
+
+  it('task-result needs-changes at the threshold leads with the red verdict section', () => {
+    seedGates('gated', 3);
+    const file = writeResultPayload({ phase: '1 — Core' });
+    assert.strictEqual(
+      render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'needs-changes']),
+      [
+        `=== DISPLAY: task verdict (${RESULT_RED}) ===`,
+        '⚑ Needs changes — attempt 3, escalation threshold reached',
+        '',
+        `=== DISPLAY: task result (${RESULT_MD}) ===`,
+        '- **Id**: `auth-flow-1-1`',
+        '- **Phase**: 1 — Core',
+        '',
+      ].join('\n'));
+  });
+
+  it('task-result blocked and failed lead with their red verdicts regardless of attempts', () => {
+    seedGates('gated', 0);
+    const file = writeResultPayload({ phase: '1 — Core' });
+    const blocked = render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'blocked']);
+    assert.match(blocked, /=== DISPLAY: task verdict /);
+    assert.match(blocked, /⚑ Blocked — the executor stopped before completing this task/);
+    const failed = render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'failed']);
+    assert.match(failed, /⚑ Failed — the executor could not complete this task/);
+  });
+
+  it('task-result refuses out-of-place calls and malformed payloads', () => {
+    seedGates('gated', 0);
+    const file = writeResultPayload({ phase: '1 — Core' });
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'needs-changes']).error,
+      /fix_attempts is 0/);
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'shipped']).error,
+      /--result must be approved, needs-changes, blocked, or failed/);
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--result', 'approved']).error,
+      /--file <payload\.json> is required/);
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({}), '--result', 'approved']).error,
+      /"phase" must be a non-empty string/);
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ phase: '1 — Core', position: '  ' }), '--result', 'approved']).error,
+      /"position" must be a non-empty string/);
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ phase: '1 — Core', external: { label: 'tick' } }), '--result', 'approved']).error,
+      /"external" must be \{label, id\}/);
+  });
+
+  it('task-result refuses a missing in-flight task and a wrong-phase address', () => {
+    const phases = planPhases();
+    phases.implementation = { items: { 'auth-flow': { status: 'in-progress' } } };
+    createManifest(dir, 'auth', { phases });
+    const file = writeResultPayload({ phase: '1 — Core' });
+    assert.match(renderFails(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']).error, /no current task/);
+    assert.match(renderFails(['task-result', 'auth.planning.auth-flow', '--file', file, '--result', 'approved']).error, /must be <work_unit>\.implementation\.<topic>/);
   });
 
   it('cycle-limit renders the over-limit callout, refuses within the limit', () => {

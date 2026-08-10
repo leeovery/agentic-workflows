@@ -72,9 +72,12 @@ function section(name, instruction, body) {
 // that. Neither names a next step: where the flow goes is the prose's to
 // own, and an engine string that duplicated it would be a second routing
 // source to keep in sync. The markdown variant serves worklist surfaces,
-// whose register (strikethrough, code-span tags) cannot live in a fence.
+// whose register (strikethrough, code-span tags) cannot live in a fence;
+// the properties variant serves red verdicts mid-flow — the blocked-state
+// register where the turn nonetheless continues.
 const CONTINUE_INSTRUCTION = 'emit verbatim as a code block — do not stop; continue as the workflow instructs';
 const CONTINUE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — do not stop; continue as the workflow instructs';
+const CONTINUE_PROPERTIES_INSTRUCTION = 'emit verbatim as a properties code block (```properties fence) — do not stop; continue as the workflow instructs';
 const AUTO_GATE_INSTRUCTION = 'emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs';
 
 /**
@@ -209,5 +212,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, CONTINUE_PROPERTIES_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList };
 
