@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.58] - 2026-08-10
+
+✨ Added
+- Ad hoc plan changes during implementation — when unplanned work surfaces mid-build (a bug hit while testing, a gap, a change of mind), it can now be handed off to be scoped, drafted as tasks, and approved through the normal task gate, or captured to the inbox if out of scope, rather than freelanced.
+
+🔧 Changed
+- The plan task writer now places new tasks per-task into an existing open phase or a fresh one (not just one shared phase per batch), so ad hoc and review/analysis tasks land where they actually belong, with priority and dependencies set via each format's own graph adapter.
+
 ## [0.6.57] - 2026-08-10
 
 🔧 Changed
