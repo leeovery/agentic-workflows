@@ -11,6 +11,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 `tick list` output does not include refs — correlate internal IDs through `task_map`, or use `tick show <tick-id>` to see a single task's refs.
 
+## Display Identifier
+
+The identifier shown beside the internal id in user-facing task displays is the task's tick id — the plan's `task_map` entry for the internal id:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map.{internal_id}
+```
+
 ## Listing Tasks
 
 To retrieve all tasks for a topic:

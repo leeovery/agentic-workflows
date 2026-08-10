@@ -2,6 +2,12 @@
 
 <!-- Instructions for extracting tasks and determining work order -->
 
+## Display Identifier
+
+<!-- The task identifier shown beside the internal id in user-facing displays — or an explicit None when the format's external ids are machine handles (UUIDs, file paths) -->
+
+{How to obtain the display identifier, or "None." with a one-line reason}
+
 ## Listing Tasks
 
 <!-- How to retrieve all tasks for a plan with summary-level data -->

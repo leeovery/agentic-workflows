@@ -55,6 +55,7 @@ Instructions for extracting tasks and determining work order.
 
 Must include:
 
+- **Display Identifier** — the task identifier shown beside the internal id in user-facing displays, and how to obtain it — or an explicit `None.` when the format's external ids are machine handles (UUIDs, file paths) a person would not recognise.
 - **Listing Tasks** — how to retrieve all tasks for a plan. Returns summary-level information (id, title, status, phase, priority, dependencies) suitable for building a task graph or overview. Format-specific filtering and query capabilities may be documented here.
 - **Extracting a Task** — how to read full task detail including all properties
 - **Next Available Task** — how to determine the next task to work on. Document how the format uses status, priority, dependencies, and phase ordering to determine sequence.
