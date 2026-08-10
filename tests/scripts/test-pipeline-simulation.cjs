@@ -1048,7 +1048,9 @@ describe('pipeline simulation', () => {
       /MENU: fix gate/, 'gated fix gate renders its menu');
     // The result header is one surface for every presentation moment.
     const resultPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-result.json`,
-      { phase: '1 — Core', position: '1 of 2 in phase · 1 of 2 overall' });
+      { phase: '1 — Core', position: '1 of 2 in phase' });
+    assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'blocked'], { expect: 'content' }),
+      /\*\*⚑ Blocked\*\* — \*the executor stopped before completing this task\*/, 'an executor block renders the alert verdict');
     assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'needs-changes'], { expect: 'content' }),
       /\*\*◐ Needs changes\*\* — \*attempt 1, escalates at 3\*/, 'below-threshold needs-changes renders the calm verdict');
     // Two more attempts reach the fix threshold — the verdict names it.
@@ -1069,6 +1071,8 @@ describe('pipeline simulation', () => {
     // Auto gates render a continuation artifact — the loop never ends a turn by silence.
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode=auto', 'fix_gate_mode=auto']);
     sim.run(['task', 'start', wu, wu, `${wu}-1-2`]);
+    assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'approved'], { expect: 'content' }),
+      /\*\*✓ Approved\*\*\n/, 'a clean task renders the bare approved verdict');
     const taskGate = sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' });
     assert.match(taskGate, /DISPLAY: task gate auto-approved/, 'auto task gate renders its continuation line');
     assert.match(taskGate, /approved \[auto\]\. Committing and moving to the next task\./,
