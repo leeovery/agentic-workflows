@@ -53,6 +53,12 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ---
 
+## Ad Hoc Plan Changes
+
+Unplanned work surfaces mid-implementation — the user hits a bug while testing, the conversation exposes a gap, an agent result names missing work, a decision changes. When it does — or when you spot it and the user confirms — load **[ad-hoc-plan-changes.md](references/ad-hoc-plan-changes.md)** and follow its instructions as written, from any point in the phase. Never fold unplanned work into the plan by hand.
+
+---
+
 ## Step 0: Resume Detection
 
 Initialize or resume implementation tracking (idempotent — creates the manifest entry with default gates and counters, or resets the gate modes and session counters of an existing one; lifetime counters and progress are preserved):
