@@ -8,7 +8,8 @@
   "keep_whole_below": 50,
   "special_sections": {
     "Discussion Map": "own-chunk",
-    "Summary": "own-chunk"
+    "Summary": "own-chunk",
+    "Corrigenda": "own-chunk"
   },
   "strip_frontmatter": true,
   "skip_empty_sections": true

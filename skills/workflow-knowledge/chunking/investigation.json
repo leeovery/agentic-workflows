@@ -6,7 +6,9 @@
   "fallback_level": 3,
   "max_lines": 200,
   "keep_whole_below": 50,
-  "special_sections": {},
+  "special_sections": {
+    "Corrigenda": "own-chunk"
+  },
   "strip_frontmatter": true,
   "skip_empty_sections": true
 }

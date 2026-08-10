@@ -443,13 +443,52 @@ describe('phase chunking configs', () => {
     assert.strictEqual(cfg.special_sections['Summary'], 'own-chunk');
   });
 
-  it('non-discussion configs have empty special_sections', () => {
-    for (const phase of ['research', 'investigation', 'specification', 'imports', 'analysis']) {
+  it('correctable artifact configs declare Corrigenda as own-chunk', () => {
+    for (const phase of ['research', 'discussion', 'investigation', 'specification']) {
+      const cfg = JSON.parse(
+        fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
+      );
+      assert.strictEqual(cfg.special_sections['Corrigenda'], 'own-chunk', phase);
+    }
+  });
+
+  it('imports and analysis configs have empty special_sections', () => {
+    for (const phase of ['imports', 'analysis']) {
       const cfg = JSON.parse(
         fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
       );
       assert.deepStrictEqual(cfg.special_sections, {});
     }
+  });
+
+  it('a bottom Corrigenda section chunks in isolation and stays whole past max_lines', () => {
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')
+    );
+    const entries = Array.from(
+      { length: 210 },
+      (_, i) => '> **Corrigendum 2026-08-0' + ((i % 9) + 1) + '** (from `other`): "claim ' + i + '" — corrected: truth ' + i + '.'
+    ).join('\n');
+    const src = [
+      '# Billing Specification',
+      '',
+      'Intro paragraph.',
+      '',
+      '## Scope',
+      '',
+      Array.from({ length: 60 }, (_, i) => 'scope line ' + (i + 1)).join('\n'),
+      '',
+      '## Corrigenda',
+      '',
+      entries,
+      '',
+    ].join('\n');
+    const chunks = chunk(src, cfg);
+    const corrigenda = chunks.filter((c) => c.content.startsWith('## Corrigenda'));
+    assert.strictEqual(corrigenda.length, 1, 'exactly one Corrigenda chunk');
+    assert.ok(corrigenda[0].content.includes('claim 209'), 'oversized section not split');
+    const intro = chunks.find((c) => c.content.startsWith('# Billing Specification'));
+    assert.ok(intro && !intro.content.includes('Corrigendum'), 'title chunk free of corrigenda');
   });
 
   it('imports.json declares low confidence (matches research tier)', () => {

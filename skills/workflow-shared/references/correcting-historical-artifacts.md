@@ -26,7 +26,7 @@ Cancellation removed the unit's chunks from the knowledge base, and reactivation
 
 #### If `completed`
 
-Present the wrong claim, the evidence, and the proposed correction in the conversation, then confirm — editing another work unit's record is never silent. Skip the confirmation only when executing an already-approved plan task that names these steps.
+Present the wrong claim, the evidence, and the proposed correction in the conversation, then confirm — editing another work unit's record is never silent. Present a large correction set as its shape — what moved, which sections, counts — with the full list available on request. Skip the confirmation only when executing an already-approved plan task that names these steps.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -47,11 +47,13 @@ Apply the correction protocol to {artifact path}?
 
 1. **Edit in place.** Replace the wrong claims in the affected sections with corrected content. The live file is current truth; git history is the historical record — never keep wrong content in the body for posterity.
 
-2. **Corrigendum block.** At the top of the file, directly beneath the title, add (or extend, one entry per correction):
+2. **Corrigenda section.** Add the entry to the `## Corrigenda` section at the bottom of the file, appending the section as the file's last when absent — one entry per correction:
 
    ```markdown
    > **Corrigendum {YYYY-MM-DD}** (from `{correcting_work_unit}`): {original claim, quoted} — corrected: {what is true}.
    ```
+
+   A mechanical, uniform substitution landing across many lines (a rename, a moved path) is one entry stating the mapping — old term → new term, throughout — never an entry per edit.
 
 3. **Re-index.** Replaces the file's existing chunks in one idempotent call:
 
