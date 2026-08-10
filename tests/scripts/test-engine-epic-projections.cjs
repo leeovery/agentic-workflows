@@ -63,7 +63,6 @@ describe('epic projections: dashboard (map branch)', () => {
     '  · 1 import',
     '',
     '  ⚑ 1 new topic(s) added to the map from research-analysis.',
-    '  ⚑ 1 discussion(s) reopened by coherence review.',
     '',
     'RESEARCH & DISCUSSION (2 topics · 1 ready · 1 fresh)',
     '  ├─ → Kitchen Hardware',
@@ -98,7 +97,7 @@ describe('epic projections: dashboard (map branch)', () => {
 
   it('renders the map-branch dashboard byte-for-byte (callouts, stages, trees)', () => {
     const out = epicDashboard('quiz-competition-v1', mapDetail(), {
-      newArrivals: { research_analysis: ['menu-admin'], gap_analysis: [], coherence_analysis: ['kitchen-hardware'] },
+      newArrivals: { research_analysis: ['menu-admin'], gap_analysis: [] },
     });
     assert.strictEqual(out, EXPECTED_DASHBOARD);
   });
@@ -410,7 +409,6 @@ describe('epic projections: menu', () => {
       analysis_caches: {
         research_analysis: { status: 'absent', generated: null, files: [] },
         gap_analysis: { status: 'absent', generated: null, files: [] },
-        coherence_analysis: { status: 'absent', generated: null, files: [] },
       },
       gating: {
         can_start_specification: true,

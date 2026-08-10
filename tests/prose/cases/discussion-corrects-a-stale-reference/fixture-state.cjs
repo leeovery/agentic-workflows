@@ -5,10 +5,10 @@
 // interim click-weights table in favour of flat pair-counts files;
 // synonym-handling's decision layer is coherent with the batch ruling
 // (Sibling check in place) but two of its prose sites still cite the
-// retired table as the current mechanism. The coherence pass caught it,
-// the finding was approved, and `topic triage` reopened the completed
-// discussion with the concern as one queue file whose title names no
-// subtopic. The next session's fold must amend the two sites in place —
+// retired table as the current mechanism. A later behavioural-ranking
+// sitting spotted the stale citation and rerouted the concern;
+// `topic triage` reopened the completed discussion with the concern as
+// one queue file whose title names no subtopic. The next session's fold must amend the two sites in place —
 // dated notes naming the retiring decision — with no new section and no
 // title-minted subtopic.
 
@@ -140,11 +140,10 @@ module.exports = {
       '### The click-weights table cited as current; it was retired',
       '*From: behavioural-ranking · discussion · 2026-01-05*',
       '',
-      'Coherence finding (stale-reference). This document cites the',
-      'click-weights table as the current mechanism feeding expansion',
-      'scoring; behavioural-ranking retired the table on 2026-01-04 — the',
-      'nightly job ships flat pair-counts files consumed directly, and',
-      'nothing reads a table.',
+      'This document cites the click-weights table as the current',
+      'mechanism feeding expansion scoring; behavioural-ranking retired',
+      'the table on 2026-01-04 — the nightly job ships flat pair-counts',
+      'files consumed directly, and nothing reads a table.',
       '',
       '> synonym-handling.md · Expansion Source · Journey: "the scores are',
       '> computed nightly from the click-weights table their job maintains."',
@@ -164,20 +163,5 @@ module.exports = {
       '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'click-weights-cited-as-current',
       '-m', `discussion(${WU}/behavioural-ranking): reroute concern to synonym-handling`);
 
-    h.write(`.workflows/${WU}/.state/coherence-analysis.md`, [
-      '# Coherence Analysis Cache',
-      '',
-      '## Findings',
-      '',
-      '### click-weights-stale-reference',
-      '- **Category**: stale-reference',
-      '- **Docs**: behavioural-ranking.md, synonym-handling.md',
-      '- **Summary**: synonym-handling cites the click-weights table as current; behavioural-ranking retired it for flat pair-counts files',
-      '- **Target**: synonym-handling',
-      '',
-    ].join('\n'));
-    h.engine('commit', WU, '-m', `discovery(${WU}): coherence findings triaged`);
-    h.engine('cache', 'stamp', WU, 'coherence-analysis');
-    h.engine('commit', WU, '-m', `discovery(${WU}): stamp coherence analysis`);
   },
 };

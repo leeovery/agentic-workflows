@@ -1,11 +1,10 @@
 ### The click-weights table cited as current; it was retired
 *From: behavioural-ranking · discussion · 2026-01-05*
 
-Coherence finding (stale-reference). This document cites the
-click-weights table as the current mechanism feeding expansion
-scoring; behavioural-ranking retired the table on 2026-01-04 — the
-nightly job ships flat pair-counts files consumed directly, and
-nothing reads a table.
+This document cites the click-weights table as the current
+mechanism feeding expansion scoring; behavioural-ranking retired
+the table on 2026-01-04 — the nightly job ships flat pair-counts
+files consumed directly, and nothing reads a table.
 
 > synonym-handling.md · Expansion Source · Journey: "the scores are
 > computed nightly from the click-weights table their job maintains."

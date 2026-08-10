@@ -6,7 +6,7 @@
 
 Display the full phase-by-phase breakdown for the selected epic, then present an interactive menu of actionable items. The caller is responsible for providing:
 - `work_unit` — the epic's work unit name
-- `new_arrivals` (optional) — tracker from `topic-discovery.md` listing, per analysis, the topic names added during this boot-up (`research_analysis`, `gap_analysis`) and the topics reopened by coherence findings (`coherence_analysis`). Drives the "new topics added" and "reopened" callouts above the Discovery Map. Empty / absent means no callout.
+- `new_arrivals` (optional) — tracker from `topic-discovery.md` listing, per analysis, the topic names added during this boot-up (`research_analysis`, `gap_analysis`). Drives the "new topics added" callouts above the Discovery Map. Empty / absent means no callout.
 
 This reference collects the user's selection and returns control to the caller. The caller decides what to do with the selection (invoke a skill directly, enter plan mode, etc.).
 
@@ -23,7 +23,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit}
 When `new_arrivals` has any names, pass the tracker as a JSON argument instead:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} '{"research_analysis":["{topic}", "{topic}"],"gap_analysis":[],"coherence_analysis":[]}'
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} '{"research_analysis":["{topic}", "{topic}"],"gap_analysis":[]}'
 ```
 
 The output is one snapshot in four demarcated sections:

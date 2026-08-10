@@ -48,26 +48,6 @@ const TIP = wrap('Tip: To restructure groupings or pull a discussion into its ow
 const STALE_CACHE_MSG = wrap('A previous grouping analysis exists but is outdated — discussions '
   + 'have changed since it was created. Re-analysis is required.', TREE_WIDTH).join('\n');
 
-// Coherence advisory — informational only, never blocks. Detection runs at
-// epic boot; this surface just flags what the boot check would find. Pending
-// findings (a deferred gate) outrank a stale cache: they name the more
-// specific state.
-const COHERENCE_STALE_MSG = callout('Discussions have changed since decisions were last checked for '
-  + 'conflicts. Continue the epic to re-run the coherence check before extracting.');
-
-/** @param {number} n */
-function coherencePendingMsg(n) {
-  return `  ⚑ ${n} coherence finding(s) awaiting review — decisions may\n`
-    + '    conflict. Continue the epic to resolve them before extracting.';
-}
-
-/** The coherence advisory block for a detail, or '' when clean. @param {import('../specification.cjs').SpecificationDetail} detail */
-function coherenceAdvisory(detail) {
-  if (detail.coherence_pending > 0) return coherencePendingMsg(detail.coherence_pending);
-  if (detail.coherence_status === 'stale') return COHERENCE_STALE_MSG;
-  return '';
-}
-
 // ---------------------------------------------------------------------------
 // Display building blocks
 // ---------------------------------------------------------------------------
@@ -213,7 +193,6 @@ function groupingsDisplay(detail) {
     notReadyBlock(detail.in_progress_discussions),
     keyBlock(displayedTerms(detail.actionable)),
     detail.actionable.length >= 2 ? TIP : '',
-    coherenceAdvisory(detail),
   ]);
 }
 
@@ -223,7 +202,6 @@ function analyzeDisplay(detail) {
     `${counted(detail.counts.completed_count, 'completed discussion')} found. No specifications exist yet.`,
     'Completed discussions:\n' + bullets(detail.completed_discussions),
     notReadyBlock(detail.in_progress_discussions),
-    coherenceAdvisory(detail),
   ]);
 }
 
@@ -245,7 +223,6 @@ function specsMenuDisplay(detail) {
   blocks.push(keyBlock(displayedTerms(detail.actionable)));
   if (detail.cache_status === 'none') blocks.push('No grouping analysis exists.');
   else if (detail.cache_status === 'stale') blocks.push(STALE_CACHE_MSG);
-  blocks.push(coherenceAdvisory(detail));
   return compose(blocks);
 }
 

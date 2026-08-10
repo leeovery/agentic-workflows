@@ -208,7 +208,7 @@ function harvest(h) {
   h.engine('discovery-session', 'close', WU, '-m', `discovery(${WU}): synthesise 3 new topic(s)`);
 }
 
-// Two concluded discussions carrying a seeded coherence conflict.
+// Two concluded discussions carrying a seeded cross-document conflict.
 // behavioural-ranking deliberately decides batch-only signal ingestion —
 // real-time streaming rejected, the events pipeline exposes batch
 // aggregates only. synonym-handling, discussed later (rerouted from
@@ -218,9 +218,7 @@ function harvest(h) {
 // decision. The map is sequenced, so the next boot skips sequencing.
 //
 // The prior boot's self-healing stamped gap-analysis over the concluded
-// pair (a nothing-new pass: no staging, no dismissals). No coherence
-// cache exists — the analysis postdates that boot — so the next boot
-// reads it stale over the two discussions.
+// pair (a nothing-new pass: no staging, no dismissals).
 function completeDiscussions(h) {
   h.engine('discovery-map', 'reroute', WU, 'synonym-handling', 'discussion');
   h.engine('discovery-map', 'sequence', WU,

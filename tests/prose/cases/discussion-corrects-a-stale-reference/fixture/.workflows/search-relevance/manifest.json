@@ -39,13 +39,6 @@
           "behavioural-ranking.md",
           "synonym-handling.md"
         ]
-      },
-      "coherence_analysis_cache": {
-        "checksum": "36991d941e6755a9f18410513dfea7dc",
-        "generated": "2026-01-01T00:00:00.000Z",
-        "input_files": [
-          "behavioural-ranking.md"
-        ]
       }
     },
     "discussion": {

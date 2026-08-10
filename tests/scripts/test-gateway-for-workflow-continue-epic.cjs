@@ -291,10 +291,8 @@ describe('workflow-continue-epic discovery', () => {
       assert.ok(d.analysis_caches);
       assert.ok(d.analysis_caches.research_analysis);
       assert.ok(d.analysis_caches.gap_analysis);
-      assert.ok(d.analysis_caches.coherence_analysis);
       assert.strictEqual(d.analysis_caches.research_analysis.status, 'absent');
       assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
-      assert.strictEqual(d.analysis_caches.coherence_analysis.status, 'absent');
     });
 
     it('discovery_map exposes source, summary text, and presence booleans per item for legacy-recovery filter', () => {
@@ -1480,7 +1478,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       '=== EPIC: v1 ===',
       'all_done: false',
       'reconcile_pending: (none)',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent, coherence_analysis=absent',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent',
       'needs_sequencing: true',
       'discovery_map (2):',
       '  - ◐ auth-flow [researching] routing=research summary=present description=present — OAuth vs sessions',
@@ -1499,7 +1497,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       '=== EPIC: v1 ===',
       'all_done: false',
       'reconcile_pending: (none)',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent, coherence_analysis=absent',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent',
       'needs_sequencing: false',
       'discovery_map (0):',
       '  (empty)',
@@ -1779,7 +1777,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('view {work_unit} still answers the sectioned snapshot, with and without new arrivals', () => {
     epicFixture();
-    for (const args of [['view', 'v1'], ['view', 'v1', '{"research_analysis":[],"gap_analysis":[],"coherence_analysis":[]}']]) {
+    for (const args of [['view', 'v1'], ['view', 'v1', '{"research_analysis":[],"gap_analysis":[]}']]) {
       const res = run(args);
       assert.strictEqual(res.status, 0, res.stderr);
       assert.ok(res.stdout.includes('=== DATA'));
