@@ -59,27 +59,27 @@ a walk.
    `VERDICT: HARNESS ERROR` with the message it printed. Never fall back
    to judging a walk with no record of what it did.
 
-Never pass a `model` on a first walk or on any assertion — each
-definition names the model the result is trusted at. The single
-exception is the confirmation rerun in step 4, below.
+Never pass a `model` on any walk or on any assertion — each definition
+names the model its result is trusted at, and a verdict taken at another
+one answers a question the case never asked.
 
 4. **Confirm a failure** — if the verdict is FAIL, archive the world's
    evidence and then destroy it, build a fresh one, and repeat steps 2
    and 3 once. A defect in the prose reproduces; a one-off does not.
 
-   Dispatch this second walk with `model: opus`. Walks run on the model
-   the definition names; a failure is where it is worth spending more,
-   and a defect a stronger walker also hits is a defect. The model each
-   walk ran on is recorded and reported, so an escalated rerun is never
-   mistaken for a like-for-like one. Escalate here and nowhere else —
-   never on a first walk, and never for the asserter.
+   The rerun is like-for-like: same case, same model, fresh world. Only
+   that answers the question the rerun exists to ask — *does this
+   reproduce*. Rerunning on a stronger walker asks whether the failure is
+   model-sensitive instead, and then reports both answers under one
+   verdict; a defect the trusted model hits is a defect whether or not a
+   larger one would have stepped over it, and the sessions this prose
+   actually runs in do not get a second, stronger attempt.
 
    Three outcomes:
    - The second run also FAILs → a confirmed finding. Report the
      evidence from the second run.
    - The second run PASSes → report `FLAKY`, quoting both, and resolve
-     nothing yourself. Name both models: the same case passing on the
-     stronger walker is a fact about the walk, not about the prose.
+     nothing yourself.
    - The second run returns `INVALID WALK` → follow step 5.
 
    When two runs happened, report both runs' deterministic checks,
