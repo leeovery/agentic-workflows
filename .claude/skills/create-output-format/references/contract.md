@@ -72,7 +72,7 @@ Must include:
 
 ### graph.md
 
-Instructions for establishing priority and dependencies across tasks. This file is used by the graphing agent after all tasks have been authored. The agent receives the complete plan and uses this file to build the task execution graph.
+Instructions for establishing priority and dependencies across tasks. This file serves every consumer that sets priority or dependencies: the graphing agent after plan authoring (which receives the complete plan and builds the task execution graph), and the implementation flows adding or placing tasks mid-build.
 
 Must include:
 

@@ -1,6 +1,6 @@
 # Tick: Task Graph
 
-Tick has native support for priority and blocking dependencies with cycle detection. This file is used by the graphing agent after all tasks have been authored.
+Tick has native support for priority and blocking dependencies with cycle detection. This file serves every consumer that sets priority or dependencies: the graphing agent after plan authoring, and the implementation flows adding or placing tasks mid-build.
 
 **Natural ordering principle**: Tasks execute in natural order (by priority, then creation date) when no dependencies override it. The dependency grapher only adds edges that change execution order — if tasks are already in the right sequence, explicit dependencies add noise without value. See also the dependency grapher agent's "When NOT to add a dependency" rules.
 

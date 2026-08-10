@@ -1089,6 +1089,23 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1', 'skipped']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.2', 'skipped']);
 
+    // The ad hoc plan-changes gate stages under its own family key (ad-hoc-plan-changes.md E/F)
+    // and renders the shared proposed-task surface without the synthesis-only fields.
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`,
+      'staging.ad-hoc-1.gate_mode=gated', 'staging.ad-hoc-1.tasks.1=pending']);
+    const adhocPayload = `.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`;
+    fs.mkdirSync(path.dirname(path.join(sim.dir, adhocPayload)), { recursive: true });
+    fs.writeFileSync(path.join(sim.dir, adhocPayload), JSON.stringify({
+      current: 1, total: 1, title: 'Fix redirect', placement: 'phase 1', priority: '1',
+      problem: 'p', solution: 's', outcome: 'o', steps: ['1. x'], criteria: ['- c'], tests: ['- t'],
+    }));
+    const adhocGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
+      '--file', adhocPayload, '--gate', 'gated'], { expect: 'content' });
+    assert.match(adhocGate, /Placement: phase 1/, 'ad hoc payload renders its placement line');
+    assert.match(adhocGate, /MENU: task approval/, 'ad hoc gate carries the shared approval menu');
+    assert.ok(!/Sources:/.test(adhocGate), 'absent synthesis fields render nothing');
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.ad-hoc-1.tasks.1', 'approved']);
+
     // A resumed session resets gate modes to gated (session-scoped auto).
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode', 'auto']);
     const resumed = sim.run(['task', 'init', wu, wu]);

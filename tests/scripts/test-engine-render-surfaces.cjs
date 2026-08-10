@@ -932,6 +932,29 @@ describe('render proposed-task', () => {
     assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noTests, gate: 'gated' }), /"tests" must be non-empty/);
     const noProblem = writePayload(dir, 'bad2.json', { ...payload, problem: '' });
     assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noProblem, gate: 'gated' }), /"problem" must be a non-empty string/);
+    const emptySeverity = writePayload(dir, 'bad3.json', { ...payload, severity: '' });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: emptySeverity, gate: 'gated' }), /"severity" must be a non-empty string when present/);
+  });
+
+  it('renders the ad hoc shape: no severity/sources, placement lines present', () => {
+    const adhoc = {
+      current: 1, total: 1, title: 'Fix login redirect',
+      problem: 'Redirect loops on expired session.', solution: 'Clear the cookie first.', outcome: 'Login lands on the dashboard.',
+      placement: 'phase 2', priority: '1', depends_on: 'portal-2-3',
+      steps: ['1. Clear cookie', '2. Redirect'],
+      criteria: ['- no loop on expired session'],
+      tests: ['- expired session logs in cleanly'],
+    };
+    const file = writePayload(dir, 'a.json', adhoc);
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    const lines = out.split('\n');
+    assert.strictEqual(lines[1], '**Task 1/1: Fix login redirect**');
+    assert.strictEqual(lines[2], 'Placement: phase 2');
+    assert.strictEqual(lines[3], 'Priority: 1');
+    assert.strictEqual(lines[4], 'Depends on: portal-2-3');
+    assert.strictEqual(lines[5], '');
+    assert.ok(!out.includes('Sources:'));
+    assert.ok(out.includes('MENU: task approval'));
   });
 });
 
