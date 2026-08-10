@@ -1046,11 +1046,19 @@ describe('pipeline simulation', () => {
       'fix history is committed history, not purgeable cache');
     assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: fix gate/, 'gated fix gate renders its menu');
-    // Two more attempts reach the fix threshold — the escalation callout renders.
+    // The result header is one surface for every presentation moment.
+    const resultPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-result.json`,
+      { phase: '1 — Core', position: '1 of 2 in phase · 1 of 2 overall' });
+    assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'needs-changes'], { expect: 'content' }),
+      /\*\*◐ Needs changes\*\* — \*attempt 1, escalates at 3\*/, 'below-threshold needs-changes renders the calm verdict');
+    // Two more attempts reach the fix threshold — the verdict names it.
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
-    assert.match(sim.render(['fix-threshold', `${wu}.implementation.${wu}`], { expect: 'content' }),
-      /DISPLAY: fix threshold/, 'threshold escalation renders its callout');
+    assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'needs-changes'], { expect: 'content' }),
+      /\*\*◐ Needs changes\*\* — \*attempt 3, escalation threshold reached\*/,
+      'threshold-forced needs-changes names the reached threshold');
+    assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'approved'], { expect: 'content' }),
+      /\*\*✓ Approved\*\* — \*3 fix rounds\*/, 'approval after fix rounds names the count');
     assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: fix gate/, 'threshold-forced fix gate renders its menu');
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--next-task', `${wu}-1-2`]);

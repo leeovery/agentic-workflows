@@ -14,7 +14,7 @@ const { loadManifest } = require('./reads.cjs');
 const { titlecase, WORKLIST_GLYPH } = require('./conventions.cjs');
 const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { worklist } = require('./projections/worklist.cjs');
-const { blockedTasksMenu, taskGateSection, fixGateSection, fixThresholdDisplay, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
+const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
@@ -1232,27 +1232,75 @@ function implItemAt(cwd, dotpath, surface) {
   return { item, taskId };
 }
 
+// The result vocabulary — how the loop's presentation moments name what
+// happened. One markdown section whatever the result: the verdict line
+// leads (✓ approved, ◐ needs changes, ⚑ blocked/failed), the meta rows
+// follow.
+const TASK_RESULTS = ['approved', 'needs-changes', 'blocked', 'failed'];
+
+/**
+ * The task-loop result header: one shape for every presentation moment —
+ * approved, needs-changes, blocked, failed. Verdict and attempt counts are
+ * state-derived (`fix_attempts` against the threshold); what the engine
+ * cannot know rides in the payload: the plan phase label, the position
+ * among the plan's tasks, and the format's display identifier. The result
+ * itself is a flag — blocked/failed is executor knowledge the manifest
+ * never holds.
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, result?: string}} args
+ * @returns {string}
+ */
+function taskResult(cwd, args) {
+  const { dotpath, file, result } = args;
+  if (!file) throw new Error('render task-result: --file <payload.json> is required');
+  if (result === undefined || !TASK_RESULTS.includes(result)) {
+    throw new Error(`render task-result: --result must be ${TASK_RESULTS.join(', ').replace(/, ([^,]+)$/, ', or $1')}`);
+  }
+  const { item, taskId } = implItemAt(cwd, dotpath, 'task-result');
+  const p = readJsonPayload(cwd, file, 'task-result');
+  if (!isFilled(p.phase)) throw new Error('render task-result: "phase" must be a non-empty string');
+  if (p.position !== undefined && !isFilled(p.position)) {
+    throw new Error('render task-result: "position" must be a non-empty string when present');
+  }
+  if (p.external !== undefined && (!p.external || typeof p.external !== 'object' || Array.isArray(p.external)
+    || !isFilled(p.external.label) || !isFilled(p.external.id))) {
+    throw new Error('render task-result: "external" must be {label, id} when present');
+  }
+
+  const attempts = typeof item.fix_attempts === 'number' ? item.fix_attempts : 0;
+  if (result === 'needs-changes' && attempts < 1) {
+    throw new Error('render task-result: fix_attempts is 0 — run `task fix-attempt` before a needs-changes result');
+  }
+
+  const idRow = p.external ? `\`${taskId}\` · ${p.external.label} \`${p.external.id}\`` : `\`${taskId}\``;
+  const meta = [`- **Id**: ${idRow}`, `- **Phase**: ${p.phase}`];
+  if (p.position !== undefined) meta.push(`- **Position**: ${p.position}`);
+
+  const verdict = result === 'blocked'
+    ? '**⚑ Blocked** — *the executor stopped before completing this task*'
+    : result === 'failed'
+      ? '**⚑ Failed** — *the executor could not complete this task*'
+      : result === 'needs-changes'
+        ? attempts >= FIX_THRESHOLD
+          ? `**◐ Needs changes** — *attempt ${attempts}, escalation threshold reached*`
+          : `**◐ Needs changes** — *attempt ${attempts}, escalates at ${FIX_THRESHOLD}*`
+        : attempts > 0
+          ? `**✓ Approved** — *${attempts} fix round${attempts === 1 ? '' : 's'}*`
+          : '**✓ Approved**';
+  return section('DISPLAY: task result', CONTINUE_MARKDOWN_INSTRUCTION, [verdict, '', ...meta].join('\n'));
+}
+
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
 function taskGate(cwd, args) {
-  const { item, taskId } = implItemAt(cwd, args.dotpath, 'task-gate');
-  return taskGateSection(taskId, gateOf(item, 'task_gate_mode'));
+  const { item } = implItemAt(cwd, args.dotpath, 'task-gate');
+  return taskGateSection(gateOf(item, 'task_gate_mode'));
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
 function fixGate(cwd, args) {
-  const { item, taskId } = implItemAt(cwd, args.dotpath, 'fix-gate');
+  const { item } = implItemAt(cwd, args.dotpath, 'fix-gate');
   const attempts = typeof item.fix_attempts === 'number' ? item.fix_attempts : 0;
-  return fixGateSection(taskId, gateOf(item, 'fix_gate_mode'), attempts >= FIX_THRESHOLD);
-}
-
-/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
-function fixThreshold(cwd, args) {
-  const { item, taskId } = implItemAt(cwd, args.dotpath, 'fix-threshold');
-  const attempts = typeof item.fix_attempts === 'number' ? item.fix_attempts : 0;
-  if (attempts < FIX_THRESHOLD) {
-    throw new Error(`render fix-threshold: fix_attempts is ${attempts}, below the threshold of ${FIX_THRESHOLD}`);
-  }
-  return fixThresholdDisplay(attempts, taskId);
+  return fixGateSection(gateOf(item, 'fix_gate_mode'), attempts >= FIX_THRESHOLD);
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
@@ -1446,9 +1494,9 @@ const SURFACES = {
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,
   'epic-all-done-gate': epicAllDoneGate,
+  'task-result': taskResult,
   'task-gate': taskGate,
   'fix-gate': fixGate,
-  'fix-threshold': fixThreshold,
   'blocked-tasks': blockedTasks,
   'cycle-limit': cycleLimit,
   'cycle-gate': cycleGate,

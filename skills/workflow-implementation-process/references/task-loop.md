@@ -93,12 +93,13 @@ Stage A re-detects any remaining blocked tasks on the loop back.
 #### If a task is available
 
 1. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
-2. Start the task via the engine (records the task as `current_task`; a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; re-starting the in-flight task — already `current_task` with its tracking file on disk — preserves both, so a re-run is safe):
+2. Note the task's position from the listing used to determine availability: its ordinal and total across the plan (`{task_number}` of `{task_total}`) and within its plan phase (`{phase_task_number}` of `{phase_task_total}`) — **[display-task-result.md](display-task-result.md)** presents them at every result moment.
+3. Start the task via the engine (records the task as `current_task`; a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; re-starting the in-flight task — already `current_task` with its tracking file on disk — preserves both, so a re-run is safe):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
    The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` opt-in is made by this flow itself, so you already know the current mode.
-3. Mark the task as in-progress — follow the format's **updating.md** status transition.
+4. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 → Proceed to **B. Execute Task**.
 
@@ -122,11 +123,11 @@ Stage A re-detects any remaining blocked tasks on the loop back.
 
 ## C. Handle Executor Block
 
+→ Load **[display-task-result.md](display-task-result.md)** with result = the executor's `STATUS` (`blocked` or `failed`).
+
 > *Output the next fenced block as a code block:*
 
 ```
-Task {internal_id}: {Task Name} — {blocked/failed}
-
 {executor's ISSUES content}
 ```
 
@@ -201,23 +202,11 @@ Record the attempt via the engine (increments `fix_attempts` and appends the fin
 node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_unit} {topic} {internal_id} --findings-file .workflows/.cache/{work_unit}/implementation/{topic}/attempt-findings.md
 ```
 
-`{N}` below is the response's `attempts`.
-
 #### If the response's `threshold_reached` is `true`
 
-Fetch and emit the `DISPLAY: fix threshold` section:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render fix-threshold {work_unit}.implementation.{topic}
-```
+→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes` — the render names the reached threshold.
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`.
-
-> *Output the next fenced block as a code block:*
-
-```
-Review for Task {internal_id}: {Task Name} — needs changes (attempt {N})
-```
 
 Present the reviewer's findings as a product-lens summary (markdown, not a code block): each issue in a sentence or two — what is wrong or at risk in what was built and the proposed fix, with the alternative or the reviewer's confidence only where it changes the call; non-blocking notes in one line.
 
@@ -227,11 +216,7 @@ The turn does not end here — the gate menu follows in the same turn.
 
 #### If the response's `threshold_reached` is `false`
 
-> *Output the next fenced block as a code block:*
-
-```
-Review for Task {internal_id}: {Task Name} — needs changes (attempt {N})
-```
+→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
 
 Present the reviewer's findings as a product-lens summary (markdown, not a code block): each issue in a sentence or two — what is wrong or at risk in what was built and the proposed fix, with the alternative or the reviewer's confidence only where it changes the call; non-blocking notes in one line.
 
@@ -311,13 +296,7 @@ Include the reviewer's notes and the user's commentary when re-invoking.
 
 After the reviewer approves a task, present the result:
 
-> *Output the next fenced block as a code block:*
-
-```
-Task {internal_id}: {Task Name} — approved
-
-Phase: {phase number} — {phase name}
-```
+→ Load **[display-task-result.md](display-task-result.md)** with result = `approved`.
 
 Present the executor's SUMMARY as a product-lens summary (markdown, not a code block) in four beats: what this part of the product did before, what it does now, any issues hit on the way, and anything to watch. After a fix round, include what changed since the last gate. When comment corrections were applied at **D. Review Task**, add a line saying so — naming any that were dropped.
 
