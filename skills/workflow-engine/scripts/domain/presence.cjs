@@ -3,10 +3,11 @@
 // ---------------------------------------------------------------------------
 // Domain ring: session presence — a per-topic heartbeat file in the topic's
 // cache directory. Awareness, never mutual exclusion: the epic view marks
-// topics another session holds open, the bridge defers epic-wide analyses
-// while a peer session is active, the conclude sweep leaves a held peer's
-// dirt alone, and triage landings can say whether the target's session will
-// drain shortly. The file records the owning Claude process's identity
+// topics another session holds open, the analysis dispatch defers epic-wide
+// analyses while a peer session is live, the conclude sweep leaves a held
+// peer's dirt alone, and the spec-side resolution flow checks the target
+// discussion before editing its document in place. The file records the
+// owning Claude process's identity
 // (pid + start time + session id); `held` is true while that exact process
 // still runs — however long it sits idle — and the mtime is the activity
 // signal (`live` = held and beaten within the staleness window). A record

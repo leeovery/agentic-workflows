@@ -902,6 +902,110 @@ describe('engine topic reopen', () => {
   });
 });
 
+describe('engine sources stale', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function specedManifest() {
+    const m = epicManifest();
+    m.phases.specification = { items: {
+      unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' }, other: { status: 'incorporated' } } },
+      legacy: { status: 'completed', sources: [{ name: 'session-model', status: 'incorporated' }] },
+      unrelated: { status: 'completed', sources: { other: { status: 'incorporated' } } },
+      gone: { status: 'superseded', superseded_by: 'unified', sources: { 'session-model': { status: 'incorporated' } } },
+      building: { status: 'in-progress', sources: { 'session-model': { status: 'incorporated' } } },
+    } };
+    return m;
+  }
+
+  it('runs the reverse join without reopening — rows stale, completed specs flag, the discussion stays completed', () => {
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
+
+    const res = engine(dir, ['sources', 'stale', 'payments', 'session-model']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.discussion, 'session-model');
+    assert.deepStrictEqual(res.flagged, [
+      { phase: 'specification', topic: 'unified' },
+      { phase: 'specification', topic: 'legacy' },
+    ]);
+    assert.deepStrictEqual(res.staled, ['unified', 'legacy', 'building']);
+    const m = readManifest(dir, 'payments');
+    assert.strictEqual(m.phases.discussion.items['session-model'].status, 'completed', 'no reopen — the discussion is untouched');
+    const items = m.phases.specification.items;
+    assert.strictEqual(items.unified.reconcile_needed, 'discussion');
+    assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
+    assert.strictEqual(items.unified.sources.other.status, 'incorporated', 'sibling rows untouched');
+    assert.strictEqual(items.legacy.sources[0].status, 'stale', 'legacy array form stales in place');
+    assert.strictEqual(items.unrelated.reconcile_needed, undefined, 'no source row, no flag');
+    assert.strictEqual(items.gone.sources['session-model'].status, 'incorporated', 'terminal specs are skipped');
+    assert.strictEqual(items.building.reconcile_needed, undefined, 'in-progress specs take no flag');
+    assert.strictEqual(items.building.sources['session-model'].status, 'stale');
+  });
+
+  it('--except skips the invoking spec entirely — no flip, no flag', () => {
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
+
+    const res = engine(dir, ['sources', 'stale', 'payments', 'session-model', '--except', 'unified']);
+
+    assert.deepStrictEqual(res.staled, ['legacy', 'building']);
+    assert.deepStrictEqual(res.flagged, [{ phase: 'specification', topic: 'legacy' }]);
+    const items = readManifest(dir, 'payments').phases.specification.items;
+    assert.strictEqual(items.unified.sources['session-model'].status, 'incorporated', 'the excepted spec keeps its row');
+    assert.strictEqual(items.unified.reconcile_needed, undefined);
+  });
+
+  it('never clobbers an existing reconcile flag', () => {
+    const m = specedManifest();
+    m.phases.specification.items.unified.reconcile_needed = 'discussion';
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    const res = engine(dir, ['sources', 'stale', 'payments', 'session-model']);
+
+    assert.deepStrictEqual(res.flagged, [{ phase: 'specification', topic: 'legacy' }]);
+    assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.unified.reconcile_needed, 'discussion');
+  });
+
+  it('refuses a discussion the manifest does not carry', () => {
+    const res = engineFails(dir, ['sources', 'stale', 'payments', 'nonexistent']);
+    assert.match(res.error, /discussion item "nonexistent" not found/);
+  });
+});
+
+describe('engine topic complete: specification source gate', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function withSpec(sources) {
+    const m = epicManifest();
+    m.phases.specification = { items: { unified: { status: 'in-progress', ...(sources !== undefined ? { sources } : {}) } } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+  }
+
+  it('refuses while a source row is pending', () => {
+    withSpec({ 'session-model': { status: 'incorporated' }, other: { status: 'pending' } });
+    const res = engineFails(dir, ['topic', 'complete', 'payments', 'specification', 'unified']);
+    assert.match(res.error, /unresolved source rows \(other\)/);
+    assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.unified.status, 'in-progress');
+  });
+
+  it('refuses while a source row is stale', () => {
+    withSpec([{ name: 'session-model', status: 'stale' }]);
+    const res = engineFails(dir, ['topic', 'complete', 'payments', 'specification', 'unified']);
+    assert.match(res.error, /unresolved source rows \(session-model\)/);
+  });
+
+  it('completes when every row is incorporated, and with no sources field at all', () => {
+    withSpec({ 'session-model': { status: 'incorporated' } });
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'unified']).status, 'completed');
+
+    withSpec(undefined);
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'unified']).status, 'completed');
+  });
+});
+
 describe('engine topic supersede', () => {
   let dir;
 

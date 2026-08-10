@@ -62,7 +62,7 @@ function assertLegalWrite(phase, status) {
 /**
  * The phase item for `topic`, or a loud error.
  * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string, superseded_by?: string}}
+ * @returns {{status?: string, previous_status?: string, superseded_by?: string, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
  */
 function phaseItem(manifest, phase, topic) {
   assertLegalWrite(phase, 'cancelled');
@@ -231,9 +231,10 @@ function sourceRow(sources, topic) {
  * @param {string} workType
  * @param {string} phase  the phase going stale
  * @param {string} topic
+ * @param {{except?: string}} [opts]  spec item to skip in the discussion join — the invoking spec's own extraction is current by construction
  * @returns {DownstreamFlagResult}
  */
-function flagDownstream(manifest, workType, phase, topic) {
+function flagDownstream(manifest, workType, phase, topic, opts = {}) {
   /** @type {DownstreamFlagResult} */
   const result = { flagged: [], staled: [] };
   const itemsOf = (p) => {
@@ -250,6 +251,7 @@ function flagDownstream(manifest, workType, phase, topic) {
 
   if (phase === 'discussion') {
     for (const [name, item] of Object.entries(itemsOf('specification') || {})) {
+      if (name === opts.except) continue;
       if (!item || typeof item !== 'object' || TERMINAL_STATUSES.includes(item.status)) continue;
       const row = sourceRow(item.sources, topic);
       if (!row) continue;
@@ -535,6 +537,18 @@ function completeTopic(cwd, workUnit, phase, topic) {
       const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
     }
+    if (phase === 'specification') {
+      const rows = item.sources;
+      const entries = Array.isArray(rows)
+        ? rows.filter((r) => r && typeof r === 'object').map((r) => [r.name, r])
+        : rows && typeof rows === 'object' ? Object.entries(rows) : [];
+      const blocking = entries
+        .filter(([, r]) => r && typeof r === 'object' && r.status !== 'incorporated')
+        .map(([name]) => name);
+      if (blocking.length > 0) {
+        throw new Error(`specification "${topic}" has unresolved source rows (${blocking.join(', ')}) — extract pending sources and reconcile stale ones before concluding`);
+      }
+    }
     item.status = 'completed';
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
@@ -592,6 +606,41 @@ function reopenTopic(cwd, workUnit, phase, topic) {
     if (fd.flagged.length > 0) result.reconcile_flagged = fd.flagged;
     if (fd.staled.length > 0) result.sources_staled = fd.staled;
     return result;
+  });
+}
+
+/**
+ * @typedef {object} StaleSourcesResult
+ * @property {string} discussion
+ * @property {{phase: string, topic: string}[]} flagged  completed specs now carrying `reconcile_needed`
+ * @property {string[]} staled  spec items whose source row for the discussion flipped `incorporated` → `stale`
+ */
+
+/**
+ * Mark every spec extraction of a discussion stale after its document moved
+ * without a lifecycle transition — the spec-side resolution flow's safety
+ * valve: a decision repaired in place during specification construction runs
+ * the same reverse join a reopen would, minus the reopen. `--except` names
+ * the invoking spec, whose own extraction of the resolution is current by
+ * construction. The discussion item's status is untouched. No git commit —
+ * the calling flow commits the doc edit alongside.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} discussion
+ * @param {{except?: string}} [opts]
+ * @returns {StaleSourcesResult}
+ */
+function staleSources(cwd, workUnit, discussion, opts = {}) {
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const phase = manifest.phases && typeof manifest.phases === 'object' ? manifest.phases.discussion : undefined;
+    const items = phase && typeof phase === 'object' ? phase.items : undefined;
+    if (!items || typeof items !== 'object' || !(discussion in items)) {
+      throw new Error(`discussion item "${discussion}" not found in work unit "${workUnit}"`);
+    }
+    const fd = flagDownstream(manifest, manifest.work_type, 'discussion', discussion, { except: opts.except });
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { discussion, flagged: fd.flagged, staled: fd.staled };
   });
 }
 
@@ -760,4 +809,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic };
+module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic };
