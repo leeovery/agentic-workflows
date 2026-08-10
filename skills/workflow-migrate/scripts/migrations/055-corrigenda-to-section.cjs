@@ -4,12 +4,13 @@
 // Migration 055: Top-of-file corrigendum blockquotes → bottom `## Corrigenda` section
 //
 // Corrigenda used to be prescribed as blockquote entries at the top of the
-// artifact, directly beneath the title — where they ride the title/intro
-// chunk at indexing time and dilute it. They now live in a `## Corrigenda`
-// section at the bottom of the file, which the chunker isolates as its own
-// chunk (H2 split + an own-chunk rule in the phase configs). Move every
-// top-region corrigendum blockquote into that section, preserving its text
-// verbatim.
+// specification, directly beneath the title — where they ride the
+// title/intro chunk at indexing time and dilute it. They now live in a
+// `## Corrigenda` section at the bottom of the file, which the chunker
+// isolates as its own chunk (H2 split + an own-chunk rule in the spec
+// config). Move every top-region corrigendum blockquote into that section,
+// preserving its text verbatim. Specifications only — the correction
+// protocol never touches any other phase artifact.
 //
 // Idempotent: a converted file has no corrigendum blockquotes above its
 // first H2 and yields nothing on a re-run.
@@ -17,10 +18,6 @@
 
 const fs = require('fs');
 const path = require('path');
-
-// phase dir → artifact layout. Flat phases hold `{topic}.md` directly;
-// specification holds `{topic}/specification.md`.
-const FLAT_PHASES = ['research', 'discussion', 'investigation'];
 
 const CORRIGENDUM_RE = /^>\s*\*\*\s*(?:⚠\s*)?Corrigendum\b/;
 
@@ -109,7 +106,7 @@ function convert(content) {
 module.exports = {
   id: '055',
   description: 'top-of-file corrigenda to bottom section',
-  info: 'Corrigendum entries used to be blockquotes at the top of a corrected artifact, directly beneath the title — where they ride the title/intro chunk at knowledge-indexing time and dilute it. They now live in a "## Corrigenda" section at the bottom of the file, which the chunker isolates as its own chunk. This migration moves every corrigendum blockquote sitting above the first H2 of a research, discussion, investigation, or specification artifact into that bottom section, text preserved verbatim.',
+  info: 'Corrigendum entries used to be blockquotes at the top of a corrected specification, directly beneath the title — where they ride the title/intro chunk at knowledge-indexing time and dilute it. They now live in a "## Corrigenda" section at the bottom of the file, which the chunker isolates as its own chunk. This migration moves every corrigendum blockquote sitting above the first H2 of a specification into that bottom section, text preserved verbatim. Specifications only — the correction protocol never touches any other phase artifact.',
   run({ projectDir, reportUpdate, reportSkip }) {
     const workflowsDir = path.join(projectDir, '.workflows');
     /** @type {string[]} */
@@ -126,14 +123,6 @@ module.exports = {
     /** @type {string[]} */
     const artifacts = [];
     for (const wu of units) {
-      for (const phase of FLAT_PHASES) {
-        const phaseDir = path.join(workflowsDir, wu, phase);
-        try {
-          for (const f of fs.readdirSync(phaseDir)) {
-            if (f.endsWith('.md')) artifacts.push(path.join(phaseDir, f));
-          }
-        } catch { /* phase absent */ }
-      }
       const specDir = path.join(workflowsDir, wu, 'specification');
       try {
         for (const topic of fs.readdirSync(specDir, { withFileTypes: true })) {
@@ -166,7 +155,7 @@ module.exports = {
       ? `Moved corrigenda in: ${converted.join(', ')}.`
       : 'No corrigendum blockquotes matched the exact shape (a "> **Corrigendum" or "> **⚠ Corrigendum" blockquote above the first H2) — that can mean none exist, or that any which do are malformed or sit elsewhere in the file.';
     return {
-      verify: `${outcome} Now: (1) read each moved block in its new bottom position and fix directional wording that the move inverted — e.g. "Bodies below were edited in place" must become "The document body was edited in place" — editing only the block itself, never the document body; (2) search the remaining artifacts (.workflows/*/{research,discussion,investigation}/*.md, .workflows/*/specification/*/specification.md) for corrigendum-like content the parser missed — blockquotes mentioning "Corrigendum" below the first H2 or in a non-blockquote shape — and move any straggler into that file's bottom "## Corrigenda" section; (3) if the knowledge store is initialised, re-run \`node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index <path>\` for every file changed by (1)/(2) or listed above, so its chunks reflect the new layout — skip this when the store was never set up.`,
+      verify: `${outcome} Now: (1) read each moved block in its new bottom position and fix directional wording that the move inverted — e.g. "Bodies below were edited in place" must become "The document body was edited in place" — editing only the block itself, never the document body; (2) search the specifications (.workflows/*/specification/*/specification.md) for corrigendum-like content the parser missed — blockquotes mentioning "Corrigendum" below the first H2 or in a non-blockquote shape — and move any straggler into that file's bottom "## Corrigenda" section; (3) if the knowledge store is initialised, re-run \`node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index <path>\` for every file changed by (1)/(2) or listed above, so its chunks reflect the new layout — skip this when the store was never set up.`,
     };
   },
 };

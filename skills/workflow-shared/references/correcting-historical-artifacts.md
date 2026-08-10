@@ -4,9 +4,9 @@
 
 ---
 
-Load this when a phase artifact belonging to **another work unit** — surfaced by a knowledge query or read directly — carries a claim you have verified is wrong or has shifted. Completed work units keep their knowledge-base chunks live at full confidence, so a wrong claim left standing is re-served as validated context to every future query — and an edit that skips the re-index leaves the store serving the old content indefinitely.
+Load this when **another work unit's specification** — surfaced by a knowledge query or read directly — carries a claim you have verified is wrong or has shifted. The specification is the golden record: completed, its knowledge-base chunks stay live at full confidence forever, so a wrong claim left standing is re-served as validated context to every future query — and an edit that skips the re-index leaves the store serving the old content indefinitely. No other phase artifact is ever corrected — research, discussion, and investigation feed the spec and decay in the knowledge base; a wrong claim in one is superseded by current work and left to age out.
 
-Derive the owning work unit from the artifact's path (`.workflows/{owning_work_unit}/…`), then read its status:
+Derive the owning work unit from the specification's path (`.workflows/{owning_work_unit}/…`), then read its status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {owning_work_unit} status
@@ -14,13 +14,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {owning_work
 
 #### If `in-progress`
 
-Do not edit the artifact from outside — corrections to live work flow through the owning unit's own phase. Tell the user what you found and where it belongs: re-entering that unit's phase for the artifact's topic reopens the item, and re-completion re-indexes the knowledge base automatically. A claim that stems from a decision (not a factual error) belongs in the owning unit's discussion, not the artifact that inherited it.
+Do not edit the specification from outside — corrections to live work flow through the owning unit's own phase. Tell the user what you found and where it belongs: re-entering that unit's specification for the topic reopens the item, and re-completion re-indexes the knowledge base automatically. A claim that stems from a decision (not a factual error) belongs in the owning unit's discussion, not the spec that inherited it.
 
 → Return to caller.
 
 #### If `cancelled`
 
-Cancellation removed the unit's chunks from the knowledge base, and reactivation re-indexes from disk. Edit the file freely — no corrigendum, no re-index.
+Cancellation removed the unit's chunks from the knowledge base, and reactivation re-indexes from disk. Edit the specification freely — no corrigendum, no re-index.
 
 → Return to caller.
 
@@ -64,15 +64,9 @@ Apply the correction protocol to {artifact path}?
 4. **Commit.** Scoped to the owning unit; the store rides along (every engine commit stages `.workflows/.knowledge`):
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {owning_work_unit} -m "{phase}({owning_work_unit}): corrigendum from {correcting_work_unit}"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {owning_work_unit} -m "specification({owning_work_unit}): corrigendum from {correcting_work_unit}"
    ```
 
 The owning unit's manifest is never touched — no reopen, no status change; the unit stays completed.
-
-**Phase judgment**: specifications and investigations state facts — correct them whenever they are wrong. A discussion is a record of a conversation; when rewriting the record is worse than losing its retrieval, remove its chunks instead and leave the file as history:
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {owning_work_unit} --phase discussion --topic {topic}
-```
 
 → Return to caller.

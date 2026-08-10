@@ -78,9 +78,10 @@ Note in the current phase's working file that the knowledge query was skipped. E
 
 ## E. When a surfaced artifact is wrong
 
-A chunk (or its source file) can carry a claim you have verified is wrong or has shifted since it was written. Never leave it standing — completed work units keep their chunks live at full confidence, so every future query re-serves the error as validated context.
+A chunk (or its source file) can carry a claim you have verified is wrong or has shifted since it was written. What happens next depends on the source phase:
 
-→ Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** and follow its instructions.
+- **Specification** — never leave it standing: the spec is the golden record and its chunks stay live at full confidence forever, so every future query re-serves the error as validated context. → Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** and follow its instructions.
+- **Any other phase** — leave the artifact alone. Research, discussion, and investigation feed the spec and decay in the knowledge base; record what is actually true in the current work's own artifact and let the stale claim age out.
 
 ## F. Phase-specific notes
 

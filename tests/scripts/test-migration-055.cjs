@@ -4,7 +4,7 @@
 // Tests for migration 055: corrigenda-to-section (.cjs)
 //
 // Happy path (top blockquote → bottom section), the rich ⚠ multi-line form,
-// multiple blocks, existing-section extension, specification layout,
+// multiple blocks, existing-section extension, non-spec artifacts untouched,
 // fence-awareness, below-first-H2 conservatism, no-op skip, idempotency,
 // content preservation, CRLF normalisation, and the verify addendum.
 //
@@ -45,6 +45,8 @@ function read(dir, rel) {
   return fs.readFileSync(path.join(dir, rel), 'utf8');
 }
 
+const SPEC_PATH = '.workflows/pay/specification/billing/specification.md';
+
 const ONE_LINER = '> **Corrigendum 2026-08-07** (from `spectrum-tui`): "themes are JSON" — corrected: themes are TOML.';
 
 const RICH_BLOCK = `> **⚠ Corrigendum — 2026-08-07 (theming-system specification).**
@@ -52,9 +54,10 @@ const RICH_BLOCK = `> **⚠ Corrigendum — 2026-08-07 (theming-system specifica
 > - **§4.2 Storage.** Superseded: "themes are JSON" Current: **themes are TOML** — format moved at implementation.
 > Bodies below were edited in place to match; this block is the only annotation.`;
 
-const SPEC = `# Billing Specification
+function spec(top) {
+  return `# Billing Specification
 
-${ONE_LINER}
+${top}
 
 Intro paragraph.
 
@@ -66,15 +69,16 @@ Scope body.
 
 Storage body.
 `;
+}
 
 describe('migration 055: corrigenda to bottom section', () => {
   it('happy path — top blockquote moves to a bottom ## Corrigenda section, body intact', () => {
     const dir = setup();
-    write(dir, '.workflows/pay/specification/billing/specification.md', SPEC);
+    write(dir, SPEC_PATH, spec(ONE_LINER));
 
     const c = runMigration(dir);
 
-    const doc = read(dir, '.workflows/pay/specification/billing/specification.md');
+    const doc = read(dir, SPEC_PATH);
     assert.strictEqual(c.updates, 1);
     assert.ok(doc.endsWith(`## Corrigenda\n\n${ONE_LINER}\n`), 'section appended at the bottom with the entry verbatim');
     assert.match(doc, /^# Billing Specification\n\nIntro paragraph\.\n/, 'top region clean, single blank collapse');
@@ -86,25 +90,25 @@ describe('migration 055: corrigenda to bottom section', () => {
 
   it('rich ⚠ multi-line block moves verbatim', () => {
     const dir = setup();
-    write(dir, '.workflows/pay/research/tokens.md', `# Tokens\n\n${RICH_BLOCK}\n\nIntro.\n\n## Findings\n\nBody.\n`);
+    write(dir, SPEC_PATH, spec(RICH_BLOCK));
 
     const c = runMigration(dir);
 
-    const doc = read(dir, '.workflows/pay/research/tokens.md');
+    const doc = read(dir, SPEC_PATH);
     assert.strictEqual(c.updates, 1);
     assert.ok(doc.endsWith(`## Corrigenda\n\n${RICH_BLOCK}\n`), 'rich block preserved byte-for-byte in the section');
-    assert.ok(!doc.slice(0, doc.indexOf('## Findings')).includes('Corrigendum'), 'top region clean');
+    assert.ok(!doc.slice(0, doc.indexOf('## Scope')).includes('Corrigendum'), 'top region clean');
     teardown(dir);
   });
 
   it('multiple blocks move in order', () => {
     const dir = setup();
     const second = '> **Corrigendum 2026-08-08** (from `payments`): "retries are unbounded" — corrected: capped at 3.';
-    write(dir, '.workflows/pay/research/tokens.md', `# Tokens\n\n${ONE_LINER}\n\n${second}\n\nIntro.\n\n## Findings\n\nBody.\n`);
+    write(dir, SPEC_PATH, spec(`${ONE_LINER}\n\n${second}`));
 
     const c = runMigration(dir);
 
-    const doc = read(dir, '.workflows/pay/research/tokens.md');
+    const doc = read(dir, SPEC_PATH);
     assert.strictEqual(c.updates, 1);
     assert.ok(doc.endsWith(`## Corrigenda\n\n${ONE_LINER}\n\n${second}\n`), 'both entries land in order');
     teardown(dir);
@@ -113,39 +117,52 @@ describe('migration 055: corrigenda to bottom section', () => {
   it('existing ## Corrigenda section is extended, not duplicated', () => {
     const dir = setup();
     const existing = '> **Corrigendum 2026-08-01** (from `auth`): "sessions are sticky" — corrected: stateless.';
-    write(dir, '.workflows/pay/research/tokens.md', `# Tokens\n\n${ONE_LINER}\n\n## Findings\n\nBody.\n\n## Corrigenda\n\n${existing}\n`);
+    write(dir, SPEC_PATH, `# Billing Specification\n\n${ONE_LINER}\n\n## Scope\n\nScope body.\n\n## Corrigenda\n\n${existing}\n`);
 
     const c = runMigration(dir);
 
-    const doc = read(dir, '.workflows/pay/research/tokens.md');
+    const doc = read(dir, SPEC_PATH);
     assert.strictEqual(c.updates, 1);
     assert.strictEqual(doc.match(/## Corrigenda/g).length, 1, 'one section');
     assert.ok(doc.endsWith(`## Corrigenda\n\n${existing}\n\n${ONE_LINER}\n`), 'moved entry appended after the existing one');
     teardown(dir);
   });
 
-  it('a corrigendum quoted inside a code fence is not moved', () => {
+  it('non-spec artifacts are never touched, even with a corrigendum at the top', () => {
     const dir = setup();
-    const doc = `# Tokens\n\n\`\`\`markdown\n${ONE_LINER}\n\`\`\`\n\nIntro.\n\n## Findings\n\nBody.\n`;
-    write(dir, '.workflows/pay/research/tokens.md', doc);
+    const research = `# Tokens\n\n${ONE_LINER}\n\nIntro.\n\n## Findings\n\nBody.\n`;
+    write(dir, '.workflows/pay/research/tokens.md', research);
 
     const c = runMigration(dir);
 
     assert.strictEqual(c.updates, 0);
     assert.strictEqual(c.skips, 1);
-    assert.strictEqual(read(dir, '.workflows/pay/research/tokens.md'), doc, 'file untouched');
+    assert.strictEqual(read(dir, '.workflows/pay/research/tokens.md'), research, 'research file untouched');
+    teardown(dir);
+  });
+
+  it('a corrigendum quoted inside a code fence is not moved', () => {
+    const dir = setup();
+    const doc = `# Billing Specification\n\n\`\`\`markdown\n${ONE_LINER}\n\`\`\`\n\nIntro.\n\n## Scope\n\nScope body.\n`;
+    write(dir, SPEC_PATH, doc);
+
+    const c = runMigration(dir);
+
+    assert.strictEqual(c.updates, 0);
+    assert.strictEqual(c.skips, 1);
+    assert.strictEqual(read(dir, SPEC_PATH), doc, 'file untouched');
     teardown(dir);
   });
 
   it('a corrigendum below the first H2 is left for the verify pass', () => {
     const dir = setup();
-    const doc = `# Tokens\n\nIntro.\n\n## Findings\n\n${ONE_LINER}\n\nBody.\n`;
-    write(dir, '.workflows/pay/research/tokens.md', doc);
+    const doc = `# Billing Specification\n\nIntro.\n\n## Scope\n\n${ONE_LINER}\n\nScope body.\n`;
+    write(dir, SPEC_PATH, doc);
 
     const c = runMigration(dir);
 
     assert.strictEqual(c.updates, 0);
-    assert.strictEqual(read(dir, '.workflows/pay/research/tokens.md'), doc, 'file untouched');
+    assert.strictEqual(read(dir, SPEC_PATH), doc, 'file untouched');
     assert.ok(c.verify && c.verify.includes('below the first H2'), 'skip-path verify flags the possibility');
     teardown(dir);
   });
@@ -157,31 +174,31 @@ describe('migration 055: corrigenda to bottom section', () => {
 
     assert.strictEqual(c.updates, 0);
     assert.strictEqual(c.skips, 1);
-    assert.strictEqual(c.verify, undefined, 'no artifacts — nothing for the verify pass');
+    assert.strictEqual(c.verify, undefined, 'no specifications — nothing for the verify pass');
     teardown(dir);
   });
 
   it('idempotent — second run changes nothing', () => {
     const dir = setup();
-    write(dir, '.workflows/pay/specification/billing/specification.md', SPEC);
+    write(dir, SPEC_PATH, spec(ONE_LINER));
 
     runMigration(dir);
-    const after = read(dir, '.workflows/pay/specification/billing/specification.md');
+    const after = read(dir, SPEC_PATH);
     const c = runMigration(dir);
 
     assert.strictEqual(c.updates, 0);
     assert.strictEqual(c.skips, 1);
-    assert.strictEqual(read(dir, '.workflows/pay/specification/billing/specification.md'), after, 'converged');
+    assert.strictEqual(read(dir, SPEC_PATH), after, 'converged');
     teardown(dir);
   });
 
   it('CRLF artifact converts', () => {
     const dir = setup();
-    write(dir, '.workflows/pay/research/tokens.md', `# Tokens\r\n\r\n${ONE_LINER}\r\n\r\nIntro.\r\n\r\n## Findings\r\n\r\nBody.\r\n`);
+    write(dir, SPEC_PATH, `# Billing Specification\r\n\r\n${ONE_LINER}\r\n\r\nIntro.\r\n\r\n## Scope\r\n\r\nScope body.\r\n`);
 
     const c = runMigration(dir);
 
-    const doc = read(dir, '.workflows/pay/research/tokens.md');
+    const doc = read(dir, SPEC_PATH);
     assert.strictEqual(c.updates, 1);
     assert.ok(doc.endsWith(`## Corrigenda\n\n${ONE_LINER}\n`), 'converted from CRLF and moved');
     teardown(dir);

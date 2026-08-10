@@ -443,17 +443,21 @@ describe('phase chunking configs', () => {
     assert.strictEqual(cfg.special_sections['Summary'], 'own-chunk');
   });
 
-  it('correctable artifact configs declare Corrigenda as own-chunk', () => {
-    for (const phase of ['research', 'discussion', 'investigation', 'specification']) {
-      const cfg = JSON.parse(
+  it('specification.json declares Corrigenda as own-chunk — the only config that does', () => {
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')
+    );
+    assert.deepStrictEqual(cfg.special_sections, { Corrigenda: 'own-chunk' });
+    for (const phase of ['research', 'discussion', 'investigation', 'imports', 'analysis']) {
+      const other = JSON.parse(
         fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
       );
-      assert.strictEqual(cfg.special_sections['Corrigenda'], 'own-chunk', phase);
+      assert.strictEqual(other.special_sections['Corrigenda'], undefined, phase);
     }
   });
 
-  it('imports and analysis configs have empty special_sections', () => {
-    for (const phase of ['imports', 'analysis']) {
+  it('non-discussion, non-specification configs have empty special_sections', () => {
+    for (const phase of ['research', 'investigation', 'imports', 'analysis']) {
       const cfg = JSON.parse(
         fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
       );
