@@ -118,7 +118,7 @@ Dispatch the `workflow-specification-review-input` agent via the Task tool:
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
-Record its STATUS as `phase_1_status`.
+Hold its STATUS as `phase_1_status` — carried in context for the branch below, never a manifest write.
 
 **If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} in-progress`) and commit it:
 
@@ -145,7 +145,7 @@ Dispatch the `workflow-specification-review-gap-analysis` agent via the Task too
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
-Record its STATUS as `phase_2_status`.
+Hold its STATUS as `phase_2_status` — carried in context for the branch below, never a manifest write.
 
 **If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} in-progress`) and commit it:
 
