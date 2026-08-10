@@ -2,7 +2,7 @@
 
 Linear natively supports both priority levels and blocking relationships between issues. Both are used to determine execution order.
 
-This file is used by the graphing agent after all tasks have been authored. The agent receives the complete plan and establishes priority and dependencies across tasks.
+This file serves every consumer that sets priority or dependencies: the graphing agent after plan authoring, and the implementation flows adding or placing tasks mid-build.
 
 ## Priority
 

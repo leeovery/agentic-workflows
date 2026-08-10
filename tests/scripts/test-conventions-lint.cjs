@@ -661,7 +661,6 @@ const RATCHET_PINS = {
   'skills/workflow-discussion-process/references/perspective-agents.md': 2,
   'skills/workflow-implementation-entry/references/check-dependencies.md': 4,
   'skills/workflow-implementation-process/SKILL.md': 1,
-  'skills/workflow-implementation-process/references/ad-hoc-plan-changes.md': 1,
   'skills/workflow-implementation-process/references/analysis-loop.md': 1,
   'skills/workflow-implementation-process/references/linter-setup.md': 2,
   'skills/workflow-implementation-process/references/project-skills-discovery.md': 2,

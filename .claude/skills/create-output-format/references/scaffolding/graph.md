@@ -1,7 +1,7 @@
 # {Format Name}: Task Graph
 
 <!-- Instructions for establishing priority and dependencies across tasks -->
-<!-- This file is used by the graphing agent after all tasks have been authored -->
+<!-- Serves every consumer that sets priority or dependencies: the graphing agent after plan authoring, and the implementation flows adding or placing tasks mid-build -->
 
 ## Priority
 

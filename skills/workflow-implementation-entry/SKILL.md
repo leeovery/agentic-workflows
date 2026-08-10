@@ -19,7 +19,7 @@ You are in the **Implementation** phase — executing the plan: tests first, the
 | Bugfix | Investigation → Specification → Planning → **Implementation** → Review |
 | Quick-fix | Scoping → **Implementation** → Review |
 
-**Stay in your lane**: Execute the plan via strict TDD (or verification workflow for quick-fix). Don't re-debate decisions from the specification or expand scope beyond the plan. The plan is your authority.
+**Stay in your lane**: Execute the plan via strict TDD (or verification workflow for quick-fix). Don't re-debate decisions from the specification or expand scope beyond the plan. The plan is your authority — when unplanned work surfaces, it grows only through the processing skill's ad hoc plan-changes route, never freelanced.
 
 ---
 

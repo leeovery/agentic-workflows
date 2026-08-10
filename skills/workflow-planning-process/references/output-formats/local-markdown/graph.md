@@ -2,7 +2,7 @@
 
 Local markdown has no native dependency or priority engine. Both are stored as frontmatter fields on task files and used during task selection to determine execution order.
 
-This file is used by the graphing agent after all tasks have been authored. The agent receives the complete plan and establishes priority and dependencies across tasks.
+This file serves every consumer that sets priority or dependencies: the graphing agent after plan authoring, and the implementation flows adding or placing tasks mid-build.
 
 ## Priority
 

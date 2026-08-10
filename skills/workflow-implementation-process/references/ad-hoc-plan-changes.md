@@ -4,44 +4,74 @@
 
 ---
 
-Unplanned work surfaced mid-implementation — a bug hit while testing, a gap the conversation exposed, an agent result naming missing work, a changed decision. This reference folds it into the plan through the same infrastructure that authored the plan, never by hand.
+Folds conversationally-surfaced unplanned work into the plan through the same infrastructure that authored the plan, never by hand. Always start at **A. Frame the Work**.
 
-The caller is whatever flow the conversation interrupted — mid-task-loop, at a gate, during analysis, while a backgrounded executor runs. On `→ Return to caller.`, resume that flow exactly where it stopped; if a gate menu was pending, re-render it from its surface before continuing.
+The caller is whatever flow the conversation interrupted. On `→ Return to caller.`, resume that flow exactly where it stopped; if a gate menu was pending when the conversation interrupted, re-present it — engine-rendered menus re-fetch from their surface, prose menus re-emit from their authoring file.
 
-When the user names the work, start from their words. When you spot it first — in their question, in an agent's result, in what they hit while testing — offer it: name what you think the work is and ask whether to fold it in. Proceed only on their yes.
+Context to hold before acting: `{format}` is the plan's output format, read at Step 2 — if it is not in session context (an early or post-refresh entry), read it now (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format`).
 
 ## A. Frame the Work
 
 Establish in conversation what the work is and what done looks like.
 
-**If the work requires a decision the specification doesn't answer:**
+#### If the work requires a decision the specification doesn't answer
 
-Present the decision to the user and stop — implementation absorbs work, never makes decisions (Hard Rules). Work the user rules outside this plan's scope is captured through the capture skills (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`), never absorbed into tasks.
+Decisions belong to the user — present it plainly, with what each answer would mean for the work.
+
+**STOP.** Wait for user response.
+
+**If the user settles the decision in scope:**
+
+The work is absorbable now.
+
+→ Proceed to **B. Pick the Landing**.
+
+**If the user rules the work out of scope:**
+
+Invoke the matching capture skill (`/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"
+```
 
 → Return to caller.
 
-**Otherwise:**
+#### Otherwise
 
-Pick the landing by first match:
+→ Proceed to **B. Pick the Landing**.
 
-- The task currently executing already owns the ground — same files, same scope, a "watch out for this". → Proceed to **B. Deliver to the Executor**.
-- A pending task already owns the ground — the work refines or extends a task not yet run. → Proceed to **C. Amend a Pending Task**.
-- New work. → Proceed to **D. Add Tasks to the Plan**.
+## B. Pick the Landing
 
-## B. Deliver to the Executor
+**If `work_type` is `quick-fix`:** the plan never grows — a quick-fix is defined by its ceiling. The first two landings below stay available; anything that would need a new task goes to the inbox (the capture-and-commit shape in **A**), or signals the work has outgrown quick-fix — say so to the user rather than absorbing it.
 
-No plan write — the instruction rides the current task, and the task's reviewer verifies it with the rest.
+Pick by first match:
 
-- Executor still running (backgrounded): send it the instruction as an agent message now.
-- Otherwise: append the instruction to the task's next dispatch prompt — a retry, or its first dispatch — beneath the normalised task content, marked as an addition from the user.
+- The task currently in flight already owns the ground — same files, same scope, a "watch out for this". → Proceed to **C. Deliver to the Executor**.
+- A pending task already owns the ground — the work refines or extends a task not yet run. → Proceed to **D. Amend a Pending Task**.
+- Otherwise — new work, including rework of a task already completed. → Proceed to **E. Draft the Tasks**.
+
+## C. Deliver to the Executor
+
+No plan write — the instruction becomes part of the current task's scope, for the executor and the reviewer alike:
+
+1. **Append the instruction to the task's normalised content in session** — every later use of that content carries it: a fresh executor dispatch (item 5 of the payload), and the reviewer's task-content input.
+2. **Deliver it to the executor** with the next send, per **[invoke-executor.md](invoke-executor.md)**: as round material on a continuation (SendMessage to the recorded agent id), or riding the normalised content on a fresh dispatch. Mark it as an addition from the user.
+
+#### If the task completed approved before any send carried the instruction
+
+The work was never absorbed — treat it as unlanded.
+
+→ Return to **B. Pick the Landing**.
+
+#### Otherwise
 
 → Return to caller.
 
-## C. Amend a Pending Task
+## D. Amend a Pending Task
 
-Read the plan format's updating adapter — `../../workflow-planning-process/references/output-formats/{format}/updating.md`, **Updating Task Content** — and apply the change: edit the description or append to it, whichever the format supports and the change warrants. The task carries the addition when its turn comes.
+Read the plan format's updating adapter — `../../workflow-planning-process/references/output-formats/{format}/updating.md`, **Updating Task Content** — and apply the change: edit the description or append to it, whichever the format supports and the change warrants. Where the format's commands take an external id, resolve it from the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map.{internal_id}` — the internal id comes from the plan read that identified the task). The task carries the addition when its turn comes.
 
-Confirm the wording with the user before writing when the change is more than mechanical.
+Confirm the wording with the user before writing when the change is more than mechanical — soft, conversational, no structured gate.
 
 **If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`).
 
@@ -53,51 +83,23 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 
 → Return to caller.
 
-## D. Add Tasks to the Plan
+## E. Draft the Tasks
 
-**Placement first.** Settle in conversation where the work surfaces — it usually falls out of the problem: a bug blocking the user's testing comes up next; deferred polish tails the plan; work belonging to an upcoming phase joins it. Express ordering through the format's own mechanics, never by rewriting phases. Read the format's `graph.md` (`../../workflow-planning-process/references/output-formats/{format}/graph.md`) when the discussion needs its mechanics. Per task, the choices are:
+**Placement first.** Read the format's graph adapter — `../../workflow-planning-process/references/output-formats/{format}/graph.md` — before settling placement: ordering defaults differ per format (some surface a new task by priority and creation date, not phase position), and placement is expressed through the adapter's own mechanics. Read the plan via the format's reading adapter where the conversation needs the actual phase numbers and task ids. Then settle in conversation where the work surfaces — it usually falls out of the problem: a bug blocking the user's testing comes up next; deferred polish tails the plan; work belonging to an upcoming phase joins it. Per task, the choices are:
 
-- an existing phase (current, upcoming, or last) or a new phase at the tail
-- a priority, when natural ordering would surface it too late or too early
-- dependency edges, when order matters and natural ordering wouldn't produce it
+- an existing **open** phase, or a new phase at the tail — never a completed phase
+- a priority, in the format's own vocabulary, when the default ordering would surface it too late or too early
+- dependency edges, when order matters and ordering mechanics alone wouldn't produce it — naming an existing task's internal id, or `task {n}` for a sibling drafted task
 
-**Draft.** Write each task in the staging shape below — `placement:` always; `priority:` and `depends_on:` only when the placement discussion called for them. Present the draft verbatim:
-
-> *Output the next fenced block as a code block:*
-
-```
-{drafted task content}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Add to the plan?`**
-
-**`y/yes`**  → Write the task(s) to the plan
-**Adjust** → Tell me what to change
-```
-
-**STOP.** Wait for user response.
-
-#### If the user adjusts
-
-Revise the draft per their feedback and re-present.
-
-→ Return to **D. Add Tasks to the Plan** (the gate above).
-
-#### If `yes`
-
-Write the staging file to `.workflows/{work_unit}/implementation/{topic}/adhoc-tasks-{n}.md` (`{n}` = next integer not on disk) — pure markdown, no frontmatter; the conversation above is the approval record:
+**Draft.** Write each task in the staging shape below — `placement:` always; the `priority:` and `depends_on:` lines only when the placement discussion called for them. Then write the staging file to `.workflows/{work_unit}/implementation/{topic}/ad-hoc-tasks-{n}.md` (`{n}` = next integer not on disk) — pure markdown, no frontmatter:
 
 ```markdown
 # Ad Hoc Tasks: {Topic}
 
 ## Task 1: {title}
 placement: {phase {N}|new phase "{label}"}
-priority: {level}
-depends_on: {internal_id, ...}
+priority: {level, in the format's vocabulary}
+depends_on: {internal_id or task {n}, ...}
 
 **Problem**: {what's missing or wrong}
 **Solution**: {what to do}
@@ -112,21 +114,104 @@ depends_on: {internal_id, ...}
 ...
 ```
 
+Initialise the gate state — one batched write, one `pending` row per drafted task:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.gate_mode=gated staging.ad-hoc-{n}.tasks.1=pending … staging.ad-hoc-{n}.tasks.{K}=pending
+```
+
+→ Proceed to **F. Approve Each Task**.
+
+## F. Approve Each Task
+
+#### If no `pending` row remains in `staging.ad-hoc-{n}.tasks`
+
+→ Proceed to **G. Create Tasks in Plan**.
+
+#### Otherwise
+
+Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "problem": "…", "solution": "…", "outcome": "…", "steps": […], "criteria": […], "tests": […]}` from the staging file, plus `"placement"`, `"priority"`, and `"depends_on"` when the staged task carries them — then render with the gate mode from the manifest's `staging.ad-hoc-{n}` subtree, and emit each section verbatim at its marked instruction:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate_mode} --comment-hint "Provide feedback to adjust"
+```
+
+#### If the response carried `DISPLAY: task auto-approved`
+
+Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`), then emit the section per its marker.
+
+→ Return to **F. Approve Each Task**.
+
+#### If the response carried `MENU: task approval`
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+Record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`.
+
+→ Return to **F. Approve Each Task**.
+
+**If `auto`:**
+
+Record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`.
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.gate_mode auto
+```
+
+→ Return to **F. Approve Each Task**.
+
+**If `skip`:**
+
+Record the skip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} skipped`.
+
+→ Return to **F. Approve Each Task**.
+
+**If comment:**
+
+Revise the staged task in the staging file based on the user's feedback (content only), and rewrite the payload.
+
+→ Return to **F. Approve Each Task**.
+
+## G. Create Tasks in Plan
+
+#### If no task was approved
+
+Commit the staging record:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): ad hoc tasks declined"
+```
+
+→ Return to caller.
+
+#### Otherwise
+
 Invoke the task-writer agent.
 
-**Agent path**: `../../../agents/workflow-implementation-analysis-task-writer.md`
+**Agent path**: `../../../agents/workflow-implementation-task-writer.md`
 
 Pass via the orchestrator's prompt:
 
 1. **Work unit** — the work unit name (for path construction)
 2. **Topic name** — the implementation topic (scopes tasks to the correct plan)
-3. **Staging file path** — the `adhoc-tasks-{n}.md` file just written
+3. **Staging file path** — the `ad-hoc-tasks-{n}.md` file from **E**
 4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
 5. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
 6. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
 7. **Phase placement** — `per-task`
-8. **Approved task numbers** — every task in the staging file
-9. **Plan format graph adapter path** — `../../workflow-planning-process/references/output-formats/{format}/graph.md`
+8. **Approved task numbers** — the task numbers whose staging rows are `approved`
+9. **Plan format graph adapter path** — `../../workflow-planning-process/references/output-formats/{format}/graph.md`, when any approved task carries a `priority:` or `depends_on:` line
+
+The agent creates exactly the approved tasks; a crash-resume re-invocation is safe (it creates only those not yet present). It returns:
+
+```
+STATUS: complete
+TASKS_CREATED: {N}
+PHASES: {comma-separated phase numbers}
+SUMMARY: {1 sentence}
+```
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
@@ -138,4 +223,16 @@ Commit:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add {K} ad hoc task(s)" --plan {topic}
 ```
 
+Any task totals held in session context are stale — the plan changed; re-derive them at the next display.
+
+#### If the interrupted flow is the task loop
+
+The loop's next task fetch sees the new tasks in graph order.
+
 → Return to caller.
+
+#### Otherwise
+
+The plan now holds open tasks past the loop — re-enter it.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.

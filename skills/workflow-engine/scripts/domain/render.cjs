@@ -280,11 +280,13 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 }
 
 // ---------------------------------------------------------------------------
-// proposed-task / tasks-overview — the analysis and review synthesis loops'
-// shared task presentation (their prose templates were byte-identical twins).
-// Gate mode rides as a flag, not an address read: one consumer carries it in
-// the cycle response, the other in the manifest's staging.c{N} subtree — the
-// surface guarantees the form of both outputs, the flow owns the mode.
+// proposed-task / tasks-overview — the shared task presentation for the
+// analysis and review synthesis loops and the ad hoc plan-changes gate.
+// Severity/sources are the synthesis loops' fields, placement/priority/
+// depends_on the ad hoc gate's — all optional, rendered only when present.
+// Gate mode rides as a flag, not an address read: the flows carry it in a
+// cycle response or the manifest's staging subtree — the surface guarantees
+// the form of the output, the flow owns the mode.
 // ---------------------------------------------------------------------------
 
 /**
@@ -301,8 +303,11 @@ function proposedTask(cwd, args) {
 
   if (!Number.isInteger(p.current) || p.current < 1) throw new Error('render proposed-task: "current" must be a positive integer');
   if (!Number.isInteger(p.total) || p.total < p.current) throw new Error('render proposed-task: "total" must be an integer ≥ "current"');
-  for (const field of ['title', 'severity', 'sources', 'problem', 'solution', 'outcome']) {
+  for (const field of ['title', 'problem', 'solution', 'outcome']) {
     if (!isFilled(p[field])) throw new Error(`render proposed-task: "${field}" must be a non-empty string`);
+  }
+  for (const field of ['severity', 'sources', 'placement', 'priority', 'depends_on']) {
+    if (p[field] !== undefined && !isFilled(p[field])) throw new Error(`render proposed-task: "${field}" must be a non-empty string when present`);
   }
   const blocks = {};
   for (const field of ['steps', 'criteria', 'tests']) {
@@ -311,9 +316,14 @@ function proposedTask(cwd, args) {
     blocks[field] = lines;
   }
 
+  const meta = [];
+  if (isFilled(p.sources)) meta.push(`Sources: ${p.sources}`);
+  if (isFilled(p.placement)) meta.push(`Placement: ${p.placement}`);
+  if (isFilled(p.priority)) meta.push(`Priority: ${p.priority}`);
+  if (isFilled(p.depends_on)) meta.push(`Depends on: ${p.depends_on}`);
   const body = [
-    `**Task ${p.current}/${p.total}: ${p.title}** (${p.severity})`,
-    `Sources: ${p.sources}`,
+    `**Task ${p.current}/${p.total}: ${p.title}**${isFilled(p.severity) ? ` (${p.severity})` : ''}`,
+    ...meta,
     '',
     `**Problem**: ${p.problem}`,
     `**Solution**: ${p.solution}`,

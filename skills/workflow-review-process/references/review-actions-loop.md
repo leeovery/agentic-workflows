@@ -162,9 +162,9 @@ The session died between the last gate decision and the plan write — the appro
 
 → Proceed to **F. Create Tasks in Plan**.
 
-#### If a staging file exists on disk with no matching manifest cycle
+#### If a `review-tasks-c{N}.md` staging file exists on disk with no matching manifest cycle
 
-A crash between the synthesizer's write and the init — initialise the cycle now from the file's task count (the batched `pending` set from **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)**).
+A crash between the synthesizer's write and the init — initialise the cycle now from the file's task count (the batched `pending` set from **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)**). Only the `review-tasks-` family counts: `analysis-tasks-c*.md` and `ad-hoc-tasks-*.md` files in the same directory belong to the implementation item and the ad hoc plan-changes flow.
 
 → Proceed to **C. Approval Overview**.
 

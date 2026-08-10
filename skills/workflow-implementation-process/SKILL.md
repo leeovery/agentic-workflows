@@ -37,7 +37,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic}
    ```
-   Check `task_gate_mode`, `fix_gate_mode`, `analysis_gate_mode`, `fix_attempts`, and `analysis_cycle_total` — if gates are `auto`, the user previously opted out. If `fix_attempts` > 0, you're mid-fix-loop for the current task. If `analysis_cycle_total` > 0, you've completed analysis cycles — check for findings files on disk (`analysis-*-c{cycle-number}.md` in the implementation directory) to determine mid-analysis state.
+   Check `task_gate_mode`, `fix_gate_mode`, `analysis_gate_mode`, `fix_attempts`, and `analysis_cycle_total` — if gates are `auto`, the user previously opted out. If `fix_attempts` > 0, you're mid-fix-loop for the current task. If `analysis_cycle_total` > 0, you've completed analysis cycles — check for findings files on disk (`analysis-*-c{cycle-number}.md` in the implementation directory) to determine mid-analysis state. If `staging` holds an `ad-hoc-{n}` subtree with `pending` rows, an ad hoc addition died mid-gate — resume its walk at **[ad-hoc-plan-changes.md](references/ad-hoc-plan-changes.md)** section F; `approved` rows with no matching plan tasks mean the task writer never ran — re-invoke it (idempotent) per section G.
 4. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 5. **Re-fetch lost gate sections.** Gate menus are carried by engine `task` responses the refresh discarded. Re-run the last task verb to re-emit them — `start` with the manifest's `current_task` is non-destructive (an in-flight task's `fix_attempts` and tracking file are preserved), and `init`/`complete` re-runs return the same response. Never re-run `fix-attempt` or `analysis-cycle` to re-fetch — each records a new cycle; their gates re-emerge on the loop's next natural call.
 6. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
@@ -56,6 +56,8 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 ## Ad Hoc Plan Changes
 
 Unplanned work surfaces mid-implementation — the user hits a bug while testing, the conversation exposes a gap, an agent result names missing work, a decision changes. When it does — or when you spot it and the user confirms — load **[ad-hoc-plan-changes.md](references/ad-hoc-plan-changes.md)** and follow its instructions as written, from any point in the phase. Never fold unplanned work into the plan by hand.
+
+→ On return, resume the interrupted flow — never fall through to Step 0.
 
 ---
 
