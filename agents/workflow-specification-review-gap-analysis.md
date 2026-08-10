@@ -103,7 +103,6 @@ No source material — this phase looks inward only.
 6. **Never propose that the specification state its own pipeline position** — readiness for planning, incorporation status, or review-cycle counts. That state lives in the work unit's manifest; a Proposed Change may remove such a statement, never add one.
 7. **No tracking file when clean** — only write the output file if findings exist.
 8. **Never lose your findings** — when findings exist they must survive the run, and the tracking file is how they survive. Produce the tracking file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
-9. **The `## Corrigenda` section is a record, not spec content** — its entries quote superseded claims beside the corrected body on purpose. Never flag them as duplication or contradiction, and never propose editing, moving, or deleting that section.
 
 ## Output File Format
 
