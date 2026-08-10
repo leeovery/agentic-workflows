@@ -78,9 +78,19 @@ Note in the current phase's working file that the knowledge query was skipped. E
 
 ## E. When a surfaced artifact is wrong
 
-A chunk (or its source file) can carry a claim you have verified is wrong or has shifted since it was written. Never leave it standing — completed work units keep their chunks live at full confidence, so every future query re-serves the error as validated context.
+A chunk (or its source file) can carry a claim you have verified is wrong or has shifted since it was written. What happens next depends on the source phase.
+
+#### If the source is a specification
+
+Never leave it standing — the spec is the golden record and its chunks stay live at full confidence, so every future query re-serves the error as validated context.
 
 → Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** and follow its instructions.
+
+#### If the source is any other phase
+
+Leave the artifact alone — no correction is owed. Everything outside the specification decays in the knowledge base; record what is actually true in the current work's own artifact and let the stale claim age out.
+
+→ Return to caller.
 
 ## F. Phase-specific notes
 
@@ -102,7 +112,7 @@ Before documenting such a decision:
 1. **Consult** — run a scoped query for the term, or cite the sibling's current decided text when it is already in this session's context.
 2. **Trace** — record the check as one line inside the documented decision: `Sibling check: {topic} — {what its decided text holds}`, or `Sibling check: no overlap found.`
 
-When the consult surfaces text the new decision contradicts or supersedes, the owning document is owed a correction — never a prose note to carry. A sibling topic in the same epic: reroute through the session's off-topic path at that moment. Another work unit's artifact: follow **E. When a surfaced artifact is wrong**.
+When the consult surfaces text the new decision contradicts or supersedes, route by owner. A sibling topic in the same epic: reroute through the session's off-topic path at that moment. Another work unit's specification: it is owed a correction — never a prose note to carry — follow **E. When a surfaced artifact is wrong**. Any other document of another work unit: no correction is owed — this topic's own record of the decision stands, and the stale text ages out (**E**'s non-spec arm).
 
 In ordinary conversation this is the same advisory judgment as §A trigger 2. At engagement decision points — a review or synthesis finding's outcome, a rerouted triage concern's fold — the consult is a required step; the engagement flows name it.
 
