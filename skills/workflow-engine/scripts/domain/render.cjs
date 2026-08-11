@@ -459,6 +459,44 @@ function incoherenceGate(cwd, args) {
 }
 
 // ---------------------------------------------------------------------------
+// cancel-cascade-gate — the collapse confirm `topic cancel`'s refusal routes
+// to: a live specification is built from the topic being cancelled, so the
+// cascade takes both. No payload — the collapse set is manifest state (the
+// same reverse join the refusal ran): started specs cancel with the topic
+// (reactivatable), proposed groupings are discarded. Always gated.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function cancelCascadeGate(cwd, { dotpath }) {
+  const { topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-cascade-gate');
+  const specItems = ((manifest.phases || {}).specification || {}).items || {};
+  const collapses = Object.entries(specItems).filter(([, s]) =>
+    s && typeof s === 'object' && !['cancelled', 'superseded', 'promoted'].includes(s.status)
+    && sourceRows(s.sources).some(([n]) => n === topic));
+  if (collapses.length === 0) {
+    throw new Error(`render cancel-cascade-gate: no live specification sources "${topic}" — the bare cancel proceeds`);
+  }
+  const started = collapses.filter(([, s]) => s.status !== 'proposed').map(([n]) => titlecase(n));
+  const proposed = collapses.filter(([, s]) => s.status === 'proposed').map(([n]) => titlecase(n));
+  const parts = [];
+  if (started.length > 0) parts.push(`**${started.join('**, **')}** is cancelled with it (reactivatable)`);
+  if (proposed.length > 0) parts.push(`the proposed grouping **${proposed.join('**, **')}** is discarded — the next grouping analysis rebuilds from the new world`);
+  const statement = `Cancelling **${titlecase(topic)}** collapses the specification work built from it: ${parts.join('; ')}.`;
+  return section('MENU: cancel cascade', "emit verbatim as markdown, then STOP for the user's response", menu(
+    statement,
+    [
+      cmdOption('y', 'yes', 'Cancel the topic and the specification work it sources'),
+      cmdOption('n', 'no', 'Return to menu'),
+    ],
+    { question: 'Cancel them together?' },
+  ));
+}
+
+// ---------------------------------------------------------------------------
 // resurface-gate — spec construction's Context Resurfacing gate: a diff over
 // already-approved specification content plus its approval menu. Always
 // gated — it changes blessed content, so construction auto never applies.
@@ -1689,6 +1727,7 @@ const SURFACES = {
   'reroute-candidates': rerouteCandidates,
   'proposed-task': proposedTask,
   'incoherence-gate': incoherenceGate,
+  'cancel-cascade-gate': cancelCascadeGate,
   'resurface-gate': resurfaceGate,
   'construction-gate': constructionGate,
   'tasks-overview': tasksOverview,

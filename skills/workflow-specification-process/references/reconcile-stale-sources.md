@@ -4,19 +4,19 @@
 
 ---
 
-Entered when a source row reads `stale` — its discussion was re-decided after extraction, so the specification holds content from a decision that has since moved. Reconcile the logged content against the revision; never re-extract the source wholesale.
+Entered when a source row reads `stale` — its source document was re-decided after extraction, so the specification holds content from a decision that has since moved. Reconcile the logged content against the revision; never re-extract the source wholesale. `{source phase}` is the source's own phase — `discussion`, or `investigation` for a bugfix — and its artifact path follows the source ladder in **[spec-review.md](spec-review.md)**.
 
-First check the source discussion's status (`engine manifest get {work_unit}.discussion.{source-name} status`).
+First check the source item's status (`engine manifest get {work_unit}.{source phase}.{source-name} status`).
 
 #### If it is `in-progress`
 
-The revision is not final — defer: leave the row `stale` and tell the user reconciliation waits for that discussion to re-conclude.
+The revision is not final — defer: leave the row `stale` and tell the user reconciliation waits for that item to re-conclude.
 
 → Return to caller.
 
 #### Otherwise
 
-1. Re-read the source discussion (`.workflows/{work_unit}/discussion/{source-name}.md`) in full. Its decision timeline marks the revision — identify which decisions changed, which were added, and which stand.
+1. Re-read the source document in full. A discussion's decision timeline marks the revision — identify which decisions changed, which were added, and which stand; an investigation carries no timeline — diff its passages against the logged content in judgment.
 2. Re-read the specification for the content logged from that source.
 3. Diff the two in judgment: content the revision left standing stays untouched. For each piece the revision contradicts or extends, summarize what's changing in the chat, then write the gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json` with the Write tool — `{"section": "{section name}", "diff": {"context_above": […], "current": […], "proposed": […], "context_below": […]}, "full": [the full updated section's lines]}` (2 context lines each side) — and fetch the gate, emitting each section verbatim at its marked instruction (this gate stays gated even when `construction_gate_mode` is `auto`):
 

@@ -1010,6 +1010,25 @@ describe('render proposed-task', () => {
     assert.ok(/\*\*`s\/stop`\*\* +→ Stop here/.test(held));
   });
 
+  it('cancel-cascade-gate derives the collapse set — started cancelled, proposed discarded; refuses when nothing sources the topic', () => {
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: {
+      discussion: { items: { beta: { status: 'completed' } } },
+      specification: { items: {
+        unified: { status: 'in-progress', sources: { beta: { status: 'incorporated' } } },
+        grp: { status: 'proposed', sources: { beta: { status: 'pending' } } },
+        dead: { status: 'cancelled', sources: { beta: { status: 'pending' } } },
+      } },
+    } });
+    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.discussion.beta' });
+    assert.ok(out.includes('MENU: cancel cascade'), out);
+    assert.ok(out.includes('**Unified** is cancelled with it (reactivatable)'), out);
+    assert.ok(out.includes('the proposed grouping **Grp** is discarded'), out);
+    assert.ok(!out.includes('Dead'), 'terminal specs never enter the collapse set');
+    assert.ok(out.includes('**`◆ Cancel them together?`**'), out);
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: { discussion: { items: { beta: { status: 'completed' } } } } });
+    assert.throws(() => renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.discussion.beta' }), /no live specification sources "beta"/);
+  });
+
   it('incoherence-gate validates loudly: variant, doc, sides floor, single recommended', () => {
     const file = writePayload(dir, 'ig3.json', { doc: 'x', title: 't', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file }), /--variant must be/);
@@ -1647,7 +1666,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases\)/);
   });
 });
 

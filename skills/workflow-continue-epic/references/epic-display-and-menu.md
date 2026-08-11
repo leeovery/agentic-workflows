@@ -117,19 +117,13 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 **If user chose `yes`:**
 
-Continue with the **Soft gate check** below.
+Continue with the **Hard gate check** below.
 
-**Hard gate check** — specification reads the settled record; these refusals come before the soft gate. Read `phase_counts` and `spec_blocked` from DATA.
+**Hard gate check** — specification reads the settled record; this refusal comes before the soft gate. Read `phase_counts` from DATA. (Blocked specs never reach here — the menu carries no row for them; the display tree shows their `blocked` cue.)
 
-**If `action` is `analyze_discussions` and `phase_counts` shows discussion items in-progress:**
+**If `action` is `analyze_discussions` and `phase_counts` shows discussion items in-progress and no specification items exist:**
 
-Tell the user in one line: {N} discussion(s) are still in-progress — the grouping analysis reads the settled record; conclude them and return.
-
-→ Return to **A. State Display and Menu**.
-
-**If `action` is `start_specification` or `continue_specification` and its `topic` appears in `spec_blocked`:**
-
-Tell the user in one line which reopened discussion(s) hold that specification (`spec_blocked` names them) and that re-concluding them unlocks it.
+Tell the user in one line: {N} discussion(s) are still in-progress — the grouping analysis reads the settled record; conclude them and return. (With specification items already on the board, the route passes — the specification menu shows what is workable and withholds the analysis itself.)
 
 → Return to **A. State Display and Menu**.
 
@@ -255,7 +249,21 @@ Run the cancel transaction — one command stashes the current status, marks the
 node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
 ```
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
+**If the response is `ok: false` naming specification(s) the cancel collapses** — a live spec is built from this topic; killing the source kills them together. Fetch the collapse confirm and emit its section verbatim at its marked instruction:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render cancel-cascade-gate {work_unit}.{phase}.{topic}
+```
+
+**STOP.** Wait for user response. On `no`: → Return to **A. State Display and Menu**. On `yes`, re-run with the cascade — one transaction cancels the topic and the named spec(s):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic} --cascade
+```
+
+Then continue below with the receipt.
+
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty. When the response carries `cascaded` or `discarded`, tell the user in one line which specification(s) went with the topic:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb cancel [--warn]

@@ -76,7 +76,7 @@ First check the specification is still live — a parallel session can collapse 
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
 ```
 
-#### If the status is not `in-progress`
+#### If the status is `cancelled`, `superseded`, or `promoted`
 
 The specification collapsed while this session held it. Tell the user what happened and stop — nothing routes, nothing lands.
 
@@ -100,7 +100,19 @@ Land the gap in the owning document's triage queue — its item reopens and the 
 
 → Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
 
-On return: if `result` is `landed`, the delivery committed itself. If `result` is `cancelled`, re-run the liveness check above — a dead spec exits there; otherwise the concern stays with this session: work it per **A. Classify**.
+On return, read `result`.
+
+**If `result` is `landed`:**
+
+The delivery committed itself.
+
+→ Proceed to **D. Pause the Specification**.
+
+**If `result` is `cancelled`:**
+
+Re-read the spec item's status as at the top of this section; a terminal status takes the collapse exit there. Otherwise the concern stays with this session — work it through with the user:
+
+→ Return to **A. Classify**.
 
 **If the work type is not `epic`:**
 
@@ -109,8 +121,6 @@ Write the concern (what the topic needs, the quotes where sources frame it, what
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {source phase} {doc} --concern .workflows/.cache/{work_unit}/specification/{topic}/gap-concern.md --slug {kebab-case gap name} -m "spec({work_unit}): gap routed to {doc}"
 ```
-
-A session holding several distinct gaps lands each in turn — this branch once per owning document — before pausing; the specification pauses once.
 
 → Proceed to **D. Pause the Specification**.
 
@@ -132,7 +142,7 @@ The resolution is written into the owning source document in that phase's own id
    node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
    ```
 
-   **STOP.** Wait for user response. On `next`: for an epic, first deliver the agreed resolution to that session's queue — load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; → Return to caller — construction moves to the next topic. On `stop`: same delivery where the work type is `epic`, then commit the session's work and stop — terminal condition.
+   **STOP.** Wait for user response. Either answer first delivers the agreed resolution to the held session's queue — epic: load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic triage` transaction shown in **B**, concern = the agreed resolution. Then, on `next`: → Return to caller — construction sets this topic's remaining extraction aside and continues with others; its unextracted rows hold conclusion until the resolution lands. On `stop`: commit the session's work and stop — terminal condition.
 
    **Otherwise** — no row holds `{doc}`:
 
@@ -149,6 +159,14 @@ The topic continues against the updated source.
 
 ## D. Pause the Specification
 
+#### If another gap awaits its raise
+
+Each gap gets its own raise, acknowledgement, and landing; the specification pauses once, after the last.
+
+→ Return to **B. The Gap Exit**.
+
+#### Otherwise
+
 An `incorporated` row for each routed source has flipped to `stale` and reconciles at re-entry; a still-`pending` row simply re-extracts the updated document when construction resumes — either way the engine refuses to conclude this spec, and its entry blocks, until every routed source re-concludes. Commit the session's work:
 
 ```bash
@@ -157,4 +175,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "sp
 
 Tell the user: this specification is blocked until the reopened item(s) re-conclude — name them (`{doc}`, each of them). Do not run document dependencies, review, or conclusion.
 
-Invoke the work type's navigation skill (Skill tool) so the user lands back on their menu with the reopened work in view: `/workflow-continue-epic {work_unit}` for an epic, `/workflow-continue-feature {work_unit}` for a feature, `/workflow-continue-bugfix {work_unit}` for a bugfix.
+Invoke the work type's navigation skill (Skill tool) so the user lands back on their menu with the reopened work in view: `/workflow-continue-epic {work_unit}` for an epic, `/workflow-continue-feature {work_unit}` for a feature, `/workflow-continue-bugfix {work_unit}` for a bugfix, `/workflow-continue-cross-cutting {work_unit}` for a cross-cutting concern.

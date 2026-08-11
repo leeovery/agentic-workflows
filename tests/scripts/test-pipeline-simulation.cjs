@@ -736,7 +736,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(unified.sources.beta.status, 'stale');
     assert.strictEqual(unified.sources.alpha.status, 'incorporated', 'sibling rows untouched');
     assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.reconcile_needed, undefined);
-    // While beta is back open, the spec boundary hard-blocks the spec it
+    // While beta is back in-progress, the spec boundary hard-blocks the spec it
     // sources: the entry gate refuses direct entry, and the scoped view marks
     // the row blocked (unselectable until the discussion re-concludes).
     const gateWhileOpen = sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'content' });

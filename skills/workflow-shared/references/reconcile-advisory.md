@@ -58,6 +58,8 @@ Read `.workflows/{work_unit}/investigation/{topic}.md` in full, then clear the f
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
+The reopen also flipped the spec's source row to `stale`; the specification session reconciles it (**[../../workflow-specification-process/references/reconcile-stale-sources.md](../../workflow-specification-process/references/reconcile-stale-sources.md)**, with `{source phase}` = `investigation`) at its setup or conclusion — sign-off waits on it.
+
 → Return to caller.
 
 #### If output is `discussion` (a source discussion re-decided)

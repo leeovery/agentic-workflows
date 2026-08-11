@@ -61,7 +61,12 @@ function computeNextPhase(manifest) {
   if (wt !== 'epic') {
     const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (wt)] || [];
     for (const phase of pipeline) {
-      if (ps(phase) === 'in-progress') break;
+      // The earliest in-flight phase owns the next action — a spec paused by
+      // a gap routed into its reopened source must route to that source, not
+      // back into its own blocked entry.
+      if (ps(phase) === 'in-progress') {
+        return { next_phase: phase, phase_label: `${phase} (in-progress)` };
+      }
       const flagged = phaseItems(manifest, phase)
         .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined);
       if (flagged) {

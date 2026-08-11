@@ -45,6 +45,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|boolean} [reconcile_needed]  a live reconcile flag — the upstream phase that
  *                                             moved, or `true` for a brief flag
  * @property {SpecSource[]} [sources]          specification items
+ * @property {string[]} [blocked_by]           specification items whose source is back in-progress
  * @property {string} [format]                 planning items
  * @property {boolean} [deps_satisfied]        planning items
  * @property {DepBlocking[]} [deps_blocking]   planning items with unmet deps
@@ -300,14 +301,20 @@ function epicDetail(cwd, manifest) {
     const open = srcs.map((src) => src.topic || src.name).filter((n) => n && discussionStatus.get(n) === 'in-progress');
     if (open.length > 0) specBlocked.push({ name: s.name, by: open });
   }
-  const blockedSpecNames = new Set(specBlocked.map((b) => b.name));
+  // The display tree shows the blocked state; the menu never offers a
+  // blocked item, so the entries carry the fact for the projections.
+  for (const e of phases.specification || []) {
+    const b = specBlocked.find((x) => x.name === e.name);
+    if (b) e.blocked_by = b.by;
+  }
 
   // Proposed groupings are actionable from the epic menu — surface them as
   // start_specification. Pushed before start_planning so they precede it in
   // pipeline order (spec → planning), which the settled-state recommendation
-  // reads. A blocked grouping is not ready — it waits on its source.
+  // reads. A blocked grouping is not actionable: it stays out of the menu
+  // and shows its blocked state on the display tree instead.
   for (const s of specItems) {
-    if (s.status === 'proposed' && !blockedSpecNames.has(s.name)) {
+    if (s.status === 'proposed' && !specBlocked.some((b) => b.name === s.name)) {
       nextPhaseReady.push({ name: s.name, action: 'start_specification', label: 'grouping ready' });
     }
   }

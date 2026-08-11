@@ -57,7 +57,8 @@ function assertLegalWrite(phase, status) {
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
- * @property {string[]} [cascaded]  spec items cancelled with their source (cancel --cascade)
+ * @property {string[]} [cascaded]  started spec items cancelled with their source (cancel --cascade)
+ * @property {string[]} [discarded] proposed groupings deleted with their source (cancel --cascade)
  */
 
 /**
@@ -754,7 +755,9 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
  */
 function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   /** @type {string[]} */
-  let cascaded = [];
+  const cascaded = [];
+  /** @type {string[]} */
+  const discarded = [];
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -770,7 +773,16 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
       if (sourcing.length > 0 && !opts.cascade) {
         throw new Error(`cancelling ${phase} "${topic}" collapses the specification(s) sourcing it: ${sourcing.map(([n]) => n).join(', ')} — confirm the cascade (--cascade cancels them together)`);
       }
+      const specItemsMap = (manifest.phases && manifest.phases.specification && manifest.phases.specification.items) || {};
       for (const [name, spec] of sourcing) {
+        if (spec.status === 'proposed') {
+          // A proposed grouping is a regenerable suggestion — discard it
+          // outright; a cancelled stub would collide with the next
+          // analysis's anchoring.
+          delete specItemsMap[name];
+          discarded.push(name);
+          continue;
+        }
         spec.previous_status = spec.status;
         spec.status = 'cancelled';
         cascaded.push(name);
@@ -803,6 +815,7 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   /** @type {TopicTransitionResult} */
   const result = { topic, phase, status: 'cancelled', committed: outcome.committed, warnings };
   if (cascaded.length > 0) result.cascaded = cascaded;
+  if (discarded.length > 0) result.discarded = discarded;
   noteCommitOutcome(result, outcome);
   return result;
 }

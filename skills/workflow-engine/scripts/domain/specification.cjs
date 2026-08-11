@@ -244,6 +244,11 @@ function specificationDetail(workUnit, result, opts = {}) {
       && (single.variant === 'no-spec' || (single.spec !== null && single.spec.blocked))) {
       scenario = 'blocked-discussions-open';
       single = null;
+    } else if ((scenario === 'specs-menu' || scenario === 'groupings')
+      && actionable.length > 0 && actionable.every((r) => r.blocked) && concluded.length === 0) {
+      // Every row refused and nothing else selectable — the menu would be a
+      // corridor of refusals; the terminal block owns this state.
+      scenario = 'blocked-discussions-open';
     }
   }
 

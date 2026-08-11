@@ -6,7 +6,7 @@
 
 Read `{file}`.
 
-**If `artifact` is `research` or `discussion`**, read the topic's triage queue — `node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} {artifact} {topic}`. When `count` is non-zero, the entries are concerns rerouted here from other topics — their origin sessions recorded them as landed. Restart preserves the queue (it is not a restart target), but the count belongs in the gate: set `{N}` = `count` and pass `--triage {N}` below. Omit the flag when the count is zero or the artifact has no queue.
+**If `artifact` is `research`, `discussion`, or `investigation`**, read the topic's triage queue — `node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} {artifact} {topic}`. When `count` is non-zero, the entries are concerns rerouted here from other topics — their origin sessions recorded them as landed. Restart preserves the queue (it is not a restart target), but the count belongs in the gate: set `{N}` = `count` and pass `--triage {N}` below. Omit the flag when the count is zero or the artifact has no queue.
 
 Render the gate:
 

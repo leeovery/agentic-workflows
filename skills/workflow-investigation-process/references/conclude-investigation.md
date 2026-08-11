@@ -38,7 +38,11 @@ Render the blocker and emit both its sections verbatim per their markers:
 node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.investigation.{topic}
 ```
 
-→ Load **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**. On return, re-present the conclusion gate above and route on its answer.
+→ Load **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
+
+On return:
+
+→ Return to **[the skill](../SKILL.md)** for **Step 13**.
 
 **If `files` is empty:**
 
