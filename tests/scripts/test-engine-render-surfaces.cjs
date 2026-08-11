@@ -956,11 +956,10 @@ describe('render proposed-task', () => {
       '=== DISPLAY: incoherence conflict (emit verbatim as markdown) ===',
       '**Conflict — Expansion freshness rests on a stream that will not be built**',
       '',
-      'The two decisions cannot both be implemented.',
+      '- **behavioural-ranking · Signal Ingestion · Decision**: "No live signal stream will be built."',
+      '- **synonym-handling · Expansion Source · Decision**: "Reading the live click-signal stream at query time."',
       '',
-      '> behavioural-ranking.md · Signal Ingestion · Decision: "No live signal stream will be built."',
-      '',
-      '> synonym-handling.md · Expansion Source · Decision: "Reading the live click-signal stream at query time."',
+      '**Details**: The two decisions cannot both be implemented.',
       '',
       'A spec extracting both sides describes a panel the record cannot produce.',
       '',
@@ -970,21 +969,19 @@ describe('render proposed-task', () => {
       '',
       '**`1`**       → Batch-derived expansion, daily refresh (recommended)',
       '**`2`**       → Live click-signal stream at query time',
-      '**`g/gap`**   → Neither stands — route this back to "synonym-handling" for a real discussion',
       "**Comment** → Tell me what you're thinking; we'll work it through",
       '',
     ].join('\n'));
   });
 
-  it('incoherence-gate gap-route and held-doc carry their statement, question, and options', () => {
+  it('incoherence-gate gap-route is display-only (raise + stated routing intent); held-doc keeps its menu', () => {
     const file = writePayload(dir, 'ig2.json', { doc: 'synonym-handling', title: 'Ranking interaction is undecided', context: 'Neither source decides how expanded matches rank.' });
     const gap = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'gap-route' });
     assert.ok(gap.includes('DISPLAY: incoherence gap'));
     assert.ok(gap.includes('**Gap — Ranking interaction is undecided**'));
-    assert.ok(gap.includes('MENU: incoherence gap route'));
-    assert.ok(gap.includes('This pauses the specification and sends the question back to "synonym-handling"'));
-    assert.ok(gap.includes('**`◆ Route it back?`**'));
-    assert.ok(/\*\*`y\/yes`\*\* +→ Pause here/.test(gap));
+    assert.ok(gap.includes('**Details**: Neither source decides how expanded matches rank.'));
+    assert.ok(gap.includes('Routing this to "synonym-handling" — it reopens with the gap, and this specification pauses until the answer lands.'));
+    assert.ok(!gap.includes('=== MENU'));
     const docOnly = writePayload(dir, 'ig2b.json', { doc: 'synonym-handling' });
     const held = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: docOnly, variant: 'held-doc' });
     assert.ok(held.includes('MENU: incoherence held doc'));

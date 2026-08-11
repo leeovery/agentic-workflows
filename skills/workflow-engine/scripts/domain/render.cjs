@@ -363,13 +363,17 @@ function proposedTask(cwd, args) {
 }
 
 // ---------------------------------------------------------------------------
-// incoherence-gate — spec construction's Resolve Source Incoherence gates.
-// Three variants, all always-gated: the discipline's stops override the
-// construction auto mode by design, so no --gate flag exists here.
-//   conflict  — the decision-owed menu: one numbered option per side from a
-//               judgment payload (recommended side first), g/gap, Comment
-//   gap-route — the consent gate before a gap leaves the specification
+// incoherence-gate — spec construction's Resolve Source Incoherence raises.
+// Three variants; the stops here override the construction auto mode by
+// design, so no --gate flag exists.
+//   conflict  — the settle-it-here menu: one numbered option per documented
+//               side (recommended first) plus Comment; classification is
+//               Claude's, so no gap escape exists in the menu
+//   gap-route — display-only: the gap raise plus the stated routing intent;
+//               no menu — pushback is conversational, before the routing runs
 //   held-doc  — the fallback when a live session holds the owning document
+// The raise body takes the finding idiom: bold head, one meta bullet per
+// cited quote, a Details paragraph, stakes beneath.
 // ---------------------------------------------------------------------------
 
 const INCOHERENCE_STOP = 'emit verbatim as markdown, then STOP for the user\'s response';
@@ -402,12 +406,13 @@ function incoherenceGate(cwd, args) {
     }
     if (p.stakes !== undefined && !isFilled(p.stakes)) throw new Error('render incoherence-gate: "stakes" must be a non-empty string when present');
     const head = variant === 'conflict' ? 'Conflict' : 'Gap';
-    const body = [`**${head} — ${p.title}**`, '', p.context];
+    const body = [`**${head} — ${p.title}**`];
     if (p.quotes) {
-      for (const q of p.quotes) body.push('', `> ${q.doc}.md · ${q.section}: "${q.quote}"`);
+      body.push('');
+      for (const q of p.quotes) body.push(`- **${q.doc} · ${q.section}**: "${q.quote}"`);
     }
+    body.push('', `**Details**: ${p.context}`);
     if (p.stakes) body.push('', p.stakes);
-    const display = section(`DISPLAY: incoherence ${head.toLowerCase()}`, 'emit verbatim as markdown', body.join('\n'));
 
     if (variant === 'conflict') {
       if (!Array.isArray(p.sides) || p.sides.length < 2) {
@@ -421,22 +426,16 @@ function incoherenceGate(cwd, args) {
       if (p.sides.filter((/** @type {{recommended?: boolean}} */ s) => s.recommended === true).length > 1) {
         throw new Error('render incoherence-gate: at most one side may be recommended');
       }
+      const display = section('DISPLAY: incoherence conflict', 'emit verbatim as markdown', body.join('\n'));
       const ordered = [...p.sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
       const options = ordered.map((s, i) =>
         cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
-      options.push(cmdOption('g', 'gap', `Neither stands — route this back to "${p.doc}" for a real discussion`));
       options.push(promptOption('Comment', 'Tell me what you\'re thinking; we\'ll work it through'));
       return [display, section('MENU: incoherence conflict', INCOHERENCE_STOP,
         menu('', options, { question: 'Which decision stands?' }))].join('\n');
     }
-    return [display, section('MENU: incoherence gap route', INCOHERENCE_STOP, menu(
-      `This pauses the specification and sends the question back to "${p.doc}" — its item reopens, and this spec waits on the answer.`,
-      [
-        cmdOption('y', 'yes', `Pause here and send the gap to "${p.doc}"`),
-        cmdOption('n', 'no', 'Keep it with this session; we\'ll work it here'),
-      ],
-      { question: 'Route it back?' },
-    ))].join('\n');
+    body.push('', `Routing this to "${p.doc}" — it reopens with the gap, and this specification pauses until the answer lands.`);
+    return section('DISPLAY: incoherence gap', 'emit verbatim as markdown', body.join('\n'));
   }
   return section('MENU: incoherence held doc', INCOHERENCE_STOP, menu(
     `"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,

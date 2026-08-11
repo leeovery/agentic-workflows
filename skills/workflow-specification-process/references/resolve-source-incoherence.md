@@ -6,7 +6,7 @@
 
 Specification makes decisions clear; it never makes them. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the construction session.
 
-Every raise gives the user enough to decide from — the payload carries the situation, the evidence, and the stakes, and the engine renders it. Start at **A. Classify**.
+Classification is yours, never the user's — no raise asks them to name what kind of problem this is. The line between settling here and routing back is effort: a brief exchange settles it here; anything needing real discussion work goes back to the phase that owns decisions. Every raise gives the user enough to weigh in from — the payload carries the situation, the evidence, and the stakes, and the engine renders it. Start at **A. Classify**.
 
 ## A. Classify
 
@@ -24,9 +24,9 @@ The decisions cohere; one document's prose relies, as current, on a value or mec
 
 → Proceed to **D. Landing a Resolution** with resolution = `{the repair}`, doc = `{the citing document's topic}`, origin = `repair`.
 
-#### If a decision is owed
+#### If a brief exchange settles it and the sources document the sides
 
-The sources decide incompatibly, or the material is unclear in a way only a choice can settle. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
+The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant conflict
@@ -38,39 +38,55 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {
 
 → Proceed to **D. Landing a Resolution** with resolution = `{the chosen decision}`, doc = `{the yielding document's topic}`, origin = `decision`.
 
-**If `gap`:**
-
-→ Proceed to **B. The Gap Exit**.
-
 **If comment:**
 
-Work it through conversationally, then re-present the gate with anything the discussion changed (rewrite the payload, re-fetch).
+Work it through conversationally, then re-classify against what the exchange produced.
+
+A settled resolution lands like a picked side:
+
+→ Proceed to **D. Landing a Resolution** with resolution = `{the settled decision}`, doc = `{the yielding document's topic}`, origin = `decision`.
+
+An exchange that moved the ground but left the choice open re-presents the gate (rewrite the payload, re-fetch):
 
 → Return to **A. Classify** (the gate above).
 
-#### If it is a gap
+An exchange showing nothing can stand without work the sources never did — neither side survives, or the answer needs ground no source lays — is a genuine gap:
 
-Nothing was ever decided, and the topic cannot be written until it is.
+→ Proceed to **B. The Gap Exit**.
+
+#### If a brief exchange settles it and no sides are documented
+
+The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. **This stop overrides `auto`.** Put the question to the user in conversation — what the topic needs, where the sources stop short, what the answer unlocks. No engine surface: this is an exchange, not a gate.
+
+**STOP.** Wait for user response.
+
+On an answer that settles it:
+
+→ Proceed to **D. Landing a Resolution** with resolution = `{the settled decision}`, doc = `{the owning source's topic}`, origin = `decision`.
+
+If the exchange shows it needs more than this session can give:
+
+→ Proceed to **B. The Gap Exit**.
+
+#### If it is a genuine gap
+
+Settling it needs real discussion work — exploration the sources never did, more than a brief exchange gives — whether nothing was ever decided or the decided positions collide too deeply to pick between here.
 
 → Proceed to **B. The Gap Exit**.
 
 ## B. The Gap Exit
 
-The gap belongs to the phase that owns decisions. Present it and confirm before anything moves — write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{the owning source's topic}", "title": "{what is missing, one line}", "context": "{what the topic needs and why no source decides it}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim, where sources frame the adjacent ground}"}, …], "stakes": "{what cannot be written until this is decided}"}` (`quotes` and `stakes` where they exist) — and fetch the gate, emitting each section verbatim at its marked instruction:
+The gap belongs to the phase that owns decisions. There is no consent gate: the raise states what is missing and where it is going, then the routing runs. The user's lever is conversational — an objection arriving before the routing lands is honoured: stop, work it per **A. Classify**. A session holding several distinct gaps runs this exit once per owning document — raise, land — and proceeds to **C. Pause the Specification** only after the last; the specification pauses once.
+
+Write the raise payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{the owning source's topic}", "title": "{what is missing, one line}", "context": "{what the topic needs and why no source decides it}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim, where sources frame the adjacent ground}"}, …], "stakes": "{what cannot be written until this is decided}"}` (`quotes` and `stakes` where they exist) — and fetch the raise, emitting its section verbatim at its marked instruction (display-only — the stated routing intent is its closing line):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant gap-route
 ```
 
-**STOP.** Wait for user response.
+Then route the gap:
 
-#### If `no`
-
-The concern stays in this session's conversation — resolve it as a decision owed or park the topic and continue with another.
-
-→ Return to caller.
-
-#### If `yes` and the work type is `epic`
+#### If the work type is `epic`
 
 → Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
 
@@ -78,15 +94,15 @@ On return, read `result`.
 
 **If `result` is `cancelled`:**
 
-Nothing landed — the concern stays with this session.
+The user pushed back inside the landing — nothing landed; the concern stays with this session.
 
-→ Return to **B. The Gap Exit** (the gate above).
+→ Return to **A. Classify**.
 
 **If `result` is `landed`:**
 
 → Proceed to **C. Pause the Specification**.
 
-#### If `yes` and the work type is not `epic`
+#### If the work type is not `epic`
 
 Single-topic work types route back directly — reopen the owning source item (its phase is the source's own: `discussion`, or `investigation` for a bugfix):
 
