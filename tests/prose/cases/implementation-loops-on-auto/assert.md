@@ -69,6 +69,8 @@ Further claims:
 - exactly one fix-attempt is recorded per task — attempts reset with
   each task start, and every needs-changes verdict reads attempt 1,
   escalates at 3 — the escalation-threshold wording never renders
+- the brief renders exactly once per task, at its start — the fix
+  round and the re-review never repeat it
 - fix-tracking files exist for both tasks and ride their task
   commits; the task-brief and task-result payload cache files under
   .workflows/.cache are expected residue of the renders

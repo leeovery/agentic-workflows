@@ -69,9 +69,11 @@
       "render entry-gate pay.implementation.pay",
       "task init pay pay",
       "task start pay pay pay-1-1",
+      "render task-brief pay.implementation.pay",
       "task complete pay pay pay-1-1",
       "impl(pay): Tpay-1-1",
       "task start pay pay pay-1-2",
+      "render task-brief pay.implementation.pay",
       "task complete pay pay pay-1-2",
       "impl(pay): Tpay-1-2"
     ],

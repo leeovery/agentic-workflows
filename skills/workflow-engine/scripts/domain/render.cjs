@@ -1441,11 +1441,11 @@ function entryGate(cwd, { dotpath, own }) {
 }
 
 // ---------------------------------------------------------------------------
-// Task-loop surfaces — the result header and its gates, fetched by the
-// implementation loop at the exact stage that displays them, so the section
-// always sits in the tool result directly above its emission. State-backed:
-// the in-flight task, gate modes, and fix attempts come from the
-// implementation item; gate-mode branching renders inside the gate
+// Task-loop surfaces — the brief, the result header, and the gates, fetched
+// by the implementation loop at the exact stage that displays them, so the
+// section always sits in the tool result directly above its emission.
+// State-backed: the in-flight task, gate modes, and fix attempts come from
+// the implementation item; gate-mode branching renders inside the gate
 // surfaces. `blocked-tasks` and `cycle-gate` are static menus and take no
 // address.
 // ---------------------------------------------------------------------------
@@ -1496,12 +1496,15 @@ function taskMetaRows(p, taskId, surface) {
 }
 
 // ---------------------------------------------------------------------------
-// task-brief — the loop's pre-dispatch announcement, rendered once per task
-// between `task start` and the executor dispatch. The meta rows are the
-// result header's; the summary and watch lines are judgment content the
-// manifest never holds — what the task is about to change, and what
-// deserves eyes when it lands. No verdict line: nothing has happened yet,
-// and its absence is what tells the brief apart from the result.
+// task-brief — the loop's pre-dispatch announcement, rendered as the loop
+// takes up a task: between `task start` and the executor dispatch. The
+// payload's required `id` must name the in-flight task — the payload file
+// is per-topic, and a stale one would describe the previous task under the
+// current id. The meta rows come from the shared task-header builder; the
+// summary and watch lines are judgment content the manifest never holds —
+// what the task is about to change, and what deserves eyes when it lands.
+// No verdict line: nothing has happened yet, and its absence is what tells
+// the brief apart from the result.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1514,15 +1517,19 @@ function taskBrief(cwd, args) {
   if (!file) throw new Error('render task-brief: --file <payload.json> is required');
   const { taskId } = implItemAt(cwd, dotpath, 'task-brief');
   const p = readJsonPayload(cwd, file, 'task-brief');
+  if (!isFilled(p.id)) throw new Error('render task-brief: "id" must be a non-empty string');
+  if (p.id !== taskId) {
+    throw new Error(`render task-brief: payload "id" is "${p.id}" but the in-flight task is "${taskId}" — a stale task-brief.json; rewrite the payload for the current task`);
+  }
   const meta = taskMetaRows(p, taskId, 'task-brief');
   if (!isFilled(p.summary)) throw new Error('render task-brief: "summary" must be a non-empty string');
-  if (p.watch !== undefined
-    && (stringLines(p.watch, 'task-brief', 'watch').length === 0 || p.watch.some((/** @type {string} */ l) => l.trim() === ''))) {
+  const watch = p.watch === undefined ? null : stringLines(p.watch, 'task-brief', 'watch');
+  if (watch !== null && (watch.length === 0 || watch.some((l) => l.trim() === ''))) {
     throw new Error('render task-brief: "watch" must be a non-empty array of non-empty strings when present');
   }
 
   const body = [...meta, '', p.summary.trim()];
-  if (p.watch !== undefined) body.push('', '**Watch:**', ...p.watch.map((/** @type {string} */ l) => `- ${l}`));
+  if (watch !== null) body.push('', '**Watch**:', ...watch.map((l) => `- ${l.trim()}`));
   return section('DISPLAY: task brief', CONTINUE_MARKDOWN_INSTRUCTION, body.join('\n'));
 }
 

@@ -9,7 +9,7 @@ Follow stages A through H sequentially for each task. Do not abbreviate, skip, o
 At loop entry (crash-resume healing): if the plan marks tasks completed — completed, not skipped — that the manifest's `completed_tasks` lacks, run `engine task complete` for each missing internal id before retrieving the next task — the push is an idempotent no-op for ids already recorded, and this reseals the seam a crash between the plan mark and the bookkeeping can leave.
 
 ```
-A. Retrieve next task + mark in-progress + present the brief
+A. Retrieve next task + mark in-progress + present the task brief
 B. Execute task → invoke-executor.md
 C. Handle executor block (conditional)
 D. Review task → invoke-reviewer.md
@@ -24,7 +24,7 @@ H. Update progress + phase check + commit
 
 **Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round, a retry, or a gate comment round. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
 
-→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written — the register and depth for the task brief in **A** and the review and result summaries in **E** and **G**. Findings cache files and records stay fully technical.
+→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written — the register for the task brief in **A**, and the register and depth for the review and result summaries in **E** and **G**. Findings cache files and records stay fully technical.
 
 Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** consumes it from session context rather than re-reading it per invocation:
 
@@ -100,9 +100,12 @@ Stage A re-detects any remaining blocked tasks on the loop back.
    ```
    The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` opt-in is made by this flow itself, so you already know the current mode.
 4. Mark the task as in-progress — follow the format's **updating.md** status transition.
-5. Present the task brief following **[display-task-brief.md](display-task-brief.md)** — the turn does not end here; the executor dispatch follows in the same turn.
 
-→ Proceed to **B. Execute Task**.
+→ Load **[display-task-brief.md](display-task-brief.md)** and follow its instructions as written.
+
+The turn does not end here — the executor dispatch follows in the same turn.
+
+→ On return, proceed to **B. Execute Task**.
 
 ---
 
