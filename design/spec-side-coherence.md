@@ -237,35 +237,46 @@ in the user's hands). The corrected model, agreed 2026-08-11:
    then pause once. The classification test is Lee's original words:
    route back only when it needs *more than a brief discussion*.
 
-Checklist for the fresh session (all on PR #873):
+Checklist for the fresh session (all on PR #873) — **completed
+2026-08-11**, settled choices recorded inline:
 
-- [ ] `resolve-source-incoherence.md`: restructure A per the model
-      above — small-gap conversational path added; `g/gap` removed
-      from the conflict branch (Comment absorbs "neither stands" —
-      Claude re-reasons and re-classifies); gap branch loses the
-      consent gate and gains the stated-intent raise + routing.
-- [ ] `incoherence-gate` surface (`render.cjs`): conflict menu drops
-      `g/gap` (numbered sides + Comment only); `gap-route` variant
-      becomes raise-display + stated-intent (no ◆ question, no y/n) —
-      or the display alone with the intent line in prose; decide
-      against conventions in the session. `held-doc` variant stays
-      (a real either-way choice, not classification). Reshape the
-      display body to the chosen quote shape (open choice below).
-- [ ] Quote shape in raise displays — Lee has NOT chosen. Options:
-      A = old coherence-gate code-block cited lines; B = finding-
-      surface idiom (`- **doc** · section: "quote"` meta bullets +
-      **Details**), markdown; C = blockquote stack (current build).
-      Lean B. Present rendered examples with explicit ▼/▲ markers.
-- [ ] Entry-side surfacing: a spec whose source discussions went back
-      to in-progress (gap routing reopened them) must be blocked or
-      hard-advised at spec entry — "N sources back open; this spec
-      waits" — not discovered mid-construction. Check validate-source
-      / spec-entry gateway current behaviour first.
-- [ ] Prose case `spec-resolves-a-source-conflict`: conflict-menu
-      option set changed; re-check assert.md step 5 and conduct.
-- [ ] CLAUDE.md phase-6 sentence + docs/specification.md paragraph:
-      re-align wording to the corrected model.
-- [ ] Full gates; commit on feat/spec-side-coherence.
+- [x] `resolve-source-incoherence.md`: restructured per the model —
+      first-match classify (timeline / repair / brief-exchange with
+      documented sides → conflict menu / brief-exchange without →
+      plain conversational question / genuine gap); `g/gap` removed
+      (Comment absorbs "neither stands" — Claude re-classifies); the
+      gap exit has no consent gate — stated-intent raise, then the
+      routing runs, conversational pushback honoured before it lands;
+      several gaps land one concern per owning document, one pause.
+- [x] `incoherence-gate` surface: conflict menu is numbered sides
+      (recommended-first) + Comment; `gap-route` is **display-only**
+      with the stated routing intent as its closing line (engine-
+      rendered, keeping the user-facing wording deterministic);
+      `held-doc` unchanged.
+- [x] Quote shape: **Lee chose B** — the finding-surface idiom. Raise
+      bodies render `**Conflict/Gap — {title}**`, one
+      `- **{doc} · {section}**: "{quote}"` meta bullet per citation,
+      `**Details**: {context}`, stakes beneath.
+- [x] Entry-side surfacing: **Lee chose hard block, two levels.**
+      Phase level: any open discussion blocks the structure-building
+      scenarios (analyze / analysis-rerun / single into a fresh or
+      itself-blocked spec) — `blocked-discussions-open` terminal
+      display. Spec level: a spec whose source discussion is back
+      in-progress renders on the menu as a `blocked_spec` row
+      (visible, refused with the holding discussions named); the
+      analysis actions (analyze/unify/re-analyze) are withheld while
+      the record is open; the epic entry-gate refuses direct topic
+      entry ("Sources for X are back open"). Non-epic re-entry was
+      already hard-blocked by the existing discussion-status gate.
+      This is the deliberate exception to the epic soft-gate norm.
+- [x] Prose case `spec-resolves-a-source-conflict`: re-checked —
+      assert step 5 and conduct pin sides/recommendation/quotes, not
+      the removed option; no changes needed.
+- [x] CLAUDE.md phase-6 sentence, epic-soft-gates bullet, and
+      docs/specification.md (entry + incoherence paragraphs)
+      re-aligned.
+- [x] Full gates green (npm test 2072, typecheck, cli, migrations
+      untouched); commits on feat/spec-side-coherence.
 
 Presentation rule for the session (Lee's standing ask): anything shown
 as example/rendered output is bracketed with explicit markers (▼ begins
