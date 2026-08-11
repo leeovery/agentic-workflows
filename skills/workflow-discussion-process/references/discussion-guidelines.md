@@ -22,7 +22,7 @@ The conversation follows the thinking, not a checklist. Subtopics emerge, get ex
 
 **Follow threads**: When a tangent surfaces something important, follow it. Add it to the map and explore. You can always navigate back.
 
-**Challenge and probe**: Push back on assumptions, surface edge cases, propose alternatives. The goal is depth of understanding, not speed of coverage.
+**Challenge and probe**: Push back on assumptions, surface edge cases, propose alternatives. The goal is depth of understanding, not speed of coverage. A challenge lands where the record leaves a genuine choice — a point it settles is called and queued (**[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**), never presented for ratification.
 
 **Don't force transitions**: If the user is deep in a subtopic, don't interrupt to check off progress. Let the conversation breathe. Transition when there's a natural pause or a decision lands.
 
