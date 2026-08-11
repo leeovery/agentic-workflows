@@ -534,6 +534,20 @@ describe('worklist shape', () => {
     assert.ok(out.includes('○ 11. T11'), 'two-digit walked row unpadded');
   });
 
+  it('unglyphed rows pad 10+ numbering with a leading NBSP, never a space', () => {
+    // No production surface reaches an unglyphed list past the batch cap;
+    // the mechanism is pinned directly so an uncapped future caller
+    // inherits it working.
+    const { worklist } = require('../../skills/workflow-engine/scripts/domain/projections/worklist.cjs');
+    const items = Array.from({ length: 11 }, (_, i) => ({ title: `T${i + 1}` }));
+    const out = worklist({ intro: 'I', items });
+    assert.ok(out.includes(`${NB(1)}1\\. T1`), `unglyphed pad is a leading NBSP: ${out.split('\n')[2]}`);
+    assert.ok(out.includes('11\\. T11'), 'two-digit unglyphed row unpadded');
+    for (const line of out.split('\n')) {
+      assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);
+    }
+  });
+
   it('an unwalked heading never counts remaining', () => {
     const { worklist } = require('../../skills/workflow-engine/scripts/domain/projections/worklist.cjs');
     const out = worklist({ heading: { label: 'H', noun: 'item' }, items: [{ title: 'a', state: 'approved' }, { title: 'b' }] });
@@ -692,10 +706,44 @@ describe('render finding-batch', () => {
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       '**`y/yes`**   → Document all 2 and move on',
-      "**Discuss** → Name one to talk through — I'll raise it after the rest land",
+      "**Discuss** → Say discuss and a number — I'll raise it after the rest land",
       '**Ask**     → Tell me a number to expand',
       '',
     ].join('\n'));
+  });
+
+  it('a remainder count rides the confirm; singleton screens read singular', () => {
+    const two = writePayload(dir, 'rem.json', {
+      lane: 'decide',
+      remaining: 7,
+      items: [
+        { title: 'A', detail: 'a.' },
+        { title: 'B', detail: 'b.' },
+      ],
+    });
+    assert.match(
+      renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two }),
+      /→ Document all 2 and move on \(7 more after this\)$/m,
+    );
+    const one = writePayload(dir, 'one.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
+    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: one });
+    assert.match(out, /→ Document it and move on$/m);
+    assert.match(out, /^This one has a single defensible answer/m);
+    const applyOne = writePayload(dir, 'ap1.json', { lane: 'apply', items: [{ title: 'A', detail: 'a.' }] });
+    assert.match(
+      renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: applyOne }),
+      /→ Apply it, then move on$/m,
+    );
+    const routeOne = writePayload(dir, 'ro1.json', { lane: 'route', items: [{ title: 'A', target: 't', detail: 'a.' }] });
+    assert.match(
+      renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: routeOne }),
+      /→ Send it$/m,
+    );
+    const bad = writePayload(dir, 'badrem.json', { lane: 'decide', remaining: -1, items: [{ title: 'A', detail: 'a.' }] });
+    assert.throws(
+      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: bad }),
+      /"remaining" must be a non-negative integer/,
+    );
   });
 
   it('caps a screen at five items across every lane', () => {
@@ -722,14 +770,16 @@ describe('render finding-batch', () => {
     });
     const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
     assert.match(out, /^1\\\. Spec readiness rests on window\\_state `\[→ storage-and-sync\]`$/m);
-    assert.match(out, /\*\*`y\/yes`\*\* → Send all 1$/m);
+    assert.match(out, /\*\*`y\/yes`\*\* → Send it$/m);
     assert.match(out, /one that should stay here/);
     assert.ok(!out.includes(`${DOTS}\n\n`), 'a label-less menu opens straight on its options');
   });
 
   it('validates loudly — unknown lane, empty items, per-item fields by lane', () => {
     const bad = (name, obj) => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
-    assert.throws(() => bad('l.json', { lane: 'walk', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, decide, route/);
+    // `ask` is the walked lane's name — the plausible producer mistake is
+    // sending it to the batch surface, which has no walked screen.
+    assert.throws(() => bad('l.json', { lane: 'ask', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, decide, route/);
     assert.throws(() => bad('e.json', { lane: 'apply', items: [] }), /"items" must be a non-empty array of \{title, detail\}/);
     assert.throws(() => bad('m.json', { lane: 'apply', items: [{ title: 't' }] }), /item 1 is missing "detail"/);
     assert.throws(() => bad('t.json', { lane: 'route', items: [{ title: 't', detail: 'd' }] }), /item 1 is missing "target"/);

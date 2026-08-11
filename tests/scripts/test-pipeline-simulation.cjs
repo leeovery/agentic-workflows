@@ -1193,6 +1193,32 @@ describe('pipeline simulation', () => {
     const walked = sim.run(['agent', 'surface', wu, 'research', 'alpha', laned.id, 'F3']);
     assert.strictEqual(walked.status, 'incorporated', 'the walk finishes what the batch left');
 
+    // A lane past the cap drains over screens: render at most five with the
+    // remainder on the confirm, surface that screen, return for the next.
+    const paged = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
+    const ids = Array.from({ length: 11 }, (_, i) => `F${i + 1}`);
+    sim.write(paged.file, `# Paged findings\n\n${ids.map((f) => `### ${f}: x\n`).join('\n')}`);
+    sim.run(['agent', 'scan', wu, 'research', 'alpha']);
+    sim.run(['agent', 'ack', wu, 'research', 'alpha', paged.id, '--findings', ids.join(',')]);
+    sim.run(['agent', 'announce', wu, 'research', 'alpha', paged.id]);
+    const screen = (from, remaining) => {
+      sim.write(payload, JSON.stringify({
+        lane: 'apply',
+        remaining,
+        items: ids.slice(from, from + 5).map((f) => ({ title: f, detail: 'd' })),
+      }));
+      return sim.render(['finding-batch', `${wu}.research.alpha`, '--file', payload], { expect: 'content' });
+    };
+    assert.match(screen(0, 6), /\(6 more after this\)/, 'screen one names the remainder');
+    let row = sim.run(['agent', 'surface', wu, 'research', 'alpha', paged.id, ids.slice(0, 5).join(',')]);
+    assert.strictEqual(row.remaining.length, 6, 'first screen drains five');
+    assert.match(screen(5, 1), /\(1 more after this\)/, 'screen two names the remainder');
+    row = sim.run(['agent', 'surface', wu, 'research', 'alpha', paged.id, ids.slice(5, 10).join(',')]);
+    assert.strictEqual(row.remaining.length, 1, 'second screen drains five more');
+    assert.match(screen(10, 0), /Apply it, then move on\n/, 'the last screen is a singleton with no tail');
+    row = sim.run(['agent', 'surface', wu, 'research', 'alpha', paged.id, 'F11']);
+    assert.strictEqual(row.status, 'incorporated', 'the last screen incorporates the row');
+
     // Guards hold mid-lifecycle, and the conclusion gate still sees the straggler.
     sim.refuses(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1'], /incorporated/);
     sim.refuses(['agent', 'ack', wu, 'research', 'alpha', 'deep-dive-001-auth', '--clean'], /in-flight/);
