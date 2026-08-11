@@ -460,17 +460,17 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.phase_label, 'specification (input moved — reconcile)');
     });
 
-    it('an upstream phase in flight preempts the flag walk — the cascade answers as before', () => {
+    it('an upstream phase in flight owns the next action — the walk routes to it, never past it', () => {
       // Mid-revision upstream: the flag must NOT route into the spec while its
-      // input is still moving. The walk defers to the cascade (which keeps the
-      // pre-flag mid-revisit answer); the upstream's conclusion re-runs this
-      // and the flag wins then.
+      // input is still moving — and it must not route forward past it either.
+      // The earliest in-flight phase is the next action; its conclusion
+      // re-runs this and the flag wins then.
       const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
         discussion: { items: { test: { status: 'in-progress' } } },
         specification: { items: { test: { status: 'completed', reconcile_needed: 'discussion' } } },
       } });
-      assert.strictEqual(r.next_phase, 'planning');
-      assert.strictEqual(r.phase_label, 'ready for planning');
+      assert.strictEqual(r.next_phase, 'discussion');
+      assert.strictEqual(r.phase_label, 'discussion (in-progress)');
     });
 
     it('a flagged in-progress item never triggers the override — completed only', () => {

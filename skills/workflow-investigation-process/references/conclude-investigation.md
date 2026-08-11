@@ -24,6 +24,28 @@ The user has already reviewed findings and agreed on fix direction. This step co
 
 #### If `yes`
 
+First check the topic's triage queue — a queued concern must be worked before concluding:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} investigation {topic}
+```
+
+**If the response's `files` is non-empty:**
+
+Render the blocker and emit both its sections verbatim per their markers:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.investigation.{topic}
+```
+
+→ Load **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
+
+On return:
+
+→ Return to **[the skill](../SKILL.md)** for **Step 13**.
+
+**If `files` is empty:**
+
 1. Mark the investigation completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} investigation {topic}

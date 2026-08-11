@@ -149,7 +149,7 @@ Commands:
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
-  topic cancel <work-unit> <phase> <topic>
+  topic cancel <work-unit> <phase> <topic> [--cascade]
   topic reactivate <work-unit> <phase> <topic>
   sources stale <work-unit> <discussion> [--except <spec-topic>]
   task init <work-unit> <topic>
@@ -182,6 +182,10 @@ Commands:
   render reroute-offer    <wu.phase.topic> --file <payload.json>
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
+  render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
+  render cancel-cascade-gate <wu.phase.topic>
+  render resurface-gate   <wu.phase.topic> --file <payload.json> [--view full]
+  render construction-gate <wu.phase.topic>
   render tasks-overview   <wu.phase.topic> --file <payload.json>
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
@@ -640,6 +644,15 @@ function runTopic(argv) {
         throw new Error('Usage: engine topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]');
       }
       respond(triageTopic(process.cwd(), workUnit, phase, topic, delivering ? { concernFile: concern, slug, message } : {}));
+      return;
+    }
+    if (command === 'cancel') {
+      const { flags, positional } = parseArgs(rest, ['cascade']);
+      const [workUnit, phase, topic] = positional;
+      if (!workUnit || !phase || !topic || positional.length !== 3) {
+        throw new Error('Usage: engine topic cancel <work-unit> <phase> <topic> [--cascade]');
+      }
+      respond(cancelTopic(process.cwd(), workUnit, phase, topic, { cascade: flags.has('cascade') }));
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {

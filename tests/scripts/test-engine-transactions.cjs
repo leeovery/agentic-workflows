@@ -454,7 +454,7 @@ describe('engine topic triage', () => {
     const withDir = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
     assert.strictEqual(withDir.count, 2, 'a directory named *.md is not a concern');
 
-    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'planning', 'edge-cases']).error, /research\|discussion only/);
+    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'planning', 'edge-cases']).error, /research\|discussion\|investigation only/);
     assert.match(engineFails(dir, ['topic', 'queue', 'ghost', 'discussion', 'edge-cases']).error, /no work unit directory/);
     assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'discussion']).error, /Usage/);
   });
@@ -535,10 +535,10 @@ describe('engine topic triage', () => {
   });
 
   it('refuses phases whose vocabulary lacks triaged — schema-driven', () => {
-    const err = engineFails(dir, ['topic', 'triage', 'payments', 'investigation', 'auth-flow']);
-    assert.match(err.error, /Invalid status "triaged" for phase "investigation"/);
+    const err = engineFails(dir, ['topic', 'triage', 'payments', 'planning', 'auth-flow']);
+    assert.match(err.error, /Invalid status "triaged" for phase "planning"/);
     // Nothing created on the refused path.
-    assert.strictEqual(readManifest(dir, 'payments').phases.investigation, undefined);
+    assert.strictEqual(readManifest(dir, 'payments').phases.planning, undefined);
   });
 });
 
@@ -1767,7 +1767,7 @@ describe('engine usage banner', () => {
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',
-      'topic cancel <work-unit> <phase> <topic>',
+      'topic cancel <work-unit> <phase> <topic> [--cascade]',
       'topic reactivate <work-unit> <phase> <topic>',
     ]) {
       assert.ok(res.stderr.includes(`  ${line}\n`), `usage banner missing "${line}"`);

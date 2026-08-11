@@ -58,6 +58,8 @@ Read `.workflows/{work_unit}/investigation/{topic}.md` in full, then clear the f
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
+The reopen also flipped the spec's source row to `stale`; the specification session reconciles it (**[../../workflow-specification-process/references/reconcile-stale-sources.md](../../workflow-specification-process/references/reconcile-stale-sources.md)**, with `{source phase}` = `investigation`) at its setup or conclusion — sign-off waits on it.
+
 → Return to caller.
 
 #### If output is `discussion` (a source discussion re-decided)
@@ -68,7 +70,7 @@ A discussion this specification extracted was re-decided after extraction. The s
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
-Surface the advisory. The `stale` rows themselves stay — the session reconciles them per **[spec-construction.md](../../workflow-specification-process/references/spec-construction.md)** → Reconcile Stale Sources, and only re-incorporation clears a row.
+Surface the advisory. The `stale` rows themselves stay — the session reconciles them per **[reconcile-stale-sources.md](../../workflow-specification-process/references/reconcile-stale-sources.md)**, and only re-incorporation clears a row.
 
 > *Output the next fenced block as a code block:*
 

@@ -28,6 +28,6 @@ The analysis ran but its groupings were never reconciled into proposed items (an
 
 #### If `scenario` is `specs-menu`
 
-Materialized specs exist — offer analysis plus continue/refine. Mixed states (some specs started, some not yet) land here.
+Materialized specs exist — continue/refine, plus analysis when the record is settled. Mixed states (some specs started, some not yet) land here.
 
 → Load **[display-specs-menu.md](display-specs-menu.md)** and follow its instructions as written.

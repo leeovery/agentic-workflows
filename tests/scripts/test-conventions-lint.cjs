@@ -644,6 +644,11 @@ function checkInertLoadChrome(files) {
 // placeholders, no directives) are always fine.
 // ---------------------------------------------------------------------------
 
+// THE PINS ONLY EVER GO DOWN. A pin is a legacy-backlog marker, not a
+// budget: a new judgment-authored menu/display fence is the signal to build
+// an engine render surface, never to raise the pin. Raising one requires the
+// user's explicit sign-off, recorded in the PR — "the lint blocked me" is
+// the ratchet working, not a reason to adjust it.
 /** @type {Record<string, number>} */
 const RATCHET_PINS = {
   'skills/workflow-continue-epic/references/epic-display-and-menu.md': 3,
@@ -716,7 +721,6 @@ const RATCHET_PINS = {
   'skills/workflow-specification-process/SKILL.md': 1,
   'skills/workflow-specification-process/references/process-review-findings.md': 4,
   'skills/workflow-specification-process/references/spec-completion.md': 2,
-  'skills/workflow-specification-process/references/spec-construction.md': 3,
   'skills/workflow-specification-process/references/spec-review.md': 2,
   'skills/workflow-start/SKILL.md': 1,
   'skills/workflow-start/references/absorb-into-epic.md': 4,

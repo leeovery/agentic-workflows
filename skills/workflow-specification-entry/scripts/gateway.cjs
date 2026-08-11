@@ -273,11 +273,12 @@ function viewData(result, detail, keys) {
   const hintRows = new Map();
   for (const row of [...detail.actionable, ...detail.concluded]) hintRows.set(row.name, row);
   for (const s of result.specifications) {
-    lines.push(`  ${s.name}: ${s.status}, has_pending_sources=${s.has_pending_sources}`);
+    const row = hintRows.get(s.name);
+    const blockedBy = row && row.blocked ? `, blocked_by=${row.open_sources.join(',')}` : '';
+    lines.push(`  ${s.name}: ${s.status}, has_pending_sources=${s.has_pending_sources}${blockedBy}`);
     for (const src of s.sources || []) {
       lines.push(`    source: ${src.name} (${src.status}, discussion: ${src.discussion_status})`);
     }
-    const row = hintRows.get(s.name);
     for (const c of (row && row.consult) || []) {
       lines.push(`    consult: ${c.name} (${c.status}${c.hint ? ` — ${c.hint}` : ''})`);
     }

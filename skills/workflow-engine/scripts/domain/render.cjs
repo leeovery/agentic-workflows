@@ -22,6 +22,7 @@ const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = req
 const { computeNextPhase } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
+const { sourceRows } = require('./transitions.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
 // overview surfaces accept, validated here so the error names the surface
@@ -360,6 +361,221 @@ function proposedTask(cwd, args) {
     ));
   }
   return parts.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// incoherence-gate — spec construction's Resolve Source Incoherence raises.
+// Three variants; the stops here override the construction auto mode by
+// design, so no --gate flag exists.
+//   conflict  — the settle-it-here menu: one numbered option per documented
+//               side (recommended first) plus Comment — classification is
+//               Claude's, the menu offers only the documented sides
+//   gap-route — the gap raise plus its acknowledgement gate: the menu states
+//               the routing intent and confirms it (no "no" — an objection
+//               arrives as Comment and drops into the settleable exchange)
+//   held-doc  — the fallback when a live session holds the owning document
+// The raise body takes the finding idiom: bold head, one meta bullet per
+// cited quote, a Details paragraph, stakes beneath.
+// ---------------------------------------------------------------------------
+
+const INCOHERENCE_STOP = 'emit verbatim as markdown, then STOP for the user\'s response';
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, variant?: string}} args
+ * @returns {string}
+ */
+function incoherenceGate(cwd, args) {
+  const { dotpath, file, variant } = args;
+  if (variant === undefined || !['conflict', 'gap-route', 'held-doc'].includes(variant)) {
+    throw new Error('render incoherence-gate: --variant must be "conflict", "gap-route", or "held-doc"');
+  }
+  if (!file) throw new Error('render incoherence-gate: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'incoherence-gate');
+  const p = readJsonPayload(cwd, file, 'incoherence-gate');
+  if (!isFilled(p.doc)) throw new Error('render incoherence-gate: "doc" must be a non-empty string');
+
+  if (variant === 'conflict' || variant === 'gap-route') {
+    if (!isFilled(p.title)) throw new Error('render incoherence-gate: "title" must be a non-empty string');
+    if (!isFilled(p.context)) throw new Error('render incoherence-gate: "context" must be a non-empty string');
+    if (p.quotes !== undefined) {
+      if (!Array.isArray(p.quotes) || p.quotes.length === 0) throw new Error('render incoherence-gate: "quotes" must be a non-empty array when present');
+      p.quotes.forEach((/** @type {{doc?: string, section?: string, quote?: string}} */ q, /** @type {number} */ i) => {
+        if (!q || typeof q !== 'object' || !isFilled(q.doc) || !isFilled(q.section) || !isFilled(q.quote)) {
+          throw new Error(`render incoherence-gate: quotes[${i}] must carry doc, section, and quote`);
+        }
+      });
+    }
+    if (p.stakes !== undefined && !isFilled(p.stakes)) throw new Error('render incoherence-gate: "stakes" must be a non-empty string when present');
+    const head = variant === 'conflict' ? 'Conflict' : 'Gap';
+    const body = [`**${head} — ${p.title}**`];
+    if (p.quotes) {
+      body.push('');
+      for (const q of p.quotes) body.push(`- **${q.doc} · ${q.section}**: "${q.quote}"`);
+    }
+    body.push('', `**Details**: ${p.context}`);
+    if (p.stakes) body.push('', p.stakes);
+
+    if (variant === 'conflict') {
+      if (!Array.isArray(p.sides) || p.sides.length < 2) {
+        throw new Error('render incoherence-gate: "sides" must carry at least 2 entries');
+      }
+      p.sides.forEach((/** @type {{summary?: string, recommended?: boolean}} */ s, /** @type {number} */ i) => {
+        if (!s || typeof s !== 'object' || !isFilled(s.summary)) {
+          throw new Error(`render incoherence-gate: sides[${i}].summary must be a non-empty string`);
+        }
+      });
+      if (p.sides.filter((/** @type {{recommended?: boolean}} */ s) => s.recommended === true).length > 1) {
+        throw new Error('render incoherence-gate: at most one side may be recommended');
+      }
+      const display = section('DISPLAY: incoherence conflict', 'emit verbatim as markdown', body.join('\n'));
+      const ordered = [...p.sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
+      const options = ordered.map((s, i) =>
+        cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
+      options.push(promptOption('Comment', 'Tell me what you\'re thinking; we\'ll work it through'));
+      return [display, section('MENU: incoherence conflict', INCOHERENCE_STOP,
+        menu('', options, { question: 'Which decision stands?' }))].join('\n');
+    }
+    return [
+      section('DISPLAY: incoherence gap', 'emit verbatim as markdown', body.join('\n')),
+      section('MENU: incoherence gap', INCOHERENCE_STOP, menu(
+        `Routing this to "${p.doc}" — it reopens with the gap, and this specification pauses until the answer lands.`,
+        [
+          cmdOption('y', 'yes', 'Land the gap and pause here'),
+          promptOption('Comment', 'Tell me what you\'re thinking before it moves'),
+        ],
+        { question: 'Proceed?' },
+      )),
+    ].join('\n');
+  }
+  return section('MENU: incoherence held doc', INCOHERENCE_STOP, menu(
+    `"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,
+    [
+      cmdOption('n', 'next', 'Set this topic aside and move to the next'),
+      cmdOption('s', 'stop', 'Stop here; re-enter after that session lands it'),
+    ],
+    { question: 'How do you want to continue?' },
+  ));
+}
+
+// ---------------------------------------------------------------------------
+// cancel-cascade-gate — the collapse confirm `topic cancel`'s refusal routes
+// to: a live specification is built from the topic being cancelled, so the
+// cascade takes both. No payload — the collapse set is manifest state (the
+// same reverse join the refusal ran): started specs cancel with the topic
+// (reactivatable), proposed groupings are discarded. Always gated.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function cancelCascadeGate(cwd, { dotpath }) {
+  const { topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-cascade-gate');
+  const specItems = ((manifest.phases || {}).specification || {}).items || {};
+  const collapses = Object.entries(specItems).filter(([, s]) =>
+    s && typeof s === 'object' && !['cancelled', 'superseded', 'promoted'].includes(s.status)
+    && sourceRows(s.sources).some(([n]) => n === topic));
+  if (collapses.length === 0) {
+    throw new Error(`render cancel-cascade-gate: no live specification sources "${topic}" — the bare cancel proceeds`);
+  }
+  const started = collapses.filter(([, s]) => s.status !== 'proposed').map(([n]) => titlecase(n));
+  const proposed = collapses.filter(([, s]) => s.status === 'proposed').map(([n]) => titlecase(n));
+  const parts = [];
+  if (started.length > 0) parts.push(`**${started.join('**, **')}** is cancelled with it (reactivatable)`);
+  if (proposed.length > 0) parts.push(`the proposed grouping **${proposed.join('**, **')}** is discarded — the next grouping analysis rebuilds from the new world`);
+  const statement = `Cancelling **${titlecase(topic)}** collapses the specification work built from it: ${parts.join('; ')}.`;
+  return section('MENU: cancel cascade', "emit verbatim as markdown, then STOP for the user's response", menu(
+    statement,
+    [
+      cmdOption('y', 'yes', 'Cancel the topic and the specification work it sources'),
+      cmdOption('n', 'no', 'Return to menu'),
+    ],
+    { question: 'Cancel them together?' },
+  ));
+}
+
+// ---------------------------------------------------------------------------
+// resurface-gate — spec construction's Context Resurfacing gate: a diff over
+// already-approved specification content plus its approval menu. Always
+// gated — it changes blessed content, so construction auto never applies.
+// `--view full` re-presents the full updated section (from the payload's
+// `full` lines) with the menu minus the view option.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, view?: string}} args
+ * @returns {string}
+ */
+function resurfaceGate(cwd, args) {
+  const { dotpath, file, view } = args;
+  if (view !== undefined && view !== 'full') throw new Error('render resurface-gate: --view only accepts "full"');
+  if (!file) throw new Error('render resurface-gate: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'resurface-gate');
+  const p = readJsonPayload(cwd, file, 'resurface-gate');
+  if (!isFilled(p.section)) throw new Error('render resurface-gate: "section" must be a non-empty string');
+
+  const parts = [];
+  const menuOptions = [cmdOption('y', 'yes', 'Apply changes to specification')];
+
+  if (view === 'full') {
+    const lines = stringLines(p.full, 'resurface-gate', 'full');
+    if (lines.length === 0) throw new Error('render resurface-gate: "full" must be non-empty for --view full');
+    parts.push(section('DISPLAY: resurfacing full', 'emit verbatim as markdown',
+      [`**Resurfacing: ${p.section}** — full updated section`, '', ...lines].join('\n')));
+  } else {
+    if (!p.diff || typeof p.diff !== 'object') throw new Error('render resurface-gate: "diff" is required');
+    const body = [
+      ...stringLines(p.diff.context_above || [], 'resurface-gate', 'diff.context_above').map((l) => ` ${l}`),
+      ...stringLines(p.diff.current || [], 'resurface-gate', 'diff.current').map((l) => `-${l}`),
+      ...stringLines(p.diff.proposed || [], 'resurface-gate', 'diff.proposed').map((l) => `+${l}`),
+      ...stringLines(p.diff.context_below || [], 'resurface-gate', 'diff.context_below').map((l) => ` ${l}`),
+    ];
+    if ((p.diff.current || []).length + (p.diff.proposed || []).length === 0) {
+      throw new Error('render resurface-gate: "diff" must carry at least one current/proposed line');
+    }
+    parts.push(section('DISPLAY: resurfacing', 'emit verbatim as markdown', `**Resurfacing: ${p.section}**`));
+    parts.push(section('DISPLAY: resurfacing diff', 'emit verbatim as a diff code block (```diff fence)', body.join('\n')));
+    if (stringLines(p.full || [], 'resurface-gate', 'full').length > 0) {
+      menuOptions.push(cmdOption('v', 'view full', 'Show the full updated section, then decide'));
+    }
+  }
+  menuOptions.push(promptOption('Tell me what to change', 'Revise before recording'));
+  parts.push(section('MENU: resurface gate', INCOHERENCE_STOP,
+    menu('', menuOptions, { question: 'Record this to the specification verbatim?' })));
+  return parts.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// construction-gate — spec construction's per-topic approval. The draft
+// presentation stays with the flow (artifact content, presented verbatim);
+// this surface owns the state-branching moment after it: the gate mode is
+// read from the manifest's construction_gate_mode at the dotpath, answering
+// with the approval menu when gated and the auto announcement when auto.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function constructionGate(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'construction-gate');
+  const item = (((manifest.phases || {})[phase] || {}).items || {})[topic] || {};
+  if (item.construction_gate_mode === 'auto') {
+    return section(
+      'DISPLAY: construction auto-approved',
+      `after logging the content: ${AUTO_GATE_INSTRUCTION}`,
+      `${titlecase(topic)} — auto-approved. Recording to the specification.`,
+    );
+  }
+  return section('MENU: construction gate', INCOHERENCE_STOP, menu('', [
+    cmdOption('y', 'yes', 'Add exactly as shown, no modifications'),
+    cmdOption('a', 'auto', 'Approve this and all remaining topics automatically'),
+    promptOption('Tell me what to change', 'Revise before recording'),
+  ], { question: 'Record this to the specification verbatim?' }));
 }
 
 /**
@@ -862,7 +1078,7 @@ function triageBlock(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'triage-block');
   const { files } = triageQueue(cwd, workUnit, phase, topic);
   if (!files.length) throw new Error(`render triage-block: the ${topic} ${phase} triage queue is empty — nothing blocks conclusion`);
-  const doing = phase === 'research' ? 'exploration' : 'discussion';
+  const doing = phase === 'research' ? 'exploration' : phase === 'investigation' ? 'investigation' : 'discussion';
   // A true blocker — the red register (see blocker()), guidance as markdown.
   return [
     section(
@@ -1189,6 +1405,19 @@ function entryGate(cwd, { dotpath, own }) {
           'At least one completed discussion is required before specification can begin. Run /workflow-start to continue an in-progress discussion.',
         );
       }
+      // The topic's own sources must be settled: a source discussion back
+      // in-progress (a gap routed into it) blocks this spec until it
+      // re-concludes. sourceRows decodes the map and legacy array forms.
+      const spec = itemOf(manifest, 'specification', topic);
+      const open = sourceRows(spec && spec.sources)
+        .map(([n]) => n)
+        .filter((n) => n && items[n] && items[n].status === 'in-progress');
+      if (open.length > 0) {
+        return blocker(
+          `Sources for "${t}" are back in-progress: ${open.join(', ')}`,
+          'A specification cannot be built from an in-flight record — conclude the reopened discussion(s), then re-enter this specification.',
+        );
+      }
       return '';
     }
     // feature / cross-cutting: the topic's own discussion.
@@ -1497,6 +1726,10 @@ const SURFACES = {
   'reroute-offer': rerouteOffer,
   'reroute-candidates': rerouteCandidates,
   'proposed-task': proposedTask,
+  'incoherence-gate': incoherenceGate,
+  'cancel-cascade-gate': cancelCascadeGate,
+  'resurface-gate': resurfaceGate,
+  'construction-gate': constructionGate,
   'tasks-overview': tasksOverview,
   'author-task-gate': authorTaskGate,
   'phase-tree': phaseTree,

@@ -150,7 +150,7 @@ describe('engine commit --topic: pathspec isolation', () => {
       /queue-file name, not a path/);
     assert.match(
       engineFails(dir, ['topic', 'absorb', 'payments', 'planning', 'topic-a', '--file', '001-x.md', '-m', 'x']).error,
-      /research\|discussion only/);
+      /research\|discussion\|investigation only/);
   });
 
   it('leaves content another process staged out of the commit and still staged', () => {

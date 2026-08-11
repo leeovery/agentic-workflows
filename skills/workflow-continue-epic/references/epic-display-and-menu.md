@@ -117,14 +117,22 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 **If user chose `yes`:**
 
-Continue with the **Soft gate check** below.
+Continue with the **Hard gate check** below.
+
+**Hard gate check** — specification reads the settled record; this refusal comes before the soft gate. Read `phase_counts` from DATA. (Blocked specs never reach here — the menu carries no row for them; the display tree shows their `blocked` cue.)
+
+**If `action` is `analyze_discussions` and `phase_counts` shows discussion items in-progress and no specification items exist:**
+
+Tell the user in one line: {N} discussion(s) are still in-progress — the grouping analysis reads the settled record; conclude them and return. (With specification items already on the board, the route passes — the specification menu shows what is workable and withholds the analysis itself.)
+
+→ Return to **A. State Display and Menu**.
 
 **Soft gate check** — before routing, check whether the selection conflicts with a phase-completion recommendation. Advisory, not blocking. Read the counts from `phase_counts` in DATA.
 
 | Selected `action` | Condition | Gate message |
 |-------------------|-----------|--------------|
 | `start_discussion` · `start_discussion_after_research` · `continue_discussion` · `new_discussion` | research items exist with some in-progress | "{N} of {M} research topics still in-progress. Topic analysis works best with all research available." |
-| `start_specification` · `continue_specification` · `analyze_discussions` | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Grouping analysis works best with all discussions available." |
+| `start_specification` | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Later conclusions may reshape this grouping." |
 | `start_planning` · `continue_planning` | specification items exist with some in-progress or proposed | "{N} of {M} specifications not yet completed. Completing all specifications first helps identify cross-cutting dependencies." |
 | `start_implementation` · `continue_implementation` | planning items exist with some in-progress | "{N} of {M} plans still in-progress. Task dependencies across plans may be missed." |
 
@@ -241,7 +249,21 @@ Run the cancel transaction — one command stashes the current status, marks the
 node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
 ```
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty:
+**If the response is `ok: false` naming specification(s) the cancel collapses** — a live spec is built from this topic; killing the source kills them together. Fetch the collapse confirm and emit its section verbatim at its marked instruction:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render cancel-cascade-gate {work_unit}.{phase}.{topic}
+```
+
+**STOP.** Wait for user response. On `no`: → Return to **A. State Display and Menu**. On `yes`, re-run with the cascade — one transaction cancels the topic and the named spec(s):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic} --cascade
+```
+
+Then continue below with the receipt.
+
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty. When the response carries `cascaded` or `discarded`, tell the user in one line which specification(s) went with the topic:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb cancel [--warn]

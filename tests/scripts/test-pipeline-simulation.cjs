@@ -419,6 +419,37 @@ describe('pipeline simulation', () => {
     // The bugfix spec source name is pinned to the topic.
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
 
+    // The investigation hop takes the same reverse join as a discussion's: a
+    // gap routed back reopens the investigation, stales the spec row naming
+    // it, and the entry gate refuses until the investigation re-concludes.
+    const invReopen = sim.run(['topic', 'reopen', wu, 'investigation', wu]);
+    assert.deepStrictEqual(invReopen.sources_staled, [wu]);
+    const bugSpec = sim.manifest(wu).phases.specification.items[wu];
+    assert.strictEqual(bugSpec.sources[wu].status, 'stale');
+    assert.strictEqual(bugSpec.reconcile_needed, 'investigation');
+    sim.refuses(['topic', 'complete', wu, 'specification', wu], /unresolved source rows|completed/);
+    sim.run(['topic', 'complete', wu, 'investigation', wu]);
+    sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
+    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
+    sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
+
+    // A spec-routed gap lands in the investigation's own triage queue: the
+    // delivery reopens the item and stales the spec row; the queue answers;
+    // absorb drains it and the pipeline re-concludes.
+    sim.write('.workflows/.cache/scratch/gap-concern.md', '### Gap — retry semantics\n\nWhat the spec needs decided.\n');
+    const gapLand = sim.run(['topic', 'triage', wu, 'investigation', wu,
+      '--concern', '.workflows/.cache/scratch/gap-concern.md', '--slug', 'retry-semantics', '-m', `spec(${wu}): gap routed to ${wu}`]);
+    assert.strictEqual(gapLand.reopened, true);
+    assert.deepStrictEqual(gapLand.sources_staled, [wu]);
+    const gapQueue = sim.run(['topic', 'queue', wu, 'investigation', wu]);
+    assert.strictEqual(gapQueue.files.length, 1);
+    sim.run(['topic', 'absorb', wu, 'investigation', wu,
+      '--file', gapQueue.files[0].split('/').pop(), '-m', `investigation(${wu}/${wu}): absorb retry-semantics (from ${wu})`]);
+    assert.strictEqual(sim.run(['topic', 'queue', wu, 'investigation', wu]).files.length, 0);
+    sim.run(['topic', 'complete', wu, 'investigation', wu]);
+    sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
+    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
+
     sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
   });
@@ -705,7 +736,20 @@ describe('pipeline simulation', () => {
     assert.strictEqual(unified.sources.beta.status, 'stale');
     assert.strictEqual(unified.sources.alpha.status, 'incorporated', 'sibling rows untouched');
     assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.reconcile_needed, undefined);
+    // While beta is back in-progress, the spec boundary hard-blocks the spec it
+    // sources: the entry gate refuses direct entry, and the scoped view marks
+    // the row blocked (unselectable until the discussion re-concludes).
+    const gateWhileOpen = sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'content' });
+    assert.match(gateWhileOpen, /Sources for "Unified" are back in-progress: beta/);
+    const openView = specDetail(sim.dir, wu);
+    assert.strictEqual(openView.scenario, 'blocked-discussions-open',
+      'the single fast-path into an itself-blocked spec derives the terminal scenario');
+    const openRow = openView.actionable.find((r) => r.name === 'unified');
+    assert.strictEqual(openRow.blocked, true);
+    assert.deepStrictEqual(openRow.open_sources, ['beta']);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+    sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'empty' });
+    assert.strictEqual(specDetail(sim.dir, wu).actionable.find((r) => r.name === 'unified').blocked, false);
     // While stale, the spec boundary keeps the spec actionable — Continuing,
     // never Refining/concluded — and the stale row rides the detail.
     const staleView = specDetail(sim.dir, wu);
@@ -793,6 +837,17 @@ describe('pipeline simulation', () => {
     // Bridge continuation surfaces render at every state.
     sim.render(['phase-completed', wu, '--phase', 'specification'], { expect: 'content' });
     sim.render(['epic-all-done-gate', wu], { expect: 'content' });
+
+    // Cancelling a discussion a live spec sources collapses that spec: the
+    // bare cancel refuses naming it; --cascade cancels both in one
+    // transaction, and the epic detail reflects the collapse.
+    sim.refuses(['topic', 'cancel', wu, 'discussion', 'beta'], /collapses the specification\(s\) sourcing it: unified/);
+    const cascade = sim.run(['topic', 'cancel', wu, 'discussion', 'beta', '--cascade']);
+    assert.deepStrictEqual(cascade.cascaded, ['unified']);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'cancelled');
+    assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.status, 'cancelled');
+    sim.run(['topic', 'reactivate', wu, 'specification', 'unified']);
+    sim.run(['topic', 'reactivate', wu, 'discussion', 'beta']);
   });
 
   it('backwards: reopen a completed discussion, re-complete, and the map keeps deriving', () => {

@@ -936,6 +936,148 @@ describe('render proposed-task', () => {
     assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: emptySeverity, gate: 'gated' }), /"severity" must be a non-empty string when present/);
   });
 
+  it('incoherence-gate conflict: payload-driven display then the menu, recommended side first, byte-exact', () => {
+    const file = writePayload(dir, 'ig.json', {
+      doc: 'synonym-handling',
+      title: 'Expansion freshness rests on a stream that will not be built',
+      context: 'The two decisions cannot both be implemented.',
+      quotes: [
+        { doc: 'behavioural-ranking', section: 'Signal Ingestion · Decision', quote: 'No live signal stream will be built.' },
+        { doc: 'synonym-handling', section: 'Expansion Source · Decision', quote: 'Reading the live click-signal stream at query time.' },
+      ],
+      stakes: 'A spec extracting both sides describes a panel the record cannot produce.',
+      sides: [
+        { summary: 'Live click-signal stream at query time' },
+        { summary: 'Batch-derived expansion, daily refresh', recommended: true },
+      ],
+    });
+    const out = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'conflict' });
+    assert.strictEqual(out, [
+      '=== DISPLAY: incoherence conflict (emit verbatim as markdown) ===',
+      '**Conflict — Expansion freshness rests on a stream that will not be built**',
+      '',
+      '- **behavioural-ranking · Signal Ingestion · Decision**: "No live signal stream will be built."',
+      '- **synonym-handling · Expansion Source · Decision**: "Reading the live click-signal stream at query time."',
+      '',
+      '**Details**: The two decisions cannot both be implemented.',
+      '',
+      'A spec extracting both sides describes a panel the record cannot produce.',
+      '',
+      "=== MENU: incoherence conflict (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      '**`◆ Which decision stands?`**',
+      '',
+      '**`1`**       → Batch-derived expansion, daily refresh (recommended)',
+      '**`2`**       → Live click-signal stream at query time',
+      "**Comment** → Tell me what you're thinking; we'll work it through",
+      '',
+    ].join('\n'));
+  });
+
+  it('incoherence-gate gap-route: the raise plus its acknowledgement gate, byte-exact; held-doc keeps its menu', () => {
+    const file = writePayload(dir, 'ig2.json', {
+      doc: 'synonym-handling',
+      title: 'Ranking interaction is undecided',
+      context: 'Neither source decides how expanded matches rank.',
+      quotes: [{ doc: 'behavioural-ranking', section: 'Scoring · Decision', quote: 'Score blending is out of scope.' }],
+      stakes: 'The ranking chapter cannot be written until this is decided.',
+    });
+    const gap = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'gap-route' });
+    assert.strictEqual(gap, [
+      '=== DISPLAY: incoherence gap (emit verbatim as markdown) ===',
+      '**Gap — Ranking interaction is undecided**',
+      '',
+      '- **behavioural-ranking · Scoring · Decision**: "Score blending is out of scope."',
+      '',
+      '**Details**: Neither source decides how expanded matches rank.',
+      '',
+      'The ranking chapter cannot be written until this is decided.',
+      '',
+      "=== MENU: incoherence gap (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      'Routing this to "synonym-handling" — it reopens with the gap, and this specification pauses until the answer lands.',
+      '',
+      '**`◆ Proceed?`**',
+      '',
+      '**`y/yes`**   → Land the gap and pause here',
+      "**Comment** → Tell me what you're thinking before it moves",
+      '',
+    ].join('\n'));
+    const docOnly = writePayload(dir, 'ig2b.json', { doc: 'synonym-handling' });
+    const held = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: docOnly, variant: 'held-doc' });
+    assert.ok(held.includes('MENU: incoherence held doc'));
+    assert.ok(held.includes('**`◆ How do you want to continue?`**'));
+    assert.ok(/\*\*`s\/stop`\*\* +→ Stop here/.test(held));
+  });
+
+  it('cancel-cascade-gate derives the collapse set — started cancelled, proposed discarded; refuses when nothing sources the topic', () => {
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: {
+      discussion: { items: { beta: { status: 'completed' } } },
+      specification: { items: {
+        unified: { status: 'in-progress', sources: { beta: { status: 'incorporated' } } },
+        grp: { status: 'proposed', sources: { beta: { status: 'pending' } } },
+        dead: { status: 'cancelled', sources: { beta: { status: 'pending' } } },
+      } },
+    } });
+    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.discussion.beta' });
+    assert.ok(out.includes('MENU: cancel cascade'), out);
+    assert.ok(out.includes('**Unified** is cancelled with it (reactivatable)'), out);
+    assert.ok(out.includes('the proposed grouping **Grp** is discarded'), out);
+    assert.ok(!out.includes('Dead'), 'terminal specs never enter the collapse set');
+    assert.ok(out.includes('**`◆ Cancel them together?`**'), out);
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: { discussion: { items: { beta: { status: 'completed' } } } } });
+    assert.throws(() => renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.discussion.beta' }), /no live specification sources "beta"/);
+  });
+
+  it('incoherence-gate validates loudly: variant, doc, sides floor, single recommended', () => {
+    const file = writePayload(dir, 'ig3.json', { doc: 'x', title: 't', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file }), /--variant must be/);
+    const noDoc = writePayload(dir, 'ig4.json', { title: 't', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noDoc, variant: 'conflict' }), /"doc" must be a non-empty string/);
+    const oneSide = writePayload(dir, 'ig5.json', { doc: 'x', title: 't', context: 'c', sides: [{ summary: 'a' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: oneSide, variant: 'conflict' }), /at least 2 entries/);
+    const twoRec = writePayload(dir, 'ig6.json', { doc: 'x', title: 't', context: 'c', sides: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: twoRec, variant: 'conflict' }), /at most one side/);
+    const noTitle = writePayload(dir, 'ig7.json', { doc: 'x', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noTitle, variant: 'gap-route' }), /"title" must be a non-empty string/);
+    const badQuote = writePayload(dir, 'ig8.json', { doc: 'x', title: 't', context: 'c', quotes: [{ doc: 'a', section: 's' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: badQuote, variant: 'gap-route' }), /quotes\[0\] must carry doc, section, and quote/);
+  });
+
+  it('resurface-gate: header, diff fence, and the always-gated menu; --view full swaps the body and drops the view option', () => {
+    const file = writePayload(dir, 'rs.json', {
+      section: 'Expansion Source',
+      diff: { context_above: ['ctx above'], current: ['old line'], proposed: ['new line'], context_below: ['ctx below'] },
+      full: ['Full updated section body'],
+    });
+    const out = renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file });
+    assert.ok(out.includes('=== DISPLAY: resurfacing (emit verbatim as markdown) ===\n**Resurfacing: Expansion Source**'));
+    assert.ok(out.includes('=== DISPLAY: resurfacing diff (emit verbatim as a diff code block (```diff fence)) ===\n ctx above\n-old line\n+new line\n ctx below'));
+    assert.ok(out.includes('**`◆ Record this to the specification verbatim?`**'));
+    assert.ok(/\*\*`v\/view full`\*\* +→ Show the full updated section/.test(out));
+    const full = renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file, view: 'full' });
+    assert.ok(full.includes('**Resurfacing: Expansion Source** — full updated section\n\nFull updated section body'));
+    assert.ok(!full.includes('view full'), 'the full view drops the view option');
+    const noDiff = writePayload(dir, 'rs2.json', { section: 'X' });
+    assert.throws(() => renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file: noDiff }), /"diff" is required/);
+    const emptyDiff = writePayload(dir, 'rs3.json', { section: 'X', diff: { current: [], proposed: [] } });
+    assert.throws(() => renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file: emptyDiff }), /at least one current\/proposed line/);
+  });
+
+  it('construction-gate: reads the manifest gate mode — menu when gated, announcement when auto', () => {
+    const gated = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal' });
+    assert.ok(gated.includes('MENU: construction gate'));
+    assert.ok(gated.includes('**`◆ Record this to the specification verbatim?`**'));
+    assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining topics automatically/.test(gated));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), 'utf8'));
+    m.phases.implementation.items.portal.construction_gate_mode = 'auto';
+    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify(m, null, 2));
+    const auto = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal' });
+    assert.ok(auto.includes('DISPLAY: construction auto-approved'));
+    assert.ok(auto.includes('Portal — auto-approved. Recording to the specification.'));
+    assert.ok(!auto.includes('MENU:'));
+  });
+
   it('renders the ad hoc shape: no severity/sources, placement lines present', () => {
     const adhoc = {
       current: 1, total: 1, title: 'Fix login redirect',
@@ -1392,6 +1534,33 @@ describe('render entry-gate', () => {
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
   });
 
+  it('epic specification with a topic: a source discussion back in-progress blocks that spec', () => {
+    manifestWith({
+      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'completed' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'stale' }, b: { status: 'incorporated' } } } } },
+    }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }),
+      /⚑ Sources for "Auth" are back in-progress: a[\s\S]*cannot be built from an in-flight record/);
+    // The legacy array form decodes the same way.
+    manifestWith({
+      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'completed' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: [{ name: 'a', status: 'stale' }] } } },
+    }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are back in-progress: a/);
+    // Settled sources are clear; an open discussion outside the spec's sources does not block it.
+    manifestWith({
+      discussion: { items: { a: { status: 'completed' }, c: { status: 'in-progress' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'incorporated' } } } } },
+    }, 'epic');
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
+    // Plural open sources list every holder.
+    manifestWith({
+      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'in-progress' }, c: { status: 'completed' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'stale' }, b: { status: 'stale' } } } } },
+    }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are back in-progress: a, b/);
+  });
+
   it('an unsupported phase is a loud error', () => {
     manifestWith({});
     assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }), /no prerequisite rules for phase "discussion"/);
@@ -1497,7 +1666,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases\)/);
   });
 });
 

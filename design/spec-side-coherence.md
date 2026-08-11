@@ -206,3 +206,182 @@ KB chunks (precedent: migration 050's purge). CHANGELOG history stays.
 fumi carries two live coherence landings (note-model, note-window) —
 drained as the final coherence round before updating; migration 056
 cleans the residue either way.
+
+## Rework (2026-08-11) — the corrected classification model
+
+Live review of the built discipline found it drifted from the agreed
+model in two ways: it drew the classification line at
+decided-vs-undecided (the agreed line is **brief-chat-vs-real-
+discussion**), and it added gate ceremony the model rejects (a y/n
+consent before routing, a `g/gap` menu option putting classification
+in the user's hands). The corrected model, agreed 2026-08-11:
+
+1. **Resolvable from the record** (timeline supersession, repair of
+   record): Claude resolves it, calls it out, moves on. Pushback is
+   conversational.
+2. **Small — settleable here**: an ambiguity, incoherence, or minor
+   undecided point a brief exchange settles. Raise it (the conflict
+   menu where documented sides exist — **without any `g/gap`
+   option** — a plain conversational question where they don't), the
+   user answers or discusses, the resolution lands in the owning
+   document (timeline entry, reindex), construction continues.
+3. **Genuine gap — needs real discussion work**: **no choice, no
+   consent gate, no user classification.** Claude states the
+   classification and its intent — the raise display plus "routing
+   this to {doc} and pausing the spec" — and acts on it; the user's
+   pushback lever is conversational, in the moment, before it acts on
+   their word if they object. Epic: triage landing (keep the `result`
+   contract — a cancelled landing means the user pushed back inside
+   it; continue conversationally). Non-epic: direct `topic reopen` of
+   the owning source. Several gaps → one concern per owning document,
+   then pause once. The classification test is Lee's original words:
+   route back only when it needs *more than a brief discussion*.
+
+Checklist for the fresh session (all on PR #873) — **completed
+2026-08-11**, settled choices recorded inline:
+
+- [x] `resolve-source-incoherence.md`: restructured per the model —
+      first-match classify (timeline / repair / brief-exchange with
+      documented sides → conflict menu / brief-exchange without →
+      plain conversational question / genuine gap); `g/gap` removed
+      (Comment absorbs "neither stands" — Claude re-classifies); the
+      gap exit has no consent gate — stated-intent raise, then the
+      routing runs, conversational pushback honoured before it lands;
+      several gaps land one concern per owning document, one pause.
+- [x] `incoherence-gate` surface: conflict menu is numbered sides
+      (recommended-first) + Comment; `gap-route` is **display-only**
+      with the stated routing intent as its closing line (engine-
+      rendered, keeping the user-facing wording deterministic);
+      `held-doc` unchanged.
+- [x] Quote shape: **Lee chose B** — the finding-surface idiom. Raise
+      bodies render `**Conflict/Gap — {title}**`, one
+      `- **{doc} · {section}**: "{quote}"` meta bullet per citation,
+      `**Details**: {context}`, stakes beneath.
+- [x] Entry-side surfacing: **Lee chose hard block, two levels.**
+      Phase level: any open discussion blocks the structure-building
+      scenarios (analyze / analysis-rerun / single into a fresh or
+      itself-blocked spec) — `blocked-discussions-open` terminal
+      display. Spec level: a spec whose source discussion is back
+      in-progress renders on the menu as a `blocked_spec` row
+      (visible, refused with the holding discussions named); the
+      analysis actions (analyze/unify/re-analyze) are withheld while
+      the record is open; the epic entry-gate refuses direct topic
+      entry ("Sources for X are back open"). Non-epic re-entry was
+      already hard-blocked by the existing discussion-status gate.
+      This is the deliberate exception to the epic soft-gate norm.
+- [x] Prose case `spec-resolves-a-source-conflict`: re-checked —
+      assert step 5 and conduct pin sides/recommendation/quotes, not
+      the removed option; no changes needed.
+- [x] CLAUDE.md phase-6 sentence, epic-soft-gates bullet, and
+      docs/specification.md (entry + incoherence paragraphs)
+      re-aligned.
+- [x] Full gates green (npm test 2072, typecheck, cli, migrations
+      untouched); commits on feat/spec-side-coherence.
+
+Presentation rule for the session (Lee's standing ask): anything shown
+as example/rendered output is bracketed with explicit markers (▼ begins
+/ ▲ ends); commentary never inside the markers.
+
+## Review rulings (2026-08-11, second pass) — the final model
+
+The post-rework review pass (8 finders) surfaced seams between the new
+hard blocks and the surfaces that route into them, plus flow holes in
+the gap exit. Lee's rulings, settled in conversation:
+
+**The three moves (replaces the earlier classification tiers):**
+
+1. **Derivable → silent.** Anything Claude can settle from the record
+   (timeline supersession, stale cross-references, any no-brainer):
+   read, derive, write the spec chunk, move on. No raise, no mention,
+   no document edits, no reindex. This DELETES the repair-of-record
+   machinery — the silent tier never touches a historical artefact,
+   so the quiet doc-edit, its reindex, its `sources stale --except`,
+   and the "Resolved along the way" note all go. Historical artefacts
+   change only through the collaborative door (move 2).
+2. **Settleable stop.** Quick exchange; Claude takes a stance
+   (conflict menu where sides are documented, plain question where
+   not). The canonical decision mirrors back to the owning document
+   (timeline entry), reindexes, stales sibling extractions,
+   construction continues. Can escalate into move 3 mid-conversation.
+3. **Gap stop.** "We found a gap; we must stop." A real STOP gate —
+   acknowledgement, not choice (`y/yes` confirms; an objection drops
+   into move 2's conversation; there is no "no"). On confirm:
+   liveness check first (is this spec item still live? a parallel
+   session may have collapsed it — if dead, say so and exit), then
+   land the gap in the owning discussion's triage queue (one landing
+   per owning document, several gaps pause once), pause the spec,
+   and route to the work type's navigation layer — epic: invoke
+   workflow-continue-epic (menu shows the reopened discussions; the
+   pause message names them: "re-conclude ABC; the spec unblocks");
+   feature/bugfix: invoke their continue skill the same way.
+
+**Queues are universal for gap routing.** The triage queue machinery
+is epic-only at its *source* (cross-topic reroutes), not in the
+engine or the consuming session loop. A feature's gap lands in its
+own discussion's queue; a bugfix's in its investigation's queue —
+context-clear-proof, surfaced at re-entry, conclusion-blocking.
+(Check: the investigation process must surface queues like the
+discussion process does; extend if missing.)
+
+**Cancel cascades with confirm.** Cancelling a discussion named in a
+live specification's sources collapses that spec. The engine refuses
+the bare cancel naming the affected spec(s); a cascade flag cancels
+discussion + specs in one transaction; the menu prose confirm-gates
+with the collapse warning. This makes the failed-landing loop
+unreachable (a cancelled source can only coexist with a dead spec,
+which the liveness check catches).
+
+**Epic menu hard-blocks, two regimes.** (i) No groupings/specs yet:
+the spec route is hard-blocked until every discussion is concluded —
+the soft gate's "proceeding now is safe" dies. (ii) Specs exist: a
+spec whose source discussion reopened is blocked (named reason);
+settled specs pass; the route itself blocks when nothing behind it
+is workable — which makes the all-blocked scoped menu unreachable,
+so it needs no special handling.
+
+**Bugfix flip.** `flagDownstream`'s reverse join extends to
+investigation sources: reopening an investigation stales the spec
+rows naming it, so the pause's "engine refuses to conclude" promise
+is true for bugfixes too.
+
+**Vocabulary.** "back open" dies — existing terms only: a discussion
+is `in-progress` again / `reopened`. No new stored state: blocked
+and paused are derived (source rows + discussion status), never
+written to the manifest.
+
+Unambiguous review fixes riding along: sourceRows exported and
+reused by the entry gate (single decoder); `pending, reopened` tag
+(pending no longer short-circuits the reopened cue); SpecRow typedef
+lists every tag; record-open derived once on the detail; blocked
+info emitted in DATA (prose never re-derives); menu blocked rows
+keep their verb; validate-source/commands.md/route-scenario/
+display-analyze premises updated; docs/lifecycle-operations.md
+warn-not-wall paragraph corrected; adapter/sim/golden coverage for
+the new states; docs/specification.md re-told (silent tier edits
+nothing; gap stop acknowledges then routes to the menu).
+
+## Delta-review fixes (2026-08-11, third pass)
+
+Three finders on ea6d0473..HEAD. Fix list (all on #873): epic gap
+branch gets its routing (landed → pause; per-gap raise, one pause);
+cancelled-landing branch properly routed (terminal collapse vs back
+to Classify); liveness check keys on terminal statuses only (a
+completed spec mid-refine is live); cross-cutting added to the pause
+return; held-doc delivery universal (linear via direct topic triage)
+and its next-branch wording made implementable. Epic menu: in-session
+confirm points at the hard gate; analyze refusal regime-aware (only
+when no spec items exist); E. Cancel Topic drives the cascade (bare
+cancel → refusal → collapse confirm naming what falls → --cascade);
+blocked groupings/specs visible with blocked-by cue (Lee's ruling),
+refusal names holders. Engine: cascade discards proposed rows,
+cancels started specs (name-collision residue); computeNextPhase
+returns the earliest in-progress phase (paused linear specs route to
+their reopened source); all-blocked scoped menu falls back to
+blocked-discussions-open (bridge plan-file residual route); epic
+recommendation string matches the hard gate. Bugfix reconcile:
+reconcile-stale-sources generalised by source phase, reconcile-
+advisory's investigation branch routes to it; resume-detection counts
+investigation queues; investigation surfaces its queue on both resume
+branches; conclude-investigation gate gets legal routing. Docs:
+commands.md queue claims (3), docs/specification.md bugfix wording,
+sim comment vocabulary.

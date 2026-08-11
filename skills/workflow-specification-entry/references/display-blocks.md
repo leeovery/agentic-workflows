@@ -4,7 +4,7 @@
 
 ---
 
-Terminal — the phase requires completed discussions and none qualify.
+Terminal — the discussion record does not support entry: none exist, none are completed, or discussions are still open and the phase waits on the settled record.
 
 Re-run the scoped snapshot — the emission draws from this response, never a carried one:
 

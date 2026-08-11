@@ -145,7 +145,7 @@ function phaseNodes(phase, items) {
   return displayOrder(phase, items).map((item) => {
     const tagText = item.status === 'completed' && item.reconcile_needed !== undefined
       ? 'completed · input moved'
-      : item.status;
+      : (item.blocked_by !== undefined ? `${item.status} · blocked` : item.status);
     const head = title({ label: titlecase(item.name) });
     // The plan format rides inside the tag rather than after it: anything
     // appended past the tag column would break the alignment for every row.
@@ -252,7 +252,7 @@ function displayRecommendation(detail) {
     return 'Consider completing remaining research before starting discussion. Topic analysis works best with all research available.';
   }
   if (discussion.some((i) => i.status === 'in-progress') && discussion.some((i) => i.status === 'completed')) {
-    return 'Consider completing remaining discussions before starting specification. The grouping analysis works best with all discussions available.';
+    return 'Conclude the remaining discussions to unlock specification — the grouping analysis reads the settled record.';
   }
   const proposed = spec.filter((i) => i.status === 'proposed');
   if (proposed.length > 0) {
@@ -381,10 +381,13 @@ const KEY_BLOCKING =
   + '    blocked by {plan}:{task} — depends on another plan\'s task\n'
   + '    blocked by {plan}        — dependency unresolved';
 
-const KEY_RECONCILE =
-  '  Cue:\n'
-  + '    input moved — an upstream artifact was revised since this item\n'
+const CUE_RECONCILE =
+  '    input moved — an upstream artifact was revised since this item\n'
   + '                  completed; the item\'s entry flow reconciles it';
+
+const CUE_BLOCKED =
+  '    blocked — a source discussion is back in-progress; re-conclude\n'
+  + '              it and the item returns to the menu';
 
 /**
  * Section B — the Key block, showing only categories present in the display
@@ -409,9 +412,13 @@ function epicKey(detail) {
   const anyFlagged = cuePhases.some((p) => (detail.phases[p] || [])
     .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined))
     || detail.discovery_map.some((r) => r.reconcile_pending === true);
+  const specBlockedAny = (detail.phases.specification || []).some((i) => i.blocked_by !== undefined);
   const blocks = [];
   if (!hasMap || BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) blocks.push(KEY_STATUS);
-  if (anyFlagged) blocks.push(KEY_RECONCILE);
+  const cueLines = [];
+  if (anyFlagged) cueLines.push(CUE_RECONCILE);
+  if (specBlockedAny) cueLines.push(CUE_BLOCKED);
+  if (cueLines.length > 0) blocks.push('  Cue:\n' + cueLines.join('\n'));
   if (anyBlocked) blocks.push(KEY_BLOCKING);
   if (blocks.length === 0) return '';
   return 'Key:\n' + blocks.join('\n\n');
@@ -477,6 +484,9 @@ function startVerbLabel(n, srcFlagged) {
 function continueEntries(workUnit, detail, phase) {
   return (detail.phases[phase] || [])
     .filter((item) => item.status === 'in-progress')
+    // A blocked spec is not actionable — no menu row; the display tree
+    // carries its blocked state.
+    .filter((item) => !(phase === 'specification' && item.blocked_by !== undefined))
     .map((item) => ({
       key: '',
       action: `continue_${phase}`,

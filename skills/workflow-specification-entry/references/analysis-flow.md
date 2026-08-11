@@ -68,6 +68,10 @@ While grouping, for each discussion check whether it hands work to another group
 
 Record each as a consult reference on the **receiving** grouping (never as a source), capturing which slice/decisions and why.
 
+**Note Cross-Source Tensions**
+
+The full read also surfaces places where two documents' decided ground disagrees, or a term rests on something another document has since moved — tensions construction will meet when it extracts. Record each on the grouping whose sources carry it as a `**Tension**` line in the cache (**D**): the documents, the collision, one line. Advisory only — never a gate, never resolved here; the specification session holds them from its setup and raises each per its Resolve Source Incoherence discipline when the topic that touches it arrives.
+
 **Knowledge-Base Advisory Query**
 
 Before finalizing groupings, run one query per grouping to surface sibling discussions that may owe it corrections you missed:
@@ -148,6 +152,7 @@ Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (p
 
 **Coupling**: {Brief explanation of what binds these together}
 **Consult**: {ref-topic} — {slice/why the correction is owed}
+**Tension**: {doc-a} / {doc-b} — {the collision, one line}
 
 ### {Another Specification Name}
 - **{discussion-d}**: {why it belongs}
@@ -162,7 +167,7 @@ Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (p
 {Note any naming conflicts with anchored specs here}
 ```
 
-The `**Consult**` line is per-grouping — one line per consult reference, omitted entirely when a grouping owes none. List sources under each grouping as bullets; consult references stay on their own `**Consult**` line so they are never mistaken for sources.
+The `**Consult**` line is per-grouping — one line per consult reference, omitted entirely when a grouping owes none. List sources under each grouping as bullets; consult references stay on their own `**Consult**` line so they are never mistaken for sources. `**Tension**` lines follow the same shape — one per noted tension, omitted when a grouping carries none; the specification session reads them back at setup and raises each when the topic that touches it arrives.
 
 Write the cache metadata to the manifest last:
 ```bash
