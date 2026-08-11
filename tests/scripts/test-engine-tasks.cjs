@@ -828,6 +828,7 @@ describe('engine render task surfaces', () => {
   it('task-result approved: the calm verdict plus every payload meta row', () => {
     seedGates('gated', 0);
     const file = writeResultPayload({
+      id: 'auth-flow-1-1',
       phase: '1 — Core',
       position: '1 of 2 in phase',
       external: { label: 'tick', id: 'TCK-1' },
@@ -849,7 +850,7 @@ describe('engine render task surfaces', () => {
     const phases = planPhases();
     phases.implementation = { items: { 'auth-flow': { status: 'in-progress', current_task: 'auth-flow-1-1' } } };
     createManifest(dir, 'auth', { phases });
-    const file = writeResultPayload({ phase: '1 — Core' });
+    const file = writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core' });
     assert.match(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']),
       /\*\*✓ Approved\*\*\n/);
@@ -860,7 +861,7 @@ describe('engine render task surfaces', () => {
 
   it('task-result approved after fix rounds names the count — singular and plural', () => {
     seedGates('gated', 1);
-    const file = writeResultPayload({ phase: '1 — Core' });
+    const file = writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core' });
     assert.match(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']),
       /\*\*✓ Approved\*\* — \*1 fix round\*/);
@@ -868,7 +869,7 @@ describe('engine render task surfaces', () => {
     cleanupFixture(dir);
     dir = setupFixture();
     seedGates('gated', 2);
-    const file2 = writeResultPayload({ phase: '1 — Core' });
+    const file2 = writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core' });
     assert.match(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file2, '--result', 'approved']),
       /\*\*✓ Approved\*\* — \*2 fix rounds\*/);
@@ -876,7 +877,7 @@ describe('engine render task surfaces', () => {
 
   it('task-result needs-changes below the threshold: the calm verdict with the attempt count, optional rows omitted', () => {
     seedGates('gated', 1);
-    const file = writeResultPayload({ phase: '2 — Analysis (Cycle 1)' });
+    const file = writeResultPayload({ id: 'auth-flow-1-1', phase: '2 — Analysis (Cycle 1)' });
     assert.strictEqual(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'needs-changes']),
       [
@@ -891,7 +892,7 @@ describe('engine render task surfaces', () => {
 
   it('task-result needs-changes at and past the threshold names the reached threshold', () => {
     seedGates('gated', 3);
-    const file = writeResultPayload({ phase: '1 — Core' });
+    const file = writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core' });
     assert.strictEqual(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'needs-changes']),
       [
@@ -906,7 +907,7 @@ describe('engine render task surfaces', () => {
     cleanupFixture(dir);
     dir = setupFixture();
     seedGates('gated', 4);
-    const file2 = writeResultPayload({ phase: '1 — Core' });
+    const file2 = writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core' });
     assert.match(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file2, '--result', 'needs-changes']),
       /\*\*◐ Needs changes\*\* — \*attempt 4, escalation threshold reached\*/);
@@ -914,7 +915,7 @@ describe('engine render task surfaces', () => {
 
   it('task-result blocked and failed lead with the alert verdict regardless of attempts', () => {
     seedGates('gated', 0);
-    const file = writeResultPayload({ phase: '1 — Core' });
+    const file = writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core' });
     const blocked = render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'blocked']);
     assert.match(blocked, /\*\*⚑ Blocked\*\* — \*the executor stopped before completing this task\*/);
     const failed = render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'failed']);
@@ -923,7 +924,7 @@ describe('engine render task surfaces', () => {
     cleanupFixture(dir);
     dir = setupFixture();
     seedGates('gated', 3);
-    const file2 = writeResultPayload({ phase: '1 — Core' });
+    const file2 = writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core' });
     assert.match(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file2, '--result', 'blocked']),
       /\*\*⚑ Blocked\*\* — \*the executor stopped before completing this task\*\n/,
@@ -932,7 +933,7 @@ describe('engine render task surfaces', () => {
 
   it('task-result refuses out-of-place calls and malformed payloads', () => {
     seedGates('gated', 0);
-    const file = writeResultPayload({ phase: '1 — Core' });
+    const file = writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core' });
     assert.match(
       renderFails(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'needs-changes']).error,
       /fix_attempts is 0/);
@@ -944,17 +945,23 @@ describe('engine render task surfaces', () => {
       /--file <payload\.json> is required/);
     assert.match(
       renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({}), '--result', 'approved']).error,
+      /render task-result: "id" must be a non-empty string/);
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ id: 'auth-flow-1-9', phase: '1 — Core' }), '--result', 'approved']).error,
+      /render task-result: payload "id" is "auth-flow-1-9" but the in-flight task is "auth-flow-1-1" — a stale task-result\.json/);
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ id: 'auth-flow-1-1' }), '--result', 'approved']).error,
       /render task-result: "phase" must be a non-empty string/);
     // Meta validation precedes the fix_attempts check — a malformed payload
     // names the payload defect even when the attempts refusal also applies.
     assert.match(
-      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({}), '--result', 'needs-changes']).error,
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ id: 'auth-flow-1-1' }), '--result', 'needs-changes']).error,
       /render task-result: "phase" must be a non-empty string/);
     assert.match(
-      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ phase: '1 — Core', position: '  ' }), '--result', 'approved']).error,
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core', position: '  ' }), '--result', 'approved']).error,
       /"position" must be a non-empty string/);
     assert.match(
-      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ phase: '1 — Core', external: { label: 'tick' } }), '--result', 'approved']).error,
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core', external: { label: 'tick' } }), '--result', 'approved']).error,
       /"external" must be \{label, id\}/);
   });
 
@@ -962,7 +969,7 @@ describe('engine render task surfaces', () => {
     const phases = planPhases();
     phases.implementation = { items: { 'auth-flow': { status: 'in-progress' } } };
     createManifest(dir, 'auth', { phases });
-    const file = writeResultPayload({ phase: '1 — Core' });
+    const file = writeResultPayload({ id: 'auth-flow-1-1', phase: '1 — Core' });
     assert.match(renderFails(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']).error, /no current task/);
     assert.match(renderFails(['task-result', 'auth.planning.auth-flow', '--file', file, '--result', 'approved']).error, /must be <work_unit>\.implementation\.<topic>/);
     assert.match(renderFails(['task-result', 'ghost.implementation.auth-flow', '--file', file, '--result', 'approved']).error, /not found/);

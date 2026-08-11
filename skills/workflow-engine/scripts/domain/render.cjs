@@ -1473,14 +1473,20 @@ function implItemAt(cwd, dotpath, surface) {
 }
 
 /**
- * Validate the task-header meta fields (`phase`, optional `position`,
- * optional `external {label, id}`) and build the meta rows — one
+ * Validate the shared task-header payload and build the meta rows — one
  * definition shared by task-brief and task-result, so the two headers
- * cannot drift.
+ * cannot drift. The required `id` must name the in-flight task: both
+ * payload files are per-topic and reused task after task, and a stale one
+ * must refuse rather than render under the wrong task. Then `phase`,
+ * optional `position`, optional `external {label, id}`.
  * @param {any} p @param {string} taskId @param {string} surface
  * @returns {string[]}
  */
 function taskMetaRows(p, taskId, surface) {
+  if (!isFilled(p.id)) throw new Error(`render ${surface}: "id" must be a non-empty string`);
+  if (p.id !== taskId) {
+    throw new Error(`render ${surface}: payload "id" is "${p.id}" but the in-flight task is "${taskId}" — a stale ${surface}.json; rewrite the payload for the current task`);
+  }
   if (!isFilled(p.phase)) throw new Error(`render ${surface}: "phase" must be a non-empty string`);
   if (p.position !== undefined && !isFilled(p.position)) {
     throw new Error(`render ${surface}: "position" must be a non-empty string when present`);
@@ -1517,10 +1523,6 @@ function taskBrief(cwd, args) {
   if (!file) throw new Error('render task-brief: --file <payload.json> is required');
   const { taskId } = implItemAt(cwd, dotpath, 'task-brief');
   const p = readJsonPayload(cwd, file, 'task-brief');
-  if (!isFilled(p.id)) throw new Error('render task-brief: "id" must be a non-empty string');
-  if (p.id !== taskId) {
-    throw new Error(`render task-brief: payload "id" is "${p.id}" but the in-flight task is "${taskId}" — a stale task-brief.json; rewrite the payload for the current task`);
-  }
   const meta = taskMetaRows(p, taskId, 'task-brief');
   if (!isFilled(p.summary)) throw new Error('render task-brief: "summary" must be a non-empty string');
   const watch = p.watch === undefined ? null : stringLines(p.watch, 'task-brief', 'watch');
@@ -1540,9 +1542,11 @@ function taskBrief(cwd, args) {
 // refuses rather than borrowing another verdict's line. Verdict detail is
 // state-derived (`fix_attempts` against the threshold); the plan phase
 // label, in-phase position, and the format's display identifier ride in
-// the payload. The result itself is a flag — blocked/failed is executor
-// knowledge the manifest never holds. The header names the task; the gate
-// surfaces below it never repeat the id.
+// the payload, whose required `id` must name the in-flight task — the
+// same per-topic staleness guard as the brief's. The result itself is a
+// flag — blocked/failed is executor knowledge the manifest never holds.
+// The header names the task; the gate surfaces below it never repeat the
+// id.
 // ---------------------------------------------------------------------------
 
 /** @type {Record<string, (attempts: number) => string>} */

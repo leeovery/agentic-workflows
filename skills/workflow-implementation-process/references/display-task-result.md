@@ -17,9 +17,10 @@ The one presentation shape for every task-loop result moment. The caller provide
 Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/task-result.json` with the Write tool:
 
 ```json
-{"phase": "{phase number} — {phase name}", "position": "{phase_task_number} of {phase_task_total} in phase", "external": {"label": "{plan format}", "id": "{external id}"}}
+{"id": "{internal_id}", "phase": "{phase number} — {phase name}", "position": "{phase_task_number} of {phase_task_total} in phase", "external": {"label": "{plan format}", "id": "{external id}"}}
 ```
 
+- `id` — the in-flight task's internal id. The engine refuses a payload naming any other task, so a stale file left by an earlier task never renders.
 - `phase` — the task's plan phase, number and name, from the normalised task content (its `PHASE` line).
 - `position` — the in-phase ordinal from the same stage-A listing; omit the field when the listing did not yield the counts.
 - `external` — the plan format's display identifier, obtained as its **reading.md** → Display Identifier section instructs, labelled with the plan's `format` value. Omit the field when the format declares none.
