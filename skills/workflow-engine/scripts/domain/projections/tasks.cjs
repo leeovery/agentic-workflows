@@ -45,7 +45,7 @@ function blockedTasksMenu() {
     MENU_INSTRUCTION,
     menu('How would you like to proceed?', [
       cmdOption('p', 'proceed', 'Continue with the first blocked task anyway (its blocker will not be completed)'),
-      cmdOption('s', 'skip', 'Skip the blocked tasks and conclude the loop'),
+      cmdOption('s', 'skip', 'Skip the first blocked task (the loop re-checks the rest)'),
       cmdOption('t', 'stop', 'Stop implementation entirely'),
     ]),
   );
