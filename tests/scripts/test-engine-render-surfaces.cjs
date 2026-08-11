@@ -473,14 +473,18 @@ describe('worklist shape', () => {
     assert.ok(!over.includes('x `[Important]`'), 'tag not inline past the boundary');
   });
 
-  it('unglyphed rows pad 10+ numbering with NBSP, never a leading space', () => {
-    writeManifest(dir, 'wu2', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
-    const items = Array.from({ length: 11 }, (_, i) => ({ title: `Item ${i + 1}`, detail: `Detail ${i + 1}` }));
-    const file = writePayload(dir, 'b.json', { lane: 'apply', items });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'wu2.discussion.checkout', file });
-    assert.ok(out.includes(`${NB(1)}1\\. Item 1`), 'single-digit row pads with NBSP');
-    assert.ok(out.includes('11\\. Item 11'), 'two-digit row unpadded');
-    for (const line of out.split('\n')) {
+  it('rows pad 10+ numbering with NBSP, never a leading space', () => {
+    writeManifest(dir, 'wu2', { phases: { planning: { items: { portal: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
+    const items = Array.from({ length: 11 }, (_, i) => ({ title: `Item ${i + 1}`, tag: 'low', summary: `Detail ${i + 1}` }));
+    const out = renderSurface(dir, 'findings-summary', { dotpath: 'wu2.planning.portal', file: writePayload(dir, 'b.json', { review_label: 'Rev', items }) });
+    assert.ok(out.includes(`○ ${NB(1)}1. Item 1`), 'single-digit row pads with NBSP');
+    assert.ok(out.includes('○ 11. Item 11'), 'two-digit row unpadded');
+    // Batch rows are capped below padding range, but the leading column must
+    // still never open on a real space — a markdown renderer would strip it.
+    const batch = Array.from({ length: 5 }, (_, i) => ({ title: `Item ${i + 1}`, detail: `Detail ${i + 1}` }));
+    const bout = renderSurface(dir, 'finding-batch', { dotpath: 'wu2.discussion.checkout', file: writePayload(dir, 'b2.json', { lane: 'apply', items: batch }) });
+    assert.ok(bout.includes('1\\. Item 1'), 'unglyphed row opens on its number');
+    for (const line of [...out.split('\n'), ...bout.split('\n')]) {
       assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);
     }
   });
@@ -665,6 +669,52 @@ describe('render finding-batch', () => {
     ].join('\n'));
   });
 
+  it('renders the decide lane — call intro, y/Discuss/Ask menu', () => {
+    const file = writePayload(dir, 'd.json', {
+      lane: 'decide',
+      items: [
+        { title: 'The drain signal carries intent', detail: 'All three exit routes sent one signal; determined by the exit table.' },
+        { title: 'Unrecognised socket peer stamps `via: cli`', detail: 'A script you wired up is the same class as the CLI; determined by the enum.' },
+      ],
+    });
+    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
+    assert.strictEqual(out, [
+      '=== DISPLAY: finding batch (emit verbatim as markdown) ===',
+      "Each of these has one defensible answer, settled by what's already decided or by first principles. I've made each call and named what determined it.",
+      '',
+      '1\\. The drain signal carries intent',
+      `${NB(5)}↳ All three exit routes sent one signal; determined by the`,
+      `${NB(7)}exit table.`,
+      '2\\. Unrecognised socket peer stamps \\`via: cli\\`',
+      `${NB(5)}↳ A script you wired up is the same class as the CLI;`,
+      `${NB(7)}determined by the enum.`,
+      '',
+      "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`y/yes`**   → Document all 2 and move on',
+      "**Discuss** → Name one to talk through — I'll raise it after the rest land",
+      '**Ask**     → Tell me a number to expand',
+      '',
+    ].join('\n'));
+  });
+
+  it('caps a screen at five items across every lane', () => {
+    const items = Array.from({ length: 6 }, (_, i) => ({ title: `Item ${i + 1}`, detail: `Detail ${i + 1}` }));
+    for (const lane of ['apply', 'decide']) {
+      const file = writePayload(dir, `cap-${lane}.json`, { lane, items });
+      assert.throws(
+        () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file }),
+        /a screen holds at most 5 items \(6 given\)/,
+      );
+    }
+    const routeItems = items.map((it) => ({ ...it, target: 'storage' }));
+    const rfile = writePayload(dir, 'cap-route.json', { lane: 'route', items: routeItems });
+    assert.throws(
+      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: rfile }),
+      /a screen holds at most 5 items/,
+    );
+  });
+
   it('renders the route lane — destination in the tag slot, send wording, no label line', () => {
     const file = writePayload(dir, 'r.json', {
       lane: 'route',
@@ -679,7 +729,7 @@ describe('render finding-batch', () => {
 
   it('validates loudly — unknown lane, empty items, per-item fields by lane', () => {
     const bad = (name, obj) => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
-    assert.throws(() => bad('l.json', { lane: 'decide', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, route/);
+    assert.throws(() => bad('l.json', { lane: 'walk', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, decide, route/);
     assert.throws(() => bad('e.json', { lane: 'apply', items: [] }), /"items" must be a non-empty array of \{title, detail\}/);
     assert.throws(() => bad('m.json', { lane: 'apply', items: [{ title: 't' }] }), /item 1 is missing "detail"/);
     assert.throws(() => bad('t.json', { lane: 'route', items: [{ title: 't', detail: 'd' }] }), /item 1 is missing "target"/);
