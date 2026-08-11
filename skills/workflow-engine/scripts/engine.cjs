@@ -23,7 +23,7 @@ const { commitScopedWithKb, commitPathspecScoped, KB_DIR } = require('./domain/c
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
-const { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
@@ -151,6 +151,7 @@ Commands:
   topic supersede <work-unit> <phase> <topic> --by <topic>
   topic cancel <work-unit> <phase> <topic>
   topic reactivate <work-unit> <phase> <topic>
+  sources stale <work-unit> <discussion> [--except <spec-topic>]
   task init <work-unit> <topic>
   task start <work-unit> <topic> <internal-id>
   task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>
@@ -559,6 +560,25 @@ function runPresence(argv) {
       return;
     }
     throw new Error('Usage: engine presence <beat|clear|scan|cleanup> …');
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+/** @param {string[]} argv */
+function runSources(argv) {
+  const [command, ...rest] = argv;
+  try {
+    if (command === 'stale') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, discussion] = positional;
+      if (!workUnit || !discussion || positional.length !== 2 || ('except' in opts && typeof opts.except !== 'string')) {
+        throw new Error('Usage: engine sources stale <work-unit> <discussion> [--except <spec-topic>]');
+      }
+      respond(staleSources(process.cwd(), workUnit, discussion, { except: opts.except }));
+      return;
+    }
+    throw new Error('Usage: engine sources <stale> …');
   } catch (err) {
     failJson(err);
   }
@@ -1060,6 +1080,9 @@ function runCli(argv) {
       break;
     case 'topic':
       runTopic(rest);
+      break;
+    case 'sources':
+      runSources(rest);
       break;
     case 'presence':
       runPresence(rest);

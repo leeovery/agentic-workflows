@@ -293,11 +293,13 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
 }
 
 function walkDeliveryPhases(sim, wu, topic, { sources }) {
-  // Specification.
+  // Specification. The source gate holds engine-side: completion refuses
+  // while any row is still pending, then clears once every row incorporates.
   sim.run(['topic', 'start', wu, 'specification', topic]);
   for (const s of sources) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'pending']);
   }
+  sim.refuses(['topic', 'complete', wu, 'specification', topic], /unresolved source rows/);
   for (const s of sources) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'incorporated']);
   }
@@ -723,6 +725,19 @@ describe('pipeline simulation', () => {
     assert.strictEqual(bareReopen.reconcile_flagged, true);
     assert.deepStrictEqual(bareReopen.sources_staled, ['unified']);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+    sim.run(['manifest', 'delete', `${wu}.specification.unified`, 'reconcile_needed']);
+    sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.beta.status', 'incorporated']);
+
+    // The quiet-edit safety valve: a spec-side resolution amends beta's
+    // document in place — `sources stale` runs the same reverse join with no
+    // reopen, `--except` sparing the invoking spec whose extraction of the
+    // resolution is current by construction.
+    const quietSpared = sim.run(['sources', 'stale', wu, 'beta', '--except', 'unified']);
+    assert.deepStrictEqual(quietSpared.staled, [], 'the invoking spec is spared');
+    const quiet = sim.run(['sources', 'stale', wu, 'beta']);
+    assert.deepStrictEqual(quiet.staled, ['unified']);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'completed', 'no reopen — the discussion is untouched');
+    assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.sources.beta.status, 'stale');
     sim.run(['manifest', 'delete', `${wu}.specification.unified`, 'reconcile_needed']);
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.beta.status', 'incorporated']);
 
