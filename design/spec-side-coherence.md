@@ -206,3 +206,67 @@ KB chunks (precedent: migration 050's purge). CHANGELOG history stays.
 fumi carries two live coherence landings (note-model, note-window) —
 drained as the final coherence round before updating; migration 056
 cleans the residue either way.
+
+## Rework (2026-08-11) — the corrected classification model
+
+Live review of the built discipline found it drifted from the agreed
+model in two ways: it drew the classification line at
+decided-vs-undecided (the agreed line is **brief-chat-vs-real-
+discussion**), and it added gate ceremony the model rejects (a y/n
+consent before routing, a `g/gap` menu option putting classification
+in the user's hands). The corrected model, agreed 2026-08-11:
+
+1. **Resolvable from the record** (timeline supersession, repair of
+   record): Claude resolves it, calls it out, moves on. Pushback is
+   conversational.
+2. **Small — settleable here**: an ambiguity, incoherence, or minor
+   undecided point a brief exchange settles. Raise it (the conflict
+   menu where documented sides exist — **without any `g/gap`
+   option** — a plain conversational question where they don't), the
+   user answers or discusses, the resolution lands in the owning
+   document (timeline entry, reindex), construction continues.
+3. **Genuine gap — needs real discussion work**: **no choice, no
+   consent gate, no user classification.** Claude states the
+   classification and its intent — the raise display plus "routing
+   this to {doc} and pausing the spec" — and acts on it; the user's
+   pushback lever is conversational, in the moment, before it acts on
+   their word if they object. Epic: triage landing (keep the `result`
+   contract — a cancelled landing means the user pushed back inside
+   it; continue conversationally). Non-epic: direct `topic reopen` of
+   the owning source. Several gaps → one concern per owning document,
+   then pause once. The classification test is Lee's original words:
+   route back only when it needs *more than a brief discussion*.
+
+Checklist for the fresh session (all on PR #873):
+
+- [ ] `resolve-source-incoherence.md`: restructure A per the model
+      above — small-gap conversational path added; `g/gap` removed
+      from the conflict branch (Comment absorbs "neither stands" —
+      Claude re-reasons and re-classifies); gap branch loses the
+      consent gate and gains the stated-intent raise + routing.
+- [ ] `incoherence-gate` surface (`render.cjs`): conflict menu drops
+      `g/gap` (numbered sides + Comment only); `gap-route` variant
+      becomes raise-display + stated-intent (no ◆ question, no y/n) —
+      or the display alone with the intent line in prose; decide
+      against conventions in the session. `held-doc` variant stays
+      (a real either-way choice, not classification). Reshape the
+      display body to the chosen quote shape (open choice below).
+- [ ] Quote shape in raise displays — Lee has NOT chosen. Options:
+      A = old coherence-gate code-block cited lines; B = finding-
+      surface idiom (`- **doc** · section: "quote"` meta bullets +
+      **Details**), markdown; C = blockquote stack (current build).
+      Lean B. Present rendered examples with explicit ▼/▲ markers.
+- [ ] Entry-side surfacing: a spec whose source discussions went back
+      to in-progress (gap routing reopened them) must be blocked or
+      hard-advised at spec entry — "N sources back open; this spec
+      waits" — not discovered mid-construction. Check validate-source
+      / spec-entry gateway current behaviour first.
+- [ ] Prose case `spec-resolves-a-source-conflict`: conflict-menu
+      option set changed; re-check assert.md step 5 and conduct.
+- [ ] CLAUDE.md phase-6 sentence + docs/specification.md paragraph:
+      re-align wording to the corrected model.
+- [ ] Full gates; commit on feat/spec-side-coherence.
+
+Presentation rule for the session (Lee's standing ask): anything shown
+as example/rendered output is bracketed with explicit markers (▼ begins
+/ ▲ ends); commentary never inside the markers.
