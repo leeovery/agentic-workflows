@@ -9,7 +9,7 @@ Follow stages A through H sequentially for each task. Do not abbreviate, skip, o
 At loop entry (crash-resume healing): if the plan marks tasks completed — completed, not skipped — that the manifest's `completed_tasks` lacks, run `engine task complete` for each missing internal id before retrieving the next task — the push is an idempotent no-op for ids already recorded, and this reseals the seam a crash between the plan mark and the bookkeeping can leave.
 
 ```
-A. Retrieve next task + mark in-progress
+A. Retrieve next task + mark in-progress + present the brief
 B. Execute task → invoke-executor.md
 C. Handle executor block (conditional)
 D. Review task → invoke-reviewer.md
@@ -20,11 +20,11 @@ H. Update progress + phase check + commit
 → loop back to A until done
 ```
 
-**Engine sections**: the loop's state-derived sections — the result header and its gates — render via `engine render` calls — each stage below fetches its own section at the moment it displays it and emits what returns, so the section always sits in the tool result directly above its emission. Each section is emitted verbatim as the form its marker names. A section is everything beneath its `===` marker up to the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
+**Engine sections**: the loop's state-derived sections — the task brief, the result header, and the gates — render via `engine render` calls — each stage below fetches its own section at the moment it displays it and emits what returns, so the section always sits in the tool result directly above its emission. Each section is emitted verbatim as the form its marker names. A section is everything beneath its `===` marker up to the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
 
 **Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round, a retry, or a gate comment round. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
 
-→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written — the register and depth for the review and result summaries in **E** and **G**. Findings cache files and records stay fully technical.
+→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written — the register and depth for the task brief in **A** and the review and result summaries in **E** and **G**. Findings cache files and records stay fully technical.
 
 Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** consumes it from session context rather than re-reading it per invocation:
 
@@ -93,13 +93,14 @@ Stage A re-detects any remaining blocked tasks on the loop back.
 #### If a task is available
 
 1. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
-2. Note the task's position for the result presentation (**[display-task-result.md](display-task-result.md)**): list every task in plan order via the format's **reading.md** listing procedure — completed and skipped included — and record this task's ordinal and the total across the plan (`{task_number}` of `{task_total}`) and within its plan phase (`{phase_task_number}` of `{phase_task_total}`). When the format's listing cannot yield the counts, skip them — the presentation renders without.
+2. Note the task's position for the task presentations (**[display-task-brief.md](display-task-brief.md)**, **[display-task-result.md](display-task-result.md)**): list every task in plan order via the format's **reading.md** listing procedure — completed and skipped included — and record this task's ordinal and the total across the plan (`{task_number}` of `{task_total}`) and within its plan phase (`{phase_task_number}` of `{phase_task_total}`). When the format's listing cannot yield the counts, skip them — the presentations render without.
 3. Start the task via the engine (records the task as `current_task`; a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; re-starting the in-flight task — already `current_task` with its tracking file on disk — preserves both, so a re-run is safe):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
    The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` opt-in is made by this flow itself, so you already know the current mode.
 4. Mark the task as in-progress — follow the format's **updating.md** status transition.
+5. Present the task brief following **[display-task-brief.md](display-task-brief.md)** — the turn does not end here; the executor dispatch follows in the same turn.
 
 → Proceed to **B. Execute Task**.
 

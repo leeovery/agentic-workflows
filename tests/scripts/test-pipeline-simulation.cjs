@@ -1033,6 +1033,12 @@ describe('pipeline simulation', () => {
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
+    // The brief announces the dispatch — the result header's meta rows plus summary and watch.
+    const briefPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
+      { phase: '1 — Core', position: '1 of 2 in phase', summary: 'Wire the auth entry point.', watch: ['the login redirect'] });
+    const brief = sim.render(['task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload], { expect: 'content' });
+    assert.match(brief, /DISPLAY: task brief/, 'pre-dispatch brief renders its section');
+    assert.match(brief, /\*\*Watch:\*\*\n- the login redirect/, 'the brief carries its watch list');
     // Gates are fetched at their own stage — the task verbs answer with pure JSON.
     assert.match(sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: task gate/, 'gated task gate renders its menu');

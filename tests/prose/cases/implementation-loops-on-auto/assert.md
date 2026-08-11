@@ -10,7 +10,8 @@ The prose should have taken this path:
    discovery each ask only their skip-again question — the first two
    scripted answers skip both
 3. the loop reads work_type once at entry; task pay-1-1 is selected
-   first, normalised, started via the engine, and marked in-progress
+   first, normalised, started via the engine, and marked in-progress;
+   its brief renders via `render task-brief` before the dispatch
 4. the executor stub fires for pay-1-1 and completes; the reviewer
    stub's first firing returns needs-changes with one issue
 5. stage E writes the findings to the attempt cache and records the
@@ -32,8 +33,8 @@ The prose should have taken this path:
    to auto and progress lands in the same turn — frontmatter flips to
    completed, the engine records completion naming pay-1-2 as next,
    and one raw git commit lands as impl(pay): Tpay-1-1
-9. the loop returns to retrieval and selects pay-1-2, starts it, and
-   marks it in-progress
+9. the loop returns to retrieval and selects pay-1-2, starts it,
+   marks it in-progress, and renders its brief before the dispatch
 10. the executor completes pay-1-2; the reviewer's first firing for
     pay-1-2 returns needs-changes; stage E records fix-attempt 1 for
     pay-1-2, renders the result header, summarises the findings,
@@ -69,8 +70,8 @@ Further claims:
   each task start, and every needs-changes verdict reads attempt 1,
   escalates at 3 — the escalation-threshold wording never renders
 - fix-tracking files exist for both tasks and ride their task
-  commits; the task-result payload cache file under .workflows/.cache
-  is expected residue of the result renders
+  commits; the task-brief and task-result payload cache files under
+  .workflows/.cache are expected residue of the renders
 - the manifest's implementation item ends with both internal ids in
   completed_tasks, current_task null, phase 1 in completed_phases,
   and both gate modes auto

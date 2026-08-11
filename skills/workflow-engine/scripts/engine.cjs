@@ -195,6 +195,7 @@ Commands:
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
   render epic-all-done-gate <wu>
+  render task-brief        <wu.implementation.topic> --file <payload.json>
   render task-result       <wu.implementation.topic> --file <payload.json> --result approved|needs-changes|blocked|failed
   render task-gate         <wu.implementation.topic>
   render fix-gate          <wu.implementation.topic>
