@@ -64,6 +64,8 @@
  * @property {number} stale               sources extracted but revised since — needing reconciliation
  * @property {number} consult_pending
  * @property {string} verb                Creating | Continuing | Refining
+ * @property {string[]} open_sources      sources whose discussion is back in-progress
+ * @property {boolean} blocked            any open source — the spec is not enterable until it re-concludes
  */
 
 /**
@@ -78,7 +80,7 @@
 /**
  * @typedef {object} SpecificationDetail
  * @property {string} work_unit
- * @property {'blocked-no-discussions'|'blocked-none-completed'|'single'|'groupings'|'analysis-rerun'|'analyze'|'specs-menu'} scenario
+ * @property {'blocked-no-discussions'|'blocked-none-completed'|'blocked-discussions-open'|'single'|'groupings'|'analysis-rerun'|'analyze'|'specs-menu'} scenario
  * @property {'none'|'valid'|'stale'} cache_status
  * @property {DiscoveryResult['current_state']} counts
  * @property {string[]} completed_discussions
@@ -93,15 +95,11 @@
 /** Display tag for one materialized source. @param {DiscoverySource} src */
 function sourceTag(src) {
   if (src.status === 'pending') return 'pending';
-  if (src.status === 'stale') {
-    // A stale row whose discussion is back in flight shows both facts — the
-    // reconcile waits for the re-decision.
-    return src.discussion_status === 'completed' || src.discussion_status === 'unknown'
-      ? 'stale'
-      : 'stale, reopened';
-  }
-  if (src.discussion_status === 'completed' || src.discussion_status === 'unknown') return 'extracted';
-  return 'extracted, reopened';
+  // "reopened" means back in-progress — a stale row's reconcile waits for the
+  // re-decision; an extracted row's spec is blocked until it re-concludes.
+  const reopened = src.discussion_status === 'in-progress';
+  if (src.status === 'stale') return reopened ? 'stale, reopened' : 'stale';
+  return reopened ? 'extracted, reopened' : 'extracted';
 }
 
 /** @param {SpecRow} row */
@@ -137,10 +135,14 @@ function specRow(spec, hints) {
     });
   }
 
+  const open = kept.filter((s) => s.discussion_status === 'in-progress').map((s) => s.name);
   const row = {
     name: spec.name,
     status: spec.status,
-    sources: kept.map((s) => ({ name: s.name, tag: proposed ? 'ready' : sourceTag(s) })),
+    sources: kept.map((s) => ({
+      name: s.name,
+      tag: proposed ? (s.discussion_status === 'in-progress' ? 'reopened' : 'ready') : sourceTag(s),
+    })),
     consult,
     extracted: proposed ? 0 : kept.filter((s) => s.status === 'incorporated').length,
     total: kept.length,
@@ -148,6 +150,8 @@ function specRow(spec, hints) {
     stale: kept.filter((s) => s.status === 'stale').length,
     consult_pending: consult.filter((c) => c.status === 'pending').length,
     verb: '',
+    open_sources: open,
+    blocked: open.length > 0,
   };
   row.verb = rowVerb(row);
   return row;
@@ -226,6 +230,20 @@ function specificationDetail(workUnit, result, opts = {}) {
   else if (cache === 'valid' && cs.spec_count === 0) scenario = 'analysis-rerun';
   else if (cs.spec_count === 0) scenario = 'analyze';
   else scenario = 'specs-menu';
+
+  // Specification reads the settled record. While any discussion is open, the
+  // scenarios that would build new structure from it — the analysis paths and
+  // the single fast-path into a fresh or itself-blocked spec — hard-block.
+  // Existing specs stay reachable through their menus, where a blocked row is
+  // unselectable until its sources re-conclude.
+  if (inProgress.length > 0) {
+    if (scenario === 'analyze' || scenario === 'analysis-rerun') scenario = 'blocked-discussions-open';
+    else if (scenario === 'single' && single
+      && (single.variant === 'no-spec' || (single.spec !== null && single.spec.blocked))) {
+      scenario = 'blocked-discussions-open';
+      single = null;
+    }
+  }
 
   return {
     work_unit: workUnit,

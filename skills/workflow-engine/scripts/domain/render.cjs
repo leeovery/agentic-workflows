@@ -1356,6 +1356,22 @@ function entryGate(cwd, { dotpath, own }) {
           'At least one completed discussion is required before specification can begin. Run /workflow-start to continue an in-progress discussion.',
         );
       }
+      // The topic's own sources must be settled: a source discussion back
+      // in-progress (a gap routed into it) blocks this spec until it
+      // re-concludes. Sources decode from the map or the legacy array form.
+      const spec = itemOf(manifest, 'specification', topic);
+      const sourceNames = spec && spec.sources && typeof spec.sources === 'object'
+        ? (Array.isArray(spec.sources)
+          ? spec.sources.map((r) => (r && typeof r === 'object' ? String(r.name || '') : ''))
+          : Object.keys(spec.sources))
+        : [];
+      const open = sourceNames.filter((n) => n && items[n] && items[n].status === 'in-progress');
+      if (open.length > 0) {
+        return blocker(
+          `Sources for "${t}" are back open: ${open.join(', ')}`,
+          'A specification cannot be built from an in-flight record — conclude the reopened discussion(s), then re-enter this specification.',
+        );
+      }
       return '';
     }
     // feature / cross-cutting: the topic's own discussion.

@@ -1494,6 +1494,27 @@ describe('render entry-gate', () => {
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
   });
 
+  it('epic specification with a topic: a source discussion back in-progress blocks that spec', () => {
+    manifestWith({
+      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'completed' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'stale' }, b: { status: 'incorporated' } } } } },
+    }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }),
+      /⚑ Sources for "Auth" are back open: a[\s\S]*cannot be built from an in-flight record/);
+    // The legacy array form decodes the same way.
+    manifestWith({
+      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'completed' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: [{ name: 'a', status: 'stale' }] } } },
+    }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are back open: a/);
+    // Settled sources are clear; an open discussion outside the spec's sources does not block it.
+    manifestWith({
+      discussion: { items: { a: { status: 'completed' }, c: { status: 'in-progress' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'incorporated' } } } } },
+    }, 'epic');
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
+  });
+
   it('an unsupported phase is a loud error', () => {
     manifestWith({});
     assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }), /no prerequisite rules for phase "discussion"/);

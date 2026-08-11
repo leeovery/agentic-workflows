@@ -6,7 +6,7 @@
 
 Discovery mode — read `scenario` from the Step 1 DATA section.
 
-#### If `scenario` is `blocked-no-discussions` or `blocked-none-completed`
+#### If `scenario` is `blocked-no-discussions`, `blocked-none-completed`, or `blocked-discussions-open`
 
 → Load **[display-blocks.md](display-blocks.md)** and follow its instructions as written.
 

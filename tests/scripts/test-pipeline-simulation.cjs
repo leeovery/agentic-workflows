@@ -705,7 +705,18 @@ describe('pipeline simulation', () => {
     assert.strictEqual(unified.sources.beta.status, 'stale');
     assert.strictEqual(unified.sources.alpha.status, 'incorporated', 'sibling rows untouched');
     assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.reconcile_needed, undefined);
+    // While beta is back open, the spec boundary hard-blocks the spec it
+    // sources: the entry gate refuses direct entry, and the scoped view marks
+    // the row blocked (unselectable until the discussion re-concludes).
+    const gateWhileOpen = sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'content' });
+    assert.match(gateWhileOpen, /Sources for "Unified" are back open: beta/);
+    const openView = specDetail(sim.dir, wu);
+    const openRow = openView.actionable.find((r) => r.name === 'unified');
+    assert.strictEqual(openRow.blocked, true);
+    assert.deepStrictEqual(openRow.open_sources, ['beta']);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+    sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'empty' });
+    assert.strictEqual(specDetail(sim.dir, wu).actionable.find((r) => r.name === 'unified').blocked, false);
     // While stale, the spec boundary keeps the spec actionable — Continuing,
     // never Refining/concluded — and the stale row rides the detail.
     const staleView = specDetail(sim.dir, wu);

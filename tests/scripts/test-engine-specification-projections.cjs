@@ -24,8 +24,8 @@ function detailOf(dir, workUnit, opts) {
 }
 
 // Two actionable groupings (one proposed, one in-progress with a pending
-// source and a pending consult ref), one concluded spec, one in-progress
-// discussion — the plural fixture the menus and trees must handle.
+// source and a pending consult ref), one concluded spec, every discussion
+// settled — the plural fixture the menus and trees must handle.
 function groupingsFixture(dir) {
   createManifest(dir, 'v1', {
     work_type: 'epic',
@@ -35,7 +35,7 @@ function groupingsFixture(dir) {
           'auth-design': { status: 'completed' },
           'session-model': { status: 'completed' },
           'data-model': { status: 'completed' },
-          'billing': { status: 'in-progress' },
+          'billing': { status: 'completed' },
         },
       },
       specification: {
@@ -132,6 +132,78 @@ describe('specification detail: scenario derivation', () => {
     assert.strictEqual(d.cache_status, 'none');
   });
 
+  it('an open discussion blocks the structure-building scenarios — analyze, analysis-rerun, single no-spec', () => {
+    const crypto = require('crypto');
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' }, c: { status: 'in-progress' } } } },
+    });
+    assert.strictEqual(detailOf(dir, 'v1').scenario, 'blocked-discussions-open');
+
+    createManifest(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          analysis_cache: { checksum: crypto.createHash('md5').update('# A# B').digest('hex'), generated: '2026-01-01' },
+          items: { a: { status: 'completed' }, b: { status: 'completed' }, c: { status: 'in-progress' } },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v2/discussion/a.md', '# A');
+    createFile(dir, '.workflows/v2/discussion/b.md', '# B');
+    assert.strictEqual(detailOf(dir, 'v2').scenario, 'blocked-discussions-open');
+
+    createManifest(dir, 'v3', {
+      work_type: 'epic',
+      phases: { discussion: { items: { solo: { status: 'completed' }, wip: { status: 'in-progress' } } } },
+    });
+    const single = detailOf(dir, 'v3');
+    assert.strictEqual(single.scenario, 'blocked-discussions-open');
+    assert.strictEqual(single.single, null);
+  });
+
+  it('an open discussion outside a covering spec\'s sources leaves the single fast-path alone', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { solo: { status: 'completed' }, wip: { status: 'in-progress' } } },
+        specification: {
+          items: { solo: { status: 'in-progress', sources: { solo: { status: 'incorporated' } } } },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/solo/specification.md', '# Solo');
+    const d = detailOf(dir, 'v1');
+    assert.strictEqual(d.scenario, 'single');
+    assert.strictEqual(d.single.variant, 'has-spec');
+    assert.strictEqual(d.single.spec.blocked, false);
+  });
+
+  it('a spec row whose source discussion reopened carries blocked and open_sources', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { a: { status: 'in-progress' }, b: { status: 'completed' }, c: { status: 'completed' } } },
+        specification: {
+          items: {
+            'a-spec': { status: 'in-progress', sources: { a: { status: 'stale' } } },
+            'b-spec': { status: 'in-progress', sources: { b: { status: 'pending' } } },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
+    createFile(dir, '.workflows/v1/specification/b-spec/specification.md', '# B');
+    const d = detailOf(dir, 'v1');
+    assert.strictEqual(d.scenario, 'specs-menu');
+    const blockedRow = d.actionable.find((r) => r.name === 'a-spec');
+    assert.strictEqual(blockedRow.blocked, true);
+    assert.deepStrictEqual(blockedRow.open_sources, ['a']);
+    const freeRow = d.actionable.find((r) => r.name === 'b-spec');
+    assert.strictEqual(freeRow.blocked, false);
+    assert.deepStrictEqual(freeRow.open_sources, []);
+  });
+
   it('materialized specs with no proposed → specs-menu', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -206,12 +278,6 @@ describe('specification projections: display goldens', () => {
       '   └─ Consult:',
       '      └─ billing          [pending]',
       '',
-      '⚑ Discussions not ready for specification:',
-      '  These discussions are still in progress and must be completed',
-      '  before they can be included in a specification.',
-      '',
-      '  • billing',
-      '',
       'Key:',
       '',
       '  Discussion status:',
@@ -231,7 +297,7 @@ describe('specification projections: display goldens', () => {
     ].join('\n'));
   });
 
-  it('specs-menu: plural trees, unassigned list, reopened tag, stale cache message', () => {
+  it('specs-menu: plural trees, unassigned list, reopened tag; the stale-cache pointer is withheld while the record is open', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -291,14 +357,11 @@ describe('specification projections: display goldens', () => {
       '  Discussion status:',
       '    extracted — content has been incorporated into the specification',
       '    pending   — listed as source but content not yet extracted',
-      '    reopened  — was extracted but discussion has regressed to in-progress',
+      '    reopened  — back in-progress — the spec waits on it',
       '',
       '  Spec status:',
       '    in-progress — specification work is ongoing',
       '    completed   — specification is done',
-      '',
-      'A previous grouping analysis exists but is outdated — discussions',
-      'have changed since it was created. Re-analysis is required.',
       '',
     ].join('\n'));
   });
@@ -349,7 +412,7 @@ describe('specification projections: display goldens', () => {
   it('single no-spec: ready row, no spec line, ready-only key', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: { discussion: { items: { solo: { status: 'completed' }, wip: { status: 'in-progress' } } } },
+      phases: { discussion: { items: { solo: { status: 'completed' } } } },
     });
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.single.variant, 'no-spec');
@@ -360,12 +423,6 @@ describe('specification projections: display goldens', () => {
       '   ├─ Spec: [no spec]',
       '   └─ Discussions:',
       '      └─ solo    [ready]',
-      '',
-      '⚑ Discussions not ready for specification:',
-      '  These discussions are still in progress and must be completed',
-      '  before they can be included in a specification.',
-      '',
-      '  • wip',
       '',
       'Key:',
       '',
@@ -414,7 +471,7 @@ describe('specification projections: display goldens', () => {
       work_type: 'epic',
       phases: {
         discussion: {
-          items: { solo: { status: 'completed' }, other: { status: 'in-progress' } },
+          items: { solo: { status: 'completed' }, other: { status: 'cancelled' } },
         },
         specification: {
           items: {
@@ -438,19 +495,12 @@ describe('specification projections: display goldens', () => {
       '   ├─ Spec: completed (2 of 2 sources extracted)',
       '   └─ Discussions:',
       '      ├─ solo     [extracted]',
-      '      └─ other    [extracted, reopened]',
-      '',
-      '⚑ Discussions not ready for specification:',
-      '  These discussions are still in progress and must be completed',
-      '  before they can be included in a specification.',
-      '',
-      '  • other',
+      '      └─ other    [extracted]',
       '',
       'Key:',
       '',
       '  Discussion status:',
       '    extracted — content has been incorporated into the specification',
-      '    reopened  — was extracted but discussion has regressed to in-progress',
       '',
       '  Spec status:',
       '    completed — specification is done',
@@ -458,12 +508,46 @@ describe('specification projections: display goldens', () => {
     ].join('\n'));
   });
 
-  it('analyze: completed bullets and ⚑ block, no key', () => {
+  it('single with a reopened source in the covering spec → blocked-discussions-open', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
         discussion: {
-          items: { a: { status: 'completed' }, b: { status: 'completed' }, c: { status: 'in-progress' } },
+          items: { solo: { status: 'completed' }, other: { status: 'in-progress' } },
+        },
+        specification: {
+          items: {
+            'combined-spec': {
+              status: 'completed',
+              sources: { solo: { status: 'incorporated' }, other: { status: 'stale' } },
+            },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/combined-spec/specification.md', '# C');
+    const d = detailOf(dir, 'v1');
+    assert.strictEqual(d.scenario, 'blocked-discussions-open');
+    assert.strictEqual(d.single, null);
+    assert.strictEqual(specificationDisplay(d), [
+      'Discussions are still open.',
+      '',
+      'The following discussions are in progress:',
+      '',
+      '  • other',
+      '',
+      'Specifications are built from the settled discussion record.',
+      'Conclude the open discussions, then re-enter.',
+      '',
+    ].join('\n'));
+  });
+
+  it('analyze: completed bullets, no key', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: { a: { status: 'completed' }, b: { status: 'completed' } },
         },
       },
     });
@@ -474,11 +558,29 @@ describe('specification projections: display goldens', () => {
       '  • a',
       '  • b',
       '',
-      '⚑ Discussions not ready for specification:',
-      '  These discussions are still in progress and must be completed',
-      '  before they can be included in a specification.',
+    ].join('\n'));
+  });
+
+  it('blocked-discussions-open: in-progress bullets in the terminal block', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: { a: { status: 'completed' }, b: { status: 'completed' }, c: { status: 'in-progress' } },
+        },
+      },
+    });
+    const d = detailOf(dir, 'v1');
+    assert.strictEqual(d.scenario, 'blocked-discussions-open');
+    assert.strictEqual(specificationDisplay(d), [
+      'Discussions are still open.',
+      '',
+      'The following discussions are in progress:',
       '',
       '  • c',
+      '',
+      'Specifications are built from the settled discussion record.',
+      'Conclude the open discussions, then re-enter.',
       '',
     ].join('\n'));
   });
@@ -649,13 +751,81 @@ describe('specification projections: menu goldens', () => {
     assert.strictEqual(row.verb, 'Continuing');
     assert.strictEqual(row.stale, 1);
     assert.deepStrictEqual(row.sources.map((s) => s.tag).sort(), ['pending', 'stale']);
-    // A stale row whose discussion is back in flight shows both facts.
+    // A stale row whose discussion is back in flight shows both facts;
+    // "reopened" means in-progress alone — a cancelled discussion is settled.
     const { sourceTag } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
     assert.strictEqual(sourceTag({ name: 'a', status: 'stale', discussion_status: 'in-progress' }), 'stale, reopened');
     assert.strictEqual(sourceTag({ name: 'a', status: 'stale', discussion_status: 'completed' }), 'stale');
+    assert.strictEqual(sourceTag({ name: 'a', status: 'incorporated', discussion_status: 'cancelled' }), 'extracted');
     const menu = specificationMenu(detail);
     const entry = menu.keys.find((k) => k.topic === 'moved-spec');
     assert.strictEqual(entry.label, 'Continue "Moved Spec" — *1 new source(s) to extract, 1 stale source(s) to reconcile*');
+  });
+
+  it('specs-menu with the record open: analyze withheld, the reopened-source row renders blocked', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: { a: { status: 'in-progress' }, b: { status: 'completed' }, c: { status: 'completed' } },
+        },
+        specification: {
+          items: {
+            'a-spec': { status: 'in-progress', sources: { a: { status: 'stale' } } },
+            'b-spec': { status: 'in-progress', sources: { b: { status: 'pending' } } },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
+    createFile(dir, '.workflows/v1/specification/b-spec/specification.md', '# B');
+    const menu = specificationMenu(detailOf(dir, 'v1'));
+    assert.strictEqual(menu.rendered, [
+      '· · · · · · · · · · · ·',
+      '**`1`** → "A Spec" — blocked by a (back open)',
+      '**`2`** → Continue "B Spec" — *in-progress*',
+      '',
+      'Select an option:',
+    ].join('\n'));
+    assert.deepStrictEqual(
+      menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
+      [
+        ['1', 'blocked_spec', 'a-spec', null],
+        ['2', 'continue_spec', 'b-spec', 'Continuing'],
+      ]
+    );
+  });
+
+  it('groupings with the record open: unify and re-analyze withheld, the blocked grouping stays visible', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: { a: { status: 'in-progress' }, b: { status: 'completed' }, c: { status: 'completed' } },
+        },
+        specification: {
+          items: {
+            'a-grp': { status: 'proposed', sources: { a: { status: 'pending' } } },
+            'b-grp': { status: 'proposed', sources: { b: { status: 'pending' }, c: { status: 'pending' } } },
+          },
+        },
+      },
+    });
+    const menu = specificationMenu(detailOf(dir, 'v1'));
+    assert.strictEqual(menu.rendered, [
+      '· · · · · · · · · · · ·',
+      '**`1`** → "A Grp" — blocked by a (back open)',
+      '**`2`** → Start "B Grp" — *2 ready discussion(s)*',
+      '',
+      'Select an option:',
+    ].join('\n'));
+    assert.deepStrictEqual(
+      menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
+      [
+        ['1', 'blocked_spec', 'a-grp', null],
+        ['2', 'start_spec', 'b-grp', 'Creating'],
+      ]
+    );
   });
 
   it('completed sub-view: plural refine entries and back', () => {

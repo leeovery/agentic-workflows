@@ -198,7 +198,7 @@ const SPEC_LEGEND = {
     pending: 'listed as source but content not yet extracted',
     stale: 'was extracted but the discussion was re-decided since — reconcile',
     ready: 'completed and available to be specified',
-    reopened: 'was extracted but discussion has regressed to in-progress',
+    reopened: 'back in-progress — the spec waits on it',
   },
   consult: {
     pending: 'sibling correction not yet read in and reconciled',
