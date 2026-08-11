@@ -87,9 +87,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 #### Otherwise
 
-Every unhandled note goes on one screen — the same batch the surfacing protocol sends rerouted findings on, over the same kind of item. Handled-ness lives in the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
+The unhandled notes go on screens of at most five — the same batch the surfacing protocol sends rerouted findings on, over the same kind of item; an approved screen returns here for the next. Handled-ness lives in the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
 
-Judge each note's target topic from its own addressing, and its `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}]}`, one entry per note: `title` is the note's own claim, `target` is the topic, `detail` is why it is theirs and which queue it lands in), then render it:
+Judge each note's target topic from its own addressing, and its `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per unhandled note — up to five, `remaining` counting those beyond the screen: `title` is the note's own claim, `target` is the topic, `detail` is why it is theirs and which queue it lands in), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/carry-notes.json

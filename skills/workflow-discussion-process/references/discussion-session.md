@@ -30,7 +30,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    
    Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the shared protocol.** Skip only when no agents have been dispatched yet — the store decides, not the iteration count: a resumed session may hold agents from an earlier sitting.
 
-   Last, at a natural break with no screen or raise left open: flush the conversation's own queued calls — follow **H. Settled Calls**. A resumed session's non-empty queue flushes here too.
+   Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **H. Settled Calls**, whose own branches cover the empty case. A resumed session's queue flushes here too.
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**H. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
@@ -153,7 +153,7 @@ One ceremony, two ways in — enter when either, or both at once, holds:
 - **Convergence read** — every subtopic on the Discussion Map is `decided` (or `deferred`), and neither you nor the user can identify new subtopics without breaking scope. Convergence is the natural end state, never a forced conclusion.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
 
-A non-empty calls queue flushes first — follow **H. Settled Calls**; an unlanded call is undocumented knowledge, and conclusion proceeds only over an empty queue.
+A non-empty calls queue flushes first — follow **H. Settled Calls**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and conclusion resumes by its standing conditions once the queue drains. An unlanded call is undocumented knowledge.
 
 Run the map call:
 
@@ -211,35 +211,51 @@ It isn't convergence — undecided subtopics remain. Keep exploring.
 
 The conversation's own derivable decisions — points **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)** puts on your side — accumulate in a queue and land through a batch screen at natural breaks: never one-by-one asks, never silent writes.
 
-**Queue.** The moment a call is made, append it to `.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` with the Write tool (`{"items": [{"title": "…", "detail": "…"}]}` — `title` states the call as a decision, `detail` is one or two sentences naming the problem and what determined it). The file is the queue's only home — conversation memory does not survive compaction — and it is durable: commits are the record of what landed, the file holds only what hasn't. Then continue the thread.
+**Queue.** The moment a call is made, add it to the `items` of `.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` (Write tool; the file is `{"items": […], "pulled": […]}` — create it with the new entry when absent, and always write the whole file back). An entry's `title` states the call as a decision; `detail` is one or two sentences naming the problem and what determined it. The file is the queue's only home — conversation memory does not survive compaction — and it is durable: commits are the record of what landed, the file holds only what hasn't. Then continue the thread. From **G. Concluding** onward, queue nothing — a call made during the closing ceremony is documented as part of the engagement that produced it.
 
-**Flush.** Entered from the session loop's check (natural break, nothing else open) or from **G. Concluding**. Take the first five queued items, write them as a screen payload, and render it:
+**Flush.** Entered from the session loop's check (natural break, nothing else open) or from **G. Concluding**, and re-entered after every screen. Route on the queue file:
+
+#### If the file is absent, or `items` and `pulled` are both empty
+
+Nothing is owed. Delete the file if it exists.
+
+**If entered from G. Concluding:**
+
+→ Return to **G. Concluding**.
+
+**Otherwise:**
+
+→ Return to **B. Session Loop**.
+
+#### If `items` is empty and `pulled` holds calls
+
+The screens have landed; each pulled call is owed its raise — one per turn. Raise the first as a plain conversational question, derivation on the table, asking what it missed. Control then belongs to the conversation: when the engagement's outcome is documented and committed (session loop steps 4–5), remove the entry from `pulled` — the loop's next check re-enters here for whatever remains.
+
+→ Return to **B. Session Loop**.
+
+#### Otherwise
+
+Write the first five of `items` as the screen payload with the Write tool — `{"lane": "decide", "items": […], "remaining": N}`, the queued entries as written, `remaining` counting those beyond the screen — to `.workflows/.cache/{work_unit}/discussion/{topic}/calls-batch.json`, then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/calls-batch.json
 ```
 
-The payload is `{"lane": "decide", "items": […]}` — the queued entries as written. Emit the call's DISPLAY and MENU sections, each verbatim per its marker — except on a re-entry after an answered question that changed nothing, where the list on screen is still current: emit the MENU section alone. A re-entry whose screen did change (a pull left survivors) rewrites the payload and re-renders both sections, renumbered.
+Emit the call's DISPLAY and MENU sections, each verbatim per its marker — except on a re-entry after an answered question that changed nothing, where the list on screen is still current: emit the MENU section alone. A re-entry whose screen did change (a pull left survivors) rewrites the payload and re-renders both sections, renumbered.
 
 **STOP.** Wait for user response.
 
 **If `yes`:**
 
-Document each call in turn — into the subtopic that owns it (the template's full structure where the subtopic has no section yet, a dated revision entry where a decided block exists), the Decision block opening with the template's derivation marker; when no subtopic on the Discussion Map owns it, add one and set it `decided` in the same move (`discussion-map add`, then `discussion-map set … decided`). Commit each write before starting the next (session loop step 5's dispatch check included), then remove the landed items from the queue file.
+Document each call in turn — into the subtopic that owns it (the template's full structure where the subtopic has no section yet, a dated revision entry where a decided block exists), the Decision block carrying the template's derivation marker; when no subtopic on the Discussion Map owns it, add one and set it `decided` in the same move (`discussion-map add`, then `discussion-map set … decided`). Commit each write before starting the next (session loop step 5's dispatch check included), then remove the landed items from the queue file's `items`.
 
-Confirm in one line total — `All {N} documented.` — never a per-call recap.
+Confirm in one line total — `All {N} documented.` — never a per-call recap. Nothing is pending, so the turn continues.
 
-**If the queue still holds items**, the next screen is owed in the same turn:
+→ Return to **H. Settled Calls** (Flush) — its branches take the next screen, the pulled raises, or the exit.
 
-→ Return to **H. Settled Calls** (Flush).
+**If the user names one to talk through** — the Discuss route, or any answer that rejects a call rather than asking about it (a bare number asks; a pull says the move — *discuss 3* — or rejects the call in words):
 
-**If the queue is empty**, delete the file. Nothing is pending, so the turn continues — resume the thread the break paused.
-
-→ Return to **B. Session Loop**.
-
-**If the user names one to talk through** — the Discuss route, or any answer that rejects a call rather than asking about it:
-
-Remove it from the queue — it has left the batch for the conversation. Then check the survivors: any whose derivation rests on the ground the pulled call reopens leaves with it, back to the conversation alongside. Nothing lands. Re-render the screen with what survives, renumbered — and once the remaining screens have landed, raise each pulled call as a plain conversational question, derivation on the table, asking what it missed.
+Move it from `items` to `pulled` in the queue file — durable until its raise lands. Then check the survivors: any whose derivation rests on the ground the pulled call reopens moves with it. Nothing lands.
 
 → Return to **H. Settled Calls** (Flush).
 
