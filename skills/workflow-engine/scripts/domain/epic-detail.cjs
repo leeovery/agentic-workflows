@@ -118,6 +118,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {NextPhaseEntry[]} next_phase_ready
  * @property {string[]} unaccounted_discussions
  * @property {string[]} reopened_discussions
+ * @property {{name: string, by: string[]}[]} spec_blocked  live spec items whose source discussion is back in-progress
  * @property {MapRow[]} discovery_map
  * @property {string|null} active_session  in-progress discovery session number, or null
  * @property {string|null} convergence_state  `in-progress` | `settled` | null (no map)
@@ -285,12 +286,28 @@ function epicDetail(cwd, manifest) {
   const planItems = phaseItems(manifest, 'planning');
   const implItems = phaseItems(manifest, 'implementation');
 
+  // A spec item (proposed included) whose source discussion is back
+  // in-progress is blocked from entry until it re-concludes — the epic menu
+  // hard-blocks the route.
+  const discussionStatus = new Map(discussionItems.map((d) => [d.name, d.status]));
+  /** @type {{name: string, by: string[]}[]} */
+  const specBlocked = [];
+  for (const s of specItems) {
+    if (s.status === 'cancelled' || s.status === 'superseded' || s.status === 'promoted') continue;
+    const srcs = Array.isArray(s.sources)
+      ? s.sources
+      : Object.entries(s.sources || {}).map(([topic, data]) => ({ topic, ...(typeof data === 'object' ? data : {}) }));
+    const open = srcs.map((src) => src.topic || src.name).filter((n) => n && discussionStatus.get(n) === 'in-progress');
+    if (open.length > 0) specBlocked.push({ name: s.name, by: open });
+  }
+  const blockedSpecNames = new Set(specBlocked.map((b) => b.name));
+
   // Proposed groupings are actionable from the epic menu — surface them as
   // start_specification. Pushed before start_planning so they precede it in
   // pipeline order (spec → planning), which the settled-state recommendation
-  // reads.
+  // reads. A blocked grouping is not ready — it waits on its source.
   for (const s of specItems) {
-    if (s.status === 'proposed') {
+    if (s.status === 'proposed' && !blockedSpecNames.has(s.name)) {
       nextPhaseReady.push({ name: s.name, action: 'start_specification', label: 'grouping ready' });
     }
   }
@@ -357,6 +374,7 @@ function epicDetail(cwd, manifest) {
     next_phase_ready: nextPhaseReady,
     unaccounted_discussions: unaccountedDiscussions,
     reopened_discussions: reopenedDiscussions,
+    spec_blocked: specBlocked,
     discovery_map: discoveryMap,
     active_session: (manifest.phases && manifest.phases.discovery && typeof manifest.phases.discovery.active_session === 'string')
       ? manifest.phases.discovery.active_session : null,

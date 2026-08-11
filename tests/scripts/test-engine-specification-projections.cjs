@@ -782,7 +782,7 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`1`** → "A Spec" — blocked by a (back open)',
+      '**`1`** → Continue "A Spec" — blocked by A (reopened)',
       '**`2`** → Continue "B Spec" — *in-progress*',
       '',
       'Select an option:',
@@ -814,7 +814,7 @@ describe('specification projections: menu goldens', () => {
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`1`** → "A Grp" — blocked by a (back open)',
+      '**`1`** → Start "A Grp" — blocked by A (reopened)',
       '**`2`** → Start "B Grp" — *2 ready discussion(s)*',
       '',
       'Select an option:',

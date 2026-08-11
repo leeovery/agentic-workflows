@@ -57,6 +57,7 @@ function assertLegalWrite(phase, status) {
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
+ * @property {string[]} [cascaded]  spec items cancelled with their source (cancel --cascade)
  */
 
 /**
@@ -227,9 +228,11 @@ function sourceRow(sources, topic) {
  * triage landing, never the later re-completion. One hop only: the downstream
  * phase's own reconciliation earns (or doesn't earn) the next.
  *
- * Discussion's downstream is the reverse join through spec `sources` (a
- * grouped spec's own name may differ from the discussion's); every other
- * phase flags the same-named item in the work type's next pipeline phase.
+ * A source phase's downstream — discussion or investigation — is the reverse
+ * join through spec `sources` (a grouped spec's own name may differ from the
+ * source's); every other phase flags the same-named item in the work type's
+ * next pipeline phase, as does an investigation no spec's sources name (the
+ * legacy bugfix shape).
  * Only a `completed` item takes the flag (value = the upstream phase name,
  * consumed and cleared by the entry skills' reconcile advisory; an existing
  * flag is never clobbered). An `incorporated` source row on any non-terminal
@@ -260,19 +263,21 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
     }
   };
 
-  if (phase === 'discussion') {
+  if (phase === 'discussion' || phase === 'investigation') {
+    let joined = false;
     for (const [name, item] of Object.entries(itemsOf('specification') || {})) {
       if (name === opts.except) continue;
       if (!item || typeof item !== 'object' || TERMINAL_STATUSES.includes(item.status)) continue;
       const row = sourceRow(item.sources, topic);
       if (!row) continue;
+      joined = true;
       if (row.status === 'incorporated') {
         row.status = 'stale';
         result.staled.push(name);
       }
       flag('specification', name, item);
     }
-    return result;
+    if (phase === 'discussion' || joined) return result;
   }
 
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
@@ -736,19 +741,42 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
  * Cancel an epic topic: stash the current status into `previous_status`, set
  * `status: cancelled`, drop the topic's discovery-map `order`, remove its
  * knowledge-base chunks (warn-don't-block), commit scoped to the work unit.
+ *
+ * Cancelling a discussion a live specification sources collapses that spec:
+ * the bare cancel refuses, naming the affected spec item(s); `cascade: true`
+ * cancels the discussion and those spec items in one transaction.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
  * @param {string} topic
+ * @param {{cascade?: boolean}} [opts]
  * @returns {TopicTransitionResult}
  */
-function cancelTopic(cwd, workUnit, phase, topic) {
+function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
+  /** @type {string[]} */
+  let cascaded = [];
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is already cancelled`);
     }
+
+    if (phase === 'discussion' || phase === 'investigation') {
+      const specItems = (manifest.phases && manifest.phases.specification && manifest.phases.specification.items) || {};
+      const sourcing = Object.entries(specItems).filter(([, s]) =>
+        s && typeof s === 'object' && !TERMINAL_STATUSES.includes(s.status) && s.status !== 'cancelled'
+        && sourceRow(s.sources, topic) !== undefined);
+      if (sourcing.length > 0 && !opts.cascade) {
+        throw new Error(`cancelling ${phase} "${topic}" collapses the specification(s) sourcing it: ${sourcing.map(([n]) => n).join(', ')} — confirm the cascade (--cascade cancels them together)`);
+      }
+      for (const [name, spec] of sourcing) {
+        spec.previous_status = spec.status;
+        spec.status = 'cancelled';
+        cascaded.push(name);
+      }
+    }
+
     item.previous_status = item.status;
     item.status = 'cancelled';
 
@@ -767,10 +795,14 @@ function cancelTopic(cwd, workUnit, phase, topic) {
   /** @type {string[]} */
   const warnings = [];
   knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
+  for (const name of cascaded) {
+    knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'specification', '--topic', name], 'knowledge remove', warnings);
+  }
 
   const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): cancel ${topic} (${phase})`, warnings);
   /** @type {TopicTransitionResult} */
   const result = { topic, phase, status: 'cancelled', committed: outcome.committed, warnings };
+  if (cascaded.length > 0) result.cascaded = cascaded;
   noteCommitOutcome(result, outcome);
   return result;
 }
@@ -826,4 +858,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic };
+module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows };

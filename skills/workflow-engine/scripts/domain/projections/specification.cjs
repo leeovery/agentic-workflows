@@ -202,7 +202,7 @@ function groupingsDisplay(detail) {
     ...detail.actionable.map((row, i) => itemBlock(i + 1, row)),
     notReadyBlock(detail.in_progress_discussions),
     keyBlock(displayedTerms(detail.actionable)),
-    detail.actionable.length >= 2 && detail.in_progress_discussions.length === 0 ? TIP : '',
+    detail.actionable.length >= 2 && !detail.record_open ? TIP : '',
   ]);
 }
 
@@ -211,7 +211,6 @@ function analyzeDisplay(detail) {
   return compose([
     `${counted(detail.counts.completed_count, 'completed discussion')} found. No specifications exist yet.`,
     'Completed discussions:\n' + bullets(detail.completed_discussions),
-    notReadyBlock(detail.in_progress_discussions),
   ]);
 }
 
@@ -231,7 +230,7 @@ function specsMenuDisplay(detail) {
   }
   blocks.push(notReadyBlock(detail.in_progress_discussions));
   blocks.push(keyBlock(displayedTerms(detail.actionable)));
-  if (detail.in_progress_discussions.length === 0) {
+  if (!detail.record_open) {
     if (detail.cache_status === 'none') blocks.push('No grouping analysis exists.');
     else if (detail.cache_status === 'stale') blocks.push(STALE_CACHE_MSG);
   }
@@ -315,10 +314,10 @@ function specificationMenu(detail) {
     return { keys: [], rendered: '' };
   }
 
-  // While any discussion is open, the record isn't settled: the analysis
-  // actions (analyze, unify, reanalyze) are withheld, and a row whose own
-  // sources are back open renders blocked — selectable only to be refused.
-  const recordOpen = detail.in_progress_discussions.length > 0;
+  // While the record is open, the analysis actions (analyze, unify,
+  // reanalyze) are withheld, and a row whose own sources reopened renders
+  // blocked — selectable only to be refused.
+  const recordOpen = detail.record_open;
 
   /** @type {SpecMenuKey[]} */
   const numbered = [];
@@ -330,9 +329,10 @@ function specificationMenu(detail) {
   }
   for (const row of detail.actionable) {
     if (row.blocked) {
+      const verb = row.status === 'proposed' ? 'Start' : 'Continue';
       numbered.push({
         key: '', action: 'blocked_spec', topic: row.name, verb: null,
-        label: `"${titlecase(row.name)}" — blocked by ${row.open_sources.join(', ')} (back open)`,
+        label: `${verb} "${titlecase(row.name)}" — blocked by ${row.open_sources.map(titlecase).join(', ')} (reopened)`,
       });
       continue;
     }

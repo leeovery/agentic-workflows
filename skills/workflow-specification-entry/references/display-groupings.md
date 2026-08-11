@@ -36,7 +36,7 @@ The entry's `topic` and `verb`, plus that item's DATA detail (sources, consult r
 
 #### If `action` is `blocked_spec`
 
-The item's sources are back open — it cannot be entered until they re-conclude. Tell the user in one line which discussions hold it (the DATA detail's source rows name them) and that concluding those unlocks the spec, then re-present.
+The item's source discussions reopened — it cannot be entered until they re-conclude. Tell the user in one line which discussions hold it (the item's `blocked_by` in DATA names them) and that concluding those unlocks the spec, then re-present.
 
 → Return to **B. Menu**.
 

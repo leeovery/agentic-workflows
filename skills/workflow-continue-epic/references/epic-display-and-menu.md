@@ -119,12 +119,26 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 Continue with the **Soft gate check** below.
 
+**Hard gate check** — specification reads the settled record; these refusals come before the soft gate. Read `phase_counts` and `spec_blocked` from DATA.
+
+**If `action` is `analyze_discussions` and `phase_counts` shows discussion items in-progress:**
+
+Tell the user in one line: {N} discussion(s) are still in-progress — the grouping analysis reads the settled record; conclude them and return.
+
+→ Return to **A. State Display and Menu**.
+
+**If `action` is `start_specification` or `continue_specification` and its `topic` appears in `spec_blocked`:**
+
+Tell the user in one line which reopened discussion(s) hold that specification (`spec_blocked` names them) and that re-concluding them unlocks it.
+
+→ Return to **A. State Display and Menu**.
+
 **Soft gate check** — before routing, check whether the selection conflicts with a phase-completion recommendation. Advisory, not blocking. Read the counts from `phase_counts` in DATA.
 
 | Selected `action` | Condition | Gate message |
 |-------------------|-----------|--------------|
 | `start_discussion` · `start_discussion_after_research` · `continue_discussion` · `new_discussion` | research items exist with some in-progress | "{N} of {M} research topics still in-progress. Topic analysis works best with all research available." |
-| `start_specification` · `continue_specification` · `analyze_discussions` | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Grouping analysis works best with all discussions available." |
+| `start_specification` | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Later conclusions may reshape this grouping." |
 | `start_planning` · `continue_planning` | specification items exist with some in-progress or proposed | "{N} of {M} specifications not yet completed. Completing all specifications first helps identify cross-cutting dependencies." |
 | `start_implementation` · `continue_implementation` | planning items exist with some in-progress | "{N} of {M} plans still in-progress. Task dependencies across plans may be missed." |
 

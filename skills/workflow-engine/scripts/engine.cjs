@@ -149,7 +149,7 @@ Commands:
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
-  topic cancel <work-unit> <phase> <topic>
+  topic cancel <work-unit> <phase> <topic> [--cascade]
   topic reactivate <work-unit> <phase> <topic>
   sources stale <work-unit> <discussion> [--except <spec-topic>]
   task init <work-unit> <topic>
@@ -643,6 +643,15 @@ function runTopic(argv) {
         throw new Error('Usage: engine topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]');
       }
       respond(triageTopic(process.cwd(), workUnit, phase, topic, delivering ? { concernFile: concern, slug, message } : {}));
+      return;
+    }
+    if (command === 'cancel') {
+      const { flags, positional } = parseArgs(rest, ['cascade']);
+      const [workUnit, phase, topic] = positional;
+      if (!workUnit || !phase || !topic || positional.length !== 3) {
+        throw new Error('Usage: engine topic cancel <work-unit> <phase> <topic> [--cascade]');
+      }
+      respond(cancelTopic(process.cwd(), workUnit, phase, topic, { cascade: flags.has('cascade') }));
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {

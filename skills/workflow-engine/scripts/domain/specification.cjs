@@ -56,7 +56,7 @@
  * @typedef {object} SpecRow
  * @property {string} name
  * @property {string} status              proposed | in-progress | completed
- * @property {{name: string, tag: string}[]} sources  display rows (ready | extracted | pending | stale | "stale, reopened" | "extracted, reopened")
+ * @property {{name: string, tag: string}[]} sources  display rows (ready | reopened | extracted | pending | stale | "pending, reopened" | "stale, reopened" | "extracted, reopened")
  * @property {ConsultRow[]} consult
  * @property {number} extracted           X — sources incorporated
  * @property {number} total               Y — sources counted
@@ -89,15 +89,17 @@
  * @property {SpecRow[]} actionable         discovery order (proposed → in-progress → completed-with-pending)
  * @property {SpecRow[]} concluded          completed with no pending sources
  * @property {boolean} has_materialized     any non-proposed spec exists
+ * @property {boolean} record_open          any discussion in-progress — the analysis actions are withheld
  * @property {SingleContext|null} single    set for the single scenario only
  */
 
 /** Display tag for one materialized source. @param {DiscoverySource} src */
 function sourceTag(src) {
-  if (src.status === 'pending') return 'pending';
   // "reopened" means back in-progress — a stale row's reconcile waits for the
-  // re-decision; an extracted row's spec is blocked until it re-concludes.
+  // re-decision; a pending or extracted row's spec is blocked until it
+  // re-concludes.
   const reopened = src.discussion_status === 'in-progress';
+  if (src.status === 'pending') return reopened ? 'pending, reopened' : 'pending';
   if (src.status === 'stale') return reopened ? 'stale, reopened' : 'stale';
   return reopened ? 'extracted, reopened' : 'extracted';
 }
@@ -256,6 +258,7 @@ function specificationDetail(workUnit, result, opts = {}) {
     actionable,
     concluded,
     has_materialized: result.specifications.some((s) => s.status !== 'proposed'),
+    record_open: inProgress.length > 0,
     single,
   };
 }

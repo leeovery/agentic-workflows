@@ -419,6 +419,20 @@ describe('pipeline simulation', () => {
     // The bugfix spec source name is pinned to the topic.
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
 
+    // The investigation hop takes the same reverse join as a discussion's: a
+    // gap routed back reopens the investigation, stales the spec row naming
+    // it, and the entry gate refuses until the investigation re-concludes.
+    const invReopen = sim.run(['topic', 'reopen', wu, 'investigation', wu]);
+    assert.deepStrictEqual(invReopen.sources_staled, [wu]);
+    const bugSpec = sim.manifest(wu).phases.specification.items[wu];
+    assert.strictEqual(bugSpec.sources[wu].status, 'stale');
+    assert.strictEqual(bugSpec.reconcile_needed, 'investigation');
+    sim.refuses(['topic', 'complete', wu, 'specification', wu], /unresolved source rows|completed/);
+    sim.run(['topic', 'complete', wu, 'investigation', wu]);
+    sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
+    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
+    sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
+
     sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
   });
@@ -709,7 +723,7 @@ describe('pipeline simulation', () => {
     // sources: the entry gate refuses direct entry, and the scoped view marks
     // the row blocked (unselectable until the discussion re-concludes).
     const gateWhileOpen = sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'content' });
-    assert.match(gateWhileOpen, /Sources for "Unified" are back open: beta/);
+    assert.match(gateWhileOpen, /Sources for "Unified" are back in-progress: beta/);
     const openView = specDetail(sim.dir, wu);
     const openRow = openView.actionable.find((r) => r.name === 'unified');
     assert.strictEqual(openRow.blocked, true);
@@ -804,6 +818,17 @@ describe('pipeline simulation', () => {
     // Bridge continuation surfaces render at every state.
     sim.render(['phase-completed', wu, '--phase', 'specification'], { expect: 'content' });
     sim.render(['epic-all-done-gate', wu], { expect: 'content' });
+
+    // Cancelling a discussion a live spec sources collapses that spec: the
+    // bare cancel refuses naming it; --cascade cancels both in one
+    // transaction, and the epic detail reflects the collapse.
+    sim.refuses(['topic', 'cancel', wu, 'discussion', 'beta'], /collapses the specification\(s\) sourcing it: unified/);
+    const cascade = sim.run(['topic', 'cancel', wu, 'discussion', 'beta', '--cascade']);
+    assert.deepStrictEqual(cascade.cascaded, ['unified']);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'cancelled');
+    assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.status, 'cancelled');
+    sim.run(['topic', 'reactivate', wu, 'specification', 'unified']);
+    sim.run(['topic', 'reactivate', wu, 'discussion', 'beta']);
   });
 
   it('backwards: reopen a completed discussion, re-complete, and the map keeps deriving', () => {

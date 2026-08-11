@@ -22,6 +22,7 @@ const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = req
 const { computeNextPhase } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
+const { sourceRows } = require('./transitions.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
 // overview surfaces accept, validated here so the error names the surface
@@ -367,10 +368,11 @@ function proposedTask(cwd, args) {
 // Three variants; the stops here override the construction auto mode by
 // design, so no --gate flag exists.
 //   conflict  — the settle-it-here menu: one numbered option per documented
-//               side (recommended first) plus Comment; classification is
-//               Claude's, so no gap escape exists in the menu
-//   gap-route — display-only: the gap raise plus the stated routing intent;
-//               no menu — pushback is conversational, before the routing runs
+//               side (recommended first) plus Comment — classification is
+//               Claude's, the menu offers only the documented sides
+//   gap-route — the gap raise plus its acknowledgement gate: the menu states
+//               the routing intent and confirms it (no "no" — an objection
+//               arrives as Comment and drops into the settleable exchange)
 //   held-doc  — the fallback when a live session holds the owning document
 // The raise body takes the finding idiom: bold head, one meta bullet per
 // cited quote, a Details paragraph, stakes beneath.
@@ -434,8 +436,17 @@ function incoherenceGate(cwd, args) {
       return [display, section('MENU: incoherence conflict', INCOHERENCE_STOP,
         menu('', options, { question: 'Which decision stands?' }))].join('\n');
     }
-    body.push('', `Routing this to "${p.doc}" — it reopens with the gap, and this specification pauses until the answer lands.`);
-    return section('DISPLAY: incoherence gap', 'emit verbatim as markdown', body.join('\n'));
+    return [
+      section('DISPLAY: incoherence gap', 'emit verbatim as markdown', body.join('\n')),
+      section('MENU: incoherence gap', INCOHERENCE_STOP, menu(
+        `Routing this to "${p.doc}" — it reopens with the gap, and this specification pauses until the answer lands.`,
+        [
+          cmdOption('y', 'yes', 'Land the gap and pause here'),
+          promptOption('Comment', 'Tell me what you\'re thinking before it moves'),
+        ],
+        { question: 'Proceed?' },
+      )),
+    ].join('\n');
   }
   return section('MENU: incoherence held doc', INCOHERENCE_STOP, menu(
     `"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,
@@ -1358,17 +1369,14 @@ function entryGate(cwd, { dotpath, own }) {
       }
       // The topic's own sources must be settled: a source discussion back
       // in-progress (a gap routed into it) blocks this spec until it
-      // re-concludes. Sources decode from the map or the legacy array form.
+      // re-concludes. sourceRows decodes the map and legacy array forms.
       const spec = itemOf(manifest, 'specification', topic);
-      const sourceNames = spec && spec.sources && typeof spec.sources === 'object'
-        ? (Array.isArray(spec.sources)
-          ? spec.sources.map((r) => (r && typeof r === 'object' ? String(r.name || '') : ''))
-          : Object.keys(spec.sources))
-        : [];
-      const open = sourceNames.filter((n) => n && items[n] && items[n].status === 'in-progress');
+      const open = sourceRows(spec && spec.sources)
+        .map(([n]) => n)
+        .filter((n) => n && items[n] && items[n].status === 'in-progress');
       if (open.length > 0) {
         return blocker(
-          `Sources for "${t}" are back open: ${open.join(', ')}`,
+          `Sources for "${t}" are back in-progress: ${open.join(', ')}`,
           'A specification cannot be built from an in-flight record — conclude the reopened discussion(s), then re-enter this specification.',
         );
       }

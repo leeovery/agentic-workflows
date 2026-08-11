@@ -974,14 +974,35 @@ describe('render proposed-task', () => {
     ].join('\n'));
   });
 
-  it('incoherence-gate gap-route is display-only (raise + stated routing intent); held-doc keeps its menu', () => {
-    const file = writePayload(dir, 'ig2.json', { doc: 'synonym-handling', title: 'Ranking interaction is undecided', context: 'Neither source decides how expanded matches rank.' });
+  it('incoherence-gate gap-route: the raise plus its acknowledgement gate, byte-exact; held-doc keeps its menu', () => {
+    const file = writePayload(dir, 'ig2.json', {
+      doc: 'synonym-handling',
+      title: 'Ranking interaction is undecided',
+      context: 'Neither source decides how expanded matches rank.',
+      quotes: [{ doc: 'behavioural-ranking', section: 'Scoring · Decision', quote: 'Score blending is out of scope.' }],
+      stakes: 'The ranking chapter cannot be written until this is decided.',
+    });
     const gap = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'gap-route' });
-    assert.ok(gap.includes('DISPLAY: incoherence gap'));
-    assert.ok(gap.includes('**Gap — Ranking interaction is undecided**'));
-    assert.ok(gap.includes('**Details**: Neither source decides how expanded matches rank.'));
-    assert.ok(gap.includes('Routing this to "synonym-handling" — it reopens with the gap, and this specification pauses until the answer lands.'));
-    assert.ok(!gap.includes('=== MENU'));
+    assert.strictEqual(gap, [
+      '=== DISPLAY: incoherence gap (emit verbatim as markdown) ===',
+      '**Gap — Ranking interaction is undecided**',
+      '',
+      '- **behavioural-ranking · Scoring · Decision**: "Score blending is out of scope."',
+      '',
+      '**Details**: Neither source decides how expanded matches rank.',
+      '',
+      'The ranking chapter cannot be written until this is decided.',
+      '',
+      "=== MENU: incoherence gap (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      'Routing this to "synonym-handling" — it reopens with the gap, and this specification pauses until the answer lands.',
+      '',
+      '**`◆ Proceed?`**',
+      '',
+      '**`y/yes`**   → Land the gap and pause here',
+      "**Comment** → Tell me what you're thinking before it moves",
+      '',
+    ].join('\n'));
     const docOnly = writePayload(dir, 'ig2b.json', { doc: 'synonym-handling' });
     const held = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: docOnly, variant: 'held-doc' });
     assert.ok(held.includes('MENU: incoherence held doc'));
@@ -1500,13 +1521,13 @@ describe('render entry-gate', () => {
       specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'stale' }, b: { status: 'incorporated' } } } } },
     }, 'epic');
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }),
-      /⚑ Sources for "Auth" are back open: a[\s\S]*cannot be built from an in-flight record/);
+      /⚑ Sources for "Auth" are back in-progress: a[\s\S]*cannot be built from an in-flight record/);
     // The legacy array form decodes the same way.
     manifestWith({
       discussion: { items: { a: { status: 'in-progress' }, b: { status: 'completed' } } },
       specification: { items: { auth: { status: 'in-progress', sources: [{ name: 'a', status: 'stale' }] } } },
     }, 'epic');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are back open: a/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are back in-progress: a/);
     // Settled sources are clear; an open discussion outside the spec's sources does not block it.
     manifestWith({
       discussion: { items: { a: { status: 'completed' }, c: { status: 'in-progress' } } },
