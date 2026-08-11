@@ -716,7 +716,7 @@ const RATCHET_PINS = {
   'skills/workflow-specification-process/SKILL.md': 1,
   'skills/workflow-specification-process/references/process-review-findings.md': 4,
   'skills/workflow-specification-process/references/spec-completion.md': 2,
-  'skills/workflow-specification-process/references/spec-construction.md': 3,
+  'skills/workflow-specification-process/references/spec-construction.md': 6,
   'skills/workflow-specification-process/references/spec-review.md': 2,
   'skills/workflow-start/SKILL.md': 1,
   'skills/workflow-start/references/absorb-into-epic.md': 4,

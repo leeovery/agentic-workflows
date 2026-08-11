@@ -61,6 +61,10 @@
             }
           }
         }
+      },
+      "analysis_cache": {
+        "checksum": "fixture-stub",
+        "generated": "2026-01-01T00:00:00.000Z"
       }
     },
     "specification": {

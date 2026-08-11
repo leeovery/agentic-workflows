@@ -46,6 +46,8 @@ module.exports = {
       '(none)',
       '',
     ].join('\n'));
+    h.engine('manifest', 'set', `${WU}.discussion`,
+      'analysis_cache.checksum=fixture-stub', 'analysis_cache.generated=2026-01-01T00:00:00.000Z');
     h.engine('commit', WU, '-m', `spec(${WU}): grouping analysis`);
   },
 };

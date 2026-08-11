@@ -21,10 +21,12 @@ The prose should have taken this path:
    auto
 6. on the user's answer (batch-driven expansion, aligned with
    behavioural-ranking), the resolution lands in synonym-handling's own
-   document: the decision layer and the citing prose are rewritten as
-   if decided in that discussion — no meta-narration, no reference to
-   specification or to this session — and the walk checks presence
-   before touching the file
+   document in the discussion format's own idiom: the new decision goes
+   down as a dated timeline entry above the prior prose (wrapped under
+   an Initial heading), with the Trigger line citing the colliding
+   decision — never specification or this session — and the citing
+   prose the resolution invalidates is repaired in place; the walk
+   checks presence before touching the file
 7. the edited document is reindexed through the knowledge CLI directly,
    the sources-stale safety valve runs with --except expansion (no
    other spec exists, so nothing stales — the call still runs), and the
@@ -46,10 +48,12 @@ The prose should have taken this path:
 
 The end world's claims:
 
-- synonym-handling.md reads as its own coherent record: expansion is
-  behaviour-driven computed from the nightly batch aggregates, no live
-  click-signal stream is cited as current anywhere, and nothing in the
-  document narrates that the change came from specification
+- synonym-handling.md reads as its own coherent record: the decision
+  timeline's top entry settles expansion as behaviour-driven computed
+  from the nightly batch aggregates, the original decision survives
+  wrapped beneath it, no live click-signal stream is cited as current
+  anywhere, and nothing in the document narrates that the change came
+  from specification
 - the specification file exists, and its expansion content matches the
   resolved decision — batch-derived expansion, daily refresh — never
   the live-stream version
