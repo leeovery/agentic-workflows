@@ -971,6 +971,25 @@ describe('engine sources stale', () => {
     const res = engineFails(dir, ['sources', 'stale', 'payments', 'nonexistent']);
     assert.match(res.error, /discussion item "nonexistent" not found/);
   });
+
+  it('refuses an --except that names no specification item — a typo must never self-stale', () => {
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
+    const res = engineFails(dir, ['sources', 'stale', 'payments', 'session-model', '--except', 'unifed']);
+    assert.match(res.error, /--except "unifed" names no specification item/);
+    const items = readManifest(dir, 'payments').phases.specification.items;
+    assert.strictEqual(items.unified.sources['session-model'].status, 'incorporated', 'nothing staled');
+  });
+
+  it('refuses a valueless --except with the usage line', () => {
+    const res = engineFails(dir, ['sources', 'stale', 'payments', 'session-model', '--except']);
+    assert.match(res.error, /Usage: engine sources stale/);
+  });
+
+  it('answers with empty arrays when no specification phase exists', () => {
+    const res = engine(dir, ['sources', 'stale', 'payments', 'session-model']);
+    assert.deepStrictEqual(res.flagged, []);
+    assert.deepStrictEqual(res.staled, []);
+  });
 });
 
 describe('engine topic complete: specification source gate', () => {
@@ -1003,6 +1022,16 @@ describe('engine topic complete: specification source gate', () => {
 
     withSpec(undefined);
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'unified']).status, 'completed');
+  });
+
+  it('legacy array form: all-incorporated completes, a missing status blocks', () => {
+    withSpec([{ name: 'session-model', status: 'incorporated' }, { name: 'other', status: 'incorporated' }]);
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'unified']).status, 'completed');
+
+    withSpec({ 'session-model': {} });
+    const res = engineFails(dir, ['topic', 'complete', 'payments', 'specification', 'unified']);
+    assert.match(res.error, /unresolved source rows \(session-model\)/);
+    assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.unified.status, 'in-progress', 'refusal leaves status untouched');
   });
 });
 

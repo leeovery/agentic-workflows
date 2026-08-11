@@ -191,6 +191,20 @@ function nextConcernNumber(dirAbs) {
 const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted'];
 
 /**
+ * A spec item's `sources` as `[name, row]` entries — the one decoder of the
+ * map form and the legacy array form. Rows that aren't objects are dropped.
+ * @param {object|Array<{name?: string, status?: string}>|undefined} sources
+ * @returns {[string, {status?: string}][]}
+ */
+function sourceRows(sources) {
+  if (!sources || typeof sources !== 'object') return [];
+  const entries = Array.isArray(sources)
+    ? sources.map((r) => /** @type {[string, unknown]} */ ([r && typeof r === 'object' ? r.name || '' : '', r]))
+    : Object.entries(sources);
+  return /** @type {[string, {status?: string}][]} */ (entries.filter(([, r]) => r && typeof r === 'object'));
+}
+
+/**
  * The `topic`-named row of a spec item's `sources`, object or legacy array
  * form, or undefined.
  * @param {object|Array<{name?: string}>|undefined} sources
@@ -198,11 +212,8 @@ const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted'];
  * @returns {{status?: string}|undefined}
  */
 function sourceRow(sources, topic) {
-  if (!sources || typeof sources !== 'object') return undefined;
-  const row = Array.isArray(sources)
-    ? sources.find((s) => s && typeof s === 'object' && s.name === topic)
-    : sources[/** @type {keyof typeof sources} */ (topic)];
-  return row && typeof row === 'object' ? row : undefined;
+  const entry = sourceRows(sources).find(([name]) => name === topic);
+  return entry ? entry[1] : undefined;
 }
 
 /**
@@ -538,12 +549,8 @@ function completeTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
     }
     if (phase === 'specification') {
-      const rows = item.sources;
-      const entries = Array.isArray(rows)
-        ? rows.filter((r) => r && typeof r === 'object').map((r) => [r.name, r])
-        : rows && typeof rows === 'object' ? Object.entries(rows) : [];
-      const blocking = entries
-        .filter(([, r]) => r && typeof r === 'object' && r.status !== 'incorporated')
+      const blocking = sourceRows(item.sources)
+        .filter(([, r]) => r.status !== 'incorporated')
         .map(([name]) => name);
       if (blocking.length > 0) {
         throw new Error(`specification "${topic}" has unresolved source rows (${blocking.join(', ')}) — extract pending sources and reconcile stale ones before concluding`);
@@ -633,10 +640,20 @@ function reopenTopic(cwd, workUnit, phase, topic) {
 function staleSources(cwd, workUnit, discussion, opts = {}) {
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const phase = manifest.phases && typeof manifest.phases === 'object' ? manifest.phases.discussion : undefined;
-    const items = phase && typeof phase === 'object' ? phase.items : undefined;
-    if (!items || typeof items !== 'object' || !(discussion in items)) {
+    const itemsOf = (/** @type {string} */ p) => {
+      const ph = manifest.phases && typeof manifest.phases === 'object' ? manifest.phases[p] : undefined;
+      const items = ph && typeof ph === 'object' ? ph.items : undefined;
+      return items && typeof items === 'object' ? items : undefined;
+    };
+    const discussions = itemsOf('discussion');
+    if (!discussions || !(discussion in discussions)) {
       throw new Error(`discussion item "${discussion}" not found in work unit "${workUnit}"`);
+    }
+    // A mistyped --except would silently stale the invoking spec's own row —
+    // the exact self-inflicted state the flag exists to prevent. Loud beats
+    // silent: the named spec must exist.
+    if (opts.except !== undefined && !((itemsOf('specification') || {})[opts.except])) {
+      throw new Error(`--except "${opts.except}" names no specification item in work unit "${workUnit}"`);
     }
     const fd = flagDownstream(manifest, manifest.work_type, 'discussion', discussion, { except: opts.except });
     saveWorkUnitManifest(cwd, workUnit, manifest);

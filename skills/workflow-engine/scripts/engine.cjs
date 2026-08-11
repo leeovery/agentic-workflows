@@ -572,10 +572,10 @@ function runSources(argv) {
     if (command === 'stale') {
       const { opts, positional } = parseArgs(rest);
       const [workUnit, discussion] = positional;
-      if (!workUnit || !discussion || positional.length !== 2) {
+      if (!workUnit || !discussion || positional.length !== 2 || ('except' in opts && typeof opts.except !== 'string')) {
         throw new Error('Usage: engine sources stale <work-unit> <discussion> [--except <spec-topic>]');
       }
-      respond(staleSources(process.cwd(), workUnit, discussion, { except: typeof opts.except === 'string' ? opts.except : undefined }));
+      respond(staleSources(process.cwd(), workUnit, discussion, { except: opts.except }));
       return;
     }
     throw new Error('Usage: engine sources <stale> …');
