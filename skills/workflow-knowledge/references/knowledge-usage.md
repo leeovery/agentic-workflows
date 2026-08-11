@@ -105,7 +105,7 @@ Leave the artifact alone — no correction is owed. Everything outside the speci
 
 ## G. Sibling consult at cross-topic decision points
 
-A decision that names an entity, field, rule, or classification this topic's own artifact didn't introduce is deciding on ground another document may own. The trigger is local — whether this artifact introduced the term is checkable against the current file; whether another document owns it is exactly what the consult finds out.
+A decision that names an entity, field, rule, or classification this topic's own artifact didn't introduce is deciding on ground another document may own. The trigger is local — whether this artifact introduced the term is checkable against the current file; whether another document owns it is exactly what the consult finds out. **Citation is not introduction**: a term this artifact only carries by citing another topic's decision was introduced there, and a new decision naming it triggers the consult however familiar the term reads in this file.
 
 Before documenting such a decision:
 

@@ -24,12 +24,14 @@ The prose should have taken this path:
    discussion triage queue through the triage landing — an
    engine-numbered file carrying the gap's full context — and the
    delivery commits itself; synonym-handling's item reopens to
-   in-progress; the expansion spec's synonym-handling source row
-   flips to stale
-7. the specification pauses in-progress: a pause commit lands, the
-   user is told the spec is blocked until synonym-handling
-   re-concludes, and no document dependencies, review, or conclusion
-   run
+   in-progress; the spec's never-extracted source rows stay pending
+   (re-extraction of the updated document on resume is their
+   reconcile — the stale flip belongs to incorporated rows)
+7. the specification pauses in-progress: the pause commit runs — an
+   honest no-op here, since the self-committed delivery left nothing
+   dirty — the user is told the spec is blocked until
+   synonym-handling re-concludes, and no document dependencies,
+   review, or conclusion run
 8. the session invokes the epic's continue skill with the work unit —
    the walk stops there
 
@@ -42,12 +44,11 @@ The end world's claims:
   file is byte-identical to the fixture's — no timeline entry, no
   edits of any kind
 - behavioural-ranking's discussion item and document are untouched
-- the expansion specification item reads in-progress with
-  sources.synonym-handling.status stale and
-  sources.behavioural-ranking.status pending — never completed,
-  never cancelled
-- the git history ends with a pause-scoped spec commit after the
-  self-committed triage delivery
+- the expansion specification item reads in-progress with both source
+  rows still pending — never completed, never cancelled, nothing
+  flipped stale (neither source was ever extracted)
+- the git history ends at the self-committed triage delivery; the
+  pause commit ran and answered as a no-op, nothing left dirty
 - at no point was the user asked to classify the problem, consent to
   the routing with a yes/no choice, or pick a side after the
   escalation — the only asks were the conflict raise's options and
