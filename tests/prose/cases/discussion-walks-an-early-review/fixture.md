@@ -6,7 +6,7 @@ file holds the context, one options block, and a summary saying so.
 A background review of that young document returned two findings,
 both fuel: failure UX as ground worth opening before retries are
 decided, and the gateway's idempotency guarantees as adjacent ground
-worth a look. Both carry the decide lane — nothing in the document is
+worth a look. Both carry the ask lane — nothing in the document is
 wrong, so there is nothing to correct and nothing to route. A third
 candidate failed the review's bar and sits in Observations.
 
