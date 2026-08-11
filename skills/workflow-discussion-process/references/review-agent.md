@@ -35,8 +35,9 @@ At natural conversational breaks, check for completed results.
 
 The shared surfacing protocol reads this declaration when presenting this phase's findings.
 
-- `decide` — the walked lane. Raises render under the heading `Needs A Decision`.
+- `ask` — the walked lane. Raises render under the heading `Needs A Decision`.
 - `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs — the shape in **D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**; never the template's revision shape. The confirmation says amended, never removed.
+- `decide` — approving documents each call as a decision: write it into the subtopic that owns it — the template's full structure where the subtopic has no section yet, a dated revision entry where a decided block exists — with the Decision block carrying the template's derivation marker (**Settled by derivation** — what determined it, the finding id). When no subtopic on the Discussion Map owns the call, add one and set it `decided` in the same move (`discussion-map add`, then `discussion-map set … decided`).
 - `route` — approving delivers each finding to its owning topic through the shared triage landing.
 
 ## A. Dispatch

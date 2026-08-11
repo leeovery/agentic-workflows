@@ -33,10 +33,11 @@ Nothing is deferred past this phase. A finding that names a genuine model decisi
 Every finding carries a lane naming the move it asks for. Judge it from the document, not from importance:
 
 - **`apply`** — the document already contains the answer, and the finding is that some part of it doesn't reflect that. A contradiction where one side was argued and the other was swept along; a rationale retracted by a later decision but never struck; a rule stated for one case and left implied for its degenerate forms. There is no choice to make — only text to correct.
-- **`decide`** — this topic owns an open choice, and nothing already decided settles it.
+- **`decide`** — the document hasn't made the call, but the record determines it: decisions already on the page, sibling ground the document cites, platform convention, or first principles admit exactly one defensible answer. The finding carries the call *and* its derivation — what determines it, cited. Three exclusions send an otherwise-derivable call to `ask`: its consequence reaches beyond this topic's document (it would amend, contradict, or owe a correction to sibling ground); it is expensive to reverse — structural, rework rather than a patch if wrong; or you do not fully believe the derivation yourself.
+- **`ask`** — this topic owns an open choice and nothing already decided settles it — or the call is the user's by the exclusions above.
 - **`route`** — the concern's home is a different topic. Name that topic in the finding.
 
-When a finding could read either way, it is `decide`. A wrongly-`decide` finding costs one exchange; a wrongly-`apply` finding puts words in the user's mouth.
+When a finding could read either way, it is `ask`. A wrongly-`ask` finding costs one exchange; a wrongly-`apply` or wrongly-`decide` finding puts words in the user's mouth.
 
 Findings do not overlap. Two observations that resolve to the same correction are one finding — file the site once, however many angles reach it.
 
@@ -56,7 +57,7 @@ Findings do not overlap. Two observations that resolve to the same correction ar
 **MANDATORY. No exceptions.**
 
 1. **No git writes** — do not commit or stage. Writing the output file is your only file write.
-2. **Do not suggest solutions, except in the `apply` lane** — for `decide` and `route` you identify gaps, not fill them. An `apply` finding is the one case where the answer is not yours to choose but the document's to state, so it must carry the correction it implies *and* cite the decision that determines it. An `apply` finding without that citation is misfiled — make it `decide`.
+2. **Do not suggest solutions, except in the `apply` and `decide` lanes** — for `ask` and `route` you identify gaps, not fill them. An `apply` finding must carry the correction it implies *and* cite the decision that determines it; a `decide` finding must carry the call *and* its derivation. Either without its citation is misfiled — make it `ask`.
 3. **Do not evaluate decisions** — whether they chose Redis or Memcached is not your concern. Whether they explored the tradeoffs is.
 4. **Be specific** — "needs more depth" is not useful. "The caching invalidation strategy was discussed for TTL but not for event-driven invalidation, which matters given the real-time requirements mentioned in the context" is useful.
 5. **Stay scoped** — keep findings within what the document intends to cover. Do not introduce new requirements or scope.
@@ -91,11 +92,17 @@ Each finding's first body line is its lane; for `route`, name the owning topic. 
 
 **Lane:** decide
 
+{The call the document hasn't made, stated as the decision, and its derivation — what determines it, cited.}
+
+### F3: {label}
+
+**Lane:** ask
+
 {Specific, actionable gap description.}
 
 ## Open Questions
 
-### F3: {label}
+### F4: {label}
 
 **Lane:** route — {topic}
 
