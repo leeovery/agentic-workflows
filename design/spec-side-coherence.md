@@ -359,3 +359,29 @@ display-analyze premises updated; docs/lifecycle-operations.md
 warn-not-wall paragraph corrected; adapter/sim/golden coverage for
 the new states; docs/specification.md re-told (silent tier edits
 nothing; gap stop acknowledges then routes to the menu).
+
+## Delta-review fixes (2026-08-11, third pass)
+
+Three finders on ea6d0473..HEAD. Fix list (all on #873): epic gap
+branch gets its routing (landed → pause; per-gap raise, one pause);
+cancelled-landing branch properly routed (terminal collapse vs back
+to Classify); liveness check keys on terminal statuses only (a
+completed spec mid-refine is live); cross-cutting added to the pause
+return; held-doc delivery universal (linear via direct topic triage)
+and its next-branch wording made implementable. Epic menu: in-session
+confirm points at the hard gate; analyze refusal regime-aware (only
+when no spec items exist); E. Cancel Topic drives the cascade (bare
+cancel → refusal → collapse confirm naming what falls → --cascade);
+blocked groupings/specs visible with blocked-by cue (Lee's ruling),
+refusal names holders. Engine: cascade discards proposed rows,
+cancels started specs (name-collision residue); computeNextPhase
+returns the earliest in-progress phase (paused linear specs route to
+their reopened source); all-blocked scoped menu falls back to
+blocked-discussions-open (bridge plan-file residual route); epic
+recommendation string matches the hard gate. Bugfix reconcile:
+reconcile-stale-sources generalised by source phase, reconcile-
+advisory's investigation branch routes to it; resume-detection counts
+investigation queues; investigation surfaces its queue on both resume
+branches; conclude-investigation gate gets legal routing. Docs:
+commands.md queue claims (3), docs/specification.md bugfix wording,
+sim comment vocabulary.
