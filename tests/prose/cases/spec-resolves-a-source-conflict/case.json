@@ -36,6 +36,7 @@
     "calls_include": [
       "manifest get search-relevance.specification.expansion status",
       "topic start search-relevance specification expansion",
+      "render incoherence-gate search-relevance.specification.expansion",
       "presence scan search-relevance",
       "knowledge.cjs index .workflows/search-relevance/discussion/synonym-handling.md",
       "sources stale search-relevance synonym-handling --except expansion",
@@ -45,6 +46,7 @@
     ],
     "calls_in_order": [
       "topic start search-relevance specification expansion",
+      "render incoherence-gate search-relevance.specification.expansion",
       "presence scan search-relevance",
       "write:.workflows/search-relevance/discussion/synonym-handling.md",
       "knowledge.cjs index .workflows/search-relevance/discussion/synonym-handling.md",
