@@ -260,18 +260,10 @@ The decisions cohere; one document's prose relies, as current, on a value or mec
 
 #### If a decision is owed
 
-The sources decide incompatibly, or the material is unclear in a way only a choice can settle. **This stop overrides `auto`** — like Context Resurfacing, it exists precisely because no choice is ever made without the user. Present both sides with verbatim quotes cited file + section, and what breaks if extraction proceeds anyway. Then the menu — one numbered option per side, the recommended side first with `(recommended)`:
+The sources decide incompatibly, or the material is unclear in a way only a choice can settle. **This stop overrides `auto`** — like Context Resurfacing, it exists precisely because no choice is ever made without the user. Present both sides with verbatim quotes cited file + section, and what breaks if extraction proceeds anyway. Then write the gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}`, one entry per side, at most one recommended — and fetch the gate, emitting its section verbatim at its marked instruction (the numbered options render recommended-first; the response branches below key on that order):
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Which decision stands?`**
-
-**`1`**       → {side A, one line} (recommended)
-**`2`**       → {side B, one line}
-**`g/gap`**   → Neither stands — route this back to "{doc}" for a real discussion
-**Comment** → Tell me what you're thinking; we'll work it through
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant conflict
 ```
 
 **STOP.** Wait for user response.
@@ -298,18 +290,10 @@ Nothing was ever decided, and the topic cannot be written until it is.
 
 ### The Gap Exit
 
-The gap belongs to the phase that owns decisions. Confirm before anything moves:
+The gap belongs to the phase that owns decisions. Confirm before anything moves — write `{"doc": "{doc}"}` to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool and fetch the gate, emitting its section verbatim at its marked instruction:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-This pauses the specification and sends the question back to "{doc}" — its item reopens, and this spec waits on the answer.
-
-**`◆ Route it back?`**
-
-**`y/yes`** → Pause here and send the gap to "{doc}"
-**`n/no`**  → Keep it with this session; we'll work it here
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant gap-route
 ```
 
 **STOP.** Wait for user response.
@@ -366,18 +350,10 @@ The resolution is written into the owning source document in that phase's own id
 
 1. **Check presence**: `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}` — read the `sessions` rows only; the response's deferral section is scoped to the analysis dispatch and is not emitted here.
 
-   **If a row matches `{doc}`'s phase and topic with `held` and `live` both true** — a live session owns that document. Do not edit. Tell the user, and put the choice to them:
+   **If a row matches `{doc}`'s phase and topic with `held` and `live` both true** — a live session owns that document. Do not edit. Write `{"doc": "{doc}"}` to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool and fetch the gate, emitting its section verbatim at its marked instruction:
 
-   > *Output the next fenced block as markdown (not a code block):*
-
-   ```
-   · · · · · · · · · · · ·
-   "{doc}" is open in another session right now, so the fix belongs there — this topic waits for it.
-
-   **`◆ How do you want to continue?`**
-
-   **`n/next`** → Set this topic aside and move to the next
-   **`s/stop`** → Stop here; re-enter after that session lands it
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
    ```
 
    **STOP.** Wait for user response. On `next`: for an epic, first deliver the resolution to that session's queue (the triage delivery in **The Gap Exit**, concern = the agreed resolution); → Return to **F. Topic Complete**. On `stop`: same delivery where the work type is `epic`, then commit the session's work and stop — terminal condition.

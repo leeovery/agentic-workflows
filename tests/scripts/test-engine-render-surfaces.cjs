@@ -936,6 +936,52 @@ describe('render proposed-task', () => {
     assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: emptySeverity, gate: 'gated' }), /"severity" must be a non-empty string when present/);
   });
 
+  it('incoherence-gate conflict: recommended side first, numbered options, gap route, byte-exact', () => {
+    const file = writePayload(dir, 'ig.json', {
+      doc: 'synonym-handling',
+      sides: [
+        { summary: 'Live click-signal stream at query time' },
+        { summary: 'Batch-derived expansion, daily refresh', recommended: true },
+      ],
+    });
+    const out = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'conflict' });
+    assert.strictEqual(out, [
+      "=== MENU: incoherence conflict (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      '**`◆ Which decision stands?`**',
+      '',
+      '**`1`**       → Batch-derived expansion, daily refresh (recommended)',
+      '**`2`**       → Live click-signal stream at query time',
+      '**`g/gap`**   → Neither stands — route this back to "synonym-handling" for a real discussion',
+      "**Comment** → Tell me what you're thinking; we'll work it through",
+      '',
+    ].join('\n'));
+  });
+
+  it('incoherence-gate gap-route and held-doc carry their statement, question, and options', () => {
+    const file = writePayload(dir, 'ig2.json', { doc: 'synonym-handling' });
+    const gap = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'gap-route' });
+    assert.ok(gap.includes('MENU: incoherence gap route'));
+    assert.ok(gap.includes('This pauses the specification and sends the question back to "synonym-handling"'));
+    assert.ok(gap.includes('**`◆ Route it back?`**'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Pause here/.test(gap));
+    const held = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'held-doc' });
+    assert.ok(held.includes('MENU: incoherence held doc'));
+    assert.ok(held.includes('**`◆ How do you want to continue?`**'));
+    assert.ok(/\*\*`s\/stop`\*\* +→ Stop here/.test(held));
+  });
+
+  it('incoherence-gate validates loudly: variant, doc, sides floor, single recommended', () => {
+    const file = writePayload(dir, 'ig3.json', { doc: 'x', sides: [{ summary: 'a' }, { summary: 'b' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file }), /--variant must be/);
+    const noDoc = writePayload(dir, 'ig4.json', { sides: [{ summary: 'a' }, { summary: 'b' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noDoc, variant: 'conflict' }), /"doc" must be a non-empty string/);
+    const oneSide = writePayload(dir, 'ig5.json', { doc: 'x', sides: [{ summary: 'a' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: oneSide, variant: 'conflict' }), /at least 2 entries/);
+    const twoRec = writePayload(dir, 'ig6.json', { doc: 'x', sides: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: twoRec, variant: 'conflict' }), /at most one side/);
+  });
+
   it('renders the ad hoc shape: no severity/sources, placement lines present', () => {
     const adhoc = {
       current: 1, total: 1, title: 'Fix login redirect',
@@ -1497,7 +1543,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases\)/);
   });
 });
 

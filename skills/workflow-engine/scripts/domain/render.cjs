@@ -362,6 +362,73 @@ function proposedTask(cwd, args) {
   return parts.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// incoherence-gate — spec construction's Resolve Source Incoherence gates.
+// Three variants, all always-gated: the discipline's stops override the
+// construction auto mode by design, so no --gate flag exists here.
+//   conflict  — the decision-owed menu: one numbered option per side from a
+//               judgment payload (recommended side first), g/gap, Comment
+//   gap-route — the consent gate before a gap leaves the specification
+//   held-doc  — the fallback when a live session holds the owning document
+// ---------------------------------------------------------------------------
+
+const INCOHERENCE_STOP = 'emit verbatim as markdown, then STOP for the user\'s response';
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, variant?: string}} args
+ * @returns {string}
+ */
+function incoherenceGate(cwd, args) {
+  const { dotpath, file, variant } = args;
+  if (variant === undefined || !['conflict', 'gap-route', 'held-doc'].includes(variant)) {
+    throw new Error('render incoherence-gate: --variant must be "conflict", "gap-route", or "held-doc"');
+  }
+  if (!file) throw new Error('render incoherence-gate: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'incoherence-gate');
+  const p = readJsonPayload(cwd, file, 'incoherence-gate');
+  if (!isFilled(p.doc)) throw new Error('render incoherence-gate: "doc" must be a non-empty string');
+
+  if (variant === 'conflict') {
+    if (!Array.isArray(p.sides) || p.sides.length < 2) {
+      throw new Error('render incoherence-gate: "sides" must carry at least 2 entries');
+    }
+    p.sides.forEach((/** @type {{summary?: string, recommended?: boolean}} */ s, /** @type {number} */ i) => {
+      if (!s || typeof s !== 'object' || !isFilled(s.summary)) {
+        throw new Error(`render incoherence-gate: sides[${i}].summary must be a non-empty string`);
+      }
+    });
+    if (p.sides.filter((/** @type {{recommended?: boolean}} */ s) => s.recommended === true).length > 1) {
+      throw new Error('render incoherence-gate: at most one side may be recommended');
+    }
+    const ordered = [...p.sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
+    const options = ordered.map((s, i) =>
+      cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
+    options.push(cmdOption('g', 'gap', `Neither stands — route this back to "${p.doc}" for a real discussion`));
+    options.push(promptOption('Comment', 'Tell me what you\'re thinking; we\'ll work it through'));
+    return section('MENU: incoherence conflict', INCOHERENCE_STOP,
+      menu('', options, { question: 'Which decision stands?' }));
+  }
+  if (variant === 'gap-route') {
+    return section('MENU: incoherence gap route', INCOHERENCE_STOP, menu(
+      `This pauses the specification and sends the question back to "${p.doc}" — its item reopens, and this spec waits on the answer.`,
+      [
+        cmdOption('y', 'yes', `Pause here and send the gap to "${p.doc}"`),
+        cmdOption('n', 'no', 'Keep it with this session; we\'ll work it here'),
+      ],
+      { question: 'Route it back?' },
+    ));
+  }
+  return section('MENU: incoherence held doc', INCOHERENCE_STOP, menu(
+    `"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,
+    [
+      cmdOption('n', 'next', 'Set this topic aside and move to the next'),
+      cmdOption('s', 'stop', 'Stop here; re-enter after that session lands it'),
+    ],
+    { question: 'How do you want to continue?' },
+  ));
+}
+
 /**
  * @param {string} cwd
  * @param {{dotpath: string, file?: string}} args
@@ -1497,6 +1564,7 @@ const SURFACES = {
   'reroute-offer': rerouteOffer,
   'reroute-candidates': rerouteCandidates,
   'proposed-task': proposedTask,
+  'incoherence-gate': incoherenceGate,
   'tasks-overview': tasksOverview,
   'author-task-gate': authorTaskGate,
   'phase-tree': phaseTree,
