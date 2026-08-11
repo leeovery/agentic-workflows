@@ -4,11 +4,14 @@ The prose should have taken this path:
    proposed phase item, asking the user nothing
 2. initialisation registers the spec fresh; session setup finds no
    stale rows or consult references; construction begins
-3. at the expansion ground, construction meets the batch-vs-live-stream
-   conflict — via the cache's tension line or its own read — and STOPS
-   with the engine-rendered conflict raise: both sides quoted, a
+3. construction may first extract grounds the collision does not
+   touch through the ordinary gated cycle (behavioural-ranking's
+   settled ingestion decision included, its row legitimately
+   incorporating); at the expansion ground — the ground the tension
+   names — it meets the batch-vs-live-stream conflict and STOPS with
+   the engine-rendered conflict raise: both sides quoted, a
    recommendation carried, and it never writes a chunk that assumes
-   either side
+   either side of the collision
 4. the user's comment breaks the framing: neither documented decision
    survives, because the shared ground (what expansion freshness the
    product actually needs) was never explored in either discussion;
@@ -44,12 +47,16 @@ The end world's claims:
   file is byte-identical to the fixture's — no timeline entry, no
   edits of any kind
 - behavioural-ranking's discussion item and document are untouched
-- the expansion specification item reads in-progress with both source
-  rows still pending — never completed, never cancelled, nothing
-  flipped stale (neither source was ever extracted)
+- the expansion specification item reads in-progress — never
+  completed, never cancelled; sources.synonym-handling.status is
+  still pending (never extracted, nothing flipped stale), while
+  behavioural-ranking's row may read either pending or incorporated
+  depending on how far extraction ran before the collision's ground
+  arrived
 - the git history ends at the self-committed triage delivery; the
   pause commit ran and answered as a no-op, nothing left dirty
 - at no point was the user asked to classify the problem, consent to
   the routing with a yes/no choice, or pick a side after the
-  escalation — the only asks were the conflict raise's options and
-  the gap gate's single acknowledgement
+  escalation — the collision's only asks were the conflict raise's
+  options and the gap gate's single acknowledgement; the construction
+  gate's ordinary chunk approvals on untouched grounds are permitted
