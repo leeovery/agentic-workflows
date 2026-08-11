@@ -721,7 +721,7 @@ Every flow skill opens its `## Instructions` section with one line and nothing e
 Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
 ```
 
-`framework.md` is pure composition — it loads the conventions that hold for every skill (`instructions.md`, `casing-conventions.md`, `voice.md`) and carries no content of its own. Anything universal joins that list rather than being copied into skill heads. Never restate a framework rule inline in a skill: a second copy is a second source of truth, and the copies drift.
+`framework.md` is pure composition — it loads the conventions that hold for every skill (`instructions.md`, `casing-conventions.md`, `voice.md`, `ask-or-decide.md`) and carries no content of its own. Anything universal joins that list rather than being copied into skill heads. Never restate a framework rule inline in a skill: a second copy is a second source of truth, and the copies drift.
 
 Skills with a `## Resuming After Context Refresh` protocol re-load `framework.md` by name in its first numbered step, alongside re-reading the skill file. A compaction summary keeps conclusions and drops the instructions that produced them, so anything held only by reference evaporates unless the recovery path names it.
 
