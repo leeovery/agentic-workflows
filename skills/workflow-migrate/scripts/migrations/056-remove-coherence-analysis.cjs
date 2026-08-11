@@ -35,7 +35,9 @@ module.exports = {
       return;
     }
 
-    const knowledgeCli = path.join(projectDir, '.claude', 'skills', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
+    // Resolved against this file so it works wherever the skill tree is
+    // installed (repo layout and .claude/skills installs alike).
+    const knowledgeCli = path.resolve(__dirname, '..', '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
     const storeExists = fs.existsSync(path.join(workflowsDir, '.knowledge'));
 
     let touched = false;

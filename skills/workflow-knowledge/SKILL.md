@@ -25,7 +25,7 @@ A local semantic-search index over every completed research, discussion, investi
 - `analysis` (low — research-analysis and gap-analysis caches, meta-summaries derived from low-confidence material)
 - `discovery` (low — epic exploration logs: the running record, not validated decisions; topic = session, so a work unit's whole discovery is `--phase discovery --work-unit {wu}`)
 
-**What is NOT indexed**: planning, implementation, review. These phases describe execution, not knowledge. Searching them would surface task IDs and code fragments, not insight. Operational `.state/` files (migrations, environment-setup) are also excluded — only the three analysis cache filenames are accepted from `.state/`.
+**What is NOT indexed**: planning, implementation, review. These phases describe execution, not knowledge. Searching them would surface task IDs and code fragments, not insight. Operational `.state/` files (migrations, environment-setup) are also excluded — only the two analysis cache filenames are accepted from `.state/`.
 
 ---
 

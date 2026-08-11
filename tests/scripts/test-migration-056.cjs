@@ -7,8 +7,11 @@
 // analysis_staging container survival when siblings exist, `dismissed`
 // (map list) preservation, skip/no-op, idempotency, content preservation,
 // unreadable-manifest guard, and the missing-.workflows skip. The KB purge
-// is exercised only for its guards (no store dir → no CLI call can fail the
-// run); the CLI's own remove behaviour is covered by the knowledge suites.
+// branch is pinned through a child_process spy installed before the module
+// loads (the migration destructures execFileSync at require time): the
+// exact CLI path and argument triple, the no-store guard, and the
+// swallow-on-failure degrade. The CLI's own remove behaviour is covered by
+// the knowledge suites.
 //
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -17,7 +20,20 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+// Install the spy before the migration module captures the real binding.
+const cp = require('child_process');
+const realExecFileSync = cp.execFileSync;
+/** @type {{file: string, args: string[]}[]} */
+let execCalls = [];
+/** @type {Error|null} */
+let execThrows = null;
+cp.execFileSync = (/** @type {string} */ file, /** @type {string[]} */ args, /** @type {object} */ opts) => {
+  execCalls.push({ file, args });
+  if (execThrows) throw execThrows;
+  return /** @type {never} */ (undefined);
+};
 const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/056-remove-coherence-analysis.cjs');
+cp.execFileSync = realExecFileSync;
 
 let dir, updates, skips;
 
@@ -67,6 +83,8 @@ describe('migration 056: remove coherence-analysis residue', () => {
     fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
     updates = 0;
     skips = 0;
+    execCalls = [];
+    execThrows = null;
   });
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
@@ -133,6 +151,35 @@ describe('migration 056: remove coherence-analysis residue', () => {
     assert.strictEqual(updates, 0);
     assert.strictEqual(skips, 1);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'broken', 'manifest.json'), 'utf8'), 'not json');
+  });
+
+  it('purges the KB with the exact CLI path and argument triple when a store exists', () => {
+    writeUnit('pay', coherentManifest());
+    fs.mkdirSync(path.join(dir, '.workflows', '.knowledge'), { recursive: true });
+    run();
+    assert.strictEqual(execCalls.length, 1);
+    assert.strictEqual(execCalls[0].file, 'node');
+    const [cli, ...rest] = execCalls[0].args;
+    assert.ok(cli.endsWith(path.join('workflow-knowledge', 'scripts', 'knowledge.cjs')), `CLI path resolves into the skill tree: ${cli}`);
+    assert.ok(fs.existsSync(cli), 'the resolved CLI exists on disk');
+    assert.deepStrictEqual(rest, ['remove', '--work-unit', 'pay', '--phase', 'analysis', '--topic', 'coherence-analysis']);
+  });
+
+  it('never invokes the CLI when no store exists', () => {
+    writeUnit('pay', coherentManifest());
+    run();
+    assert.strictEqual(updates, 1, 'the manifest strip still happens');
+    assert.strictEqual(execCalls.length, 0);
+  });
+
+  it('a failing CLI never blocks the run — the strip lands and the unit still counts', () => {
+    writeUnit('pay', coherentManifest());
+    fs.mkdirSync(path.join(dir, '.workflows', '.knowledge'), { recursive: true });
+    execThrows = new Error('schema drift');
+    run();
+    assert.strictEqual(updates, 1);
+    assert.strictEqual(execCalls.length, 1, 'the purge was attempted');
+    assert.ok(!('coherence_analysis_cache' in readUnit('pay').phases.discovery));
   });
 
   it('is idempotent — a second run reports skip and changes nothing', () => {

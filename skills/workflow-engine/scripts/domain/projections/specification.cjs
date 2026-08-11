@@ -13,7 +13,7 @@
 
 const { box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
-const { menuFrame, cmdOption, callout } = require('./surfaces.cjs');
+const { menuFrame, cmdOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */

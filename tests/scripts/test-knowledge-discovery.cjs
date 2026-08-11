@@ -80,6 +80,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', '.state', 'research-analysis.md'), '# RA\n');
   writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
   writeFile(path.join(wf, 'payments', '.state', 'environment-setup.md'), '# not indexable\n');
+  writeFile(path.join(wf, 'payments', '.state', 'coherence-analysis.md'), '# legacy cache — not indexable\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'sessions', 'session-001.md'), '# S1\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'sessions', 'session-002.md'), '# S2\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'sessions', 'notes.md'), '# not a session\n');
