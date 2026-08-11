@@ -259,7 +259,7 @@ describe('specification projections: display goldens', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('groupings: plural trees with positional branches, ⚑ block, key, and tip', () => {
+  it('groupings: plural trees with positional branches, key, and tip', () => {
     groupingsFixture(dir);
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
       'Recommended breakdown for specifications with their source discussions.',

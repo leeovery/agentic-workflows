@@ -131,7 +131,7 @@ engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message
 engine topic complete <work-unit> <phase> <topic>
 engine topic reopen <work-unit> <phase> <topic>
 engine topic supersede <work-unit> <phase> <topic> --by <topic>
-engine topic cancel <work-unit> <phase> <topic>
+engine topic cancel <work-unit> <phase> <topic> [--cascade]         # refuses when a live spec sources the topic (names it); --cascade cancels source + spec(s) in one transaction
 engine topic reactivate <work-unit> <phase> <topic>
 ```
 
@@ -215,7 +215,7 @@ engine render early-completion-gate <wu>                          # bridge gate:
 engine render revisit-gate <wu> --prev <phase> --next <phase>     # bridge gate: proceed to next / revisit an earlier phase
 engine render epic-all-done-gate <wu>                             # bridge gate: mark epic completed / return to menu
 engine render phase-note <wu>.<phase>.<topic> --verb <Word> [--noun <word>]   # entry one-liner: "{Word} {noun|phase}: {Topic}"
-engine render entry-gate <wu>.<phase>.<topic> [--own]             # prerequisite verdict, engine-derived: empty = clear; blocked = the terminal pair DISPLAY: entry blocker (red ⚑ fact, properties fence) + DISPLAY: blocker guidance (markdown signpost) (planning: spec status incl. superseded/promoted; implementation: plan; review: plan+implementation; specification: work-type-aware source material). --own (specification only) checks the topic's OWN terminal statuses instead — superseded/promoted at phase entry
+engine render entry-gate <wu>.<phase>.<topic> [--own]             # prerequisite verdict, engine-derived: empty = clear; blocked = the terminal pair DISPLAY: entry blocker (red ⚑ fact, properties fence) + DISPLAY: blocker guidance (markdown signpost) (planning: spec status incl. superseded/promoted; implementation: plan; review: plan+implementation; specification: work-type-aware source material, and for epic also that none of the topic's own sources are back in-progress). --own (specification only) checks the topic's OWN terminal statuses instead — superseded/promoted at phase entry
 engine render task-result <wu>.implementation.<topic> --file <payload> --result approved|needs-changes|blocked|failed  # the task loop's result header over the in-flight current_task; payload {phase, position?, external?: {label, id}} — one markdown section: the verdict line (✓ approved with its fix rounds, ◐ needs changes with its attempt count and the reached threshold, ⚑ blocked/failed) then the meta rows; needs-changes refuses at zero attempts
 engine render task-gate <wu>.implementation.<topic>               # the task loop's approval gate over the in-flight current_task: MENU: task gate when task_gate_mode is gated, DISPLAY: task gate auto-approved (the continuation line) when auto; refuses loudly with no current task
 engine render fix-gate <wu>.implementation.<topic>                # the fix approval gate over the in-flight current_task: MENU: fix gate when fix_gate_mode is gated or fix_attempts is at the threshold (the a/auto option renders only while gated), DISPLAY: fix gate auto-accepted (the continuation line) when auto below the threshold

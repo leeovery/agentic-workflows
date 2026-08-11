@@ -4,29 +4,23 @@
 
 ---
 
-Specification makes decisions clear; it never makes them. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the construction session.
+Specification makes decisions clear; it never makes them — and classification is yours. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the construction session.
 
-Classification is yours, never the user's — no raise asks them to name what kind of problem this is. The line between settling here and routing back is effort: a brief exchange settles it here; anything needing real discussion work goes back to the phase that owns decisions. Every raise gives the user enough to weigh in from — the payload carries the situation, the evidence, and the stakes, and the engine renders it. Start at **A. Classify**.
+Three moves, by effort. Anything the record settles is derived silently — that is the phase doing its job, and it earns no mention. A point a brief exchange settles stops for the user and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. Start at **A. Classify**.
 
 ## A. Classify
 
 Pick by first match:
 
-#### If the timeline resolves it
+#### If the record settles it
 
-One side is acknowledged supersession — a dated Decision-block entry, or prose the newer decision names as changed. Not incoherence: extract the governing decision.
+One side is acknowledged supersession — a dated Decision-block entry, or prose the newer decision names as changed — or the mismatch is derivable without any real choice (one document's prose leans on a value another has since moved, and the citing conclusion survives). Extract the governing decision and move on: no raise, no mention, no edit to any source document.
 
 → Return to caller.
 
-#### If it is a repair of record
-
-The decisions cohere; one document's prose relies, as current, on a value or mechanism another document has since moved, and the citing conclusion survives the correction. No choice exists — no stop, on either gate mode.
-
-→ Proceed to **D. Landing a Resolution** with resolution = `{the repair}`, doc = `{the citing document's topic}`, origin = `repair`.
-
 #### If a brief exchange settles it and the sources document the sides
 
-The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
+The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. Take a stance — one side carries `recommended`. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant conflict
@@ -36,7 +30,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {
 
 **If the user picks a side:**
 
-→ Proceed to **D. Landing a Resolution** with resolution = `{the chosen decision}`, doc = `{the yielding document's topic}`, origin = `decision`.
+→ Proceed to **C. Landing a Resolution** with resolution = `{the chosen decision}`, doc = `{the yielding document's topic}`.
 
 **If comment:**
 
@@ -44,7 +38,7 @@ Work it through conversationally, then re-classify against what the exchange pro
 
 A settled resolution lands like a picked side:
 
-→ Proceed to **D. Landing a Resolution** with resolution = `{the settled decision}`, doc = `{the yielding document's topic}`, origin = `decision`.
+→ Proceed to **C. Landing a Resolution** with resolution = `{the settled decision}`, doc = `{the yielding document's topic}`.
 
 An exchange that moved the ground but left the choice open re-presents the gate (rewrite the payload, re-fetch):
 
@@ -56,15 +50,15 @@ An exchange showing nothing can stand without work the sources never did — nei
 
 #### If a brief exchange settles it and no sides are documented
 
-The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. **This stop overrides `auto`.** Put the question to the user in conversation — what the topic needs, where the sources stop short, what the answer unlocks. No engine surface: this is an exchange, not a gate.
+The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. **This stop overrides `auto`.** Put the question to the user in conversation — what the topic needs, where the sources stop short, what the answer unlocks — and take a stance. No engine surface: this is an exchange, not a gate.
 
 **STOP.** Wait for user response.
 
-On an answer that settles it:
+**If the answer settles it:**
 
-→ Proceed to **D. Landing a Resolution** with resolution = `{the settled decision}`, doc = `{the owning source's topic}`, origin = `decision`.
+→ Proceed to **C. Landing a Resolution** with resolution = `{the settled decision}`, doc = `{the owning source's topic}`.
 
-If the exchange shows it needs more than this session can give:
+**If the exchange shows it needs more than this session can give:**
 
 → Proceed to **B. The Gap Exit**.
 
@@ -76,57 +70,57 @@ Settling it needs real discussion work — exploration the sources never did, mo
 
 ## B. The Gap Exit
 
-The gap belongs to the phase that owns decisions. There is no consent gate: the raise states what is missing and where it is going, then the routing runs. The user's lever is conversational — an objection arriving before the routing lands is honoured: stop, work it per **A. Classify**. A session holding several distinct gaps runs this exit once per owning document — raise, land — and proceeds to **C. Pause the Specification** only after the last; the specification pauses once.
+First check the specification is still live — a parallel session can collapse it from under this one:
 
-Write the raise payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{the owning source's topic}", "title": "{what is missing, one line}", "context": "{what the topic needs and why no source decides it}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim, where sources frame the adjacent ground}"}, …], "stakes": "{what cannot be written until this is decided}"}` (`quotes` and `stakes` where they exist) — and fetch the raise, emitting its section verbatim at its marked instruction (display-only — the stated routing intent is its closing line):
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
+```
+
+#### If the status is not `in-progress`
+
+The specification collapsed while this session held it. Tell the user what happened and stop — nothing routes, nothing lands.
+
+**STOP.** Do not proceed — terminal condition.
+
+#### Otherwise
+
+Raise the gap and its acknowledgement gate — a confirm, not a choice: the gap must be filled, and the gate exists so the stop is seen before anything moves. Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{the owning source's topic}", "title": "{what is missing, one line}", "context": "{what the topic needs and why no source decides it}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim, where sources frame the adjacent ground}"}, …], "stakes": "{what cannot be written until this is decided}"}` (`quotes` and `stakes` where they exist) — and fetch the gate, emitting each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant gap-route
 ```
 
-Then route the gap:
+**STOP.** Wait for user response.
 
-#### If the work type is `epic`
+**If `yes`:**
+
+Land the gap in the owning document's triage queue — its item reopens and the queued concern survives any context clear; the reopened session surfaces it and cannot conclude without folding it.
+
+**If the work type is `epic`:**
 
 → Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
 
-On return, read `result`.
+On return: if `result` is `landed`, the delivery committed itself. If `result` is `cancelled`, re-run the liveness check above — a dead spec exits there; otherwise the concern stays with this session: work it per **A. Classify**.
 
-**If `result` is `cancelled`:**
+**If the work type is not `epic`:**
 
-The user pushed back inside the landing — nothing landed; the concern stays with this session.
+Write the concern (what the topic needs, the quotes where sources frame it, what was just explored) to `.workflows/.cache/{work_unit}/specification/{topic}/gap-concern.md` with the Write tool, then deliver it — the transaction reopens the source item, queues the concern, and commits itself (`{source phase}` is the source's own: `discussion`, or `investigation` for a bugfix):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {source phase} {doc} --concern .workflows/.cache/{work_unit}/specification/{topic}/gap-concern.md --slug {kebab-case gap name} -m "spec({work_unit}): gap routed to {doc}"
+```
+
+A session holding several distinct gaps lands each in turn — this branch once per owning document — before pausing; the specification pauses once.
+
+→ Proceed to **D. Pause the Specification**.
+
+**If comment:**
+
+The objection is the conversation — work it per the settleable branches.
 
 → Return to **A. Classify**.
 
-**If `result` is `landed`:**
-
-→ Proceed to **C. Pause the Specification**.
-
-#### If the work type is not `epic`
-
-Single-topic work types route back directly — reopen the owning source item (its phase is the source's own: `discussion`, or `investigation` for a bugfix):
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} {source phase} {doc}
-```
-
-Tell the user what the reopened session must settle — the gap travels as conversation here, not as a queue file.
-
-→ Proceed to **C. Pause the Specification**.
-
-## C. Pause the Specification
-
-An `incorporated` row for that source has flipped to `stale` and reconciles at re-entry; a still-`pending` row simply re-extracts the updated document when construction resumes — either way the engine refuses to conclude this spec until the source is current. Commit the session's work:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — gap routed to {doc}"
-```
-
-Tell the user: this specification waits on that discussion — have it there, re-enter the spec after. Do not run document dependencies, review, or conclusion.
-
-**STOP.** Do not proceed — terminal condition.
-
-## D. Landing a Resolution
+## C. Landing a Resolution
 
 The resolution is written into the owning source document in that phase's own idiom — no meta-narration, no reference to specification or to this session: the document reads as its own record.
 
@@ -138,7 +132,7 @@ The resolution is written into the owning source document in that phase's own id
    node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
    ```
 
-   **STOP.** Wait for user response. On `next`: for an epic, first deliver the resolution to that session's queue (the triage delivery in **B**, concern = the agreed resolution); → Return to caller — construction moves to the next topic. On `stop`: same delivery where the work type is `epic`, then commit the session's work and stop — terminal condition.
+   **STOP.** Wait for user response. On `next`: for an epic, first deliver the agreed resolution to that session's queue — load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; → Return to caller — construction moves to the next topic. On `stop`: same delivery where the work type is `epic`, then commit the session's work and stop — terminal condition.
 
    **Otherwise** — no row holds `{doc}`:
 
@@ -149,14 +143,18 @@ The resolution is written into the owning source document in that phase's own id
 4. **Stale the other extractions** — only when `{doc}` is a discussion (the reverse join covers discussion sources; single-topic work types have no sibling specs and skip this): `node .claude/skills/workflow-engine/scripts/engine.cjs sources stale {work_unit} {doc} --except {topic}`. When the response's `staled` is non-empty, tell the user in one line which specification(s) it named.
 5. **Commit**: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{source phase}({work_unit}/{doc}): {what the resolution settled}" --topic {source phase}/{doc} --kb`.
 
-**If origin is `repair`:**
-
-Carry a one-line note into the next **B** presentation in [spec-construction.md](spec-construction.md) — rendered after the content, above the gate (on `auto`, appended after the auto announcement), never inside the content block the specification logs: `Resolved along the way: {what was repaired}.`
-
-→ Return to caller.
-
-**If origin is `decision`:**
-
 The topic continues against the updated source.
 
 → Return to caller.
+
+## D. Pause the Specification
+
+An `incorporated` row for each routed source has flipped to `stale` and reconciles at re-entry; a still-`pending` row simply re-extracts the updated document when construction resumes — either way the engine refuses to conclude this spec, and its entry blocks, until every routed source re-concludes. Commit the session's work:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — gap routed to {doc}"
+```
+
+Tell the user: this specification is blocked until the reopened item(s) re-conclude — name them (`{doc}`, each of them). Do not run document dependencies, review, or conclusion.
+
+Invoke the work type's navigation skill (Skill tool) so the user lands back on their menu with the reopened work in view: `/workflow-continue-epic {work_unit}` for an epic, `/workflow-continue-feature {work_unit}` for a feature, `/workflow-continue-bugfix {work_unit}` for a bugfix.

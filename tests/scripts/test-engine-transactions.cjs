@@ -1767,7 +1767,7 @@ describe('engine usage banner', () => {
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',
-      'topic cancel <work-unit> <phase> <topic>',
+      'topic cancel <work-unit> <phase> <topic> [--cascade]',
       'topic reactivate <work-unit> <phase> <topic>',
     ]) {
       assert.ok(res.stderr.includes(`  ${line}\n`), `usage banner missing "${line}"`);

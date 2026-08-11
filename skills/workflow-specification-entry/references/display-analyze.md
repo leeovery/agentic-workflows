@@ -4,7 +4,7 @@
 
 ---
 
-Prompted when multiple completed discussions exist, no specifications or proposed groupings exist, and the cache is none or stale.
+Prompted when multiple completed discussions exist and none are in progress, no specifications or proposed groupings exist, and the cache is none or stale.
 
 ## A. Display
 
