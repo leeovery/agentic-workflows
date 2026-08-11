@@ -68,7 +68,7 @@ A discussion this specification extracted was re-decided after extraction. The s
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
-Surface the advisory. The `stale` rows themselves stay — the session reconciles them per **[spec-construction.md](../../workflow-specification-process/references/spec-construction.md)** → Reconcile Stale Sources, and only re-incorporation clears a row.
+Surface the advisory. The `stale` rows themselves stay — the session reconciles them per **[reconcile-stale-sources.md](../../workflow-specification-process/references/reconcile-stale-sources.md)**, and only re-incorporation clears a row.
 
 > *Output the next fenced block as a code block:*
 

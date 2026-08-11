@@ -389,35 +389,54 @@ function incoherenceGate(cwd, args) {
   const p = readJsonPayload(cwd, file, 'incoherence-gate');
   if (!isFilled(p.doc)) throw new Error('render incoherence-gate: "doc" must be a non-empty string');
 
-  if (variant === 'conflict') {
-    if (!Array.isArray(p.sides) || p.sides.length < 2) {
-      throw new Error('render incoherence-gate: "sides" must carry at least 2 entries');
+  if (variant === 'conflict' || variant === 'gap-route') {
+    if (!isFilled(p.title)) throw new Error('render incoherence-gate: "title" must be a non-empty string');
+    if (!isFilled(p.context)) throw new Error('render incoherence-gate: "context" must be a non-empty string');
+    if (p.quotes !== undefined) {
+      if (!Array.isArray(p.quotes) || p.quotes.length === 0) throw new Error('render incoherence-gate: "quotes" must be a non-empty array when present');
+      p.quotes.forEach((/** @type {{doc?: string, section?: string, quote?: string}} */ q, /** @type {number} */ i) => {
+        if (!q || typeof q !== 'object' || !isFilled(q.doc) || !isFilled(q.section) || !isFilled(q.quote)) {
+          throw new Error(`render incoherence-gate: quotes[${i}] must carry doc, section, and quote`);
+        }
+      });
     }
-    p.sides.forEach((/** @type {{summary?: string, recommended?: boolean}} */ s, /** @type {number} */ i) => {
-      if (!s || typeof s !== 'object' || !isFilled(s.summary)) {
-        throw new Error(`render incoherence-gate: sides[${i}].summary must be a non-empty string`);
+    if (p.stakes !== undefined && !isFilled(p.stakes)) throw new Error('render incoherence-gate: "stakes" must be a non-empty string when present');
+    const head = variant === 'conflict' ? 'Conflict' : 'Gap';
+    const body = [`**${head} — ${p.title}**`, '', p.context];
+    if (p.quotes) {
+      for (const q of p.quotes) body.push('', `> ${q.doc}.md · ${q.section}: "${q.quote}"`);
+    }
+    if (p.stakes) body.push('', p.stakes);
+    const display = section(`DISPLAY: incoherence ${head.toLowerCase()}`, 'emit verbatim as markdown', body.join('\n'));
+
+    if (variant === 'conflict') {
+      if (!Array.isArray(p.sides) || p.sides.length < 2) {
+        throw new Error('render incoherence-gate: "sides" must carry at least 2 entries');
       }
-    });
-    if (p.sides.filter((/** @type {{recommended?: boolean}} */ s) => s.recommended === true).length > 1) {
-      throw new Error('render incoherence-gate: at most one side may be recommended');
+      p.sides.forEach((/** @type {{summary?: string, recommended?: boolean}} */ s, /** @type {number} */ i) => {
+        if (!s || typeof s !== 'object' || !isFilled(s.summary)) {
+          throw new Error(`render incoherence-gate: sides[${i}].summary must be a non-empty string`);
+        }
+      });
+      if (p.sides.filter((/** @type {{recommended?: boolean}} */ s) => s.recommended === true).length > 1) {
+        throw new Error('render incoherence-gate: at most one side may be recommended');
+      }
+      const ordered = [...p.sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
+      const options = ordered.map((s, i) =>
+        cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
+      options.push(cmdOption('g', 'gap', `Neither stands — route this back to "${p.doc}" for a real discussion`));
+      options.push(promptOption('Comment', 'Tell me what you\'re thinking; we\'ll work it through'));
+      return [display, section('MENU: incoherence conflict', INCOHERENCE_STOP,
+        menu('', options, { question: 'Which decision stands?' }))].join('\n');
     }
-    const ordered = [...p.sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
-    const options = ordered.map((s, i) =>
-      cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
-    options.push(cmdOption('g', 'gap', `Neither stands — route this back to "${p.doc}" for a real discussion`));
-    options.push(promptOption('Comment', 'Tell me what you\'re thinking; we\'ll work it through'));
-    return section('MENU: incoherence conflict', INCOHERENCE_STOP,
-      menu('', options, { question: 'Which decision stands?' }));
-  }
-  if (variant === 'gap-route') {
-    return section('MENU: incoherence gap route', INCOHERENCE_STOP, menu(
+    return [display, section('MENU: incoherence gap route', INCOHERENCE_STOP, menu(
       `This pauses the specification and sends the question back to "${p.doc}" — its item reopens, and this spec waits on the answer.`,
       [
         cmdOption('y', 'yes', `Pause here and send the gap to "${p.doc}"`),
         cmdOption('n', 'no', 'Keep it with this session; we\'ll work it here'),
       ],
       { question: 'Route it back?' },
-    ));
+    ))].join('\n');
   }
   return section('MENU: incoherence held doc', INCOHERENCE_STOP, menu(
     `"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,
@@ -427,6 +446,88 @@ function incoherenceGate(cwd, args) {
     ],
     { question: 'How do you want to continue?' },
   ));
+}
+
+// ---------------------------------------------------------------------------
+// resurface-gate — spec construction's Context Resurfacing gate: a diff over
+// already-approved specification content plus its approval menu. Always
+// gated — it changes blessed content, so construction auto never applies.
+// `--view full` re-presents the full updated section (from the payload's
+// `full` lines) with the menu minus the view option.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, view?: string}} args
+ * @returns {string}
+ */
+function resurfaceGate(cwd, args) {
+  const { dotpath, file, view } = args;
+  if (view !== undefined && view !== 'full') throw new Error('render resurface-gate: --view only accepts "full"');
+  if (!file) throw new Error('render resurface-gate: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'resurface-gate');
+  const p = readJsonPayload(cwd, file, 'resurface-gate');
+  if (!isFilled(p.section)) throw new Error('render resurface-gate: "section" must be a non-empty string');
+
+  const parts = [];
+  const menuOptions = [cmdOption('y', 'yes', 'Apply changes to specification')];
+
+  if (view === 'full') {
+    const lines = stringLines(p.full, 'resurface-gate', 'full');
+    if (lines.length === 0) throw new Error('render resurface-gate: "full" must be non-empty for --view full');
+    parts.push(section('DISPLAY: resurfacing full', 'emit verbatim as markdown',
+      [`**Resurfacing: ${p.section}** — full updated section`, '', ...lines].join('\n')));
+  } else {
+    if (!p.diff || typeof p.diff !== 'object') throw new Error('render resurface-gate: "diff" is required');
+    const body = [
+      ...stringLines(p.diff.context_above || [], 'resurface-gate', 'diff.context_above').map((l) => ` ${l}`),
+      ...stringLines(p.diff.current || [], 'resurface-gate', 'diff.current').map((l) => `-${l}`),
+      ...stringLines(p.diff.proposed || [], 'resurface-gate', 'diff.proposed').map((l) => `+${l}`),
+      ...stringLines(p.diff.context_below || [], 'resurface-gate', 'diff.context_below').map((l) => ` ${l}`),
+    ];
+    if ((p.diff.current || []).length + (p.diff.proposed || []).length === 0) {
+      throw new Error('render resurface-gate: "diff" must carry at least one current/proposed line');
+    }
+    parts.push(section('DISPLAY: resurfacing', 'emit verbatim as markdown', `**Resurfacing: ${p.section}**`));
+    parts.push(section('DISPLAY: resurfacing diff', 'emit verbatim as a diff code block (```diff fence)', body.join('\n')));
+    if (stringLines(p.full || [], 'resurface-gate', 'full').length > 0) {
+      menuOptions.push(cmdOption('v', 'view full', 'Show the full updated section, then decide'));
+    }
+  }
+  menuOptions.push(promptOption('Tell me what to change', 'Revise before recording'));
+  parts.push(section('MENU: resurface gate', INCOHERENCE_STOP,
+    menu('', menuOptions, { question: 'Record this to the specification verbatim?' })));
+  return parts.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// construction-gate — spec construction's per-topic approval. The draft
+// presentation stays with the flow (artifact content, presented verbatim);
+// this surface owns the state-branching moment after it: the gate mode is
+// read from the manifest's construction_gate_mode at the dotpath, answering
+// with the approval menu when gated and the auto announcement when auto.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function constructionGate(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'construction-gate');
+  const item = (((manifest.phases || {})[phase] || {}).items || {})[topic] || {};
+  if (item.construction_gate_mode === 'auto') {
+    return section(
+      'DISPLAY: construction auto-approved',
+      `after logging the content: ${AUTO_GATE_INSTRUCTION}`,
+      `${titlecase(topic)} — auto-approved. Recording to the specification.`,
+    );
+  }
+  return section('MENU: construction gate', INCOHERENCE_STOP, menu('', [
+    cmdOption('y', 'yes', 'Add exactly as shown, no modifications'),
+    cmdOption('a', 'auto', 'Approve this and all remaining topics automatically'),
+    promptOption('Tell me what to change', 'Revise before recording'),
+  ], { question: 'Record this to the specification verbatim?' }));
 }
 
 /**
@@ -1565,6 +1666,8 @@ const SURFACES = {
   'reroute-candidates': rerouteCandidates,
   'proposed-task': proposedTask,
   'incoherence-gate': incoherenceGate,
+  'resurface-gate': resurfaceGate,
+  'construction-gate': constructionGate,
   'tasks-overview': tasksOverview,
   'author-task-gate': authorTaskGate,
   'phase-tree': phaseTree,

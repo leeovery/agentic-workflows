@@ -19,7 +19,7 @@ F. Topic complete → loop back to A or exit
 
 ## A. Exhaustive Extraction
 
-Every topic's content must be derivable from its sources. When source material disagrees — with itself, or with another source — or is too unclear to extract without assumption, never silently pick a side: work it per **Resolve Source Incoherence** below, in the moment it surfaces. Tension notes held from session setup are raised the same way when the topic that touches them arrives.
+Every topic's content must be derivable from its sources. When source material disagrees — with itself, or with another source — or is too unclear to extract without assumption, never silently pick a side: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** and follow its instructions as written, in the moment it surfaces; on return, continue where extraction left off. Tension notes held from session setup are raised the same way when the topic that touches them arrives.
 
 → Load **[exhaustive-extraction.md](exhaustive-extraction.md)** and follow its instructions as written.
 
@@ -31,39 +31,17 @@ This gate stays gated even when `construction_gate_mode` is `auto` — it change
 
 When extraction reveals information that affects **already-logged topics**, resurface them immediately. Even mid-discussion — interrupt, flag what you found, and discuss whether it changes anything.
 
-If it does: summarize what's changing in the chat, then present the changes as a diff view. The summary is for discussion only — the specification just gets the clean replacement.
+If it does: summarize what's changing in the chat — the summary is for discussion only; the specification just gets the clean replacement.
 
-Read the current approved content from the specification file. Prepare the updated version. Present only the changed lines with 2 lines of context above and below:
+Read the current approved content from the specification file. Prepare the updated version. Write the gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json` with the Write tool — `{"section": "{section name}", "diff": {"context_above": […], "current": […], "proposed": […], "context_below": […]}, "full": [the full updated section's lines]}` (2 context lines each side) — and fetch the gate, emitting each section verbatim at its marked instruction:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**Resurfacing: {section name}**
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render resurface-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json
 ```
 
-> *Output the next fenced block as a ` ```diff ` code block:*
+> **CHECKPOINT**: Even when resurfacing content, you MUST NOT update the specification until the user explicitly approves the change.
 
-```diff
- {2 context lines above}
--{removed/changed lines}
-+{new/replacement lines}
- {2 context lines below}
-```
-
-Then, **separately from the diff above** (clear visual break):
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Record this to the specification verbatim?`**
-
-**`y/yes`**                  → Apply changes to specification
-**`v/view full`**            → Show the full updated section, then decide
-**Tell me what to change** → Revise before recording
-```
-
-> **CHECKPOINT**: Even when resurfacing content, you MUST NOT update the specification until the user explicitly approves the change. STOP and wait for response.
+**STOP.** Wait for user response.
 
 #### If `yes`
 
@@ -73,13 +51,13 @@ Update the specification with the approved changes. Commit. Continue extraction.
 
 #### If `view full`
 
-Re-present the full updated section in the format it would appear in the specification. Then re-present the approval menu without `v`/`view full`.
+Re-fetch with `--view full` and emit its sections verbatim — the full updated section with the menu minus the view option. **STOP.** Wait for user response, and handle it by these same branches.
 
 → Return to **A. Exhaustive Extraction**.
 
 #### If the user provides feedback
 
-Work through the changes per **C. Discuss and Refine**, then re-present the diff with the revised content.
+Work through the changes per **C. Discuss and Refine**, then re-present the gate with the revised content (rewrite the payload, re-fetch).
 
 → Return to **A. Exhaustive Extraction**.
 
@@ -109,7 +87,7 @@ Already-`addressed` references are skipped on later topic cycles.
 
 Check the draft against the one-home rule (**[specification-format.md](specification-format.md)**): a fact already stated in the specification is referenced at its home, never restated. If the new topic should own the fact, move it — edits to already-logged content go through **Context Resurfacing**.
 
-Source disagreement first noticed here — while forcing two sources into one draft — routes exactly as it does during extraction: **Resolve Source Incoherence**, whose decision stop overrides `auto`. Never let the auto branch below absorb an unresolved conflict.
+Source disagreement first noticed here — while forcing two sources into one draft — routes exactly as it does during extraction: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** and follow its instructions as written; its decision stop overrides `auto`. Never let the auto branch below absorb an unresolved conflict.
 
 Present your understanding to the user **in the format it would appear in the specification** (shown in both modes):
 
@@ -121,48 +99,37 @@ Here's what I understand about [topic] based on the reference material. This is 
 [content as rendered markdown]
 ```
 
-Then check `construction_gate_mode` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} construction_gate_mode`).
+Then fetch the gate — it reads `construction_gate_mode` from the manifest and answers with the approval menu or the auto announcement:
 
-#### If `construction_gate_mode` is `auto`
-
-Skip the menu and the STOP gate. The content presented above is logged exactly as shown.
-
-> *Output the next fenced block as a code block:*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render construction-gate {work_unit}.specification.{topic}
 ```
-{topic:(titlecase)} — auto-approved. Recording to the specification.
-```
+
+#### If the response carried `DISPLAY: construction auto-approved`
+
+Emit the section per its marker.
 
 **CRITICAL**: Auto removes only the approval STOP — process one topic at a time (extract → present → log → commit → next). Never generate multiple topics, or the whole specification, in a single pass. Commit after each topic.
 
 → Proceed to **E. Log and Commit**.
 
-#### If `construction_gate_mode` is `gated`
+#### If the response carried `MENU: construction gate`
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Record this to the specification verbatim?`**
-
-**`y/yes`**                  → Add exactly as shown, no modifications
-**`a/auto`**                 → Approve this and all remaining topics automatically
-**Tell me what to change** → Revise before recording
-```
+Emit it per its marker.
 
 **STOP.** Wait for user response.
 
-#### If `yes`
+**If `yes`:**
 
 → Proceed to **E. Log and Commit**.
 
-#### If `auto`
+**If `auto`:**
 
 Set `construction_gate_mode` to `auto` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} construction_gate_mode auto`).
 
 → Proceed to **E. Log and Commit**.
 
-#### If the user provides feedback
+**If the user provides feedback:**
 
 → Proceed to **C. Discuss and Refine**.
 
@@ -219,162 +186,3 @@ This is the end of this iteration.
 #### If all topics are covered
 
 → Return to caller.
-
----
-
-## Reconcile Stale Sources
-
-Entered by name when a source row reads `stale` — its discussion was re-decided after extraction, so the specification holds content from a decision that has since moved. Reconcile the logged content against the revision; never re-extract the source wholesale.
-
-First check the source discussion's status (`engine manifest get {work_unit}.discussion.{source-name} status`). If it is `in-progress`, the revision is not final — defer: leave the row `stale`, tell the user reconciliation waits for that discussion to re-conclude, and → Return to caller. Otherwise:
-
-1. Re-read the source discussion (`.workflows/{work_unit}/discussion/{source-name}.md`) in full. Its decision timeline marks the revision — identify which decisions changed, which were added, and which stand.
-2. Re-read the specification for the content logged from that source.
-3. Diff the two in judgment: content the revision left standing stays untouched. For content the revision contradicts or extends, present the changed lines as a diff view (the Context Resurfacing display shape — summary in chat, only changed lines with 2 lines of context) and gate on explicit approval; this gate stays gated even when `construction_gate_mode` is `auto`. On approval, write the clean replacement to the specification verbatim — no silent modifications.
-4. When every changed decision is reconciled, mark the source `incorporated` and commit:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): reconcile stale source {source-name}"
-```
-
-→ Return to caller.
-
----
-
-## Resolve Source Incoherence
-
-Entered by name from **A** or **B** when source material disagrees — with itself, or with another source — or cannot be extracted without assumption. Specification makes decisions clear; it never makes them. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions).
-
-#### If the timeline resolves it
-
-One side is acknowledged supersession — a dated Decision-block entry, or prose the newer decision names as changed. Not incoherence: extract the governing decision.
-
-→ Return to **A. Exhaustive Extraction**.
-
-#### If it is a repair of record
-
-The decisions cohere; one document's prose relies, as current, on a value or mechanism another document has since moved, and the citing conclusion survives the correction. No choice exists — no stop, on either gate mode.
-
-→ Proceed to **Landing a Resolution** with resolution = `{the repair}`, doc = `{the citing document's topic}`, origin = `repair`.
-
-#### If a decision is owed
-
-The sources decide incompatibly, or the material is unclear in a way only a choice can settle. **This stop overrides `auto`** — like Context Resurfacing, it exists precisely because no choice is ever made without the user. Present both sides with verbatim quotes cited file + section, and what breaks if extraction proceeds anyway. Then write the gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}`, one entry per side, at most one recommended — and fetch the gate, emitting its section verbatim at its marked instruction (the numbered options render recommended-first; the response branches below key on that order):
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant conflict
-```
-
-**STOP.** Wait for user response.
-
-**If the user picks a side:**
-
-→ Proceed to **Landing a Resolution** with resolution = `{the chosen decision}`, doc = `{the yielding document's topic}`, origin = `decision`.
-
-**If `gap`:**
-
-→ Proceed to **The Gap Exit**.
-
-**If comment:**
-
-Work it through conversationally, then re-present the menu with anything the discussion changed.
-
-→ Return to **Resolve Source Incoherence** (the menu above).
-
-#### If it is a gap
-
-Nothing was ever decided, and the topic cannot be written until it is.
-
-→ Proceed to **The Gap Exit**.
-
-### The Gap Exit
-
-The gap belongs to the phase that owns decisions. Confirm before anything moves — write `{"doc": "{doc}"}` to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool and fetch the gate, emitting its section verbatim at its marked instruction:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant gap-route
-```
-
-**STOP.** Wait for user response.
-
-#### If `no`
-
-The concern stays in this session's conversation — resolve it as a decision owed or park the topic and continue with another.
-
-→ Return to **A. Exhaustive Extraction**.
-
-#### If `yes` and the work type is `epic`
-
-→ Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
-
-On return, read `result`.
-
-**If `result` is `cancelled`:**
-
-Nothing landed — the concern stays with this session.
-
-→ Return to **The Gap Exit** (the gate above).
-
-**If `result` is `landed`:**
-
-→ Proceed to **Pause the Specification**.
-
-#### If `yes` and the work type is not `epic`
-
-Single-topic work types route back directly — reopen the owning source item (its phase is the source's own: `discussion`, or `investigation` for a bugfix):
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} {source phase} {doc}
-```
-
-Tell the user what the reopened session must settle — the gap travels as conversation here, not as a queue file.
-
-→ Proceed to **Pause the Specification**.
-
-### Pause the Specification
-
-An `incorporated` row for that source has flipped to `stale` and reconciles at re-entry; a still-`pending` row simply re-extracts the updated document when construction resumes — either way the engine refuses to conclude this spec until the source is current. Commit the session's work:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — gap routed to {doc}"
-```
-
-Tell the user: this specification waits on that discussion — have it there, re-enter the spec after. Do not run document dependencies, review, or conclusion.
-
-**STOP.** Do not proceed — terminal condition.
-
-### Landing a Resolution
-
-The resolution is written into the owning source document in that phase's own idiom — no meta-narration, no reference to specification or to this session: the document reads as its own record.
-
-1. **Check presence**: `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}` — read the `sessions` rows only; the response's deferral section is scoped to the analysis dispatch and is not emitted here.
-
-   **If a row matches `{doc}`'s phase and topic with `held` and `live` both true** — a live session owns that document. Do not edit. Write `{"doc": "{doc}"}` to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool and fetch the gate, emitting its section verbatim at its marked instruction:
-
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
-   ```
-
-   **STOP.** Wait for user response. On `next`: for an epic, first deliver the resolution to that session's queue (the triage delivery in **The Gap Exit**, concern = the agreed resolution); → Return to **F. Topic Complete**. On `stop`: same delivery where the work type is `epic`, then commit the session's work and stop — terminal condition.
-
-   **Otherwise** — no row holds `{doc}`:
-
-   → Proceed to step 2.
-
-2. **Edit the document** — targeted, in the owning phase's own idiom. A discussion's decided Decision block is revised as its format prescribes (**[../../workflow-discussion-process/references/template.md](../../workflow-discussion-process/references/template.md)** → Decision revisions): the new decision lands as a dated timeline entry above the prior prose, wrapped verbatim under `#### Initial`, with the `Trigger:` line citing the substantive cause — the colliding decision, never this session. Citing prose the resolution invalidates is repaired in place. Investigation and research documents carry no timeline rule — edit the affected passages directly.
-3. **Reindex it**: `node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {the resolved artifact path}` — the knowledge base serves the resolution for the rest of the work.
-4. **Stale the other extractions** — only when `{doc}` is a discussion (the reverse join covers discussion sources; single-topic work types have no sibling specs and skip this): `node .claude/skills/workflow-engine/scripts/engine.cjs sources stale {work_unit} {doc} --except {topic}`. When the response's `staled` is non-empty, tell the user in one line which specification(s) it named.
-5. **Commit**: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{source phase}({work_unit}/{doc}): {what the resolution settled}" --topic {source phase}/{doc} --kb`.
-
-**If origin is `repair`:**
-
-Carry a one-line note into the next **B** presentation — rendered after the content, above the gate (on `auto`, appended after the auto announcement), never inside the content block the specification logs: `Resolved along the way: {what was repaired}.`
-
-→ Return to **A. Exhaustive Extraction**.
-
-**If origin is `decision`:**
-
-The topic continues against the updated source.
-
-→ Return to **A. Exhaustive Extraction**.

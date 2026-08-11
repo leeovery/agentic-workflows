@@ -183,6 +183,8 @@ Commands:
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
+  render resurface-gate   <wu.phase.topic> --file <payload.json> [--view full]
+  render construction-gate <wu.phase.topic>
   render tasks-overview   <wu.phase.topic> --file <payload.json>
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]

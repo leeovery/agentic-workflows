@@ -18,6 +18,8 @@
     "skills/workflow-specification-process/references/session-setup.md",
     "skills/workflow-specification-process/references/specification-principles.md",
     "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/reconcile-stale-sources.md",
     "skills/workflow-specification-process/references/exhaustive-extraction.md",
     "skills/workflow-specification-process/references/dependencies.md",
     "skills/workflow-specification-process/references/spec-review.md",
