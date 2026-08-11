@@ -796,25 +796,26 @@ describe('specification projections: menu goldens', () => {
     );
   });
 
-  it('groupings with the record open: unify and re-analyze withheld, the blocked grouping stays visible', () => {
+  it('groupings with the record open: unify and re-analyze withheld, the blocked grouping visible with reopened tags, no tip', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
         discussion: {
-          items: { a: { status: 'in-progress' }, b: { status: 'completed' }, c: { status: 'completed' } },
+          items: { a: { status: 'in-progress' }, d: { status: 'in-progress' }, b: { status: 'completed' }, c: { status: 'completed' } },
         },
         specification: {
           items: {
-            'a-grp': { status: 'proposed', sources: { a: { status: 'pending' } } },
+            'a-grp': { status: 'proposed', sources: { a: { status: 'pending' }, d: { status: 'pending' } } },
             'b-grp': { status: 'proposed', sources: { b: { status: 'pending' }, c: { status: 'pending' } } },
           },
         },
       },
     });
-    const menu = specificationMenu(detailOf(dir, 'v1'));
+    const detail = detailOf(dir, 'v1');
+    const menu = specificationMenu(detail);
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      '**`1`** → Start "A Grp" — blocked by A (reopened)',
+      '**`1`** → Start "A Grp" — blocked by A, D (reopened)',
       '**`2`** → Start "B Grp" — *2 ready discussion(s)*',
       '',
       'Select an option:',
@@ -826,6 +827,13 @@ describe('specification projections: menu goldens', () => {
         ['2', 'start_spec', 'b-grp', 'Creating'],
       ]
     );
+    // The display carries the bare reopened tag on the blocked grouping's
+    // sources, its legend line, and withholds the re-analyze tip.
+    const display = specificationDisplay(detail);
+    assert.ok(display.includes('├─ a    [reopened]'), display);
+    assert.ok(display.includes('└─ d    [reopened]'), display);
+    assert.ok(display.includes('reopened — back in-progress — the spec waits on it'), display);
+    assert.ok(!display.includes('Tip: To restructure'), display);
   });
 
   it('completed sub-view: plural refine entries and back', () => {
@@ -985,6 +993,39 @@ describe('specification adapter: gateway verbs', () => {
     assert.ok(out.includes('# **`■ Completed Specifications`**'));
     assert.ok(/\*\*`1`\*\* +→ Refine "Done Spec" — \*completed\*/.test(out));
     assert.ok(/\*\*`b\/back`\*\* +→ Return to the specifications menu/.test(out));
+  });
+
+  it('view for blocked-discussions-open emits DATA + DISPLAY and no MENU or ACTIONS', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' }, c: { status: 'in-progress' } } } },
+    });
+    const out = run(['view', 'v1']);
+    assert.ok(out.includes('scenario: blocked-discussions-open'));
+    assert.ok(out.includes('Discussions are still open.'));
+    assert.ok(!out.includes('=== MENU'));
+    assert.ok(!out.includes('ACTIONS'));
+  });
+
+  it('view with a blocked row emits the blocked_spec ACTIONS entry and blocked_by in DATA', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { a: { status: 'in-progress' }, b: { status: 'completed' }, c: { status: 'completed' } } },
+        specification: {
+          items: {
+            'a-spec': { status: 'in-progress', sources: { a: { status: 'stale' } } },
+            'b-spec': { status: 'in-progress', sources: { b: { status: 'pending' } } },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
+    createFile(dir, '.workflows/v1/specification/b-spec/specification.md', '# B');
+    const out = run(['view', 'v1']);
+    assert.ok(out.includes('  1  blocked_spec  a-spec  —'));
+    assert.ok(out.includes('a-spec: in-progress, has_pending_sources=true, blocked_by=a'));
+    assert.ok(out.includes('=== MENU'));
   });
 
   it('no-arg and positional forms emit the thin state line, not sectioned output', () => {

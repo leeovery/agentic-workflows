@@ -40,7 +40,7 @@ const VALID_PHASE_STATUSES = {
   discovery:      /** @type {string[]} */ ([]),
   research:       ['triaged', 'in-progress', 'completed', 'superseded', 'cancelled'],
   discussion:     ['triaged', 'in-progress', 'completed', 'cancelled'],
-  investigation:  ['in-progress', 'completed', 'cancelled'],
+  investigation:  ['triaged', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
   specification:  ['proposed', 'in-progress', 'completed', 'superseded', 'promoted', 'cancelled'],
   planning:       ['in-progress', 'completed', 'cancelled'],

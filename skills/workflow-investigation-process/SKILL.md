@@ -122,7 +122,11 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 An earlier session already interviewed the user — don't re-interview. Fold in anything new they have mentioned this session (commit if the file changed).
 
-→ Proceed to **Step 4**.
+Then surface the triage queue — a gap routed here by a paused specification arrives as a queued concern; an empty queue is a no-op:
+
+→ Load **[rerouted-concerns.md](../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
+
+→ On return, proceed to **Step 4**.
 
 #### Otherwise
 

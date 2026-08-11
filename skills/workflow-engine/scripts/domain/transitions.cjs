@@ -448,8 +448,8 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
  * @returns {TopicQueueResult}
  */
 function queueStatus(cwd, workUnit, phase, topic) {
-  if (phase !== 'research' && phase !== 'discussion') {
-    throw new Error(`triage queues exist for research|discussion only — got "${phase}"`);
+  if (phase !== 'research' && phase !== 'discussion' && phase !== 'investigation') {
+    throw new Error(`triage queues exist for research|discussion|investigation only — got "${phase}"`);
   }
   assertLegalTopicName(topic);
   if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {

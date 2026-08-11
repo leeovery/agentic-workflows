@@ -1040,7 +1040,7 @@ function triageBlock(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'triage-block');
   const { files } = triageQueue(cwd, workUnit, phase, topic);
   if (!files.length) throw new Error(`render triage-block: the ${topic} ${phase} triage queue is empty — nothing blocks conclusion`);
-  const doing = phase === 'research' ? 'exploration' : 'discussion';
+  const doing = phase === 'research' ? 'exploration' : phase === 'investigation' ? 'investigation' : 'discussion';
   // A true blocker — the red register (see blocker()), guidance as markdown.
   return [
     section(

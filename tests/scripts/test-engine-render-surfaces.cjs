@@ -1534,6 +1534,12 @@ describe('render entry-gate', () => {
       specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'incorporated' } } } } },
     }, 'epic');
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
+    // Plural open sources list every holder.
+    manifestWith({
+      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'in-progress' }, c: { status: 'completed' } } },
+      specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'stale' }, b: { status: 'stale' } } } } },
+    }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are back in-progress: a, b/);
   });
 
   it('an unsupported phase is a loud error', () => {

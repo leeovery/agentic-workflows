@@ -1,6 +1,6 @@
 # Rerouted Concerns
 
-*Shared reference. Loaded by the session wrappers of `workflow-discussion-process` and `workflow-research-process`; the session loops enter **A. Check** from their triage check each iteration.*
+*Shared reference. Loaded by the session wrappers of `workflow-discussion-process` and `workflow-research-process` (whose session loops enter **A. Check** from their triage check each iteration) and by `workflow-investigation-process` at its resumed-session check and conclusion gate.*
 
 ---
 
@@ -12,7 +12,7 @@ The caller provides these via context before loading:
 
 - `work_unit` — the work unit. Always present.
 - `topic` — the current topic, whose queue is surfaced.
-- `phase` — `discussion` or `research`. Selects the artefact and the fold shape.
+- `phase` — `discussion`, `research`, or `investigation`. Selects the artefact and the fold shape.
 
 ## A. Check
 
@@ -178,6 +178,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_
 #### If `phase` is `research`
 
 Fold the concern into the freeform body as a `### {title}` thread opening with the provenance line, followed by the body and what the discussion made of it.
+
+→ Proceed to **E. Absorb**.
+
+#### If `phase` is `investigation`
+
+Fold the concern into the investigation file in its own idiom: revise the passages the settled answer touches directly, and where the concern opened ground the file never covered, add a `### {title}` section opening with the provenance line, followed by what the investigation made of it.
 
 → Proceed to **E. Absorb**.
 

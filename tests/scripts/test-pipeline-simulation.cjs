@@ -433,6 +433,23 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
     sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
 
+    // A spec-routed gap lands in the investigation's own triage queue: the
+    // delivery reopens the item and stales the spec row; the queue answers;
+    // absorb drains it and the pipeline re-concludes.
+    sim.write('.workflows/.cache/scratch/gap-concern.md', '### Gap — retry semantics\n\nWhat the spec needs decided.\n');
+    const gapLand = sim.run(['topic', 'triage', wu, 'investigation', wu,
+      '--concern', '.workflows/.cache/scratch/gap-concern.md', '--slug', 'retry-semantics', '-m', `spec(${wu}): gap routed to ${wu}`]);
+    assert.strictEqual(gapLand.reopened, true);
+    assert.deepStrictEqual(gapLand.sources_staled, [wu]);
+    const gapQueue = sim.run(['topic', 'queue', wu, 'investigation', wu]);
+    assert.strictEqual(gapQueue.files.length, 1);
+    sim.run(['topic', 'absorb', wu, 'investigation', wu,
+      '--file', gapQueue.files[0].split('/').pop(), '-m', `investigation(${wu}/${wu}): absorb retry-semantics (from ${wu})`]);
+    assert.strictEqual(sim.run(['topic', 'queue', wu, 'investigation', wu]).files.length, 0);
+    sim.run(['topic', 'complete', wu, 'investigation', wu]);
+    sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
+    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
+
     sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
   });
@@ -725,6 +742,8 @@ describe('pipeline simulation', () => {
     const gateWhileOpen = sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'content' });
     assert.match(gateWhileOpen, /Sources for "Unified" are back in-progress: beta/);
     const openView = specDetail(sim.dir, wu);
+    assert.strictEqual(openView.scenario, 'blocked-discussions-open',
+      'the single fast-path into an itself-blocked spec derives the terminal scenario');
     const openRow = openView.actionable.find((r) => r.name === 'unified');
     assert.strictEqual(openRow.blocked, true);
     assert.deepStrictEqual(openRow.open_sources, ['beta']);
