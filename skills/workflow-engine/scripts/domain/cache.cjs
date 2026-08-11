@@ -39,20 +39,13 @@ const KIND_CONFIG = {
     filesField: 'input_files',
     emptyError: 'nothing to stamp: no completed research or discussion files',
   },
-  'coherence-analysis': {
-    cacheFile: 'coherence-analysis.md',
-    phase: 'discovery',
-    field: 'coherence_analysis_cache',
-    filesField: 'input_files',
-    emptyError: 'nothing to stamp: no completed discussion files',
-  },
 };
 
 const KINDS = Object.keys(KIND_CONFIG);
 
 /**
  * @typedef {object} CacheStampResult
- * @property {string} kind      `research-analysis` | `gap-analysis` | `coherence-analysis`
+ * @property {string} kind      `research-analysis` | `gap-analysis`
  * @property {string} checksum
  * @property {number} files     how many input files the checksum covers
  * @property {string[]} warnings non-blocking failures (knowledge-base index)
@@ -71,14 +64,13 @@ function phaseObject(manifest, phase) {
  * Stamp one analysis cache: checksum the current completed inputs (exactly as
  * the read side collects them), write the cache object to its manifest home —
  * `phases.research.analysis_cache` (`files`) for research-analysis,
- * `phases.discovery.gap_analysis_cache` (`input_files`) for gap-analysis,
- * `phases.discovery.coherence_analysis_cache` (`input_files`) for
- * coherence-analysis — then index the kind's `.state/` cache file into the
- * knowledge base (warn-don't-block). Throws when there is nothing to stamp —
- * the analyses' preconditions skip the stamp when no qualifying inputs exist.
+ * `phases.discovery.gap_analysis_cache` (`input_files`) for gap-analysis —
+ * then index the kind's `.state/` cache file into the knowledge base
+ * (warn-don't-block). Throws when there is nothing to stamp — the analyses'
+ * preconditions skip the stamp when no qualifying inputs exist.
  * @param {string} cwd project root
  * @param {string} workUnit
- * @param {string} kind  `research-analysis` | `gap-analysis` | `coherence-analysis`
+ * @param {string} kind  `research-analysis` | `gap-analysis`
  * @returns {CacheStampResult}
  */
 function stampAnalysisCache(cwd, workUnit, kind) {

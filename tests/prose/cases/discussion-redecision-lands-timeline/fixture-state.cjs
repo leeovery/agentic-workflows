@@ -1,16 +1,15 @@
 'use strict';
 
-// The coherence loop's hand-off, landed: the seeded batch-vs-live-stream
+// A rerouted challenge, landed: the seeded batch-vs-live-stream
 // conflict (behavioural-ranking settled batch-only signal ingestion;
 // synonym-handling's expansion decision rests on a live click-signal
-// stream) was approved at the findings gate and triaged into
-// synonym-handling. `topic triage` reopened the completed discussion and
-// the concern sits in its Triage section under a title whose kebab-case
-// collides with the decided expansion-source subtopic — the next
-// session's drain must fold into the existing subtopic, not add a new
-// one. The gate's aftermath closes the world: the analysis cache file,
-// the triage commit, and the coherence stamp (one file, with the target
-// reopened — mirroring the gate's boot-time behaviour).
+// stream) was spotted in a later behavioural-ranking sitting and
+// rerouted into synonym-handling. `topic triage` reopened the completed
+// discussion and the concern sits in its Triage section under a title
+// whose kebab-case collides with the decided expansion-source subtopic
+// — the next session's drain must fold into the existing subtopic, not
+// add a new one. The delivery's self-commit closes the world with the
+// target reopened.
 
 const e = require('../../mainlines/epic.cjs');
 
@@ -94,20 +93,5 @@ module.exports = {
       '  click-signal stream.',
       '',
     ].join('\n'));
-    h.write(`.workflows/${WU}/.state/coherence-analysis.md`, [
-      '# Coherence Analysis Cache',
-      '',
-      '## Findings',
-      '',
-      '### batch-vs-live-stream',
-      '- **Category**: conflict',
-      '- **Docs**: behavioural-ranking.md, synonym-handling.md',
-      '- **Summary**: synonym expansion consumes a live click-signal stream that behavioural-ranking decided will not be built',
-      '- **Target**: synonym-handling',
-      '',
-    ].join('\n'));
-    h.engine('commit', WU, '-m', `discovery(${WU}): coherence findings triaged`);
-    h.engine('cache', 'stamp', WU, 'coherence-analysis');
-    h.engine('commit', WU, '-m', `discovery(${WU}): stamp coherence analysis`);
   },
 };

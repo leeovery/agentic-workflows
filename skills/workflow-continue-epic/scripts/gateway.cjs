@@ -165,7 +165,7 @@ function formatScoped(workUnit, result) {
   const d = e.detail;
   lines.push(`all_done: ${computeAllDone(d)}`);
   lines.push(`reconcile_pending: ${reconcilePending(d).join(', ') || '(none)'}`);
-  lines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}, coherence_analysis=${d.analysis_caches.coherence_analysis.status}`);
+  lines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   lines.push(`needs_sequencing: ${d.needs_sequencing}`);
   lines.push(`discovery_map (${d.discovery_map.length}):`);
   if (d.discovery_map.length === 0) {
@@ -212,7 +212,7 @@ function view(workUnit, newArrivalsJson) {
   dataLines.push(`sessions_in_progress: ${held.map((r) => `${r.phase}/${r.topic} (last active ${engine.presence.fmtAge(r.age_seconds)} ago)`).join(', ') || '(none)'}`);
   dataLines.push(`convergence: ${d.convergence_state || 'none'}`);
   dataLines.push(`needs_sequencing: ${d.needs_sequencing}`);
-  dataLines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}, coherence_analysis=${d.analysis_caches.coherence_analysis.status}`);
+  dataLines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   const phaseNames = Object.keys(d.phases);
   if (phaseNames.length > 0) {
     dataLines.push('phase_counts:');

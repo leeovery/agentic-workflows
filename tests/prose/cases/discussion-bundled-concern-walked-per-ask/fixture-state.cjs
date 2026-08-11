@@ -20,7 +20,7 @@ module.exports = {
 
     // The mainline's synonym-handling decision rests on the live
     // click-signal stream behavioural-ranking rejected — deliberate for
-    // the coherence cases, a latent mine here: the consult surfaces it
+    // the cross-document conflict cases, a latent mine here: the consult surfaces it
     // mid-fold and the document-review safety net reroutes it, mutating
     // a sibling this case's claims hold still. Re-conclude the document
     // coherently (batch-computed expansion, Sibling check in place) so

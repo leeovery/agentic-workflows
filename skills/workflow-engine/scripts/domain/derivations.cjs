@@ -218,10 +218,9 @@ function lastCompletedPhase(manifest, pipeline) {
 /**
  * The sorted set of existing completed input files for one analysis kind —
  * completed research files for `research-analysis`, completed research plus
- * completed discussion files for `gap-analysis`, completed discussion files
- * for `coherence-analysis`. The one collection both cache sides use: the
- * read (computeAnalysisCacheStatus) and the write (engine cache stamp)
- * checksum the same list, so they can never drift.
+ * completed discussion files for `gap-analysis`. The one collection both
+ * cache sides use: the read (computeAnalysisCacheStatus) and the write
+ * (engine cache stamp) checksum the same list, so they can never drift.
  * Returns absolute paths, sorted.
  */
 function collectAnalysisInputs(manifest, workflowsDir, kind) {
@@ -238,18 +237,13 @@ function collectAnalysisInputs(manifest, workflowsDir, kind) {
   if (kind === 'gap-analysis') {
     return [...completedFiles('research'), ...completedFiles('discussion')].sort();
   }
-  if (kind === 'coherence-analysis') {
-    return completedFiles('discussion').sort();
-  }
   return [];
 }
 
 // Per-kind config for computeAnalysisCacheStatus: where the cache object
-// lives, which field on it lists the cached file names, the two kind-
-// specific reason strings, and an optional input floor (`minInputs`,
-// default 1) below which the analysis never fires. The body is otherwise
-// one path for every kind — the same read the write side checksums
-// (collectAnalysisInputs).
+// lives, which field on it lists the cached file names, and the two kind-
+// specific reason strings. The body is otherwise one path for every kind —
+// the same read the write side checksums (collectAnalysisInputs).
 const ANALYSIS_KINDS = {
   'research-analysis': {
     cacheOf: (manifest) => ((manifest.phases || {}).research || {}).analysis_cache,
@@ -263,16 +257,6 @@ const ANALYSIS_KINDS = {
     reasonNoInputs: 'no completed research or discussion files',
     reasonStale: 'completed research/discussion has changed since gap analysis was generated',
   },
-  // Coherence is a cross-document property — with fewer than 2 completed
-  // discussions there is nothing to conflict, so the cache reads `absent`
-  // and single-discussion units (features) never see the analysis fire.
-  'coherence-analysis': {
-    cacheOf: (manifest) => ((manifest.phases || {}).discovery || {}).coherence_analysis_cache,
-    filesField: 'input_files',
-    minInputs: 2,
-    reasonNoInputs: 'fewer than 2 completed discussion files',
-    reasonStale: 'completed discussions have changed since coherence analysis was generated',
-  },
 };
 
 function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
@@ -284,15 +268,14 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   const cache = cfg.cacheOf(manifest);
   const inputPaths = collectAnalysisInputs(manifest, workflowsDir, kind);
   const cachedFiles = () => (cache && Array.isArray(cache[cfg.filesField])) ? cache[cfg.filesField] : [];
-  const minInputs = cfg.minInputs || 1;
 
   if (!cache || !cache.checksum) {
-    return inputPaths.length >= minInputs
+    return inputPaths.length > 0
       ? { status: 'stale', generated: null, files: [], reason: 'no cache exists' }
       : { status: 'absent', generated: null, files: [] };
   }
 
-  if (inputPaths.length < minInputs) {
+  if (inputPaths.length === 0) {
     return { status: 'absent', generated: cache.generated || null, files: cachedFiles(), reason: cfg.reasonNoInputs };
   }
 

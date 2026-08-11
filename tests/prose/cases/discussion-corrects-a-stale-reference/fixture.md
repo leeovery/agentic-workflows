@@ -8,10 +8,10 @@ Decision carries the Sibling check), but two of its prose sites — the
 Journey and a Current State bullet — still cite the click-weights table
 as the current mechanism.
 
-The coherence pass caught the stale reference and the user approved the
-finding. Triage reopened synonym-handling and installed the concern as
-one queue file whose title names no subtopic on the map. The gate's
-commit and the coherence stamp closed that session.
+A later behavioural-ranking sitting spotted the stale citation and
+rerouted it here. Triage reopened synonym-handling and installed the
+concern as one queue file whose title names no subtopic on the map;
+the delivery's own commit closed that session.
 
 This session opens cold at the discussion entry skill. There is nothing
 to re-decide — the correction's whole outcome is accepting that cited

@@ -52,8 +52,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.c
 const SPEC_GATEWAY = require(path.join(ROOT, 'skills/workflow-specification-entry/scripts/gateway.cjs'));
 const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
 
-// Spec-entry detail for one work unit — the surface the spec boundary's
-// coherence advisory reads.
+// Spec-entry detail for one work unit — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
   return specificationDetail(workUnit, SPEC_GATEWAY.discover(dir, workUnit));
 }
@@ -661,76 +660,6 @@ describe('pipeline simulation', () => {
     assert.strictEqual(redecided.all_decided, true);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
-    // Coherence: two completed discussions arm the analysis. The stamp
-    // checksums discussion files only; gate state and the dismissed
-    // fingerprints walk the manifest with validated vocabulary throughout.
-    const coherence = sim.run(['cache', 'stamp', wu, 'coherence-analysis']);
-    assert.strictEqual(coherence.kind, 'coherence-analysis');
-    assert.strictEqual(coherence.files, 2);
-    assert.ok(sim.manifest(wu).phases.discovery.coherence_analysis_cache.checksum);
-
-    // A discussion edit re-arms the analysis; findings stage into the gate.
-    sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n\nRevised: contradicts alpha.\n');
-    sim.run(['manifest', 'set', `${wu}.discovery`,
-      'analysis_staging.coherence-analysis.gate_mode=gated',
-      'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-retry.status=pending',
-      'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-auth.status=pending']);
-    sim.refuses(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-retry.status', 'maybe'], /Invalid candidate status/);
-
-    // Skip arm: the finding's fingerprint joins the dismissed list.
-    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-retry.status', 'skipped']);
-    sim.run(['manifest', 'push', `${wu}.discovery`, 'dismissed_findings', 'alpha|beta|retry-policy']);
-
-    // Spec entry surfaces the soft gate while the cache is stale and a
-    // finding still pends — informational fields, never a scenario change.
-    let specAdvisory = specDetail(sim.dir, wu);
-    assert.strictEqual(specAdvisory.coherence_status, 'stale');
-    assert.strictEqual(specAdvisory.coherence_pending, 1);
-
-    // Approve arm, in the gate's prescribed order: triage-landing reopens
-    // the yielding discussion FIRST; approval is recorded only on a landed
-    // result. Completion clears the spent state under one commit.
-    const coherenceReopen = sim.run(['topic', 'triage', wu, 'discussion', 'alpha']);
-    assert.strictEqual(coherenceReopen.reopened, true);
-    assert.strictEqual(coherenceReopen.status, 'in-progress');
-    sim.write(`.workflows/${wu}/discussion/alpha.md`,
-      '# Discussion — Alpha\n\n## Triage\n\n### Alpha vs beta auth\n*From: beta · discussion · 2026-07-30*\n\nBeta now contradicts the alpha auth decision.\n');
-    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.coherence-analysis.candidates.alpha-vs-beta-auth.status', 'approved']);
-    sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.coherence-analysis']);
-    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.discovery`, 'analysis_staging.coherence-analysis']).trim(), 'false');
-    sim.run(['commit', wu, '-m', `discovery(${wu}): coherence findings triaged`]);
-
-    // The boot-time stamp fires immediately after the gate, while the
-    // reopened target is still in-progress: it covers the one remaining
-    // completed discussion, and the read side reports absent (below the
-    // 2-input floor) until the target re-completes.
-    const partialStamp = sim.run(['cache', 'stamp', wu, 'coherence-analysis']);
-    assert.strictEqual(partialStamp.files, 1);
-    specAdvisory = specDetail(sim.dir, wu);
-    assert.strictEqual(specAdvisory.coherence_status, 'absent');
-    assert.strictEqual(specAdvisory.coherence_pending, 0);
-
-    // The analysis pass ends with the host's sweep commit — stamp dirt
-    // (cache files, manifest) never survives to the dashboard render.
-    sim.run(['commit', wu, '-m', `discovery(${wu}): analysis run bookkeeping`]);
-    const postSweep = git(sim.dir, ['status', '--porcelain', '--', `.workflows/${wu}`, '.workflows/.knowledge']);
-    assert.strictEqual(postSweep.trim(), '', 'analysis sweep leaves a clean tree');
-
-    // The drain re-concludes the reopened discussion; the corpus is back
-    // above the floor and the 1-file stamp reads stale.
-    sim.write(`.workflows/${wu}/discussion/alpha.md`,
-      '# Discussion — Alpha\n\nRe-decided: aligned with beta.\n');
-    sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
-    specAdvisory = specDetail(sim.dir, wu);
-    assert.strictEqual(specAdvisory.coherence_status, 'stale');
-
-    // The loop closes: a clean pass re-stamps over both files and the
-    // spec advisory goes quiet.
-    const fullStamp = sim.run(['cache', 'stamp', wu, 'coherence-analysis']);
-    assert.strictEqual(fullStamp.files, 2);
-    specAdvisory = specDetail(sim.dir, wu);
-    assert.strictEqual(specAdvisory.coherence_status, 'valid');
-    assert.strictEqual(specAdvisory.coherence_pending, 0);
     // Cancel/reactivate round-trips the stub; start is the one exit from triaged.
     sim.run(['topic', 'cancel', wu, 'research', 'delta']);
     assert.strictEqual(sim.manifest(wu).phases.research.items.delta.previous_status, 'triaged');

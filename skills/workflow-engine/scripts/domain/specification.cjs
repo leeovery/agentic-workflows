@@ -33,7 +33,6 @@
  * @property {{name: string, status: string, has_individual_spec: boolean, spec_status?: string}[]} discussions
  * @property {DiscoverySpec[]} specifications
  * @property {{entries: {status: string}[]}} cache
- * @property {{status: 'valid'|'stale'|'absent', pending: number}} [coherence]  coherence-analysis advisory state (adapter-computed; single-unit scope)
  * @property {{discussion_count: number, completed_count: number, in_progress_count: number,
  *   spec_count: number, proposed_count: number, concluded_count: number,
  *   has_discussions: boolean, has_completed: boolean,
@@ -89,8 +88,6 @@
  * @property {SpecRow[]} concluded          completed with no pending sources
  * @property {boolean} has_materialized     any non-proposed spec exists
  * @property {SingleContext|null} single    set for the single scenario only
- * @property {'valid'|'stale'|'absent'} coherence_status   coherence-analysis cache state (advisory; `absent` for non-epics)
- * @property {number} coherence_pending     coherence findings awaiting review (deferred gate)
  */
 
 /** Display tag for one materialized source. @param {DiscoverySource} src */
@@ -230,8 +227,6 @@ function specificationDetail(workUnit, result, opts = {}) {
   else if (cs.spec_count === 0) scenario = 'analyze';
   else scenario = 'specs-menu';
 
-  const coherence = result.coherence || { status: 'absent', pending: 0 };
-
   return {
     work_unit: workUnit,
     scenario,
@@ -244,8 +239,6 @@ function specificationDetail(workUnit, result, opts = {}) {
     concluded,
     has_materialized: result.specifications.some((s) => s.status !== 'proposed'),
     single,
-    coherence_status: coherence.status,
-    coherence_pending: coherence.pending,
   };
 }
 
