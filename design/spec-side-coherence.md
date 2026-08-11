@@ -281,3 +281,81 @@ Checklist for the fresh session (all on PR #873) — **completed
 Presentation rule for the session (Lee's standing ask): anything shown
 as example/rendered output is bracketed with explicit markers (▼ begins
 / ▲ ends); commentary never inside the markers.
+
+## Review rulings (2026-08-11, second pass) — the final model
+
+The post-rework review pass (8 finders) surfaced seams between the new
+hard blocks and the surfaces that route into them, plus flow holes in
+the gap exit. Lee's rulings, settled in conversation:
+
+**The three moves (replaces the earlier classification tiers):**
+
+1. **Derivable → silent.** Anything Claude can settle from the record
+   (timeline supersession, stale cross-references, any no-brainer):
+   read, derive, write the spec chunk, move on. No raise, no mention,
+   no document edits, no reindex. This DELETES the repair-of-record
+   machinery — the silent tier never touches a historical artefact,
+   so the quiet doc-edit, its reindex, its `sources stale --except`,
+   and the "Resolved along the way" note all go. Historical artefacts
+   change only through the collaborative door (move 2).
+2. **Settleable stop.** Quick exchange; Claude takes a stance
+   (conflict menu where sides are documented, plain question where
+   not). The canonical decision mirrors back to the owning document
+   (timeline entry), reindexes, stales sibling extractions,
+   construction continues. Can escalate into move 3 mid-conversation.
+3. **Gap stop.** "We found a gap; we must stop." A real STOP gate —
+   acknowledgement, not choice (`y/yes` confirms; an objection drops
+   into move 2's conversation; there is no "no"). On confirm:
+   liveness check first (is this spec item still live? a parallel
+   session may have collapsed it — if dead, say so and exit), then
+   land the gap in the owning discussion's triage queue (one landing
+   per owning document, several gaps pause once), pause the spec,
+   and route to the work type's navigation layer — epic: invoke
+   workflow-continue-epic (menu shows the reopened discussions; the
+   pause message names them: "re-conclude ABC; the spec unblocks");
+   feature/bugfix: invoke their continue skill the same way.
+
+**Queues are universal for gap routing.** The triage queue machinery
+is epic-only at its *source* (cross-topic reroutes), not in the
+engine or the consuming session loop. A feature's gap lands in its
+own discussion's queue; a bugfix's in its investigation's queue —
+context-clear-proof, surfaced at re-entry, conclusion-blocking.
+(Check: the investigation process must surface queues like the
+discussion process does; extend if missing.)
+
+**Cancel cascades with confirm.** Cancelling a discussion named in a
+live specification's sources collapses that spec. The engine refuses
+the bare cancel naming the affected spec(s); a cascade flag cancels
+discussion + specs in one transaction; the menu prose confirm-gates
+with the collapse warning. This makes the failed-landing loop
+unreachable (a cancelled source can only coexist with a dead spec,
+which the liveness check catches).
+
+**Epic menu hard-blocks, two regimes.** (i) No groupings/specs yet:
+the spec route is hard-blocked until every discussion is concluded —
+the soft gate's "proceeding now is safe" dies. (ii) Specs exist: a
+spec whose source discussion reopened is blocked (named reason);
+settled specs pass; the route itself blocks when nothing behind it
+is workable — which makes the all-blocked scoped menu unreachable,
+so it needs no special handling.
+
+**Bugfix flip.** `flagDownstream`'s reverse join extends to
+investigation sources: reopening an investigation stales the spec
+rows naming it, so the pause's "engine refuses to conclude" promise
+is true for bugfixes too.
+
+**Vocabulary.** "back open" dies — existing terms only: a discussion
+is `in-progress` again / `reopened`. No new stored state: blocked
+and paused are derived (source rows + discussion status), never
+written to the manifest.
+
+Unambiguous review fixes riding along: sourceRows exported and
+reused by the entry gate (single decoder); `pending, reopened` tag
+(pending no longer short-circuits the reopened cue); SpecRow typedef
+lists every tag; record-open derived once on the detail; blocked
+info emitted in DATA (prose never re-derives); menu blocked rows
+keep their verb; validate-source/commands.md/route-scenario/
+display-analyze premises updated; docs/lifecycle-operations.md
+warn-not-wall paragraph corrected; adapter/sim/golden coverage for
+the new states; docs/specification.md re-told (silent tier edits
+nothing; gap stop acknowledges then routes to the menu).
