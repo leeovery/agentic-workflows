@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.59] - 2026-08-11
+
+✨ Added
+- Specification construction now resolves conflicts between source discussions in the flow of writing the spec — timeline supersessions and derivable repairs are settled silently, small ambiguities get a quick conflict-menu question, and genuine gaps route back to the owning discussion with the spec paused until it's re-concluded.
+- Cancelling a discussion or investigation that a live specification is built from now warns you which spec(s) collapse and lets you cancel them together in one step (`--cascade`), instead of silently orphaning the spec.
+- Investigations can now receive rerouted concerns via the triage queue, same as research and discussion, and the conclusion gate blocks until the queue is drained.
+
+🔧 Changed
+- The epic coherence analysis (background conflict-hunting across completed discussions, with its own review gate) has been removed — its value is now folded into specification construction instead of running as a separate reopening cycle.
+- Specification entry now hard-blocks while any discussion is still open or a spec's own source discussion has gone back in-progress, rather than just warning — groupings and specs can no longer be built from an unsettled record.
+- `topic complete` now refuses to complete a specification while any source is still pending extraction or stale from a reopened discussion, enforced by the engine rather than left to prose discipline.
+- Epic menu and display surfaces now show blocked specification items explicitly, naming which reopened discussion(s) are holding them up.
+
 ## [0.6.58] - 2026-08-10
 
 ✨ Added
