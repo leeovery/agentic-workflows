@@ -192,6 +192,26 @@ session handshake stall. Stack trace points at refreshSession.
 MD
 }
 
+# Create a project baseline doc at .workflows/.baseline/{topic}.md.
+create_baseline_file() {
+  local topic="$1"
+  mkdir -p "$TEST_ROOT/.workflows/.baseline"
+  cat > "$TEST_ROOT/.workflows/.baseline/$topic.md" <<'MD'
+# Product Baseline
+
+## What the product is
+
+A gatekeeper service accepting pension-trace applications from partner
+systems and pushing them downstream through a resumable workflow.
+
+## Dispatcher
+
+The DownstreamDispatcher polls enqueued applications behind a circuit
+breaker and an operator kill-switch. OPEN: the poll cadence is a tuned
+constant with no recorded rationale.
+MD
+}
+
 # Create an analysis cache file under .state/.
 # Filename arg must be one of: research-analysis | discovery-gap-analysis.
 create_analysis_cache() {
@@ -3167,6 +3187,92 @@ cd "$TEST_ROOT"
 assert_eq "source CLI indexes successfully" "0" "$srcexit"
 assert_eq "source CLI reports chunks" "true" \
   "$(echo "$srcout" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
+teardown_project
+
+# ============================================================================
+# BASELINE TESTS
+# ============================================================================
+
+echo ""
+echo "=== Baseline Tests ==="
+
+# --- Test B1: Index a baseline doc (no work unit, no registry entry) ---
+echo "Test B1: Index a baseline doc"
+setup_project
+write_stub_config
+create_baseline_file "overview"
+output=$(run_kb index .workflows/.baseline/overview.md 2>&1)
+assert_eq "indexes baseline doc" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
+teardown_project
+
+# --- Test B2: Query shows [baseline | baseline/topic | low] provenance ---
+echo "Test B2: Baseline provenance in query output"
+setup_project
+write_stub_config
+create_baseline_file "overview"
+run_kb index .workflows/.baseline/overview.md >/dev/null 2>&1
+output=$(run_kb query "dispatcher circuit breaker" 2>&1)
+assert_eq "has baseline provenance line" "true" \
+  "$(echo "$output" | grep -q 'baseline | baseline/overview | low' && echo true || echo false)"
+assert_eq "source points at the baseline doc" "true" \
+  "$(echo "$output" | grep -q 'Source: .workflows/.baseline/overview.md' && echo true || echo false)"
+teardown_project
+
+# --- Test B3: Baseline session state under .baseline/.state/ is refused ---
+echo "Test B3: .baseline/.state/ paths are not indexable"
+setup_project
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/.baseline/.state"
+echo "# agenda" > "$TEST_ROOT/.workflows/.baseline/.state/agenda.md"
+exit_code=0
+output=$(run_kb index .workflows/.baseline/.state/agenda.md 2>&1) || exit_code=$?
+assert_eq "refuses .state path" "1" "$exit_code"
+assert_eq "explains the expected shape" "true" \
+  "$(echo "$output" | grep -q 'Unexpected baseline path structure' && echo true || echo false)"
+teardown_project
+
+# --- Test B4: Dotted baseline topic rejected ---
+echo "Test B4: Dotted baseline topic rejected"
+setup_project
+write_stub_config
+create_baseline_file "dotted.name"
+exit_code=0
+output=$(run_kb index ".workflows/.baseline/dotted.name.md" 2>&1) || exit_code=$?
+assert_eq "refuses dotted topic" "1" "$exit_code"
+assert_eq "names the dot rule" "true" \
+  "$(echo "$output" | grep -q 'dots are not allowed' && echo true || echo false)"
+teardown_project
+
+# --- Test B5: remove --work-unit baseline works without a registry entry ---
+echo "Test B5: Remove baseline chunks"
+setup_project
+write_stub_config
+create_baseline_file "overview"
+run_kb index .workflows/.baseline/overview.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit baseline 2>&1)
+assert_eq "remove succeeds" "true" "$(echo "$output" | grep -qE 'Removed [0-9]+ chunks' && echo true || echo false)"
+assert_eq "not treated as orphan cleanup" "true" \
+  "$(echo "$output" | grep -q 'orphan cleanup' && echo false || echo true)"
+query_after=$(run_kb query "dispatcher" 2>&1)
+assert_eq "baseline chunks gone" "true" \
+  "$(echo "$query_after" | grep -q 'baseline | baseline/overview' && echo false || echo true)"
+teardown_project
+
+# --- Test B6: Bulk index discovers baseline docs with zero work units ---
+echo "Test B6: Bulk index finds baseline docs on a bare install"
+setup_project
+write_stub_config
+create_baseline_file "overview"
+create_baseline_file "glossary"
+mkdir -p "$TEST_ROOT/.workflows/.baseline/.state"
+echo "# dossier" > "$TEST_ROOT/.workflows/.baseline/.state/dossier-core.md"
+output=$(run_kb index 2>&1)
+assert_eq "bulk index processes overview" "true" \
+  "$(echo "$output" | grep -q '.baseline/overview.md' && echo true || echo false)"
+assert_eq "bulk index processes glossary" "true" \
+  "$(echo "$output" | grep -q '.baseline/glossary.md' && echo true || echo false)"
+assert_eq "bulk index skips session state" "true" \
+  "$(echo "$output" | grep -q 'dossier-core' && echo false || echo true)"
 teardown_project
 
 # --- Summary ---

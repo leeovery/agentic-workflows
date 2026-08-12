@@ -22,6 +22,7 @@ const { git } = require('../kernel/git.cjs');
 const { commitScopedLocked, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
 const { labelConfigStatus, configDir } = require('./session-label.cjs');
+const { readProjectManifest } = require('../kernel/manifest-io.cjs');
 
 // Resolved against this file so it works wherever the skill tree is installed.
 const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.cjs');
@@ -62,6 +63,7 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
  * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
  * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
+ * @property {'none'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means never started (workflow-start's one-time offer)
  * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
  */
 
@@ -97,6 +99,26 @@ function detectSystemConfig() {
   } catch (_) {
     return { status: 'invalid', provider: null, model: null };
   }
+}
+
+/**
+ * Read the project baseline status off the project manifest. Anything other
+ * than a recognised lifecycle value — including a missing manifest or a
+ * malformed field — reports `none`, the never-started state the one-time
+ * offer keys on.
+ * @param {string} cwd
+ * @returns {BootResult['baseline']}
+ */
+function baselineStatus(cwd) {
+  try {
+    const manifest = readProjectManifest(path.join(cwd, '.workflows'));
+    const status = manifest && manifest.baseline && manifest.baseline.status;
+    if (status === 'in-progress' || status === 'completed' || status === 'skipped') return status;
+  } catch (_) {
+    // A corrupt project manifest is surfaced by the verbs that write it;
+    // boot's baseline probe degrades to the offer-eligible default.
+  }
+  return 'none';
 }
 
 /**
@@ -216,7 +238,7 @@ function boot(cwd) {
   }
 
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd) };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), baseline: baselineStatus(cwd) };
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.

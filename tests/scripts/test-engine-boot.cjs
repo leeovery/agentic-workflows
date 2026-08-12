@@ -172,8 +172,39 @@ describe('engine boot', () => {
       kb_committed: null,
       warnings: [],
       tmux_labels: 'prompt',
+      baseline: 'none',
     });
     assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'compact']);
+  });
+
+  it('baseline: reports the project-manifest status; unrecognised or malformed values read none', () => {
+    const projManifest = path.join(fix.project, '.workflows/manifest.json');
+
+    for (const status of ['in-progress', 'completed', 'skipped']) {
+      fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status } }));
+      const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+      assert.strictEqual(res.baseline, status);
+    }
+
+    // Unrecognised value → none (the offer-eligible default).
+    fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'weird' } }));
+    assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+
+    // Malformed field shape → none.
+    fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: 'in-progress' }));
+    assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+
+    // No project manifest at all → none.
+    fs.rmSync(projManifest);
+    assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+  });
+
+  it('baseline: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {
+    fs.writeFileSync(path.join(fix.project, '.workflows/manifest.json'),
+      JSON.stringify({ work_units: {}, baseline: { status: 'in-progress' } }));
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'not-ready' });
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.baseline, 'in-progress');
   });
 
   it('pending migration: changed true, report captured with the stop-gate lines stripped', () => {

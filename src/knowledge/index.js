@@ -20,7 +20,13 @@ const setupForms = require('./setup-forms');
 // Constants
 // ---------------------------------------------------------------------------
 
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery'];
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery', 'baseline'];
+
+// Baseline docs are project-level (`.workflows/.baseline/{topic}.md`) — they
+// belong to no work unit, so their chunks carry this reserved pseudo-identity
+// for both work_unit and work_type. The engine reserves the name at
+// work-unit creation, so a real work unit can never collide with it.
+const BASELINE_IDENTITY = 'baseline';
 
 // Phases whose artifact is a flat `{phase}/{basename}.md` file — one identical
 // derivation (topic = basename, no subdirectories). specification (nested under
@@ -315,6 +321,30 @@ function rejectDottedSegment(kind, name) {
 function deriveIdentity(filePath) {
   // Normalise to forward slashes for pattern matching.
   const norm = filePath.replace(/\\/g, '/');
+
+  // Baseline docs live at .workflows/.baseline/{topic}.md — project-level,
+  // under no work unit. Matched first: the dotted directory would otherwise
+  // fall into the .state capture below and surface a misleading "invalid
+  // work unit" error. Only flat {topic}.md files are docs; anything nested
+  // (the interview ledger and research dossiers under .baseline/.state/) is
+  // session state and refused loudly.
+  const baselineMatch = /\.workflows\/\.baseline\/(.+)$/.exec(norm);
+  if (baselineMatch) {
+    const rest = baselineMatch[1];
+    const fileMatch = /^([^/]+)\.md$/.exec(rest);
+    if (!fileMatch) {
+      throw new UserError(
+        `Unexpected baseline path structure: ${rest}\n` +
+          'Expected: .workflows/.baseline/{topic}.md'
+      );
+    }
+    const topic = fileMatch[1];
+    if (topic === '.' || topic === '..' || topic.startsWith('.')) {
+      throw new UserError(`Invalid topic name: "${topic}"`);
+    }
+    rejectDottedSegment('topic', topic);
+    return { workUnit: BASELINE_IDENTITY, phase: 'baseline', topic };
+  }
 
   // Analysis caches live at .workflows/{wu}/.state/{filename}.md and need a
   // separate match — the main phase regex enumerates known phases and would
@@ -615,8 +645,9 @@ async function cmdIndex(args, options, cfg, provider) {
  * Separated from cmdIndex so it can be called by both single-file and bulk modes.
  */
 async function indexSingleFile(sourceFile, identity, cfg, provider) {
-  // Read work_type from manifest.
-  const workType = readWorkType(identity.workUnit);
+  // Read work_type from manifest. Baseline is project-level — no work-unit
+  // manifest exists to read, so its chunks carry the pseudo work_type.
+  const workType = identity.phase === 'baseline' ? BASELINE_IDENTITY : readWorkType(identity.workUnit);
 
   // Load chunking config. In the bundle, __dirname is
   // skills/workflow-knowledge/scripts/, whose sibling ../chunking/ ships the
@@ -931,6 +962,28 @@ function collectFlatEntries(wu, wuName, field) {
  */
 function discoverArtifacts(workUnits) {
   const items = [];
+
+  // Baseline docs — project-level and registry-independent. They exist before
+  // the first work unit (the brownfield install moment), so they are
+  // discovered ahead of the manifest walk and never gated on it. Flat
+  // {topic}.md only, no dots in the topic (mirrors deriveIdentity); the
+  // .baseline/.state/ session files never match.
+  const baselineDir = path.posix.join('.workflows', '.baseline');
+  let baselineFiles = [];
+  try {
+    baselineFiles = fs.readdirSync(resolveArtifactPath(baselineDir)).filter((f) => /^[^./]+\.md$/.test(f));
+  } catch (_) {
+    baselineFiles = [];
+  }
+  for (const f of baselineFiles) {
+    items.push({
+      file: path.posix.join(baselineDir, f),
+      workUnit: BASELINE_IDENTITY,
+      phase: 'baseline',
+      topic: f.slice(0, -3),
+    });
+  }
+
   const units = workUnits || listWorkUnits('discoverArtifacts:list');
   if (!Array.isArray(units) || units.length === 0) return items;
 
@@ -2214,8 +2267,13 @@ async function cmdRemove(_args, options) {
   // registry-not-found, fall through to a store probe — if the store has
   // chunks for this WU we treat it as an orphan cleanup and proceed; if
   // not, surface the typo error.
+  // Baseline is file-based, project-level, and never in the work-unit
+  // registry — the registry probe below would misreport a legitimate remove
+  // as an orphan cleanup. Skip straight to removal.
   let isOrphanCleanup = false;
-  const projectEntry = runManifest(['get', `project.work_units.${options.workUnit}`]).trim();
+  const projectEntry = options.workUnit === BASELINE_IDENTITY
+    ? BASELINE_IDENTITY
+    : runManifest(['get', `project.work_units.${options.workUnit}`]).trim();
   if (projectEntry === '') {
     const sp = storePath();
     let storeMatch = 0;
