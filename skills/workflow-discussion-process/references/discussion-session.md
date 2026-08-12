@@ -29,7 +29,9 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    - **Perspective agents**: follow **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)** — promotes completed perspective sets to synthesis, then delegates to the shared surfacing protocol for synthesis findings.
    
    Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the shared protocol.** Skip only when no agents have been dispatched yet — the store decides, not the iteration count: a resumed session may hold agents from an earlier sitting.
-2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
+
+   Last, at a natural break with no screen or raise left open: flush the conversation's own queued calls — follow **H. Settled Calls**. A resumed session's non-empty queue flushes here too.
+2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**H. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
@@ -151,6 +153,8 @@ One ceremony, two ways in — enter when either, or both at once, holds:
 - **Convergence read** — every subtopic on the Discussion Map is `decided` (or `deferred`), and neither you nor the user can identify new subtopics without breaking scope. Convergence is the natural end state, never a forced conclusion.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
 
+A non-empty calls queue flushes first — follow **H. Settled Calls**; an unlanded call is undocumented knowledge, and conclusion proceeds only over an empty queue.
+
 Run the map call:
 
 ```bash
@@ -198,5 +202,55 @@ Load **[closing-gates.md](closing-gates.md)** and follow its instructions as wri
 #### If `all_decided` is false and you read convergence
 
 It isn't convergence — undecided subtopics remain. Keep exploring.
+
+→ Return to **B. Session Loop**.
+
+---
+
+## H. Settled Calls
+
+The conversation's own derivable decisions — points **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)** puts on your side — accumulate in a queue and land through a batch screen at natural breaks: never one-by-one asks, never silent writes.
+
+**Queue.** The moment a call is made, append it to `.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` with the Write tool (`{"items": [{"title": "…", "detail": "…"}]}` — `title` states the call as a decision, `detail` is one or two sentences naming the problem and what determined it). The file is the queue's only home — conversation memory does not survive compaction — and it is durable: commits are the record of what landed, the file holds only what hasn't. Then continue the thread.
+
+**Flush.** Entered from the session loop's check (natural break, nothing else open) or from **G. Concluding**. Take the first five queued items, write them as a screen payload, and render it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/calls-batch.json
+```
+
+The payload is `{"lane": "decide", "items": […]}` — the queued entries as written. Emit the call's DISPLAY and MENU sections, each verbatim per its marker — except on a re-entry after an answered question that changed nothing, where the list on screen is still current: emit the MENU section alone. A re-entry whose screen did change (a pull left survivors) rewrites the payload and re-renders both sections, renumbered.
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+Document each call in turn — into the subtopic that owns it (the template's full structure where the subtopic has no section yet, a dated revision entry where a decided block exists), the Decision block opening with the template's derivation marker; when no subtopic on the Discussion Map owns it, add one and set it `decided` in the same move (`discussion-map add`, then `discussion-map set … decided`). Commit each write before starting the next (session loop step 5's dispatch check included), then remove the landed items from the queue file.
+
+Confirm in one line total — `All {N} documented.` — never a per-call recap.
+
+**If the queue still holds items**, the next screen is owed in the same turn:
+
+→ Return to **H. Settled Calls** (Flush).
+
+**If the queue is empty**, delete the file. Nothing is pending, so the turn continues — resume the thread the break paused.
+
+→ Return to **B. Session Loop**.
+
+**If the user names one to talk through** — the Discuss route, or any answer that rejects a call rather than asking about it:
+
+Remove it from the queue — it has left the batch for the conversation. Then check the survivors: any whose derivation rests on the ground the pulled call reopens leaves with it, back to the conversation alongside. Nothing lands. Re-render the screen with what survives, renumbered — and once the remaining screens have landed, raise each pulled call as a plain conversational question, derivation on the table, asking what it missed.
+
+→ Return to **H. Settled Calls** (Flush).
+
+**If the user asks about a number:**
+
+Answer it — the derivation in full, what it rests on. Expanding is not objecting; the screen stands.
+
+→ Return to **H. Settled Calls** (Flush).
+
+**If the user moves on without answering** — they bounce to another subtopic or pick up a new thread:
+
+Nothing lands; the queue survives on disk. Follow them — the next natural break re-offers the flush.
 
 → Return to **B. Session Loop**.

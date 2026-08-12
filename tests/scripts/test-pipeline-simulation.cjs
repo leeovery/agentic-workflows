@@ -1181,6 +1181,20 @@ describe('pipeline simulation', () => {
       items: [{ title: 'a', detail: 'follows from the tier decision' }, { title: 'b', detail: 'retracted rationale, unstruck' }],
     }));
     sim.render(['finding-batch', `${wu}.research.alpha`, '--file', payload], { expect: 'content' });
+    // The decide lane carries the veto menu; a screen past the five-item cap
+    // is refused whole — pagination is the prose's job, screens the engine's.
+    const decidePayload = `.workflows/.cache/${wu}/research/alpha/batch-decide.json`;
+    sim.write(decidePayload, JSON.stringify({
+      lane: 'decide',
+      items: [{ title: 'd', detail: 'determined by the tier decision' }],
+    }));
+    assert.match(sim.render(['finding-batch', `${wu}.research.alpha`, '--file', decidePayload], { expect: 'content' }),
+      /\*\*Discuss\*\*/, 'the decide menu carries the discuss route');
+    sim.write(decidePayload, JSON.stringify({
+      lane: 'decide',
+      items: Array.from({ length: 6 }, (_, i) => ({ title: `d${i}`, detail: 'x' })),
+    }));
+    sim.refuses(['render', 'finding-batch', `${wu}.research.alpha`, '--file', decidePayload], /at most 5 items/);
     // The route lane requires each item's title alongside its target — a
     // producer still writing the bare {target, detail} pair fails here.
     const routePayload = `.workflows/.cache/${wu}/research/alpha/batch-route.json`;

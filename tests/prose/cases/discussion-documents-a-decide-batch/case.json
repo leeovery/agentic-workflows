@@ -1,0 +1,61 @@
+{
+  "origin": "the surfacing protocol had no lane for a call the record settles but the document never made — every such finding was walked as a full raise, and a live epic's user answered eleven of eighteen presentations with a bare yes; the decide lane batches those calls onto one scannable screen, landed on approval with their derivations on record",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-discussion-entry/references/gather-context.md"
+  ],
+  "answers": [
+    "c — continue",
+    "y — yes, work through them now",
+    "y — yes, document them all"
+  ],
+  "conduct": "The user is picking a card-payments discussion back up after most of a day away. They are brisk and want to spend their attention on genuine decisions, not on ratifying settled ones. Asked whether to look at what the background review returned, they say yes. Shown a screen of calls the record already determines, they scan it, find both derivations sound, and approve the lot in one go — they ask about nothing, pull nothing to discuss, and offer no new material of their own.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "agent scan pay discussion pay",
+      "render finding-batch pay.discussion.pay",
+      "discussion-map add pay pay",
+      "agent surface pay discussion pay review-001 F1,F2"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "agent scan pay discussion pay",
+      "render finding-batch pay.discussion.pay",
+      "agent surface pay discussion pay review-001 F1,F2"
+    ],
+    "calls_exclude": [
+      "agent dispatch",
+      "agent ack",
+      "agent incorporate",
+      "topic complete",
+      "knowledge.cjs index"
+    ]
+  }
+}

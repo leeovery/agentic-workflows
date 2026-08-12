@@ -838,18 +838,30 @@ function rerouteCandidates(cwd, { dotpath, file }) {
   );
 }
 
-// finding-batch — a surfacing lane whose findings ask nothing of the user
-// beyond a yes: the `apply` batch (corrections determined by decisions
-// already made) and the `route` batch (concerns owned by a sibling topic).
-// The lane fixes the chrome; the payload carries only judgment content, so
-// the screen is one call and the prose holds no template.
+// finding-batch — a surfacing lane whose findings need at most a scan from
+// the user: the `apply` batch (corrections determined by decisions already
+// made), the `decide` batch (calls settled by the record or first
+// principles, presented for veto before they land), and the `route` batch
+// (concerns owned by a sibling topic). The lane fixes the chrome; the
+// payload carries only judgment content, so the screen is one call and the
+// prose holds no template. A screen holds at most BATCH_MAX items — a
+// larger lane renders over successive screens, each approved on its own.
 
-/** @type {Record<string, {intro: string, confirm: (n: number) => string, ask: string, fields: string[]}>} */
+const BATCH_MAX = 5;
+
+/** @type {Record<string, {intro: string, confirm: (n: number) => string, discuss?: string, ask: string, fields: string[]}>} */
 const BATCH_LANES = {
   apply: {
     intro: "The fix follows from what's already decided. Nothing here is a choice.",
     confirm: (n) => `Apply all ${n}, then move on`,
     ask: "Tell me a number to expand, or one you don't think is settled",
+    fields: ['title', 'detail'],
+  },
+  decide: {
+    intro: "Each of these has one defensible answer, settled by what's already decided or by first principles. I've made each call and named what determined it.",
+    confirm: (n) => `Document all ${n} and move on`,
+    discuss: "Name one to talk through — I'll raise it after the rest land",
+    ask: 'Tell me a number to expand',
     fields: ['title', 'detail'],
   },
   route: {
@@ -876,6 +888,9 @@ function findingBatch(cwd, { dotpath, file }) {
   if (!Array.isArray(p.items) || p.items.length === 0) {
     throw new Error(`render finding-batch: "items" must be a non-empty array of {${lane.fields.join(', ')}}`);
   }
+  if (p.items.length > BATCH_MAX) {
+    throw new Error(`render finding-batch: a screen holds at most ${BATCH_MAX} items (${p.items.length} given) — render the lane over successive screens`);
+  }
   p.items.forEach((it, i) => {
     for (const field of lane.fields) {
       if (!isFilled(it[field])) throw new Error(`render finding-batch: item ${i + 1} is missing "${field}"`);
@@ -894,6 +909,7 @@ function findingBatch(cwd, { dotpath, file }) {
       "emit verbatim as markdown, then STOP for the user's response",
       menu('', [
         cmdOption('y', 'yes', lane.confirm(p.items.length)),
+        ...(lane.discuss ? [promptOption('Discuss', lane.discuss)] : []),
         promptOption('Ask', lane.ask),
       ]),
     ),

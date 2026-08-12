@@ -57,6 +57,6 @@ Arguing a side you don't hold, to pressure-test a decision. Rare, and always lab
 - Once. If it does not land, drop it — never relitigate.
 - Never on something already decided and walked past.
 
-How hard to challenge is a per-phase matter and lives with each phase's own guidelines. This file governs the manner of a challenge, never how often to make one.
+How hard to challenge is a per-phase matter and lives with each phase's own guidelines. This file governs the manner of a challenge, never how often to make one. Whether a point needs a question at all is [ask-or-decide.md](ask-or-decide.md)'s.
 
 → Return to caller.
