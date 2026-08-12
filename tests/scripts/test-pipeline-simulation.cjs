@@ -668,14 +668,14 @@ describe('pipeline simulation', () => {
     // Session labels, as every process skill's Step 0 issues them: an
     // unconfigured opt-in answers a disabled no-op; opted in but outside
     // tmux (the sim strips the identity) answers no-tmux; an unknown phase
-    // refuses; the cleanup sweep reports the restore leg it rode.
+    // refuses; the SessionEnd restore sweep answers with nothing to restore.
     const label0 = sim.run(['session', 'label', wu, 'research', 'alpha']);
     assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
     sim.run(['session', 'label-config', 'true']);
     const label1 = sim.run(['session', 'label', wu, 'discussion', 'alpha']);
     assert.deepStrictEqual(label1, { ok: true, labelled: false, reason: 'no-tmux' });
     sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
-    assert.strictEqual(sim.run(['presence', 'cleanup', 'sim-sess']).label_restored, false);
+    assert.deepStrictEqual(sim.run(['session', 'cleanup', 'sim-sess']), { ok: true, restored: false });
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

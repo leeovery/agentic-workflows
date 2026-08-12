@@ -6,7 +6,7 @@ hooks:
   SessionEnd:
     - hooks:
         - type: command
-          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
 # Scoping Process

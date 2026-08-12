@@ -1,11 +1,11 @@
 'use strict';
 
 //
-// Tests for tmux session labels: `session label` / `session label-config`,
-// the config gate, the per-tmux-session stash, phase-hop recomposition,
-// user-rename adoption, and the restore leg riding `presence cleanup`.
-// tmux itself is a PATH stub backed by a state file holding the session
-// name; the engine only ever sees the stub.
+// Tests for tmux session labels: `session label` / `session label-config` /
+// `session cleanup`, the config gate, the per-tmux-session stash, phase-hop
+// recomposition, user-rename adoption, and restore ownership. tmux itself
+// is a PATH stub backed by a state file holding the session name; the
+// engine only ever sees the stub.
 //
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -186,15 +186,15 @@ describe('engine session label', () => {
   });
 });
 
-describe('engine presence cleanup — label restore', () => {
+describe('engine session cleanup', () => {
   beforeEach(setup);
   afterEach(teardown);
 
   it('restores the original name and drops the stash for the owning session', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
-    const res = engine(['presence', 'cleanup', 'sess-1']);
-    assert.strictEqual(res.label_restored, true);
+    const res = engine(['session', 'cleanup', 'sess-1']);
+    assert.strictEqual(res.restored, true);
     assert.strictEqual(tmuxName(), 'proj-abc');
     assert.ok(!fs.existsSync(stashFile()));
   });
@@ -202,8 +202,8 @@ describe('engine presence cleanup — label restore', () => {
   it('leaves another session\'s stash alone', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
-    const res = engine(['presence', 'cleanup', 'sess-other']);
-    assert.strictEqual(res.label_restored, false);
+    const res = engine(['session', 'cleanup', 'sess-other']);
+    assert.strictEqual(res.restored, false);
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
     assert.ok(fs.existsSync(stashFile()));
   });
@@ -212,8 +212,8 @@ describe('engine presence cleanup — label restore', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     fs.writeFileSync(path.join(stubDir, 'state'), 'renamed-by-hand\n');
-    const res = engine(['presence', 'cleanup', 'sess-1']);
-    assert.strictEqual(res.label_restored, false);
+    const res = engine(['session', 'cleanup', 'sess-1']);
+    assert.strictEqual(res.restored, false);
     assert.strictEqual(tmuxName(), 'renamed-by-hand');
     assert.ok(!fs.existsSync(stashFile()));
   });
@@ -221,8 +221,16 @@ describe('engine presence cleanup — label restore', () => {
   it('survives the tmux session being gone', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
-    const res = engine(['presence', 'cleanup', 'sess-1'], { fail: true });
-    assert.strictEqual(res.label_restored, false);
+    const res = engine(['session', 'cleanup', 'sess-1'], { fail: true });
+    assert.strictEqual(res.restored, false);
     assert.ok(!fs.existsSync(stashFile()));
+  });
+
+  it('leaves the presence cleanup response untouched by label concerns', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    const res = engine(['presence', 'cleanup', 'sess-1']);
+    assert.deepStrictEqual(res, { ok: true, session_id: 'sess-1', cleared: [] });
+    assert.ok(fs.existsSync(stashFile()));
   });
 });

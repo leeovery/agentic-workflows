@@ -4,9 +4,9 @@
 // Domain ring: tmux session labels — an opt-in rename of the user's tmux
 // session to show where the workflow session is working
 // (`{original} · {work-unit} · {phase} · {topic}`). Applied by each process
-// skill at Step 0, restored by the SessionEnd hook alongside presence
-// cleanup. The feature is a display courtesy, never state: every failure
-// path degrades to a no-op JSON response, and the label never gates a flow.
+// skill at Step 0, restored by the `session cleanup` SessionEnd hook. The
+// feature is a display courtesy, never state: every failure path degrades
+// to a no-op JSON response, and the label never gates a flow.
 //
 // Opt-in lives in the system config (`~/.config/workflows/config.json`)
 // under `session.tmux_labels` — absent means unconfigured, which is what
@@ -182,8 +182,8 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
 }
 
 /**
- * Put the original tmux session name back — the SessionEnd sweep, riding
- * `presence cleanup`. Restores only stashes the named session owns (an
+ * Put the original tmux session name back — `session cleanup`, the
+ * SessionEnd sweep. Restores only stashes the named session owns (an
  * ownerless stash counts) and only when the current name is exactly the one
  * we applied — a manual rename is never clobbered. The stash is dropped
  * either way. Never throws: a hook must exit clean.
