@@ -195,6 +195,7 @@ Commands:
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
   render epic-all-done-gate <wu>
+  render task-brief        <wu.implementation.topic> --file <payload.json>
   render task-result       <wu.implementation.topic> --file <payload.json> --result approved|needs-changes|blocked|failed
   render task-gate         <wu.implementation.topic>
   render fix-gate          <wu.implementation.topic>
@@ -674,9 +675,9 @@ function runTopic(argv) {
 // The engine never touches a task backend; the session does the plan surgery,
 // these commands record it. No git commit — the per-task commit is the
 // session's. Each verb answers with its one-line JSON only; the loop's
-// result header and gate sections are fetched by their own `render` calls
-// (task-result, task-gate, fix-gate, blocked-tasks, cycle-limit,
-// cycle-gate) at the stage that displays them.
+// brief, result header, and gate sections are fetched by their own `render`
+// calls (task-brief, task-result, task-gate, fix-gate, blocked-tasks,
+// cycle-limit, cycle-gate) at the stage that displays them.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */

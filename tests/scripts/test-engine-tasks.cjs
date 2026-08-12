@@ -944,7 +944,12 @@ describe('engine render task surfaces', () => {
       /--file <payload\.json> is required/);
     assert.match(
       renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({}), '--result', 'approved']).error,
-      /"phase" must be a non-empty string/);
+      /render task-result: "phase" must be a non-empty string/);
+    // Meta validation precedes the fix_attempts check — a malformed payload
+    // names the payload defect even when the attempts refusal also applies.
+    assert.match(
+      renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({}), '--result', 'needs-changes']).error,
+      /render task-result: "phase" must be a non-empty string/);
     assert.match(
       renderFails(['task-result', 'auth.implementation.auth-flow', '--file', writeResultPayload({ phase: '1 — Core', position: '  ' }), '--result', 'approved']).error,
       /"position" must be a non-empty string/);
@@ -961,6 +966,108 @@ describe('engine render task surfaces', () => {
     assert.match(renderFails(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']).error, /no current task/);
     assert.match(renderFails(['task-result', 'auth.planning.auth-flow', '--file', file, '--result', 'approved']).error, /must be <work_unit>\.implementation\.<topic>/);
     assert.match(renderFails(['task-result', 'ghost.implementation.auth-flow', '--file', file, '--result', 'approved']).error, /not found/);
+  });
+
+  /** Write a task-brief payload into the fixture; returns its relative path. */
+  function writeBriefPayload(payload) {
+    const rel = path.join('.workflows', '.cache', 'auth', 'implementation', 'auth-flow', 'task-brief.json');
+    const abs = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, JSON.stringify(payload));
+    return rel;
+  }
+
+  it('task-brief renders the meta rows, the summary, and the watch list — no verdict line, lines trimmed', () => {
+    seedGates('gated', 0);
+    const file = writeBriefPayload({
+      id: 'auth-flow-1-1',
+      phase: '1 — Core',
+      position: '1 of 2 in phase',
+      external: { label: 'tick', id: 'TCK-1' },
+      summary: '  Wire the login form to the session endpoint.  ',
+      watch: ['the redirect after a successful login', '  the error banner on a bad password  '],
+    });
+    assert.strictEqual(
+      render(['task-brief', 'auth.implementation.auth-flow', '--file', file]),
+      [
+        `=== DISPLAY: task brief (${RESULT_MD}) ===`,
+        '- **Id**: `auth-flow-1-1` · tick `TCK-1`',
+        '- **Phase**: 1 — Core',
+        '- **Position**: 1 of 2 in phase',
+        '',
+        'Wire the login form to the session endpoint.',
+        '',
+        '**Watch**:',
+        '- the redirect after a successful login',
+        '- the error banner on a bad password',
+        '',
+      ].join('\n'));
+  });
+
+  it('task-brief minimal payload renders without position, external, or watch', () => {
+    seedGates('gated', 0);
+    const file = writeBriefPayload({ id: 'auth-flow-1-1', phase: '1 — Core', summary: 'Wire the login form.' });
+    assert.strictEqual(
+      render(['task-brief', 'auth.implementation.auth-flow', '--file', file]),
+      [
+        `=== DISPLAY: task brief (${RESULT_MD}) ===`,
+        '- **Id**: `auth-flow-1-1`',
+        '- **Phase**: 1 — Core',
+        '',
+        'Wire the login form.',
+        '',
+      ].join('\n'));
+  });
+
+  it('task-brief refuses a stale payload — the id must name the in-flight task', () => {
+    seedGates('gated', 0);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', writeBriefPayload({ phase: '1 — Core', summary: 's' })]).error,
+      /render task-brief: "id" must be a non-empty string/);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', writeBriefPayload({ id: 'auth-flow-1-9', phase: '1 — Core', summary: 's' })]).error,
+      /render task-brief: payload "id" is "auth-flow-1-9" but the in-flight task is "auth-flow-1-1" — a stale task-brief\.json/);
+  });
+
+  it('task-brief refuses malformed payloads, naming the surface', () => {
+    seedGates('gated', 0);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow']).error,
+      /render task-brief: --file <payload\.json> is required/);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', 'nope.json']).error,
+      /render task-brief: payload file not found/);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', writeBriefPayload({ id: 'auth-flow-1-1', summary: 's' })]).error,
+      /render task-brief: "phase" must be a non-empty string/);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', writeBriefPayload({ id: 'auth-flow-1-1', phase: '1 — Core' })]).error,
+      /render task-brief: "summary" must be a non-empty string/);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', writeBriefPayload({ id: 'auth-flow-1-1', phase: '1 — Core', position: '  ', summary: 's' })]).error,
+      /render task-brief: "position" must be a non-empty string/);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', writeBriefPayload({ id: 'auth-flow-1-1', phase: '1 — Core', external: { label: 'tick' }, summary: 's' })]).error,
+      /render task-brief: "external" must be \{label, id\}/);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', writeBriefPayload({ id: 'auth-flow-1-1', phase: '1 — Core', summary: 's', watch: [] })]).error,
+      /render task-brief: "watch" must be a non-empty array of non-empty strings/);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', writeBriefPayload({ id: 'auth-flow-1-1', phase: '1 — Core', summary: 's', watch: ['ok', '  '] })]).error,
+      /render task-brief: "watch" must be a non-empty array of non-empty strings/);
+    assert.match(
+      renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', writeBriefPayload({ id: 'auth-flow-1-1', phase: '1 — Core', summary: 's', watch: 'not-a-list' })]).error,
+      /render task-brief: "watch" must be an array of strings/);
+  });
+
+  it('task-brief refuses a missing in-flight task, a wrong-phase address, and an unknown work unit', () => {
+    const phases = planPhases();
+    phases.implementation = { items: { 'auth-flow': { status: 'in-progress' } } };
+    createManifest(dir, 'auth', { phases });
+    const file = writeBriefPayload({ id: 'auth-flow-1-1', phase: '1 — Core', summary: 's' });
+    assert.match(renderFails(['task-brief', 'auth.implementation.auth-flow', '--file', file]).error, /no current task/);
+    assert.match(renderFails(['task-brief', 'auth.planning.auth-flow', '--file', file]).error, /must be <work_unit>\.implementation\.<topic>/);
+    assert.match(renderFails(['task-brief', 'ghost.implementation.auth-flow', '--file', file]).error, /not found/);
   });
 
   it('cycle-limit renders the over-limit callout, refuses within the limit', () => {

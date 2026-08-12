@@ -1033,6 +1033,12 @@ describe('pipeline simulation', () => {
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
+    // The brief announces the dispatch — the result header's meta rows plus summary and watch.
+    const briefPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
+      { id: `${wu}-1-1`, phase: '1 — Core', position: '1 of 2 in phase', summary: 'Wire the auth entry point.', watch: ['the login redirect'] });
+    const brief = sim.render(['task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload], { expect: 'content' });
+    assert.match(brief, /DISPLAY: task brief/, 'pre-dispatch brief renders its section');
+    assert.match(brief, /\*\*Watch\*\*:\n- the login redirect/, 'the brief carries its watch list');
     // Gates are fetched at their own stage — the task verbs answer with pure JSON.
     assert.match(sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: task gate/, 'gated task gate renders its menu');
@@ -1070,6 +1076,15 @@ describe('pipeline simulation', () => {
     // Auto gates render a continuation artifact — the loop never ends a turn by silence.
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode=auto', 'fix_gate_mode=auto']);
     sim.run(['task', 'start', wu, wu, `${wu}-1-2`]);
+    // Every task start gets its brief; the stale first-task payload refuses, the rewritten one renders.
+    const staleBrief = spawnSync('node', [ENGINE, 'render', 'task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload],
+      { cwd: sim.dir, encoding: 'utf8' });
+    assert.strictEqual(staleBrief.status, 1, 'a stale brief payload refuses rather than rendering the previous task');
+    assert.match(staleBrief.stderr, /stale task-brief\.json/, "the refusal names the previous task's payload as stale");
+    const briefPayload2 = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
+      { id: `${wu}-1-2`, phase: '1 — Core', position: '2 of 2 in phase', external: { label: 'tick', id: 'TCK-2' }, summary: 'Close out the auth flow.' });
+    assert.match(sim.render(['task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload2], { expect: 'content' }),
+      new RegExp(`\\*\\*Id\\*\\*: \`${wu}-1-2\` · tick \`TCK-2\``), 'the brief carries the format display identifier');
     assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'approved'], { expect: 'content' }),
       /\*\*✓ Approved\*\*\n/, 'a clean task renders the bare approved verdict');
     const taskGate = sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' });

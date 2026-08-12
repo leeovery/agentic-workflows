@@ -73,7 +73,7 @@ function section(name, instruction, body) {
 // own, and an engine string that duplicated it would be a second routing
 // source to keep in sync. The markdown variant serves surfaces whose
 // register cannot live in a fence — worklist strikethrough and code-span
-// tags, the result header's emphasis.
+// tags, the task brief's and result header's emphasis.
 const CONTINUE_INSTRUCTION = 'emit verbatim as a code block — do not stop; continue as the workflow instructs';
 const CONTINUE_MARKDOWN_INSTRUCTION = 'emit verbatim as markdown — do not stop; continue as the workflow instructs';
 const AUTO_GATE_INSTRUCTION = 'emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs';

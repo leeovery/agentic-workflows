@@ -6,7 +6,7 @@ Implementation refuses to start without a completed plan. Before any code is wri
 
 ## The loop you watch
 
-The plan is executed one task at a time, in dependency order. For each task the same cycle runs.
+The plan is executed one task at a time, in dependency order. For each task the same cycle runs, and it opens by telling you what is coming: before any code is written, the task announces itself — its place in the plan, a sentence on what is about to change, and anything worth watching when it lands — so you know what you will be reviewing before the build starts.
 
 An **executor agent** implements the task under strict test-driven development: it writes a failing test first, confirms it fails for the right reason, writes a complete implementation to pass it, refactors only while the tests stay green, and runs the linters. "Complete" is meant pragmatically — no hardcoded fakes that only satisfy the test, but no gold-plating beyond what the test asks for either. One rule is absolute: it must never edit a test to make broken code pass. Doing so would be admitting the implementation is wrong and hiding it, and hiding a failure is worse than showing one. The executor writes code and tests but never commits.
 

@@ -22,9 +22,10 @@
 //   render cycle-limit   → DISPLAY: cycle limit   (the over-limit callout)
 //   render cycle-gate    → MENU: cycle gate      (static)
 //
-// The result header the gates follow (`render task-result`) lives in
-// render.cjs — it mixes payload content with the state read here. The
-// header names the in-flight task, so the gates never repeat the id.
+// The task headers the gates follow — the brief (`render task-brief`) and
+// the result header (`render task-result`) — live in render.cjs: they mix
+// payload content with the state read here. The headers name the in-flight
+// task, so the gates never repeat the id.
 //
 // Every gate branch renders an artifact — a MENU where the loop stops, a
 // continuation DISPLAY where it must not. An auto branch that rendered

@@ -27,7 +27,10 @@ The prose should have taken this path:
 10. task pay-1-1 is selected first (phase order, then task order),
     normalised to the template shape, its position noted from the
     format listing, started via the engine, and marked in-progress in
-    its frontmatter
+    its frontmatter; the task brief then renders via `render
+    task-brief` (marker line, then the engine's meta-summary-and-watch
+    section emitted as markdown) before any executor dispatch — same
+    turn, no stop
 11. the executor stub fires for pay-1-1 and its STATUS is complete, so
     the block menu never renders; the reviewer stub fires and its
     verdict is approved, so the fix machinery is never touched — no
@@ -41,8 +44,8 @@ The prose should have taken this path:
     the phase is not yet complete (pay-1-2 remains), the engine
     records completion naming pay-1-2 as next, and one raw git commit
     lands as impl(pay): Tpay-1-1 with a brief description
-14. the loop returns to retrieval and selects pay-1-2, starts it, and
-    marks it in-progress
+14. the loop returns to retrieval and selects pay-1-2, starts it,
+    marks it in-progress, and presents its brief before the dispatch
 15. executor and reviewer stubs fire once each for pay-1-2; the fourth
     scripted answer approves at the task gate
 16. progress lands for pay-1-2: status completed, the phase check
@@ -57,16 +60,18 @@ Further claims:
 
 - each task produced exactly one executor dispatch and one reviewer
   dispatch — no retries, no re-invocations
-- both result headers are engine-rendered sections fetched via
-  `render task-result` at the presentation itself — never hand-drawn;
-  both task-gate menus likewise via `render task-gate` at the gate
-  itself, emitted verbatim and never carried from an earlier response
+- both task briefs are engine-rendered sections fetched via `render
+  task-brief` at the announcement itself; both result headers likewise
+  via `render task-result` at the presentation itself — never
+  hand-drawn; both task-gate menus likewise via `render task-gate` at
+  the gate itself, emitted verbatim and never carried from an earlier
+  response
 - the per-task commits are raw git commits that include the task
   file's status change alongside the code and tests — the plan's
   state is not left uncommitted
 - no fix-tracking file and no attempt-findings cache file exist; the
-  task-result payload cache file under .workflows/.cache is expected
-  residue of the result renders
+  task-brief and task-result payload cache files under
+  .workflows/.cache are expected residue of the renders
 - the manifest's implementation item ends with both internal ids in
   completed_tasks, current_task null, and phase 1 in completed_phases
 - the task files both end with status: completed; the source and test

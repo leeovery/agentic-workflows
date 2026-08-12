@@ -1441,11 +1441,11 @@ function entryGate(cwd, { dotpath, own }) {
 }
 
 // ---------------------------------------------------------------------------
-// Task-loop surfaces — the result header and its gates, fetched by the
-// implementation loop at the exact stage that displays them, so the section
-// always sits in the tool result directly above its emission. State-backed:
-// the in-flight task, gate modes, and fix attempts come from the
-// implementation item; gate-mode branching renders inside the gate
+// Task-loop surfaces — the brief, the result header, and the gates, fetched
+// by the implementation loop at the exact stage that displays them, so the
+// section always sits in the tool result directly above its emission.
+// State-backed: the in-flight task, gate modes, and fix attempts come from
+// the implementation item; gate-mode branching renders inside the gate
 // surfaces. `blocked-tasks` and `cycle-gate` are static menus and take no
 // address.
 // ---------------------------------------------------------------------------
@@ -1470,6 +1470,67 @@ function implItemAt(cwd, dotpath, surface) {
     throw new Error(`render ${surface}: no current task on "${topic}" — run \`task start\` first`);
   }
   return { item, taskId };
+}
+
+/**
+ * Validate the task-header meta fields (`phase`, optional `position`,
+ * optional `external {label, id}`) and build the meta rows — one
+ * definition shared by task-brief and task-result, so the two headers
+ * cannot drift.
+ * @param {any} p @param {string} taskId @param {string} surface
+ * @returns {string[]}
+ */
+function taskMetaRows(p, taskId, surface) {
+  if (!isFilled(p.phase)) throw new Error(`render ${surface}: "phase" must be a non-empty string`);
+  if (p.position !== undefined && !isFilled(p.position)) {
+    throw new Error(`render ${surface}: "position" must be a non-empty string when present`);
+  }
+  if (p.external !== undefined && (!p.external || typeof p.external !== 'object' || Array.isArray(p.external)
+    || !isFilled(p.external.label) || !isFilled(p.external.id))) {
+    throw new Error(`render ${surface}: "external" must be {label, id} when present`);
+  }
+  const idRow = p.external ? `\`${taskId}\` · ${p.external.label} \`${p.external.id}\`` : `\`${taskId}\``;
+  const rows = [`- **Id**: ${idRow}`, `- **Phase**: ${p.phase}`];
+  if (p.position !== undefined) rows.push(`- **Position**: ${p.position}`);
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// task-brief — the loop's pre-dispatch announcement, rendered as the loop
+// takes up a task: between `task start` and the executor dispatch. The
+// payload's required `id` must name the in-flight task — the payload file
+// is per-topic, and a stale one would describe the previous task under the
+// current id. The meta rows come from the shared task-header builder; the
+// summary and watch lines are judgment content the manifest never holds —
+// what the task is about to change, and what deserves eyes when it lands.
+// No verdict line: nothing has happened yet, and its absence is what tells
+// the brief apart from the result.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function taskBrief(cwd, args) {
+  const { dotpath, file } = args;
+  if (!file) throw new Error('render task-brief: --file <payload.json> is required');
+  const { taskId } = implItemAt(cwd, dotpath, 'task-brief');
+  const p = readJsonPayload(cwd, file, 'task-brief');
+  if (!isFilled(p.id)) throw new Error('render task-brief: "id" must be a non-empty string');
+  if (p.id !== taskId) {
+    throw new Error(`render task-brief: payload "id" is "${p.id}" but the in-flight task is "${taskId}" — a stale task-brief.json; rewrite the payload for the current task`);
+  }
+  const meta = taskMetaRows(p, taskId, 'task-brief');
+  if (!isFilled(p.summary)) throw new Error('render task-brief: "summary" must be a non-empty string');
+  const watch = p.watch === undefined ? null : stringLines(p.watch, 'task-brief', 'watch');
+  if (watch !== null && (watch.length === 0 || watch.some((l) => l.trim() === ''))) {
+    throw new Error('render task-brief: "watch" must be a non-empty array of non-empty strings when present');
+  }
+
+  const body = [...meta, '', p.summary.trim()];
+  if (watch !== null) body.push('', '**Watch**:', ...watch.map((l) => `- ${l.trim()}`));
+  return section('DISPLAY: task brief', CONTINUE_MARKDOWN_INSTRUCTION, body.join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -1510,23 +1571,12 @@ function taskResult(cwd, args) {
   }
   const { item, taskId } = implItemAt(cwd, dotpath, 'task-result');
   const p = readJsonPayload(cwd, file, 'task-result');
-  if (!isFilled(p.phase)) throw new Error('render task-result: "phase" must be a non-empty string');
-  if (p.position !== undefined && !isFilled(p.position)) {
-    throw new Error('render task-result: "position" must be a non-empty string when present');
-  }
-  if (p.external !== undefined && (!p.external || typeof p.external !== 'object' || Array.isArray(p.external)
-    || !isFilled(p.external.label) || !isFilled(p.external.id))) {
-    throw new Error('render task-result: "external" must be {label, id} when present');
-  }
+  const meta = taskMetaRows(p, taskId, 'task-result');
 
   const attempts = counterOf(item, 'fix_attempts');
   if (result === 'needs-changes' && attempts < 1) {
     throw new Error('render task-result: fix_attempts is 0 — run `task fix-attempt` before a needs-changes result');
   }
-
-  const idRow = p.external ? `\`${taskId}\` · ${p.external.label} \`${p.external.id}\`` : `\`${taskId}\``;
-  const meta = [`- **Id**: ${idRow}`, `- **Phase**: ${p.phase}`];
-  if (p.position !== undefined) meta.push(`- **Position**: ${p.position}`);
 
   return section('DISPLAY: task result', CONTINUE_MARKDOWN_INSTRUCTION, [verdictOf(attempts), '', ...meta].join('\n'));
 }
@@ -1739,6 +1789,7 @@ const SURFACES = {
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,
   'epic-all-done-gate': epicAllDoneGate,
+  'task-brief': taskBrief,
   'task-result': taskResult,
   'task-gate': taskGate,
   'fix-gate': fixGate,
