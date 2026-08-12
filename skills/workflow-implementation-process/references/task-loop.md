@@ -381,7 +381,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
 impl({work_unit}): T{internal_id} — {brief description}
 ```
 
-One commit per approved task, staging the listed paths explicitly — never `git add -A` or `git add .`. The subject is exactly as fenced — `T` immediately followed by the internal id; review's scope-grep finds task commits by this token. Never `engine commit` here — its scopes cover `.workflows` only, never code or the plan format's storage.
+One commit per approved task, staging the listed paths explicitly — never `git add -A` or `git add .`. The subject is exactly as fenced — `T` immediately followed by the internal id, no space (`impl(pay): Tpay-1-1 — wire the session endpoint`); review's scope-grep finds task commits by this token. Never `engine commit` here — its scopes cover `.workflows` only, never code or the plan format's storage.
 
 → Return to **A. Retrieve Next Task**.
 
