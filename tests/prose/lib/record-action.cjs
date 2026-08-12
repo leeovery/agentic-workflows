@@ -58,11 +58,13 @@ const MAX_OUTPUT = 400;
 const MAX_PRODUCED_OUTPUT = 10000;
 // The detail column is the substrate the deterministic checks match
 // against — a call that ran must be findable in it. It is truncated only
-// after the world path collapses to `.`, and generously: a cap that bit
-// into real commands made four includes report never-ran on calls the
-// walk performed (the world prefix ate the budget and the field name
-// fell off the end).
-const MAX_DETAIL = 600;
+// after the world path collapses to `.`, and generously: every cap that
+// bit into a real command has produced a false never-ran — four includes
+// at the original cap (the world prefix ate the budget), then a two-seed
+// `workunit create` at 600 whose second `--seed` fell off the end. The
+// cap exists only to bound pathological blobs (heredoc scripts, inline
+// payloads), so it sits far above any real engine call.
+const MAX_DETAIL = 4000;
 const WRITE_RESPONSE_TOOLS = new Set(['Bash', 'Write', 'Edit', 'NotebookEdit']);
 
 function read() {
