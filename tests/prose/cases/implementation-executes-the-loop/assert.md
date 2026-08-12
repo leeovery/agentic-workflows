@@ -28,9 +28,9 @@ The prose should have taken this path:
     normalised to the template shape, its position noted from the
     format listing, started via the engine, and marked in-progress in
     its frontmatter; the task brief then renders via `render
-    task-brief` (marker line, then the engine's meta-summary-and-watch
-    section emitted as markdown) before any executor dispatch — same
-    turn, no stop
+    task-brief` (one section — the task's marker, its meta rows, the
+    summary and watch lines — emitted as markdown, nothing authored
+    above it) before any executor dispatch — same turn, no stop
 11. the executor stub fires for pay-1-1 and its STATUS is complete, so
     the block menu never renders; the reviewer stub fires and its
     verdict is approved, so the fix machinery is never touched — no

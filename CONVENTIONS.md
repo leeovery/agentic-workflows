@@ -128,6 +128,7 @@ Rules:
 - Named only — no numbering or lettered suffixes
 - Same loop/iteration conventions as step markers
 - Emitted as markdown with its own rendering instruction
+- **A marker heading an engine-rendered display is drawn by that surface**, as the first line of its section — never authored above the fetch, where the tool result would land between the marker and the display it heads. What the marker names travels in the payload like any other judgment content
 
 ### Signpost Blockquotes
 
