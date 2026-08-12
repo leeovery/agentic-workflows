@@ -1053,7 +1053,7 @@ describe('pipeline simulation', () => {
       /MENU: fix gate/, 'gated fix gate renders its menu');
     // The result header is one surface for every presentation moment.
     const resultPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-result.json`,
-      { phase: '1 — Core', position: '1 of 2 in phase' });
+      { id: `${wu}-1-1`, phase: '1 — Core', position: '1 of 2 in phase' });
     assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'blocked'], { expect: 'content' }),
       /\*\*⚑ Blocked\*\* — \*the executor stopped before completing this task\*/, 'an executor block renders the alert verdict');
     assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'needs-changes'], { expect: 'content' }),
@@ -1085,7 +1085,10 @@ describe('pipeline simulation', () => {
       { id: `${wu}-1-2`, phase: '1 — Core', position: '2 of 2 in phase', external: { label: 'tick', id: 'TCK-2' }, summary: 'Close out the auth flow.' });
     assert.match(sim.render(['task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload2], { expect: 'content' }),
       new RegExp(`\\*\\*Id\\*\\*: \`${wu}-1-2\` · tick \`TCK-2\``), 'the brief carries the format display identifier');
-    assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'approved'], { expect: 'content' }),
+    // The result payload is rewritten per task — the header refuses the previous task's id.
+    const resultPayload2 = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-result.json`,
+      { id: `${wu}-1-2`, phase: '1 — Core', position: '2 of 2 in phase' });
+    assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload2, '--result', 'approved'], { expect: 'content' }),
       /\*\*✓ Approved\*\*\n/, 'a clean task renders the bare approved verdict');
     const taskGate = sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' });
     assert.match(taskGate, /DISPLAY: task gate auto-approved/, 'auto task gate renders its continuation line');
