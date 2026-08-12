@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.64] - 2026-08-12
+
+✨ Added
+
+- Baseline assessment — on a codebase that predates the workflows, `/workflow-start` now offers a one-time brownfield assessment: researcher agents survey the code area by area, then an interview captures the intent and history only you can supply, landing as docs the knowledge base surfaces in every later phase.
+- The baseline stays resumable, pausable, and expandable — pick up an interrupted interview from the start menu, or add/deepen areas on a finished baseline from the manage menu.
+- The knowledge base and its consuming phases now surface baseline context as low-confidence `[baseline | …]` reference material, never a settled decision.
+
+🔧 Changed
+
+- Discovery reads a completed baseline's overview in full as silent ambient context when opening new work or resuming an epic session.
+
 ## [0.6.63] - 2026-08-12
 
 ✨ Added
