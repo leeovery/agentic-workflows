@@ -1,0 +1,157 @@
+# Baseline — backfill the record a brownfield project never had
+
+A project that grew up on the workflows accumulates discussions, specs,
+and a knowledge base that give every later phase its ambient context. A
+project the workflows are installed *into* has none of that — and the
+consumption surfaces designed to lean on the record silently fire blanks
+forever. Baseline is the assessment that backfills it: fan-out research
+over the codebase, synthesised into an interview that extracts the WHY
+layer from the one place it still exists — the owner's head — and lands
+the result as a KB-indexed doc set under `.workflows/.baseline/`. Design
+log for the stack. Opened 2026-08-12 from the discussion with Lee.
+
+## Motivation (2026-08-12)
+
+- **The degradation is real, structural, and silent.** Mapped across the
+  tree: the phase-start contextual query (research, discussion,
+  investigation, scoping) takes its `[0 results]` → "proceed silently"
+  branch 100% of the time on a brownfield install; the required
+  `Sibling check:` trace degrades to "no overlap found" — performed-looking,
+  information-free; the spec-entry advisory and planning's cross-cutting
+  query return nothing; discovery opens cold. `knowledge check` certifies
+  "somewhere to write", never "something to read" — an empty store is
+  `ready`. Nothing under `.workflows/` records that the project's code
+  exists.
+
+- **The consumption side is already built.** The phase-start queries are
+  unfiltered — anything indexed under a new phase flows into every one of
+  those surfaces automatically, provenance-tagged. The feature is cheap
+  where it matters most.
+
+- **Lee has hand-built the answer once and half-built it twice.** FlowX's
+  docs corpus (~249 files) is the method fully worked: provenance zones,
+  derived trust, per-claim confidence, verdict-first templates, and 686
+  surviving `> OPEN:` markers — uncertainty named, never filled with a
+  plausible guess. Turnstile's two ~2,000-line architecture guides are
+  the failure mode: convention manuals, all HOW, no domain, no WHY.
+  Docman's CLAUDE.md is the other failure mode: a decent mini-baseline
+  already drifted from the code in three places. One-shot docs rot;
+  convention docs are redundant with what agents read from code.
+
+- **The WHY layer cannot be inferred — and must not be faked.** Probes of
+  Turnstile and Docman found the same gradient: structure (glossary,
+  boundaries, state machines, invariants, integrations) is reliably
+  recoverable from code; rationale, business constraints, incident
+  history, tuned constants, and partner semantics are not. A naive
+  synthesizer is redundant at the well-commented end and confidently
+  wrong at the `// FABLOA` end — and this system specifically cannot
+  tolerate fabricated rationale: spec construction silently derives
+  decisions the record settles, and ask-or-decide only asks when the
+  record doesn't. A fake record turns "derive silently" into "fabricate
+  silently".
+
+## The decision
+
+1. **Baseline is an interview, not archaeology.** Fan-out agents research
+   the codebase per area; a synthesiser converts their findings into a
+   ranked question agenda; the user answers in rounds (AskUserQuestion —
+   evidence carried in the question, candidate rationales as options, a
+   costless "don't know" exit on every question). The agents' product is
+   questions; the docs are woven afterwards from what the code showed and
+   what the user said. "Grill me and I'll remember" is the design's
+   engine.
+2. **Three trust layers, replacing FlowX's zones**: *observed* (what the
+   code shows, user-confirmed where load-bearing), *stated* (WHY, from
+   the interview, in the user's words), *open* (asked and unanswered, or
+   never asked). For intent the human is the only source; for mechanism
+   claims the code outranks memory and agents corroborate rather than
+   transcribe (FlowX's own source hierarchy ranks "Human (Lee)" below
+   code — "invaluable for intent/history, but fallible").
+3. **Anchor to stable names, never file:line.** Classes, enums,
+   subsystems, pipelines — what a future agent greps or semantically
+   matches. FlowX needed line citations because nothing else could verify
+   its claims; Baseline's claims are verified by a better mechanism — the
+   user, live. The confirmation replaces the citation.
+4. **Doc set at `.workflows/.baseline/`** — roughly 6–15 files, one per
+   concern: `overview.md` (product verdict, user classes, estate
+   position), `glossary.md`, `boundaries.md` (modules, surfaces,
+   integration map), per-area docs (entity + lifecycle, pipeline,
+   subsystem), a thin `conventions.md` (pointer-level), and the open
+   questions threaded per-doc. Verdict-first, observation and stated
+   rationale structurally separated, unknowns as OPEN items. No per-line
+   documentation — code stays the source of truth; Baseline holds what a
+   fresh session won't reliably rebuild.
+5. **KB phase `baseline`, confidence low, advisory-only.** Indexed like
+   imports (reference material, KB-sliced), never as record. Provenance
+   line reads `[baseline | …]`; one doctrine line in `knowledge-usage.md`
+   fixes the weight: observed/stated context that informs, never a
+   settled call a spec may lean on silently. Promotion to record-grade is
+   a later decision; demotion after being leaned on isn't possible.
+6. **Index-as-you-go.** Docs index per file as areas complete. A
+   half-interviewed baseline is live coverage plus a recorded agenda, not
+   an all-or-nothing artifact. Consequence accepted deliberately: an
+   in-progress baseline already feeds phase queries.
+7. **Resumable interview, discovery-session style.** Research dossiers
+   and the interview ledger (questions asked, answers given, agenda
+   remaining, per-area status) persist under the baseline's own roof —
+   committed, not `.cache/` (which is gitignored, purgeable, and keyed by
+   work unit, which baseline is not). The ledger is written per round, so
+   an abrupt death costs at most the current round; a deliberate exit is
+   "stop after this round, commit". Fatigue is the real UX risk: rounds
+   are themed per area, batched where independent, sequential where an
+   answer branches, ranked by "would a future phase plausibly need this".
+8. **Status-keyed surfacing, not origin-keyed.** Project-manifest status
+   `none / in-progress / completed / skipped`. `in-progress` → a
+   first-class resume row on the start menu (unfinished interview looks
+   like unfinished work); `completed` → under `m/manage` (view, expand,
+   refresh); `none` → the one-time boot offer covers the brownfield
+   moment, afterwards reachable via manage. A greenfield project that
+   grew up on the workflows never needs it and never sees it.
+9. **Resume and expand are one flow** — resume walks a non-empty agenda;
+   expand generates a new one (new area, or deeper on an existing one)
+   and walks it. Refresh (re-verifying the observed layer against moved
+   code) is deliberately out of v1: the stated layer doesn't rot, and
+   re-running expand over a drifted area covers most of the need.
+10. **Decay: none in v1, by the existing mechanics.** Baseline has no
+    completion entry on the progress clock, so it reads as frontier and
+    never prunes; low confidence keeps it modest as real record
+    accumulates. Deliberate aging ("decaying is the point — scaffolding
+    the record replaces") is a later knob, now well understood.
+11. **Graceful absence for free.** Consumption is provenance-tagged, not
+    phase-branched: no baseline → no `[baseline | …]` chunks → identical
+    to today. The doctrine line is conditional by construction. The only
+    visible surface is the status-keyed menu entry.
+
+## Engine surface (small, mechanical)
+
+- `INDEXED_PHASES` + chunking config for `baseline`; `deriveIdentity`
+  path shape `.workflows/.baseline/{topic}.md` with a pseudo-identity
+  carve-out (baseline is not a work unit; no manifest to read
+  `work_type` from).
+- `baseline` reserved as a work-unit name (alongside `project`).
+- Project-manifest baseline status field + whatever boot needs to report
+  it.
+- Simulation coverage per the house rule; prose cases for the offer, an
+  interview round, exit/resume, and the status-keyed menu.
+
+## Relation to the rebuild work-type design
+
+The parked rebuild design's "system ingestion" (fan-out agents → a
+trust-graded system map) and "trust/provenance grading" are this idea's
+siblings — per-epic, aimed at a system being replaced, where Baseline is
+project-level ambient context for the system being continued. Building
+Baseline first delivers the trust-grading layer the rebuild design needs.
+Convergent, not competing.
+
+## Open / deferred
+
+- Interview-stated WHY as record-grade (v1: advisory-only; revisit once
+  real baselines exist).
+- Deliberate decay / aging of baseline chunks.
+- Refresh as a distinct verb.
+- Depth knob / charter-style coverage matrix (FlowX's completeness
+  charter) — v2 territory.
+- Discovery opener reads `overview.md` in full when it exists (read-in-full
+  when scope matches; conditional, so greenfield untouched) — in scope
+  for the stack, listed here so the read-budget interaction with
+  continuity-load gets checked at build time.
