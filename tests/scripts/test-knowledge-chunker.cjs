@@ -415,7 +415,10 @@ describe('phase chunking configs', () => {
     'chunking'
   );
 
-  const phases = ['research', 'discussion', 'investigation', 'specification', 'imports', 'analysis'];
+  // Every indexable phase ships a validated config — driven from the source
+  // of truth so a new phase cannot land without one.
+  const { INDEXED_PHASES } = require('../../src/knowledge/index');
+  const phases = INDEXED_PHASES;
 
   for (const phase of phases) {
     it('has a valid ' + phase + '.json config with required fields', () => {

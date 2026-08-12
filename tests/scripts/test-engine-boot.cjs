@@ -199,6 +199,14 @@ describe('engine boot', () => {
     assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
   });
 
+  it('baseline: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {
+    fs.writeFileSync(path.join(fix.project, '.workflows/manifest.json'),
+      JSON.stringify({ work_units: {}, baseline: { status: 'in-progress' } }));
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'not-ready' });
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.baseline, 'in-progress');
+  });
+
   it('pending migration: changed true, report captured with the stop-gate lines stripped', () => {
     const res = runEngine(fix.engine, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'update',
