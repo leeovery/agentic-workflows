@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.60] - 2026-08-12
+
+✨ Added
+- Implementation tasks now open with a pre-dispatch brief — a short summary of what's about to change and a watch list of what to check when it lands, shown before the executor starts.
+
+🔧 Changed
+- The blocked-tasks skip option now skips only the first blocked task and re-checks the rest, instead of ending the whole loop.
+- Sibling-topic consultation now also triggers when re-deciding previously settled ground, not just when naming something undefined locally, and the check is now recorded either way (including a "no overlap found" outcome).
+- Citing a term from another topic's decision no longer counts as defining it locally — a new decision on that term still requires the sibling check.
+
 ## [0.6.59] - 2026-08-11
 
 ✨ Added
