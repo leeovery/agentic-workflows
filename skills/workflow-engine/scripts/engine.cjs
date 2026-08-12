@@ -30,6 +30,7 @@ const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, scanPresence, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
+const { applySessionLabel, restoreSessionLabel, setLabelConfig } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
@@ -146,6 +147,8 @@ Commands:
   presence clear <work-unit> <phase> <topic>
   presence scan <work-unit>
   presence cleanup [session-id]
+  session label <work-unit> <phase> <topic>
+  session label-config <true|false>
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -561,10 +564,38 @@ function runPresence(argv) {
       const cwd = fs.existsSync(path.join(process.cwd(), '.workflows'))
         ? process.cwd()
         : (process.env.CLAUDE_PROJECT_DIR || process.cwd());
-      respond(cleanupPresence(cwd, sessionId));
+      const res = cleanupPresence(cwd, sessionId);
+      const label = restoreSessionLabel(cwd, sessionId);
+      respond({ ...res, label_restored: label.restored });
       return;
     }
     throw new Error('Usage: engine presence <beat|clear|scan|cleanup> …');
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+/** @param {string[]} argv */
+function runSession(argv) {
+  const [command, ...rest] = argv;
+  try {
+    if (command === 'label') {
+      const [workUnit, phase, topic] = rest;
+      if (!workUnit || !phase || !topic || rest.length !== 3) {
+        throw new Error('Usage: engine session label <work-unit> <phase> <topic>');
+      }
+      respond(applySessionLabel(process.cwd(), workUnit, phase, topic));
+      return;
+    }
+    if (command === 'label-config') {
+      const [value] = rest;
+      if (rest.length !== 1 || (value !== 'true' && value !== 'false')) {
+        throw new Error('Usage: engine session label-config <true|false>');
+      }
+      respond(setLabelConfig(value === 'true'));
+      return;
+    }
+    throw new Error('Usage: engine session <label|label-config> …');
   } catch (err) {
     failJson(err);
   }
@@ -1100,6 +1131,9 @@ function runCli(argv) {
       break;
     case 'presence':
       runPresence(rest);
+      break;
+    case 'session':
+      runSession(rest);
       break;
     case 'task':
       runTask(rest);

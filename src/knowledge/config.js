@@ -105,13 +105,18 @@ function credentialsPath() {
 
 /**
  * Read a single config file and return the unwrapped `knowledge` object.
- * Returns null if the file does not exist.
- * Throws on invalid JSON or missing `knowledge` wrapper.
+ * Returns null if the file does not exist. A file without a `knowledge` key
+ * throws by default — the project config is knowledge-owned, so a missing
+ * wrapper there is corruption worth diagnosing. Pass `sharedFile: true` for
+ * the system config, which other subsystems (e.g. `session`) share: there a
+ * knowledge-less file simply means no knowledge settings, and reads null.
+ * Throws on invalid JSON or a malformed `knowledge` value either way.
  *
  * @param {string} filePath
+ * @param {{ sharedFile?: boolean }} [opts]
  * @returns {object|null}
  */
-function readConfigFile(filePath) {
+function readConfigFile(filePath, opts) {
   if (!fs.existsSync(filePath)) return null;
 
   let raw;
@@ -128,14 +133,22 @@ function readConfigFile(filePath) {
     throw new Error(`Invalid JSON in config file at ${filePath}: ${e.message}`);
   }
 
-  if (parsed == null || typeof parsed !== 'object' || !parsed.knowledge) {
+  if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(
+      `Config file at ${filePath} must be a JSON object. ` +
+        'Expected format: { "knowledge": { ... } }'
+    );
+  }
+
+  if (parsed.knowledge === undefined) {
+    if (opts && opts.sharedFile) return null;
     throw new Error(
       `Config file at ${filePath} is missing the required top-level "knowledge" key. ` +
         'Expected format: { "knowledge": { ... } }'
     );
   }
 
-  if (typeof parsed.knowledge !== 'object' || Array.isArray(parsed.knowledge)) {
+  if (parsed.knowledge == null || typeof parsed.knowledge !== 'object' || Array.isArray(parsed.knowledge)) {
     throw new Error(
       `Config file at ${filePath}: the "knowledge" key must be an object.`
     );
@@ -285,7 +298,7 @@ function loadConfig(paths) {
   const sysPath = (paths && paths.systemPath) || systemConfigPath();
   const projPath = (paths && paths.projectPath) || projectConfigPath();
 
-  const system = readConfigFile(sysPath);
+  const system = readConfigFile(sysPath, { sharedFile: true });
   const project = readConfigFile(projPath);
 
   // Merge: defaults <- system <- project. Shallow merge — all fields are
@@ -394,10 +407,13 @@ function resolveProvider(config) {
 }
 
 /**
- * Atomically write a config file. The payload is the full object as it
- * should appear on disk (including the top-level `knowledge` wrapper).
- * Writes to `<path>.tmp` then renames — matches the manifest/store
- * convention so a crash mid-write never leaves a truncated JSON file.
+ * Atomically write a config file. The payload carries the knowledge
+ * subsystem's full view (including the top-level `knowledge` wrapper); any
+ * other top-level keys already on disk (e.g. `session`) are preserved —
+ * the file is shared, and a knowledge write must never clobber a sibling
+ * subsystem. Writes to `<path>.tmp` then renames — matches the
+ * manifest/store convention so a crash mid-write never leaves a truncated
+ * JSON file.
  *
  * @param {string} filePath  Absolute path to write
  * @param {object} payload   Full JSON object (must include `knowledge` key)
@@ -408,13 +424,26 @@ function writeConfigFile(filePath, payload) {
     throw new Error('writeConfigFile: payload must be an object with a top-level "knowledge" key');
   }
 
+  let existing = null;
+  if (fs.existsSync(filePath)) {
+    try {
+      existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (_) {
+      // Corrupt file — the caller is committing to a write; replace it.
+      existing = null;
+    }
+  }
+  const full = existing && typeof existing === 'object' && !Array.isArray(existing)
+    ? Object.assign({}, existing, payload)
+    : payload;
+
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 
   const tmp = filePath + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(payload, null, 2) + '\n', 'utf8');
+  fs.writeFileSync(tmp, JSON.stringify(full, null, 2) + '\n', 'utf8');
   fs.renameSync(tmp, filePath);
 }
 

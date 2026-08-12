@@ -58,7 +58,7 @@ function recipeEnv() {
   if (/\s/.test(CLOCK)) {
     throw new Error(`fake-clock path contains whitespace — NODE_OPTIONS cannot carry it: ${CLOCK}`);
   }
-  return {
+  const env = {
     ...process.env,
     NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require ${CLOCK}`].filter(Boolean).join(' '),
     GIT_CONFIG_GLOBAL: '/dev/null',
@@ -71,6 +71,11 @@ function recipeEnv() {
     // happened to be open, and resizing would move the snapshots.
     WORKFLOWS_DISPLAY_WIDTH: '65',
   };
+  // Session labels read the real tmux identity — a recipe's engine calls
+  // must never rename the terminal session the suite happens to run in.
+  delete env.TMUX;
+  delete env.TMUX_PANE;
+  return env;
 }
 
 function makeHarness(dir) {

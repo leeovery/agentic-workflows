@@ -189,6 +189,12 @@ class Sim {
     git(this.dir, ['config', 'commit.gpgsign', 'false']);
     fs.mkdirSync(path.join(this.dir, '.workflows'), { recursive: true });
     this.step = 0;
+    // Hermetic session-label environment: the config dir pins into the
+    // sandbox and the tmux identity is stripped, so `session label` can
+    // never read the developer's real opt-in or rename their real session.
+    this.env = { ...process.env, WORKFLOWS_CONFIG_DIR: path.join(this.dir, '.wf-config') };
+    delete this.env.TMUX;
+    delete this.env.TMUX_PANE;
   }
 
   destroy() {
@@ -212,7 +218,7 @@ class Sim {
   run(args) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')}`;
-    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8' });
+    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.env });
     assert.strictEqual(res.status, 0,
       `[${label}] expected success\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     const nl = res.stdout.indexOf('\n');
@@ -232,7 +238,7 @@ class Sim {
   refuses(args, pattern) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')} (expected refusal)`;
-    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8' });
+    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.env });
     assert.strictEqual(res.status, 1, `[${label}] expected exit 1, got ${res.status}\nstdout: ${res.stdout}`);
     const parsed = JSON.parse(res.stderr.trim());
     assert.strictEqual(parsed.ok, false, `[${label}] refusal is not clean {ok:false} JSON`);
@@ -659,6 +665,17 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions.map((r) => r.topic), ['gamma']);
     sim.run(['presence', 'cleanup', 'peer-sess']);
     assert.strictEqual(sim.run(['presence', 'scan', wu]).sessions.length, 0);
+    // Session labels, as every process skill's Step 0 issues them: an
+    // unconfigured opt-in answers a disabled no-op; opted in but outside
+    // tmux (the sim strips the identity) answers no-tmux; an unknown phase
+    // refuses; the cleanup sweep reports the restore leg it rode.
+    const label0 = sim.run(['session', 'label', wu, 'research', 'alpha']);
+    assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
+    sim.run(['session', 'label-config', 'true']);
+    const label1 = sim.run(['session', 'label', wu, 'discussion', 'alpha']);
+    assert.deepStrictEqual(label1, { ok: true, labelled: false, reason: 'no-tmux' });
+    sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
+    assert.strictEqual(sim.run(['presence', 'cleanup', 'sim-sess']).label_restored, false);
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

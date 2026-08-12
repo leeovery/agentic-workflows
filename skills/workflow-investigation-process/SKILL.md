@@ -2,6 +2,11 @@
 name: workflow-investigation-process
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/.cache/), Bash(ls .workflows/.cache/), Bash(git log), Bash(git blame), Bash(git diff), Bash(git bisect), Bash(grep), Bash(rm .workflows/.cache/), Bash(rm -rf .workflows/.cache/)
+hooks:
+  SessionEnd:
+    - hooks:
+        - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
 ---
 
 # Investigation Process
@@ -69,6 +74,12 @@ The investigation file is your memory. Context compaction is lossy — what's no
 ---
 
 ## Step 0: Resume Detection
+
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} investigation {topic}
+```
 
 Check if the investigation file exists at `.workflows/{work_unit}/investigation/{topic}.md`.
 

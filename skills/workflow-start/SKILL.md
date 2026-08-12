@@ -138,7 +138,47 @@ All documents up to date.
 
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Knowledge Gate
+### Step 0.2: Session Labels
+
+Branch on the boot response's `tmux_labels`. This is a one-time choice — once recorded (any value but `prompt`), this step renders nothing, ever.
+
+#### If `tmux_labels` is `prompt`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+You're running inside tmux. The workflows can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` — as you move through phases, restoring the original name when the session ends. One choice for all your projects, stored in `~/.config/workflows/config.json`.
+
+**`◆ Label your tmux session as you work?`**
+
+**`y/yes`** → Turn session labels on
+**`n/no`**  → Leave session names alone
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
+```
+
+→ Proceed to **Step 0.3**.
+
+**If `no`:**
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label-config false
+```
+
+→ Proceed to **Step 0.3**.
+
+#### Otherwise
+
+→ Proceed to **Step 0.3**.
+
+### Step 0.3: Knowledge Gate
 
 Branch on the boot response — run no further commands (`compact` already ran inside boot when the knowledge base was ready).
 

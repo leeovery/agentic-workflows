@@ -62,10 +62,22 @@ describe('readConfigFile', () => {
     assert.deepStrictEqual(result, { provider: 'openai', model: 'text-embedding-3-small' });
   });
 
-  it('throws for config file missing the knowledge wrapper', () => {
+  it('throws for a knowledge-owned config file missing the knowledge wrapper', () => {
     const filePath = path.join(tmpDir, 'bad.json');
     writeJSON(filePath, { provider: 'openai' });
     assert.throws(() => readConfigFile(filePath), /missing the required top-level "knowledge" key/);
+  });
+
+  it('sharedFile: returns null for a config file without a knowledge key', () => {
+    const filePath = path.join(tmpDir, 'shared.json');
+    writeJSON(filePath, { session: { tmux_labels: true } });
+    assert.strictEqual(readConfigFile(filePath, { sharedFile: true }), null);
+  });
+
+  it('throws for a config file that is not a JSON object', () => {
+    const filePath = path.join(tmpDir, 'array-root.json');
+    writeJSON(filePath, [1, 2, 3]);
+    assert.throws(() => readConfigFile(filePath), /must be a JSON object/);
   });
 
   it('throws for invalid JSON', () => {
@@ -537,6 +549,22 @@ describe('writeConfigFile', () => {
     writeConfigFile(filePath, { knowledge: { provider: 'openai' } });
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     assert.strictEqual(parsed.knowledge.provider, 'openai');
+  });
+
+  it('preserves sibling subsystem keys on an existing file', () => {
+    const filePath = path.join(tmpDir, 'config.json');
+    fs.writeFileSync(filePath, JSON.stringify({ session: { tmux_labels: true }, knowledge: { provider: 'stub' } }), 'utf8');
+    writeConfigFile(filePath, { knowledge: { provider: 'openai' } });
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    assert.deepStrictEqual(parsed, { session: { tmux_labels: true }, knowledge: { provider: 'openai' } });
+  });
+
+  it('replaces a corrupt existing file with the payload alone', () => {
+    const filePath = path.join(tmpDir, 'config.json');
+    fs.writeFileSync(filePath, '{not json', 'utf8');
+    writeConfigFile(filePath, { knowledge: { provider: 'stub' } });
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    assert.deepStrictEqual(parsed, { knowledge: { provider: 'stub' } });
   });
 });
 

@@ -156,7 +156,13 @@ describe('engine boot', () => {
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('happy path: no pending migrations, knowledge ready — compact runs', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    // TMUX pinned so the label-state leg is deterministic whatever terminal
+    // runs the suite; the empty config dir makes it `prompt`.
+    const res = runEngine(fix.engine, fix.project, ['boot'], {
+      STUB_CHECK: 'ready',
+      TMUX: '/fake/sock,123,7',
+      WORKFLOWS_CONFIG_DIR: path.join(fix.root, 'wf-config'),
+    });
 
     assert.deepStrictEqual(res, {
       ok: true,
@@ -165,6 +171,7 @@ describe('engine boot', () => {
       compacted: true,
       kb_committed: null,
       warnings: [],
+      tmux_labels: 'prompt',
     });
     assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'compact']);
   });
@@ -346,9 +353,15 @@ describe('engine boot system-config detection', () => {
     const res1 = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
     assert.deepStrictEqual(res1.system_config, { status: 'invalid', provider: null, model: null });
 
-    writeSystemConfig(JSON.stringify({ nothing: 'here' }));
+    writeSystemConfig(JSON.stringify({ knowledge: 'not-an-object' }));
     const res2 = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
     assert.deepStrictEqual(res2.system_config, { status: 'invalid', provider: null, model: null });
+  });
+
+  it('not-ready with a knowledge-less shared config file reports absent', () => {
+    writeSystemConfig(JSON.stringify({ session: { tmux_labels: true } }));
+    const res = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+    assert.deepStrictEqual(res.system_config, { status: 'absent', provider: null, model: null });
   });
 
   it('ready responses carry no system_config field', () => {
@@ -358,6 +371,42 @@ describe('engine boot system-config detection', () => {
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.ok(!('system_config' in res));
+  });
+});
+
+describe('engine boot tmux-label state', () => {
+  let fix;
+  let configDir;
+  beforeEach(() => {
+    fix = setupSkillsFixture();
+    configDir = path.join(fix.root, 'wf-config');
+    fs.mkdirSync(configDir, { recursive: true });
+  });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  /** Boot with the tmux identity and config dir pinned; `tmux` absent unless given. */
+  function bootWith({ tmux = false, config = null } = {}) {
+    if (config !== null) {
+      writeFile(configDir, 'config.json', JSON.stringify({ session: { tmux_labels: config } }));
+    }
+    const env = { ...process.env, WORKFLOWS_CONFIG_DIR: configDir };
+    delete env.TMUX;
+    if (tmux) env.TMUX = '/fake/sock,123,7';
+    const out = execFileSync('node', [fix.engine, 'boot'], { cwd: fix.project, encoding: 'utf8', env });
+    return JSON.parse(out.trim());
+  }
+
+  it('reports no-tmux outside tmux regardless of config', () => {
+    assert.strictEqual(bootWith({ tmux: false, config: true }).tmux_labels, 'no-tmux');
+  });
+
+  it('reports prompt in tmux when never configured', () => {
+    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'prompt');
+  });
+
+  it('reports on/off in tmux when configured', () => {
+    assert.strictEqual(bootWith({ tmux: true, config: true }).tmux_labels, 'on');
+    assert.strictEqual(bootWith({ tmux: true, config: false }).tmux_labels, 'off');
   });
 });
 
