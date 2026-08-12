@@ -133,23 +133,13 @@ Bugs:
 
 ## B. Q&A Loop
 
-> *Output the next fenced block as markdown (not a code block):*
+Render the gate, passing `--donow` when `has_donow` and `--recommendations` when `has_recommendations`:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render review-qa-gate {work_unit}.review.{topic} [--donow] [--recommendations]
 ```
-· · · · · · · · · · · ·
-**`◆ Any questions before proceeding?`**
 
-@if(has_donow)
-**`d/do-now`** → Apply the zero-risk fixes now
-@endif
-@if(has_recommendations)
-**`s/surface`** → Surface recommendations to inbox
-@endif
-**`t/technical`**    → Retell the review from the code's perspective
-**`v/view`**         → Show the full review report
-**`c/continue`**     → Proceed to review actions
-**Ask a question** → Ask about the review findings
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

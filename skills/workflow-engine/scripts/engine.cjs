@@ -180,11 +180,13 @@ Commands:
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json>
   render finding-batch    <wu.phase.topic> --file <payload.json>
+  render review-qa-gate   <wu.review.topic> [--donow] [--recommendations]
   render triage-announce  <wu.phase.topic>
   render triage-offer     <wu.phase.topic> --file <payload.json>
   render triage-block     <wu.phase.topic>
   render reroute-offer    <wu.phase.topic> --file <payload.json>
   render reroute-candidates <wu.phase.topic> --file <payload.json>
+  render off-topic-offer  <wu.phase.topic> --file <payload.json>
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
   render cancel-cascade-gate <wu.phase.topic>
@@ -1079,7 +1081,7 @@ function runCommit(argv) {
 /** @param {string[]} argv */
 function runRender(argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -1092,6 +1094,8 @@ function runRender(argv) {
       if (flags.has('paths')) args.paths = '1';
       if (flags.has('warn')) args.warn = '1';
       if (flags.has('pipeline')) args.pipeline = '1';
+      if (flags.has('donow')) args.donow = '1';
+      if (flags.has('recommendations')) args.recommendations = '1';
       respondSections(renderSurface(process.cwd(), command, args));
     } catch (err) {
       failJson(err);

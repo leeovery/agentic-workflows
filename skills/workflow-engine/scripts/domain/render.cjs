@@ -772,6 +772,40 @@ function findingsSummary(cwd, { dotpath, file }) {
   return section('DISPLAY: findings summary', CONTINUE_MARKDOWN_INSTRUCTION, body);
 }
 
+// review-qa-gate — the review presentation's Q&A gate. Membership branches on
+// what the report carries: the do-now row only where zero-risk fixes exist,
+// the surface row only where there are recommendations to surface. Both are
+// judgment reads of the report rather than manifest state, so they ride as
+// flags. The arrow column is then recomputed for whichever set survives —
+// the one thing a hand-written block cannot do, since its padding is fixed
+// at authoring time against an option set that varies at runtime.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, donow?: string, recommendations?: string}} args
+ * @returns {string}
+ */
+function reviewQaGate(cwd, args) {
+  const { phase } = resolveAddress(cwd, args.dotpath, 'review-qa-gate');
+  if (phase !== 'review') {
+    throw new Error(`render review-qa-gate: address must be <work_unit>.review.<topic>, got phase "${phase}"`);
+  }
+  const options = [];
+  if (args.donow) options.push(cmdOption('d', 'do-now', 'Apply the zero-risk fixes now'));
+  if (args.recommendations) options.push(cmdOption('s', 'surface', 'Surface recommendations to inbox'));
+  options.push(
+    cmdOption('t', 'technical', "Retell the review from the code's perspective"),
+    cmdOption('v', 'view', 'Show the full review report'),
+    cmdOption('c', 'continue', 'Proceed to review actions'),
+    promptOption('Ask a question', 'Ask about the review findings'),
+  );
+  return section(
+    'MENU: review Q&A gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu('Any questions before proceeding?', options),
+  );
+}
+
 // reroute-offer — the off-topic reroute's consent gate. The concern and,
 // when one home is clear, the resolved target with its judged landing
 // phase are judgment content; the chrome and the options are fixed.
@@ -804,6 +838,34 @@ function rerouteOffer(cwd, { dotpath, file }) {
       cmdOption('r', 'reroute', 'Send it to the topic it belongs to; it picks it up later'),
       cmdOption('k', 'keep', 'Keep it here as a subtopic'),
     ]),
+  );
+}
+
+// off-topic-offer — the single-topic counterpart of reroute-offer: with no
+// sibling topic to route the concern to, it is logged, pivoted into an epic,
+// or noted in place. The pivot row exists only for a feature — the one type
+// that can become an epic — and is derived from the manifest, never asked
+// for and never carried in the payload.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function offTopicOffer(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render off-topic-offer: --file <payload.json> is required');
+  const { manifest } = resolveAddress(cwd, dotpath, 'off-topic-offer');
+  const p = readJsonPayload(cwd, file, 'off-topic-offer');
+  if (!isFilled(p.concern)) throw new Error('render off-topic-offer: "concern" must be a non-empty string');
+  const options = [cmdOption('l', 'log', 'Capture it as an idea in the inbox for later')];
+  if (manifest.work_type === 'feature') {
+    options.push(cmdOption('p', 'pivot', 'Convert this work to an epic so it can hold the concern as its own topic'));
+  }
+  options.push(cmdOption('i', 'ignore', 'Note it in the research file and move on'));
+  return section(
+    'MENU: off-topic offer',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`**${p.concern}** is beyond this topic's scope.`, options),
   );
 }
 
@@ -1970,11 +2032,13 @@ const SURFACES = {
   'findings-summary': findingsSummary,
   'finding-batch': findingBatch,
   'finding': finding,
+  'review-qa-gate': reviewQaGate,
   'triage-announce': triageAnnounce,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,
   'reroute-offer': rerouteOffer,
   'reroute-candidates': rerouteCandidates,
+  'off-topic-offer': offTopicOffer,
   'proposed-task': proposedTask,
   'incoherence-gate': incoherenceGate,
   'cancel-cascade-gate': cancelCascadeGate,

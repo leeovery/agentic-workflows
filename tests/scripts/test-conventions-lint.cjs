@@ -696,9 +696,9 @@ const RATCHET_PINS = {
   'skills/workflow-research-process/references/deep-dive-agent.md': 2,
   'skills/workflow-research-process/references/document-review.md': 2,
   'skills/workflow-research-process/references/epic-session.md': 2,
-  'skills/workflow-research-process/references/feature-session.md': 2,
+  'skills/workflow-research-process/references/feature-session.md': 1,
   'skills/workflow-research-process/references/topic-splitting.md': 2,
-  'skills/workflow-review-process/references/present-review.md': 7,
+  'skills/workflow-review-process/references/present-review.md': 6,
   'skills/workflow-scoping-process/SKILL.md': 2,
   'skills/workflow-scoping-process/references/complexity-check.md': 2,
   'skills/workflow-discovery/references/first-phase-routing.md': 1,
@@ -823,6 +823,106 @@ function checkBuriedInvoke(files) {
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Checks 16 & 17 — Menu option alignment, and the conditional rows that make
+// alignment impossible to carry by hand.
+//
+// A menu block opens on a dot frame and closes at the fence that holds it.
+// Within it, every option line's arrow shares one column measured against the
+// RENDERED head — `**` and backticks are markup the renderer consumes, so
+// counting authored characters lands a mixed command/prompt block two columns
+// apart on screen (surfaces.cjs `renderedLen` names the same trap).
+//
+// Anchoring on the dot frame is what keeps these calibrated for zero false
+// positives: prose that happens to use the `**term** → gloss` shape outside a
+// menu (subtopic-state definitions, for one) is never a menu and never
+// inspected.
+// ---------------------------------------------------------------------------
+
+const OPTION_LINE = /^(\*\*.+?\*\*)( *)→ (.*)$/;
+
+// Rendered width of an option head: the markup the renderer consumes does not
+// occupy a column, and the padding sits outside it, so rendered pad === source pad.
+function renderedHeadLen(head) {
+  return charLen(head.replace(/\*\*/g, '').replace(/`/g, ''));
+}
+
+// Collect the menu blocks of one file: each is { start, options: [{n, head, pad}],
+// conditional: [line numbers of option rows guarded by an @if] }.
+function menuBlocks(lines) {
+  const blocks = [];
+  let block = null;
+  const close = () => {
+    if (block && block.options.length >= 2) blocks.push(block);
+    block = null;
+  };
+  lines.forEach((line, i) => {
+    const t = line.trim();
+    if (t === MENU_FRAME) {
+      close();
+      block = { start: i + 1, options: [], conditional: [], guarded: false };
+      return;
+    }
+    if (!block) return;
+    if (/^\s*```/.test(line)) {
+      close();
+      return;
+    }
+    if (/^\s*@if\(/.test(t)) {
+      block.guarded = true;
+      return;
+    }
+    if (/^\s*@(endif|else)\b/.test(t)) {
+      block.guarded = false;
+      return;
+    }
+    const m = OPTION_LINE.exec(t);
+    if (m) {
+      block.options.push({ n: i + 1, head: m[1], pad: m[2] });
+      if (block.guarded) block.conditional.push(i + 1);
+    }
+  });
+  close();
+  return blocks;
+}
+
+function checkMenuAlignment(files) {
+  const out = [];
+  for (const file of files) {
+    for (const block of menuBlocks(readLines(file))) {
+      const cols = block.options.map((o) => renderedHeadLen(o.head) + o.pad.length);
+      const column = Math.max(...cols);
+      block.options.forEach((o, i) => {
+        if (cols[i] === column) return;
+        out.push({
+          file,
+          line: o.n,
+          message: `menu arrow misaligned — rendered column ${cols[i]}, block column ${column} (pad outside the closing \`**\`, measured on the rendered head)`,
+        });
+      });
+    }
+  }
+  return out;
+}
+
+function checkConditionalOptions(files) {
+  const out = [];
+  for (const file of files) {
+    for (const block of menuBlocks(readLines(file))) {
+      for (const n of block.conditional) {
+        out.push({
+          file,
+          line: n,
+          message: 'menu option behind an @if — a runtime-varying option set is engine-rendered, never authored (hand-carried padding cannot follow it)',
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+
 const CHECKS = [
   ['1: phase-title chrome (drawn borders retired)', checkBorders],
   ['2: step / sub-step chrome (drawn markers retired)', checkMarkers],
@@ -839,6 +939,8 @@ const CHECKS = [
   ['13: templated-fence ratchet (render-surfaces D4)', checkTemplatedRatchet],
   ['14: buried invocation imperatives', checkBuriedInvoke],
   ['15: cross-file section references', checkCrossFileSections],
+  ['16: menu option alignment', checkMenuAlignment],
+  ['17: conditional menu options', checkConditionalOptions],
 ];
 
 function report(violations) {
@@ -1230,5 +1332,56 @@ test('check 14 (buried invoke) — catches in-fence imperatives, permits pre-fen
     assert.strictEqual(v.length, 1, 'in-fence imperative must be caught');
     const good = write(dir, 'skills/x/b.md', 'Invoke the **workflow-bridge** skill (Skill tool) with the next fenced block as its arguments.\n\n```\nPipeline bridge for: pay\n```\n');
     assert.strictEqual(checkBuriedInvoke([good]).length, 0, 'pre-fence imperative is the canonical form');
+  });
+});
+
+test('check 16 (menu alignment) — measures the rendered head, skips non-menu prose', () => {
+  withTemp((dir) => {
+    const good = write(dir, 'skills/x/good.md',
+      `\`\`\`\n${MENU_FRAME}\n**\`◆ Proceed?\`**\n\n**\`y/yes\`**      → Conclude\n**Keep going** → Tell me what else to explore\n\`\`\`\n`);
+    assert.strictEqual(checkMenuAlignment([good]).length, 0, 'a rendered-aligned mixed menu is clean');
+
+    // The trap: heads padded to equal SOURCE length render two columns apart.
+    const sourceAligned = write(dir, 'skills/x/src.md',
+      `\`\`\`\n${MENU_FRAME}\n**\`y/yes\`**    → Conclude\n**Keep going** → Tell me what else to explore\n\`\`\`\n`);
+    const srcV = checkMenuAlignment([sourceAligned]);
+    assert.strictEqual(srcV.length, 1, 'source-aligned mixed menu is caught');
+    assert.match(srcV[0].message, /rendered column 9, block column 11/);
+
+    const unpadded = write(dir, 'skills/x/flat.md',
+      `\`\`\`\n${MENU_FRAME}\n**\`l/log\`** → Capture it\n**\`i/ignore\`** → Move on\n\`\`\`\n`);
+    assert.strictEqual(checkMenuAlignment([unpadded]).length, 1, 'an unpadded block is caught');
+
+    // Option grammar outside a menu is not a menu — no dot frame, no check.
+    const prose = write(dir, 'skills/x/prose.md',
+      '**pending** → Identified but not yet explored.\n\n**exploring** → Actively being discussed.\n');
+    assert.strictEqual(checkMenuAlignment([prose]).length, 0, 'non-menu prose is never inspected');
+
+    // The fence closes the block: rows beyond it are not measured against it.
+    const twoBlocks = write(dir, 'skills/x/two.md',
+      `\`\`\`\n${MENU_FRAME}\n**\`y/yes\`** → A\n**\`n/no\`**  → B\n\`\`\`\n\ntext\n\n\`\`\`\n${MENU_FRAME}\n**\`a/approve\`** → C\n**\`v/view\`**    → D\n\`\`\`\n`);
+    assert.strictEqual(checkMenuAlignment([twoBlocks]).length, 0, 'each block aligns independently');
+
+    const single = write(dir, 'skills/x/one.md', `\`\`\`\n${MENU_FRAME}\n**\`y/yes\`** → Only one\n\`\`\`\n`);
+    assert.strictEqual(checkMenuAlignment([single]).length, 0, 'a lone option has no column to share');
+  });
+});
+
+test('check 17 (conditional menu options) — catches @if-guarded rows, permits @if elsewhere', () => {
+  withTemp((dir) => {
+    const bad = write(dir, 'skills/x/cond.md',
+      `\`\`\`\n${MENU_FRAME}\n@if(has_donow)\n**\`d/do-now\`** → Apply now\n@endif\n**\`c/continue\`** → Proceed\n\`\`\`\n`);
+    const v = checkConditionalOptions([bad]);
+    assert.strictEqual(v.length, 1, 'the guarded row is caught');
+    assert.strictEqual(v[0].line, 4);
+
+    const good = write(dir, 'skills/x/plain.md',
+      `\`\`\`\n${MENU_FRAME}\n**\`y/yes\`** → A\n**\`n/no\`**  → B\n\`\`\`\n`);
+    assert.strictEqual(checkConditionalOptions([good]).length, 0, 'an unconditional menu is clean');
+
+    // @if belongs to templated displays — only option rows inside a menu are banned.
+    const display = write(dir, 'skills/x/display.md',
+      '```\nStatus:\n@if(has_plan)\n  Plan: {plan_status}\n@endif\n```\n');
+    assert.strictEqual(checkConditionalOptions([display]).length, 0, 'templated displays keep @if');
   });
 });
