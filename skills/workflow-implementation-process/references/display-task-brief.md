@@ -6,21 +6,15 @@
 
 The pre-dispatch announcement — shown each time the loop takes up a task, after `task start` and before the executor is dispatched, so the user knows what is about to be built and what to have eyes on when it lands. Fix rounds, retries, and gate-comment rounds re-enter execution directly and never come back through it.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`▪ {Task Name} ({task_number} of {task_total})`**
-```
-
-`{task_number}`/`{task_total}` are the task's ordinal and the plan's task total, noted at **A. Retrieve Next Task**. When the format cannot yield them, the marker carries the name alone: `**`▪ {Task Name}`**`.
-
 Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/task-brief.json` with the Write tool:
 
 ```json
-{"id": "{internal_id}", "phase": "{phase number} — {phase name}", "position": "{phase_task_number} of {phase_task_total} in phase", "external": {"label": "{plan format}", "id": "{external id}"}, "summary": "{summary}", "watch": ["{watch line}", "..."]}
+{"id": "{internal_id}", "title": "{Task Name}", "current": {task_number}, "total": {task_total}, "phase": "{phase number} — {phase name}", "position": "{phase_task_number} of {phase_task_total} in phase", "external": {"label": "{plan format}", "id": "{external id}"}, "summary": "{summary}", "watch": ["{watch line}", "..."]}
 ```
 
 - `id` — the in-flight task's internal id. The engine refuses a payload naming any other task, so a stale file left by an earlier task never renders.
+- `title` — the task's name, from the normalised task content. It heads the brief as the task's marker.
+- `current`/`total` — the task's ordinal and the plan's task total, noted at **A. Retrieve Next Task**; whole numbers, not strings. Omit the pair when the listing did not yield the counts — the marker then carries the name alone.
 - `phase` — the task's plan phase, number and name, from the normalised task content (its `PHASE` line).
 - `position` — the in-phase ordinal from the same stage-A listing; omit the field when the listing did not yield the counts.
 - `external` — the plan format's display identifier, obtained as its **reading.md** → Display Identifier section instructs, labelled with the plan's `format` value. Omit the field when the format declares none.

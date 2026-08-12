@@ -1568,19 +1568,33 @@ function implItemAt(cwd, dotpath, surface) {
 }
 
 /**
- * Validate the shared task-header payload and build the meta rows — one
+ * Validate the shared task-header payload and build its two parts — the
+ * sub-step marker naming the task, and the meta rows beneath it. One
  * definition shared by task-brief and task-result, so the two headers
- * cannot drift. The required `id` must name the in-flight task: both
- * payload files are per-topic and reused task after task, and a stale one
- * must refuse rather than render under the wrong task. Then `phase`,
- * optional `position`, optional `external {label, id}`.
+ * cannot drift; they differ only in what sits between the parts. The
+ * required `id` must name the in-flight task: both payload files are
+ * per-topic and reused task after task, and a stale one must refuse rather
+ * than render under the wrong task. Then `title` — the task's name is the
+ * plan format's, never manifest state — with its optional `current`/`total`
+ * ordinal, which the format's listing may not yield; then `phase`, optional
+ * `position`, optional `external {label, id}`.
  * @param {any} p @param {string} taskId @param {string} surface
- * @returns {string[]}
+ * @returns {{marker: string, rows: string[]}}
  */
-function taskMetaRows(p, taskId, surface) {
+function taskHeader(p, taskId, surface) {
   if (!isFilled(p.id)) throw new Error(`render ${surface}: "id" must be a non-empty string`);
   if (p.id !== taskId) {
     throw new Error(`render ${surface}: payload "id" is "${p.id}" but the in-flight task is "${taskId}" — a stale ${surface}.json; rewrite the payload for the current task`);
+  }
+  if (!isFilled(p.title)) throw new Error(`render ${surface}: "title" must be a non-empty string`);
+  const counted = p.current !== undefined || p.total !== undefined;
+  if (counted) {
+    if (!Number.isInteger(p.current) || p.current < 1) {
+      throw new Error(`render ${surface}: "current" must be a positive integer — omit it and "total" together when the format's listing cannot yield them`);
+    }
+    if (!Number.isInteger(p.total) || p.total < p.current) {
+      throw new Error(`render ${surface}: "total" must be an integer ≥ "current"`);
+    }
   }
   if (!isFilled(p.phase)) throw new Error(`render ${surface}: "phase" must be a non-empty string`);
   if (p.position !== undefined && !isFilled(p.position)) {
@@ -1590,10 +1604,11 @@ function taskMetaRows(p, taskId, surface) {
     || !isFilled(p.external.label) || !isFilled(p.external.id))) {
     throw new Error(`render ${surface}: "external" must be {label, id} when present`);
   }
+  const marker = `**\`▪ ${p.title.trim()}${counted ? ` (${p.current} of ${p.total})` : ''}\`**`;
   const idRow = p.external ? `\`${taskId}\` · ${p.external.label} \`${p.external.id}\`` : `\`${taskId}\``;
   const rows = [`- **Id**: ${idRow}`, `- **Phase**: ${p.phase}`];
   if (p.position !== undefined) rows.push(`- **Position**: ${p.position}`);
-  return rows;
+  return { marker, rows };
 }
 
 // ---------------------------------------------------------------------------
@@ -1601,11 +1616,11 @@ function taskMetaRows(p, taskId, surface) {
 // takes up a task: between `task start` and the executor dispatch. The
 // payload's required `id` must name the in-flight task — the payload file
 // is per-topic, and a stale one would describe the previous task under the
-// current id. The meta rows come from the shared task-header builder; the
-// summary and watch lines are judgment content the manifest never holds —
-// what the task is about to change, and what deserves eyes when it lands.
-// No verdict line: nothing has happened yet, and its absence is what tells
-// the brief apart from the result.
+// current id. The marker and meta rows come from the shared task-header
+// builder; the summary and watch lines are judgment content the manifest
+// never holds — what the task is about to change, and what deserves eyes
+// when it lands. No verdict line: nothing has happened yet, and its absence
+// is what tells the brief apart from the result.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1618,14 +1633,14 @@ function taskBrief(cwd, args) {
   if (!file) throw new Error('render task-brief: --file <payload.json> is required');
   const { taskId } = implItemAt(cwd, dotpath, 'task-brief');
   const p = readJsonPayload(cwd, file, 'task-brief');
-  const meta = taskMetaRows(p, taskId, 'task-brief');
+  const { marker, rows } = taskHeader(p, taskId, 'task-brief');
   if (!isFilled(p.summary)) throw new Error('render task-brief: "summary" must be a non-empty string');
   const watch = p.watch === undefined ? null : stringLines(p.watch, 'task-brief', 'watch');
   if (watch !== null && (watch.length === 0 || watch.some((l) => l.trim() === ''))) {
     throw new Error('render task-brief: "watch" must be a non-empty array of non-empty strings when present');
   }
 
-  const body = [...meta, '', p.summary.trim()];
+  const body = [marker, '', ...rows, '', p.summary.trim()];
   if (watch !== null) body.push('', '**Watch**:', ...watch.map((l) => `- ${l.trim()}`));
   return section('DISPLAY: task brief', CONTINUE_MARKDOWN_INSTRUCTION, body.join('\n'));
 }
@@ -1670,14 +1685,14 @@ function taskResult(cwd, args) {
   }
   const { item, taskId } = implItemAt(cwd, dotpath, 'task-result');
   const p = readJsonPayload(cwd, file, 'task-result');
-  const meta = taskMetaRows(p, taskId, 'task-result');
+  const { marker, rows } = taskHeader(p, taskId, 'task-result');
 
   const attempts = counterOf(item, 'fix_attempts');
   if (result === 'needs-changes' && attempts < 1) {
     throw new Error('render task-result: fix_attempts is 0 — run `task fix-attempt` before a needs-changes result');
   }
 
-  return section('DISPLAY: task result', CONTINUE_MARKDOWN_INSTRUCTION, [verdictOf(attempts), '', ...meta].join('\n'));
+  return section('DISPLAY: task result', CONTINUE_MARKDOWN_INSTRUCTION, [marker, '', verdictOf(attempts), '', ...rows].join('\n'));
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
