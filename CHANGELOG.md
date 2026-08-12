@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.66] - 2026-08-12
+
+🔧 Changed
+- Task-loop briefs and results now share one header definition, so the ▪ task marker and its (current of total) ordinal render identically in both moments — text mismatches between the pre-dispatch announcement and the outcome can no longer drift.
+- Task-loop payloads now carry the task's title and ordinal directly instead of relying on manifest state, keeping the display in sync with the plan format's own listing.
+
 ## [0.6.65] - 2026-08-12
 
 ✨ Added
