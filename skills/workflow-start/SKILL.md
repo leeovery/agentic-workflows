@@ -202,24 +202,20 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 Branch on the boot response's `baseline` — the one-time offer to assess a pre-existing codebase. A recorded status (`in-progress`/`completed`/`skipped`) never re-offers; the start menu and manage carry those paths.
 
-#### If `baseline` is `none` and the project carries a pre-existing codebase of substance
+#### If `baseline` is `none` and the project carries a codebase that predates the workflows
 
-Judge the second condition from what you can already see — a real product built before the workflows arrived (source tree, git history), not a fresh or near-empty repository. When in doubt, offer once: declining records the answer.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> This project has an existing codebase the workflows know nothing about. A baseline assessment researches it, then interviews you to capture the intent the code can't show — landing docs the knowledge base surfaces in every later phase. Pausable any time; also available later from the manage menu.
-```
+Judge the second condition from what you can already see — code and git history from before the workflows arrived, not a project that grew up on them (however large it has become) and not a fresh or near-empty repository. When in doubt, offer once: declining records the answer.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-· · · · · · · · · · · ·
-**`◆ Run a baseline assessment?`**
+> This project has an existing codebase the workflows know nothing about. A baseline assessment researches it, then interviews you to capture the intent the code can't show — landing docs the knowledge base surfaces in every later phase. Pausable any time; also available later from the workflow-start menus.
+```
 
-**`y/yes`** → Start the assessment now
-**`n/no`**  → Skip — available later from the manage menu
+Fetch the offer and emit its `MENU: baseline offer` section verbatim as markdown (not a code block):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-offer-gate
 ```
 
 **STOP.** Wait for user response.

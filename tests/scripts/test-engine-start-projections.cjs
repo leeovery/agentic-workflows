@@ -641,8 +641,24 @@ describe('start projections: baseline rows', () => {
     const completed = emptyMenu(startDetail(dir));
     assert.strictEqual(completed.keys.find((k) => k.action === 'open_baseline').label, 'View or expand the project baseline');
 
+    // The empty state has no manage row, so a declined baseline rides here —
+    // the only surface a work-free project renders.
     writeProjectBaseline(dir, { status: 'skipped' });
-    assert.ok(!emptyMenu(startDetail(dir)).keys.some((k) => k.action === 'open_baseline'), 'a skipped baseline never rides the start menus');
+    assert.strictEqual(emptyMenu(startDetail(dir)).keys.find((k) => k.action === 'open_baseline').label, 'Start the project baseline assessment');
+  });
+
+  it('every status reaches the baseline from somewhere: empty state, populated menu, or manage', () => {
+    const reachable = (status, areas) => {
+      writeProjectBaseline(dir, { status, areas });
+      const empty = emptyMenu(startDetail(dir)).keys.some((k) => k.action === 'open_baseline');
+      const full = fullFixture(dir) && startMenu(startDetail(dir)).keys.some((k) => k.action === 'open_baseline');
+      const manage = manageListView(startDetail(dir)).menu.includes('a/baseline');
+      return { empty, full, manage };
+    };
+    assert.deepStrictEqual(reachable('in-progress', { overview: 'researched' }), { empty: true, full: true, manage: true });
+    assert.deepStrictEqual(reachable('completed', { overview: 'completed' }), { empty: true, full: false, manage: true });
+    assert.deepStrictEqual(reachable('skipped', undefined), { empty: true, full: false, manage: true });
+    assert.deepStrictEqual(reachable('none', undefined), { empty: false, full: false, manage: true });
   });
 });
 

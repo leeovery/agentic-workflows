@@ -32,4 +32,4 @@ Then, in Claude Code:
 /workflow-start
 ```
 
-That is the whole interface. The first run configures itself in conversation — there is no setup procedure to follow. If you want search-by-meaning over your past work, you will be offered a one-time setup for it; everything works without it too. From here, [the five work types](work-types.md) explains the pipeline shapes and how the right one gets chosen, and it is the natural next page.
+That is the whole interface. The first run configures itself in conversation — there is no setup procedure to follow. If you want search-by-meaning over your past work, you will be offered a one-time setup for it; everything works without it too. And on a codebase that predates the workflows, the first run also offers a one-time [baseline assessment](configuration.md) — research plus an interview that backfills the context the code alone can't show. From here, [the five work types](work-types.md) explains the pipeline shapes and how the right one gets chosen, and it is the natural next page.

@@ -91,7 +91,7 @@ A project that grew up on the workflows accumulates that record as it goes. A pr
 
 ## An expert in the room
 
-This is multi-agent by design. Twenty-four specialised agents work alongside the pipeline: background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Findings are surfaced, never silently applied.
+This is multi-agent by design. Twenty-five specialised agents work alongside the pipeline: baseline researchers that map a codebase the workflows were installed into, background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Findings are surfaced, never silently applied.
 
 ## Your task tracker
 
@@ -118,7 +118,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 ## Documentation
 
-The [full documentation](docs/README.md) covers every phase in detail, the engine beneath them, the knowledge base, all twenty-four agents, and the history of the project. Start with these:
+The [full documentation](docs/README.md) covers every phase in detail, the engine beneath them, the knowledge base, all twenty-five agents, and the history of the project. Start with these:
 
 | Page | Contents |
 |---|---|
@@ -128,7 +128,7 @@ The [full documentation](docs/README.md) covers every phase in detail, the engin
 | [Implementation](docs/implementation.md) | The TDD loop, gates, and the fix threshold |
 | [The engine](docs/engine.md) | What the deterministic core does, and why |
 | [The knowledge base](docs/knowledge-base.md) | Recall, provenance, decay |
-| [The agents](docs/agents.md) | All twenty-four, organised by when they act |
+| [The agents](docs/agents.md) | All twenty-five, organised by when they act |
 | [Configuration](docs/configuration.md) | Install, project defaults, gate modes |
 | [History](docs/history.md) | Where this came from and how it evolved |
 

@@ -142,8 +142,9 @@ function continueLabel(unit, type) {
  * Section B — the interactive menu. `keys` carries the machine action keys
  * (skills route on these); `rendered` is the dotted-gate markdown block.
  * Numbered continue entries first (overview order and numbering), then the
- * start-new and lifecycle command options (`i` only with a live inbox, `v`
- * only with completed/cancelled work units).
+ * baseline resume row (`a`, in-progress only — completed manages via `m`),
+ * then the start-new and lifecycle command options (`i` only with a live
+ * inbox, `v` only with completed/cancelled work units).
  * @param {StartDetail} detail
  * @returns {{keys: StartMenuKey[], rendered: string}}
  */
@@ -213,9 +214,12 @@ function emptyOverview(detail) {
 }
 
 /**
- * The empty-state start menu — the six start-new options with pipeline-shape
- * labels, `i` only with a live inbox, `v` only with closed work units. Same
- * key shape as startMenu, so the ACTIONS table and routing are uniform.
+ * The empty-state start menu — a baseline row first when one exists to act
+ * on (`a`: resume in-progress, view/expand completed, start a declined one —
+ * the empty state has no manage row, so `skipped` rides here; `none` renders
+ * nothing), then the six start-new options with pipeline-shape labels, `i`
+ * only with a live inbox, `v` only with closed work units. Same key shape as
+ * startMenu, so the ACTIONS table and routing are uniform.
  * @param {StartDetail} detail
  * @returns {{keys: StartMenuKey[], rendered: string}}
  */
@@ -226,6 +230,11 @@ function emptyMenu(detail) {
     options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: baselineResumeLabel(detail) });
   } else if (detail.baseline.status === 'completed') {
     options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: 'View or expand the project baseline' });
+  } else if (detail.baseline.status === 'skipped') {
+    // A declined offer stays reachable here — the empty state has no manage
+    // row, and this is the only surface a work-free project renders. `none`
+    // stays hidden: a greenfield project never sees a baseline row.
+    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: 'Start the project baseline assessment' });
   }
   options.push(
     { key: 's', word: 'start', action: 'start_new', pre_seed: 'none', route: null, label: "Not sure what kind yet — describe it and we'll shape it" },
@@ -507,7 +516,8 @@ function manageListView(detail) {
     none: 'Start the project baseline assessment',
   }[detail.baseline.status];
   const menuLines = [
-    ...(baselineOption ? [cmdOption('a', 'baseline', baselineOption), ''] : []),
+    cmdOption('a', 'baseline', baselineOption),
+    '',
     'Select a work unit (enter number, or **`b/back`** to return):',
   ];
 

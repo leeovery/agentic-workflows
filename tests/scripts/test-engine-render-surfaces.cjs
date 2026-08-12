@@ -1766,7 +1766,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -1972,6 +1972,15 @@ describe('baseline surfaces', () => {
     writeBaseline({ status: 'in-progress', areas: { dispatcher: 'researched' } });
     const many = writePayload(dir, 'payload.json', { area: 'dispatcher', questions: [1, 2, 3, 4, 5].map((n) => ({ text: `q${n}` })) });
     assert.throws(() => renderSurface(dir, 'baseline-round', { file: many }), /1-4/);
+  });
+
+  it('baseline-offer-gate: renders only while nothing is recorded', () => {
+    const out = renderSurface(dir, 'baseline-offer-gate', {});
+    assert.match(out, /\*\*`◆ Run a baseline assessment\?`\*\*/);
+    assert.match(out, /\*\*`y\/yes`\*\* → Start the assessment now/);
+    assert.match(out, /\*\*`n\/no`\*\*\s+→ Skip — you can start it later from the workflow-start menus/);
+    writeBaseline({ status: 'skipped' });
+    assert.throws(() => renderSurface(dir, 'baseline-offer-gate', {}), /the offer fires once/);
   });
 
   it('the static baseline gates render their menus; the completed-only pair refuse mid-flight', () => {

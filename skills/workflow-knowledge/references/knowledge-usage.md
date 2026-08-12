@@ -33,7 +33,7 @@ See **[SKILL.md](../SKILL.md)** — query construction examples and the full fla
 
 Chunks land in context; read the source file (from the `Source:` line) only when a chunk looks load-bearing. See **[SKILL.md](../SKILL.md)** — two-step retrieval pattern.
 
-A `[baseline | …]` hit is the project baseline — observed and user-stated context about the codebase as the workflows found it. Reference, never record: it informs the conversation, but it never settles a decision the way a discussion or specification chunk does, and a stated rationale worth building on is confirmed with the user rather than silently assumed current.
+A `[baseline | …]` hit is the project baseline — observed and user-stated context about the codebase as the workflows found it. Reference, never record: it informs the conversation, but it never settles a decision the way a discussion or specification chunk does, and a stated rationale worth building on is confirmed with the user rather than silently assumed current. Baseline chunks also never decay — a claim the code has since outgrown is worth flagging to the user rather than trusting it to fade.
 
 ## D. Query failure handling
 

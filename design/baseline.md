@@ -168,6 +168,52 @@ ratchet-or-convention driven rather than design changes:
   use AskUserQuestion, which the walker harness may not simulate —
   case design must stop at gates it can script.
 
+## Review pass (2026-08-12)
+
+Eight-dimension finder fleet over the stack; Lee's rulings and the
+resulting deltas — several revise the decisions above:
+
+- **The interview is conversational, not AskUserQuestion** (revises
+  decision 1). Rounds render as engine ask blocks (`baseline-round`,
+  payload-fed: numbered questions, lettered candidates) and the user
+  answers in prose. Kills the instructions.md exception entirely and
+  makes the interview walkable by the prose harness unchanged.
+- **Every menu and output is engine-generated** (Lee, mid-review): the
+  scope confirmation (payload-validated — area names mechanically
+  kebab/dot-free), doc/manage/pick gates, and workflow-start's offer
+  menu all joined the `baseline-*` surface family. No prose-authored
+  menus anywhere in the feature.
+- **No harness-failure workarounds in prose** (Lee): the research
+  failure branch is deleted, not elaborated — a transient agent failure
+  is rerun in the moment, unprescribed. The same principle stripped the
+  planned empty-map guards; the scope persist simply registers areas
+  before the status flips, making the crash state unreachable.
+- **Deepen is a real merge** (revises decision 9's sibling-area
+  reading): reusing an area's name appends new questions to its agenda
+  (recorded answers never rewritten) and extends its doc (Decisions
+  never dropped, Open Questions reconciled).
+- **A declined baseline rides the empty-state menu** (`skipped` →
+  `a/baseline` start row) — the empty state has no manage row, and that
+  window is exactly the one the offer targets. `none` stays hidden
+  there; manage carries the row for every status.
+- **The offer keys on precedence, not size** — code and history that
+  predate the workflows, so a project that grew up on them is never
+  offered one however large it gets.
+- **Confirmation questions restored** (decision 2's "user-confirmed
+  where load-bearing"): the agenda keeps confirm-class questions for
+  load-bearing observed claims, and a correction to an observed claim
+  is re-checked against the code before the doc carries it.
+- **`conventions.md` is deliberately dropped from the doc spine**
+  (revises decision 4): agents read conventions from code; a baseline
+  conventions doc is the Turnstile failure mode in miniature.
+- **Legacy work unit named `baseline`**: accepted, no guard, no
+  migration, per Lee.
+- **One state home**: `domain/baseline.cjs` derives status/areas/
+  remaining for boot, the start menus, and every surface; projections
+  are pure detail-to-string.
+- **Prose worlds stamp `baseline: skipped`** (the tmux-kill precedent)
+  so the nine workflow-start-entry cases never meet the offer judgment.
+
 ## Open / deferred
 
 - Interview-stated WHY as record-grade (v1: advisory-only; revisit once
