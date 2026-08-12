@@ -241,6 +241,15 @@ engine render session-receipt <wu> [--warn]                       # discovery-se
 engine render absorb-target <feature>                             # the absorb flow's target-epic selection menu; refuses when the absorb guard doesn't hold
 engine render plan-topics <wu>                                    # the view-plan topic selection menu; refuses without a multi-topic epic plan
 engine render revisit-phases <wu>                                 # the revisit-phase selection menu over completed earlier phases; linear work types only, refuses when nothing is revisitable
+engine render baseline-progress                                   # the baseline area map from the project manifest — in-progress: per-area statuses + remaining count; completed: the landed doc list; refuses with no baseline or no areas
+engine render baseline-area-gate --area <name>                    # the between-areas continue/pause gate after the named area's doc lands; refuses an unlanded area, and refuses when nothing remains (that path concludes instead)
+engine render baseline-paused                                     # the interview's pause receipt — documented count + the workflow-start pointer; in-progress only
+engine render baseline-receipt                                    # the completion receipt — doc list + the knowledge-query note; refuses before the completed write, and refuses to name an unlanded doc
+engine render baseline-scope-gate --file <payload.json>           # the scope confirmation: proposed-area list (payload {mode: fresh|expand, areas: [{name, detail}]}, names validated kebab/dot-free) + the approve/back/adjust gate; stateless — runs before anything persists
+engine render baseline-round --file <payload.json>                # one interview round: payload {area, questions: [{text, candidates?}]} (1-4 questions, up to 4 candidates each), rendered numbered + lettered over a researched area
+engine render baseline-doc-gate                                   # the doc-landing gate after an area's weave — static approve/view/adjust menu
+engine render baseline-manage-gate                                # the completed-baseline manage menu — expand/view/back; completed only
+engine render baseline-doc-pick                                   # manage's doc picker prompt; completed only
 ```
 
 The bridge continuation surfaces take a bare `<work_unit>` address (work-unit-level, type read from the manifest). The continue-* selection step is not a `render` surface: it runs its own navigation-gateway index dump and emits that response's `DISPLAY: selection` / `MENU: selection` sections, per their markers.

@@ -17,6 +17,11 @@ const { worklist } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
+const {
+  baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
+  baselineScopeGate, baselineRound, baselineDocGate, baselineManageGate, baselineDocPick,
+} = require('./projections/baseline.cjs');
+const { baselineState } = require('./baseline.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
@@ -1794,6 +1799,160 @@ function planTopics(cwd, args) {
   return planTopicsMenu(md);
 }
 
+// ---------------------------------------------------------------------------
+// The baseline surfaces — project-level, no address. Each handler resolves
+// the one BaselineState (domain/baseline.cjs), refuses states the calling
+// prose never reaches, and hands the pure projection its detail.
+// ---------------------------------------------------------------------------
+
+/** Resolve baseline state, refusing the never-started default. @param {string} cwd @param {string} surface */
+function resolveBaseline(cwd, surface) {
+  const d = baselineState(cwd);
+  if (d.status === 'none') {
+    throw new Error(`render ${surface}: no baseline on the project manifest`);
+  }
+  return d;
+}
+
+/** @param {string} cwd @param {object} _args @returns {string} */
+function baselineProgressSurface(cwd, _args) {
+  const d = resolveBaseline(cwd, 'baseline-progress');
+  if (d.areas.length === 0) {
+    throw new Error('render baseline-progress: the baseline has no areas');
+  }
+  return baselineProgress(d);
+}
+
+/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
+function baselineAreaGateSurface(cwd, { area }) {
+  const d = resolveBaseline(cwd, 'baseline-area-gate');
+  if (!area) throw new Error('render baseline-area-gate: --area is required');
+  const entry = d.areas.find((a) => a.name === area);
+  if (!entry) throw new Error(`render baseline-area-gate: unknown area "${area}"`);
+  if (entry.status !== 'completed') {
+    throw new Error(`render baseline-area-gate: area "${area}" is "${entry.status}", not completed — the gate follows the doc landing`);
+  }
+  if (d.remaining === 0) {
+    throw new Error('render baseline-area-gate: no areas remain — the flow concludes instead of gating');
+  }
+  return baselineAreaGate(d, area);
+}
+
+/** @param {string} cwd @param {object} _args @returns {string} */
+function baselinePausedSurface(cwd, _args) {
+  const d = resolveBaseline(cwd, 'baseline-paused');
+  if (d.status !== 'in-progress') {
+    throw new Error(`render baseline-paused: the baseline is "${d.status}", not in-progress`);
+  }
+  return baselinePaused(d);
+}
+
+/** @param {string} cwd @param {object} _args @returns {string} */
+function baselineReceiptSurface(cwd, _args) {
+  const d = resolveBaseline(cwd, 'baseline-receipt');
+  if (d.status !== 'completed') {
+    throw new Error(`render baseline-receipt: the baseline is "${d.status}", not completed — the receipt follows the completion write`);
+  }
+  const unlanded = d.areas.filter((a) => a.status !== 'completed');
+  if (unlanded.length > 0) {
+    throw new Error(`render baseline-receipt: area "${unlanded[0].name}" is "${unlanded[0].status}", not completed — a receipt never names a doc that was not landed`);
+  }
+  return baselineReceipt(d);
+}
+
+// An area name doubles as the doc's knowledge-base identity — kebab-case,
+// dot- and slash-free, enforced where the proposal is rendered so an illegal
+// name never survives to the interview.
+const AREA_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/** Read + validate a `--file` JSON payload. @param {string} cwd @param {string} surface @param {string|undefined} file @returns {any} */
+function readBaselinePayload(cwd, surface, file) {
+  if (!file) throw new Error(`render ${surface}: --file <payload.json> is required`);
+  let raw;
+  try {
+    raw = fs.readFileSync(path.resolve(cwd, file), 'utf8');
+  } catch {
+    throw new Error(`render ${surface}: payload file not found: ${file}`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`render ${surface}: payload is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/** @param {string} cwd @param {{file?: string}} args @returns {string} */
+function baselineScopeGateSurface(cwd, { file }) {
+  const payload = readBaselinePayload(cwd, 'baseline-scope-gate', file);
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('render baseline-scope-gate: payload must be an object {mode, areas}');
+  }
+  if (payload.mode !== 'fresh' && payload.mode !== 'expand') {
+    throw new Error('render baseline-scope-gate: "mode" must be "fresh" or "expand"');
+  }
+  if (!Array.isArray(payload.areas) || payload.areas.length === 0) {
+    throw new Error('render baseline-scope-gate: "areas" must be a non-empty array of {name, detail}');
+  }
+  for (const [i, a] of payload.areas.entries()) {
+    if (!a || typeof a.name !== 'string' || !AREA_NAME_RE.test(a.name)) {
+      throw new Error(`render baseline-scope-gate: area ${i + 1} "name" must be kebab-case (dot- and slash-free — it is the doc's knowledge-base identity)`);
+    }
+    if (typeof a.detail !== 'string' || a.detail.trim() === '') {
+      throw new Error(`render baseline-scope-gate: area ${i + 1} ("${a.name}") is missing "detail" — one line on what it covers`);
+    }
+  }
+  return baselineScopeGate(payload);
+}
+
+/** @param {string} cwd @param {{file?: string}} args @returns {string} */
+function baselineRoundSurface(cwd, { file }) {
+  const payload = readBaselinePayload(cwd, 'baseline-round', file);
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('render baseline-round: payload must be an object {area, questions}');
+  }
+  const d = resolveBaseline(cwd, 'baseline-round');
+  const entry = d.areas.find((a) => a.name === payload.area);
+  if (!entry) throw new Error(`render baseline-round: unknown area "${payload.area}"`);
+  if (entry.status !== 'researched') {
+    throw new Error(`render baseline-round: area "${payload.area}" is "${entry.status}", not researched — rounds walk a researched area's agenda`);
+  }
+  if (!Array.isArray(payload.questions) || payload.questions.length === 0 || payload.questions.length > 4) {
+    throw new Error('render baseline-round: "questions" must be an array of 1-4 {text, candidates?}');
+  }
+  for (const [i, q] of payload.questions.entries()) {
+    if (!q || typeof q.text !== 'string' || q.text.trim() === '') {
+      throw new Error(`render baseline-round: question ${i + 1} is missing "text"`);
+    }
+    if (q.candidates !== undefined && (!Array.isArray(q.candidates) || q.candidates.length > 4 || q.candidates.some((c) => typeof c !== 'string' || c.trim() === ''))) {
+      throw new Error(`render baseline-round: question ${i + 1} "candidates" must be up to 4 non-empty strings when present`);
+    }
+  }
+  return baselineRound(payload);
+}
+
+/** @param {string} _cwd @param {object} _args @returns {string} */
+function baselineDocGateSurface(_cwd, _args) {
+  return baselineDocGate();
+}
+
+/** @param {string} cwd @param {object} _args @returns {string} */
+function baselineManageGateSurface(cwd, _args) {
+  const d = resolveBaseline(cwd, 'baseline-manage-gate');
+  if (d.status !== 'completed') {
+    throw new Error(`render baseline-manage-gate: the baseline is "${d.status}", not completed — manage serves a completed assessment`);
+  }
+  return baselineManageGate();
+}
+
+/** @param {string} cwd @param {object} _args @returns {string} */
+function baselineDocPickSurface(cwd, _args) {
+  const d = resolveBaseline(cwd, 'baseline-doc-pick');
+  if (d.status !== 'completed') {
+    throw new Error(`render baseline-doc-pick: the baseline is "${d.status}", not completed`);
+  }
+  return baselineDocPick();
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
@@ -1836,6 +1995,15 @@ const SURFACES = {
   'absorb-target': absorbTarget,
   'plan-topics': planTopics,
   'revisit-phases': revisitPhasesSurface,
+  'baseline-progress': baselineProgressSurface,
+  'baseline-area-gate': baselineAreaGateSurface,
+  'baseline-paused': baselinePausedSurface,
+  'baseline-receipt': baselineReceiptSurface,
+  'baseline-scope-gate': baselineScopeGateSurface,
+  'baseline-round': baselineRoundSurface,
+  'baseline-doc-gate': baselineDocGateSurface,
+  'baseline-manage-gate': baselineManageGateSurface,
+  'baseline-doc-pick': baselineDocPickSurface,
 };
 
 /**

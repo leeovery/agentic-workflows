@@ -1766,7 +1766,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick\)/);
   });
 });
 
@@ -1839,5 +1839,148 @@ describe('single-source invariants', () => {
     })(skillsRoot);
     assert.deepStrictEqual(offenders, [],
       'artefact content is framed by its emission fence, never drawn borders — a box glyph reintroduces a fixed-width commitment the terminal cannot honour');
+  });
+});
+
+describe('baseline surfaces', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  function writeBaseline(baseline) {
+    const wf = path.join(dir, '.workflows');
+    fs.mkdirSync(wf, { recursive: true });
+    fs.writeFileSync(path.join(wf, 'manifest.json'), JSON.stringify({ work_units: {}, baseline }, null, 2));
+  }
+
+  it('baseline-progress: in-progress shows statuses and the remaining count', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'pending' } });
+    const out = renderSurface(dir, 'baseline-progress', {});
+    assert.strictEqual(out, [
+      '=== DISPLAY: baseline progress (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      'Baseline in progress:',
+      '',
+      '  overview    [completed]',
+      '  glossary    [researched]',
+      '  dispatcher  [pending]',
+      '',
+      '2 area(s) remain.',
+      '',
+    ].join('\n'));
+  });
+
+  it('baseline-progress: completed lists the landed docs', () => {
+    writeBaseline({ status: 'completed', areas: { overview: 'completed', glossary: 'completed' } });
+    const out = renderSurface(dir, 'baseline-progress', {});
+    assert.match(out, /Baseline — 2 area\(s\) documented:/);
+    assert.match(out, /  • overview\.md\n  • glossary\.md/);
+  });
+
+  it('baseline-progress: refuses a missing baseline and an empty area map', () => {
+    assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /no baseline on the project manifest/);
+    writeBaseline({ status: 'in-progress', areas: {} });
+    assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /no areas/);
+  });
+
+  it('baseline-area-gate: statement, glyphed question, and both options', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched' } });
+    const out = renderSurface(dir, 'baseline-area-gate', { area: 'overview' });
+    assert.match(out, /^=== MENU: baseline area gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /\*\*Overview\*\* is documented\. 1 area\(s\) remain\./);
+    assert.match(out, /\*\*`◆ Keep going\?`\*\*/);
+    assert.match(out, /\*\*`c\/continue`\*\* → Interview the next area/);
+    assert.match(out, /\*\*`p\/pause`\*\*\s+→ Stop here — resume any time from workflow-start/);
+  });
+
+  it('baseline-area-gate: refuses a missing --area, an unknown area, an unlanded area, and a drained map', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched' } });
+    assert.throws(() => renderSurface(dir, 'baseline-area-gate', {}), /--area is required/);
+    assert.throws(() => renderSurface(dir, 'baseline-area-gate', { area: 'ghost' }), /unknown area/);
+    assert.throws(() => renderSurface(dir, 'baseline-area-gate', { area: 'glossary' }), /not completed/);
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed' } });
+    assert.throws(() => renderSurface(dir, 'baseline-area-gate', { area: 'overview' }), /no areas remain/);
+  });
+
+  it('baseline-paused: counts the documented areas and points back at workflow-start', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'researched' } });
+    const out = renderSurface(dir, 'baseline-paused', {});
+    assert.match(out, /Paused — 1 of 3 area\(s\) documented\./);
+    assert.match(out, /Resume from the workflow-start menu\./);
+    writeBaseline({ status: 'completed', areas: { overview: 'completed' } });
+    assert.throws(() => renderSurface(dir, 'baseline-paused', {}), /not in-progress/);
+  });
+
+  it('baseline-receipt: lists the docs and requires the completion write first', () => {
+    writeBaseline({ status: 'completed', areas: { overview: 'completed', glossary: 'completed' } });
+    const out = renderSurface(dir, 'baseline-receipt', {});
+    assert.match(out, /Baseline complete — 2 area\(s\) documented and indexed\./);
+    assert.match(out, /  • overview\.md\n  • glossary\.md/);
+    assert.match(out, /\[baseline \| …\] context/);
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed' } });
+    assert.throws(() => renderSurface(dir, 'baseline-receipt', {}), /not completed/);
+  });
+
+  it('baseline-receipt: refuses to name a doc that was never landed', () => {
+    writeBaseline({ status: 'completed', areas: { overview: 'completed', dispatcher: 'pending' } });
+    assert.throws(() => renderSurface(dir, 'baseline-receipt', {}), /"dispatcher" is "pending", not completed/);
+  });
+
+  it('baseline-scope-gate: renders the proposed list as markdown above the gate, stateless', () => {
+    const file = writePayload(dir, 'payload.json', {
+      mode: 'fresh',
+      areas: [{ name: 'overview', detail: 'What the product is' }, { name: 'dispatcher', detail: 'The downstream push pipeline' }],
+    });
+    const out = renderSurface(dir, 'baseline-scope-gate', { file });
+    assert.match(out, /=== DISPLAY: baseline scope \(emit verbatim as markdown \(not a code block\)\) ===/);
+    assert.match(out, /\*\*overview\*\* — What the product is\n\*\*dispatcher\*\* — The downstream push pipeline/);
+    assert.match(out, /\*\*`◆ Assess these areas\?`\*\*/);
+    assert.match(out, /\*\*`a\/approve`\*\* → Lock the list and start the research/);
+    assert.match(out, /\*\*`b\/back`\*\*\s+→ Leave without changing anything/);
+    assert.match(out, /\*\*Adjust\*\*\s+→ Tell me what to add, drop, rename, or merge/);
+  });
+
+  it('baseline-scope-gate: refuses illegal names, bad modes, and empty payloads', () => {
+    const bad = (payload) => writePayload(dir, 'payload.json', payload);
+    assert.throws(() => renderSurface(dir, 'baseline-scope-gate', {}), /--file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'baseline-scope-gate', { file: bad({ mode: 'weird', areas: [{ name: 'a', detail: 'x' }] }) }), /"mode" must be/);
+    assert.throws(() => renderSurface(dir, 'baseline-scope-gate', { file: bad({ mode: 'fresh', areas: [] }) }), /non-empty array/);
+    assert.throws(() => renderSurface(dir, 'baseline-scope-gate', { file: bad({ mode: 'fresh', areas: [{ name: 'api.v2', detail: 'x' }] }) }), /kebab-case/);
+    assert.throws(() => renderSurface(dir, 'baseline-scope-gate', { file: bad({ mode: 'fresh', areas: [{ name: 'ok-area', detail: ' ' }] }) }), /missing "detail"/);
+  });
+
+  it('baseline-round: numbers questions, letters candidates, closes on the any-mix line', () => {
+    writeBaseline({ status: 'in-progress', areas: { dispatcher: 'researched' } });
+    const file = writePayload(dir, 'payload.json', {
+      area: 'dispatcher',
+      questions: [
+        { text: 'The dispatcher polls behind four guards — what is the story?', candidates: ['Incident accretion', 'Partner rate agreement'] },
+        { text: 'Why does Closed exist as a state?' },
+      ],
+    });
+    const out = renderSurface(dir, 'baseline-round', { file });
+    assert.match(out, /=== DISPLAY: baseline round \(emit verbatim as a code block, then STOP for the user's response\) ===/);
+    assert.match(out, /1\. The dispatcher polls behind four guards/);
+    assert.match(out, /   a\. Incident accretion\n   b\. Partner rate agreement/);
+    assert.match(out, /2\. Why does Closed exist as a state\?/);
+    assert.match(out, /Answer in your own words, pick letters, or say "don't know" —/);
+  });
+
+  it('baseline-round: refuses an unresearched area and malformed questions', () => {
+    writeBaseline({ status: 'in-progress', areas: { dispatcher: 'completed' } });
+    const file = writePayload(dir, 'payload.json', { area: 'dispatcher', questions: [{ text: 'x' }] });
+    assert.throws(() => renderSurface(dir, 'baseline-round', { file }), /not researched/);
+    writeBaseline({ status: 'in-progress', areas: { dispatcher: 'researched' } });
+    const many = writePayload(dir, 'payload.json', { area: 'dispatcher', questions: [1, 2, 3, 4, 5].map((n) => ({ text: `q${n}` })) });
+    assert.throws(() => renderSurface(dir, 'baseline-round', { file: many }), /1-4/);
+  });
+
+  it('the static baseline gates render their menus; the completed-only pair refuse mid-flight', () => {
+    assert.match(renderSurface(dir, 'baseline-doc-gate', {}), /\*\*`◆ Land it\?`\*\*[\s\S]*\*\*`a\/approve`\*\* → Index and commit the doc/);
+    writeBaseline({ status: 'in-progress', areas: { overview: 'researched' } });
+    assert.throws(() => renderSurface(dir, 'baseline-manage-gate', {}), /not completed/);
+    assert.throws(() => renderSurface(dir, 'baseline-doc-pick', {}), /not completed/);
+    writeBaseline({ status: 'completed', areas: { overview: 'completed' } });
+    assert.match(renderSurface(dir, 'baseline-manage-gate', {}), /\*\*`◆ What would you like to do\?`\*\*[\s\S]*\*\*`e\/expand`\*\* → Add a new area, or deepen an existing one/);
+    assert.match(renderSurface(dir, 'baseline-doc-pick', {}), /Which doc\? \(enter the area name, or \*\*`b\/back`\*\*\)/);
   });
 });
