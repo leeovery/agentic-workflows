@@ -40,6 +40,7 @@
       "manifest get pay.planning",
       "impl(pay): T",
       "manifest get pay.implementation.pay project_skills",
+      "render review-qa-gate pay.review.pay",
       "push pay.review.pay reviewed_tasks",
       "review(pay): complete review",
       "topic complete pay review pay",
