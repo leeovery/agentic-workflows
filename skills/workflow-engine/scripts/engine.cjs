@@ -219,6 +219,11 @@ Commands:
   render baseline-area-gate --area <name>
   render baseline-paused
   render baseline-receipt
+  render baseline-scope-gate --file <payload.json>
+  render baseline-round --file <payload.json>
+  render baseline-doc-gate
+  render baseline-manage-gate
+  render baseline-doc-pick
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)

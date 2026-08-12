@@ -22,7 +22,7 @@ const { git } = require('../kernel/git.cjs');
 const { commitScopedLocked, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
 const { labelConfigStatus, configDir } = require('./session-label.cjs');
-const { readProjectManifest } = require('../kernel/manifest-io.cjs');
+const { baselineState } = require('./baseline.cjs');
 
 // Resolved against this file so it works wherever the skill tree is installed.
 const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.cjs');
@@ -99,26 +99,6 @@ function detectSystemConfig() {
   } catch (_) {
     return { status: 'invalid', provider: null, model: null };
   }
-}
-
-/**
- * Read the project baseline status off the project manifest. Anything other
- * than a recognised lifecycle value — including a missing manifest or a
- * malformed field — reports `none`, the never-started state the one-time
- * offer keys on.
- * @param {string} cwd
- * @returns {BootResult['baseline']}
- */
-function baselineStatus(cwd) {
-  try {
-    const manifest = readProjectManifest(path.join(cwd, '.workflows'));
-    const status = manifest && manifest.baseline && manifest.baseline.status;
-    if (status === 'in-progress' || status === 'completed' || status === 'skipped') return status;
-  } catch (_) {
-    // A corrupt project manifest is surfaced by the verbs that write it;
-    // boot's baseline probe degrades to the offer-eligible default.
-  }
-  return 'none';
 }
 
 /**
@@ -238,7 +218,7 @@ function boot(cwd) {
   }
 
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), baseline: baselineStatus(cwd) };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), baseline: baselineState(cwd).status };
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.

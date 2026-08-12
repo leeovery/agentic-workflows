@@ -1,10 +1,12 @@
 ---
 name: workflow-baseline
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(git log)
 ---
 
-The project baseline. Act as a **product archaeologist and interviewer** — backfill the record a project built without the workflows never accumulated: fan-out research over the existing codebase, synthesised into an interview that captures the WHY layer from the user, landed as a knowledge-base-indexed doc set at `.workflows/.baseline/`.
+# Project Baseline
+
+Act as a **product archaeologist and interviewer**. Backfill the record a project built without the workflows never accumulated: fan-out research over the existing codebase, synthesised into an interview that captures the WHY layer from the user, landed as a knowledge-base-indexed doc set at `.workflows/.baseline/`.
 
 ## Purpose in the Workflow
 
@@ -66,9 +68,27 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.base
 
 → Proceed to **Step 4**.
 
+#### Otherwise
+
+An unrecognised status — treat it as never started.
+
+→ Proceed to **Step 1**.
+
 ---
 
 ## Step 1: Scope the Assessment
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Scoping the Assessment`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> A quick survey of the codebase proposes the areas worth assessing; you shape the list before any deeper research runs.
+```
 
 Load **[scope-areas.md](references/scope-areas.md)** and follow its instructions as written.
 
@@ -77,6 +97,18 @@ Load **[scope-areas.md](references/scope-areas.md)** and follow its instructions
 ---
 
 ## Step 2: Research the Codebase
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Researching the Codebase`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> One researcher agent per area reads the code and comes back with what it shows — and the questions only you can answer. Those questions become the interview.
+```
 
 Load **[research-and-agenda.md](references/research-and-agenda.md)** and follow its instructions as written.
 
@@ -94,6 +126,18 @@ Load **[interview-loop.md](references/interview-loop.md)** and follow its instru
 
 ## Step 4: Manage
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Managing the Baseline`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> The assessment is complete — view a doc, or expand into new or deeper ground.
+```
+
 Load **[manage-baseline.md](references/manage-baseline.md)** and follow its instructions as written.
 
 → On return, proceed as the reference directed.
@@ -101,5 +145,17 @@ Load **[manage-baseline.md](references/manage-baseline.md)** and follow its inst
 ---
 
 ## Step 5: Conclude
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Concluding the Assessment`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Every area is documented and indexed — closing the assessment.
+```
 
 Load **[conclude.md](references/conclude.md)** and follow its instructions as written.

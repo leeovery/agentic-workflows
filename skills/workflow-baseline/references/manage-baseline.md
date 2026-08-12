@@ -8,21 +8,16 @@ The assessment is complete. Show what exists and offer the ways back in.
 
 ## A. Display and Menu
 
-Fetch the doc list and emit its `DISPLAY: baseline progress` section:
+Fetch the doc list and emit its `DISPLAY: baseline progress` section verbatim as a code block:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-progress
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its `MENU: baseline manage gate` section verbatim as markdown (not a code block):
 
-```
-· · · · · · · · · · · ·
-**`◆ What would you like to do?`**
-
-**`e/expand`** → Add a new area, or deepen an existing one
-**`v/view`**   → Read an area doc
-**`b/back`**   → Leave the baseline as it is
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-manage-gate
 ```
 
 **STOP.** Wait for user response.
@@ -37,14 +32,19 @@ Ask what ground to add or deepen if the user hasn't already said. Set mode = `ex
 
 #### If `view`
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the picker and emit its `MENU: baseline doc pick` section verbatim as markdown (not a code block):
 
-```
-· · · · · · · · · · · ·
-Which doc? (enter the area name, or **`b/back`**)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-doc-pick
 ```
 
 **STOP.** Wait for user response.
+
+**If `back`:**
+
+→ Return to **A. Display and Menu**.
+
+**If the user names an area:**
 
 Render the chosen `.workflows/.baseline/{area}.md` verbatim as markdown.
 

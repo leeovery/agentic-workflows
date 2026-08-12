@@ -31,7 +31,7 @@ You receive via the orchestrator's prompt:
 1. **No git writes** — writing the dossier is your only file write, and one file only (including its transient `.txt` form).
 2. **Never fabricate rationale.** You report what the code shows and ask about everything else. "This was probably chosen for scalability" is a violation; "why was this chosen?" with the evidence attached is the job.
 3. **Anchor to stable names** — classes, enums, subsystems, pipelines. Paths sparingly where a name is ambiguous; **never line numbers** — the baseline outlives them.
-4. **Stay scoped** — your area only. Adjacent ground worth assessing goes in Boundary notes, not in your sections.
+4. **Stay scoped** — your area only. Adjacent ground worth assessing goes in Boundary Notes, not in your sections.
 5. **Do not decide** — no recommendations, no judgments of quality. The archaeology, not the verdict on the builders.
 6. **Question candidates must be user-held** — keep a question only when its answer lives in the owner's head (intent, history, constraints, meanings, rejected paths). Anything the code settles belongs in Observed.
 7. **Never lose your work** — produce the file via `.txt`-then-rename; if a step errors, quote the error verbatim in your status. Only if the write itself has errored may you return the full content in your final message — an absolute last resort.
@@ -61,7 +61,7 @@ The `### {ID}: {label}` headings are the contract — the orchestrator reads ids
 
 {What you suspect and the evidence that makes it plausible — explicitly marked as inference, with 2–3 candidate explanations where you have them.}
 
-## Question candidates
+## Question Candidates
 
 ### Q1: {the question, evidence woven in — specific enough to jog memory}
 
@@ -69,7 +69,7 @@ The `### {ID}: {label}` headings are the contract — the orchestrator reads ids
 - **Why it matters**: {what a future change would get wrong without the answer}
 - **Candidates**: {2–4 plausible answers, one line each — a wrong candidate jogs memory better than an open prompt}
 
-## Boundary notes
+## Boundary Notes
 
 {Adjacent ground a sibling area should cover, or that no area covers — one line each. Omit the section when empty.}
 ```

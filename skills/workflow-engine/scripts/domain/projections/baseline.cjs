@@ -1,94 +1,51 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: project-baseline projections — the render surfaces the
-// workflow-baseline skill fetches at its display points. Baseline state is
-// project-level: everything here reads the project manifest's `baseline`
-// object, never a work-unit manifest.
+// Domain ring: project-baseline projections — pure renderers over the
+// BaselineState the render surfaces resolve (domain/baseline.cjs). Like every
+// sibling projection they take a detail object and return a string; state
+// resolution and refusals live with the surface handlers in domain/render.cjs.
 // ---------------------------------------------------------------------------
 
-const path = require('path');
-const { readProjectManifest } = require('../../kernel/manifest-io.cjs');
-const { section, menu, cmdOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { wrapWithPrefix } = require('../../kernel/render.cjs');
+const { displayWidth } = require('../../kernel/terminal.cjs');
+const { section, menu, menuFrame, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { titlecase } = require('../conventions.cjs');
 
 const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
+const ASK_INSTRUCTION = "emit verbatim as a code block, then STOP for the user's response";
 
-/**
- * @typedef {object} BaselineDetail
- * @property {string} status
- * @property {{name: string, status: string}[]} areas  registration order
- */
-
-/**
- * Read the project manifest's baseline object. Loud when absent — these
- * surfaces are called from prescribed prose that has already branched on the
- * status, so a missing object is an authoring bug.
- * @param {string} cwd @param {string} surface
- * @returns {BaselineDetail}
- */
-function baselineDetail(cwd, surface) {
-  const manifest = readProjectManifest(path.join(cwd, '.workflows'));
-  const b = manifest && manifest.baseline;
-  if (!b || typeof b !== 'object' || Array.isArray(b)) {
-    throw new Error(`render ${surface}: no baseline on the project manifest`);
-  }
-  const areasObj = b.areas && typeof b.areas === 'object' && !Array.isArray(b.areas) ? b.areas : {};
-  const areas = Object.entries(areasObj).map(([name, status]) => ({ name, status: String(status) }));
-  return { status: typeof b.status === 'string' ? b.status : 'none', areas };
-}
-
-/** @param {BaselineDetail} d */
-function remaining(d) {
-  return d.areas.filter((a) => a.status !== 'completed').length;
-}
+/** @typedef {import('../baseline.cjs').BaselineState} BaselineState */
 
 /**
  * The baseline area map — an in-progress assessment shows each area's status
  * and what remains; a completed one lists the landed docs. Serves the
  * interview's resume display and the manage view.
- * @param {string} cwd @param {object} _args
+ * @param {BaselineState} d
  * @returns {string}
  */
-function baselineProgress(cwd, _args) {
-  const d = baselineDetail(cwd, 'baseline-progress');
-  if (d.areas.length === 0) {
-    throw new Error('render baseline-progress: the baseline has no areas');
-  }
+function baselineProgress(d) {
   const lines = [];
   if (d.status === 'completed') {
     lines.push(`Baseline — ${d.areas.length} area(s) documented:`, '');
-    for (const a of d.areas) lines.push(`  ${a.name}.md`);
+    for (const a of d.areas) lines.push(`  • ${a.name}.md`);
   } else {
     const pad = Math.max(...d.areas.map((a) => a.name.length));
     lines.push('Baseline in progress:', '');
     for (const a of d.areas) lines.push(`  ${a.name.padEnd(pad)}  [${a.status}]`);
-    lines.push('', `${remaining(d)} area(s) remain.`);
+    lines.push('', `${d.remaining} area(s) remain.`);
   }
   return section('DISPLAY: baseline progress', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
 
 /**
- * The between-areas gate: the named area just landed, more remain. The
- * none-remain case is the conclude path — reaching this surface there is an
- * authoring bug, so it throws rather than rendering an empty gate.
- * @param {string} cwd @param {Record<string, string|undefined>} args
+ * The between-areas gate: the named area just landed, more remain.
+ * @param {BaselineState} d @param {string} area
  * @returns {string}
  */
-function baselineAreaGate(cwd, { area }) {
-  const d = baselineDetail(cwd, 'baseline-area-gate');
-  if (!area) throw new Error('render baseline-area-gate: --area is required');
-  const entry = d.areas.find((a) => a.name === area);
-  if (!entry) throw new Error(`render baseline-area-gate: unknown area "${area}"`);
-  if (entry.status !== 'completed') {
-    throw new Error(`render baseline-area-gate: area "${area}" is "${entry.status}", not completed — the gate follows the doc landing`);
-  }
-  const left = remaining(d);
-  if (left === 0) {
-    throw new Error('render baseline-area-gate: no areas remain — the flow concludes instead of gating');
-  }
+function baselineAreaGate(d, area) {
   const body = menu(
-    `**${titlecase(area)}** is documented. ${left} area(s) remain.`,
+    `**${titlecase(area)}** is documented. ${d.remaining} area(s) remain.`,
     [
       cmdOption('c', 'continue', 'Interview the next area'),
       cmdOption('p', 'pause', 'Stop here — resume any time from workflow-start'),
@@ -100,42 +57,153 @@ function baselineAreaGate(cwd, { area }) {
 
 /**
  * The pause receipt — what the interview holds so far and how to get back in.
- * @param {string} cwd @param {object} _args
+ * @param {BaselineState} d
  * @returns {string}
  */
-function baselinePaused(cwd, _args) {
-  const d = baselineDetail(cwd, 'baseline-paused');
-  if (d.status !== 'in-progress') {
-    throw new Error(`render baseline-paused: the baseline is "${d.status}", not in-progress`);
-  }
-  const done = d.areas.length - remaining(d);
-  const body = [
+function baselinePaused(d) {
+  const done = d.areas.length - d.remaining;
+  const lines = [
     `Paused — ${done} of ${d.areas.length} area(s) documented.`,
-    'Everything answered so far is recorded, and the finished docs',
-    'are already live in the knowledge base.',
+    ...wrapWithPrefix(
+      'Everything answered so far is recorded, and the finished docs are already live in the knowledge base.',
+      { width: displayWidth() },
+    ),
     '',
     'Resume from the workflow-start menu.',
-  ].join('\n');
-  return section('DISPLAY: baseline paused', CONTINUE_INSTRUCTION, body);
+  ];
+  return section('DISPLAY: baseline paused', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
 
 /**
  * The completion receipt — every area documented and indexed.
- * @param {string} cwd @param {object} _args
+ * @param {BaselineState} d
  * @returns {string}
  */
-function baselineReceipt(cwd, _args) {
-  const d = baselineDetail(cwd, 'baseline-receipt');
-  if (d.status !== 'completed') {
-    throw new Error(`render baseline-receipt: the baseline is "${d.status}", not completed — the receipt follows the completion write`);
-  }
+function baselineReceipt(d) {
   const lines = [
     `Baseline complete — ${d.areas.length} area(s) documented and indexed.`,
     '',
   ];
-  for (const a of d.areas) lines.push(`  ${a.name}.md`);
-  lines.push('', 'Every phase now surfaces this as [baseline | ...] context', 'in its knowledge queries.');
+  for (const a of d.areas) lines.push(`  • ${a.name}.md`);
+  lines.push('');
+  lines.push(...wrapWithPrefix(
+    'The thinking phases now surface this as [baseline | …] context in their knowledge queries.',
+    { width: displayWidth() },
+  ));
   return section('DISPLAY: baseline receipt', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
 
-module.exports = { baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt };
+/**
+ * @typedef {object} ScopePayload
+ * @property {'fresh'|'expand'} mode
+ * @property {{name: string, detail: string}[]} areas
+ */
+
+/**
+ * The scope confirmation — the proposed area list (judgment content, via
+ * payload) above its approve/back/adjust gate.
+ * @param {ScopePayload} payload
+ * @returns {string}
+ */
+function baselineScopeGate(payload) {
+  const list = payload.areas.map((a) => `**${a.name}** — ${a.detail}`).join('\n');
+  const body = menu(
+    '',
+    [
+      cmdOption('a', 'approve', 'Lock the list and start the research'),
+      cmdOption('b', 'back', 'Leave without changing anything'),
+      promptOption('Adjust', 'Tell me what to add, drop, rename, or merge'),
+    ],
+    { question: 'Assess these areas?' },
+  );
+  return [
+    section('DISPLAY: baseline scope', 'emit verbatim as markdown (not a code block)', list),
+    section('MENU: baseline scope gate', MENU_INSTRUCTION, body),
+  ].join('\n');
+}
+
+/**
+ * @typedef {object} RoundPayload
+ * @property {string} area
+ * @property {{text: string, candidates?: string[]}[]} questions
+ */
+
+/**
+ * One interview round — numbered questions with lettered candidate answers,
+ * closing on the answer-in-any-mix line.
+ * @param {RoundPayload} payload
+ * @returns {string}
+ */
+function baselineRound(payload) {
+  const lines = [];
+  payload.questions.forEach((q, i) => {
+    if (i > 0) lines.push('');
+    lines.push(...wrapWithPrefix(`${i + 1}. ${q.text}`, { width: displayWidth(), hang: 3 }));
+    const candidates = q.candidates || [];
+    if (candidates.length > 0) lines.push('');
+    candidates.forEach((c, j) => {
+      lines.push(...wrapWithPrefix(`${String.fromCharCode(97 + j)}. ${c}`, { width: displayWidth(), prefix: '   ', hang: 3 }));
+    });
+  });
+  lines.push('');
+  lines.push(...wrapWithPrefix(
+    'Answer in your own words, pick letters, or say "don\'t know" — in any mix.',
+    { width: displayWidth() },
+  ));
+  return section('DISPLAY: baseline round', ASK_INSTRUCTION, lines.join('\n'));
+}
+
+/**
+ * The doc-landing gate after an area's weave.
+ * @returns {string}
+ */
+function baselineDocGate() {
+  const body = menu(
+    '',
+    [
+      cmdOption('a', 'approve', 'Index and commit the doc'),
+      cmdOption('v', 'view', 'Read the full doc first'),
+      promptOption('Adjust', 'Tell me what to change'),
+    ],
+    { question: 'Land it?' },
+  );
+  return section('MENU: baseline doc gate', MENU_INSTRUCTION, body);
+}
+
+/**
+ * The completed-baseline manage gate.
+ * @returns {string}
+ */
+function baselineManageGate() {
+  const body = menu(
+    '',
+    [
+      cmdOption('e', 'expand', 'Add a new area, or deepen an existing one'),
+      cmdOption('v', 'view', 'Read an area doc'),
+      cmdOption('b', 'back', 'Leave the baseline as it is'),
+    ],
+    { question: 'What would you like to do?' },
+  );
+  return section('MENU: baseline manage gate', MENU_INSTRUCTION, body);
+}
+
+/**
+ * The doc picker under manage's view.
+ * @returns {string}
+ */
+function baselineDocPick() {
+  const body = menuFrame(['Which doc? (enter the area name, or **`b/back`**)']);
+  return section('MENU: baseline doc pick', MENU_INSTRUCTION, body);
+}
+
+module.exports = {
+  baselineProgress,
+  baselineAreaGate,
+  baselinePaused,
+  baselineReceipt,
+  baselineScopeGate,
+  baselineRound,
+  baselineDocGate,
+  baselineManageGate,
+  baselineDocPick,
+};

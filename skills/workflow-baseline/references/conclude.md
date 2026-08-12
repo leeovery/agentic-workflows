@@ -10,7 +10,7 @@ Mark it and commit:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.baseline.status completed
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: complete the assessment ({N} areas)"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: complete the assessment"
 ```
 
 Fetch the completion receipt and emit its `DISPLAY: baseline receipt` section:

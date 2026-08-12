@@ -22,7 +22,7 @@ Research hasn't covered it yet.
 
 #### If any area is `completed`
 
-A resumed interview — fetch the progress snapshot and emit its `DISPLAY: baseline progress` section:
+A resumed interview — fetch the progress snapshot and emit its `DISPLAY: baseline progress` section verbatim as a code block:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-progress
@@ -48,7 +48,7 @@ Every area is `completed`.
 
 #### Otherwise
 
-> *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as markdown (not a code block — `{n}` is this area's position across all areas, `{total}` the area count):*
 
 ```
 **`□ Interviewing {area:(titlecase)} ({n} of {total})`**
@@ -67,18 +67,20 @@ Every area is `completed`.
 Read the area's agenda (`.workflows/.baseline/.state/agenda-{area}.md`) and interview in rounds until no `pending` questions remain:
 
 1. **Compose the round** — 1–4 pending questions that are independent of one another. A question whose premises could be reshaped by another's answer waits for a later round.
-2. **Ask via the AskUserQuestion tool** — this is the prescribed interface for interview rounds (the questions are synthesised per project; they are not a prescribed gate, and no rendered block exists for them — flow gates in this skill stay rendered menus). Per question:
-   - `question` — the agenda question with its evidence woven in: the observation first, then the ask. Evidence is what jogs memory; "why polling?" retrieves nothing, "the dispatcher polls behind four separate guards — that layering usually accretes from incidents; what's the story?" retrieves everything.
-   - `options` — the agenda's candidate answers (short labels, a sentence of description each), plus a **Don't know** option ("Leave this open — recorded as an open question, no cost"). A wrong candidate jogs memory better than an open prompt; the user's own words arrive via the tool's Other field.
-   - `header` — the area, abbreviated.
-3. **Record the round** — immediately after the answers land, update each asked question in the agenda file: `**Status**: pending` becomes `answered` with an `**Answer**: {the user's answer — their words, condensed without being flattened}` line, or `open` when they don't know or it doesn't matter. An answer that corrects the observed layer is also noted on the question (`**Correction**: …`) for the doc weave. This write is the ledger — it happens every round, before anything else.
-4. **Follow the thread when it earns it** — an answer that opens real ground (an incident story, a rejected alternative, a constraint nobody wrote down) is worth one conversational follow-up in prose before the next round. Capture what it yields on the same agenda entry. One follow-up, not an interrogation spiral.
+2. **Ask conversationally** — per question: the observation first, then the ask. Evidence is what jogs memory ("why polling?" retrieves nothing; "the dispatcher polls behind four separate guards — that layering usually accretes from incidents; what's the story?" retrieves everything), and a wrong candidate jogs memory better than an open prompt. Write the round payload to `.workflows/.cache/baseline/round.json` with the Write tool — `{"area": "{area}", "questions": [{"text": "{the question, evidence woven in}", "candidates": ["{plausible answer}", "…"]}]}` — then fetch the round and emit its `DISPLAY: baseline round` section verbatim as a code block:
 
-#### If the user responds outside the tool
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-round --file .workflows/.cache/baseline/round.json
+   ```
 
-Answers in prose, digressions worth keeping, corrections to the evidence — honour them all: record them on the agenda exactly like tool answers.
+   **STOP.** Wait for user response.
 
-**If the user asks to stop**, however phrased ("pause", "that's enough for now", "let's pick this up later"):
+3. **Record the round** — immediately after the answers land, update each asked question in the agenda file: `**Status**: pending` becomes `answered` with an `**Answer**: {the user's answer — their words, condensed without being flattened}` line, or `open` when they don't know or it doesn't matter. An answer that contradicts an observed claim is noted on the question (`**Correction**: …`) for the doc weave. This write is the ledger — it happens every round, before anything else.
+4. **Follow the thread when it earns it** — an answer that opens real ground (an incident story, a rejected alternative, a constraint nobody wrote down) is worth one conversational follow-up before the next round. Capture what it yields on the same agenda entry. One follow-up, not an interrogation spiral.
+
+#### If the user asks to stop
+
+However phrased — "pause", "that's enough for now", "let's pick this up later" — record any answers the same message carried first.
 
 → Proceed to **E. Pause**.
 
@@ -104,7 +106,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.base
 
 #### If areas remain
 
-Fetch the gate and emit its `MENU: baseline area gate` section:
+Fetch the gate and emit its `MENU: baseline area gate` section verbatim as markdown (not a code block):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-area-gate --area {area}
@@ -129,10 +131,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-area-gate
 Commit whatever the ledger holds:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: pause the interview ({completed}/{total} areas documented)"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: pause the interview"
 ```
 
-Fetch the pause receipt and emit its `DISPLAY: baseline paused` section:
+Fetch the pause receipt and emit its `DISPLAY: baseline paused` section verbatim as a code block:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-paused

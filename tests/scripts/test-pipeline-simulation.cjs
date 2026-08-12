@@ -1389,6 +1389,17 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'pending']);
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'researched']);
     sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'researched']);
+    sim.write('.workflows/.cache/scratch/baseline-scope.json', JSON.stringify({
+      mode: 'fresh',
+      areas: [{ name: 'overview', detail: 'What the product is' }, { name: 'dispatcher', detail: 'The downstream push' }],
+    }));
+    assert.match(sim.render(['baseline-scope-gate', '--file', '.workflows/.cache/scratch/baseline-scope.json'], { expect: 'content' }), /Assess these areas\?/);
+    sim.write('.workflows/.cache/scratch/baseline-round.json', JSON.stringify({
+      area: 'dispatcher',
+      questions: [{ text: 'Why polling over webhooks?', candidates: ['Decoupling from a flaky downstream'] }],
+    }));
+    assert.match(sim.render(['baseline-round', '--file', '.workflows/.cache/scratch/baseline-round.json'], { expect: 'content' }), /1\. Why polling over webhooks\?/);
+    assert.match(sim.render(['baseline-doc-gate'], { expect: 'content' }), /Land it\?/);
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'completed']);
     assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /1 area\(s\) remain/);
     assert.match(sim.render(['baseline-area-gate', '--area', 'overview'], { expect: 'content' }), /Keep going\?/);
@@ -1397,6 +1408,8 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', 'project.baseline.status', 'completed']);
     assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /2 area\(s\) documented/);
     assert.match(sim.render(['baseline-receipt'], { expect: 'content' }), /Baseline complete — 2 area\(s\)/);
+    assert.match(sim.render(['baseline-manage-gate'], { expect: 'content' }), /What would you like to do\?/);
+    assert.match(sim.render(['baseline-doc-pick'], { expect: 'content' }), /Which doc\?/);
 
     // After every refusal the unit still derives and completes normally.
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
