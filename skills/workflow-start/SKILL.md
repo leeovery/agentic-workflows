@@ -239,6 +239,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "ba
 
 #### Otherwise
 
+A recorded status (`in-progress`/`completed`/`skipped`), or no pre-existing codebase — render nothing.
+
 → Proceed to **Step 1**.
 
 ---
