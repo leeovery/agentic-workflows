@@ -23,10 +23,14 @@ The prose should have taken this path:
    thread at a time, and the log's Exploration grows and is committed
    through the engine during the loop, not reconstructed at the end
 8. no topics are proposed mid-loop; synthesis runs only on the user's
-   pull — it re-reads the log, applies the granularity rules, infers
-   routing from the user's framing, writes the proposal file, and
-   renders it through the map-view overlay before the confirmation
-   gate; on acceptance a brief is written per confirmed topic
+   pull — it synthesises from the log's full Exploration record (an
+   on-disk re-read, or the in-context content of sections the walk
+   itself wrote this session — either satisfies this step, since the
+   bytes are identical; step 9's document-review re-read is always
+   from disk), applies the granularity rules, infers routing from the
+   user's framing, writes the proposal file, and renders it through
+   the map-view overlay before the confirmation gate; on acceptance a
+   brief is written per confirmed topic
 9. document review re-reads the log and reconciles it against the
    conversation before anything persists
 10. the persist is one engine batch; Topics Identified is filled, the
