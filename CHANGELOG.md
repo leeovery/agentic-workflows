@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.63] - 2026-08-12
+
+✨ Added
+- Opt-in tmux session labels — your terminal session renames to show your working position (`project · epic · phase · topic`) as you move through phases, restoring the original name when the session ends.
+- `workflow-start` asks once, the first time you're in tmux, whether to turn session labels on — the choice applies across all your projects and a project can opt out on its own.
+
+🔧 Changed
+- The shared system config file (`~/.config/workflows/config.json`) now safely holds settings from multiple subsystems — writing knowledge or session-label settings no longer risks clobbering the other's.
+
 ## [0.6.62] - 2026-08-12
 
 🐛 Fixed
