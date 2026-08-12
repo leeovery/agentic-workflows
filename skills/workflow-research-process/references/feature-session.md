@@ -74,18 +74,13 @@ Watch for `agent scan` to promote each in-flight row to `pending`. When none rem
 
 When a concern surfaces that's beyond this topic's scope, a single-topic work type has no other topic to route it to.
 
-> *Output the next fenced block as markdown (not a code block):*
+Write the offer payload to `.workflows/.cache/{work_unit}/research/{topic}/off-topic-offer.json` with the Write tool (`{"concern": "…"}` — the concern's short title), then render it:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render off-topic-offer {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/off-topic-offer.json
 ```
-· · · · · · · · · · · ·
-**{concern}** is beyond this topic's scope.
 
-**`l/log`** → Capture it as an idea in the inbox for later
-@if(work_type == 'feature')
-**`p/pivot`** → Convert this work to an epic so it can hold the concern as its own topic
-@endif
-**`i/ignore`** → Note it in the research file and move on
-```
+Emit the call's MENU section verbatim per its marker. The pivot option is offered only for a feature — the surface derives that from the work type.
 
 **STOP.** Wait for user response.
 

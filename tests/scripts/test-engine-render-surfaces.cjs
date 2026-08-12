@@ -1766,7 +1766,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-qa-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -1991,5 +1991,115 @@ describe('baseline surfaces', () => {
     writeBaseline({ status: 'completed', areas: { overview: 'completed' } });
     assert.match(renderSurface(dir, 'baseline-manage-gate', {}), /\*\*`◆ What would you like to do\?`\*\*[\s\S]*\*\*`e\/expand`\*\* → Add a new area, or deepen an existing one/);
     assert.match(renderSurface(dir, 'baseline-doc-pick', {}), /Which doc\? \(enter the area name, or \*\*`b\/back`\*\*\)/);
+  });
+});
+
+describe('render review-qa-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  const TAIL = [
+    "**`t/technical`**    → Retell the review from the code's perspective",
+    '**`v/view`**         → Show the full review report',
+    '**`c/continue`**     → Proceed to review actions',
+    '**Ask a question** → Ask about the review findings',
+    '',
+  ];
+  const HEAD = [
+    "=== MENU: review Q&A gate (emit verbatim as markdown, then STOP for the user's response) ===",
+    '· · · · · · · · · · · ·',
+    '**`◆ Any questions before proceeding?`**',
+    '',
+  ];
+
+  it('renders both conditional rows and aligns the whole set', () => {
+    const out = renderSurface(dir, 'review-qa-gate', { dotpath: 'pay.review.checkout', donow: '1', recommendations: '1' });
+    assert.strictEqual(out, [
+      ...HEAD,
+      '**`d/do-now`**       → Apply the zero-risk fixes now',
+      '**`s/surface`**      → Surface recommendations to inbox',
+      ...TAIL,
+    ].join('\n'));
+  });
+
+  it('drops both rows and re-aligns against the survivors', () => {
+    const out = renderSurface(dir, 'review-qa-gate', { dotpath: 'pay.review.checkout' });
+    assert.strictEqual(out, [...HEAD, ...TAIL].join('\n'));
+  });
+
+  it('carries one row without disturbing the column', () => {
+    const out = renderSurface(dir, 'review-qa-gate', { dotpath: 'pay.review.checkout', recommendations: '1' });
+    assert.strictEqual(out, [
+      ...HEAD,
+      '**`s/surface`**      → Surface recommendations to inbox',
+      ...TAIL,
+    ].join('\n'));
+  });
+
+  it('refuses an address outside the review phase', () => {
+    writeManifest(dir, 'pay2', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
+    assert.throws(
+      () => renderSurface(dir, 'review-qa-gate', { dotpath: 'pay2.discussion.checkout' }),
+      /address must be <work_unit>\.review\.<topic>/,
+    );
+  });
+});
+
+describe('render off-topic-offer', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const feature = () => writeManifest(dir, 'pay', {
+    work_type: 'feature',
+    phases: { research: { items: { pay: { status: 'in-progress' } } } },
+  });
+
+  it('offers the pivot for a feature, aligned across three rows', () => {
+    feature();
+    const file = writePayload(dir, 'o.json', { concern: 'Rate limiting on the public API' });
+    const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file });
+    assert.strictEqual(out, [
+      "=== MENU: off-topic offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      "**Rate limiting on the public API** is beyond this topic's scope.",
+      '',
+      '**`l/log`**    → Capture it as an idea in the inbox for later',
+      '**`p/pivot`**  → Convert this work to an epic so it can hold the concern as its own topic',
+      '**`i/ignore`** → Note it in the research file and move on',
+      '',
+    ].join('\n'));
+  });
+
+  it('drops the pivot for a non-feature and re-aligns the pair', () => {
+    writeManifest(dir, 'xc', {
+      work_type: 'cross-cutting',
+      phases: { research: { items: { xc: { status: 'in-progress' } } } },
+    });
+    const file = writePayload(dir, 'o.json', { concern: 'Audit logging' });
+    const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'xc.research.xc', file });
+    assert.strictEqual(out, [
+      "=== MENU: off-topic offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      "**Audit logging** is beyond this topic's scope.",
+      '',
+      '**`l/log`**    → Capture it as an idea in the inbox for later',
+      '**`i/ignore`** → Note it in the research file and move on',
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a missing payload and an empty concern', () => {
+    feature();
+    assert.throws(() => renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay' }), /--file <payload\.json> is required/);
+    const blank = writePayload(dir, 'b.json', { concern: '  ' });
+    assert.throws(
+      () => renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file: blank }),
+      /"concern" must be a non-empty string/,
+    );
   });
 });
