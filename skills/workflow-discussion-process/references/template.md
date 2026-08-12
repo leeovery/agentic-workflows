@@ -117,13 +117,13 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - Earlier entries are never edited
 - The trigger line carries the substance of what prompted the revision, never a bare cache id — cache files are purged; ids like `review-003 F5` may appear alongside the substance
 
-**Derivation marker**: a decision landed as a settled call — approved from a batch screen rather than argued in conversation — opens its Decision block with a marker line naming what determined it:
+**Derivation marker**: a decision landed as a settled call — approved from a batch screen rather than argued in conversation — carries a marker line naming what determined it:
 
 ```markdown
-**Settled by derivation** — not discussed. Determined by {what determined the call — the decision, sibling ground, convention, or principle} ({id} {finding}, where a review finding produced it).
+**Settled by derivation** — not discussed. Determined by {what determined the call — the decision, sibling ground, convention, or principle}@if(from_review_finding) ({id} {finding})@endif.
 ```
 
-The marker is diagnostic: when the call later proves wrong, the record shows it was inferred, not argued — a different fix from a decision that was debated and missed. Its Journey section carries the derivation, not a debate; a later revision wraps the block exactly as above.
+The marker opens the Decision block on a fresh section, and follows the `*Trigger:*` line inside the dated entry on a revision — it marks the derived text, never a block whose `#### Initial` was argued. The section's Journey carries the derivation, not a debate; a later revision wraps the block exactly as above.
 
 **Discussion Map**:
 - Subtopic states (`pending`, `exploring`, `converging`, `decided`, `deferred`) live in the manifest — the file holds the knowledge, the map holds the live state

@@ -16,9 +16,9 @@ The prose should have taken this path:
    screen rendered through the engine's finding-batch surface. The user
    approves, the Decision clause is struck, the finding is recorded and
    the write committed under its own subject marker
-7. the decide lane is empty, so the route batch follows: a second
-   finding-batch render, this time the route lane, naming each target —
-   three items, two of them bound for the same sibling
+7. the decide and walked lanes are empty, so the route batch follows: a
+   second finding-batch render, this time the route lane, naming each
+   target — three items, two of them bound for the same sibling
 8. the user approves. Each concern is delivered through the shared
    triage landing into its target topic's queue, carrying the context
    built here, and both ids are recorded in ONE surface call, which

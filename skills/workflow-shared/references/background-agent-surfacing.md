@@ -18,7 +18,7 @@ This reference defines how to surface findings from background agents. Findings 
 **The ceremony matches the move owed, never the finding's importance.** Five hard rules govern every surfacing interaction:
 
 1. **Two-phase surfacing.** First acknowledge the report exists (micro-menu, no content). Only after the user opts in, start on the lanes.
-2. **One open ask per turn.** A surfacing turn ends only on a pending ask — a batch screen awaiting approval, one raised finding awaiting its answer — never after a completed action: an approved screen confirms in a line and rolls into the next screen or lane in the same turn, and a documented walk engagement re-enters the check (**G**). Inside the walked lane, one finding per turn, always.
+2. **One open ask per turn.** A surfacing turn ends only on a pending ask — a batch screen awaiting approval, one raised finding awaiting its answer — never after a completed action: an approved screen confirms in a line and rolls into the next screen or lane in the same turn, and a documented walk engagement re-enters **A. Check for Results** as **G** prescribes. Inside the walked lane, one finding per turn, always.
 3. **Mid-thread protection.** If you are mid-Q/A with the user, defer the announce menu until the next natural break. A one-line parenthetical is acceptable, but only the first time.
 4. **Nothing is applied unseen.** Every item is rendered — numbered, with its two-line reading — before a single edit lands. A lane larger than one screen renders in screens of at most five, and each screen's approval lands only its own items. "There was no choice anyway" is not licence to write first.
 5. **Findings move toward the user, never away.** A finding the report placed in a batch moves into the walked lane the moment you find a real choice hiding in it, or the user says it isn't settled. Never the reverse: a walked finding is never demoted into a batch to save a turn.
@@ -29,7 +29,7 @@ Natural-break detection is guidance, not hard-enforced.
 
 ## LLM Turn Semantics (IMPORTANT)
 
-This protocol runs as a turn-level check, not a long-running state machine. Each invocation runs one `agent scan` and acts on its answer. Turns end at asks, never after actions: once a finding is raised or a batch screen awaits approval, control belongs to the conversation — do NOT wait "inside the protocol" for the user to finish engaging. A completed action is no exit: an approved screen confirms in one line and continues to the next screen or lane in the same turn, and a documented walk engagement re-enters the check in the same turn (**G**). A drain the user deflects out of resumes at the next natural break — every session-loop iteration re-enters here, and the row lists say exactly where things stand.
+This protocol runs as a turn-level check, not a long-running state machine. Each invocation runs one `agent scan` and acts on its answer. Turns end at asks, never after actions: once a finding is raised or a batch screen awaits approval, control belongs to the conversation — do NOT wait "inside the protocol" for the user to finish engaging. A completed action is no exit: an approved screen confirms in one line and continues to the next screen or lane in the same turn, and a documented walk engagement re-enters **A. Check for Results** in the same turn, as **G** prescribes. A drain the user deflects out of resumes at the next natural break — every session-loop iteration re-enters here, and the row lists say exactly where things stand.
 
 **The engine store is the only state.** Never track surfacing progress in conversation memory, and never write it anywhere else. Lanes live in the report file, which is durable — re-read it rather than recalling it.
 
@@ -207,7 +207,7 @@ The lane emptied — every one applied, or every one promoted out.
 
 #### Otherwise
 
-Emit the lane marker once per visit to this section — on a re-render after a question, skip it:
+Emit the lane marker on this drain's first screen only — later screens and re-renders skip it:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -215,7 +215,7 @@ Emit the lane marker once per visit to this section — on a re-render after a q
 **`▪ No Decision Needed`**
 ```
 
-Digest the report — never read it out. Write the payload to the topic's cache directory with the Write tool (`{"lane": "apply", "items": [{"title": "…", "detail": "…"}]}`, one entry per remaining `apply` finding — up to five — in the order they should read: `title` is the report's own claim, `detail` is one or two sentences saying what the fix is and which decision determines it), then render it:
+Digest the report — never read it out. Write the payload to the topic's cache directory with the Write tool (`{"lane": "apply", "items": [{"title": "…", "detail": "…"}], "remaining": N}`, one entry per remaining `apply` finding — up to five, `remaining` counting the lane's findings beyond this screen — in the order they should read: `title` is the report's own claim, `detail` is one or two sentences saying what the fix is and which decision determines it), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-apply.json
@@ -245,7 +245,7 @@ Confirm in one line total — `All {N} landed.` — never a per-finding recap: t
 
 Answer it — the report's full section, the sites it touches, why the fix is the one it is.
 
-A user who says a numbered item is not settled has promoted it (core rule 5). Leave it unsurfaced, drop it from this lane, and treat it as walked — the walk raises it once this lane empties. A promotion is held for the length of the engagement, not in the store: abandon the batch before the walk reaches it and the report's own lane is what the next visit reads, which costs a repeat ask, never a silent loss.
+A user who says a numbered item is not settled has promoted it (core rule 5). Leave it unsurfaced, drop it from this lane, and treat it as walked — the walk raises it once the batches empty. A promotion is held for the length of the engagement, not in the store: abandon the batch before the walk reaches it and the report's own lane is what the next visit reads, which costs a repeat ask, never a silent loss.
 
 The batch is still owed, and nothing has been surfaced — returning to the caller here would re-render the announce menu the user already answered.
 
@@ -269,7 +269,7 @@ The lane emptied — every one documented, or every one pulled out.
 
 #### Otherwise
 
-Emit the lane marker once per visit to this section — on a re-render after a question or a pull, skip it:
+Emit the lane marker on this drain's first screen only — later screens and re-renders skip it:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -277,7 +277,7 @@ Emit the lane marker once per visit to this section — on a re-render after a q
 **`▪ Decided From the Record`**
 ```
 
-Digest the report — never read it out. Write the payload to the topic's cache directory with the Write tool (`{"lane": "decide", "items": [{"title": "…", "detail": "…"}]}`, one entry per remaining `decide` finding — up to five — in the order they should read: `title` states the call itself as a decision, `detail` is one or two sentences naming the problem and what determined the call), then render it:
+Digest the report — never read it out. Write the payload to the topic's cache directory with the Write tool (`{"lane": "decide", "items": [{"title": "…", "detail": "…"}], "remaining": N}`, one entry per remaining `decide` finding — up to five, `remaining` counting the lane's findings beyond this screen — in the order they should read: `title` states the call itself as a decision, `detail` is one or two sentences naming the problem and what determined the call), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-decide.json
@@ -303,7 +303,7 @@ Confirm in one line total — `All {N} documented.` — never a per-finding reca
 
 → Return to **D. Route by Lane**.
 
-**If the user names one to talk through** — the Discuss route, or any answer that rejects a call rather than asking about it:
+**If the user names one to talk through** — the Discuss route, or any answer that rejects a call rather than asking about it. A bare number asks; a pull says the move (*discuss 3*) or rejects the call in words:
 
 The finding has left this lane (core rule 5). Leave it unsurfaced, drop it from the lane, and treat it as walked — the walk raises it once the batches empty, derivation on the table. Then check the survivors: any whose derivation rests on the ground the pulled finding reopens leaves with it — a call cannot land ahead of the discussion that could move it. Nothing lands and nothing is recorded; the pull is held for the length of the engagement, not in the store, same as a promotion.
 
@@ -380,7 +380,7 @@ The user just declined it — re-rendering now would re-ask. The next natural br
 
 #### Otherwise
 
-Emit the lane marker once per visit to this section — on a re-render after a question, skip it:
+Emit the lane marker on this drain's first screen only — later screens and re-renders skip it:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -388,13 +388,13 @@ Emit the lane marker once per visit to this section — on a re-render after a q
 **`▪ Belongs Elsewhere`**
 ```
 
-Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}]}`, one entry per remaining finding — up to five: `title` is the report's own claim, `target` is the owning topic, `detail` is why it is theirs and which queue it lands in), then render it:
+Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per remaining finding — up to five, `remaining` counting the lane's findings beyond this screen: `title` is the report's own claim, `target` is the owning topic, `detail` is why it is theirs and which queue it lands in), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
 ```
 
-Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
+Emit the call's DISPLAY and MENU sections, each verbatim per its marker — except on a re-entry after an answered question that changed nothing, where the list on screen is still current: emit the MENU section alone. A re-entry whose screen did change (a kept finding left survivors) rewrites the payload and re-renders both sections, renumbered.
 
 **STOP.** Wait for user response.
 
@@ -434,7 +434,7 @@ Before producing any surfacing output, verify:
 
 - □ At most one OPEN ask this turn — one batch screen awaiting approval or one raised finding awaiting its answer; a confirmed screen rolls into the next screen or lane, but nothing ever stacks unanswered
 - □ In the walked lane: AT MOST one finding, AT MOST one question — the finding's own, never an ask to park or defer it — and the finding stated self-contained before any position or proposal
-- □ In a batch: every item shown before anything is applied or sent, two lines each, numbered continuously
+- □ In a batch: every item shown before anything is applied, documented, or sent — two lines each, numbered within its screen
 - □ No screen holds more than five items — a larger lane paginates, it never dumps
 - □ Every `decide` item names what determined it — a call without its derivation is walked, never batched
 - □ No finding demoted out of the walked lane — promotion only

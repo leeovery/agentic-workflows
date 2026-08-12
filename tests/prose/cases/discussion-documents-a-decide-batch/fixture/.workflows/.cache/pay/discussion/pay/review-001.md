@@ -16,7 +16,9 @@ gateway's signing secret before acting on it. Determined by the
 Capture Confirmation decision — webhooks are the sole confirmation
 channel, so an unverified endpoint would accept a forged capture —
 and by gateway convention: the Journey already records that every
-event arrives signed. No other answer is defensible.
+event arrives signed. No other answer is defensible. No subtopic
+on the Discussion Map owns endpoint verification — Capture
+Confirmation decided the channel, not its hardening.
 
 ### F2: A refund is issued in the currency of its original capture
 
@@ -27,7 +29,9 @@ in, never re-quoted. Determined by the Currency Handling decision —
 each capture records the currency it was taken in, and integer
 minor units carry no conversion path — and by gateway convention:
 a refund is made against its capture. No other answer is
-defensible.
+defensible. No subtopic on the Discussion Map owns refunds —
+Currency Handling decided quoting and capture, and refund flow
+never came up.
 
 ## Observations
 

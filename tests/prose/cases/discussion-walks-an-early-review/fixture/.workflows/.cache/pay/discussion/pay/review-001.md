@@ -10,7 +10,7 @@ little is written.
 
 ### F1: Failure UX is untouched ground worth pulling before retries
 
-**Lane:** decide
+**Lane:** ask
 
 What the shopper sees when a payment fails — retry messaging,
 decline reasons, whether the basket survives — has not come up.
@@ -20,7 +20,7 @@ questions nobody has asked yet. An area to open, not a defect.
 
 ### F2: The gateway idempotency guarantees are adjacent ground worth a look
 
-**Lane:** decide
+**Lane:** ask
 
 Double-submit at checkout — two clicks, one charge? — turns on the
 gateway's idempotency behaviour, which no option under capture

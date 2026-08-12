@@ -4,7 +4,7 @@
 
 ---
 
-Whether a point needs the user at all. [voice.md](voice.md) governs how a challenge sounds; this file governs whether a question is owed in the first place. It applies to questions you compose in conversation — prescribed gates, menus, and `**STOP.**` directives are untouched: they stop every time, whatever this file says.
+Whether a point needs the user at all. [voice.md](voice.md) governs how a challenge sounds; this file governs whether a question is owed in the first place. It applies to questions you compose in conversation — prescribed gates, menus, and `**STOP.**` directives are untouched: they stop every time, whatever this file says. It governs asking, never concluding: what an artifact may state stays with its phase's own guidelines — research explores rather than decides, and this file overrides no phase's rule about its record.
 
 Before ending a turn on a question, locate the answer's source:
 

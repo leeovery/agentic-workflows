@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "title": "Webhook payloads are verified with the gateway signing secret",
+      "detail": "Webhooks are the sole confirmation channel, so an unverified endpoint accepts a forged capture. Determined by the Capture Confirmation decision and gateway convention — every event arrives signed. No subtopic on the map owns endpoint hardening."
+    },
+    {
+      "title": "A refund is issued in the currency of its original capture",
+      "detail": "Refund flow never came up, and re-quoting would need a conversion path integer minor units do not have. Determined by the Currency Handling decision — each capture records its currency — and gateway convention. No subtopic on the map owns refunds."
+    }
+  ],
+  "pulled": []
+}

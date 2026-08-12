@@ -849,24 +849,31 @@ function rerouteCandidates(cwd, { dotpath, file }) {
 
 const BATCH_MAX = 5;
 
-/** @type {Record<string, {intro: string, confirm: (n: number) => string, discuss?: string, ask: string, fields: string[]}>} */
+/** A confirm's remainder tail — how many of the lane wait beyond this screen. @param {number} more */
+const moreTail = (more) => (more > 0 ? ` (${more} more after this)` : '');
+
+/** @type {Record<string, {intro: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, fields: string[]}>} */
 const BATCH_LANES = {
   apply: {
-    intro: "The fix follows from what's already decided. Nothing here is a choice.",
-    confirm: (n) => `Apply all ${n}, then move on`,
+    intro: () => "The fix follows from what's already decided. Nothing here is a choice.",
+    confirm: (n, more) => `${n === 1 ? 'Apply it' : `Apply all ${n}`}, then move on${moreTail(more)}`,
     ask: "Tell me a number to expand, or one you don't think is settled",
     fields: ['title', 'detail'],
   },
   decide: {
-    intro: "Each of these has one defensible answer, settled by what's already decided or by first principles. I've made each call and named what determined it.",
-    confirm: (n) => `Document all ${n} and move on`,
-    discuss: "Name one to talk through — I'll raise it after the rest land",
+    intro: (n) => (n === 1
+      ? "This one has a single defensible answer, settled by what's already decided or by first principles. I've made the call and named what determined it."
+      : "Each of these has one defensible answer, settled by what's already decided or by first principles. I've made each call and named what determined it."),
+    confirm: (n, more) => `${n === 1 ? 'Document it' : `Document all ${n}`} and move on${moreTail(more)}`,
+    discuss: "Say discuss and a number — I'll raise it after the rest land",
     ask: 'Tell me a number to expand',
     fields: ['title', 'detail'],
   },
   route: {
-    intro: "Not this topic's to answer. Each goes to its owner's triage queue as a concern, carrying the context built here.",
-    confirm: (n) => `Send all ${n}`,
+    intro: (n) => (n === 1
+      ? "Not this topic's to answer. It goes to its owner's triage queue as a concern, carrying the context built here."
+      : "Not this topic's to answer. Each goes to its owner's triage queue as a concern, carrying the context built here."),
+    confirm: (n, more) => `${n === 1 ? 'Send it' : `Send all ${n}`}${moreTail(more)}`,
     ask: 'Tell me a number to expand, or one that should stay here',
     fields: ['title', 'target', 'detail'],
   },
@@ -891,6 +898,10 @@ function findingBatch(cwd, { dotpath, file }) {
   if (p.items.length > BATCH_MAX) {
     throw new Error(`render finding-batch: a screen holds at most ${BATCH_MAX} items (${p.items.length} given) — render the lane over successive screens`);
   }
+  const more = p.remaining === undefined ? 0 : p.remaining;
+  if (!Number.isInteger(more) || more < 0) {
+    throw new Error('render finding-batch: "remaining" must be a non-negative integer — the count of this lane\'s findings beyond the screen');
+  }
   p.items.forEach((it, i) => {
     for (const field of lane.fields) {
       if (!isFilled(it[field])) throw new Error(`render finding-batch: item ${i + 1} is missing "${field}"`);
@@ -899,7 +910,7 @@ function findingBatch(cwd, { dotpath, file }) {
   // Batch rows carry no walk-state — the lane is all-or-nothing, so no
   // glyph column. A route row's destination rides the tag slot.
   const body = worklist({
-    intro: lane.intro,
+    intro: lane.intro(p.items.length),
     items: p.items.map((it) => ({ title: it.title, tag: it.target ? `→ ${it.target}` : undefined, note: it.detail })),
   });
   return [
@@ -908,7 +919,7 @@ function findingBatch(cwd, { dotpath, file }) {
       'MENU: finding batch',
       "emit verbatim as markdown, then STOP for the user's response",
       menu('', [
-        cmdOption('y', 'yes', lane.confirm(p.items.length)),
+        cmdOption('y', 'yes', lane.confirm(p.items.length, more)),
         ...(lane.discuss ? [promptOption('Discuss', lane.discuss)] : []),
         promptOption('Ask', lane.ask),
       ]),

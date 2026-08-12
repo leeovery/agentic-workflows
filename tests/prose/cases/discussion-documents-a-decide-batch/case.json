@@ -41,7 +41,9 @@
       "manifest get pay.discussion.pay status",
       "agent scan pay discussion pay",
       "render finding-batch pay.discussion.pay",
+      "batch-decide.json",
       "discussion-map add pay pay",
+      "discussion-map set pay pay",
       "agent surface pay discussion pay review-001 F1,F2"
     ],
     "calls_in_order": [
