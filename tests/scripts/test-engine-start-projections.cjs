@@ -28,6 +28,16 @@ const { manageDetail } = require('../../skills/workflow-engine/scripts/domain/wo
 // and menu projections. Fixtures go through real manifests and inbox files in
 // temp dirs (the same shapes the discovery tests produce).
 
+// Merge a baseline object into the project manifest (preserving the registry
+// the manifest helpers may have written).
+function writeProjectBaseline(dir, baseline) {
+  const fs = require('fs');
+  const path = require('path');
+  const p = path.join(dir, '.workflows', 'manifest.json');
+  const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
+  fs.writeFileSync(p, JSON.stringify({ ...existing, baseline }, null, 2));
+}
+
 /** All five type sections populated, plus inbox and completed/cancelled. */
 function fullFixture(dir) {
   createManifest(dir, 'dark-mode', {
@@ -544,6 +554,7 @@ describe('start projections: manage list', () => {
     const v = manageListView(fullFixture(dir));
     assert.strictEqual(v.data, [
       'unit_count: 6',
+      'baseline: none',
       'UNITS (n  work_type  work_unit):',
       '  1  feature  auth-flow',
       '  2  feature  dark-mode',
@@ -572,6 +583,8 @@ describe('start projections: manage list', () => {
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
+      '**`a/baseline`** → Start the project baseline assessment',
+      '',
       'Select a work unit (enter number, or **`b/back`** to return):',
     ].join('\n'));
   });
@@ -581,6 +594,55 @@ describe('start projections: manage list', () => {
     assert.ok(v.display.endsWith('No active work units.\n'));
     assert.strictEqual(v.menu, '');
     assert.deepStrictEqual(v.rows, []);
+  });
+
+  it('labels the baseline option by status', () => {
+    writeProjectBaseline(dir, { status: 'in-progress', areas: { overview: 'researched' } });
+    assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → Resume the baseline interview/);
+    writeProjectBaseline(dir, { status: 'completed', areas: { overview: 'completed' } });
+    assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → View or expand the project baseline/);
+    writeProjectBaseline(dir, { status: 'skipped' });
+    assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → Start the project baseline assessment/);
+  });
+});
+
+describe('start projections: baseline rows', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('startMenu carries the resume row only while in-progress, ahead of the start options', () => {
+    const bare = startMenu(fullFixture(dir));
+    assert.ok(!bare.keys.some((k) => k.action === 'open_baseline'), 'no baseline row without an assessment');
+
+    writeProjectBaseline(dir, { status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'researched' } });
+    const m = startMenu(fullFixture(dir));
+    const row = m.keys.find((k) => k.action === 'open_baseline');
+    assert.ok(row, 'in-progress renders the resume row');
+    assert.strictEqual(row.key, 'a');
+    assert.strictEqual(row.route, '/workflow-baseline');
+    assert.strictEqual(row.label, 'Resume the baseline interview — *2 areas remaining*');
+    const keys = m.keys.map((k) => k.key);
+    assert.ok(keys.indexOf('a') < keys.indexOf('s'), 'the resume row precedes the start options');
+
+    // Completed baselines manage from m/manage — no row on the populated menu.
+    writeProjectBaseline(dir, { status: 'completed', areas: { overview: 'completed' } });
+    assert.ok(!startMenu(fullFixture(dir)).keys.some((k) => k.action === 'open_baseline'));
+  });
+
+  it('emptyMenu carries the resume row in-progress and the view/expand row completed', () => {
+    writeProjectBaseline(dir, { status: 'in-progress', areas: { overview: 'researched' } });
+    const inProgress = emptyMenu(startDetail(dir));
+    const row = inProgress.keys.find((k) => k.action === 'open_baseline');
+    assert.ok(row);
+    assert.strictEqual(row.label, 'Resume the baseline interview — *1 area remaining*');
+
+    writeProjectBaseline(dir, { status: 'completed', areas: { overview: 'completed' } });
+    const completed = emptyMenu(startDetail(dir));
+    assert.strictEqual(completed.keys.find((k) => k.action === 'open_baseline').label, 'View or expand the project baseline');
+
+    writeProjectBaseline(dir, { status: 'skipped' });
+    assert.ok(!emptyMenu(startDetail(dir)).keys.some((k) => k.action === 'open_baseline'), 'a skipped baseline never rides the start menus');
   });
 });
 

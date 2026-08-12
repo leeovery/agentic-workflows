@@ -564,6 +564,28 @@ describe('workflow-start sub-view sections', () => {
     }
   });
 
+  it('the view snapshot carries the baseline status in DATA and the resume row while in-progress', () => {
+    createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
+
+    const bare = run(['view']);
+    assert.ok(bare.includes('baseline: none'), bare);
+    assert.ok(!bare.includes('open_baseline'), 'no baseline action without an assessment');
+
+    const fs = require('fs');
+    const path = require('path');
+    const p = path.join(dir, '.workflows', 'manifest.json');
+    const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
+    fs.writeFileSync(p, JSON.stringify({
+      ...existing,
+      baseline: { status: 'in-progress', areas: { overview: 'completed', glossary: 'researched' } },
+    }, null, 2));
+
+    const out = run(['view']);
+    assert.ok(out.includes('baseline: in-progress'), out);
+    assert.ok(out.includes('a  open_baseline  —  → /workflow-baseline'), out);
+    assert.ok(out.includes('Resume the baseline interview — *1 area remaining*'), out);
+  });
+
   it('the add and drop gates render on demand over the caller-held set — never on the snapshot', () => {
     createFile(dir, '.workflows/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
     createFile(dir, '.workflows/.inbox/ideas/2026-06-02--smart-retry.md', '# Smart Retry\n');

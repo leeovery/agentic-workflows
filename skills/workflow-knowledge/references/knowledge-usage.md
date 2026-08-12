@@ -33,6 +33,8 @@ See **[SKILL.md](../SKILL.md)** — query construction examples and the full fla
 
 Chunks land in context; read the source file (from the `Source:` line) only when a chunk looks load-bearing. See **[SKILL.md](../SKILL.md)** — two-step retrieval pattern.
 
+A `[baseline | …]` hit is the project baseline — observed and user-stated context about the codebase as the workflows found it. Reference, never record: it informs the conversation, but it never settles a decision the way a discussion or specification chunk does, and a stated rationale worth building on is confirmed with the user rather than silently assumed current.
+
 ## D. Query failure handling
 
 If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not silently proceed without context — the knowledge base is high-value enough that silent skips are worse than a brief interruption.

@@ -14,6 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
+const { readProjectManifest } = require('../kernel/manifest-io.cjs');
 const {
   phaseItems,
   computeUnitPhaseState,
@@ -110,8 +111,39 @@ function pipelineOf(workType) {
  * @property {number} completed_count
  * @property {number} cancelled_count
  * @property {InboxDetail} inbox
+ * @property {BaselineState} baseline
  * @property {StartState} state
  */
+
+/**
+ * @typedef {object} BaselineState
+ * @property {'none'|'in-progress'|'completed'|'skipped'} status
+ * @property {number} remaining  areas not yet completed (0 unless in-progress)
+ */
+
+/**
+ * The project baseline's menu-relevant state, from the project manifest.
+ * Anything malformed reads as `none` — the same degradation boot applies.
+ * @param {string} cwd
+ * @returns {BaselineState}
+ */
+function baselineState(cwd) {
+  try {
+    const manifest = readProjectManifest(path.join(cwd, '.workflows'));
+    const b = manifest && manifest.baseline;
+    const status = b && typeof b === 'object' && !Array.isArray(b) && typeof b.status === 'string' ? b.status : 'none';
+    if (status !== 'in-progress' && status !== 'completed' && status !== 'skipped') {
+      return { status: 'none', remaining: 0 };
+    }
+    const areas = b.areas && typeof b.areas === 'object' && !Array.isArray(b.areas) ? b.areas : {};
+    const remaining = status === 'in-progress'
+      ? Object.values(areas).filter((s) => s !== 'completed').length
+      : 0;
+    return { status, remaining };
+  } catch (_) {
+    return { status: 'none', remaining: 0 };
+  }
+}
 
 /** First markdown H1, or null. @param {string} filePath @returns {string|null} */
 function readTitle(filePath) {
@@ -271,6 +303,7 @@ function startDetail(cwd) {
     completed_count: completed.length,
     cancelled_count: cancelled.length,
     inbox,
+    baseline: baselineState(cwd),
     state: {
       has_any_work: (epics.length + features.length + bugfixes.length + quick_fixes.length + cross_cutting.length) > 0,
       epic_count: epics.length,

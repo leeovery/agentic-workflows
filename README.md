@@ -85,6 +85,10 @@ Implementation runs task by task: an executor writes the code test-first, a revi
 
 Every completed artifact is indexed: research, discussions, investigations, specifications, the discovery record. Later phases query it in plain language and get answers with provenance. Dead ends count too; a rejected approach stops the next work unit exploring the same ground. Relevance decays with shipped work rather than wall-clock time, and specifications never decay.
 
+## Starting in an existing codebase
+
+A project that grew up on the workflows accumulates that record as it goes. A project you install them into has none of it — so the first run offers a **baseline assessment**. Research agents fan out over the code, then the system interviews you about what they found: the intent, constraints, and history only you can supply, with the evidence woven into every question. The answers land as a doc set the knowledge base surfaces in every later phase — observed structure, your stated reasoning, and honest open questions kept separate. Pausable mid-interview, resumable from the start menu, expandable as the product grows.
+
 ## An expert in the room
 
 This is multi-agent by design. Twenty-four specialised agents work alongside the pipeline: background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Findings are surfaced, never silently applied.

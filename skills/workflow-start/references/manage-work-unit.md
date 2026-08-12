@@ -29,6 +29,12 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 
 → Return to caller.
 
+#### If user chose `a/baseline`
+
+Invoke `/workflow-baseline` — it reads the baseline status and routes itself.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
 #### If user chose a number
 
 Store the selected work unit's `UNITS` row — its name and work type.

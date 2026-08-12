@@ -233,7 +233,7 @@ Then confirm, filling the placeholders from the mode just initialised:
 Knowledge base ready — @if(provider) {provider} · {model} @else keyword-only @endif.
 ```
 
-→ Return to **[the skill](../SKILL.md)** for **Step 1**.
+→ Return to **[the skill](../SKILL.md)** for **Step 0.4**.
 
 ## F. Terminal Wizard
 
@@ -281,7 +281,7 @@ Boot committed any store dirt the wizard left. Confirm with the active settings 
 Knowledge base ready — {provider} · {model}.
 ```
 
-→ Return to **[the skill](../SKILL.md)** for **Step 1**.
+→ Return to **[the skill](../SKILL.md)** for **Step 0.4**.
 
 **If `knowledge` is still `not-ready`:**
 

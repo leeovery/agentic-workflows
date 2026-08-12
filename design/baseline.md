@@ -143,6 +143,31 @@ project-level ambient context for the system being continued. Building
 Baseline first delivers the trust-grading layer the rebuild design needs.
 Convergent, not competing.
 
+## Build log (2026-08-12)
+
+Stack #890: #887 (this log) → #888 (KB + engine surface) → #889 (the
+skill) → integration. Deltas from the decisions above, all
+ratchet-or-convention driven rather than design changes:
+
+- **Displays are engine-rendered.** The templated-fence ratchet refused
+  hand-drawn baseline displays, so the state-derivable ones became a
+  four-surface render family (`baseline-progress`, `baseline-area-gate`,
+  `baseline-paused`, `baseline-receipt` in `projections/baseline.cjs`);
+  the two genuine-judgment presentations (proposed areas, the doc skim)
+  render as report-class markdown prose, not fences. Zero new pins.
+- **One menu action.** All baseline rows (`a/baseline` on the start,
+  empty, and manage menus) share the `open_baseline` action — the skill
+  self-routes on `project.baseline.status`, so callers carry no mode.
+- **The offer is Step 0.4** of workflow-start (after the knowledge gate,
+  which now exits there); decline writes `skipped` and commits.
+- **Area statuses**: `pending` (research owed) → `researched` (agenda
+  ready) → `completed` (doc landed + indexed) under
+  `project.baseline.areas.{area}`.
+- **Prose cases still owed**: the offer decline, an interview
+  round + pause/resume, the status-keyed menu rows. The interview rounds
+  use AskUserQuestion, which the walker harness may not simulate —
+  case design must stop at gates it can script.
+
 ## Open / deferred
 
 - Interview-stated WHY as record-grade (v1: advisory-only; revisit once
