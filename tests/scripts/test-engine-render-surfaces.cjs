@@ -1766,7 +1766,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt\)/);
   });
 });
 
@@ -1839,5 +1839,84 @@ describe('single-source invariants', () => {
     })(skillsRoot);
     assert.deepStrictEqual(offenders, [],
       'artefact content is framed by its emission fence, never drawn borders — a box glyph reintroduces a fixed-width commitment the terminal cannot honour');
+  });
+});
+
+describe('baseline surfaces', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  function writeBaseline(baseline) {
+    const wf = path.join(dir, '.workflows');
+    fs.mkdirSync(wf, { recursive: true });
+    fs.writeFileSync(path.join(wf, 'manifest.json'), JSON.stringify({ work_units: {}, baseline }, null, 2));
+  }
+
+  it('baseline-progress: in-progress shows statuses and the remaining count', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'pending' } });
+    const out = renderSurface(dir, 'baseline-progress', {});
+    assert.strictEqual(out, [
+      '=== DISPLAY: baseline progress (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      'Baseline in progress:',
+      '',
+      '  overview    [completed]',
+      '  glossary    [researched]',
+      '  dispatcher  [pending]',
+      '',
+      '2 area(s) remain.',
+      '',
+    ].join('\n'));
+  });
+
+  it('baseline-progress: completed lists the landed docs', () => {
+    writeBaseline({ status: 'completed', areas: { overview: 'completed', glossary: 'completed' } });
+    const out = renderSurface(dir, 'baseline-progress', {});
+    assert.match(out, /Baseline — 2 area\(s\) documented:/);
+    assert.match(out, /  overview\.md\n  glossary\.md/);
+  });
+
+  it('baseline-progress: refuses a missing baseline and an empty area map', () => {
+    assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /no baseline on the project manifest/);
+    writeBaseline({ status: 'in-progress', areas: {} });
+    assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /no areas/);
+  });
+
+  it('baseline-area-gate: statement, glyphed question, and both options', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched' } });
+    const out = renderSurface(dir, 'baseline-area-gate', { area: 'overview' });
+    assert.match(out, /^=== MENU: baseline area gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /\*\*Overview\*\* is documented\. 1 area\(s\) remain\./);
+    assert.match(out, /\*\*`◆ Keep going\?`\*\*/);
+    assert.match(out, /\*\*`c\/continue`\*\* → Interview the next area/);
+    assert.match(out, /\*\*`p\/pause`\*\*\s+→ Stop here — resume any time from workflow-start/);
+  });
+
+  it('baseline-area-gate: refuses a missing --area, an unknown area, an unlanded area, and a drained map', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched' } });
+    assert.throws(() => renderSurface(dir, 'baseline-area-gate', {}), /--area is required/);
+    assert.throws(() => renderSurface(dir, 'baseline-area-gate', { area: 'ghost' }), /unknown area/);
+    assert.throws(() => renderSurface(dir, 'baseline-area-gate', { area: 'glossary' }), /not completed/);
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed' } });
+    assert.throws(() => renderSurface(dir, 'baseline-area-gate', { area: 'overview' }), /no areas remain/);
+  });
+
+  it('baseline-paused: counts the documented areas and points back at workflow-start', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'researched' } });
+    const out = renderSurface(dir, 'baseline-paused', {});
+    assert.match(out, /Paused — 1 of 3 area\(s\) documented\./);
+    assert.match(out, /Resume from the workflow-start menu\./);
+    writeBaseline({ status: 'completed', areas: { overview: 'completed' } });
+    assert.throws(() => renderSurface(dir, 'baseline-paused', {}), /not in-progress/);
+  });
+
+  it('baseline-receipt: lists the docs and requires the completion write first', () => {
+    writeBaseline({ status: 'completed', areas: { overview: 'completed', glossary: 'completed' } });
+    const out = renderSurface(dir, 'baseline-receipt', {});
+    assert.match(out, /Baseline complete — 2 area\(s\) documented and indexed\./);
+    assert.match(out, /  overview\.md\n  glossary\.md/);
+    assert.match(out, /\[baseline \| \.\.\.\] context/);
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed' } });
+    assert.throws(() => renderSurface(dir, 'baseline-receipt', {}), /not completed/);
   });
 });

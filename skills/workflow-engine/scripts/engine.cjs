@@ -215,6 +215,10 @@ Commands:
   render absorb-target     <feature>
   render plan-topics       <wu>
   render revisit-phases    <wu>
+  render baseline-progress
+  render baseline-area-gate --area <name>
+  render baseline-paused
+  render baseline-receipt
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)

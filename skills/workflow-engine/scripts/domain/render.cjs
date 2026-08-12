@@ -17,6 +17,7 @@ const { worklist } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
+const { baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt } = require('./projections/baseline.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
@@ -1836,6 +1837,10 @@ const SURFACES = {
   'absorb-target': absorbTarget,
   'plan-topics': planTopics,
   'revisit-phases': revisitPhasesSurface,
+  'baseline-progress': baselineProgress,
+  'baseline-area-gate': baselineAreaGate,
+  'baseline-paused': baselinePaused,
+  'baseline-receipt': baselineReceipt,
 };
 
 /**

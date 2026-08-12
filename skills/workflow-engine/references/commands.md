@@ -241,6 +241,10 @@ engine render session-receipt <wu> [--warn]                       # discovery-se
 engine render absorb-target <feature>                             # the absorb flow's target-epic selection menu; refuses when the absorb guard doesn't hold
 engine render plan-topics <wu>                                    # the view-plan topic selection menu; refuses without a multi-topic epic plan
 engine render revisit-phases <wu>                                 # the revisit-phase selection menu over completed earlier phases; linear work types only, refuses when nothing is revisitable
+engine render baseline-progress                                   # the baseline area map from the project manifest — in-progress: per-area statuses + remaining count; completed: the landed doc list; refuses with no baseline or no areas
+engine render baseline-area-gate --area <name>                    # the between-areas continue/pause gate after the named area's doc lands; refuses an unlanded area, and refuses when nothing remains (that path concludes instead)
+engine render baseline-paused                                     # the interview's pause receipt — documented count + the workflow-start pointer; in-progress only
+engine render baseline-receipt                                    # the completion receipt — doc list + the knowledge-query note; refuses before the completed write
 ```
 
 The bridge continuation surfaces take a bare `<work_unit>` address (work-unit-level, type read from the manifest). The continue-* selection step is not a `render` surface: it runs its own navigation-gateway index dump and emits that response's `DISPLAY: selection` / `MENU: selection` sections, per their markers.
