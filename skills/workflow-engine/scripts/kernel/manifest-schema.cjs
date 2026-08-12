@@ -58,8 +58,9 @@ const VALID_GATE_MODES = ['gated', 'auto'];
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
 // Names a work unit can never take: `project` routes dot-path commands to the
-// project manifest.
-const RESERVED_WORK_UNIT_NAMES = ['project'];
+// project manifest; `baseline` is the knowledge base's pseudo-identity for the
+// project-level baseline docs (.workflows/.baseline/).
+const RESERVED_WORK_UNIT_NAMES = ['project', 'baseline'];
 
 module.exports = {
   VALID_WORK_TYPES,

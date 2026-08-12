@@ -1374,6 +1374,17 @@ describe('pipeline simulation', () => {
     sim.refuses(['workunit', 'create', wu, 'bugfix', '--description', 'Reuse', '--no-session-log'], /work type/);
     sim.refuses(['topic', 'start', wu, 'cooking', wu], /Invalid phase|unknown/);
 
+    // Reserved names never mint a work unit — `project` routes dot-paths to
+    // the project manifest, `baseline` is the KB's project-baseline identity.
+    sim.refuses(['workunit', 'create', 'project', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
+    sim.refuses(['workunit', 'create', 'baseline', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
+
+    // The project baseline lifecycle field round-trips on the project manifest.
+    sim.run(['manifest', 'set', 'project.baseline.status', 'in-progress']);
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.baseline.status']), 'in-progress');
+    sim.run(['manifest', 'set', 'project.baseline.status', 'completed']);
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.baseline.status']), 'completed');
+
     // After every refusal the unit still derives and completes normally.
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });

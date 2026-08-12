@@ -127,6 +127,14 @@ function buildFixture(root) {
   });
   // (no research/phantom.md written)
 
+  // Project baseline — flat {topic}.md docs only; session state and dotted
+  // names excluded.
+  writeFile(path.join(wf, '.baseline', 'overview.md'), '# Overview\n');
+  writeFile(path.join(wf, '.baseline', 'glossary.md'), '# Glossary\n');
+  writeFile(path.join(wf, '.baseline', '.state', 'agenda.md'), '# session state — not indexable\n');
+  writeFile(path.join(wf, '.baseline', 'dotted.name.md'), '# dotted topic → excluded\n');
+  writeFile(path.join(wf, '.baseline', 'notes.txt'), 'not markdown\n');
+
   writeJson(path.join(wf, 'manifest.json'), proj);
 }
 
@@ -136,6 +144,8 @@ const EXPECTED = [
   { workUnit: 'auth-flow', phase: 'discussion', topic: 'auth-flow', file: '.workflows/auth-flow/discussion/auth-flow.md' },
   { workUnit: 'auth-flow', phase: 'imports', topic: 'prior-art', file: '.workflows/auth-flow/imports/prior-art.md' },
   { workUnit: 'auth-flow', phase: 'specification', topic: 'auth-flow', file: '.workflows/auth-flow/specification/auth-flow/specification.md' },
+  { workUnit: 'baseline', phase: 'baseline', topic: 'glossary', file: '.workflows/.baseline/glossary.md' },
+  { workUnit: 'baseline', phase: 'baseline', topic: 'overview', file: '.workflows/.baseline/overview.md' },
   { workUnit: 'login-timeout', phase: 'investigation', topic: 'login-timeout', file: '.workflows/login-timeout/investigation/login-timeout.md' },
   { workUnit: 'login-timeout', phase: 'seeds', topic: 'bug-report', file: '.workflows/login-timeout/seeds/bug-report.md' },
   { workUnit: 'payments', phase: 'analysis', topic: 'gap-analysis', file: '.workflows/payments/.state/discovery-gap-analysis.md' },
@@ -193,5 +203,32 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     const engineJs = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
     const units = JSON.parse(execFileSync('node', [engineJs, 'manifest', 'list'], { cwd: root, encoding: 'utf8' }));
     assert.deepStrictEqual(normalise(discoverArtifacts(units)), EXPECTED);
+  });
+});
+
+describe('knowledge bulk discovery — baseline without work units', () => {
+  // The brownfield install moment: baseline docs exist before the first work
+  // unit. Discovery must yield them with no project manifest and no registry
+  // to walk.
+  let root;
+  let cwd0;
+
+  before(() => {
+    root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kb-discover-baseline-')));
+    writeFile(path.join(root, '.workflows', '.baseline', 'overview.md'), '# Overview\n');
+    writeFile(path.join(root, '.workflows', '.baseline', '.state', 'dossier-core.md'), '# session state\n');
+    cwd0 = process.cwd();
+    process.chdir(root);
+  });
+
+  after(() => {
+    process.chdir(cwd0);
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  it('discovers the baseline docs alone', () => {
+    assert.deepStrictEqual(normalise(discoverArtifacts()), [
+      { workUnit: 'baseline', phase: 'baseline', topic: 'overview', file: '.workflows/.baseline/overview.md' },
+    ]);
   });
 });

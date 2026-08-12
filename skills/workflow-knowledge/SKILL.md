@@ -24,6 +24,7 @@ A local semantic-search index over every completed research, discussion, investi
 - `seeds` (low — the work unit's origin: the promoted inbox item(s), verbatim capture)
 - `analysis` (low — research-analysis and gap-analysis caches, meta-summaries derived from low-confidence material)
 - `discovery` (low — epic exploration logs: the running record, not validated decisions; topic = session, so a work unit's whole discovery is `--phase discovery --work-unit {wu}`)
+- `baseline` (low — the project baseline: brownfield assessment docs at `.workflows/.baseline/{topic}.md`, project-level rather than per-work-unit. Chunks carry the reserved pseudo-identity `baseline` for both work unit and work type. Observed and user-stated context about the pre-existing codebase — it informs, but is never a settled call a phase may lean on silently)
 
 **What is NOT indexed**: planning, implementation, review. These phases describe execution, not knowledge. Searching them would surface task IDs and code fragments, not insight. Operational `.state/` files (migrations, environment-setup) are also excluded — only the two analysis cache filenames are accepted from `.state/`.
 
@@ -167,7 +168,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index <path/to/arti
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index
 ```
 
-- **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension. For analysis caches, the path is `.workflows/{work_unit}/.state/{research-analysis,discovery-gap-analysis}.md`; the phase is `analysis` and the topic is `research-analysis` or `gap-analysis`.
+- **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension. For analysis caches, the path is `.workflows/{work_unit}/.state/{research-analysis,discovery-gap-analysis}.md`; the phase is `analysis` and the topic is `research-analysis` or `gap-analysis`. For baseline docs, the path is `.workflows/.baseline/{topic}.md`; the work unit and phase are both `baseline` (removal is `remove --work-unit baseline [--phase baseline --topic <t>]`).
 - **Without args**: discovers every completed artifact across all work units and indexes anything missing. Used by setup and manual catch-up.
 - Failures are retried (exponential backoff). Files that still fail are pushed to a pending queue and retried on the next `index` call.
 - Exits non-zero if the file doesn't exist or the path can't be parsed.
@@ -206,7 +207,7 @@ Human-readable report of the store's state: chunk counts by work unit, phase, an
 
 ## `rebuild` and `compact` — maintenance commands
 
-- **`rebuild`** — destructive. Deletes the existing index and re-indexes everything currently discoverable: completed phase artifacts (research, discussion, investigation, specification), all entries on each work unit's `imports[]` and `seeds[]` arrays, epic discovery session logs (`discovery/sessions/session-NNN.md`), and any present analysis caches (`.state/research-analysis.md`, `.state/discovery-gap-analysis.md`). Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
+- **`rebuild`** — destructive. Deletes the existing index and re-indexes everything currently discoverable: completed phase artifacts (research, discussion, investigation, specification), all entries on each work unit's `imports[]` and `seeds[]` arrays, epic discovery session logs (`discovery/sessions/session-NNN.md`), any present analysis caches (`.state/research-analysis.md`, `.state/discovery-gap-analysis.md`), and the project baseline docs (`.workflows/.baseline/*.md`). Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
 - **`compact [--dry-run]`** — storage backstop. Removes a work unit's non-spec chunks once their retrievability `R` has decayed below `decay_prune_below` — i.e. once enough later work has completed that they're effectively unreachable in query ranking. Decay is progress-based (how much work completed after the unit, weighted by work type), not wall-clock; specifications are exempt; `false`/`null` disables it. `--dry-run` previews without deleting.
 
 Skills do not call these directly during normal operation. Users run them manually.
