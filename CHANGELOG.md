@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.61] - 2026-08-12
+
+✨ Added
+- Discussion sessions can now settle their own derivable calls in-flight — the record or first principles decide, queued and landed via a scannable batch screen instead of stopping the conversation with a question.
+- Review agents (discussion, and the shared background-agent surfacing protocol) gained a `decide` lane — calls the record settles are presented for a scan and veto, separate from the walked `ask` lane and the auto-applied `apply` lane.
+- A pulled or discussed `decide` finding gets raised as a real question, with its derivation on the table and any dependent survivors pulled along with it.
+
+🔧 Changed
+- Batch review screens (apply/decide/route) now paginate at five items per screen instead of dumping an entire lane at once, with a running count of what's left.
+- The discussion review agent's `decide` lane was renamed `ask` to distinguish "needs the user's choice" from the new `decide` lane's "record already settles this."
+- Discussion guidelines, meeting-assistant, and voice/framework docs now point questions only at genuine forks, deferring to the new ask-or-decide rule for anything the record already determines.
+
 ## [0.6.60] - 2026-08-12
 
 ✨ Added
