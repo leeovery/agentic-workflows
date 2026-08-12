@@ -191,10 +191,23 @@ describe('runFromSystem refusals', () => {
 
   it('refuses an invalid system config with the parse reason', async () => {
     fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
-    fs.writeFileSync(path.join(home, '.config', 'workflows', 'config.json'), '{"nope":1}');
+    fs.writeFileSync(path.join(home, '.config', 'workflows', 'config.json'), '{"knowledge":42}');
     await assert.rejects(() => forms.runFromSystem(noBulk, {}), (err) => {
       assert.ok(err instanceof forms.SetupRefusal);
       assert.match(err.message, /is not valid/);
+      return true;
+    });
+  });
+
+  it('treats a knowledge-less shared config (session settings only) as no system config', async () => {
+    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, '.config', 'workflows', 'config.json'),
+      JSON.stringify({ session: { tmux_labels: true } })
+    );
+    await assert.rejects(() => forms.runFromSystem(noBulk, {}), (err) => {
+      assert.ok(err instanceof forms.SetupRefusal);
+      assert.match(err.message, /no system config found/);
       return true;
     });
   });

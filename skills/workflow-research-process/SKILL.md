@@ -7,6 +7,8 @@ hooks:
     - hooks:
         - type: command
           command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
+        - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
 # Research Process
@@ -47,6 +49,12 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 ---
 
 ## Step 0: Resume Detection
+
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} research {topic}
+```
 
 Read the phase status:
 

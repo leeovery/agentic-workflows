@@ -109,6 +109,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Nothing falls on the floor.** Off-topic concerns raised mid-session are triaged into the right topic's queue and block that topic's conclusion until drained.
 - **Convergence diagnostics.** Loops that stop converging get diagnosed rather than repeated: cycle tracking distinguishes what's resolving from what's recurring before escalating to you.
 - **Environment aware.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
+- **tmux session labels.** Opt in once and your tmux session renames to show exactly where you're working — `myproject · payments · discussion · auth-flow` — as sessions move through phases, restoring the original name on exit.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run.
 
 ## Documentation

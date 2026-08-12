@@ -2,6 +2,11 @@
 name: workflow-planning-process
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git diff), Bash(git rev-parse), Bash(git add), Bash(git commit)
+hooks:
+  SessionEnd:
+    - hooks:
+        - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
 # Planning Process
@@ -72,6 +77,12 @@ Follow every step in sequence. No steps are optional.
 ---
 
 ## Step 0: Resume Detection
+
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} planning {topic}
+```
 
 Read the planning entry from the manifest as one subtree — empty means no entry exists:
 ```bash

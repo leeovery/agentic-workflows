@@ -2,6 +2,11 @@
 name: workflow-review-process
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/), Bash(ls .workflows/), Bash(git log), Bash(git add), Bash(git commit)
+hooks:
+  SessionEnd:
+    - hooks:
+        - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
 # Review Process
@@ -52,6 +57,12 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 ---
 
 ## Step 0: Resume Detection
+
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} review {topic}
+```
 
 Check if a review file exists at `.workflows/{work_unit}/review/{topic}/report.md`.
 

@@ -16,12 +16,12 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
 const { commitScopedLocked, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
+const { labelConfigStatus, configDir } = require('./session-label.cjs');
 
 // Resolved against this file so it works wherever the skill tree is installed.
 const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.cjs');
@@ -61,6 +61,7 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
  * @property {boolean} compacted
  * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
  * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
+ * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
  */
 
@@ -70,15 +71,21 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
  * credentials.json — so no secret can enter the response. The shape check
  * mirrors the knowledge CLI's own detection: a parseable file with a
  * top-level `knowledge` object is valid (a providerless one means
- * keyword-only mode); anything else is invalid.
+ * keyword-only mode); a parseable file without the key is absent — the file
+ * is shared with other subsystems (`session`), so its existence alone says
+ * nothing about knowledge; anything else is invalid.
  * @returns {SystemConfigReport}
  */
 function detectSystemConfig() {
-  const p = path.join(os.homedir(), '.config', 'workflows', 'config.json');
+  const p = path.join(configDir(), 'config.json');
   if (!fs.existsSync(p)) return { status: 'absent', provider: null, model: null };
   try {
     const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
-    const k = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed.knowledge : null;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { status: 'invalid', provider: null, model: null };
+    }
+    if (parsed.knowledge === undefined) return { status: 'absent', provider: null, model: null };
+    const k = parsed.knowledge;
     if (!k || typeof k !== 'object' || Array.isArray(k)) {
       return { status: 'invalid', provider: null, model: null };
     }
@@ -209,7 +216,7 @@ function boot(cwd) {
   }
 
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd) };
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.

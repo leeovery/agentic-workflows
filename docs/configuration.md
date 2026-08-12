@@ -18,6 +18,10 @@ A few settings exist, but you never set them in advance. Each is asked the first
 
 These stored values are suggestions, not standing decisions. When a setting is relevant again, the remembered value pre-fills the question, but you still confirm or override it, and the value you confirm is what actually gets used for that piece of work. Nothing reads a stored default at the moment of execution, so changing one never silently rewrites work already in flight. This is the same discipline the system applies everywhere: a value that was right last time is a suggestion for this time, never consent given in advance.
 
+## Session labels
+
+If you work inside tmux, the first `/workflow-start` there asks once whether the workflows may rename your tmux session to show where you are — `myproject · payments · discussion · auth-flow` — restoring the original name when the session ends. The answer applies across all your projects and is remembered in `~/.config/workflows/config.json` under `session.tmux_labels`; edit that value to change your mind. A project can opt out on its own with `defaults.tmux_labels: false` in its `.workflows/manifest.json`. Outside tmux the feature is silent and the question is never asked.
+
 ## Handing over the gates
 
 Every approval loop offers an auto option, and choosing it is how you hand that particular gate over — from then on the system proceeds there without stopping to ask. This is scoped and reversible rather than a global switch. Some gates reset to asking at the start of each session, so auto is an opt-in for a sitting rather than a permanent setting; and certain escalations override auto entirely — when a fix loop or an analysis loop hits its limit, it stops and asks regardless, because those are the moments a human needs to look. Auto is always something you choose at a gate, never something the system infers from a past choice or a stored preference. The reasoning is covered in [the collaboration model](collaboration.md).

@@ -30,6 +30,7 @@ const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, scanPresence, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
+const { applySessionLabel, restoreSessionLabel, setLabelConfig } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
@@ -146,6 +147,9 @@ Commands:
   presence clear <work-unit> <phase> <topic>
   presence scan <work-unit>
   presence cleanup [session-id]
+  session label <work-unit> <phase> <topic>
+  session label-config <true|false>
+  session cleanup [session-id]
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -528,6 +532,20 @@ function runDiscoverySession(argv) {
 
 const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
+/**
+ * A SessionEnd hook target's session id: the argument when given, else the
+ * hook's stdin JSON.
+ * @param {string[]} rest @param {string} usage @returns {string|null}
+ */
+function hookSessionId(rest, usage) {
+  if (rest.length > 1) throw new Error(usage);
+  let sessionId = rest[0] || null;
+  if (!sessionId && !process.stdin.isTTY) {
+    try { sessionId = (JSON.parse(fs.readFileSync(0, 'utf8')) || {}).session_id || null; } catch { sessionId = null; }
+  }
+  return sessionId;
+}
+
 /** @param {string[]} argv */
 function runPresence(argv) {
   const [command, ...rest] = argv;
@@ -549,15 +567,10 @@ function runPresence(argv) {
       return;
     }
     if (command === 'cleanup') {
-      // The SessionEnd hook's target: session id from the argument or the
-      // hook's stdin JSON. Root resolution favours the invocation cwd (a
-      // project root has `.workflows`), falling back to CLAUDE_PROJECT_DIR
-      // for hooks fired from a drifted cwd.
-      if (rest.length > 1) throw new Error('Usage: engine presence cleanup [session-id]');
-      let sessionId = rest[0] || null;
-      if (!sessionId && !process.stdin.isTTY) {
-        try { sessionId = (JSON.parse(fs.readFileSync(0, 'utf8')) || {}).session_id || null; } catch { sessionId = null; }
-      }
+      // The SessionEnd hook's target. Root resolution favours the
+      // invocation cwd (a project root has `.workflows`), falling back to
+      // CLAUDE_PROJECT_DIR for hooks fired from a drifted cwd.
+      const sessionId = hookSessionId(rest, 'Usage: engine presence cleanup [session-id]');
       const cwd = fs.existsSync(path.join(process.cwd(), '.workflows'))
         ? process.cwd()
         : (process.env.CLAUDE_PROJECT_DIR || process.cwd());
@@ -565,6 +578,38 @@ function runPresence(argv) {
       return;
     }
     throw new Error('Usage: engine presence <beat|clear|scan|cleanup> …');
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+/** @param {string[]} argv */
+function runSession(argv) {
+  const [command, ...rest] = argv;
+  try {
+    if (command === 'label') {
+      const [workUnit, phase, topic] = rest;
+      if (!workUnit || !phase || !topic || rest.length !== 3) {
+        throw new Error('Usage: engine session label <work-unit> <phase> <topic>');
+      }
+      respond(applySessionLabel(process.cwd(), workUnit, phase, topic));
+      return;
+    }
+    if (command === 'label-config') {
+      const [value] = rest;
+      if (rest.length !== 1 || (value !== 'true' && value !== 'false')) {
+        throw new Error('Usage: engine session label-config <true|false>');
+      }
+      respond(setLabelConfig(value === 'true'));
+      return;
+    }
+    if (command === 'cleanup') {
+      // The SessionEnd hook's target. The stash store is machine-global, so
+      // no project root is needed.
+      respond(restoreSessionLabel(hookSessionId(rest, 'Usage: engine session cleanup [session-id]')));
+      return;
+    }
+    throw new Error('Usage: engine session <label|label-config|cleanup> …');
   } catch (err) {
     failJson(err);
   }
@@ -1100,6 +1145,9 @@ function runCli(argv) {
       break;
     case 'presence':
       runPresence(rest);
+      break;
+    case 'session':
+      runSession(rest);
       break;
     case 'task':
       runTask(rest);

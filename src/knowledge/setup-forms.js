@@ -326,9 +326,10 @@ async function runKeywordOnly(cmdIndexBulk, options) {
 
 /**
  * `setup --provider <id> ...` — non-interactive system-config creation (or
- * replacement — every system-config write path rewrites clean, dropping any
- * fields the current schema no longer knows), then proceeds as
- * --from-system. The key comes from env/credentials only.
+ * replacement — the `knowledge` key is rewritten whole, dropping any of its
+ * fields the current schema no longer knows, while sibling subsystems'
+ * top-level keys are preserved), then proceeds as --from-system. The key
+ * comes from env/credentials only.
  */
 async function runProviderForm(cmdIndexBulk, flags, options) {
   requireWorkflowsDir();

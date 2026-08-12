@@ -2,6 +2,11 @@
 name: workflow-scoping-process
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git rev-parse), Bash(git add), Bash(git commit)
+hooks:
+  SessionEnd:
+    - hooks:
+        - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
 # Scoping Process
@@ -48,6 +53,12 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 ---
 
 ## Step 0: Resume Detection
+
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} scoping {topic}
+```
 
 Check if a specification already exists:
 
