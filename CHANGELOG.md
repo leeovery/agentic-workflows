@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.65] - 2026-08-12
+
+✨ Added
+
+- Off-topic concerns in single-topic work (research) get a proper log/pivot/ignore menu, matching the epic reroute experience.
+- The review Q&A gate is now engine-rendered, so its options adapt cleanly to whichever report contents are actually present.
+
+🔧 Changed
+
+- Menu arrow columns now align against the rendered width of keys and labels rather than their authored markup, fixing misaligned columns in mixed command/prompt menus.
+
 ## [0.6.64] - 2026-08-12
 
 ✨ Added
