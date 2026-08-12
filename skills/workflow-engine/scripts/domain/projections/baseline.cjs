@@ -196,6 +196,22 @@ function baselineDocPick() {
   return section('MENU: baseline doc pick', MENU_INSTRUCTION, body);
 }
 
+/**
+ * The one-time boot offer — workflow-start's Step 0.4 gate.
+ * @returns {string}
+ */
+function baselineOfferGate() {
+  const body = menu(
+    '',
+    [
+      cmdOption('y', 'yes', 'Start the assessment now'),
+      cmdOption('n', 'no', 'Skip — you can start it later from the workflow-start menus'),
+    ],
+    { question: 'Run a baseline assessment?' },
+  );
+  return section('MENU: baseline offer', MENU_INSTRUCTION, body);
+}
+
 module.exports = {
   baselineProgress,
   baselineAreaGate,
@@ -206,4 +222,5 @@ module.exports = {
   baselineDocGate,
   baselineManageGate,
   baselineDocPick,
+  baselineOfferGate,
 };

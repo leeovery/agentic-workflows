@@ -287,6 +287,12 @@ function stampLabelKill(dir) {
   let manifest = {};
   if (fs.existsSync(file)) manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
   manifest.defaults = { ...(manifest.defaults || {}), tmux_labels: false };
+  // Every world reads as a substantial codebase (the real skills tree is
+  // copied in), so workflow-start's one-time baseline offer would fire on a
+  // walker's judgment call. `skipped` pins the branch shut — a case about
+  // the baseline itself stamps its own state in fixture-state.cjs, which
+  // wins here.
+  if (manifest.baseline === undefined) manifest.baseline = { status: 'skipped' };
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
 }
@@ -307,6 +313,10 @@ function unstampLabelKill(tree) {
   if (!manifest || typeof manifest !== 'object' || !manifest.defaults || manifest.defaults.tmux_labels !== false) return;
   delete manifest.defaults.tmux_labels;
   if (Object.keys(manifest.defaults).length === 0) delete manifest.defaults;
+  if (manifest.baseline && typeof manifest.baseline === 'object'
+      && manifest.baseline.status === 'skipped' && Object.keys(manifest.baseline).length === 1) {
+    delete manifest.baseline;
+  }
   if (Object.keys(manifest).length === 0) {
     tree.delete(PROJECT_MANIFEST);
     return;

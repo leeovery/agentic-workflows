@@ -224,6 +224,7 @@ Commands:
   render baseline-doc-gate
   render baseline-manage-gate
   render baseline-doc-pick
+  render baseline-offer-gate
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)

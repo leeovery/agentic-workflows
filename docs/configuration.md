@@ -18,6 +18,10 @@ A few settings exist, but you never set them in advance. Each is asked the first
 
 These stored values are suggestions, not standing decisions. When a setting is relevant again, the remembered value pre-fills the question, but you still confirm or override it, and the value you confirm is what actually gets used for that piece of work. Nothing reads a stored default at the moment of execution, so changing one never silently rewrites work already in flight. This is the same discipline the system applies everywhere: a value that was right last time is a suggestion for this time, never consent given in advance.
 
+## The baseline offer
+
+On a project whose code predates the workflows, the first `/workflow-start` offers a one-time **baseline assessment**: researcher agents read the codebase area by area, then an interview captures the intent, history, and constraints only you can supply — evidence woven into every question, candidate answers to jog memory, and "don't know" always a costless answer. Each finished area lands as a doc the [knowledge base](knowledge-base.md) surfaces in every later thinking phase. The interview pauses and resumes from the start menu, and a completed baseline stays expandable — new areas, or deeper passes over existing ones — from the manage menu. Declining records the answer: the offer never repeats, and the assessment stays available from the start menus whenever you want it. A project that grew up on the workflows is never offered one — its record is real.
+
 ## Session labels
 
 If you work inside tmux, the first `/workflow-start` there asks once whether the workflows may rename your tmux session to show where you are — `myproject · payments · discussion · auth-flow` — restoring the original name when the session ends. The answer applies across all your projects and is remembered in `~/.config/workflows/config.json` under `session.tmux_labels`; edit that value to change your mind. A project can opt out on its own with `defaults.tmux_labels: false` in its `.workflows/manifest.json`. Outside tmux the feature is silent and the question is never asked.

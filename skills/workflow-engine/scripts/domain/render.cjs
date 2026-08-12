@@ -20,6 +20,7 @@ const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
   baselineScopeGate, baselineRound, baselineDocGate, baselineManageGate, baselineDocPick,
+  baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
@@ -1881,7 +1882,7 @@ function readBaselinePayload(cwd, surface, file) {
   }
 }
 
-/** @param {string} cwd @param {{file?: string}} args @returns {string} */
+/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
 function baselineScopeGateSurface(cwd, { file }) {
   const payload = readBaselinePayload(cwd, 'baseline-scope-gate', file);
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -1904,7 +1905,7 @@ function baselineScopeGateSurface(cwd, { file }) {
   return baselineScopeGate(payload);
 }
 
-/** @param {string} cwd @param {{file?: string}} args @returns {string} */
+/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
 function baselineRoundSurface(cwd, { file }) {
   const payload = readBaselinePayload(cwd, 'baseline-round', file);
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -1942,6 +1943,15 @@ function baselineManageGateSurface(cwd, _args) {
     throw new Error(`render baseline-manage-gate: the baseline is "${d.status}", not completed — manage serves a completed assessment`);
   }
   return baselineManageGate();
+}
+
+/** The one-time offer gate — only sensible while the baseline was never started. @param {string} cwd @param {object} _args @returns {string} */
+function baselineOfferGateSurface(cwd, _args) {
+  const d = baselineState(cwd);
+  if (d.status !== 'none') {
+    throw new Error(`render baseline-offer-gate: the baseline is "${d.status}" — the offer fires once, before anything is recorded`);
+  }
+  return baselineOfferGate();
 }
 
 /** @param {string} cwd @param {object} _args @returns {string} */
@@ -2004,6 +2014,7 @@ const SURFACES = {
   'baseline-doc-gate': baselineDocGateSurface,
   'baseline-manage-gate': baselineManageGateSurface,
   'baseline-doc-pick': baselineDocPickSurface,
+  'baseline-offer-gate': baselineOfferGateSurface,
 };
 
 /**

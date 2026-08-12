@@ -250,6 +250,7 @@ engine render baseline-round --file <payload.json>                # one intervie
 engine render baseline-doc-gate                                   # the doc-landing gate after an area's weave — static approve/view/adjust menu
 engine render baseline-manage-gate                                # the completed-baseline manage menu — expand/view/back; completed only
 engine render baseline-doc-pick                                   # manage's doc picker prompt; completed only
+engine render baseline-offer-gate                                 # workflow-start's one-time Step 0.4 offer menu; refuses once any status is recorded
 ```
 
 The bridge continuation surfaces take a bare `<work_unit>` address (work-unit-level, type read from the manifest). The continue-* selection step is not a `render` surface: it runs its own navigation-gateway index dump and emits that response's `DISPLAY: selection` / `MENU: selection` sections, per their markers.

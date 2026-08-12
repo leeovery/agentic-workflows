@@ -120,6 +120,14 @@ function startOverview(detail) {
 // Menu
 // ---------------------------------------------------------------------------
 
+// The resume row for an in-progress baseline interview — unfinished
+// assessment reads as unfinished work.
+/** @param {StartDetail} detail */
+function baselineResumeLabel(detail) {
+  const n = detail.baseline.remaining;
+  return `Resume the baseline interview — *${n} area${n === 1 ? '' : 's'} remaining*`;
+}
+
 // A finalising unit's entry reads `Finalise …` — the continue skill it routes
 // to presents the completion gate.
 /** @param {WorkUnitEntry} unit @param {TypeSection['type']} type */
@@ -134,8 +142,9 @@ function continueLabel(unit, type) {
  * Section B — the interactive menu. `keys` carries the machine action keys
  * (skills route on these); `rendered` is the dotted-gate markdown block.
  * Numbered continue entries first (overview order and numbering), then the
- * start-new and lifecycle command options (`i` only with a live inbox, `v`
- * only with completed/cancelled work units).
+ * baseline resume row (`a`, in-progress only — completed manages via `m`),
+ * then the start-new and lifecycle command options (`i` only with a live
+ * inbox, `v` only with completed/cancelled work units).
  * @param {StartDetail} detail
  * @returns {{keys: StartMenuKey[], rendered: string}}
  */
@@ -156,14 +165,18 @@ function startMenu(detail) {
   }
 
   /** @type {StartMenuKey[]} */
-  const options = [
+  const options = [];
+  if (detail.baseline.status === 'in-progress') {
+    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: baselineResumeLabel(detail) });
+  }
+  options.push(
     { key: 's', word: 'start', action: 'start_new', pre_seed: 'none', route: null, label: 'Start something new (not sure what kind yet)' },
     { key: 'f', word: 'feature', action: 'start_new', pre_seed: 'feature', route: null, label: 'Start new feature' },
     { key: 'e', word: 'epic', action: 'start_new', pre_seed: 'epic', route: null, label: 'Start new epic' },
     { key: 'b', word: 'bugfix', action: 'start_new', pre_seed: 'bugfix', route: null, label: 'Start new bugfix' },
     { key: 'q', word: 'quick-fix', action: 'start_new', pre_seed: 'quick-fix', route: null, label: 'Start new quick-fix' },
     { key: 'c', word: 'cross-cutting', action: 'start_new', pre_seed: 'cross-cutting', route: null, label: 'Start new cross-cutting concern' },
-  ];
+  );
   if (detail.state.has_inbox) {
     options.push({ key: 'i', word: 'inbox', action: 'view_inbox', route: null, label: 'View the inbox and start from an item' });
   }
@@ -201,22 +214,36 @@ function emptyOverview(detail) {
 }
 
 /**
- * The empty-state start menu — the six start-new options with pipeline-shape
- * labels, `i` only with a live inbox, `v` only with closed work units. Same
- * key shape as startMenu, so the ACTIONS table and routing are uniform.
+ * The empty-state start menu — a baseline row first when one exists to act
+ * on (`a`: resume in-progress, view/expand completed, start a declined one —
+ * the empty state has no manage row, so `skipped` rides here; `none` renders
+ * nothing), then the six start-new options with pipeline-shape labels, `i`
+ * only with a live inbox, `v` only with closed work units. Same key shape as
+ * startMenu, so the ACTIONS table and routing are uniform.
  * @param {StartDetail} detail
  * @returns {{keys: StartMenuKey[], rendered: string}}
  */
 function emptyMenu(detail) {
   /** @type {StartMenuKey[]} */
-  const options = [
+  const options = [];
+  if (detail.baseline.status === 'in-progress') {
+    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: baselineResumeLabel(detail) });
+  } else if (detail.baseline.status === 'completed') {
+    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: 'View or expand the project baseline' });
+  } else if (detail.baseline.status === 'skipped') {
+    // A declined offer stays reachable here — the empty state has no manage
+    // row, and this is the only surface a work-free project renders. `none`
+    // stays hidden: a greenfield project never sees a baseline row.
+    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: 'Start the project baseline assessment' });
+  }
+  options.push(
     { key: 's', word: 'start', action: 'start_new', pre_seed: 'none', route: null, label: "Not sure what kind yet — describe it and we'll shape it" },
     { key: 'f', word: 'feature', action: 'start_new', pre_seed: 'feature', route: null, label: 'Single topic: (research →) discussion → spec → plan → implement → review' },
     { key: 'e', word: 'epic', action: 'start_new', pre_seed: 'epic', route: null, label: 'Multiple topics, multi-session, same pipeline per topic' },
     { key: 'b', word: 'bugfix', action: 'start_new', pre_seed: 'bugfix', route: null, label: 'Investigation → spec → plan → implement → review' },
     { key: 'q', word: 'quick-fix', action: 'start_new', pre_seed: 'quick-fix', route: null, label: 'Scoping → implement → review (no formal planning)' },
     { key: 'c', word: 'cross-cutting', action: 'start_new', pre_seed: 'cross-cutting', route: null, label: '(Research →) discussion → spec (patterns or policies that inform other work)' },
-  ];
+  );
   if (detail.state.has_inbox) {
     const n = detail.state.inbox_count;
     options.push({ key: 'i', word: 'inbox', action: 'view_inbox', route: null, label: `View the inbox and start from an item (${n} item${n === 1 ? '' : 's'})` });
@@ -471,6 +498,7 @@ function manageListView(detail) {
 
   const data = [
     `unit_count: ${rows.length}`,
+    `baseline: ${detail.baseline.status}`,
     'UNITS (n  work_type  work_unit):',
     ...rows.map((r) => `  ${r.n}  ${r.work_type}  ${r.work_unit}`),
   ].join('\n');
@@ -478,8 +506,23 @@ function manageListView(detail) {
   const display = ''
     + (rows.length > 0 ? displayLines.join('\n') : 'No active work units.\n');
 
+  // The project baseline manages from here too — it is not a work unit, so
+  // it rides as a command option rather than a numbered row. Label follows
+  // its status; the skill self-routes on the same state.
+  const baselineOption = {
+    'in-progress': 'Resume the baseline interview',
+    completed: 'View or expand the project baseline',
+    skipped: 'Start the project baseline assessment',
+    none: 'Start the project baseline assessment',
+  }[detail.baseline.status];
+  const menuLines = [
+    cmdOption('a', 'baseline', baselineOption),
+    '',
+    'Select a work unit (enter number, or **`b/back`** to return):',
+  ];
+
   const menu = rows.length > 0
-    ? dotMenu(['Select a work unit (enter number, or **`b/back`** to return):'])
+    ? dotMenu(menuLines)
     : '';
 
   return { data, display, menu, rows };

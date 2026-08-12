@@ -39,6 +39,12 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the signpost b
 
 Match the user's input to its `ACTIONS` entry by `key` — a command option's letter or long form. Every decision below reads the entry's `action` value, never its label text.
 
+#### If `action` is `open_baseline`
+
+Invoke `/workflow-baseline` — it reads the baseline status and routes itself.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
 #### If `action` is `view_inbox`
 
 Load **[start-from-inbox.md](start-from-inbox.md)** and follow its instructions as written.

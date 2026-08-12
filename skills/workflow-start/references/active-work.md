@@ -39,6 +39,12 @@ Invoke the entry's stored `route` (e.g. `/workflow-continue-feature {work_unit}`
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
+#### If `action` is `open_baseline`
+
+Invoke `/workflow-baseline` — it reads the baseline status and routes itself.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
 #### If `action` is `start_new`
 
 → Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{pre_seed}`, inbox_seeds = `none`.

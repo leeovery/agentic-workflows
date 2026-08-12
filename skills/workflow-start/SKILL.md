@@ -196,6 +196,49 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 #### If `knowledge` is `ready`
 
+→ Proceed to **Step 0.4**.
+
+### Step 0.4: Baseline Offer
+
+Branch on the boot response's `baseline` — the one-time offer to assess a pre-existing codebase. A recorded status (`in-progress`/`completed`/`skipped`) never re-offers; the start menu and manage carry those paths.
+
+#### If `baseline` is `none` and the project carries a codebase that predates the workflows
+
+Judge the second condition from what you can already see — code and git history from before the workflows arrived, not a project that grew up on them (however large it has become) and not a fresh or near-empty repository. When in doubt, offer once: declining records the answer.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> This project has an existing codebase the workflows know nothing about. A baseline assessment researches it, then interviews you to capture the intent the code can't show — landing docs the knowledge base surfaces in every later phase. Pausable any time; also available later from the workflow-start menus.
+```
+
+Fetch the offer and emit its `MENU: baseline offer` section verbatim as markdown (not a code block):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-offer-gate
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+Invoke `/workflow-baseline`.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
+**If `no`:**
+
+Record the decline so the offer never repeats, and commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.baseline.status skipped
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: decline the assessment offer"
+```
+
+→ Proceed to **Step 1**.
+
+#### Otherwise
+
 → Proceed to **Step 1**.
 
 ---

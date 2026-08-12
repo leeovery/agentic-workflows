@@ -106,6 +106,7 @@ function view() {
   dataLines.push(`inbox_count: ${detail.state.inbox_count}`);
   dataLines.push(`completed_count: ${detail.completed_count}`);
   dataLines.push(`cancelled_count: ${detail.cancelled_count}`);
+  dataLines.push(`baseline: ${detail.baseline.status}`);
   dataLines.push('ACTIONS (key  action  work_unit  → route):');
   for (const k of menu.keys) {
     let line = `  ${k.key}  ${k.action}  ${k.work_unit || '—'}  → ${k.route || '(internal)'}`;
