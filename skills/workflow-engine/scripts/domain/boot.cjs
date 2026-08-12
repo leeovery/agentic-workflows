@@ -216,7 +216,7 @@ function boot(cwd) {
   }
 
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus() };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd) };
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.

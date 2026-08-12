@@ -250,9 +250,17 @@ function detectSystemConfig(sysPath) {
   try {
     const raw = fs.readFileSync(sysPath, 'utf8');
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || !parsed.knowledge ||
-        typeof parsed.knowledge !== 'object' || Array.isArray(parsed.knowledge)) {
-      return { exists: true, valid: false, knowledge: null, reason: 'missing or invalid "knowledge" key' };
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { exists: true, valid: false, knowledge: null, reason: 'not a JSON object' };
+    }
+    // The file is shared with other subsystems (e.g. `session`): one that
+    // parses but carries no knowledge key holds no knowledge config at all —
+    // the same as no file, and setup writes preserve the sibling keys.
+    if (parsed.knowledge === undefined) {
+      return { exists: false, valid: false, knowledge: null };
+    }
+    if (!parsed.knowledge || typeof parsed.knowledge !== 'object' || Array.isArray(parsed.knowledge)) {
+      return { exists: true, valid: false, knowledge: null, reason: 'invalid "knowledge" key' };
     }
     return { exists: true, valid: true, knowledge: parsed.knowledge };
   } catch (_) {

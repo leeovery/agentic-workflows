@@ -59,11 +59,21 @@ const PROVIDER_ENV_VARS = {
 };
 
 /**
+ * Resolve the system config directory. `WORKFLOWS_CONFIG_DIR` overrides for
+ * tests — the same override the engine honours, so the two subsystems that
+ * share the config file can never be pointed at different ones.
+ * @returns {string}
+ */
+function systemConfigDir() {
+  return process.env.WORKFLOWS_CONFIG_DIR || path.join(os.homedir(), '.config', 'workflows');
+}
+
+/**
  * Resolve the system config path.
  * @returns {string}
  */
 function systemConfigPath() {
-  return path.join(os.homedir(), '.config', 'workflows', 'config.json');
+  return path.join(systemConfigDir(), 'config.json');
 }
 
 /**
@@ -100,7 +110,7 @@ function projectConfigPath(cwd) {
  * @returns {string}
  */
 function credentialsPath() {
-  return path.join(os.homedir(), '.config', 'workflows', 'credentials.json');
+  return path.join(systemConfigDir(), 'credentials.json');
 }
 
 /**

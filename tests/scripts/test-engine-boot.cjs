@@ -408,6 +408,14 @@ describe('engine boot tmux-label state', () => {
     assert.strictEqual(bootWith({ tmux: true, config: true }).tmux_labels, 'on');
     assert.strictEqual(bootWith({ tmux: true, config: false }).tmux_labels, 'off');
   });
+
+  it('the project manifest override beats the system value and suppresses the prompt', () => {
+    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: false } }, null, 2) + '\n');
+    assert.strictEqual(bootWith({ tmux: true, config: true }).tmux_labels, 'off');
+    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'off');
+    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'on');
+  });
 });
 
 describe('engine boot (real scripts)', () => {

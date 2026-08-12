@@ -14,6 +14,8 @@ const {
   loadCredentials,
   writeCredentials,
   resolveApiKey,
+  systemConfigPath,
+  credentialsPath,
   DEFAULTS,
   PROVIDER_ENV_VARS,
 } = require('../../src/knowledge/config');
@@ -652,19 +654,35 @@ describe('detectSystemConfig', () => {
     assert.ok(result.reason);
   });
 
-  it('reports exists=true, valid=false for missing knowledge wrapper', () => {
-    const filePath = path.join(tmpDir, 'nowrap.json');
-    writeJSON(filePath, { provider: 'openai' });
+  it('treats a knowledge-less shared file as knowledge-absent (session-only config)', () => {
+    const filePath = path.join(tmpDir, 'shared.json');
+    writeJSON(filePath, { session: { tmux_labels: true } });
     const result = detectSystemConfig(filePath);
-    assert.strictEqual(result.exists, true);
+    assert.strictEqual(result.exists, false);
     assert.strictEqual(result.valid, false);
+    assert.strictEqual(result.knowledge, null);
   });
 
   it('reports exists=true, valid=false when knowledge is an array', () => {
     const filePath = path.join(tmpDir, 'arr.json');
     writeJSON(filePath, { knowledge: [1, 2, 3] });
     const result = detectSystemConfig(filePath);
+    assert.strictEqual(result.exists, true);
     assert.strictEqual(result.valid, false);
+  });
+});
+
+describe('systemConfigPath — WORKFLOWS_CONFIG_DIR override', () => {
+  it('resolves the config and credentials paths from the override, like the engine', () => {
+    const prev = process.env.WORKFLOWS_CONFIG_DIR;
+    process.env.WORKFLOWS_CONFIG_DIR = '/tmp/wf-elsewhere';
+    try {
+      assert.strictEqual(systemConfigPath(), path.join('/tmp/wf-elsewhere', 'config.json'));
+      assert.strictEqual(credentialsPath(), path.join('/tmp/wf-elsewhere', 'credentials.json'));
+    } finally {
+      if (prev === undefined) delete process.env.WORKFLOWS_CONFIG_DIR;
+      else process.env.WORKFLOWS_CONFIG_DIR = prev;
+    }
   });
 });
 

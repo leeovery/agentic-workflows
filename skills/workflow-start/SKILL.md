@@ -140,16 +140,20 @@ All documents up to date.
 
 ### Step 0.2: Session Labels
 
-Branch on the boot response's `tmux_labels`. This is a one-time choice — once recorded (any value but `prompt`), this step renders nothing, ever.
+Branch on the boot response's `tmux_labels` — `prompt` means the session runs inside tmux and the choice was never recorded. A recorded choice (`on`/`off`) never re-prompts; `no-tmux` records nothing, so a later session inside tmux still asks.
 
 #### If `tmux_labels` is `prompt`
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-· · · · · · · · · · · ·
-You're running inside tmux. The workflows can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` — as you move through phases, restoring the original name when the session ends. One choice for all your projects, stored in `~/.config/workflows/config.json`.
+> You're running inside tmux. The workflows can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` — as you move through phases, restoring the original name when the session ends. One choice for all your projects, stored in `~/.config/workflows/config.json`.
+```
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
 **`◆ Label your tmux session as you work?`**
 
 **`y/yes`** → Turn session labels on
@@ -160,6 +164,8 @@ You're running inside tmux. The workflows can rename your tmux session to show w
 
 **If `yes`:**
 
+Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the config file is fixed:
+
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
 ```
@@ -167,6 +173,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
 → Proceed to **Step 0.3**.
 
 **If `no`:**
+
+Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the config file is fixed:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label-config false

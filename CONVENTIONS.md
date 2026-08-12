@@ -511,7 +511,11 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 [up-to-date display]
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Knowledge Gate
+### Step 0.2: Session Labels
+[one-time prompt when the boot response says so; otherwise silent]
+→ Proceed to **Step 0.3**.
+
+### Step 0.3: Knowledge Gate
 [branch on the boot response: not-ready → terminal stop; ready → proceed]
 → Proceed to **Step 1**.
 ```

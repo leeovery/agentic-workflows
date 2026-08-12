@@ -270,11 +270,56 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
  * volatile values surface as ordinary differences and the agent rules on
  * them. A case with no assertion-state expects its fixture back unchanged.
  */
+// --- the session-label kill switch --------------------------------------
+
+const PROJECT_MANIFEST = path.join('.workflows', 'manifest.json');
+
+/**
+ * Write `defaults.tmux_labels: false` into the world's project manifest
+ * (creating the manifest when the fixture has none) — the engine's
+ * per-project override, which beats the developer's real system opt-in.
+ * Canonical manifest style, so mid-walk engine rewrites stay byte-stable.
+ * @param {string} dir
+ */
+function stampLabelKill(dir) {
+  const file = path.join(dir, PROJECT_MANIFEST);
+  /** @type {Record<string, any>} */
+  let manifest = {};
+  if (fs.existsSync(file)) manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+  manifest.defaults = { ...(manifest.defaults || {}), tmux_labels: false };
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
+}
+
+/**
+ * Reverse the stamp on a collected tree so deltas compare against
+ * unstamped snapshots: drop `defaults.tmux_labels` when it carries the
+ * harness value, drop an emptied `defaults`, and drop the manifest
+ * entirely when the stamp was all it held.
+ * @param {Map<string, Buffer>} tree
+ */
+function unstampLabelKill(tree) {
+  const buf = tree.get(PROJECT_MANIFEST);
+  if (!buf) return;
+  /** @type {Record<string, any>} */
+  let manifest;
+  try { manifest = JSON.parse(buf.toString('utf8')); } catch { return; }
+  if (!manifest || typeof manifest !== 'object' || !manifest.defaults || manifest.defaults.tmux_labels !== false) return;
+  delete manifest.defaults.tmux_labels;
+  if (Object.keys(manifest.defaults).length === 0) delete manifest.defaults;
+  if (Object.keys(manifest).length === 0) {
+    tree.delete(PROJECT_MANIFEST);
+    return;
+  }
+  tree.set(PROJECT_MANIFEST, Buffer.from(JSON.stringify(manifest, null, 2) + '\n'));
+}
+
 function diffWorld(caseId, worldDir, claimsMode = false) {
   const which = !claimsMode && fs.existsSync(snapshotDir(caseId, 'assertion')) ? 'assertion' : 'fixture';
   const expected = readSnapshot(caseId, which);
   if (expected === null) throw new Error(`case "${caseId}" has no committed ${which} snapshot`);
   const actual = collectTree(worldDir);
+  unstampLabelKill(actual);
 
   const added = [];
   const removed = [];
@@ -330,6 +375,13 @@ function buildWorld(caseId) {
     const src = path.join(ROOT, layer);
     if (fs.existsSync(src)) fs.cpSync(src, path.join(dir, '.claude', layer), { recursive: true });
   }
+
+  // The walker's engine calls inherit the developer's real environment —
+  // tmux identity and system config included — so every world carries the
+  // project-level session-label kill switch. Stamped before the baseline
+  // commit (no dirt for the walk to sweep up) and stripped back out by
+  // diffWorld, so snapshots never see it.
+  stampLabelKill(dir);
 
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 'prose@example.com');

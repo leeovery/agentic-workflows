@@ -532,6 +532,20 @@ function runDiscoverySession(argv) {
 
 const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
+/**
+ * A SessionEnd hook target's session id: the argument when given, else the
+ * hook's stdin JSON.
+ * @param {string[]} rest @param {string} usage @returns {string|null}
+ */
+function hookSessionId(rest, usage) {
+  if (rest.length > 1) throw new Error(usage);
+  let sessionId = rest[0] || null;
+  if (!sessionId && !process.stdin.isTTY) {
+    try { sessionId = (JSON.parse(fs.readFileSync(0, 'utf8')) || {}).session_id || null; } catch { sessionId = null; }
+  }
+  return sessionId;
+}
+
 /** @param {string[]} argv */
 function runPresence(argv) {
   const [command, ...rest] = argv;
@@ -553,15 +567,10 @@ function runPresence(argv) {
       return;
     }
     if (command === 'cleanup') {
-      // The SessionEnd hook's target: session id from the argument or the
-      // hook's stdin JSON. Root resolution favours the invocation cwd (a
-      // project root has `.workflows`), falling back to CLAUDE_PROJECT_DIR
-      // for hooks fired from a drifted cwd.
-      if (rest.length > 1) throw new Error('Usage: engine presence cleanup [session-id]');
-      let sessionId = rest[0] || null;
-      if (!sessionId && !process.stdin.isTTY) {
-        try { sessionId = (JSON.parse(fs.readFileSync(0, 'utf8')) || {}).session_id || null; } catch { sessionId = null; }
-      }
+      // The SessionEnd hook's target. Root resolution favours the
+      // invocation cwd (a project root has `.workflows`), falling back to
+      // CLAUDE_PROJECT_DIR for hooks fired from a drifted cwd.
+      const sessionId = hookSessionId(rest, 'Usage: engine presence cleanup [session-id]');
       const cwd = fs.existsSync(path.join(process.cwd(), '.workflows'))
         ? process.cwd()
         : (process.env.CLAUDE_PROJECT_DIR || process.cwd());
@@ -595,19 +604,9 @@ function runSession(argv) {
       return;
     }
     if (command === 'cleanup') {
-      // The SessionEnd hook's target: session id from the argument or the
-      // hook's stdin JSON. Root resolution favours the invocation cwd (a
-      // project root has `.workflows`), falling back to CLAUDE_PROJECT_DIR
-      // for hooks fired from a drifted cwd.
-      if (rest.length > 1) throw new Error('Usage: engine session cleanup [session-id]');
-      let sessionId = rest[0] || null;
-      if (!sessionId && !process.stdin.isTTY) {
-        try { sessionId = (JSON.parse(fs.readFileSync(0, 'utf8')) || {}).session_id || null; } catch { sessionId = null; }
-      }
-      const cwd = fs.existsSync(path.join(process.cwd(), '.workflows'))
-        ? process.cwd()
-        : (process.env.CLAUDE_PROJECT_DIR || process.cwd());
-      respond(restoreSessionLabel(cwd, sessionId));
+      // The SessionEnd hook's target. The stash store is machine-global, so
+      // no project root is needed.
+      respond(restoreSessionLabel(hookSessionId(rest, 'Usage: engine session cleanup [session-id]')));
       return;
     }
     throw new Error('Usage: engine session <label|label-config|cleanup> …');
