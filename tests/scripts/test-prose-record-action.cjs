@@ -106,7 +106,7 @@ describe('prose recorder — tool events', () => {
   });
 
   it('truncates a genuinely enormous command with the marker, after the world collapses', () => {
-    const filler = 'x'.repeat(2000);
+    const filler = 'x'.repeat(8000);
     fire({
       hook_event_name: 'PreToolUse',
       tool_name: 'Bash',
@@ -117,13 +117,13 @@ describe('prose recorder — tool events', () => {
     const detail = row.split('\t')[2];
     assert.ok(detail.endsWith('…[truncated]'), 'oversize is marked, never silently cut');
     assert.ok(detail.startsWith('cd . && echo'), 'the world path collapsed before the cap applied');
-    assert.ok(detail.length <= 600 + '…[truncated]'.length, 'the cap holds');
+    assert.ok(detail.length <= 4000 + '…[truncated]'.length, 'the cap holds');
   });
 
   it('a command exactly at the cap is kept whole with no marker', () => {
     const prefix = `cd ${world} && echo `;
     const collapsed = 'cd . && echo ';
-    const payload = 'y'.repeat(600 - collapsed.length);
+    const payload = 'y'.repeat(4000 - collapsed.length);
     fire({
       hook_event_name: 'PreToolUse',
       tool_name: 'Bash',
@@ -132,7 +132,7 @@ describe('prose recorder — tool events', () => {
     });
     const [row] = logLines();
     const detail = row.split('\t')[2];
-    assert.equal(detail.length, 600, 'exactly the cap');
+    assert.equal(detail.length, 4000, 'exactly the cap');
     assert.ok(!detail.includes('…[truncated]'), 'no marker at the boundary');
   });
 
