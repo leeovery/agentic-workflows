@@ -13,9 +13,9 @@ The prose should have taken this path:
 4. the session loop's checks run: the triage check no-ops on an empty
    queue, and the agent check finds nothing — no agent was ever
    dispatched. A session just opened with no thread underway is a
-   natural break, so the non-empty calls queue flushes: section H
-   routes on the queue file, finds two items and no pulled calls, and
-   builds the screen
+   natural break, so the non-empty calls queue flushes: the flush
+   section routes on the queue file, finds two items and no pulled
+   calls, and builds the screen
 5. the screen renders through the engine's finding-batch surface with
    lane decide from a calls-batch payload — both calls, numbered, each
    naming what determined it — and its DISPLAY and MENU sections are
