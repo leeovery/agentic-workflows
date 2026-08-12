@@ -687,7 +687,7 @@ describe('engine render task surfaces', () => {
     '**\`◆ How would you like to proceed?\`**',
     '',
     '**`p/proceed`** → Continue with the first blocked task anyway (its blocker will not be completed)',
-    '**`s/skip`**    → Skip the blocked tasks and conclude the loop',
+    '**`s/skip`**    → Skip the first blocked task (the loop re-checks the rest)',
     '**`t/stop`**    → Stop implementation entirely',
     '',
   ].join('\n');
