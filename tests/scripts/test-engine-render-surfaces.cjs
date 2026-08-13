@@ -12,6 +12,12 @@ const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/r
 // Worklist leading indents are non-breaking spaces (a 4-space lead is a code
 // block to a markdown renderer) — goldens spell them explicitly.
 const NB = (n) => '\u00a0'.repeat(n);
+
+// Reverse the menu label wrap for wording asserts: a continuation joins its
+// previous line with the single space the break replaced. Exact only for
+// labels with no markup spanning the break \u2014 layout itself is covered by
+// the byte-exact pins.
+const unwrap = (s) => s.replace(/\n\u00a0+/g, ' ');
 const { selectionSections } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
 
 function setup() {
@@ -59,6 +65,62 @@ describe('surfaces primitives', () => {
     const arrows = lines.filter((l) => l.includes(' → ')).map((l) => l.indexOf(' → '));
     assert.strictEqual(new Set(arrows).size, 1, 'arrows share a column');
     assert.ok(lines.includes('a plain line'), 'non-option lines pass through untouched');
+  });
+
+  it('wraps a long option label under the label column with NBSP continuations', () => {
+    const out = menuFrame([
+      '**`1`** → ' + 'alpha '.repeat(12).trim(),
+      '**`i/discovery`** → Continue discovery',
+    ], { width: 40 });
+    const lines = out.split('\n');
+    // column = 11 (i/discovery) → label column 14; every rendered line ≤ 40.
+    assert.strictEqual(lines[1], '**`1`**           → alpha alpha alpha alpha');
+    assert.strictEqual(lines[2], `${NB(14)}alpha alpha alpha alpha`);
+    assert.strictEqual(lines[3], `${NB(14)}alpha alpha alpha alpha`);
+    assert.strictEqual(lines[4], '**`i/discovery`** → Continue discovery');
+  });
+
+  it('closes and reopens spans at a wrap break — every emitted line is self-contained markdown', () => {
+    const out = menuFrame([
+      '**`1`** → Continue "Roles" — *implementation (Phase 5, Task roles-5-44)*',
+      '**`i/discovery`** → Continue discovery',
+    ], { width: 55 });
+    const lines = out.split('\n');
+    assert.strictEqual(lines[1], '**`1`**           → Continue "Roles" — *implementation (Phase*');
+    assert.strictEqual(lines[2], `${NB(14)}*5, Task roles-5-44)*`);
+  });
+
+  it('a struck in-session row and a code span both survive the break balanced', () => {
+    const struck = menuFrame([
+      '**`1`** → ~~Continue "Topic" — *discussion*~~ · in session (last active 2m ago)',
+    ], { width: 55 });
+    // the ~~…~~ closes before the break here; each line carries balanced markers
+    for (const line of struck.split('\n')) {
+      assert.strictEqual((line.match(/~~/g) || []).length % 2, 0, line);
+    }
+    const code = menuFrame([
+      '**`1`** → Run `one two three four five six seven` now',
+    ], { width: 40 });
+    const codeLines = code.split('\n');
+    assert.ok(codeLines[1].endsWith('`'), 'code span closes at the break');
+    assert.ok(codeLines[2].startsWith(NB(4) + '`'), 'and reopens on the continuation');
+  });
+
+  it('keeps the line whole when the label budget falls below the floor', () => {
+    const out = menuFrame([
+      '**`x/extraordinarily-wide-key-column`** → Continue',
+      '**`1`** → A long label that would wrap at any sane width but must stay whole here',
+    ], { width: 40 });
+    assert.ok(!out.includes(NB(1)), 'no continuation lines at a degenerate budget');
+  });
+
+  it('leaves a single oversized token whole rather than splitting markup', () => {
+    const out = menuFrame([
+      '**`1`** → See supercalifragilistic-hyphenated-identifier-that-cannot-fit for details',
+    ], { width: 40 });
+    const lines = out.split('\n');
+    assert.strictEqual(lines[2], `${NB(4)}supercalifragilistic-hyphenated-identifier-that-cannot-fit`);
+    assert.strictEqual(lines[3], `${NB(4)}for details`);
   });
 
   it('section wraps body in a named, instruction-carrying marker and strips trailing newlines', () => {
@@ -162,8 +224,8 @@ describe('render resume-gate variants', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
     assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3, task 2).'));
-    assert.ok(/\*\*`c\/continue`\*\* +→ Walk through the plan from the start\. You can review, amend, or navigate at any point — including straight to the leading edge\./.test(out));
-    assert.ok(/\*\*`r\/restart`\*\* +→ Erase all planning work for this topic and start fresh\. This deletes the planning file, authored tasks, and clears manifest state\. Other topics are unaffected\./.test(out));
+    assert.ok(/\*\*`c\/continue`\*\* +→ Walk through the plan from the start\. You can review, amend, or navigate at any point — including straight to the leading edge\./.test(unwrap(out)));
+    assert.ok(/\*\*`r\/restart`\*\* +→ Erase all planning work for this topic and start fresh\. This deletes the planning file, authored tasks, and clears manifest state\. Other topics are unaffected\./.test(unwrap(out)));
   });
 
   it('plan omits the parenthetical when the position fields are absent', () => {
@@ -231,14 +293,14 @@ describe('render resume-gate variants', () => {
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.scoping.pay', variant: 'scoping' });
     assert.ok(out.includes('Found completed scoping for **Pay** — spec and plan are in place.'));
     assert.ok(/\*\*`c\/continue`\*\* +→ Adjust the existing spec and plan/.test(out));
-    assert.ok(/\*\*`r\/restart`\*\* +→ Erase the spec, plan, and task files, then rescope from scratch/.test(out));
+    assert.ok(/\*\*`r\/restart`\*\* +→ Erase the spec, plan, and task files, then rescope from scratch/.test(unwrap(out)));
   });
 
   it('session takes a bare work-unit address and reads the active-session marker', () => {
     writeManifest(dir, 'pay', { phases: { discovery: { active_session: '002', items: {} } } });
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay', variant: 'session' });
     assert.ok(out.includes('Found an in-progress discovery session for **Pay** at `session-002.md`.'));
-    assert.ok(/\*\*`r\/restart`\*\* +→ Discard the interrupted log and start a new session \(map edits already applied stay applied — only their session record is lost\)/.test(out));
+    assert.ok(/\*\*`r\/restart`\*\* +→ Discard the interrupted log and start a new session \(map edits already applied stay applied — only their session record is lost\)/.test(unwrap(out)));
   });
 
   it('session is loud when no active session exists', () => {
@@ -285,9 +347,12 @@ describe('render task-list', () => {
       '**`◆ Approve this task list?`**',
       '',
       '**`y/yes`**                  → Proceed to authoring',
-      '**`a/auto`**                 → Approve this and all remaining task list gates automatically',
-      '**Tell me what to change** → which tasks to reorder, split, merge, add, edit, or remove',
-      '**Navigate**               → Tell me where to go: a different phase or task, or the leading edge',
+      '**`a/auto`**                 → Approve this and all remaining task list',
+      `${NB(25)}gates automatically`,
+      '**Tell me what to change** → which tasks to reorder, split, merge,',
+      `${NB(25)}add, edit, or remove`,
+      '**Navigate**               → Tell me where to go: a different phase',
+      `${NB(25)}or task, or the leading edge`,
       '',
     ].join('\n'));
   });
@@ -576,7 +641,8 @@ describe('render reroute-offer', () => {
       '**Whether the pipeline can expose click windows** belongs to a different topic, not this one.',
       'It reads as **behavioural-ranking**\'s ground, landing research-side — append a phase to override (e.g. `r discussion`).',
       '',
-      '**`r/reroute`** → Send it to the topic it belongs to; it picks it up later',
+      '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
+      `${NB(12)}later`,
       '**`k/keep`**    → Keep it here as a subtopic',
       '',
     ].join('\n'));
@@ -678,7 +744,8 @@ describe('render finding-batch', () => {
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       '**`y/yes`** → Apply all 2, then move on',
-      "**Ask**   → Tell me a number to expand, or one you don't think is settled",
+      "**Ask**   → Tell me a number to expand, or one you don't think is",
+      `${NB(8)}settled`,
       '',
     ].join('\n'));
   });
@@ -706,7 +773,8 @@ describe('render finding-batch', () => {
       "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       '**`y/yes`**   → Document all 2 and move on',
-      "**Discuss** → Say discuss and a number — I'll raise it after the rest land",
+      "**Discuss** → Say discuss and a number — I'll raise it after the rest",
+      `${NB(10)}land`,
       '**Ask**     → Tell me a number to expand',
       '',
     ].join('\n'));
@@ -1168,7 +1236,7 @@ describe('render proposed-task', () => {
     const gated = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal' });
     assert.ok(gated.includes('MENU: construction gate'));
     assert.ok(gated.includes('**`◆ Record this to the specification verbatim?`**'));
-    assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining topics automatically/.test(gated));
+    assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining topics automatically/.test(unwrap(gated)));
     const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), 'utf8'));
     m.phases.implementation.items.portal.construction_gate_mode = 'auto';
     fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify(m, null, 2));
@@ -1273,9 +1341,11 @@ describe('render author-task-gate', () => {
       '**Task 2 of 5: Wrap command**',
       '',
       '**`y/yes`**                  → Write it to the plan',
-      '**`a/auto`**                 → Approve this and all remaining tasks automatically',
+      '**`a/auto`**                 → Approve this and all remaining tasks',
+      `${NB(25)}automatically`,
       '**Tell me what to change** → what to revise in this task',
-      '**Navigate**               → Tell me where to go: a different phase or task, or the leading edge',
+      '**Navigate**               → Tell me where to go: a different phase',
+      `${NB(25)}or task, or the leading edge`,
       '',
     ].join('\n'));
   });
@@ -1494,7 +1564,7 @@ describe('review fixes — gap coverage', () => {
   it('phase-tree --approve menu offers view full', () => {
     const file = writePayload(dir, 'pt.json', { phases: [{ name: 'X' }] });
     const out = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file, approve: '1' });
-    assert.ok(/\*\*`v\/view full`\*\* +→ Show the full phase structure — goals, ordering rationale, acceptance criteria/.test(out));
+    assert.ok(/\*\*`v\/view full`\*\* +→ Show the full phase structure — goals, ordering rationale, acceptance criteria/.test(unwrap(out)));
   });
 });
 
@@ -1978,7 +2048,7 @@ describe('baseline surfaces', () => {
     const out = renderSurface(dir, 'baseline-offer-gate', {});
     assert.match(out, /\*\*`◆ Run a baseline assessment\?`\*\*/);
     assert.match(out, /\*\*`y\/yes`\*\* → Start the assessment now/);
-    assert.match(out, /\*\*`n\/no`\*\*\s+→ Skip — you can start it later from the workflow-start menus/);
+    assert.match(unwrap(out), /\*\*`n\/no`\*\*\s+→ Skip — you can start it later from the workflow-start menus/);
     writeBaseline({ status: 'skipped' });
     assert.throws(() => renderSurface(dir, 'baseline-offer-gate', {}), /the offer fires once/);
   });
@@ -2069,7 +2139,8 @@ describe('render off-topic-offer', () => {
       "**Rate limiting on the public API** is beyond this topic's scope.",
       '',
       '**`l/log`**    → Capture it as an idea in the inbox for later',
-      '**`p/pivot`**  → Convert this work to an epic so it can hold the concern as its own topic',
+      '**`p/pivot`**  → Convert this work to an epic so it can hold the',
+      `${NB(11)}concern as its own topic`,
       '**`i/ignore`** → Note it in the research file and move on',
       '',
     ].join('\n'));

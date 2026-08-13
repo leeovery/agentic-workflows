@@ -12,6 +12,10 @@ const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine
 
 const GATED_GATES = { task_gate_mode: 'gated', fix_gate_mode: 'gated', analysis_gate_mode: 'gated' };
 
+// Menu label continuations indent with non-breaking spaces (the worklist
+// rule) — goldens spell them explicitly.
+const NB = (n) => '\u00a0'.repeat(n);
+
 /** A feature manifest with a completed plan carrying a task_map. */
 function planPhases() {
   return {
@@ -686,8 +690,10 @@ describe('engine render task surfaces', () => {
     '· · · · · · · · · · · ·',
     '**\`◆ How would you like to proceed?\`**',
     '',
-    '**`p/proceed`** → Continue with the first blocked task anyway (its blocker will not be completed)',
-    '**`s/skip`**    → Skip the first blocked task (the loop re-checks the rest)',
+    '**`p/proceed`** → Continue with the first blocked task anyway (its',
+    `${NB(12)}blocker will not be completed)`,
+    '**`s/skip`**    → Skip the first blocked task (the loop re-checks the',
+    `${NB(12)}rest)`,
     '**`t/stop`**    → Stop implementation entirely',
     '',
   ].join('\n');
@@ -711,7 +717,8 @@ describe('engine render task surfaces', () => {
       '**`y/yes`**       → Commit and continue to next task',
       '**`a/auto`**      → Approve this and all future tasks automatically',
       "**`t/technical`** → Retell the result from the code's perspective",
-      "**Ask**         → Ask questions about the implementation (doesn't approve or reject)",
+      "**Ask**         → Ask questions about the implementation (doesn't",
+      `${NB(14)}approve or reject)`,
       '**Comment**     → Request changes (triggers a fix round)',
       '',
     ].join('\n');
@@ -728,8 +735,10 @@ describe('engine render task surfaces', () => {
       ...(auto ? [] : ['**`a/auto`**      → Accept and auto-approve future fix analyses']),
       '**`s/skip`**      → Override the reviewer and proceed as-is',
       "**`t/technical`** → Retell the review from the code's perspective",
-      "**Ask**         → Ask questions about the review (doesn't accept or reject)",
-      '**Comment**     → Accept with adjustments — pass your own direction alongside the review',
+      "**Ask**         → Ask questions about the review (doesn't accept or",
+      `${NB(14)}reject)`,
+      '**Comment**     → Accept with adjustments — pass your own direction',
+      `${NB(14)}alongside the review`,
       '',
     ].join('\n');
   }

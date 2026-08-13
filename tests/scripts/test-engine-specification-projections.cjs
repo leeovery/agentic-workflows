@@ -14,6 +14,10 @@ const {
 
 const ADAPTER = path.resolve(__dirname, '../../skills/workflow-specification-entry/scripts/gateway.cjs');
 
+// Menu label continuations indent with non-breaking spaces (the worklist
+// rule) — goldens spell them explicitly.
+const NB = (n) => '\u00a0'.repeat(n);
+
 // Golden tests: byte-exact expected strings for the specification-entry
 // scenario displays and menus. Fixtures go through real manifests in temp
 // dirs and the adapter's own discover(), so the goldens cover the full
@@ -628,7 +632,8 @@ describe('specification projections: menu goldens', () => {
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
       '**`1`**           → Start "Auth Flow" — *2 ready discussion(s)*',
-      '**`2`**           → Continue "Data Spec" — *1 source(s) pending extraction, 1 consult ref(s) pending*',
+      '**`2`**           → Continue "Data Spec" — *1 source(s) pending*',
+      `${NB(14)}*extraction, 1 consult ref(s) pending*`,
       '**`3`**           → Unify all into single specification',
       '   *All discussions are combined into one specification. Existing*',
       '   *specifications are incorporated and superseded.*',
@@ -710,7 +715,8 @@ describe('specification projections: menu goldens', () => {
       '   *specification names are preserved. You can provide guidance*',
       '   *in the next step.*',
       '**`2`**           → Continue "Auth Spec" — *in-progress*',
-      '**`3`**           → Continue "Data Spec" — *1 new source(s) to extract, 1 consult ref(s) pending*',
+      '**`3`**           → Continue "Data Spec" — *1 new source(s) to extract,*',
+      `${NB(14)}*1 consult ref(s) pending*`,
       '**`c/completed`** → Manage completed specifications — *1 completed*',
       '',
       'Select an option:',
@@ -931,7 +937,7 @@ describe('specification adapter: gateway verbs', () => {
     assert.ok(out.includes('    consult: billing (pending — pricing slice supersedes the auth draft)'));
     assert.ok(out.includes('ACTIONS (key  action  topic  verb):'));
     assert.ok(out.includes('  1  start_spec  auth-flow  Creating'));
-    assert.ok(/\*\*`1`\*\* +→ Start "Auth Flow" — \*2 ready discussion\(s\), 1 consult ref\(s\) pending\*/.test(out));
+    assert.ok(/\*\*`1`\*\* +→ Start "Auth Flow" — \*2 ready discussion\(s\), 1\*\n\u00a0+\*consult ref\(s\) pending\*/.test(out));
   });
 
   it('view for a blocked work unit emits DATA + DISPLAY and no MENU', () => {

@@ -14,6 +14,10 @@ const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conv
 
 const ADAPTER = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
 
+// Menu label continuations indent with non-breaking spaces (the worklist
+// rule) — goldens spell them explicitly.
+const NB = (n) => '\u00a0'.repeat(n);
+
 // Golden tests: byte-exact expected strings for the epic dashboard, key, and
 // menu projections. Fixtures go through real manifests in temp dirs (the same
 // shapes the discovery tests produce), except the gating/blocked menu fixture,
@@ -425,10 +429,13 @@ describe('epic projections: menu', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**           → Start specification for "Billing Grouping" — *grouping ready* (recommended)',
+      '**`1`**           → Start specification for "Billing Grouping" —',
+      `${NB(14)}*grouping ready* (recommended)`,
       '**`2`**           → Continue "Auth Spec" — *specification [in-progress]*',
-      '**`3`**           → Start implementation of "Reporting" — blocked by core-features:core-2-3',
-      '**`s/spec`**      → Analyze / regroup discussions — *2 discussion(s) not yet grouped*',
+      '**`3`**           → Start implementation of "Reporting" — blocked by',
+      `${NB(14)}core-features:core-2-3`,
+      '**`s/spec`**      → Analyze / regroup discussions — *2 discussion(s) not*',
+      `${NB(14)}*yet grouped*`,
       '**`d/discuss`**   → Start a discussion on a new topic',
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
@@ -493,7 +500,7 @@ describe('epic projections: menu', () => {
       [['1', 'start_discussion_after_research', 'ready']]
     );
     assert.strictEqual(numbered[0].recommended, true);
-    assert.ok(/\*\*`1`\*\* +→ Start discussion for "Ready" — \*research completed\* \(recommended\)/.test(rendered));
+    assert.ok(/\*\*`1`\*\* +→ Start discussion for "Ready" — \*research completed\*\n\u00a0+\(recommended\)/.test(rendered));
     assert.ok(/\*\*`e\/reactivate`\*\* +→ Reactivate a cancelled topic/.test(rendered), 'cancelled items exist');
     assert.ok(!rendered.includes('Umbrella'), 'handled row has no menu entry');
     assert.ok(!rendered.includes('Dropped'), 'cancelled row has no menu entry');
@@ -566,7 +573,7 @@ describe('epic projections: menu', () => {
       },
     });
     const { rendered } = epicMenu('v1', d);
-    assert.ok(rendered.includes('→ Continue "Roles" — *implementation (Phase 2, Task r-2-2)*'), rendered);
+    assert.ok(rendered.includes(`→ Continue "Roles" — *implementation (Phase 2, Task*\n${NB(14)}*r-2-2)*`), rendered);
     assert.ok(!rendered.includes('Task 3'), 'completed count must not masquerade as a task position');
   });
 
@@ -581,7 +588,7 @@ describe('epic projections: menu', () => {
       },
     });
     const { rendered } = epicMenu('v1', d);
-    assert.ok(rendered.includes('→ Continue "Roles" — *implementation (Phase 2, 3 task(s) completed)*'), rendered);
+    assert.ok(rendered.includes(`→ Continue "Roles" — *implementation (Phase 2, 3*\n${NB(14)}*task(s) completed)*`), rendered);
   });
 
   it('a triaged stub is offered as Start with the triage waiting suffix — never Continue', () => {
@@ -619,7 +626,7 @@ describe('epic projections: menu', () => {
     d.active_session = '001';
     const { keys, rendered } = epicMenu('resumable', d);
     assert.strictEqual(keys[0].key, 'i');
-    assert.ok(/\*\*`i\/discovery`\*\* +→ Resume the in-progress discovery session \(session-001\) \(recommended\)/.test(rendered));
+    assert.ok(/\*\*`i\/discovery`\*\* +→ Resume the in-progress discovery session\n\u00a0+\(session-001\) \(recommended\)/.test(rendered));
   });
 
   it('brand-new epic menu leads with recommended discovery', () => {
@@ -670,7 +677,7 @@ describe('epic projections: presence join', () => {
       ]
     );
     assert.strictEqual(numbered[0].session_age, 120);
-    assert.ok(/\*\*`1`\*\* +→ ~~Continue "Topic A" — \*discussion\*~~ · in session \(last active 2m ago\)/.test(rendered), rendered);
+    assert.ok(/\*\*`1`\*\* +→ ~~Continue "Topic A" — \*discussion\*~~ · in session \(last\n\u00a0+active 2m ago\)/.test(rendered), rendered);
     assert.ok(/\*\*`2`\*\* +→ Start discussion for "Topic B" \(recommended\)/.test(rendered), rendered);
   });
 
@@ -803,8 +810,10 @@ describe('epic projections: selection sub-views', () => {
       '**`2`**      → Cancel "Menu Admin" — *research [in-progress]*',
       '**`3`**      → Cancel "Auth Flow" — *discussion [completed]*',
       '**`4`**      → Cancel "Session Storage" — *discussion [completed]*',
-      '**`5`**      → Cancel "Roles And Permissions" — *specification [completed]*',
-      '**`6`**      → Cancel "Roles And Permissions" — *implementation [in-progress]*',
+      '**`5`**      → Cancel "Roles And Permissions" — *specification*',
+      `${NB(9)}*[completed]*`,
+      '**`6`**      → Cancel "Roles And Permissions" — *implementation*',
+      `${NB(9)}*[in-progress]*`,
       '**`b/back`** → Return to menu',
     ].join('\n'));
     // No routes — the flow continues to its confirmation gate.
