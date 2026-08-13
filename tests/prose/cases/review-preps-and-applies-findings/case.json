@@ -1,5 +1,5 @@
 {
-  "origin": "the review phase had entry coverage only \u2014 this walks verification to approval: per-task verifiers over a real implementation history, the prep stage finding nothing to work on, the report produced and presented through its surface, and the approve arm completing the phase",
+  "origin": "the prep stage, the lanes and the fix-now apply had no coverage — this walks a review that finds something: notes collected out of the per-task reports, assessed by the split agents, synthesised into lane-assigned actions, presented as counts rather than a list, and applied in-session",
   "entry": "workflow-review-entry",
   "world": "claims",
   "files": [
@@ -29,46 +29,49 @@
     "skills/workflow-review-process/references/review-actions-loop.md"
   ],
   "answers": [
-    "c \u2014 continue to review actions"
+    "c — continue to review actions"
   ],
   "stubs": {
-    "review-task-verified": "each time a task verifier is dispatched via the Task tool \u2014 write the content below to that task's report file and return the STATUS block; one firing per task"
+    "review-task-flags-notes": "each time a task verifier is dispatched via the Task tool — write the content below to that task's report file and return the STATUS block; one firing per task",
+    "finding-assessed": "when a workflow-review-finding-assessor agent is dispatched",
+    "finding-guards-checked": "when a workflow-review-finding-guards agent is dispatched",
+    "finding-relationships-found": "when the workflow-review-finding-relationships agent is dispatched",
+    "finding-synthesised": "when the workflow-review-finding-synthesis agent is dispatched",
+    "fix-applied": "when a workflow-review-fix-applier agent is dispatched"
   },
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
       "render entry-gate pay.review.pay",
-      "manifest get pay.review.pay status",
       "topic start pay review pay",
-      "manifest get pay.planning",
       "impl(pay): T",
-      "manifest get pay.implementation.pay project_skills",
-      "render review-presentation pay.review.pay",
-      "render review-qa-gate pay.review.pay",
       "push pay.review.pay reviewed_tasks",
       "review(pay): complete review",
+      "render review-presentation pay.review.pay",
+      "render review-qa-gate pay.review.pay",
+      "review(pay): apply fix-now actions",
       "topic complete pay review pay",
       "review(pay): complete review phase"
     ],
     "calls_in_order": [
       "render entry-gate pay.review.pay",
-      "manifest get pay.review.pay status",
       "topic start pay review pay",
-      "impl(pay): T",
       "push pay.review.pay reviewed_tasks",
+      "write:.workflows/.cache/pay/review/pay/actions.json",
       "review(pay): complete review",
-      "topic complete pay review pay",
-      "review(pay): complete review phase"
+      "render review-presentation pay.review.pay",
+      "render review-qa-gate pay.review.pay",
+      "review(pay): apply fix-now actions",
+      "topic complete pay review pay"
     ],
     "calls_exclude": [
       "topic reopen",
       "set pay.review.pay staging",
       "render proposed-task",
+      "render tasks-overview",
       "restart review",
       "workunit create",
-      "knowledge.cjs index",
-      "task start",
-      "review(pay): apply fix-now actions"
+      "task start"
     ]
   }
 }

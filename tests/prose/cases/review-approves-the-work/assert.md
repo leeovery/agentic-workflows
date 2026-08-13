@@ -16,12 +16,19 @@ The prose should have taken this path:
    nothing found
 5. both verified task ids are pushed onto the reviewed list, and the
    aggregation reads every per-task report
-6. the review report is produced from the template with an Approve
+6. findings prep collects nothing — neither report carries a
+   non-blocking note — so it returns without assessing, and no prep
+   agent is dispatched
+7. the review report is produced from the template with an Approve
    verdict and no recommendations section, and committed
-7. the verdict is presented product-first; at the questions gate the
-   user continues, and the compliance self-check refreshes the
-   session's instructions
-8. the actions loop finds every verdict Approve: the no-actionable
+8. the verdict renders through the review presentation surface as a
+   verdict alone, with no recommendations and nothing dropped, and the
+   summary follows product-first; at the questions gate the user
+   continues
+9. the fix-now lane finds no actions and returns; lane routing files
+   nothing, since neither inbox lane carries one; the compliance
+   self-check refreshes the session's instructions
+10. the actions loop finds every verdict Approve: the no-actionable
    display renders, the review completes through the engine, the
    completion commit lands, and the walk stops at the pipeline
    continuation — the bridge is never invoked
@@ -30,6 +37,8 @@ Further claims:
 
 - no synthesis is offered or dispatched — the approve arm never routes
   to it
+- no prep, apply or inbox work happens: with nothing found there is
+  nothing to assess, apply or file, and no apply commit lands
 - no code is fixed, no task is started, and nothing outside
   `.workflows/` changes
 - cache and report files under the review directory are expected
