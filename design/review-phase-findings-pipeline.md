@@ -243,10 +243,16 @@ duplicate      13 groups /  28 findings
 Six agents — validity ×2, standards ×2, guards ×2 — each over half the corpus. Merge output reused from v1 (that agent performed; the miss was on the assess side).
 
 ```
-VALIDITY   179 valid · 1 wrong · 3 unactionable      (183 of 366 sampled)
+VALIDITY   361 valid · 2 wrong · 3 unactionable      (366)
 STANDARDS  218 n/a · 124 compliant · 24 violates     (366)
 GUARDS     342 none · 22 depends · 2 violates        (366)
 ```
+
+**The findings are 98.6% accurate.** Only 2 of 366 misread the code, and 3 were unactionable through a truncation bug in the harness that built this corpus, not through any fault of the reviewers. Nothing was `already-done` or `stale`. Whatever the review phase's problem is, it is not detection accuracy — which is the strongest single argument against suppressing at source.
+
+Both validity agents independently reached the same verdict on P316 (the claim that `themeExportCmd` sets neither `SilenceErrors` nor `SilenceUsage` is true of the command literal, but `rootCmd` sets both and cobra suppresses on the root's setting, so the described symptom cannot occur) — a useful consistency check on the remit.
+
+Near-duplication was independently confirmed at nine sites where multiple findings target the same lines with *different* replacement text, including four on the single `theme_seams.go` sentence. None are byte-identical, which is why textual dedup would miss them.
 
 **4 of the 6 apply failures predicted statically, against v1's 2:**
 
