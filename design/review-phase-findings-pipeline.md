@@ -236,7 +236,58 @@ duplicate      13 groups /  28 findings
 - P144 → `TestOpenExecPath_DoesNoThemeWork` (a new shared helper trips a guard permitting `theme.*` in four named functions)
 - P285/P303 → `TestThemingDocExampleThemeIsTheDarkBuiltin` (the doc's example fence is compared line-for-line against the built-in's bytes, comments included)
 
-**Known weakness of v1:** the assessors satisficed. One reported zero guard risks across 122 findings while another found one — not a plausible distribution. Three remits in one agent means it finds the easy textual class, spends its budget verifying, and stops before sweeping. **v2 is running now with one remit per agent.**
+**Known weakness of v1:** the assessors satisficed. One reported zero guard risks across 122 findings while another found one — not a plausible distribution. Three remits in one agent means it finds the easy textual class, spends its budget verifying, and stops before sweeping.
+
+### Prep pipeline v2 (one remit per agent)
+
+Six agents — validity ×2, standards ×2, guards ×2 — each over half the corpus. Merge output reused from v1 (that agent performed; the miss was on the assess side).
+
+```
+VALIDITY   179 valid · 1 wrong · 3 unactionable      (183 of 366 sampled)
+STANDARDS  218 n/a · 124 compliant · 24 violates     (366)
+GUARDS     342 none · 22 depends · 2 violates        (366)
+```
+
+**4 of the 6 apply failures predicted statically, against v1's 2:**
+
+| Failure | Predicted by |
+|---|---|
+| `TestOpenExecPath_DoesNoThemeWork` | P144 (violates), P394, P454 |
+| `TestThemingDocExampleThemeIsTheDarkBuiltin` | P285 (violates), P303 |
+| `TestNoPackageLevelThemeVar` | P073, P408 |
+| `TestModelAt_ReachesCapturedState` | P248, P339, P425, P475 |
+| `TestFallback_MissingBuiltinIsFatal` | — missed |
+| `TestCommitFailure_ThemeStaysApplied` | — missed |
+
+Three findings that matter for the build:
+
+**1. The `depends` verdict is what did the work.** v1 offered only none/violates and found 0 depends; v2 found 22. `depends` means *safe only if implemented a particular way* — which is the exact shape of implementation-choice breakage. `TestNoPackageLevelThemeVar` broke because an applier chose a package-scope var; P073 flags precisely that ("the silent loader must stay a call inside `defaultDarkTheme`"). The earlier claim in this document that such breaches are unreachable by static analysis is **false** — they are reachable, but only if the verdict vocabulary allows for them.
+
+**2. Splitting helps where the remit needs upfront investment, not uniformly.**
+
+```
+guards      v1: 1 violates,  0 depends   →   v2: 2 violates, 22 depends
+standards   v1: 22 violates              →   v2: 24 violates
+```
+
+Guards requires building an inventory (~40 invariants, enumerated from the guard tests) before any judgment is possible — a satisficing agent skips that. Standards is a textual judgment against a rule sheet and needs no groundwork, so a consolidated agent does it about as well. **Give guards its own agent; standards can share.**
+
+**3. The pipeline needs an `amend` verdict, not just keep/drop.** Repeatedly, a finding is right while its *prescribed steps* are wrong:
+
+- P207 instructs dropping a now-unused `os` import — `os.ReadFile` on the next line keeps it. Following it **breaks the build**.
+- P113/P114 remove a test claim and reintroduce a cardinality one in the replacement wording.
+- P411, P440, P455, P305 each keep a genuine warning if the offending clause is dropped.
+- P002 claims ~171 occurrences across ~30 files; it is ~87 across 32. P103's "the only place in the tree" is false. P089 says eleven call sites; there are ten. P030's outcome holds but it cites the wrong mechanism.
+
+A keep/drop pipeline either applies bad instructions or discards good findings. Verification must extend past *is this real?* to *are its instructions right?*
+
+Also corrected by v2: **there is no CLAUDE.md-to-code guard in this repo** (`grep CLAUDE *.go` is empty). An earlier assumption to the contrary was carried in the prompts and would have reached the build.
+
+### Methodological limit of every test in this document
+
+None of these runs is a system test. The prep and apply agents were dispatched by a design session in `agentic-workflows`, not by a review orchestrator in Portal mid-phase. They lacked the plan, the spec, the phase context and the review that had just run; a fork of the design session would instead be biased by the hypotheses formed here. So these results measure **component judgment quality in isolation** and nothing more.
+
+A genuine test requires building the pipeline into the workflows, copying it into a Portal clone wound back to `e38cda4a~1` (implementation complete, review unrun), and running the real review phase cold.
 
 ---
 
