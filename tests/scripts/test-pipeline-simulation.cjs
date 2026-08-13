@@ -1171,6 +1171,8 @@ describe('pipeline simulation', () => {
     assert.match(adhocGate, /Placement: phase 1/, 'ad hoc payload renders its placement line');
     assert.match(adhocGate, /MENU: task approval/, 'ad hoc gate carries the shared approval menu');
     assert.ok(!/Sources:/.test(adhocGate), 'absent synthesis fields render nothing');
+    assert.match(adhocGate, /\*\*`▪ Fix redirect`\*\*/,
+      'head takes the task-header marker idiom, ordinal omitted for a batch of one');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.ad-hoc-1.tasks.1', 'approved']);
 
     // A resumed session resets gate modes to gated (session-scoped auto).

@@ -328,8 +328,12 @@ function proposedTask(cwd, args) {
   if (isFilled(p.placement)) meta.push(`Placement: ${p.placement}`);
   if (isFilled(p.priority)) meta.push(`Priority: ${p.priority}`);
   if (isFilled(p.depends_on)) meta.push(`Depends on: ${p.depends_on}`);
+  // The head takes the task-header marker idiom (see taskHeader): the ordinal
+  // is batch position, not a plan number — a suffix, and noise for a batch of
+  // one, so it renders only when there is a walk to pace.
+  const ordinal = p.total > 1 ? ` (${p.current} of ${p.total})` : '';
   const body = [
-    `**Task ${p.current}/${p.total}: ${p.title}**${isFilled(p.severity) ? ` (${p.severity})` : ''}`,
+    `**\`▪ ${p.title.trim()}${ordinal}\`**${isFilled(p.severity) ? ` (${p.severity})` : ''}`,
     ...meta,
     '',
     `**Problem**: ${p.problem}`,
@@ -351,7 +355,9 @@ function proposedTask(cwd, args) {
     parts.push(section(
       'DISPLAY: task auto-approved',
       `after recording the approval: ${AUTO_GATE_INSTRUCTION}`,
-      `Task ${p.current} of ${p.total}: ${p.title} — approved [auto].`,
+      p.total > 1
+        ? `Task ${p.current} of ${p.total}: ${p.title} — approved [auto].`
+        : `${p.title} — approved [auto].`,
     ));
   } else {
     const hint = isFilled(args['comment-hint']) ? args['comment-hint'] : 'Tell me what to change';
