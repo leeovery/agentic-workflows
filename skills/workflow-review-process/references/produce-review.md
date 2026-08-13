@@ -13,32 +13,37 @@ Write the review to `.workflows/{work_unit}/review/{topic}/report.md`. The revie
 - **Request Changes** — Missing requirements, broken functionality, inadequate tests
 - **Comments Only** — Minor suggestions, non-blocking observations
 
-→ Proceed to **A. Categorizing and Clustering Recommendations**.
+→ Proceed to **A. Writing the Recommendations**.
 
 ---
 
-## A. Categorizing and Clustering Recommendations
+## A. Writing the Recommendations
 
-When writing the `## Recommendations` section, read the NON-BLOCKING NOTES from all `report-*.md` files and group them by their category tags:
+The `## Recommendations` section is the prepped action list from **[prep-findings.md](prep-findings.md)**, not a re-reading of the per-task reports. Read `.workflows/.cache/{work_unit}/review/{topic}/actions.json`.
 
-- `[do-now]` → `### Do now`
-- `[quickfix]` → `### Quick-fixes`
-- `[idea]` → `### Ideas`
-- `[bug]` → `### Bugs`
+Each action is already resolved: collisions collapsed into one item, corrections applied, conditions from the guards carried in its instruction. Write it as it stands — never re-cluster, re-tag, or re-judge. A second judgment here is a second source of truth, and the two drift.
 
-If a note lacks a category tag, categorize by content: zero-risk non-logic edit → do-now, mechanical but logic-touching → quickfix, needs discussion/design → idea, broken behaviour → bug.
+Group by lane, in this order, omitting any lane with no actions:
 
-**Cluster within each subsection before numbering.** Collapse notes that share the same target file or the same theme into one item with sub-bullets, preserving each note's `file:line` and a `(Report N-M)` source tag. Same-file is the strongest signal; same-theme (e.g. "doc staleness", "test scaffolding") clusters across files. Never cluster across subsections — a `[quickfix]` and an `[idea]` about the same file stay separate. A single un-clustered note is just a one-line item carrying its `file:line`.
+- `fix-now` → `### Fix now`
+- `consolidation` → `### Consolidation pass`
+- `needs-design` → `### Needs design`
+- `inbox-bug` → `### Bugs`
+- `inbox-idea` → `### Ideas`
 
-A clustered item:
+Each item carries its intent, the files it touches, and its source ids so it traces back to the verifiers that raised it. An action spanning several files is one item — never split it per file.
 
 ```
-4. `state_hydrate_test.go` — tighten test scaffolding
-   - Extract `seedUnreadableSessionsJSON(t, dir)` helper; two permission tests share ~15 lines (lines 1517, 1576) (Report 2-1)
-   - Lower-bound timing test could co-locate with the handler test (lines 1050, 1212) (Report 2-3)
+4. `internal/theme/union.go`, `docs/theming.md` — dedupe persisted rows against `Row.Identity()`
+   Both sides move together: the doc's example fence is asserted against the built-in's bytes.
+   (from 11-5-2, 14-1-1)
 ```
 
-Order subsections `### Do now`, `### Quick-fixes`, `### Ideas`, `### Bugs`. Only include subsections with at least one item. Number items sequentially across all subsections (do not reset per category). Omit the entire `## Recommendations` section if no notes survive.
+Close the section with the drop count and, beneath it, the dropped items with their reasons — the record of what was raised and did not survive, so a reader can see the judgment rather than infer it from silence.
+
+#### If no findings were prepped
+
+Omit the entire `## Recommendations` section.
 
 → Proceed to **B. Commit and Continue**.
 

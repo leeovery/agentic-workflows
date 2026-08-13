@@ -114,7 +114,7 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 
 **If all tasks reviewed:**
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 **Otherwise** (no tracking data):
 
@@ -214,7 +214,15 @@ Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and fol
 
 ---
 
-## Step 6: Produce Review
+## Step 6: Prep Findings
+
+Load **[prep-findings.md](references/prep-findings.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 7**.
+
+---
+
+## Step 7: Produce Review
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -225,16 +233,16 @@ Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and fol
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Synthesising agent findings into the review report. Aggregating per-task results into an overall assessment.
+> Writing the review from the prepped actions — what survived, what merged, and what each one now needs.
 ```
 
 Load **[produce-review.md](references/produce-review.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 7**.
+→ On return, proceed to **Step 8**.
 
 ---
 
-## Step 7: Present Review
+## Step 8: Present Review
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -250,19 +258,19 @@ Load **[produce-review.md](references/produce-review.md)** and follow its instru
 
 Load **[present-review.md](references/present-review.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 8**.
-
----
-
-## Step 8: Compliance Self-Check
-
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
-
 → On return, proceed to **Step 9**.
 
 ---
 
-## Step 9: Review Actions
+## Step 9: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 10**.
+
+---
+
+## Step 10: Review Actions
 
 > *Output the next fenced block as markdown (not a code block):*
 
