@@ -366,13 +366,30 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 
-  // Review.
+  // Review — verification, then the prepped lanes: the report is produced
+  // from the action list, presented through its surface, and the fix-now
+  // lane commits its own work before the phase completes.
   sim.render(['entry-gate', `${wu}.review.${topic}`], { expect: 'empty' });
   label(sim, wu, 'review', topic);
   sim.run(['topic', 'start', wu, 'review', topic]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'reviewed_tasks', `${topic}-1-1`]);
   sim.render(['resume-gate', `${wu}.review.${topic}`, '--variant', 'review'], { expect: 'content' });
+  sim.write(`.workflows/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
+  sim.run(['commit', wu, '-m', `review(${wu}): complete review`, '--topic', `review/${topic}`]);
+  const presentation = sim.write(`.workflows/.cache/${wu}/review/${topic}/presentation.json`, {
+    topic,
+    verdict: 'approve',
+    fix_now: 2,
+    needs_design: [],
+    bugs: [],
+    ideas: [],
+    dropped: 1,
+  });
+  sim.render(['review-presentation', `${wu}.review.${topic}`, '--file', presentation], { expect: 'content' });
+  sim.render(['review-qa-gate', `${wu}.review.${topic}`], { expect: 'content' });
+  sim.run(['commit', wu, '-m', `review(${wu}): apply fix-now actions`]);
   sim.run(['topic', 'complete', wu, 'review', topic]);
+  sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`]);
 }
 
 // ---------------------------------------------------------------------------
