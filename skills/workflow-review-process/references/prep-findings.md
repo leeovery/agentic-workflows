@@ -56,7 +56,9 @@ If an agent fails, record the failure and continue. A missing assessment makes i
 
 ## C. Synthesise
 
-Dispatch `workflow-review-finding-synthesis` once, with:
+Dispatch the synthesis agent once.
+
+- **Agent path**: `../../../agents/workflow-review-finding-synthesis.md`
 
 1. **Findings path** — `findings.txt`
 2. **Assessment paths** — every `assess-*.jsonl`, every `guards-*.jsonl`, and `relationships.json`

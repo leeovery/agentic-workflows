@@ -216,6 +216,18 @@ Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and fol
 
 ## Step 6: Prep Findings
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Prep Findings`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Each verifier saw one task. Checking every finding against the code and the code standard, against the guards it could breach, and against the other findings it collides with.
+```
+
 Load **[prep-findings.md](references/prep-findings.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 7**.

@@ -571,7 +571,16 @@ function isInertRef(p, visited) {
   visited.add(p);
   if (!fs.existsSync(p)) return false;
   const text = fs.readFileSync(p, 'utf8');
-  if (/\*\*STOP\.\*\*/.test(text) || /Output the next fenced block/.test(text) || /^```bash/m.test(text)) return false;
+  // A reference is inert only if it produces nothing the user can watch.
+  // Interaction, rendered output, a command, and sub-agent dispatch all count
+  // as activity — CONVENTIONS.md names agent dispatch among the shapes that
+  // earn a marker, and a fan-out is often the longest wait in a phase.
+  if (
+    /\*\*STOP\.\*\*/.test(text) ||
+    /Output the next fenced block/.test(text) ||
+    /^```bash/m.test(text) ||
+    /\*\*Agent path\*\*/.test(text)
+  ) return false;
   const loadRe = /Load \*\*\[[^\]]+\]\(([^)]+)\)\*\*/g;
   let m;
   while ((m = loadRe.exec(text))) {
@@ -1269,6 +1278,10 @@ test('check 12 (inert load chrome) — catches unearned markers, skips interacti
 
     const good = write(dir, 'skills/y/SKILL.md', step('Load **[interactive.md](../x/references/interactive.md)** and follow its instructions as written.\n'));
     assert.strictEqual(checkInertLoadChrome([good]).length, 0, 'interactive reference keeps its marker');
+
+    write(dir, 'skills/x/references/dispatching.md', '# Dispatching\n\n- **Agent path**: `../../../agents/some-agent.md`\n');
+    const dispatches = write(dir, 'skills/v/SKILL.md', step('Load **[dispatching.md](../x/references/dispatching.md)** and follow its instructions as written.\n'));
+    assert.strictEqual(checkInertLoadChrome([dispatches]).length, 0, 'a step dispatching sub-agents keeps its marker — the fan-out is the wait');
 
     const silent = write(
       dir,
