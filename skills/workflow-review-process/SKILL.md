@@ -274,15 +274,35 @@ Load **[present-review.md](references/present-review.md)** and follow its instru
 
 ---
 
-## Step 9: Compliance Self-Check
+## Step 9: Apply Fix-Now
 
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Apply Fix-Now`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Applying the actions that are cheap to make and cheap to reverse. The project's suite is the gate — anything it catches is repaired or reverted here, not carried forward.
+```
+
+Load **[apply-fix-now.md](references/apply-fix-now.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 10**.
 
 ---
 
-## Step 10: Review Actions
+## Step 10: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 11**.
+
+---
+
+## Step 11: Review Actions
 
 > *Output the next fenced block as markdown (not a code block):*
 
