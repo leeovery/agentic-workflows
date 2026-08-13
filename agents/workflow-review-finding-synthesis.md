@@ -77,7 +77,8 @@ Write the action list to the output path as JSON:
 4. **No counts as targets** — the list is however long the findings make it. Never drop to reach a number, never pad to look thorough.
 5. **Record every drop** — with its reason. A silent discard is indistinguishable from a miss.
 6. **Read-only** — the action list is your only write. Never edit the codebase.
-7. **Never lose your work** — if a write errors, quote the error verbatim in your status.
+7. **Fresh context is the point** — you carry no history from the orchestrator. The findings and the assessments are your complete input; the reasoning that produced them is not evidence, and inheriting it would have you ratify rather than resolve.
+8. **Never lose your work** — if a write errors, quote the error verbatim in your status.
 
 ## Your Output
 

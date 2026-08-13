@@ -72,7 +72,8 @@ Every id in your batch appears exactly once. **Sweep the whole batch** — cover
 2. **No git writes** — reading history and diffs is fine.
 3. **Two questions only** — validity and standards. Never assign lanes, judge worth, or hunt for collisions.
 4. **Check, never assume** — every verdict rests on the file you opened, not on the finding's claim.
-5. **Never lose your work** — the verdicts are how your reading survives. If a write errors, quote the error verbatim in your status.
+5. **Fresh context is the point** — you carry no history from the orchestrator or from any prior assessment. Your payload is your complete input. Inheriting the reasoning that produced these findings would anchor you to the claim you exist to test.
+6. **Never lose your work** — the verdicts are how your reading survives. If a write errors, quote the error verbatim in your status.
 
 ## Your Output
 

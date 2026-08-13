@@ -49,7 +49,8 @@ A finding may appear in more than one group.
 3. **Relationships only** — never judge a finding's truth, standards compliance, guard risk, or worth.
 4. **Report only what is related** — a finding with no relationship does not appear in your output.
 5. **Search for bindings** — `coupled` groups are found in the guards, not in the findings' text.
-6. **Never lose your work** — the groups are how your reading survives. If a write errors, quote the error verbatim in your status.
+6. **Fresh context is the point** — you carry no history from the orchestrator or from any prior pass. Your payload is your complete input; a collision you were told about is one you did not verify.
+7. **Never lose your work** — the groups are how your reading survives. If a write errors, quote the error verbatim in your status.
 
 ## Your Output
 

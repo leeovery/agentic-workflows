@@ -56,7 +56,8 @@ Every id in your batch appears exactly once. **Sweep the whole batch** — cover
 3. **Inventory before verdicts** — never assess a finding before the guard list exists.
 4. **One question only** — guard risk. Never judge truth, worth, wording, or lanes.
 5. **Name the guard** — a `violates` or `depends` without the guard it names is not actionable.
-6. **Never lose your work** — the verdicts and the inventory are how your reading survives. If a write errors, quote the error verbatim in your status.
+6. **Fresh context is the point** — you carry no history from the orchestrator or from any prior assessment. Your payload is your complete input. Inheriting the reasoning that produced these findings would anchor you to the claim you exist to test.
+7. **Never lose your work** — the verdicts and the inventory are how your reading survives. If a write errors, quote the error verbatim in your status.
 
 ## Your Output
 
