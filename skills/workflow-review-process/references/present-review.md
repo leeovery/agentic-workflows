@@ -10,147 +10,33 @@
 
 Read the review file at `.workflows/{work_unit}/review/{topic}/report.md`.
 
-> *Output the next fenced block as a code block:*
+Build the presentation payload from the report and write it with the Write tool to `.workflows/.cache/{work_unit}/review/{topic}/presentation.json`:
 
+```json
+{
+  "topic": "{topic}",
+  "verdict": "approve|request-changes|comments-only",
+  "required_changes": [{"description": "…", "ref": "file:line"}],
+  "fix_now": 0,
+  "consolidation": "the pass's one-line intent, or omitted",
+  "needs_design": [{"description": "…", "ref": "file:line"}],
+  "bugs": [{"description": "…", "ref": "file:line"}],
+  "ideas": [{"description": "…", "ref": "file:line"}],
+  "dropped": 0
+}
 ```
-Review: {topic}
 
-Verdict: {Approve | Request Changes | Comments Only}
+Each `description` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism. Which lanes list their items and which report a count is the surface's rule, not a judgment made here.
+
+Render and emit the section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render review-presentation {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/presentation.json
 ```
 
 Then render the review summary as a markdown paragraph (not a code block) — a product-lens narrative: what was reviewed, where it stands, and what the findings mean for the product.
 
-Read the report's `## Recommendations` lanes. Set `has_recommendations`, and per lane set `fixnow_count`, `has_consolidation`, `has_needsdesign`, `has_bugs`, `has_ideas`, and `dropped_count`.
-
-**A lane is listed only where the user decides something.** `needs-design`, bug and idea items are shown in full — each is a call they own. The `fix-now` lane is a count: it is applied in the next step whatever they say, and listing hundreds of items they will not read is the noise this shape exists to prevent. Consolidation is one line, because it is one scheduled pass.
-
-Each listed `{description}` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism.
-
-#### If verdict is `Approve`
-
-> *Output the next fenced block as a code block:*
-
-```
-All acceptance criteria met. No blocking issues found.
-
-@if(has_recommendations)
-Recommendations (non-blocking):
-
-@if(fixnow_count)
-  {fixnow_count} applied in the next step — comment and documentation accuracy, renames, small determinate fixes.
-@endif
-
-@if(has_consolidation)
-  One consolidation pass scheduled: {description}
-@endif
-
-@if(has_needsdesign)
-Needs design (a call before it can be built):
-  {N}. {description} ({file:line})
-@endif
-
-@if(has_bugs)
-Bugs (to the inbox):
-  {N}. {description} ({file:line})
-@endif
-
-@if(has_ideas)
-Ideas (to the inbox):
-  {N}. {description} ({file:line})
-@endif
-
-@if(dropped_count)
-  {dropped_count} dropped — reasons in the report.
-@endif
-@endif
-```
-
-Listed items are numbered sequentially across the lanes that carry them, matching the report's numbering.
-
-→ Proceed to **B. Q&A Loop**.
-
-#### If verdict is `Request Changes`
-
-> *Output the next fenced block as a code block:*
-
-```
-Required Changes:
-
-  1. {change description}
-     {file:line reference if available}
-
-  2. ...
-
-@if(has_recommendations)
-Recommendations (non-blocking):
-
-@if(fixnow_count)
-  {fixnow_count} applied in the next step — comment and documentation accuracy, renames, small determinate fixes.
-@endif
-
-@if(has_consolidation)
-  One consolidation pass scheduled: {description}
-@endif
-
-@if(has_needsdesign)
-Needs design (a call before it can be built):
-  {N}. {description} ({file:line})
-@endif
-
-@if(has_bugs)
-Bugs (to the inbox):
-  {N}. {description} ({file:line})
-@endif
-
-@if(has_ideas)
-Ideas (to the inbox):
-  {N}. {description} ({file:line})
-@endif
-
-@if(dropped_count)
-  {dropped_count} dropped — reasons in the report.
-@endif
-@endif
-```
-
-→ Proceed to **B. Q&A Loop**.
-
-#### If verdict is `Comments Only`
-
-> *Output the next fenced block as a code block:*
-
-```
-Comments (non-blocking):
-
-@if(fixnow_count)
-  {fixnow_count} applied in the next step — comment and documentation accuracy, renames, small determinate fixes.
-@endif
-
-@if(has_consolidation)
-  One consolidation pass scheduled: {description}
-@endif
-
-@if(has_needsdesign)
-Needs design (a call before it can be built):
-  {N}. {description} ({file:line})
-@endif
-
-@if(has_bugs)
-Bugs (to the inbox):
-  {N}. {description} ({file:line})
-@endif
-
-@if(has_ideas)
-Ideas (to the inbox):
-  {N}. {description} ({file:line})
-@endif
-
-@if(dropped_count)
-  {dropped_count} dropped — reasons in the report.
-@endif
-```
-
-→ Proceed to **B. Q&A Loop**.
+→ On return, proceed to **B. Q&A Loop**.
 
 ---
 
