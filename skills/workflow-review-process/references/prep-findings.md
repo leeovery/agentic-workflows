@@ -10,7 +10,9 @@ Every agent here is read-only. They judge; nothing is edited.
 
 ## A. Collect the Findings
 
-Read every `report-*.md` in `.workflows/{work_unit}/review/{topic}/` and collect the NON-BLOCKING NOTES entries. Blocking issues are already handled by the verdict and are not prepped.
+Read every `report-*.md` in `.workflows/{work_unit}/review/{topic}/` and collect the FINDINGS entries. Blocking issues are already handled by the verdict and are not prepped.
+
+Each finding arrives carrying its scope (`[in-scope]` or `[out-of-scope]`), its blast radius (`[contained]` or `[spreading]`), and the failure it names. Those are the verifier's calls, made with the code open — carry them through untouched.
 
 Give each finding a stable id of `{phase_id}-{task_id}-{n}` — its report's task suffix plus its position in that report's list, so an action always traces back to the verifier that raised it.
 

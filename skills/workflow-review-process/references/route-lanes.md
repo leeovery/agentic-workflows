@@ -4,24 +4,25 @@
 
 ---
 
-Three lanes remain once `fix-now` has been applied. Each has one destination, decided by the synthesis stage — nothing is re-judged here.
+Once the `do-now` work is applied, one thing remains: the `out-of-scope` findings. Nothing here is re-judged — the synthesis stage already decided what is out of scope, and this step only puts the choice to the user.
 
-## A. File the Inbox Lanes
+## A. Offer the Out-of-Scope Findings
 
-The inbox holds work that earns its own pass through the pipeline later. Synthesis gates it hard: `inbox-bug` is a defect a user will plausibly hit, `inbox-idea` is a genuine new capability. A refactor is neither, and neither is an edge nobody reaches — those were routed elsewhere before reaching this step.
+An out-of-scope finding is a genuine improvement this specification never asked for. It is **never filed automatically** — filing costs a whole pass through the pipeline, and whether that is worth spending is the user's call, not the review's. Offering it and being told no is a complete outcome.
 
-Read the `inbox-bug` and `inbox-idea` actions from `.workflows/.cache/{work_unit}/review/{topic}/actions.json`.
+Read the `out-of-scope` actions from `.workflows/.cache/{work_unit}/review/{topic}/actions.json`.
 
-#### If neither lane carries an action
+#### If no action is out of scope
 
 → Proceed to **B. Record the Consolidation Pass**.
 
 #### Otherwise
 
-Write one file per action, taking the next available number in its directory:
+Put the findings to the user with their kind and what each would cost to take up, then file only what they choose, taking the next available number in its directory:
 
-- `inbox-bug` → `.workflows/.inbox/bugs/{NNN}-{slug}.md`
-- `inbox-idea` → `.workflows/.inbox/ideas/{NNN}-{slug}.md`
+- `bug` → `.workflows/.inbox/bugs/{NNN}-{slug}.md`
+- `feature` → `.workflows/.inbox/ideas/{NNN}-{slug}.md`
+- `quick-fix` → `.workflows/.inbox/quickfixes/{NNN}-{slug}.md`
 
 Each file carries the action's intent, the files it concerns, and where it came from — `{work_unit}` review, and the source finding ids. An item arriving in the inbox months later is read by someone with none of this session's context, so it states the problem rather than referring to it.
 

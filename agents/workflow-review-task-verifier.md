@@ -38,7 +38,7 @@ Plan Task (acceptance criteria)
     ↓
     Check Code Quality (readable, conventions)
     ↓
-    Categorize Non-Blocking Notes (do-now/quickfix/idea/bug)
+    Report What Is Wrong (failure named, scope and blast radius recorded)
 ```
 
 ### Step 1: Understand the Task
@@ -102,18 +102,31 @@ Review the implementation as a senior architect would:
 - **Security**: No obvious vulnerabilities (injection, exposure, etc.)
 - **Performance**: No obvious inefficiencies (N+1 queries, unnecessary loops, etc.)
 
-### Step 6: Categorize Non-Blocking Notes
+### Step 6: Report What Is Wrong
 
-First, apply the floor: a note must propose a concrete change (add X, remove Y, rename Z, document W). Drop pure observations that propose no action ("worth confirming", "relies on env inheritance", "acceptable as-is") — they are not findings. If an observation is genuinely load-bearing, convert it to a concrete action; otherwise discard it.
+**A finding names something that is wrong, and says how it fails.** Not something that could be tidier, arranged differently, or written the way you would have written it. By this stage the code is built, tested and reviewed; a change nobody benefits from has no consumer, and reporting it costs someone a decision for nothing.
 
-Tag each surviving note by the next step required to act on it:
+Two tests, in order. A note that fails either is not reported at all.
 
-- **`[do-now]`** — Zero risk, no logic impact, applyable on the spot: documentation and comment edits, wording and link fixes, mechanical renames, small test-assertion additions (safe as long as they pass). Small and inline (single file), or trivially mechanical even across files (e.g. a doc-reference sweep). Acting on it needs no decision and touches no executable logic. A comment note states the replacement text, so applying it is transcription.
-- **`[quickfix]`** — Mechanical but touches code or test logic, or is larger than an inline edit: extract a helper, dedupe, a small refactor, a behavioural test. No design decision, but it carries enough risk to route through the pipeline rather than apply on the spot.
-- **`[idea]`** — Requires genuine decision or design judgment: how or whether to do it, architectural trade-offs, new functionality, scope. If the next step is "decide how" or "decide whether", it is an idea.
-- **`[bug]`** — Something is broken or incorrect but non-blocking. Latent bugs, unhandled edge cases, incorrect error mapping. Do not place these in BLOCKING ISSUES.
+**1. Name the failure.** State the concrete consequence of leaving it: the input or state, and what goes wrong — a defect, a divergence from the spec or plan, a claim the code falsifies, a test that would still pass if the behaviour it names broke, a contract nothing enforces. If you cannot name what breaks, there is nothing wrong, and there is no finding.
 
-Decide by the next step — apply-now-zero-risk → `[do-now]`; concrete mechanical edit that touches logic → `[quickfix]`; decide-how-or-whether → `[idea]`; fix-incorrect-behaviour → `[bug]`. When torn between `[do-now]` and `[quickfix]`, choose `[quickfix]` — only tag `[do-now]` when there is genuinely zero chance of breaking logic. When torn between `[quickfix]` and `[idea]`, choose `[quickfix]` if there is a concrete edit at a known location, `[idea]` otherwise.
+**2. Clear the bar.** Report only what a senior engineer would act on: something broken or incorrect, or a violation of the spec, the plan, or the project's own standards. A preference not required by any of those — a fold, an extraction, a rename, a reordering, a helper you would have shared — is a nitpick and is never reported, however easy it would be to do.
+
+Filter hard. A short report of real problems is worth more than a long one nobody can act on, and every note that survives costs someone attention downstream.
+
+Then record two things about each finding.
+
+**Its scope.** Is fixing it part of delivering this specification, or outside it?
+
+- **`[in-scope]`** — the work is not finished until this is right: a defect in what was built, something the spec or plan required and did not get, a claim in the code that is false.
+- **`[out-of-scope]`** — a genuine improvement you noticed that this specification never asked for. Rare: you are assessing one task against its criteria, so you should seldom be looking outside them. An out-of-scope finding is never fixed here — it is the user's to take or leave.
+
+**Its blast radius**, for in-scope findings only — how far the fix reaches:
+
+- **`[contained]`** — one edit at one site, provably safe: a corrected comment or message, a one-line guard, an early return, a test assertion repointed. The suite settles whether it worked.
+- **`[spreading]`** — the fix reaches beyond its site: a rename with callers, a signature change, a shared helper with several clients, anything where the correct shape is not obvious. Work that has to be planned, built and reviewed rather than edited.
+
+**A finding whose entire remedy is comment or documentation text is never a blocking issue**, and is always `[contained]`. Classify by the remedy, not the subject: a false comment whose fix is a code change is an ordinary finding, but restoring prose an acceptance criterion asked for never fails a review.
 
 ## Citation Discipline
 
@@ -157,10 +170,10 @@ CODE QUALITY:
 - Issues: [Specific problems if any]
 
 BLOCKING ISSUES:
-- [List any issues that must be fixed]
+- [Only where the work cannot be called delivered: a task's acceptance criteria unmet in substance, or behaviour that is broken. Never a finding whose entire remedy is comment or documentation text]
 
-NON-BLOCKING NOTES:
-- [{do-now|quickfix|idea|bug}] {file:line} — {concrete change}
+FINDINGS:
+- [{in-scope|out-of-scope}] [{contained|spreading}] {file:line} — {what is wrong and the change that fixes it} — FAILS: {the concrete consequence of leaving it}
 ```
 
 ## Your Output

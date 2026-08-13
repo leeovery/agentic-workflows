@@ -35,21 +35,34 @@ Using the relationship groups:
 - `coupled` becomes **one action spanning every bound file**, never separate actions per file. Splitting it is what reddens the suite.
 - `contradictory` is decided here. The record settles most: one finding proves the claim another restates, or the code shows which is current. Where the record settles it, decide silently and note the losing side. Where it does not, the action goes to the lane that needs a decision — never pick arbitrarily and never apply both.
 
-### C. Assign a lane
+### C. Route each finding
 
-The question is **what it costs to act**, never how important it is. Low value is not a reason to route away from `fix-now` — cost is.
+Everything follows from one question, asked in order. The verifier already recorded the scope and blast radius with the code open — those are its calls, not yours to relitigate.
 
-- **`fix-now`** — finishable in this session by an agent with full context, and cheap to reverse if wrong. Comment, documentation and message text; identifier renames; accuracy corrections; spec or plan violations with a small determinate fix; defects with an obvious contained fix.
-- **`consolidation`** — real duplication that is wrong to do as N separate edits. One deliberate pass later, scheduled as a single item, never applied piecemeal.
-- **`needs-design`** — more than one defensible shape, or wrong in a way the suite would not catch, or painful to undo. This is the lane that costs a full planning and implementation cycle, so it is earned, not defaulted to.
-- **`inbox-bug`** — a real defect a user will plausibly hit that is not fixable now.
-- **`inbox-idea`** — a genuine new capability. Never a refactor.
-- **`drop`** — taste, or an edge nobody reaches.
+**1. Is anything actually wrong?**
+No → `discard`, with the reason. Something merely tidier is not wrong. This is the common outcome, and a large discard list is a healthy review, not a failed one.
+
+**2. Is it in scope — part of delivering this specification?**
+
+**In scope**, and `[contained]` → `do-now`. One edit at one site, the suite settles it. Low value is no reason to route it elsewhere: a stale comment is wrong, so fix it. Finishing the feature is not backlog work.
+
+**In scope**, and `[spreading]` → `replan`. A rename with callers, a signature change, anything whose correct shape is not obvious. It needs a task, a plan and a review, and **the review fails because of it** — the work is not delivered while this is outstanding.
+
+**Out of scope** → `out-of-scope`. A genuine improvement this specification never asked for. It is never fixed here and never filed automatically: the user takes it or leaves it. Record what kind it is — a feature, a bug worth investigating, or a standalone quick-fix — so the offer is concrete.
 
 Two rules that decide the hard cases:
 
-- **A defect can wear a mundane tag.** A note describing an assertion that would still pass if the behaviour it names broke, a value able to claim something it should not, or an aliasing write into a caller's slice is a **defect** — whatever tag it arrived with. Read for what it says, never for how it was labelled. Mark these `rescued: true`.
-- **Reversibility decides ceremony.** An error message is one sentence and one commit; breaking a resume path is not. Ask what it costs if the fix is wrong, not how large the change looks.
+- **A defect can wear a mundane description.** An assertion that would still pass if the behaviour it names broke, a value able to claim something it should not, an aliasing write into a caller's slice — these are defects whatever the finding calls them. Read for what it says. Mark them `rescued: true`.
+- **Blast radius decides ceremony, never size or importance.** A one-line guard in one function is `do-now` even if it matters enormously. A rename across callers is `replan` even if it is trivial. Ask how far the fix reaches and whether the suite would catch it going wrong.
+
+### D. Derive the verdict
+
+The verdict is not a separate judgment — it falls out of the routing.
+
+- Any `replan` action, or any blocking issue from a verifier → **Request Changes**. The work is not delivered.
+- Otherwise → **Approve**. A passing review may still carry `do-now` work and `out-of-scope` offers; neither blocks, because the first is finished in this session and the second was never part of this specification.
+
+A review never passes with work outstanding that someone must go back and plan. If it needs a decision, it needs a plan, and the review failed.
 
 ## Output
 
@@ -57,15 +70,25 @@ Write the action list to the output path as JSON:
 
 ```json
 {
+  "verdict": "approve|request-changes",
   "actions": [
-    {"id":"A1","lane":"fix-now","ids":["P001","P002"],"files":["path"],"intent":"<=40 words",
+    {"id":"A1","route":"do-now","ids":["1-1-1"],"files":["path"],
+     "summary":"<=60 chars, the claim alone",
+     "intent":"what is wrong and the change that fixes it",
      "instruction":"what the applier does, including any condition a guard imposes",
-     "rescued":false,"amended":"what was corrected, or omitted"}
+     "fails":"the concrete consequence of leaving it",
+     "rescued":false,"amended":"what was corrected, or omitted"},
+    {"id":"A2","route":"replan","ids":["4-1-2"],"files":["path"],
+     "summary":"…","intent":"…","fails":"…","why_spreading":"the callers or clients the fix reaches"},
+    {"id":"A3","route":"out-of-scope","kind":"feature|bug|quick-fix","ids":["9-2-1"],
+     "summary":"…","intent":"…","fails":"…"}
   ],
-  "dropped": [{"ids":["P003"],"reason":"<=15 words"}],
-  "stats": {"findings":0,"actions":0,"dropped":0,"rescued":0}
+  "discarded": [{"ids":["2-3-1"],"reason":"<=15 words"}],
+  "stats": {"findings":0,"do_now":0,"replan":0,"out_of_scope":0,"discarded":0,"rescued":0}
 }
 ```
+
+`summary` is the scannable label — the claim alone, no rationale and no consequence clause; `fails` carries the consequence.
 
 ## Rules
 
@@ -74,6 +97,7 @@ Write the action list to the output path as JSON:
 1. **Faithful synthesis** — every action traces to at least one finding. Never invent one.
 2. **Never lose a defect** — a finding describing broken or falsifiable behaviour is never dropped for taste, wording, or the tag it arrived with.
 3. **Coupled findings stay one action** — never split a group across actions.
+4. **The verdict is derived, never chosen** — any `replan` action or blocking issue means Request Changes. A review never passes with work someone must go back and plan.
 4. **No counts as targets** — the list is however long the findings make it. Never drop to reach a number, never pad to look thorough.
 5. **Record every drop** — with its reason. A silent discard is indistinguishable from a miss.
 6. **Read-only** — the action list is your only write. Never edit the codebase.
@@ -85,9 +109,11 @@ Write the action list to the output path as JSON:
 Return a brief status to the orchestrator:
 
 ```
-ACTIONS: {N}
-BY_LANE: fix-now {N} · consolidation {N} · needs-design {N} · inbox-bug {N} · inbox-idea {N}
-DROPPED: {N}
+VERDICT: approve | request-changes
+DO-NOW: {N}
+REPLAN: {N}
+OUT-OF-SCOPE: {N}
+DISCARDED: {N}
 RESCUED: {N}
 SUMMARY: {1-2 sentences}
 ```

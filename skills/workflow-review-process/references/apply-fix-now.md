@@ -1,22 +1,22 @@
-# Apply Fix-Now
+# Apply Do-Now
 
 *Reference for **[workflow-review-process](../SKILL.md)***
 
 ---
 
-The `fix-now` lane is work that is cheap to do and cheap to reverse: comment and documentation accuracy, identifier renames, small determinate spec violations, defects with an obvious contained fix. It is finished here, in this session, rather than routed through planning.
+The `do-now` route is work that is wrong and contained — one edit at one site, which the suite settles: comment and documentation accuracy, identifier renames, small determinate spec violations, defects with an obvious contained fix. It is finished here, in this session, rather than routed through planning.
 
-Low value is not a reason to send work elsewhere. Cost is — and this lane exists because a fix that takes one edit should not cost a task, a plan phase and a re-review.
+Low value is not a reason to send work elsewhere. Blast radius is — a fix that takes one edit should not cost a task, a plan phase and a re-review, however small the thing it corrects.
 
 ## A. Batch the Actions
 
-Read the `fix-now` actions from `.workflows/.cache/{work_unit}/review/{topic}/actions.json`.
+Read the `do-now` actions from `.workflows/.cache/{work_unit}/review/{topic}/actions.json`.
 
 Group them into batches by **connected file sets**: any two actions sharing a file belong to the same batch, transitively. An action already spans every file it must touch — synthesis collapsed coupled findings into one action precisely so a bound pair cannot be split — so a batch never holds half of anything.
 
 Keep batches small enough that an applier holds its whole batch and the files it edits.
 
-#### If no `fix-now` actions exist
+#### If no `do-now` actions exist
 
 → Return to caller.
 
@@ -71,7 +71,7 @@ For anything not clearly repairable, revert that action alone and record it. The
 Commit the applied work:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): apply fix-now actions"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): apply do-now findings"
 ```
 
 Report what happened — applied, skipped, reverted, and the suite's final state. Anything reverted or unresolved is not silently dropped: it returns to the review document as an action still owed, so the record shows what was attempted and what remains.

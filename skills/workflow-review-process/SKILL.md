@@ -274,12 +274,12 @@ Load **[present-review.md](references/present-review.md)** and follow its instru
 
 ---
 
-## Step 9: Apply Fix-Now
+## Step 9: Apply Do-Now
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-**`□ Apply Fix-Now`**
+**`□ Apply Do-Now`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
