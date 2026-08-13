@@ -20,9 +20,11 @@ Verdict: {Approve | Request Changes | Comments Only}
 
 Then render the review summary as a markdown paragraph (not a code block) — a product-lens narrative: what was reviewed, where it stands, and what the findings mean for the product.
 
-Check whether the review contains a `## Recommendations` section with categorized subsections (`### Do now`, `### Quick-fixes`, `### Ideas`, `### Bugs`). Set `has_recommendations`, and set `has_donow`, `has_quickfixes`, `has_ideas`, `has_bugs` per subsection present.
+Read the report's `## Recommendations` lanes. Set `has_recommendations`, and per lane set `fixnow_count`, `has_consolidation`, `has_needsdesign`, `has_bugs`, `has_ideas`, and `dropped_count`.
 
-Render each recommendation as it appears in the report — a one-line item shows its `file:line`; a clustered item shows its sub-bullets. This detail is what lets the user choose do-now versus surface versus ignore, so never collapse it to a bare title. Each `{description}` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism.
+**A lane is listed only where the user decides something.** `needs-design`, bug and idea items are shown in full — each is a call they own. The `fix-now` lane is a count: it is applied in the next step whatever they say, and listing hundreds of items they will not read is the noise this shape exists to prevent. Consolidation is one line, because it is one scheduled pass.
+
+Each listed `{description}` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism.
 
 #### If verdict is `Approve`
 
@@ -34,29 +36,36 @@ All acceptance criteria met. No blocking issues found.
 @if(has_recommendations)
 Recommendations (non-blocking):
 
-@if(has_donow)
-Do now (zero-risk — applied on request):
-  {N}. {description} ({file:line})
+@if(fixnow_count)
+  {fixnow_count} applied in the next step — comment and documentation accuracy, renames, small determinate fixes.
 @endif
 
-@if(has_quickfixes)
-Quick-fixes (mechanical, logic-touching):
-  {N}. {description} ({file:line})
+@if(has_consolidation)
+  One consolidation pass scheduled: {description}
 @endif
 
-@if(has_ideas)
-Ideas (require a decision):
+@if(has_needsdesign)
+Needs design (a call before it can be built):
   {N}. {description} ({file:line})
 @endif
 
 @if(has_bugs)
-Bugs:
+Bugs (to the inbox):
   {N}. {description} ({file:line})
+@endif
+
+@if(has_ideas)
+Ideas (to the inbox):
+  {N}. {description} ({file:line})
+@endif
+
+@if(dropped_count)
+  {dropped_count} dropped — reasons in the report.
 @endif
 @endif
 ```
 
-Items are numbered sequentially across all categories (matching the report's numbering).
+Listed items are numbered sequentially across the lanes that carry them, matching the report's numbering.
 
 → Proceed to **B. Q&A Loop**.
 
@@ -75,24 +84,31 @@ Required Changes:
 @if(has_recommendations)
 Recommendations (non-blocking):
 
-@if(has_donow)
-Do now (zero-risk — applied on request):
-  {N}. {description} ({file:line})
+@if(fixnow_count)
+  {fixnow_count} applied in the next step — comment and documentation accuracy, renames, small determinate fixes.
 @endif
 
-@if(has_quickfixes)
-Quick-fixes (mechanical, logic-touching):
-  {N}. {description} ({file:line})
+@if(has_consolidation)
+  One consolidation pass scheduled: {description}
 @endif
 
-@if(has_ideas)
-Ideas (require a decision):
+@if(has_needsdesign)
+Needs design (a call before it can be built):
   {N}. {description} ({file:line})
 @endif
 
 @if(has_bugs)
-Bugs:
+Bugs (to the inbox):
   {N}. {description} ({file:line})
+@endif
+
+@if(has_ideas)
+Ideas (to the inbox):
+  {N}. {description} ({file:line})
+@endif
+
+@if(dropped_count)
+  {dropped_count} dropped — reasons in the report.
 @endif
 @endif
 ```
@@ -106,24 +122,31 @@ Bugs:
 ```
 Comments (non-blocking):
 
-@if(has_donow)
-Do now (zero-risk — applied on request):
-  {N}. {description} ({file:line})
+@if(fixnow_count)
+  {fixnow_count} applied in the next step — comment and documentation accuracy, renames, small determinate fixes.
 @endif
 
-@if(has_quickfixes)
-Quick-fixes (mechanical, logic-touching):
-  {N}. {description} ({file:line})
+@if(has_consolidation)
+  One consolidation pass scheduled: {description}
 @endif
 
-@if(has_ideas)
-Ideas (require a decision):
+@if(has_needsdesign)
+Needs design (a call before it can be built):
   {N}. {description} ({file:line})
 @endif
 
 @if(has_bugs)
-Bugs:
+Bugs (to the inbox):
   {N}. {description} ({file:line})
+@endif
+
+@if(has_ideas)
+Ideas (to the inbox):
+  {N}. {description} ({file:line})
+@endif
+
+@if(dropped_count)
+  {dropped_count} dropped — reasons in the report.
 @endif
 ```
 
@@ -133,10 +156,10 @@ Bugs:
 
 ## B. Q&A Loop
 
-Render the gate, passing `--donow` when `has_donow` and `--recommendations` when `has_recommendations`:
+Render the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-qa-gate {work_unit}.review.{topic} [--donow] [--recommendations]
+node .claude/skills/workflow-engine/scripts/engine.cjs render review-qa-gate {work_unit}.review.{topic}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -163,95 +186,6 @@ Render the full content of `.workflows/{work_unit}/review/{topic}/report.md` as 
 
 → Return to **B. Q&A Loop**.
 
-#### If `do-now`
-
-→ Proceed to **D. Do Now**.
-
-#### If `surface`
-
-→ Proceed to **C. Surface to Inbox**.
-
 #### If `continue`
 
 → Return to caller.
-
----
-
-## C. Surface to Inbox
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which recommendations? (enter numbers, comma-separated, or **`a/all`**)
-```
-
-**STOP.** Wait for user response.
-
-Parse the selection — individual numbers, comma-separated list, or "all".
-
-For each selected recommendation:
-
-1. Determine its category from the grouped display (do-now or quickfix → `quickfixes/`, idea → `ideas/`, bug → `bugs/`) — a surfaced do-now item is one the user chose to defer rather than apply, so it files as a quick-fix
-2. Create the inbox directory:
-   ```bash
-   mkdir -p .workflows/.inbox/{category}
-   ```
-3. Generate a kebab-case slug (2-4 words from the core recommendation, e.g., `volatile-marker-test`, `error-mapping-distinction`)
-4. Write the file to `.workflows/.inbox/{category}/{YYYY-MM-DD}--{slug}.md` (use today's date):
-
-```markdown
-# {Title derived from recommendation}
-
-{Full recommendation description from the review report}
-
-Source: review of {work_unit}/{topic}
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-Surfaced to inbox:
-@foreach(item in surfaced_items)
-  • {item.number} → {item.category}/{item.date}--{item.slug}.md
-@endforeach
-```
-
-Commit — the surfaced files live in `.workflows/.inbox/`, outside the work unit, so use the inbox scope:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "review({work_unit}): surface recommendations to inbox"
-```
-
-→ Return to **B. Q&A Loop**.
-
----
-
-## D. Do Now
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Applying the zero-risk fixes directly. Each touches no executable logic, so it ships without the pipeline.
-```
-
-Apply every item in the `### Do now` subsection of `report.md`:
-
-1. Make each described edit at its `file:line`. Stay within the scope of the note — no opportunistic changes.
-2. Run the project's linters; when any change touched a code or test file, also run the test suite (see the project skills loaded in Step 3 and the topic's configured linters). These are project-specific commands, so they fall outside this skill's allowed-tools and prompt for approval when run.
-3. If a change fails verification, revert that single change and re-tag its item `[quickfix]` in `report.md` — leave the rest applied.
-
-Commit the applied changes with raw git — the fixes touch project files outside the work unit, so the scoped helper cannot cover them. Stage the touched files and the work unit (for any report re-tags), then commit:
-
-```bash
-git add -- .workflows/{work_unit} {files the fixes touched}
-git commit -m "review({work_unit}): apply do-now fixes"
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-Applied {K} do-now fix(es).@if(deferred_count > 0) {D} deferred to quick-fixes (failed verification).@endif
-```
-
-→ Return to **B. Q&A Loop**.

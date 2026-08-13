@@ -294,15 +294,23 @@ Load **[apply-fix-now.md](references/apply-fix-now.md)** and follow its instruct
 
 ---
 
-## Step 10: Compliance Self-Check
+## Step 10: Route Lanes
 
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+Load **[route-lanes.md](references/route-lanes.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 11**.
 
 ---
 
-## Step 11: Review Actions
+## Step 11: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 12**.
+
+---
+
+## Step 12: Review Actions
 
 > *Output the next fenced block as markdown (not a code block):*
 
