@@ -987,7 +987,7 @@ describe('render proposed-task', () => {
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
     assert.strictEqual(out, [
       '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
-      '**Task 2/3: Fix adapter leak** (Important)',
+      '**`▪ Fix adapter leak (2 of 3)`** (Important)',
       'Sources: reviewer cycle 1',
       '',
       '**Problem**: The adapter never closes.',
@@ -1190,13 +1190,16 @@ describe('render proposed-task', () => {
     const file = writePayload(dir, 'a.json', adhoc);
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
     const lines = out.split('\n');
-    assert.strictEqual(lines[1], '**Task 1/1: Fix login redirect**');
+    assert.strictEqual(lines[1], '**`▪ Fix login redirect`**');
     assert.strictEqual(lines[2], 'Placement: phase 2');
     assert.strictEqual(lines[3], 'Priority: 1');
     assert.strictEqual(lines[4], 'Depends on: portal-2-3');
     assert.strictEqual(lines[5], '');
     assert.ok(!out.includes('Sources:'));
     assert.ok(out.includes('MENU: task approval'));
+    const auto = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'auto' });
+    assert.ok(auto.includes('Fix login redirect — approved [auto].'));
+    assert.ok(!auto.includes('Task 1 of 1'));
   });
 });
 
