@@ -1,7 +1,8 @@
 # stub: review-task-verified
 
 A task verifier's report for one task, everything in order: implemented
-where the plan says, adequately tested, no blocking issues, no notes.
+where the plan says, adequately tested, no blocking issues, nothing
+wrong to report.
 Write the content below to the report file for the dispatched task's
 suffix (`report-{phase_id}-{task_id}.md` in the review directory), with
 the TASK line filled from that task — via the agent contract's own
@@ -40,5 +41,5 @@ CODE QUALITY:
 BLOCKING ISSUES:
 - none
 
-NON-BLOCKING NOTES:
+FINDINGS:
 - none

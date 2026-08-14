@@ -64,13 +64,17 @@ Refresh the tmux session label — a no-op unless the user opted in and this ses
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} review {topic}
 ```
 
-Check if a review file exists at `.workflows/{work_unit}/review/{topic}/report.md`.
+Check for prior review state — a review file at `.workflows/{work_unit}/review/{topic}/report.md`, and recorded coverage (empty stdout means none):
 
-#### If no review file exists
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
+```
+
+#### If neither exists
 
 → Proceed to **Step 1**.
 
-#### If review file exists
+#### Otherwise
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -90,12 +94,6 @@ Gather coverage state. Read `completed_tasks` from the implementation manifest:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} completed_tasks
 ```
 
-Read `reviewed_tasks` from the review manifest — empty stdout means it was never recorded:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
-```
-
 Render the resume menu — the engine derives review coverage from the two arrays — and emit its section verbatim per its marker:
 
 ```bash
@@ -112,9 +110,13 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 
 → Proceed to **Step 1**.
 
-**If all tasks reviewed:**
+**If all tasks reviewed and the review file exists:**
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 9**.
+
+**If all tasks reviewed and no review file exists** (verification finished; everything after it was lost):
+
+→ Proceed to **Step 6**.
 
 **Otherwise** (no tracking data):
 
@@ -124,12 +126,15 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 
 Order matters — the review file is deleted last, so a crash mid-restart re-offers restart on the next entry instead of impersonating a fresh run.
 
-1. Clear review tracking (each subtree only if it exists — check with `manifest exists {work_unit}.review.{topic} reviewed_tasks` and `… staging` first):
+1. Clear review tracking (each subtree only if it exists — check with `manifest exists {work_unit}.review.{topic} reviewed_tasks`, `… staging`, and `… out_of_scope` first):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} reviewed_tasks
    ```
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} staging
+   ```
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
    ```
 2. Delete any synthesis staging files (`review-tasks-c*.md`) in `.workflows/{work_unit}/implementation/{topic}/` — stale proposals from the abandoned run. The synthesis reports (`review-report-c*.md`) stay — the cycle counter reads them
 3. If the planning item carries no `storage_paths` (a plan initialised before the field existed): record it now — read the format's authoring.md (format from `manifest get {work_unit}.planning.{topic} format`) → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`)
@@ -234,7 +239,27 @@ Load **[prep-findings.md](references/prep-findings.md)** and follow its instruct
 
 ---
 
-## Step 7: Produce Review
+## Step 7: Apply Do-Now
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Apply Do-Now`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Applying the contained corrections — low-impact, blast radius minimised. The whole body of work is verified and the suite run before anything lands.
+```
+
+Load **[apply-do-now.md](references/apply-do-now.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 8**.
+
+---
+
+## Step 8: Produce Review
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -245,16 +270,16 @@ Load **[prep-findings.md](references/prep-findings.md)** and follow its instruct
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Writing the review from the prepped actions — what survived, what merged, and what each one now needs.
+> Writing the review — the verdict, what was corrected, what must be planned, and what was discarded.
 ```
 
 Load **[produce-review.md](references/produce-review.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 8**.
+→ On return, proceed to **Step 9**.
 
 ---
 
-## Step 8: Present Review
+## Step 9: Present Review
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -265,64 +290,23 @@ Load **[produce-review.md](references/produce-review.md)** and follow its instru
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Presenting the review findings. You'll see the verdict, summary, and detailed per-task results.
+> The outcome: pass or fail, what was corrected, and what needs you.
 ```
 
 Load **[present-review.md](references/present-review.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 9**.
-
----
-
-## Step 9: Apply Fix-Now
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Apply Fix-Now`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Applying the actions that are cheap to make and cheap to reverse. The project's suite is the gate — anything it catches is repaired or reverted here, not carried forward.
-```
-
-Load **[apply-fix-now.md](references/apply-fix-now.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 10**.
 
 ---
 
-## Step 10: Route Lanes
+## Step 10: Compliance Self-Check
 
-Load **[route-lanes.md](references/route-lanes.md)** and follow its instructions as written.
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 11**.
 
 ---
 
-## Step 11: Compliance Self-Check
-
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 12**.
-
----
-
-## Step 12: Review Actions
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Review Actions`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Deciding what to do with the findings. You can accept the review, request fixes, or ask questions.
-```
+## Step 11: Review Actions
 
 Load **[review-actions-loop.md](references/review-actions-loop.md)** and follow its instructions as written.
-

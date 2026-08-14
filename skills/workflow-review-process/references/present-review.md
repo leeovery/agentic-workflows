@@ -8,70 +8,65 @@
 
 → Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written.
 
-Read the review file at `.workflows/{work_unit}/review/{topic}/report.md`.
+By this point the do-now corrections are applied, verified and committed; what remains is the verdict and whatever needs the user. Build the payload from `actions.json` and the apply outcome — on a resume where the cache is gone, rebuild it from the report at `.workflows/{work_unit}/review/{topic}/report.md`, whose sections carry the same content.
 
-Build the presentation payload from the report and write it with the Write tool to `.workflows/.cache/{work_unit}/review/{topic}/presentation.json`:
+Write it with the Write tool to `.workflows/.cache/{work_unit}/review/{topic}/presentation.json`:
 
 ```json
 {
   "topic": "{topic}",
-  "verdict": "approve|request-changes|comments-only",
-  "required_changes": [{"description": "…", "ref": "file:line"}],
-  "fix_now": 0,
-  "consolidation": "the pass's one-line intent, or omitted",
-  "needs_design": [{"description": "…", "ref": "file:line"}],
-  "bugs": [{"description": "…", "ref": "file:line"}],
-  "ideas": [{"description": "…", "ref": "file:line"}],
-  "dropped": 0
+  "verdict": "pass|fail",
+  "corrected": {"applied": 0, "reverted": 0, "suite": "green|red"},
+  "replan": [{"summary": "…", "ref": "file:line", "fails": "…"}],
+  "out_of_scope": 0,
+  "discarded": 0
 }
 ```
 
-Each `description` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism. Which lanes list their items and which report a count is the surface's rule, not a judgment made here.
+`corrected` is omitted when nothing was applied; `replan` carries entries only on a fail; `out_of_scope` is the count of findings banked in the manifest. Each `summary` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism. What is listed and what is counted is the surface's rule, not a judgment made here.
 
-Render and emit the section verbatim per its marker:
+Render and emit every section verbatim per its marker — the title, the verdict, and the findings:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render review-presentation {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/presentation.json
 ```
 
-Then render the review summary as a markdown paragraph (not a code block) — a product-lens narrative: what was reviewed, where it stands, and what the findings mean for the product.
+Then render the review summary as a markdown paragraph (not a code block) — a product-lens narrative: what was reviewed, where it stands, and what the outcome means for the product.
 
-→ On return, proceed to **B. Q&A Loop**.
+→ On return, proceed to **B. Review Gate**.
 
 ---
 
-## B. Q&A Loop
+## B. Review Gate
 
-Render the gate:
+Render the gate — `--replan` with the count on a fail, `--out-of-scope` with the banked count on a pass:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-qa-gate {work_unit}.review.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render review-gate {work_unit}.review.{topic} --verdict {pass|fail} [--replan {N}] [--out-of-scope {N}]
 ```
 
 Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-#### If ask a question
+#### If `plan`
 
-Answer the question using the review file, QA task files, specification, and plan as context.
-
-→ Return to **B. Q&A Loop**.
-
-#### If `technical`
-
-→ Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
-
-Retell the review through the technical lens — the verdict, required changes, and recommendations from `report.md`, mechanism-first, as a markdown narrative (not a code block).
-
-→ Return to **B. Q&A Loop**.
-
-#### If `view`
-
-Render the full content of `.workflows/{work_unit}/review/{topic}/report.md` as markdown (not a code block).
-
-→ Return to **B. Q&A Loop**.
-
-#### If `continue`
+The failures become tasks and implementation reopens.
 
 → Return to caller.
+
+#### If `complete`
+
+→ Return to caller.
+
+#### If `inbox`
+
+Load **[offer-out-of-scope.md](offer-out-of-scope.md)** and follow its instructions as written.
+
+On return: → Return to **B. Review Gate**.
+
+#### If ask
+
+Answer the question using the review file, the per-task reports, the specification, and the plan as context.
+
+→ Return to **B. Review Gate**.

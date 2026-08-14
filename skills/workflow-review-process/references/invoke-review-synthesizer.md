@@ -28,8 +28,9 @@ The synthesizer receives:
 
 1. **Work unit** — the work unit name (for path construction)
 2. **Plan topic** — the plan being synthesized
-3. **Review path** — path to `review/{topic}/` directory (review summary + QA files)
-4. **Cycle number** — the review remediation cycle number
+3. **Actions path** — `.workflows/.cache/{work_unit}/review/{topic}/actions.json`; the `replan` actions are the findings to become tasks, already deduplicated, corrected and constrained. Blocking issues from the report join them
+4. **Review path** — path to `review/{topic}/` directory (the report and per-task files, for context on each action's sources)
+5. **Cycle number** — the review remediation cycle number
 
 ---
 

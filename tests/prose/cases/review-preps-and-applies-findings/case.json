@@ -1,0 +1,78 @@
+{
+  "origin": "the prep, apply and presentation stages had no coverage \u2014 this walks a review that finds something: findings collected out of the per-task reports, assessed by the split agents, synthesised into routed actions with a derived verdict, applied and verified before anything is presented, and the pass completing with the corrections committed",
+  "entry": "workflow-review-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-review-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-review-entry/references/validate-phase.md",
+    "skills/workflow-review-entry/references/invoke-skill.md",
+    "skills/workflow-review-process/SKILL.md",
+    "skills/workflow-review-process/references/read-plans.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-review-process/references/load-project-skills.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-review-process/references/invoke-task-verifiers.md",
+    "skills/workflow-review-process/references/review-checklist.md",
+    "skills/workflow-review-process/references/prep-findings.md",
+    "skills/workflow-review-process/references/apply-do-now.md",
+    "skills/workflow-review-process/references/produce-review.md",
+    "skills/workflow-review-process/references/template.md",
+    "skills/workflow-review-process/references/present-review.md",
+    "skills/workflow-shared/references/product-lens.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-review-process/references/review-actions-loop.md"
+  ],
+  "answers": [
+    "c \u2014 complete the review"
+  ],
+  "stubs": {
+    "review-task-flags-notes": "each time a task verifier is dispatched via the Task tool \u2014 write the content below to that task's report file and return the STATUS block; one firing per task",
+    "finding-assessed": "when a workflow-review-finding-assessor agent is dispatched",
+    "finding-guards-checked": "when a workflow-review-finding-guards agent is dispatched",
+    "finding-relationships-found": "when the workflow-review-finding-relationships agent is dispatched",
+    "finding-synthesised": "when the workflow-review-finding-synthesis agent is dispatched",
+    "fix-applied": "when a workflow-review-fix-applier agent is dispatched",
+    "fix-verified": "when a workflow-review-fix-verifier agent is dispatched"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.review.pay",
+      "topic start pay review pay",
+      "impl(pay): T",
+      "push pay.review.pay reviewed_tasks",
+      "review(pay): verification and prep",
+      "render review-presentation pay.review.pay",
+      "render review-gate pay.review.pay",
+      "review(pay): complete review",
+      "topic complete pay review pay",
+      "review(pay): complete review phase"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.review.pay",
+      "topic start pay review pay",
+      "push pay.review.pay reviewed_tasks",
+      "write:.workflows/.cache/pay/review/pay/actions.json",
+      "review(pay): verification and prep",
+      "review(pay): complete review",
+      "render review-presentation pay.review.pay",
+      "render review-gate pay.review.pay",
+      "topic complete pay review pay"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "set pay.review.pay staging",
+      "render proposed-task",
+      "render tasks-overview",
+      "restart review",
+      "workunit create",
+      "task start",
+      "manifest push pay.review.pay out_of_scope"
+    ]
+  }
+}

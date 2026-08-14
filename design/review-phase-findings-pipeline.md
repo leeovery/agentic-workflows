@@ -1,6 +1,6 @@
 # Review Phase: Findings Pipeline
 
-**Status:** in design, actively being tested. Nothing here has shipped.
+**Status:** built, live-tested at full scale, audited. Stack #900 (PRs #898–#905) awaiting final review and merge.
 **Started:** 2026-08-12, from a live incident on Portal's `theming-system` feature.
 
 ---
@@ -322,3 +322,72 @@ Re-arming a clone for another 10-task run: trim the sample's ids from `reviewed_
 - Does the whole-plan lens pass become a permanent addition? It found one thing 175 verifiers structurally could not.
 - How much of this corpus's volume is an artefact of the comment-standard split, and what does a post-change feature look like?
 - Should the analysis cycles survive if the end-of-phase pass lands?
+
+
+---
+
+## The Build (2026-08-14)
+
+Stack #900, seven PRs. The shape that shipped:
+
+```
+Step 5  verify      per-task verifiers — a finding names its failure, its scope
+                    (delivered change-set, behaviour-level) and blast radius
+                    (observability, never file count); nitpicks never reported;
+                    comment-only remedies never block
+Step 6  prep        assessor (validity+standards) ×N · guards (inventory first,
+                    with a depends verdict) ×N · relationships (whole set) ×1
+                    → synthesis: verify claims, collapse collisions, route,
+                    derive the verdict · out-of-scope banked on the manifest
+                    · checkpoint commit (reports + manifest)
+Step 7  apply       announce → batched appliers (whole connected file-sets,
+                    bundled, sequential, compile-check only) → fix-verifier
+                    over the complete uncommitted diff (repairs, normalises,
+                    runs the suite, never commits) → one orchestrator commit
+Step 8  produce     report written from the outcome, not a proposal
+Step 9  present     TITLE chrome · verdict tier (red properties on fail) ·
+                    findings display · gate: p/plan | c/complete + i/inbox + Ask
+Step 11 actions     pass completes; fail feeds the replan actions (not the raw
+                    reports) to the remediation synthesizer
+```
+
+Verdict is binary and derived: any `replan` action or blocking issue fails. Resume after a verification crash lands on prep (`reviewed_tasks` + report existence discriminate), never re-verifying. Fresh-context doctrine recorded in every prep agent; the appliers are fresh too — measurability: a forked applier inherits a different context every run, so a bad apply can never be attributed to the design.
+
+## The Cold Run (2026-08-14)
+
+Full-scale live test: Portal clone at the implementation-complete commit, the built workflows installed, review run cold by a real session. Verification was reused from an interrupted earlier run (175 old-contract reports — headers renamed to `FINDINGS:`, judgment content untouched, no legacy handling anywhere in the build), so the run exercised everything downstream of verification; the new verifier contract itself awaits the next real feature.
+
+```
+463 findings → discarded 296 (64%) · do-now 109 · replan 1 · out-of-scope 10
+verdict FAIL, derived · rescued 21 · amended 15
+apply: 109/109, ten bundled batches, verifier repaired 4 batch-seam comment
+artefacts, 0 reverts, suite green (independently confirmed)
+one screen reaches the user; three engine commits; out-of-scope banked
+```
+
+Notable in-flight behaviours: the orchestrator handled the legacy-tag fixture quirk in session judgment (no workflow code), and merged the 66 connected file-sets into 10 batches — codified afterwards as the bundling allowance.
+
+## The Audits
+
+Three fresh hostile auditors over the run's every judgment:
+
+**Discards — 294/296 correct.** Two misses: a vacuous test discarded on a false "stronger neighbour" claim (the neighbour pins a different property), and a real two-snapshot read race filed under "behaviour identical either way".
+
+**Apply — 109/109 executed faithfully.** Every production hunk read; zero execution defects, zero unrequested changes, suite green uncached. Five actions were spreading-shaped by the letter (multi-site renames, a shared helper, a signature change) yet all safe — fully prescribed, compiler-chased. The one genuine risk: a fix no test observes ("the suite settles it" was false for exactly that change).
+
+**Verdict — right outcome, wrong finding.** The single fail-driver's spreading case was inflated (one caller, not four; every "open question" settled by the code) — it was containable. Two in-scope doc gaps were misrouted out-of-scope under spec-text reasoning. Meanwhile the discarded read race genuinely needs a design call. Net: fail-on-one stands, on a different finding. Of the ten out-of-scope calls, eight held — including two my own file-level provenance check had wrongly flagged (the behaviours predate the feature; the spec deliberately chose the no-lock model).
+
+**Five consequential errors in 463 decisions, one root cause: expensive decisions made on claims nobody opened** — a spreading narrative, a neighbour-coverage claim, a "behaviour identical" label, spec-text scope reasoning. Execution was flawless everywhere; only unverified trust failed.
+
+## Post-Run Fixes (all landed same day)
+
+1. **Bundling codified** — a batch is one or more whole sets; safety is the unbending rules (never split a set, sequential), never batch size.
+2. **Scope = the delivered change-set, at behaviour level** — what the work introduced or altered, never the spec's table of contents, and never mere file provenance. Divergence doctrine alongside: the code is the source of truth; a deliberate, sound divergence from the written word is not a violation.
+3. **A spreading claim is verified before it fails a review** — open the code, count the callers.
+4. **Blast radius is observability and prescription, never file count** — a compiler-chased rename is contained across a dozen files; a fix the suite cannot observe is contained only with its covering case.
+5. **A discard reason is a verdict, verified like any claim.**
+6. **Presentation chrome** — TITLE anchor, verdict tier (red on fail), findings display.
+
+## Where This Stands
+
+Remaining before the next tuning cycle: walk the two prose cases post-release (usual process), run a fresh feature under the full new verifier contract (the one untested layer), and watch two things — the blast-radius loosening (the one directional widening) and prose accretion in synthesis (split before adding rules if satisficing appears). The harvest of the cold run's corrections into the real project runs as ordinary work from a port manifest; the review phase itself is never re-run on released work.

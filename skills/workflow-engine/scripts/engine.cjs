@@ -181,7 +181,7 @@ Commands:
   render finding          <wu.phase.topic> --file <payload.json>
   render finding-batch    <wu.phase.topic> --file <payload.json>
   render review-presentation <wu.review.topic> --file <payload.json>
-  render review-qa-gate   <wu.review.topic>
+  render review-gate      <wu.review.topic> --verdict pass|fail [--replan N] [--out-of-scope N]
   render triage-announce  <wu.phase.topic>
   render triage-offer     <wu.phase.topic> --file <payload.json>
   render triage-block     <wu.phase.topic>

@@ -1,6 +1,6 @@
 ---
 name: workflow-review-fix-applier
-description: Applies a batch of prepped review actions to the codebase, reconciling nothing and inventing nothing — the actions arrive already merged, corrected and constrained. Invoked by workflow-review-process during the fix-now lane.
+description: Applies a batch of prepped review actions to the codebase, reconciling nothing and inventing nothing — the actions arrive already merged, corrected and constrained. Invoked by workflow-review-process during the do-now apply.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: opus
 ---
@@ -28,21 +28,12 @@ For each action:
 3. **Honour the condition.** An action carrying a guard condition (*safe only if sited in X*, *only if the guard is re-pointed in the same change*) is wrong without it. The condition is part of the action, not advice.
 4. **Keep the edit minimal.** Change what the action asks for and nothing adjacent. A "while I'm here" improvement is out of scope and unreviewed.
 
-Then verify:
+Then check your work compiles:
 
 - Build the project and fix any compile error you introduced.
 - **Check the test sources too.** In languages where the build skips test files, a build alone proves nothing about the half of the tree these actions most often touch — use whatever the project's toolchain offers that compiles them.
-- Run the project's suite as the project runs it.
 
-### If the suite goes red
-
-Diagnose against your own diff. A guard test failing is not a broken guard — it is the guard doing its job, and the fix that tripped it is wrong or wrongly sited.
-
-- Repair it if the correct shape is clear from the guard's own message and the inventory.
-- **Never edit a test to make it pass.** A test asserting an invariant is the requirement; changing it converts a caught breach into a silent one.
-- If a repair is not clear, revert that action alone, leave the rest applied, and report it unresolved.
-
-Never leave the batch with a failure you introduced and did not report.
+Do not run the test suite. A verifier reads the complete diff after every batch has landed and runs the suite over the whole — a per-batch run proves nothing while sibling batches are still to come, and costs a full suite each time.
 
 ## Rules
 
@@ -52,8 +43,8 @@ Never leave the batch with a failure you introduced and did not report.
 2. **Never edit a test to make it pass** — repair the code, revert the action, or report it unresolved.
 3. **Never invent work** — no improvement, refactor or tidy-up that no action asked for.
 4. **Stay in your files** — if an action's real target lies outside your batch, report it rather than reaching for it. Another applier owns that file.
-5. **No git writes** — no commits, no staging. The orchestrator owns the commit.
-6. **Report honestly** — a skipped action, a reverted one, or a suite left red is the result. A batch reported clean while red is the one outcome that makes this lane unusable.
+5. **No git writes** — no commits, no staging. Your edits stay in the working tree for the verifier that follows; the orchestrator owns the commit.
+6. **Report honestly** — a skipped or reverted action is a result, never a failure to hide.
 
 ## Your Output
 
@@ -63,7 +54,5 @@ Return a brief status to the orchestrator:
 APPLIED: {N}
 SKIPPED: {N} — {id}: {reason}, one per line
 REVERTED: {N} — {id}: {what failed}, one per line
-SUITE: green | red
-FAILURES: {test names, if red}
 SUMMARY: {1-2 sentences}
 ```

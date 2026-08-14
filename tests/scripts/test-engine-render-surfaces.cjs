@@ -1839,7 +1839,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-qa-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -2080,66 +2080,60 @@ describe('render review-presentation', () => {
     return renderSurface(dir, 'review-presentation', { dotpath: 'pay.review.checkout', file: 'p.json' });
   };
 
-  it('counts the lanes the user does not decide and lists the ones they do', () => {
+  it('a fail carries full chrome: title anchor, red verdict tier, then the list', () => {
     const out = render({
-      topic: 'checkout', verdict: 'approve', fix_now: 341, consolidation: 'collapse the scaffolding',
-      needs_design: [{ description: 'the badge key collides', ref: 'union.go:190' }],
-      bugs: [{ description: 'the swatch leaves the background changed', ref: 'main.go:63' }],
-      dropped: 45,
+      topic: 'checkout', verdict: 'fail',
+      corrected: { applied: 180, reverted: 2, suite: 'green' }, discarded: 45, out_of_scope: 2,
+      replan: [
+        { summary: 'the badge key collides for two row shapes', ref: 'union.go:190', fails: 'both rows render the badge' },
+        { summary: 'the guard scans comments only', fails: 'ten retired names pass green' },
+      ],
     });
-    assert.match(out, /341 applied in the next step/);
-    assert.match(out, /One consolidation pass recorded: collapse the scaffolding/);
-    assert.match(out, /1\. the badge key collides \(union\.go:190\)/);
-    assert.match(out, /2\. the swatch leaves the background changed \(main\.go:63\)/);
-    assert.match(out, /45 dropped/);
+    assert.match(out, /=== TITLE \(emit verbatim as markdown — the view's chrome heading\) ===\n# \*\*`■ Review — Checkout`\*\*/);
+    assert.match(out, /DISPLAY: review verdict \(emit verbatim as a properties code block/);
+    assert.match(out, /⚑ Failed — 2 findings must be planned and built before this work is delivered/);
+    assert.match(out, /\*\*Needs planning\*\* — 2 findings/);
+    assert.match(out, /1\\\. the badge key collides/);
+    assert.match(out, /↳ union\.go:190 — both rows render the badge/);
+    assert.match(out, /↳ ten retired names pass green/);
+    assert.match(out, /Corrected in this session: 180 applied · suite green · 2 reverted, still owed\./);
+    assert.match(out, /Outside this spec: 2 findings held for your call\./);
+    assert.match(out, /Discarded: 45 — reasons in the report\./);
+    const vi = out.indexOf('⚑ Failed');
+    assert.ok(out.indexOf('■ Review') < vi && vi < out.indexOf('Needs planning'), 'verdict sits between the title and the list');
   });
 
-  it('never lists the fix-now items — a count is the whole point', () => {
-    const out = render({ topic: 'checkout', verdict: 'approve', fix_now: 300 });
-    assert.match(out, /300 applied in the next step/);
-    assert.ok(!/^\s+\d+\. /m.test(out), 'no numbered item rows when only fix-now carries work');
+  it('a pass keeps the chrome and stays calm — no red, nothing listed', () => {
+    const out = render({ topic: 'checkout', verdict: 'pass', corrected: { applied: 180, suite: 'green' }, discarded: 45 });
+    assert.match(out, /# \*\*`■ Review — Checkout`\*\*/);
+    assert.match(out, /\*\*Passed\*\* — nothing needs planning\./);
+    assert.ok(!out.includes('⚑'), 'red is the fail register only');
+    assert.match(out, /180 applied · suite green\./);
+    assert.ok(!out.includes('Needs planning'));
+    assert.ok(!/^\d+\\\. /m.test(out), 'nothing is listed on a pass');
   });
 
-  it('numbers one running sequence across the listed lanes', () => {
-    const out = render({
-      topic: 'checkout', verdict: 'comments-only',
-      needs_design: [{ description: 'a' }], bugs: [{ description: 'b' }], ideas: [{ description: 'c' }],
-    });
-    assert.match(out, /1\. a/);
-    assert.match(out, /2\. b/);
-    assert.match(out, /3\. c/);
+  it('a clean pass is the title and the verdict alone', () => {
+    const out = render({ topic: 'checkout', verdict: 'pass' });
+    assert.match(out, /\*\*Passed\*\*/);
+    assert.ok(!out.includes('DISPLAY: review findings'), 'no findings section when there is nothing to say');
+    assert.ok(!out.includes('Corrected'));
+    assert.ok(!out.includes('Discarded'));
   });
 
-  it('carries required changes only where the verdict asks for them', () => {
-    const out = render({
-      topic: 'checkout', verdict: 'request-changes',
-      required_changes: [{ description: 'the loader never closes', ref: 'load.go:20' }],
-    });
-    assert.match(out, /Verdict: Request Changes/);
-    assert.match(out, /Required changes:/);
-    assert.match(out, /1\. the loader never closes/);
-    assert.ok(!out.includes('All acceptance criteria met'));
-  });
-
-  it('renders a clean review as verdict alone', () => {
-    const out = render({ topic: 'checkout', verdict: 'approve' });
-    assert.match(out, /All acceptance criteria met/);
-    assert.ok(!out.includes('Recommendations'), 'no recommendations heading when every lane is empty');
-    assert.ok(!out.includes('dropped'));
-  });
-
-  it('refuses an unknown verdict, a missing topic, and a missing payload', () => {
-    assert.throws(() => render({ topic: 'checkout', verdict: 'ship-it' }), /"verdict" must be one of/);
-    assert.throws(() => render({ verdict: 'approve' }), /"topic" must be a non-empty string/);
+  it('refuses a verdict that disagrees with the list', () => {
+    assert.throws(() => render({ topic: 'checkout', verdict: 'fail' }), /a fail must carry at least one "replan" finding/);
     assert.throws(
-      () => renderSurface(dir, 'review-presentation', { dotpath: 'pay.review.checkout' }),
-      /--file <payload\.json> is required/,
+      () => render({ topic: 'checkout', verdict: 'pass', replan: [{ summary: 'x', fails: 'y' }] }),
+      /a pass cannot carry "replan" findings/,
     );
   });
 
-  it('refuses an address outside the review phase', () => {
+  it('refuses a bad payload and a bad address', () => {
+    assert.throws(() => render({ topic: 'checkout', verdict: 'ship-it' }), /"verdict" must be "pass" or "fail"/);
+    assert.throws(() => render({ verdict: 'pass' }), /"topic" must be a non-empty string/);
     writeManifest(dir, 'pay2', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
-    fs.writeFileSync(path.join(dir, 'p.json'), JSON.stringify({ topic: 'x', verdict: 'approve' }));
+    fs.writeFileSync(path.join(dir, 'p.json'), JSON.stringify({ topic: 'x', verdict: 'pass' }));
     assert.throws(
       () => renderSurface(dir, 'review-presentation', { dotpath: 'pay2.discussion.checkout', file: 'p.json' }),
       /address must be <work_unit>\.review\.<topic>/,
@@ -2147,7 +2141,7 @@ describe('render review-presentation', () => {
   });
 });
 
-describe('render review-qa-gate', () => {
+describe('render review-gate', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -2155,36 +2149,36 @@ describe('render review-qa-gate', () => {
   });
   afterEach(() => teardown(dir));
 
-  const TAIL = [
-    "**`t/technical`**    → Retell the review from the code's perspective",
-    '**`v/view`**         → Show the full review report',
-    '**`c/continue`**     → Proceed to review actions',
-    '**Ask a question** → Ask about the review findings',
-    '',
-  ];
-  const HEAD = [
-    "=== MENU: review Q&A gate (emit verbatim as markdown, then STOP for the user's response) ===",
-    '· · · · · · · · · · · ·',
-    '**`◆ Any questions before proceeding?`**',
-    '',
-  ];
-
-  it('renders the fixed option set', () => {
-    const out = renderSurface(dir, 'review-qa-gate', { dotpath: 'pay.review.checkout' });
-    assert.strictEqual(out, [...HEAD, ...TAIL].join('\n'));
+  it('a fail routes to planning and offers nothing else', () => {
+    const out = renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'fail', replan: '9' });
+    assert.match(out, /\*\*`◆ What next\?`\*\*/);
+    assert.match(out, /\*\*`p\/plan`\*\* → Plan the 9 failures and reopen implementation/);
+    assert.match(out, /\*\*Ask\*\*/);
+    assert.ok(!out.includes('c/complete'), 'a failing review cannot be completed');
+    assert.ok(!out.includes('i/inbox'), 'future work is not offered while the review is failing');
   });
 
-  it('offers no apply or surface row — the lanes own that work', () => {
-    const out = renderSurface(dir, 'review-qa-gate', { dotpath: 'pay.review.checkout', donow: '1', recommendations: '1' });
-    assert.ok(!out.includes('do-now'), 'fix-now is applied by its own step, never offered here');
-    assert.ok(!out.includes('surface'), 'the inbox receives the bug and idea lanes directly');
-    assert.strictEqual(out, [...HEAD, ...TAIL].join('\n'));
+  it('a pass completes, offering the out-of-scope decision only when findings exist', () => {
+    const withOos = renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'pass', 'out-of-scope': '2' });
+    assert.match(withOos, /\*\*`c\/complete`\*\* → Complete the review phase and continue/);
+    assert.match(withOos, /\*\*`i\/inbox`\*\*\s+→ Decide the 2 findings outside this spec/);
+    const clean = renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'pass' });
+    assert.ok(!clean.includes('i/inbox'), 'no offer when nothing is out of scope');
+    assert.ok(!clean.includes('p/plan'));
   });
 
-  it('refuses an address outside the review phase', () => {
+  it('refuses a fail with no replan count, a bad verdict, and a bad address', () => {
+    assert.throws(
+      () => renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'fail' }),
+      /a fail needs --replan <count>/,
+    );
+    assert.throws(
+      () => renderSurface(dir, 'review-gate', { dotpath: 'pay.review.checkout', verdict: 'maybe' }),
+      /--verdict must be "pass" or "fail"/,
+    );
     writeManifest(dir, 'pay2', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
     assert.throws(
-      () => renderSurface(dir, 'review-qa-gate', { dotpath: 'pay2.discussion.checkout' }),
+      () => renderSurface(dir, 'review-gate', { dotpath: 'pay2.discussion.checkout', verdict: 'pass' }),
       /address must be <work_unit>\.review\.<topic>/,
     );
   });

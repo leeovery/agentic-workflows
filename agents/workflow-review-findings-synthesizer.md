@@ -15,17 +15,16 @@ You receive via the orchestrator's prompt:
 
 1. **Work unit** — the work unit name (for path construction)
 2. **Plan topic** — the plan being synthesized
-3. **Review path** — path to `review/{topic}/` directory containing review summary and QA files
-4. **Cycle number** — which review remediation cycle this is
+3. **Actions path** — the prep stage's action list; the `replan` actions are your findings, already deduplicated, amended and carrying any guard condition
+4. **Review path** — path to `review/{topic}/` directory containing the report and per-task files
+5. **Cycle number** — which review remediation cycle this is
 
 ## Your Process
 
-1. **Read review summary** — extract verdict, required changes, recommendations from `report.md`
-2. **Read all report files** — read every `report-*.md` in the review path. Extract BLOCKING ISSUES and significant NON-BLOCKING NOTES with their file:line references
-3. **Deduplicate** — same issue found across multiple QA files → one finding, note all sources
-4. **Group related findings** — multiple findings about the same concern become one task (e.g., 3 QA findings about missing error handling in the same module = 1 "add error handling" task)
-5. **Filter** — discard low-severity non-blocking findings unless they cluster into a pattern. Never discard high-severity or blocking findings. NON-BLOCKING NOTES may carry category tags (`[do-now]`, `[quickfix]`, `[idea]`, `[bug]`). These tags classify the *type* of improvement, not severity. A `[bug]` tagged non-blocking note is a latent, non-blocking issue — do not escalate it to blocking severity based on the tag alone. Apply the same severity/clustering filter regardless of category tags.
-6. **Normalize** — convert each group into a task using the canonical task template (Problem / Solution / Outcome / Do / Acceptance Criteria / Tests)
+1. **Read the actions** — the `replan` actions in the actions path are the work: each already deduplicated, its wording corrected, any guard condition attached. Read the report's blocking issues too — they join the set where no replan action already covers them
+2. **Consult the per-task reports** only where an action's sources need more context than it carries
+3. **Never re-judge** — routing is decided. Nothing routed `do-now`, `out-of-scope` or discarded becomes a task; a `replan` action is never dropped for looking small
+4. **Normalize** — convert each action into a task using the canonical task template (Problem / Solution / Outcome / Do / Acceptance Criteria / Tests), carrying its guard condition into the task's Do steps
 7. **Write report** — output to `.workflows/{work_unit}/implementation/{topic}/review-report-c{cycle}.md`
 8. **Write staging file** — if actionable tasks exist, write the task content to `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle}.md` — pure markdown, no frontmatter and no status lines; the orchestrator tracks approvals in its own store
 
