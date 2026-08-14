@@ -707,7 +707,6 @@ const RATCHET_PINS = {
   'skills/workflow-research-process/references/epic-session.md': 2,
   'skills/workflow-research-process/references/feature-session.md': 1,
   'skills/workflow-research-process/references/topic-splitting.md': 2,
-  'skills/workflow-review-process/references/present-review.md': 4,
   'skills/workflow-scoping-process/SKILL.md': 2,
   'skills/workflow-scoping-process/references/complexity-check.md': 2,
   'skills/workflow-discovery/references/first-phase-routing.md': 1,

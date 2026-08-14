@@ -778,6 +778,88 @@ function findingsSummary(cwd, { dotpath, file }) {
   return section('DISPLAY: findings summary', CONTINUE_MARKDOWN_INSTRUCTION, body);
 }
 
+// review-presentation — the review's verdict and its lane summary. What the
+// lanes contain is judgment (the report's own items), so it rides as a
+// payload; which lanes list their items and which report a count is a fixed
+// rule this surface owns. A lane is listed only where the user decides
+// something: needs-design, bugs and ideas are calls they make, while fix-now
+// is applied by its own step whatever they say — listing it would put a list
+// nobody reads in front of the one thing that needs reading.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function reviewPresentation(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render review-presentation: --file <payload.json> is required');
+  const { phase } = resolveAddress(cwd, dotpath, 'review-presentation');
+  if (phase !== 'review') {
+    throw new Error(`render review-presentation: address must be <work_unit>.review.<topic>, got phase "${phase}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'review-presentation');
+  const VERDICTS = { approve: 'Approve', 'request-changes': 'Request Changes', 'comments-only': 'Comments Only' };
+  if (!VERDICTS[p.verdict]) {
+    throw new Error(`render review-presentation: "verdict" must be one of ${Object.keys(VERDICTS).join('/')}`);
+  }
+  if (!isFilled(p.topic)) throw new Error('render review-presentation: "topic" must be a non-empty string');
+
+  const listed = (name) => {
+    const rows = p[name];
+    if (rows === undefined) return [];
+    if (!Array.isArray(rows)) throw new Error(`render review-presentation: "${name}" must be an array of {description, ref?}`);
+    rows.forEach((r, i) => {
+      if (!isFilled(r.description)) throw new Error(`render review-presentation: ${name}[${i}] needs a "description"`);
+    });
+    return rows;
+  };
+  const needsDesign = listed('needs_design');
+  const bugs = listed('bugs');
+  const ideas = listed('ideas');
+  const required = listed('required_changes');
+
+  const out = [`Review: ${p.topic}`, '', `Verdict: ${VERDICTS[p.verdict]}`, ''];
+
+  if (p.verdict === 'approve') out.push('All acceptance criteria met. No blocking issues found.', '');
+  if (required.length) {
+    out.push('Required changes:', '');
+    required.forEach((r, i) => {
+      out.push(`  ${i + 1}. ${r.description}`);
+      if (isFilled(r.ref)) out.push(`     ${r.ref}`);
+    });
+    out.push('');
+  }
+
+  // One running number across the listed lanes, so an item the user names is
+  // unambiguous whichever lane it came from.
+  let n = 0;
+  const lane = (label, rows) => {
+    if (!rows.length) return;
+    out.push(`${label}:`, '');
+    rows.forEach((r) => {
+      n += 1;
+      out.push(`  ${n}. ${r.description}${isFilled(r.ref) ? ` (${r.ref})` : ''}`);
+    });
+    out.push('');
+  };
+
+  const counted = [];
+  if (Number(p.fix_now) > 0) counted.push(`  ${p.fix_now} applied in the next step — accuracy corrections, renames, small determinate fixes.`);
+  if (isFilled(p.consolidation)) counted.push(`  One consolidation pass recorded: ${p.consolidation}`);
+
+  if (counted.length || needsDesign.length || bugs.length || ideas.length) {
+    out.push('Recommendations (non-blocking):', '');
+    counted.forEach((l) => out.push(l));
+    if (counted.length) out.push('');
+    lane('Needs design (a call before it can be built)', needsDesign);
+    lane('Bugs (to the inbox)', bugs);
+    lane('Ideas (to the inbox)', ideas);
+  }
+  if (Number(p.dropped) > 0) out.push(`  ${p.dropped} dropped — reasons in the report.`, '');
+
+  return section('DISPLAY: review presentation', CONTINUE_INSTRUCTION, out.join('\n'));
+}
+
 // review-qa-gate — the review presentation's Q&A gate. Membership is fixed:
 // the fix-now lane is applied by its own step rather than offered here, and
 // the inbox receives the bug and idea lanes directly, so neither is a choice
@@ -2048,6 +2130,7 @@ const SURFACES = {
   'findings-summary': findingsSummary,
   'finding-batch': findingBatch,
   'finding': finding,
+  'review-presentation': reviewPresentation,
   'review-qa-gate': reviewQaGate,
   'triage-announce': triageAnnounce,
   'triage-offer': triageOffer,

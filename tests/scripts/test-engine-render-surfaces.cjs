@@ -1839,7 +1839,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-qa-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-qa-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -2064,6 +2064,86 @@ describe('baseline surfaces', () => {
     writeBaseline({ status: 'completed', areas: { overview: 'completed' } });
     assert.match(renderSurface(dir, 'baseline-manage-gate', {}), /\*\*`◆ What would you like to do\?`\*\*[\s\S]*\*\*`e\/expand`\*\* → Add a new area, or deepen an existing one/);
     assert.match(renderSurface(dir, 'baseline-doc-pick', {}), /Which doc\? \(enter the area name, or \*\*`b\/back`\*\*\)/);
+  });
+});
+
+describe('render review-presentation', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  const render = (payload) => {
+    fs.writeFileSync(path.join(dir, 'p.json'), JSON.stringify(payload));
+    return renderSurface(dir, 'review-presentation', { dotpath: 'pay.review.checkout', file: 'p.json' });
+  };
+
+  it('counts the lanes the user does not decide and lists the ones they do', () => {
+    const out = render({
+      topic: 'checkout', verdict: 'approve', fix_now: 341, consolidation: 'collapse the scaffolding',
+      needs_design: [{ description: 'the badge key collides', ref: 'union.go:190' }],
+      bugs: [{ description: 'the swatch leaves the background changed', ref: 'main.go:63' }],
+      dropped: 45,
+    });
+    assert.match(out, /341 applied in the next step/);
+    assert.match(out, /One consolidation pass recorded: collapse the scaffolding/);
+    assert.match(out, /1\. the badge key collides \(union\.go:190\)/);
+    assert.match(out, /2\. the swatch leaves the background changed \(main\.go:63\)/);
+    assert.match(out, /45 dropped/);
+  });
+
+  it('never lists the fix-now items — a count is the whole point', () => {
+    const out = render({ topic: 'checkout', verdict: 'approve', fix_now: 300 });
+    assert.match(out, /300 applied in the next step/);
+    assert.ok(!/^\s+\d+\. /m.test(out), 'no numbered item rows when only fix-now carries work');
+  });
+
+  it('numbers one running sequence across the listed lanes', () => {
+    const out = render({
+      topic: 'checkout', verdict: 'comments-only',
+      needs_design: [{ description: 'a' }], bugs: [{ description: 'b' }], ideas: [{ description: 'c' }],
+    });
+    assert.match(out, /1\. a/);
+    assert.match(out, /2\. b/);
+    assert.match(out, /3\. c/);
+  });
+
+  it('carries required changes only where the verdict asks for them', () => {
+    const out = render({
+      topic: 'checkout', verdict: 'request-changes',
+      required_changes: [{ description: 'the loader never closes', ref: 'load.go:20' }],
+    });
+    assert.match(out, /Verdict: Request Changes/);
+    assert.match(out, /Required changes:/);
+    assert.match(out, /1\. the loader never closes/);
+    assert.ok(!out.includes('All acceptance criteria met'));
+  });
+
+  it('renders a clean review as verdict alone', () => {
+    const out = render({ topic: 'checkout', verdict: 'approve' });
+    assert.match(out, /All acceptance criteria met/);
+    assert.ok(!out.includes('Recommendations'), 'no recommendations heading when every lane is empty');
+    assert.ok(!out.includes('dropped'));
+  });
+
+  it('refuses an unknown verdict, a missing topic, and a missing payload', () => {
+    assert.throws(() => render({ topic: 'checkout', verdict: 'ship-it' }), /"verdict" must be one of/);
+    assert.throws(() => render({ verdict: 'approve' }), /"topic" must be a non-empty string/);
+    assert.throws(
+      () => renderSurface(dir, 'review-presentation', { dotpath: 'pay.review.checkout' }),
+      /--file <payload\.json> is required/,
+    );
+  });
+
+  it('refuses an address outside the review phase', () => {
+    writeManifest(dir, 'pay2', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
+    fs.writeFileSync(path.join(dir, 'p.json'), JSON.stringify({ topic: 'x', verdict: 'approve' }));
+    assert.throws(
+      () => renderSurface(dir, 'review-presentation', { dotpath: 'pay2.discussion.checkout', file: 'p.json' }),
+      /address must be <work_unit>\.review\.<topic>/,
+    );
   });
 });
 
