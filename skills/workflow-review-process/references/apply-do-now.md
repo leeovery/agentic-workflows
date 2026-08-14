@@ -28,7 +28,9 @@ State in one or two markdown sentences: how many corrections are about to be app
 
 Ensure the working tree is clean before the first batch — `git status`. A dirty tree makes the verification unattributable.
 
-Group the actions into batches by **connected file sets**: any two actions sharing a file belong to the same batch, transitively. An action already spans every file it must touch — synthesis collapsed coupled findings into one action precisely so a bound pair cannot be split — so a batch never holds half of anything.
+Group the actions by **connected file sets**: any two actions sharing a file belong to the same set, transitively. An action already spans every file it must touch — synthesis collapsed coupled findings into one action precisely so a bound pair cannot be split — so a set never holds half of anything.
+
+A batch is one or more whole sets. Bundle small sets together — many single-file corrections do not each earn a dispatch, and safety never came from batch size: it comes from the rules that do not bend, a set never split across batches and batches run one at a time. Cap each batch at what an applier can genuinely hold — its actions and every file they touch.
 
 Dispatch appliers **one batch at a time, in sequence**. Never in parallel: concurrent appliers see each other's half-finished edits, and a build check taken mid-flight proves nothing about the tree.
 
