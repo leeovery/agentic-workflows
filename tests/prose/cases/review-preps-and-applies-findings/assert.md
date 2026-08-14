@@ -20,7 +20,9 @@ The prose should have taken this path:
 6. synthesis is dispatched once over those assessments and writes the
    action list — stubbed: two do-now actions, one amended where its
    proposed wording overreached, one carrying a rescued defect, and a
-   derived pass verdict since nothing needs planning
+   derived pass verdict since nothing needs planning; prep then commits
+   the per-task reports and the manifest as the verification-and-prep
+   checkpoint, so the apply starts from a clean tree
 7. the do-now apply announces the corrections in prose, dispatches an
    applier — stubbed: both applied, nothing skipped — then the verifier
    over the uncommitted diff — stubbed: nothing to repair, suite green —

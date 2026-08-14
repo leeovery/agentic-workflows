@@ -12,7 +12,7 @@ Every agent here is read-only. They judge; nothing is edited.
 
 Read the `report-*.md` files in `.workflows/{work_unit}/review/{topic}/` and collect the FINDINGS entries. Blocking issues are already handled by the verdict and are not prepped.
 
-**When `unreviewed_tasks` is set** (a resumed review after remediation), collect only from those tasks' reports. Earlier cycles' reports are still on disk, but their findings were already resolved — applied, planned, offered, or discarded — and re-collecting them would redo decided work.
+**When `unreviewed_tasks` is set and the review file already exists** (a later cycle over remediation work), collect only from those tasks' reports — the earlier cycle's findings were already resolved, and re-collecting them would redo decided work. With no review file on disk the cycle never completed: collect from every report, whatever `unreviewed_tasks` holds.
 
 Each finding arrives carrying its scope (`[in-scope]` or `[out-of-scope]`), its blast radius (`[contained]` or `[spreading]`), and the failure it names. Those are the verifier's calls, made with the code open — carry them through untouched.
 
@@ -84,6 +84,12 @@ Read `actions.json`. It is the input to the review document and to every step th
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} out_of_scope '{action json}'
+```
+
+Commit the durable dirt of verification and prep — the per-task reports and the manifest — so the apply that follows starts from a clean tree and a crash from here forward loses nothing expensive:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): verification and prep"
 ```
 
 The findings are never rewritten or deleted — the per-task reports stand as the record of what was raised. What prep produces is the layer above them: what survived, what merged, what was corrected, and what was discarded with its reason.
