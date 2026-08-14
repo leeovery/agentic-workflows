@@ -25,7 +25,7 @@ Each action is already resolved: collisions collapsed into one item, corrections
 Group by route, omitting any with no actions:
 
 - `replan` → `### Needs planning` — **these are why the review failed**. Each carries what is wrong, the failure it causes, and how far the fix reaches.
-- `do-now` → `### Corrected in this session` — the work is already applied, verified and committed by the time this report is written, so the section records what changed: the applied count, anything skipped or reverted with its reason (a reverted action is still owed), and the suite's final state.
+- `do-now` → `### Corrected in this session` — the work is already applied, verified and committed by the time this report is written, so the section records what changed **as the record shows it** — the apply commit and its diff, never merely what a status claimed: the applied count, anything skipped or reverted with its reason (a reverted action is still owed), and the suite's final state.
 - `out-of-scope` → `### Out of scope` — held in the manifest for the user's call at a pass, never actioned here. Each names its kind: a feature, a bug worth investigating, or a standalone quick-fix.
 
 Each item carries its summary, the failure it names, the files it touches, and its source ids so it traces back to the verifiers that raised it. An action spanning several files is one item — never split it per file.

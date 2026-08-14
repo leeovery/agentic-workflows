@@ -31,7 +31,8 @@
     "c \u2014 complete the review"
   ],
   "stubs": {
-    "review-task-flags-notes": "each time a task verifier is dispatched via the Task tool \u2014 write the content below to that task's report file and return the STATUS block; one firing per task",
+    "review-task-1-1-flags-assertion": "when the task verifier for task pay-1-1 is dispatched via the Task tool \u2014 write the content below to that task's report file and return the STATUS block",
+    "review-task-1-2-flags-claim": "when the task verifier for task pay-1-2 is dispatched via the Task tool \u2014 write the content below to that task's report file and return the STATUS block",
     "finding-assessed": "when a workflow-review-finding-assessor agent is dispatched",
     "finding-guards-checked": "when a workflow-review-finding-guards agent is dispatched",
     "finding-relationships-found": "when the workflow-review-finding-relationships agent is dispatched",
