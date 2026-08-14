@@ -24,6 +24,10 @@ const {
 const { combinedInbox, workingSetDetail } = require('../../skills/workflow-engine/scripts/domain/inbox-set.cjs');
 const { manageDetail } = require('../../skills/workflow-engine/scripts/domain/workunit-manage.cjs');
 
+// Menu label continuations indent with non-breaking spaces (the worklist
+// rule) — goldens spell them explicitly.
+const NB = (n) => '\u00a0'.repeat(n);
+
 // Golden tests: byte-exact expected strings for the workflow-start overview
 // and menu projections. Fixtures go through real manifests and inbox files in
 // temp dirs (the same shapes the discovery tests produce).
@@ -172,11 +176,16 @@ describe('start projections: menu', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**               → Continue "Auth Flow" — *feature, ready for specification*',
-      '**`2`**               → Continue "Dark Mode" — *feature, discussion (in-progress)*',
-      '**`3`**               → Continue "Login Crash" — *bugfix, ready for investigation*',
-      '**`4`**               → Continue "Rename Api" — *quick-fix, scoping (in-progress)*',
-      '**`5`**               → Continue "Caching" — *cross-cutting, discussion (in-progress)*',
+      '**`1`**               → Continue "Auth Flow" — *feature, ready for*',
+      `${NB(18)}*specification*`,
+      '**`2`**               → Continue "Dark Mode" — *feature, discussion*',
+      `${NB(18)}*(in-progress)*`,
+      '**`3`**               → Continue "Login Crash" — *bugfix, ready for*',
+      `${NB(18)}*investigation*`,
+      '**`4`**               → Continue "Rename Api" — *quick-fix, scoping*',
+      `${NB(18)}*(in-progress)*`,
+      '**`5`**               → Continue "Caching" — *cross-cutting, discussion*',
+      `${NB(18)}*(in-progress)*`,
       '**`6`**               → Continue "Quiz Competition V1" — *epic*',
       '**`s/start`**         → Start something new (not sure what kind yet)',
       '**`f/feature`**       → Start new feature',
@@ -197,7 +206,8 @@ describe('start projections: menu', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**               → Continue "Auth Flow" — *feature, ready for discussion*',
+      '**`1`**               → Continue "Auth Flow" — *feature, ready for*',
+      `${NB(18)}*discussion*`,
       '**`s/start`**         → Start something new (not sure what kind yet)',
       '**`f/feature`**       → Start new feature',
       '**`e/epic`**          → Start new epic',
@@ -217,7 +227,7 @@ describe('start projections: menu', () => {
       },
     });
     const menu = startMenu(startDetail(dir));
-    assert.ok(/\*\*`1`\*\* +→ Finalise "Caching" — \*cross-cutting, pipeline complete\*/.test(menu.rendered));
+    assert.ok(/\*\*`1`\*\* +→ Finalise "Caching" — \*cross-cutting, pipeline\*\n\u00a0+\*complete\*/.test(menu.rendered));
     const entry = menu.keys.find((k) => k.key === '1');
     assert.strictEqual(entry.action, 'continue_work_unit');
     assert.strictEqual(entry.route, '/workflow-continue-cross-cutting caching');
@@ -279,12 +289,18 @@ describe('start projections: empty state', () => {
       DOTS,
       '**`◆ What would you like to start?`**',
       '',
-      "**`s/start`**         → Not sure what kind yet — describe it and we'll shape it",
-      '**`f/feature`**       → Single topic: (research →) discussion → spec → plan → implement → review',
-      '**`e/epic`**          → Multiple topics, multi-session, same pipeline per topic',
-      '**`b/bugfix`**        → Investigation → spec → plan → implement → review',
-      '**`q/quick-fix`**     → Scoping → implement → review (no formal planning)',
-      '**`c/cross-cutting`** → (Research →) discussion → spec (patterns or policies that inform other work)',
+      "**`s/start`**         → Not sure what kind yet — describe it and we'll",
+      `${NB(18)}shape it`,
+      '**`f/feature`**       → Single topic: (research →) discussion → spec →',
+      `${NB(18)}plan → implement → review`,
+      '**`e/epic`**          → Multiple topics, multi-session, same pipeline',
+      `${NB(18)}per topic`,
+      '**`b/bugfix`**        → Investigation → spec → plan → implement →',
+      `${NB(18)}review`,
+      '**`q/quick-fix`**     → Scoping → implement → review (no formal',
+      `${NB(18)}planning)`,
+      '**`c/cross-cutting`** → (Research →) discussion → spec (patterns or',
+      `${NB(18)}policies that inform other work)`,
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.pre_seed || null]),
@@ -363,7 +379,8 @@ describe('start projections: inbox pickup', () => {
       DOTS,
       '**`◆ What would you like to do?`**',
       '',
-      '**`1–3`**        → Select item(s) to work on (comma-separated for several)',
+      '**`1–3`**        → Select item(s) to work on (comma-separated for',
+      `${NB(13)}several)`,
       '**`a/archived`** → View archived items (restore or delete)',
       '**`b/back`**     → Return',
     ].join('\n'));

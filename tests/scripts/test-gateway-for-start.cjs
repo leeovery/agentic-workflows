@@ -583,7 +583,7 @@ describe('workflow-start sub-view sections', () => {
     const out = run(['view']);
     assert.ok(out.includes('baseline: in-progress'), out);
     assert.ok(out.includes('a  open_baseline  —  → /workflow-baseline'), out);
-    assert.ok(out.includes('Resume the baseline interview — *1 area remaining*'), out);
+    assert.ok(out.includes(`Resume the baseline interview — *1 area*\n${'\u00a0'.repeat(18)}*remaining*`), out);
   });
 
   it('the add and drop gates render on demand over the caller-held set — never on the snapshot', () => {

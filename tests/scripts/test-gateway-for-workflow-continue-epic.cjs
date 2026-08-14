@@ -1801,7 +1801,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(res.stdout.includes('sessions_in_progress: discussion/auth (last active 2m ago)'), res.stdout);
     assert.ok(res.stdout.includes('(in session: last active 2m ago)'), res.stdout);
-    assert.ok(/\*\*`1`\*\* +→ ~~Continue "Auth" — \*discussion \[in-progress\]\*~~ · in session \(last active 2m ago\)/.test(res.stdout), res.stdout);
+    assert.ok(/\*\*`1`\*\* +→ ~~Continue "Auth" — \*discussion \[in-progress\]\*~~ · in\n\u00a0+session \(last active 2m ago\)/.test(res.stdout), res.stdout);
     assert.ok(!res.stdout.includes('MENU: in-session gate'), 'the snapshot carries no gate sections');
     const gate = run(['in-session-gate', 'v1', '1']);
     assert.strictEqual(gate.status, 0, gate.stderr);
