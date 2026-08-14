@@ -53,7 +53,7 @@ No → `discard`, with the reason. Something merely tidier is not wrong. This is
 Two rules that decide the hard cases:
 
 - **A defect can wear a mundane description.** An assertion that would still pass if the behaviour it names broke, a value able to claim something it should not, an aliasing write into a caller's slice — these are defects whatever the finding calls them. Read for what it says. Mark them `rescued: true`.
-- **Blast radius decides ceremony, never size or importance.** A one-line guard in one function is `do-now` even if it matters enormously. A rename across callers is `replan` even if it is trivial. Ask how far the fix reaches and whether the suite would catch it going wrong.
+- **Blast radius is observability and prescription, never file count or importance.** A one-line guard in one function is `do-now` even if it matters enormously; a mechanical rename the compiler chases is `do-now` even across a dozen files. What spreads a finding is uncertainty the checks cannot close: a shape with more than one defensible form, or wrongness the suite would never see. A fix the suite cannot observe routes `do-now` only when its instruction carries the covering case to land with it.
 
 ### D. Derive the verdict
 

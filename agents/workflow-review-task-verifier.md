@@ -125,8 +125,8 @@ Then record two things about each finding.
 
 **Its blast radius**, for in-scope findings only — how far the fix reaches:
 
-- **`[contained]`** — one edit at one site, provably safe: a corrected comment or message, a one-line guard, an early return, a test assertion repointed. The suite settles whether it worked.
-- **`[spreading]`** — the fix reaches beyond its site: a rename with callers, a signature change, a shared helper with several clients, anything where the correct shape is not obvious. Work that has to be planned, built and reviewed rather than edited.
+- **`[contained]`** — fully prescribed and observable: the exact change is known, and the compiler, the suite or a guard would catch it going wrong. Usually one edit at one site — but several files still qualify when the edit is mechanical and the toolchain chases it (a rename the compiler enforces). Reach alone does not spread a finding.
+- **`[spreading]`** — the correct shape is not obvious, or going wrong would be invisible to the checks: a behaviour change no test observes, a contract held only by convention, a fix with more than one defensible form. Work that has to be planned, built and reviewed rather than edited. A fix the suite cannot observe is contained only when it lands together with the case that observes it.
 
 **A finding whose entire remedy is comment or documentation text is never a blocking issue**, and is always `[contained]`. Classify by the remedy, not the subject: a false comment whose fix is a code change is an ordinary finding, but restoring prose an acceptance criterion asked for never fails a review.
 
