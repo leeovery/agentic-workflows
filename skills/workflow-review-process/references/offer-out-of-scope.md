@@ -4,7 +4,7 @@
 
 ---
 
-An out-of-scope finding is a genuine improvement this specification never asked for. It is **never filed automatically** — filing costs a whole pass through the pipeline, and whether that is worth spending is the user's call, not the review's. Offering it and being told no is a complete outcome.
+An out-of-scope finding is a genuine improvement in territory this feature's work never touched — neighbouring features, other specs' documents, code the change-set only reads. It is **never filed automatically** — filing costs a whole pass through the pipeline, and whether that is worth spending is the user's call, not the review's. Offering it and being told no is a complete outcome.
 
 The findings accumulate in the manifest across review cycles — a cycle that fails contributes its discoveries and moves on, and the whole set is decided once, here, when the review passes.
 

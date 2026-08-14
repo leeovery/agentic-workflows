@@ -63,6 +63,8 @@ Search the codebase:
 - Does it align with the spec's expected behavior?
 - Any drift from what was planned?
 
+**The code is the source of truth.** Implementations legitimately move past the plan's text, and the spec is not always updated to follow — nor should it be. A divergence from the spec or the task's wording is a question, never automatically a finding: judge whether the change is sound, consistent with the record, and better than or equal to what was written. Report a divergence only when it is a loss — behaviour the intent still needs, gone, or a change with no defensible reason — never because the words no longer match.
+
 **For quick-fix work**: Instead of acceptance criteria, verify completeness against the task's Verification section:
 - Are all target files updated?
 - Do any occurrences of the old pattern remain in scope?
@@ -110,16 +112,16 @@ Two tests, in order. A note that fails either is not reported at all.
 
 **1. Name the failure.** State the concrete consequence of leaving it: the input or state, and what goes wrong — a defect, a divergence from the spec or plan, a claim the code falsifies, a test that would still pass if the behaviour it names broke, a contract nothing enforces. If you cannot name what breaks, there is nothing wrong, and there is no finding.
 
-**2. Clear the bar.** Report only what a senior engineer would act on: something broken or incorrect, or a violation of the spec, the plan, or the project's own standards. A preference not required by any of those — a fold, an extraction, a rename, a reordering, a helper you would have shared — is a nitpick and is never reported, however easy it would be to do.
+**2. Clear the bar.** Report only what a senior engineer would act on: something broken or incorrect, or a violation of the spec, the plan, or the project's own standards — judged against intent, with the code as the source of truth. A deliberate, sound divergence from the written word is not a violation; an unconsidered loss is. A preference not required by any of those — a fold, an extraction, a rename, a reordering, a helper you would have shared — is a nitpick and is never reported, however easy it would be to do.
 
 Filter hard. A short report of real problems is worth more than a long one nobody can act on, and every note that survives costs someone attention downstream.
 
 Then record two things about each finding.
 
-**Its scope.** Is fixing it part of delivering this specification, or outside it?
+**Its scope.** The boundary is the **delivered change-set** — everything this feature's implementation built or modified, read from its commit history — never the spec's table of contents. Code moves at implementation, legitimately and without the spec following, so what was touched decides scope, not what was written down.
 
-- **`[in-scope]`** — the work is not finished until this is right: a defect in what was built, something the spec or plan required and did not get, a claim in the code that is false.
-- **`[out-of-scope]`** — a genuine improvement you noticed that this specification never asked for. Rare: you are assessing one task against its criteria, so you should seldom be looking outside them. An out-of-scope finding is never fixed here — it is the user's to take or leave.
+- **`[in-scope]`** — inside the delivered change-set: a defect in anything the work built or modified (whether or not the spec mentions that behaviour), something the plan required in substance and did not get, a claim in the code that is false.
+- **`[out-of-scope]`** — territory the work never touched: an improvement to a neighbouring feature, another spec's document, code this feature only reads. Rare, since you are assessing one task against its criteria. An out-of-scope finding is never fixed here — it is the user's to take or leave.
 
 **Its blast radius**, for in-scope findings only — how far the fix reaches:
 

@@ -42,13 +42,13 @@ Everything follows from one question, asked in order. The verifier already recor
 **1. Is anything actually wrong?**
 No → `discard`, with the reason. Something merely tidier is not wrong. This is the common outcome, and a large discard list is a healthy review, not a failed one.
 
-**2. Is it in scope — part of delivering this specification?**
+**2. Is it inside the delivered change-set?** Scope is what the implementation touched — its commit history — never what the spec's text happens to mention. A defect in code this feature built or modified is in scope however absent from the spec; territory the work never touched is out of scope however improvable. When in doubt, check provenance: did this feature's commits create or change the file?
 
 **In scope**, and `[contained]` → `do-now`. One edit at one site, the suite settles it. Low value is no reason to route it elsewhere: a stale comment is wrong, so fix it. Finishing the feature is not backlog work.
 
 **In scope**, and `[spreading]` → `replan`. A rename with callers, a signature change, anything whose correct shape is not obvious. It needs a task, a plan and a review, and **the review fails because of it** — the work is not delivered while this is outstanding.
 
-**Out of scope** → `out-of-scope`. A genuine improvement this specification never asked for. It is never fixed here and never filed automatically: the user takes it or leaves it. Record what kind it is — a feature, a bug worth investigating, or a standalone quick-fix — so the offer is concrete.
+**Out of scope** → `out-of-scope`. A genuine improvement in territory this feature's work never touched. It is never fixed here and never filed automatically: the user takes it or leaves it. Record what kind it is — a feature, a bug worth investigating, or a standalone quick-fix — so the offer is concrete.
 
 Two rules that decide the hard cases:
 
