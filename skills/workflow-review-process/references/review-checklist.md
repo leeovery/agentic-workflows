@@ -116,6 +116,13 @@ Flag test balance issues:
 - **Under-tested**: "Task 2.1 has no test for the error case mentioned in spec section 3.2"
 - **Over-tested**: "Task 2.1 has 5 tests that all verify the same happy path with slight variations"
 
+Verify what you cite:
+
+- Re-read the line before quoting its number; never name a symbol you have not located
+- Count before claiming a count — "the only site", "the single caller", "eleven call sites" are claims, not colour
+- Check that the edit you prescribe is safe applied exactly as written
+- Repo-relative paths only
+
 Distinguish blocking vs non-blocking:
 
 - **Blocking**: Incomplete tasks, missing tests, broken functionality

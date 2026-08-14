@@ -115,6 +115,16 @@ Tag each surviving note by the next step required to act on it:
 
 Decide by the next step — apply-now-zero-risk → `[do-now]`; concrete mechanical edit that touches logic → `[quickfix]`; decide-how-or-whether → `[idea]`; fix-incorrect-behaviour → `[bug]`. When torn between `[do-now]` and `[quickfix]`, choose `[quickfix]` — only tag `[do-now]` when there is genuinely zero chance of breaking logic. When torn between `[quickfix]` and `[idea]`, choose `[quickfix]` if there is a concrete edit at a known location, `[idea]` otherwise.
 
+## Citation Discipline
+
+Every finding carries a `file:line` anchor, and every claim inside it must hold when you write it. A finding whose substance is right but whose details are wrong sends its reader to the wrong line, or has them apply an edit that breaks the build.
+
+- **Re-read before citing.** Confirm the line number against the file's current content. Never carry one from an earlier read or infer it from a search result.
+- **Never name a symbol you have not located.** If your change calls a helper, confirm it exists and give its real path. If it does not exist, say so rather than naming what you expected to find.
+- **Assert no count or exclusivity you have not enumerated.** "The only site", "the single caller", "eleven call sites", "no production reader" — count them and state the true number, or drop the claim.
+- **Prove the edit you prescribe.** Your proposed change must be safe applied exactly as written: before saying an import or helper becomes unused, check every other line that could still use it.
+- **Repo-relative paths only.** An absolute path is wrong in every other checkout.
+
 ## Output File Format
 
 Write to `.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md` — in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context. Use this format:
@@ -167,7 +177,7 @@ SUMMARY: {1 sentence}
 
 1. **One task only** — you verify exactly one plan task per invocation
 2. **Be thorough** — check implementation, tests, AND quality
-3. **Be specific** — include file paths and line numbers
+3. **Be specific** — include file paths and line numbers, verified per **Citation Discipline**
 4. **Balanced test review** — flag both under-testing AND over-testing
 5. **Report findings** — don't fix anything, just report what you find
 6. **No test execution** — Bash is solely for the output-file rename. Judge test adequacy by reading the test code; never try to run the suite or any other command
