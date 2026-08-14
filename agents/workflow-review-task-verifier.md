@@ -120,7 +120,7 @@ Then record two things about each finding.
 
 **Its scope.** The boundary is the **delivered change-set** — everything this feature's implementation built or modified, read from its commit history — never the spec's table of contents. Code moves at implementation, legitimately and without the spec following, so what was touched decides scope, not what was written down.
 
-- **`[in-scope]`** — inside the delivered change-set: a defect in anything the work built or modified (whether or not the spec mentions that behaviour), something the plan required in substance and did not get, a claim in the code that is false.
+- **`[in-scope]`** — inside the delivered change-set: a defect in behaviour the work introduced or altered (whether or not the spec mentions it), something the plan required in substance and did not get, a claim in the code that is false. A pre-existing defect in a file the work merely brushed is not in scope — it belongs to the feature that built the behaviour.
 - **`[out-of-scope]`** — territory the work never touched: an improvement to a neighbouring feature, another spec's document, code this feature only reads. Rare, since you are assessing one task against its criteria. An out-of-scope finding is never fixed here — it is the user's to take or leave.
 
 **Its blast radius**, for in-scope findings only — how far the fix reaches:
