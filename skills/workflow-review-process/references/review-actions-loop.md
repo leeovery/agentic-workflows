@@ -4,12 +4,12 @@
 
 ---
 
-After a review is complete, this loop synthesizes findings into actionable tasks.
+After the review is presented, this loop closes the phase: a pass completes it, and a fail turns the replan findings into tasks and reopens implementation.
 
 Stages A through G run sequentially. Always start at **A. Verdict Gate**.
 
 ```
-A. Verdict gate (check verdicts, offer synthesis)
+A. Verdict gate (pass completes; fail proceeds to synthesis)
 B. Dispatch review synthesizer → invoke-review-synthesizer.md
 C. Approval overview
 D. Process task (per-task approval loop)
@@ -22,7 +22,7 @@ G. Re-open implementation + plan mode handoff
 
 ## A. Verdict Gate
 
-Check the verdict(s) from the review(s) being analyzed — arms in order, the resume guard first (on a resume a verdict arm also matches; the guard wins).
+Read the verdict — arms in order, the resume guard first (on a resume a verdict arm also matches; the guard wins).
 
 #### If a prior session's staging cycle is still mid-flight
 
@@ -30,15 +30,9 @@ Read `manifest get {work_unit}.review.{topic} staging` — `{N}` is the latest c
 
 → Proceed to **B. Dispatch Review Synthesizer**.
 
-#### If all verdicts are `Approve` with no required changes
+#### If the verdict is `Pass`
 
-> *Output the next fenced block as a code block:*
-
-```
-No actionable findings. All reviews passed with no required changes.
-```
-
-Mark the review completed — the engine sets the status:
+The user chose `c/complete` at the review gate. Mark the review completed — the engine sets the status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
@@ -54,95 +48,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If any verdict is `Request Changes`
+#### If the verdict is `Fail`
 
-Blocking issues exist. Synthesis is strongly recommended.
-
-> *Output the next fenced block as a code block:*
-
-```
-The review found blocking issues that require changes.
-Synthesizing findings into actionable tasks is recommended.
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Proceed with synthesis?`**
-
-**`y/yes`** → Synthesize findings into tasks *(recommended)*
-**`n/no`**  → Skip synthesis
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
+The user chose `p/plan` at the review gate — the choice is made; never re-ask. The `replan` actions in `.workflows/.cache/{work_unit}/review/{topic}/actions.json` become tasks, and implementation reopens to build them.
 
 → Proceed to **B. Dispatch Review Synthesizer**.
-
-**If `no`:**
-
-Mark the review completed:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
-```
-
-Commit the completion:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
-```
-
-**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
-
-**STOP.** Do not proceed — terminal condition.
-
-#### If verdict is `Comments Only`
-
-Non-blocking improvements only. Synthesis is optional.
-
-> *Output the next fenced block as a code block:*
-
-```
-The review found non-blocking suggestions only.
-You can synthesize these into tasks or skip.
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Synthesize non-blocking findings?`**
-
-**`y/yes`** → Synthesize findings into tasks
-**`n/no`**  → Skip synthesis
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
-
-→ Proceed to **B. Dispatch Review Synthesizer**.
-
-**If `no`:**
-
-Mark the review completed:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
-```
-
-Commit the completion:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
-```
-
-**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
-
-**STOP.** Do not proceed — terminal condition.
 
 ---
 

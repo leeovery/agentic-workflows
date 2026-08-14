@@ -10,7 +10,7 @@
 # Implementation Review: {Topic / Product}
 
 **Plan**: {work_unit}
-**QA Verdict**: Approve | Request Changes | Comments Only
+**Verdict**: Pass | Fail
 
 ## Summary
 [One paragraph overall assessment]
@@ -31,29 +31,24 @@
 ### Test Quality
 [Issues or "Tests adequately verify requirements"]
 
-### Required Changes (if any)
-1. [Specific actionable change]
+### Blocking Issues (if any)
+1. [The acceptance criterion unmet in substance, or the behaviour that is broken — never a finding whose entire remedy is comment or documentation text]
 
-## Recommendations
+## Findings
 
-### Do now
-[Zero-risk, no-logic items to apply immediately — omit section if none]
+### Needs planning
+[Why the review failed — what is wrong, the failure it causes, how far the fix reaches. Omit section if none]
 
-### Quick-fixes
-[Mechanical, logic-touching items for the pipeline — omit section if none]
+### Corrected in this session
+[Applied count, anything skipped or reverted with its reason (a reverted action is still owed), and the suite's final state. Omit section if none]
 
-### Ideas
-[Items requiring discussion or design — omit section if none]
+### Out of scope
+[Held for the user's call at a pass — each with its kind: feature, bug, or quick-fix. Omit section if none]
 
-### Bugs
-[Non-blocking broken behavior — omit section if none]
+### Discarded
+[Count, then each discarded item with its reason. Omit section if none]
 ```
 
 ## Verdict Guidelines
 
-**Approve**: All acceptance criteria met, decisions followed, no blocking issues
-
-**Request Changes**: Missing requirements, deviations from decisions, broken functionality, inadequate tests
-
-**Comments Only**: Minor suggestions, style preferences, non-blocking observations
-
+The verdict is derived, never chosen: any blocking issue or any finding routed to `replan` means **Fail** — the work is not delivered while something needs going back to plan. Otherwise **Pass**: corrected work is already applied, and out-of-scope findings were never part of this specification.

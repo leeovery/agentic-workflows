@@ -1,8 +1,9 @@
 # stub: review-task-flags-notes
 
 A task verifier's report for one task: implemented and tested, nothing
-blocking, but carrying non-blocking notes — the ordinary case, and the
-one the prep stage exists to work on. Write the content below to the
+blocking, but carrying findings — things actually wrong, each naming its
+failure, scope and blast radius. The ordinary case, and the one the prep
+stage exists to work on. Write the content below to the
 report file for the dispatched task's suffix
 (`report-{phase_id}-{task_id}.md` in the review directory), with the
 TASK line filled from that task — via the agent contract's own mechanism:
@@ -36,11 +37,11 @@ CODE QUALITY:
 - Complexity: Low
 - Modern idioms: Yes
 - Readability: Good
-- Issues: two comment claims the code no longer supports
+- Issues: one false comment, one assertion that cannot fail
 
 BLOCKING ISSUES:
 - none
 
-NON-BLOCKING NOTES:
-- [do-now] src/checkout/payment-intent.js:12 — the comment names a polling fallback the capture path no longer has; delete the claim
-- [quickfix] tests/checkout/payment-intent.test.js:30 — the assertion reads back the value the test itself set, so it holds whatever the intent builder does; assert against the gateway payload instead
+FINDINGS:
+- [in-scope] [contained] src/checkout/payment-intent.js:12 — the comment names a polling fallback the capture path no longer has; delete the claim — FAILS: a reader trusts the comment and looks for a fallback that does not exist
+- [in-scope] [contained] tests/checkout/payment-intent.test.js:30 — the assertion reads back the value the test itself set; assert against the gateway payload instead — FAILS: the test stays green whatever the intent builder sends

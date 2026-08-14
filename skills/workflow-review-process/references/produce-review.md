@@ -9,8 +9,8 @@ Aggregate QA findings into a review document using the **[template.md](template.
 Write the review to `.workflows/{work_unit}/review/{topic}/report.md`. The review is always per-plan.
 
 **Verdict** — derived by the synthesis stage, never chosen here. Read it from `actions.json`:
-- **Approve** — nothing outstanding needs planning. `do-now` work and `out-of-scope` offers do not block: the first is finished in this session, the second was never part of this specification
-- **Request Changes** — a blocking issue, or an action routed to `replan`. The work is not delivered while something needs going back to plan
+- **Pass** — nothing outstanding needs planning. `do-now` work and `out-of-scope` findings do not block: the first is already applied, the second was never part of this specification
+- **Fail** — a blocking issue, or an action routed to `replan`. The work is not delivered while something needs going back to plan
 
 → Proceed to **A. Writing the Findings**.
 
@@ -24,13 +24,13 @@ Each action is already resolved: collisions collapsed into one item, corrections
 
 Group by route, omitting any with no actions:
 
-- `replan` → `### Needs replanning` — **these are why the review failed**. Each carries what is wrong, the failure it causes, and how far the fix reaches.
-- `do-now` → `### Done in this session` — applied before the review is presented, so the section records what changed rather than what is proposed.
-- `out-of-scope` → `### Out of scope` — noted for the user to take or leave, never actioned here. Each names its kind: a feature, a bug worth investigating, or a standalone quick-fix.
+- `replan` → `### Needs planning` — **these are why the review failed**. Each carries what is wrong, the failure it causes, and how far the fix reaches.
+- `do-now` → `### Corrected in this session` — the work is already applied, verified and committed by the time this report is written, so the section records what changed: the applied count, anything skipped or reverted with its reason (a reverted action is still owed), and the suite's final state.
+- `out-of-scope` → `### Out of scope` — held in the manifest for the user's call at a pass, never actioned here. Each names its kind: a feature, a bug worth investigating, or a standalone quick-fix.
 
 Each item carries its summary, the failure it names, the files it touches, and its source ids so it traces back to the verifiers that raised it. An action spanning several files is one item — never split it per file.
 
-Close with the discard count and the discarded items with their reasons — the record of what was raised and did not survive, so a reader sees the judgment rather than inferring it from silence.
+Close with `### Discarded` — the count and each discarded item with its reason. The record of what was raised and did not survive, so a reader sees the judgment rather than inferring it from silence.
 
 #### If no findings were prepped
 

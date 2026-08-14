@@ -1,5 +1,5 @@
 {
-  "origin": "the review phase had entry coverage only \u2014 this walks verification to approval: per-task verifiers over a real implementation history, the prep stage finding nothing to work on, the report produced and presented through its surface, and the approve arm completing the phase",
+  "origin": "the review phase had entry coverage only \u2014 this walks verification to a pass: per-task verifiers over a real implementation history, the prep and apply stages finding nothing to work on, the report produced, the outcome presented through its surfaces, and the pass completing the phase",
   "entry": "workflow-review-entry",
   "world": "claims",
   "files": [
@@ -23,13 +23,12 @@
     "skills/workflow-review-process/references/template.md",
     "skills/workflow-review-process/references/present-review.md",
     "skills/workflow-shared/references/product-lens.md",
-    "skills/workflow-review-process/references/apply-fix-now.md",
-    "skills/workflow-review-process/references/route-lanes.md",
+    "skills/workflow-review-process/references/apply-do-now.md",
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-review-process/references/review-actions-loop.md"
   ],
   "answers": [
-    "c \u2014 continue to review actions"
+    "c \u2014 complete the review"
   ],
   "stubs": {
     "review-task-verified": "each time a task verifier is dispatched via the Task tool \u2014 write the content below to that task's report file and return the STATUS block; one firing per task"
@@ -44,7 +43,7 @@
       "impl(pay): T",
       "manifest get pay.implementation.pay project_skills",
       "render review-presentation pay.review.pay",
-      "render review-qa-gate pay.review.pay",
+      "render review-gate pay.review.pay",
       "push pay.review.pay reviewed_tasks",
       "review(pay): complete review",
       "topic complete pay review pay",
@@ -68,7 +67,7 @@
       "workunit create",
       "knowledge.cjs index",
       "task start",
-      "review(pay): apply fix-now actions"
+      "manifest push pay.review.pay out_of_scope"
     ]
   }
 }

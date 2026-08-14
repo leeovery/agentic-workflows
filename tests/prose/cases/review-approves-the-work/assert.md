@@ -16,29 +16,27 @@ The prose should have taken this path:
    nothing found
 5. both verified task ids are pushed onto the reviewed list, and the
    aggregation reads every per-task report
-6. findings prep collects nothing — neither report carries a
-   non-blocking note — so it returns without assessing, and no prep
-   agent is dispatched
-7. the review report is produced from the template with an Approve
-   verdict and no recommendations section, and committed
-8. the verdict renders through the review presentation surface as a
-   verdict alone, with no recommendations and nothing dropped, and the
-   summary follows product-first; at the questions gate the user
-   continues
-9. the fix-now lane finds no actions and returns; lane routing files
-   nothing, since neither inbox lane carries one; the compliance
-   self-check refreshes the session's instructions
-10. the actions loop finds every verdict Approve: the no-actionable
-   display renders, the review completes through the engine, the
-   completion commit lands, and the walk stops at the pipeline
-   continuation — the bridge is never invoked
+6. findings prep collects nothing — neither report carries a finding —
+   so it returns without assessing, and no prep agent is dispatched
+7. the do-now apply finds no actions and returns without announcing,
+   dispatching, or committing anything
+8. the review report is produced from the template with a Pass verdict
+   and no findings section, and committed
+9. the outcome renders through the review presentation surface as a
+   pass with nothing listed and nothing counted, and the summary
+   follows product-first; at the review gate the user completes
+10. the compliance self-check refreshes the session's instructions;
+   the actions loop reads the Pass verdict, the review completes
+   through the engine, the completion commit lands, and the walk stops
+   at the pipeline continuation — the bridge is never invoked
 
 Further claims:
 
-- no synthesis is offered or dispatched — the approve arm never routes
+- no synthesis is offered or dispatched — the pass arm never routes
   to it
 - no prep, apply or inbox work happens: with nothing found there is
-  nothing to assess, apply or file, and no apply commit lands
+  nothing to assess, apply or file, no apply commit lands, and nothing
+  is banked to the manifest's out-of-scope set
 - no code is fixed, no task is started, and nothing outside
   `.workflows/` changes
 - cache and report files under the review directory are expected
@@ -46,8 +44,8 @@ Further claims:
 
 EXPECTED WORLD — from an implemented feature with no review:
 
-- a review report at `.workflows/pay/review/pay/report.md` holding an
-  Approve verdict over both tasks, plus one per-task report file for
+- a review report at `.workflows/pay/review/pay/report.md` holding a
+  Pass verdict over both tasks, plus one per-task report file for
   each task suffix, each recording complete with no blocking issues
 - the manifest holding the review completed, with reviewed_tasks
   carrying both internal ids

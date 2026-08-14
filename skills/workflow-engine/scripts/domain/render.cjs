@@ -778,13 +778,13 @@ function findingsSummary(cwd, { dotpath, file }) {
   return section('DISPLAY: findings summary', CONTINUE_MARKDOWN_INSTRUCTION, body);
 }
 
-// review-presentation — the review's verdict and its lane summary. What the
-// lanes contain is judgment (the report's own items), so it rides as a
-// payload; which lanes list their items and which report a count is a fixed
-// rule this surface owns. A lane is listed only where the user decides
-// something: needs-design, bugs and ideas are calls they make, while fix-now
-// is applied by its own step whatever they say — listing it would put a list
-// nobody reads in front of the one thing that needs reading.
+// review-presentation — the review's outcome, after the do-now work has
+// been applied. What is listed is only what the user acts on: the findings
+// that failed the review and must be planned. Corrections are a count —
+// they are already made, gated by the suite and verified, so a list would
+// put pages nobody reads in front of the one decision that matters. The
+// judgment (which items, worded how) rides as the payload; the shape is
+// this surface's rule, so it cannot drift per verdict or per author.
 
 /**
  * @param {string} cwd
@@ -798,94 +798,103 @@ function reviewPresentation(cwd, { dotpath, file }) {
     throw new Error(`render review-presentation: address must be <work_unit>.review.<topic>, got phase "${phase}"`);
   }
   const p = readJsonPayload(cwd, file, 'review-presentation');
-  const VERDICTS = { approve: 'Approve', 'request-changes': 'Request Changes', 'comments-only': 'Comments Only' };
-  if (!VERDICTS[p.verdict]) {
-    throw new Error(`render review-presentation: "verdict" must be one of ${Object.keys(VERDICTS).join('/')}`);
-  }
   if (!isFilled(p.topic)) throw new Error('render review-presentation: "topic" must be a non-empty string');
-
-  const listed = (name) => {
-    const rows = p[name];
-    if (rows === undefined) return [];
-    if (!Array.isArray(rows)) throw new Error(`render review-presentation: "${name}" must be an array of {description, ref?}`);
-    rows.forEach((r, i) => {
-      if (!isFilled(r.description)) throw new Error(`render review-presentation: ${name}[${i}] needs a "description"`);
-    });
-    return rows;
-  };
-  const needsDesign = listed('needs_design');
-  const bugs = listed('bugs');
-  const ideas = listed('ideas');
-  const required = listed('required_changes');
-
-  const out = [`Review: ${p.topic}`, '', `Verdict: ${VERDICTS[p.verdict]}`, ''];
-
-  if (p.verdict === 'approve') out.push('All acceptance criteria met. No blocking issues found.', '');
-  if (required.length) {
-    out.push('Required changes:', '');
-    required.forEach((r, i) => {
-      out.push(`  ${i + 1}. ${r.description}`);
-      if (isFilled(r.ref)) out.push(`     ${r.ref}`);
-    });
-    out.push('');
+  if (p.verdict !== 'pass' && p.verdict !== 'fail') {
+    throw new Error('render review-presentation: "verdict" must be "pass" or "fail"');
+  }
+  const replan = p.replan === undefined ? [] : p.replan;
+  if (!Array.isArray(replan)) throw new Error('render review-presentation: "replan" must be an array');
+  replan.forEach((r, i) => {
+    if (!isFilled(r.summary) || !isFilled(r.fails)) {
+      throw new Error(`render review-presentation: replan[${i}] needs "summary" and "fails"`);
+    }
+  });
+  // The verdict and the list must agree — a fail with nothing to plan, or a
+  // pass carrying planned work, is a caller bug, never something to render.
+  if (p.verdict === 'fail' && replan.length === 0) {
+    throw new Error('render review-presentation: a fail must carry at least one "replan" finding');
+  }
+  if (p.verdict === 'pass' && replan.length > 0) {
+    throw new Error('render review-presentation: a pass cannot carry "replan" findings');
   }
 
-  // One running number across the listed lanes, so an item the user names is
-  // unambiguous whichever lane it came from.
-  let n = 0;
-  const lane = (label, rows) => {
-    if (!rows.length) return;
-    out.push(`${label}:`, '');
-    rows.forEach((r) => {
-      n += 1;
-      out.push(`  ${n}. ${r.description}${isFilled(r.ref) ? ` (${r.ref})` : ''}`);
-    });
+  const title = titlecase(p.topic);
+  const out = [];
+  if (p.verdict === 'fail') {
+    const n = replan.length;
+    out.push(`**Review — ${title}** — **failed** · ${n} finding${n === 1 ? '' : 's'} must be planned and built`);
     out.push('');
-  };
-
-  const counted = [];
-  if (Number(p.fix_now) > 0) counted.push(`  ${p.fix_now} applied in the next step — accuracy corrections, renames, small determinate fixes.`);
-  if (isFilled(p.consolidation)) counted.push(`  One consolidation pass recorded: ${p.consolidation}`);
-
-  if (counted.length || needsDesign.length || bugs.length || ideas.length) {
-    out.push('Recommendations (non-blocking):', '');
-    counted.forEach((l) => out.push(l));
-    if (counted.length) out.push('');
-    lane('Needs design (a call before it can be built)', needsDesign);
-    lane('Bugs (to the inbox)', bugs);
-    lane('Ideas (to the inbox)', ideas);
+    out.push(worklist({
+      heading: { label: 'Needs planning', noun: 'finding' },
+      items: replan.map((r) => ({
+        title: r.summary,
+        note: isFilled(r.ref) ? `${r.ref} — ${r.fails}` : r.fails,
+      })),
+    }));
+  } else {
+    out.push(`**Review — ${title}** — **passed** · nothing needs planning`);
   }
-  if (Number(p.dropped) > 0) out.push(`  ${p.dropped} dropped — reasons in the report.`, '');
 
-  return section('DISPLAY: review presentation', CONTINUE_INSTRUCTION, out.join('\n'));
+  const tail = [];
+  if (p.corrected !== undefined) {
+    const c = p.corrected;
+    if (!Number.isInteger(c.applied) || c.applied < 0 || (c.suite !== 'green' && c.suite !== 'red')) {
+      throw new Error('render review-presentation: "corrected" needs integer "applied" and "suite" green|red');
+    }
+    let line = `Corrected in this session: ${c.applied} applied · suite ${c.suite}`;
+    if (Number(c.reverted) > 0) line += ` · ${c.reverted} reverted, still owed`;
+    tail.push(line + '.');
+  }
+  if (Number(p.out_of_scope) > 0) {
+    const n = Number(p.out_of_scope);
+    tail.push(`Outside this spec: ${n} finding${n === 1 ? '' : 's'} held for your call.`);
+  }
+  if (Number(p.discarded) > 0) {
+    tail.push(`Discarded: ${p.discarded} — reasons in the report.`);
+  }
+  if (tail.length) out.push('', tail.join('\n'));
+
+  return section('DISPLAY: review presentation', CONTINUE_MARKDOWN_INSTRUCTION, out.join('\n'));
 }
 
-// review-qa-gate — the review presentation's Q&A gate. Membership is fixed:
-// the fix-now lane is applied by its own step rather than offered here, and
-// the inbox receives the bug and idea lanes directly, so neither is a choice
-// the user makes at this gate. What remains is orientation — a lens shift,
-// the full report, questions, and the way onward.
+// review-gate — the review's closing menu. Membership follows the verdict
+// and what remains: a fail routes to planning and nothing else (out-of-scope
+// findings are future work, and future work is not offered while the review
+// is failing); a pass completes, with the out-of-scope decision offered only
+// when such findings exist. The option set varies at runtime, so the column
+// is computed for whichever set survives.
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string}} args
+ * @param {{dotpath: string, verdict?: string, replan?: string, 'out-of-scope'?: string}} args
  * @returns {string}
  */
-function reviewQaGate(cwd, args) {
-  const { phase } = resolveAddress(cwd, args.dotpath, 'review-qa-gate');
+function reviewGate(cwd, args) {
+  const { phase } = resolveAddress(cwd, args.dotpath, 'review-gate');
   if (phase !== 'review') {
-    throw new Error(`render review-qa-gate: address must be <work_unit>.review.<topic>, got phase "${phase}"`);
+    throw new Error(`render review-gate: address must be <work_unit>.review.<topic>, got phase "${phase}"`);
   }
-  const options = [
-    cmdOption('t', 'technical', "Retell the review from the code's perspective"),
-    cmdOption('v', 'view', 'Show the full review report'),
-    cmdOption('c', 'continue', 'Proceed to review actions'),
-    promptOption('Ask a question', 'Ask about the review findings'),
-  ];
+  const verdict = args.verdict;
+  if (verdict !== 'pass' && verdict !== 'fail') {
+    throw new Error('render review-gate: --verdict must be "pass" or "fail"');
+  }
+  const options = [];
+  if (verdict === 'fail') {
+    const n = Number(args.replan);
+    if (!Number.isInteger(n) || n < 1) throw new Error('render review-gate: a fail needs --replan <count>');
+    options.push(cmdOption('p', 'plan', `Plan the ${n} failure${n === 1 ? '' : 's'} and reopen implementation`));
+  } else {
+    options.push(cmdOption('c', 'complete', 'Complete the review phase and continue'));
+    const oos = Number(args['out-of-scope']) || 0;
+    if (oos > 0) {
+      options.push(cmdOption('i', 'inbox', `Decide the ${oos} finding${oos === 1 ? '' : 's'} outside this spec`));
+    }
+  }
+  options.push(promptOption('Ask', 'Ask me about any finding'));
   return section(
-    'MENU: review Q&A gate',
+    'MENU: review gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu('Any questions before proceeding?', options),
+    menu('', options, { question: 'What next?' }),
   );
 }
 
@@ -2131,7 +2140,7 @@ const SURFACES = {
   'finding-batch': findingBatch,
   'finding': finding,
   'review-presentation': reviewPresentation,
-  'review-qa-gate': reviewQaGate,
+  'review-gate': reviewGate,
   'triage-announce': triageAnnounce,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,

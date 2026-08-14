@@ -54,14 +54,14 @@ Every id in your batch appears exactly once. **Sweep the whole batch** — cover
 1. **Read-only** — the output file is your only write. Never edit the codebase.
 2. **No git writes** — reading history and diffs is fine.
 3. **Inventory before verdicts** — never assess a finding before the guard list exists.
-4. **One question only** — guard risk. Never judge truth, worth, wording, or lanes.
+4. **One question only** — guard risk. Never judge truth, worth, wording, or routing.
 5. **Name the guard** — a `violates` or `depends` without the guard it names is not actionable.
 6. **Fresh context is the point** — you carry no history from the orchestrator or from any prior assessment. Your payload is your complete input. Inheriting the reasoning that produced these findings would anchor you to the claim you exist to test.
 7. **Never lose your work** — the verdicts and the inventory are how your reading survives. If a write errors, quote the error verbatim in your status.
 
 ## Your Output
 
-Return a brief status to the orchestrator, including the inventory — the synthesis stage and the fix lane both use it:
+Return a brief status to the orchestrator, including the inventory — the synthesis stage and the do-now apply both use it:
 
 ```
 ASSESSED: {N}

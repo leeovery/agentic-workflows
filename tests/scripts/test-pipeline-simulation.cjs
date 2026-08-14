@@ -366,28 +366,30 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 
-  // Review — verification, then the prepped lanes: the report is produced
-  // from the action list, presented through its surface, and the fix-now
-  // lane commits its own work before the phase completes.
+  // Review — verification, then the prepped pipeline: out-of-scope
+  // findings bank durably on the manifest, the report is produced from
+  // the action list after the do-now apply, the outcome renders through
+  // its surfaces, and the pass completes the phase. The offer at a pass
+  // consumes the banked set and deletes the field.
   sim.render(['entry-gate', `${wu}.review.${topic}`], { expect: 'empty' });
   label(sim, wu, 'review', topic);
   sim.run(['topic', 'start', wu, 'review', topic]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'reviewed_tasks', `${topic}-1-1`]);
   sim.render(['resume-gate', `${wu}.review.${topic}`, '--variant', 'review'], { expect: 'content' });
+  sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'out_of_scope',
+    '{"id":"A3","kind":"quick-fix","summary":"a guard the spec never asked for"}']);
   sim.write(`.workflows/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
   sim.run(['commit', wu, '-m', `review(${wu}): complete review`, '--topic', `review/${topic}`]);
   const presentation = sim.write(`.workflows/.cache/${wu}/review/${topic}/presentation.json`, {
     topic,
-    verdict: 'approve',
-    fix_now: 2,
-    needs_design: [],
-    bugs: [],
-    ideas: [],
-    dropped: 1,
+    verdict: 'pass',
+    corrected: { applied: 2, reverted: 0, suite: 'green' },
+    out_of_scope: 1,
+    discarded: 1,
   });
   sim.render(['review-presentation', `${wu}.review.${topic}`, '--file', presentation], { expect: 'content' });
-  sim.render(['review-qa-gate', `${wu}.review.${topic}`], { expect: 'content' });
-  sim.run(['commit', wu, '-m', `review(${wu}): apply fix-now actions`]);
+  sim.render(['review-gate', `${wu}.review.${topic}`, '--verdict', 'pass', '--out-of-scope', '1'], { expect: 'content' });
+  sim.run(['manifest', 'delete', `${wu}.review.${topic}`, 'out_of_scope']);
   sim.run(['topic', 'complete', wu, 'review', topic]);
   sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`]);
 }

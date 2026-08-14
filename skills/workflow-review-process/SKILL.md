@@ -114,7 +114,7 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 
 **If all tasks reviewed:**
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 9**.
 
 **Otherwise** (no tracking data):
 
@@ -234,47 +234,7 @@ Load **[prep-findings.md](references/prep-findings.md)** and follow its instruct
 
 ---
 
-## Step 7: Produce Review
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Produce Review`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Writing the review from the prepped actions — what survived, what merged, and what each one now needs.
-```
-
-Load **[produce-review.md](references/produce-review.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 8**.
-
----
-
-## Step 8: Present Review
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Present Review`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Presenting the review findings. You'll see the verdict, summary, and detailed per-task results.
-```
-
-Load **[present-review.md](references/present-review.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 9**.
-
----
-
-## Step 9: Apply Do-Now
+## Step 7: Apply Do-Now
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -285,44 +245,63 @@ Load **[present-review.md](references/present-review.md)** and follow its instru
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Applying the actions that are cheap to make and cheap to reverse. The project's suite is the gate — anything it catches is repaired or reverted here, not carried forward.
+> Applying the contained corrections — low-impact, blast radius minimised. The whole body of work is verified and the suite run before anything lands.
 ```
 
-Load **[apply-fix-now.md](references/apply-fix-now.md)** and follow its instructions as written.
+Load **[apply-do-now.md](references/apply-do-now.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 8**.
+
+---
+
+## Step 8: Produce Review
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Produce Review`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Writing the review — the verdict, what was corrected, what must be planned, and what was discarded.
+```
+
+Load **[produce-review.md](references/produce-review.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 9**.
+
+---
+
+## Step 9: Present Review
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Present Review`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> The outcome: pass or fail, what was corrected, and what needs you.
+```
+
+Load **[present-review.md](references/present-review.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 10**.
 
 ---
 
-## Step 10: Route Lanes
+## Step 10: Compliance Self-Check
 
-Load **[route-lanes.md](references/route-lanes.md)** and follow its instructions as written.
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 11**.
 
 ---
 
-## Step 11: Compliance Self-Check
-
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 12**.
-
----
-
-## Step 12: Review Actions
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Review Actions`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Deciding what to do with the findings. You can accept the review, request fixes, or ask questions.
-```
+## Step 11: Review Actions
 
 Load **[review-actions-loop.md](references/review-actions-loop.md)** and follow its instructions as written.
-
