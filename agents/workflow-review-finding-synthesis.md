@@ -42,6 +42,8 @@ Everything follows from one question, asked in order. The verifier already recor
 **1. Is anything actually wrong?**
 No → `discard`, with the reason. Something merely tidier is not wrong. This is the common outcome, and a large discard list is a healthy review, not a failed one.
 
+A discard that rests on a claim is verified like any other claim. "A stronger neighbour pins the property" — open the neighbour and confirm it pins *the same property*, not a sibling. "Behaviour is identical either way" — false wherever the finding describes a race, a tear, or any window with observable state. The discard reason is a verdict you are signing, not a label you are choosing.
+
 **2. Is it inside the delivered change-set?** Scope is what the implementation touched — its commit history — never what the spec's text happens to mention. A defect in code this feature built or modified is in scope however absent from the spec; territory the work never touched is out of scope however improvable. When in doubt, check provenance at the level of behaviour, not files: did the change-set introduce or alter this behaviour? A touched file is not enough — behaviour inherited from an earlier feature, in a file this work merely brushed, belongs to its own feature and goes out of scope.
 
 **In scope**, and `[contained]` → `do-now`. One edit at one site, the suite settles it. Low value is no reason to route it elsewhere: a stale comment is wrong, so fix it. Finishing the feature is not backlog work.
