@@ -2089,28 +2089,16 @@ describe('render review-qa-gate', () => {
     '',
   ];
 
-  it('renders both conditional rows and aligns the whole set', () => {
-    const out = renderSurface(dir, 'review-qa-gate', { dotpath: 'pay.review.checkout', donow: '1', recommendations: '1' });
-    assert.strictEqual(out, [
-      ...HEAD,
-      '**`d/do-now`**       → Apply the zero-risk fixes now',
-      '**`s/surface`**      → Surface recommendations to inbox',
-      ...TAIL,
-    ].join('\n'));
-  });
-
-  it('drops both rows and re-aligns against the survivors', () => {
+  it('renders the fixed option set', () => {
     const out = renderSurface(dir, 'review-qa-gate', { dotpath: 'pay.review.checkout' });
     assert.strictEqual(out, [...HEAD, ...TAIL].join('\n'));
   });
 
-  it('carries one row without disturbing the column', () => {
-    const out = renderSurface(dir, 'review-qa-gate', { dotpath: 'pay.review.checkout', recommendations: '1' });
-    assert.strictEqual(out, [
-      ...HEAD,
-      '**`s/surface`**      → Surface recommendations to inbox',
-      ...TAIL,
-    ].join('\n'));
+  it('offers no apply or surface row — the lanes own that work', () => {
+    const out = renderSurface(dir, 'review-qa-gate', { dotpath: 'pay.review.checkout', donow: '1', recommendations: '1' });
+    assert.ok(!out.includes('do-now'), 'fix-now is applied by its own step, never offered here');
+    assert.ok(!out.includes('surface'), 'the inbox receives the bug and idea lanes directly');
+    assert.strictEqual(out, [...HEAD, ...TAIL].join('\n'));
   });
 
   it('refuses an address outside the review phase', () => {

@@ -778,17 +778,15 @@ function findingsSummary(cwd, { dotpath, file }) {
   return section('DISPLAY: findings summary', CONTINUE_MARKDOWN_INSTRUCTION, body);
 }
 
-// review-qa-gate — the review presentation's Q&A gate. Membership branches on
-// what the report carries: the do-now row only where zero-risk fixes exist,
-// the surface row only where there are recommendations to surface. Both are
-// judgment reads of the report rather than manifest state, so they ride as
-// flags. The arrow column is then recomputed for whichever set survives —
-// the one thing a hand-written block cannot do, since its padding is fixed
-// at authoring time against an option set that varies at runtime.
+// review-qa-gate — the review presentation's Q&A gate. Membership is fixed:
+// the fix-now lane is applied by its own step rather than offered here, and
+// the inbox receives the bug and idea lanes directly, so neither is a choice
+// the user makes at this gate. What remains is orientation — a lens shift,
+// the full report, questions, and the way onward.
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, donow?: string, recommendations?: string}} args
+ * @param {{dotpath: string}} args
  * @returns {string}
  */
 function reviewQaGate(cwd, args) {
@@ -796,15 +794,12 @@ function reviewQaGate(cwd, args) {
   if (phase !== 'review') {
     throw new Error(`render review-qa-gate: address must be <work_unit>.review.<topic>, got phase "${phase}"`);
   }
-  const options = [];
-  if (args.donow) options.push(cmdOption('d', 'do-now', 'Apply the zero-risk fixes now'));
-  if (args.recommendations) options.push(cmdOption('s', 'surface', 'Surface recommendations to inbox'));
-  options.push(
+  const options = [
     cmdOption('t', 'technical', "Retell the review from the code's perspective"),
     cmdOption('v', 'view', 'Show the full review report'),
     cmdOption('c', 'continue', 'Proceed to review actions'),
     promptOption('Ask a question', 'Ask about the review findings'),
-  );
+  ];
   return section(
     'MENU: review Q&A gate',
     "emit verbatim as markdown, then STOP for the user's response",
