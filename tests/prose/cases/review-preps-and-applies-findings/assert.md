@@ -8,9 +8,8 @@ The prose should have taken this path:
    engine, reads the plans and specification, and looks up the
    implementation's project skills
 3. a verifier is dispatched per task — stubbed: each report lands at its
-   task's suffix, each complete with no blocking issues but carrying
-   findings, every finding naming its failure, its scope and its blast
-   radius
+   task's suffix, each complete with no blocking issues and carrying one
+   finding that names its failure, its scope and its blast radius
 4. both verified task ids are pushed onto the reviewed list
 5. findings prep collects the findings out of the per-task reports into
    its own payloads, giving each a stable id built from its report's
@@ -66,8 +65,9 @@ EXPECTED WORLD — from an implemented feature with no review:
   recording complete with its findings intact
 - the manifest holding the review completed, with reviewed_tasks
   carrying both internal ids and no out_of_scope field
-- the stale comment claim gone from `src/checkout/payment-intent.js` and
-  the assertion in `tests/checkout/payment-intent.test.js` reading the
-  gateway payload, committed as one apply commit
+- the false polling-recovery claim gone from `src/webhooks/capture.js`
+  (the webhook sentence intact) and the assertion in
+  `tests/checkout/payment-intent.test.js` built through
+  `createPaymentIntent`, committed as one apply commit
 - the plan, tasks and specification untouched; no remediation phase
   anywhere; no second work unit; nothing in the inbox

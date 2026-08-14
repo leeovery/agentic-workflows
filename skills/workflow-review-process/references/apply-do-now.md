@@ -64,7 +64,17 @@ It receives the action list and the guard inventory, reads the complete diff its
 
 ## D. Commit
 
-The work is verified; commit it as one body. The fixes touch project files outside the work unit, so the scoped helper cannot cover them — stage the touched files with raw git:
+**The record is the outcome.** Before anything is written forward, confirm it: the diff shows the applied work, and a status claiming work the diff does not show is a discrepancy to surface, never to carry into the report.
+
+#### If nothing was applied
+
+Every action was skipped or reverted — there is nothing to commit. Carry that outcome forward honestly: zero applied, each action with its reason, all of it still owed.
+
+→ Return to caller.
+
+#### Otherwise
+
+Commit the work as one body. The fixes touch project files outside the work unit, so the scoped helper cannot cover them — stage the touched files with raw git:
 
 ```bash
 git add -- {files the fixes touched}
