@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.67] - 2026-08-14
+
+✨ Added
+- Review findings now go through a verification pipeline before anything happens to them — every finding is checked against the code, the code standard, architectural guards, and other findings before it's acted on.
+- Contained, low-risk fixes are applied and verified automatically during review, so only genuinely blocking work reaches you.
+- Out-of-scope findings surfaced during review can now be filed straight to your inbox as ideas, bugs, or quick-fixes.
+- Engine-rendered menus now wrap long option labels at the terminal width instead of overflowing.
+
+🔧 Changed
+- Review verdicts are now a straightforward pass/fail instead of Approve/Request Changes/Comments Only — a fail means something must be planned before the work counts as delivered.
+- The review report and its closing menu were restructured around what was corrected, what needs planning, and what's out of scope, replacing the old do-now/quick-fix/idea/bug recommendation categories.
+- Task verifiers now report only genuine problems — with their failure, scope, and blast radius — instead of categorizing every non-blocking note.
+- Findings whose entire fix is a comment or doc-text change no longer block a review.
+
+🐛 Fixed
+- Verifiers now re-check line numbers, symbol names, and counts before citing them, preventing findings that point at the wrong code or break the build if applied literally.
+
 ## [0.6.66] - 2026-08-12
 
 🔧 Changed
