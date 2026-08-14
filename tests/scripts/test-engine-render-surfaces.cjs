@@ -2080,7 +2080,7 @@ describe('render review-presentation', () => {
     return renderSurface(dir, 'review-presentation', { dotpath: 'pay.review.checkout', file: 'p.json' });
   };
 
-  it('a fail lists what must be planned, with the failure as the row note', () => {
+  it('a fail carries full chrome: title anchor, red verdict tier, then the list', () => {
     const out = render({
       topic: 'checkout', verdict: 'fail',
       corrected: { applied: 180, reverted: 2, suite: 'green' }, discarded: 45, out_of_scope: 2,
@@ -2089,7 +2089,9 @@ describe('render review-presentation', () => {
         { summary: 'the guard scans comments only', fails: 'ten retired names pass green' },
       ],
     });
-    assert.match(out, /\*\*Review — Checkout\*\* — \*\*failed\*\* · 2 findings must be planned and built/);
+    assert.match(out, /=== TITLE \(emit verbatim as markdown — the view's chrome heading\) ===\n# \*\*`■ Review — Checkout`\*\*/);
+    assert.match(out, /DISPLAY: review verdict \(emit verbatim as a properties code block/);
+    assert.match(out, /⚑ Failed — 2 findings must be planned and built before this work is delivered/);
     assert.match(out, /\*\*Needs planning\*\* — 2 findings/);
     assert.match(out, /1\\\. the badge key collides/);
     assert.match(out, /↳ union\.go:190 — both rows render the badge/);
@@ -2097,19 +2099,24 @@ describe('render review-presentation', () => {
     assert.match(out, /Corrected in this session: 180 applied · suite green · 2 reverted, still owed\./);
     assert.match(out, /Outside this spec: 2 findings held for your call\./);
     assert.match(out, /Discarded: 45 — reasons in the report\./);
+    const vi = out.indexOf('⚑ Failed');
+    assert.ok(out.indexOf('■ Review') < vi && vi < out.indexOf('Needs planning'), 'verdict sits between the title and the list');
   });
 
-  it('a pass is the verdict and the counts — nothing is listed', () => {
+  it('a pass keeps the chrome and stays calm — no red, nothing listed', () => {
     const out = render({ topic: 'checkout', verdict: 'pass', corrected: { applied: 180, suite: 'green' }, discarded: 45 });
-    assert.match(out, /\*\*passed\*\* · nothing needs planning/);
+    assert.match(out, /# \*\*`■ Review — Checkout`\*\*/);
+    assert.match(out, /\*\*Passed\*\* — nothing needs planning\./);
+    assert.ok(!out.includes('⚑'), 'red is the fail register only');
     assert.match(out, /180 applied · suite green\./);
     assert.ok(!out.includes('Needs planning'));
     assert.ok(!/^\d+\\\. /m.test(out), 'nothing is listed on a pass');
   });
 
-  it('a clean pass renders as the verdict alone', () => {
+  it('a clean pass is the title and the verdict alone', () => {
     const out = render({ topic: 'checkout', verdict: 'pass' });
-    assert.match(out, /\*\*passed\*\*/);
+    assert.match(out, /\*\*Passed\*\*/);
+    assert.ok(!out.includes('DISPLAY: review findings'), 'no findings section when there is nothing to say');
     assert.ok(!out.includes('Corrected'));
     assert.ok(!out.includes('Discarded'));
   });

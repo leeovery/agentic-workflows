@@ -819,22 +819,34 @@ function reviewPresentation(cwd, { dotpath, file }) {
   }
 
   const title = titlecase(p.topic);
-  const out = [];
+  const sections = [
+    section('TITLE', "emit verbatim as markdown — the view's chrome heading", `# **\`■ Review — ${title}\`**`),
+  ];
   if (p.verdict === 'fail') {
     const n = replan.length;
-    out.push(`**Review — ${title}** — **failed** · ${n} finding${n === 1 ? '' : 's'} must be planned and built`);
-    out.push('');
-    out.push(worklist({
+    sections.push(section(
+      'DISPLAY: review verdict',
+      'emit verbatim as a properties code block — ```properties fence',
+      `⚑ Failed — ${n} finding${n === 1 ? '' : 's'} must be planned and built before this work is delivered`,
+    ));
+  } else {
+    sections.push(section(
+      'DISPLAY: review verdict',
+      CONTINUE_MARKDOWN_INSTRUCTION,
+      '**Passed** — nothing needs planning.',
+    ));
+  }
+
+  const body = [];
+  if (p.verdict === 'fail') {
+    body.push(worklist({
       heading: { label: 'Needs planning', noun: 'finding' },
       items: replan.map((r) => ({
         title: r.summary,
         note: isFilled(r.ref) ? `${r.ref} — ${r.fails}` : r.fails,
       })),
     }));
-  } else {
-    out.push(`**Review — ${title}** — **passed** · nothing needs planning`);
   }
-
   const tail = [];
   if (p.corrected !== undefined) {
     const c = p.corrected;
@@ -852,9 +864,11 @@ function reviewPresentation(cwd, { dotpath, file }) {
   if (Number(p.discarded) > 0) {
     tail.push(`Discarded: ${p.discarded} — reasons in the report.`);
   }
-  if (tail.length) out.push('', tail.join('\n'));
-
-  return section('DISPLAY: review presentation', CONTINUE_MARKDOWN_INSTRUCTION, out.join('\n'));
+  if (tail.length) body.push(tail.join('\n'));
+  if (body.length) {
+    sections.push(section('DISPLAY: review findings', CONTINUE_MARKDOWN_INSTRUCTION, body.join('\n\n')));
+  }
+  return sections.join('\n');
 }
 
 // review-gate — the review's closing menu. Membership follows the verdict

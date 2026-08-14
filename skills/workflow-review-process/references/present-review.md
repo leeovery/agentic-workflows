@@ -25,7 +25,7 @@ Write it with the Write tool to `.workflows/.cache/{work_unit}/review/{topic}/pr
 
 `corrected` is omitted when nothing was applied; `replan` carries entries only on a fail; `out_of_scope` is the count of findings banked in the manifest. Each `summary` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism. What is listed and what is counted is the surface's rule, not a judgment made here.
 
-Render and emit the section verbatim per its marker:
+Render and emit every section verbatim per its marker — the title, the verdict, and the findings:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render review-presentation {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/presentation.json
