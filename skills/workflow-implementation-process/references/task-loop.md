@@ -366,6 +366,12 @@ Include the user's feedback when re-invoking.
 
 **Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress, follow the format's **updating.md** instructions for phase completion.
 
+**Deposit banked opportunities** — collect the BANK entries from the task's final executor report and the approving review. They are decided at the phase boundary, which may be tasks away, and conversation context does not survive that long — the manifest does. Push each entry onto the durable set (skip this when neither report carries any):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} bank '{"task":"{internal_id}","source":"{executor|reviewer}","summary":"{one line}","detail":"{what and where, file:line}","files":["{path}"]}'
+```
+
 **Record progress via the engine** — add `--phase-complete` when the current phase has no remaining open/in-progress tasks, and `--skipped` when the task was skipped rather than implemented:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {N} --next-task '{next_task_id or ~}' [--skipped] [--phase-complete]

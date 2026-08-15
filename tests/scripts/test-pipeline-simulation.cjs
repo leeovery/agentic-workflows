@@ -363,6 +363,17 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
+  // The task loop's stage H deposits cross-scope consolidation opportunities
+  // from the executor's and reviewer's BANK sections — durable on the
+  // manifest, drained at the phase boundary.
+  const bankPush = sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
+    `{"task":"${topic}-1-1","source":"executor","summary":"helper duplicated from a sibling task","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}`]);
+  assert.strictEqual(bankPush.length, 1, 'first bank deposit creates the array');
+  sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
+    `{"task":"${topic}-1-1","source":"reviewer","summary":"dead scaffolding a later task orphaned","detail":"src/c.js:8 export unused","files":["src/c.js"]}`]);
+  const bank = JSON.parse(sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'bank']));
+  assert.strictEqual(bank.length, 2, 'bank accumulates entries');
+  assert.strictEqual(bank[0].source, 'executor', 'entries store as objects, not strings');
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 

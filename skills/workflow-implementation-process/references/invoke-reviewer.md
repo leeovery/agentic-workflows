@@ -44,6 +44,10 @@ COMMENT_CORRECTIONS:
 - {file:line} — {what is wrong}
   OLD: {verbatim current comment text}
   NEW: {replacement — empty to delete}
+BANK:
+- {cross-scope consolidation opportunity}
+  DETAIL: {what and where}
+  FILES: {paths}
 NOTES:
 - {non-blocking observations}
 ```
@@ -51,5 +55,6 @@ NOTES:
 - `approved`: task passes all five review dimensions
 - `needs-changes`: ISSUES contains specific, actionable items with fix recommendations and confidence levels
 - COMMENT_CORRECTIONS may accompany either verdict — prose-only fixes that never count toward the verdict. On `approved`, the orchestrator applies them directly; on `needs-changes`, they travel to the executor with the findings
+- BANK may accompany either verdict and never counts toward it — opportunities whose fix reaches beyond the task's scope, deposited to the manifest at **H. Update Progress and Commit** ([task-loop.md](task-loop.md))
 
 → Return to caller.
