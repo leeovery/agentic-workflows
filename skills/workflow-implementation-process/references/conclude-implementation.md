@@ -22,6 +22,12 @@
 
 #### If `yes`
 
+**If the manifest still holds a `bank`** (`manifest exists {work_unit}.implementation.{topic} bank` — a session exited the analysis loop with residue undecided): delete it — implementation is over and the residue's consumer with it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank
+```
+
 Complete the phase item:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} implementation {topic}
