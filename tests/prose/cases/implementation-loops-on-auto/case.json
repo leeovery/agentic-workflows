@@ -28,7 +28,9 @@
     "skills/workflow-shared/references/product-lens.md",
     "skills/workflow-implementation-process/references/task-normalisation.md",
     "skills/workflow-implementation-process/references/invoke-executor.md",
-    "skills/workflow-implementation-process/references/invoke-reviewer.md"
+    "skills/workflow-implementation-process/references/invoke-reviewer.md",
+    "skills/workflow-implementation-process/references/consolidation-pass.md",
+    "skills/workflow-implementation-process/references/invoke-consolidation-finder.md"
   ],
   "answers": [
     "y — skip project skills again",
@@ -38,7 +40,8 @@
   ],
   "stubs": {
     "executor-task-complete": "each time the workflow-implementation-task-executor agent is invoked — the task's initial fresh dispatch and its fix-round continuation of that same executor alike — create the task's source and test files as the stub gives them and return that task's STATUS block; one fresh dispatch plus one continuation per task",
-    "reviewer-task-flags-then-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — return the stub's first-firing needs-changes block the first time a task is reviewed and its approved block on that task's re-review; write no file"
+    "reviewer-task-flags-then-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — return the stub's first-firing needs-changes block the first time a task is reviewed and its approved block on that task's re-review; write no file",
+    "finder-sweep-clean": "when the workflow-implementation-consolidation-finder agent is dispatched — write no file and return STATUS: clean, FINDINGS_COUNT: 0, BANK: no entries, SUMMARY: the phase's surface needs no consolidation"
   },
   "invariants": {
     "engine_before_write": true,
@@ -62,7 +65,9 @@
       "task complete pay pay pay-1-2 --phase 1 --next-task ~",
       "--phase-complete",
       "impl(pay): Tpay-1-1",
-      "impl(pay): Tpay-1-2"
+      "impl(pay): Tpay-1-2",
+      "manifest get pay.implementation.pay consolidation_gate_mode",
+      "manifest push pay.implementation.pay consolidated_phases 1"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",
@@ -78,7 +83,9 @@
       "render task-brief pay.implementation.pay",
       "task fix-attempt pay pay pay-1-2",
       "task complete pay pay pay-1-2",
-      "impl(pay): Tpay-1-2"
+      "impl(pay): Tpay-1-2",
+      "consolidated_phases",
+      "--phase-complete"
     ],
     "calls_exclude": [
       "analysis-cycle",
@@ -86,7 +93,8 @@
       "topic reopen",
       "engine.cjs commit pay -m impl(pay): T",
       "git add -A",
-      "git add --all"
+      "git add --all",
+      "staging.p1"
     ]
   }
 }

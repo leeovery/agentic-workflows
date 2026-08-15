@@ -48,11 +48,24 @@ The prose should have taken this path:
     marks it in-progress, and presents its brief before the dispatch
 15. executor and reviewer stubs fire once each for pay-1-2; the fourth
     scripted answer approves at the task gate
-16. progress lands for pay-1-2: status completed, the phase check
-    finds no open tasks so the engine call carries --phase-complete
-    and next task ~, and one raw git commit lands as
-    impl(pay): Tpay-1-2
-17. retrieval then finds no available and no open tasks, reports all
+16. progress lands for pay-1-2: status completed, and the phase
+    disposition comes out `boundary` — no open tasks remain and
+    consolidated_phases lacks phase 1 — so the plan-side phase
+    completion is deferred, the engine call carries --next-task ~
+    WITHOUT --phase-complete, one raw git commit lands as
+    impl(pay): Tpay-1-2, and the stage routes to the consolidation
+    pass
+17. the pass announces itself (marker and signpost), reads
+    consolidation_gate_mode, finds no resume state, and dispatches the
+    consolidation finder — the stub returns clean with no file; the
+    findings commit has nothing to pick up; the clean announce
+    renders
+18. the pass records the phase: nothing to pull from the bank (no
+    entry was ever deposited), consolidated_phases gains 1, the
+    plan-side phase completion lands via the format's updating
+    transition, the engine re-records pay-1-2 with --phase 1
+    --phase-complete, and the scoped commit closes the pass
+19. retrieval then finds no available and no open tasks, reports all
     tasks complete, and returns to the caller — the walk stops before
     the analysis loop
 
@@ -72,7 +85,11 @@ Further claims:
 - no fix-tracking file and no attempt-findings cache file exist; the
   task-brief and task-result payload cache files under
   .workflows/.cache are expected residue of the renders
+- exactly one consolidation-finder dispatch fired; no
+  consolidation-findings file, no consolidation-tasks staging file,
+  and no staging.p1 subtree exist — the clean path stages nothing
 - the manifest's implementation item ends with both internal ids in
-  completed_tasks, current_task null, and phase 1 in completed_phases
+  completed_tasks, current_task null, phase 1 in completed_phases,
+  phase 1 in consolidated_phases, and no bank field
 - the task files both end with status: completed; the source and test
   files for both tasks exist as the stubs gave them
