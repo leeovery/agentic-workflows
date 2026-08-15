@@ -22,6 +22,7 @@ const SESSION_CYCLE_LIMIT = 3;
  * @property {string} task_gate_mode
  * @property {string} fix_gate_mode
  * @property {string} analysis_gate_mode
+ * @property {string} consolidation_gate_mode
  */
 
 /**
@@ -125,7 +126,7 @@ function counterOf(item, field) {
 /**
  * Create-or-resume the implementation item. Absent → init-phase semantics
  * (`{status: 'in-progress'}`) plus session defaults. Present → session reset
- * only: the three gate modes back to `gated`, `analysis_cycle_session` to 0 —
+ * only: the four gate modes back to `gated`, `analysis_cycle_session` to 0 —
  * `analysis_cycle_total`, `linters`, `project_skills`, `current_phase`,
  * `current_task`, `completed_tasks`, and `completed_phases` are never touched.
  * `fix_attempts` resets to 0 UNLESS `current_task` has a live fix-tracking
@@ -152,6 +153,7 @@ function initTasks(cwd, workUnit, topic) {
       item.task_gate_mode = 'gated';
       item.fix_gate_mode = 'gated';
       item.analysis_gate_mode = 'gated';
+      item.consolidation_gate_mode = 'gated';
       if (!hasInFlightPair(cwd, workUnit, topic, item)) item.fix_attempts = 0;
       item.analysis_cycle_session = 0;
     } else {
@@ -161,6 +163,7 @@ function initTasks(cwd, workUnit, topic) {
         task_gate_mode: 'gated',
         fix_gate_mode: 'gated',
         analysis_gate_mode: 'gated',
+        consolidation_gate_mode: 'gated',
         fix_attempts: 0,
         analysis_cycle_total: 0,
         analysis_cycle_session: 0,
@@ -179,6 +182,7 @@ function initTasks(cwd, workUnit, topic) {
         task_gate_mode: gateOf(item, 'task_gate_mode'),
         fix_gate_mode: gateOf(item, 'fix_gate_mode'),
         analysis_gate_mode: gateOf(item, 'analysis_gate_mode'),
+        consolidation_gate_mode: gateOf(item, 'consolidation_gate_mode'),
       },
       counters: {
         fix_attempts: counterOf(item, 'fix_attempts'),

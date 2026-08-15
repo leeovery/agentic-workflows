@@ -307,7 +307,11 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
-  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~', '--phase-complete']);
+  // Phase boundary: the completion defers its flag, the consolidation pass
+  // finds nothing, and the re-record closes the phase (consolidation-pass.md F).
+  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~']);
+  sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
+  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 }
 
@@ -374,7 +378,12 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   const bank = JSON.parse(sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'bank']));
   assert.strictEqual(bank.length, 2, 'bank accumulates entries');
   assert.strictEqual(bank[0].source, 'executor', 'entries store as objects, not strings');
-  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~', '--phase-complete']);
+  // Phase boundary: the completion defers its flag, the consolidation pass
+  // verdicts the banked entries residue (they ride to the end-of-implementation
+  // analysis), and the re-record closes the phase (consolidation-pass.md F).
+  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~']);
+  sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
+  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 
   // Review — verification, then the prepped pipeline: out-of-scope
@@ -1108,6 +1117,7 @@ describe('pipeline simulation', () => {
     const init = sim.run(['task', 'init', wu, wu]);
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
+    assert.strictEqual(init.gates.consolidation_gate_mode, 'gated', 'the boundary walk gate ships gated');
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     // The brief announces the dispatch — the shared task header plus summary and watch.
@@ -1179,7 +1189,34 @@ describe('pipeline simulation', () => {
     assert.match(fixGate, /DISPLAY: fix gate auto-accepted/, 'auto fix gate renders its continuation line');
     assert.match(fixGate, /accepted \[auto\]\. Passing the findings to the executor\./,
       'continuation line names the dispatch that follows');
-    sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--next-task', '~', '--phase-complete']);
+    // Phase 1's boundary: tasks done, the pass owed — the completion defers
+    // its flag (task-loop H `boundary` disposition), the pass stages a
+    // consolidation task in the still-open phase (consolidation-pass.md B–E),
+    // and the phase records once it lands.
+    sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--next-task', '~']);
+    const bankEntry = `{"task":"${wu}-1-2","source":"reviewer","summary":"near-miss helpers","detail":"src/x.js:3 vs src/y.js:9","files":["src/x.js","src/y.js"]}`;
+    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank', bankEntry]);
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1=pending']);
+    sim.refuses(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'perhaps'], /Invalid staging task status/);
+    const overviewPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/tasks-overview.json`,
+      { label: 'Phase 1 consolidation', tasks: [{ title: 'Merge the near-miss helpers', severity: 'near-miss', status: 'pending' }] });
+    assert.match(sim.render(['tasks-overview', `${wu}.implementation.${wu}`, '--file', overviewPayload], { expect: 'content' }),
+      /Phase 1 consolidation/, 'the boundary walk renders the shared overview surface');
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'approved']);
+    // The pass marks itself landed before the plan write — a crash after this
+    // point resumes at task creation, never a re-sweep.
+    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'consolidated_phases', '1']);
+    sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-1-3`, `${wu}-1-3`]);
+    // The folded bank entry is consumed once its task exists in the plan.
+    sim.run(['manifest', 'pull', `${wu}.implementation.${wu}`, 'bank', bankEntry]);
+    // The consolidation task runs through the ordinary loop; its completion
+    // finds the phase consolidated and records it.
+    sim.run(['task', 'start', wu, wu, `${wu}-1-3`]);
+    sim.run(['task', 'complete', wu, wu, `${wu}-1-3`, '--next-task', '~', '--phase-complete']);
+    const loopItem = sim.manifest(wu).phases.implementation.items[wu];
+    assert.deepStrictEqual(loopItem.consolidated_phases, [1], 'the boundary marker survives');
+    assert.deepStrictEqual(loopItem.completed_phases, [1], 'the phase records complete after consolidation');
+    assert.deepStrictEqual(loopItem.bank, [], 'the folded entry left the bank');
 
     // An analysis cycle's staging walks the manifest; all-skipped is a legal exit.
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
@@ -1210,8 +1247,9 @@ describe('pipeline simulation', () => {
     const resumed = sim.run(['task', 'init', wu, wu]);
     assert.strictEqual(resumed.mode, 'resumed', 'second init is a genuine resume');
     assert.strictEqual(resumed.gates.task_gate_mode, 'gated', 'resume resets auto to gated');
+    assert.strictEqual(resumed.gates.consolidation_gate_mode, 'gated', 'the boundary gate resets with the session');
     const completed = sim.manifest(wu).phases.implementation.items[wu].completed_tasks;
-    assert.deepStrictEqual([...new Set(completed)].sort(), [`${wu}-1-1`, `${wu}-1-2`],
+    assert.deepStrictEqual([...new Set(completed)].sort(), [`${wu}-1-1`, `${wu}-1-2`, `${wu}-1-3`],
       'completed_tasks carries each id once');
   });
 

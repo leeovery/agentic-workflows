@@ -17,6 +17,7 @@ E. Evaluate review changes (conditional, fix_gate_mode)
 F. Fix approval gate (gated prompt)
 G. Task gate (gated → prompt user / auto → announce)
 H. Update progress + phase check + commit
+J. Consolidation pass (phase boundary) → consolidation-pass.md
 → loop back to A until done
 ```
 
@@ -46,6 +47,10 @@ Follow the format's **reading.md** instructions to determine the next available 
 #### If no available tasks remain
 
 "No available tasks" is not the same as "all tasks complete". Using the format's **reading.md**, list all tasks and check for tasks still open or in-progress — these are blocked: excluded from "next available" because a dependency was skipped, cancelled, or otherwise never reached the format's completed status.
+
+**If the current phase's tasks are all complete and the manifest's `completed_phases` lacks `current_phase`** (an interrupted consolidation boundary):
+
+→ Proceed to **J. Consolidation Pass**.
 
 **If no open or in-progress tasks remain:**
 
@@ -91,6 +96,10 @@ Stage A re-detects any remaining blocked tasks on the loop back.
 → Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 #### If a task is available
+
+**If the task belongs to a later phase than the manifest's `current_phase` and `completed_phases` lacks `current_phase`** (an interrupted consolidation boundary — the previous phase must close first):
+
+→ Proceed to **J. Consolidation Pass**.
 
 1. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
 2. Note the task's position for the task presentations (**[display-task-brief.md](display-task-brief.md)**, **[display-task-result.md](display-task-result.md)**): list every task in plan order via the format's **reading.md** listing procedure — completed and skipped included — and record this task's ordinal and the total across the plan (`{task_number}` of `{task_total}`) and within its plan phase (`{phase_task_number}` of `{phase_task_total}`). When the format's listing cannot yield the counts, skip them — the presentations render without.
@@ -372,9 +381,15 @@ Include the user's feedback when re-invoking.
 
 **Update task progress in the plan** — follow the format's **updating.md** instructions to mark the task complete — or, when this stage was reached via a skip path (stage C `skip`, or the blocked-tasks `skip`), its skip transition instead.
 
-**Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress, follow the format's **updating.md** instructions for phase completion.
+**Determine the phase disposition** — use the format's **reading.md** to list remaining tasks in the current phase, then set `{disposition}`:
 
-**Record progress via the engine** — add `--phase-complete` when the current phase has no remaining open/in-progress tasks, and `--skipped` when the task was skipped rather than implemented:
+- `continuing` — tasks remain open or in-progress in the current phase.
+- `completing` — none remain, and the phase is past its boundary: the manifest's `consolidated_phases` contains the phase number (`manifest get {work_unit}.implementation.{topic} consolidated_phases`; an absent field is empty), or the phase's label names machinery-created remediation work (starts with `Analysis (Cycle` or `Review Remediation`), which never takes the boundary.
+- `boundary` — none remain and neither holds: the consolidation pass is owed. Leave the phase open in the plan — **J. Consolidation Pass** completes it once the pass has landed.
+
+**If `{disposition}` is `completing`:** follow the format's **updating.md** instructions for phase completion.
+
+**Record progress via the engine** — add `--phase-complete` only when `{disposition}` is `completing`, and `--skipped` when the task was skipped rather than implemented; at `boundary`, pass `--next-task '~'`:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {N} --next-task '{next_task_id or ~}' [--skipped] [--phase-complete]
 ```
@@ -391,6 +406,12 @@ impl({work_unit}): T{internal_id} — {brief description}
 
 One commit per approved task, staging the listed paths explicitly — never `git add -A` or `git add .`. The subject is exactly as fenced — `T` immediately followed by the internal id, no space (`impl(pay): Tpay-1-1 — wire the session endpoint`); review's scope-grep finds task commits by this token. Never `engine commit` here — its scopes cover `.workflows` only, never code or the plan format's storage.
 
+#### If `{disposition}` is `boundary`
+
+→ Proceed to **J. Consolidation Pass**.
+
+#### Otherwise
+
 → Return to **A. Retrieve Next Task**.
 
 ---
@@ -406,3 +427,13 @@ All tasks complete. {M} tasks implemented.
 **CRITICAL**: The caller always routes to the analysis loop after task loop completion — on every pass, not just the first. Even if you have already been through this cycle before, return to the caller and let it route to the analysis loop. Never skip ahead to completion from here.
 
 → Return to caller.
+
+---
+
+## J. Consolidation Pass
+
+The phase boundary: the current phase's tasks are done, and the phase completes only through its consolidation pass — a sweep over what the tasks built side by side, draining the bank.
+
+→ Load **[consolidation-pass.md](consolidation-pass.md)** and follow its instructions as written.
+
+→ On return, proceed to **A. Retrieve Next Task**.
