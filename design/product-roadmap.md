@@ -1,0 +1,519 @@
+# Product roadmap — the product layer above the work unit
+
+A greenfield product conversation today has nowhere truthful to live:
+it either happens outside the system (a Claude-app chat whose record
+never lands) or inside the first epic, which then inherits everything
+that was said — MVP, v1, someday, the crazy ideas — with no cheap way
+to say "not now". The roadmap is the project-level layer that fixes
+both: a home for product-altitude conversation, a horizon-sorted map
+of shaped-but-not-committed work, and a pull mechanism that births
+work units already fenced. Design log for the stack. Opened
+2026-08-15 from the discussion with Lee.
+
+## Motivation (2026-08-15)
+
+- **The observed workflow leaks.** Lee's actual process for a new
+  idea: chat in the Claude app until the idea holds together, dump
+  the knowledge to a markdown file, seed discovery with it. The
+  richest conversation the product will ever get happens outside the
+  system, and only a summary crosses back in.
+
+- **Everything feeds the first epic, so "no" is expensive.** A
+  greenfield discovery session surfaces MVP ideas, v1 ideas, v2
+  ideas, and ideas that should never be over-thought — and all of it
+  lands as topics on one epic's map. There is no staged home, so
+  deferring means dismissing (a name-only hard delete that means
+  "no", not "later") or archiving to the inbox (raw capture,
+  deliberately unshaped). Once shaped things are on the epic map, it
+  is very hard not to build them.
+
+- **The genesis record is trapped at the wrong level.** Discovery
+  session logs live in `.workflows/{work_unit}/`. The whole-product
+  conversation that produced the roadmap-shaped thinking is banked
+  inside whichever epic happened to be created first. Return visits
+  ("MVP shipped, ready for v1") require remembering what was
+  deferred, because nothing above the work unit records it.
+
+- **The epic ceiling was chosen by absorption, never by rejecting a
+  layer above.** The original inception design (2026-05-04)
+  explicitly recognised the whole-product case — "the user lists
+  items at whatever scope makes sense (whole product for
+  greenfield)"; "could be hours for a sprawling greenfield product" —
+  and handled it by letting one epic's discovery run long. The same
+  doc wrote down a "deliberately deferred" map state that never
+  shipped. The verb existed; it was never lifted above a phase.
+
+- **The project level now exists as a pattern.** Baseline
+  (2026-08-12) shipped the machinery a project-scoped, pipeline-less
+  layer needs: reserved pseudo identity, project-manifest status,
+  committed content under a dotted project dir, its own KB phase,
+  status-keyed start-menu rows, graceful absence. Baseline answers
+  "what already exists here?"; the roadmap is the forward-facing
+  sibling: "what are we building, and in what order?"
+
+- **The model maps onto how product development actually works** —
+  Lee's test: if a model relates to real life, it's probably right.
+  Real teams hold continuous product conversations that feed a
+  roadmap; a backlog sits alongside; bugs bypass both. Here: the
+  inbox is the backlog (raw), the roadmap is the staged layer
+  (shaped), work units are delivery, and bugs/quick-fixes go straight
+  through. Grooming is inbox triage onto the map.
+
+## The shape
+
+One deep conversation; the gate chooses its container truthfully; the
+harvest sorts late; the pull is the commitment point.
+
+```
+              s/start → quick shape (fast, as today)
+                           │
+      ┌── product-altitude ┴─── a unit of work ────────┐
+      ▼                                                ▼
+PRODUCT ROAD                              INITIATIVE ROAD (today's
+project-level sessions — durably          flow byte-for-byte: epic /
+committed, NO work unit, no name          feature / bugfix / quick-fix;
+yet (baseline proved the container)       logs live in the work unit —
+      │                                   the truthful home, because
+one deep exploration, hours if            the conversation IS about
+needed, pausable, resumable               the unit)
+      │  user pulls                                    │
+      ▼                                   park valve: "that's v2" →
+HARVEST — coarse: horizons + items        roadmap born lazily (JIT),
++ provenance pointers. No briefs,         one item, no ceremony; the
+no topic shaping (far too early)          epic harvest also sorts
+      │                                   two ways when parks landed
+      ├── stop here: first-class.
+      │   roadmap on disk, zero
+      │   work units, resume later
+      ▼
+PULL — the commitment point: epic
+born HERE, named here, fenced at
+birth; pulled items = its seed set
+      │
+      ▼
+epic discovery — real, as-much-as-
+needed; ITS harvest shapes topics
+and writes the briefs, once, from
+the whole session chain
+      │
+      ▼
+existing pipeline, unchanged
+```
+
+Not a phase, not a work unit: a project-level layer outside the
+pipeline, like baseline. The pipeline itself is untouched.
+
+## The decision
+
+1. **The gate tell is product-altitude, with greenfield genesis as
+   the paradigm case.** "I want to build X" (no product exists) and
+   "let's lay out the next six months" (no single unit of work is
+   being proposed) route to the product road; "add X to Y" /
+   "overhaul the payments" route to the initiative road as today.
+   The tell is *not* breadth (epics are broad too) and *not*
+   readiness (you can be ready to build and still owe the product
+   conversation first) — it is that the conversation is about the
+   product's future rather than a nameable piece of work. An
+   explicit type key (`e/epic` etc.) always wins and is never
+   second-guessed.
+
+2. **The gate is cheap to be wrong, in both directions.** Misread as
+   epic → parks correct the staging as it surfaces; the logs stay in
+   the epic (accepted residue on the misread road only). Misread as
+   product → every item lands in the first horizon, one epic is born
+   at the pull holding all of it, and the genesis record sits at
+   project level — harmless, arguably a bonus. Small-greenfield and
+   product-genesis paths converge on the same end state, so the
+   read never needs to be perfect, only correctable.
+
+3. **Logs live where the conversation happened — and the gate
+   choosing truthfully is what makes every home honest.** Product
+   conversations record in project-level session logs; initiative
+   conversations record in the work unit, as today. This resolves
+   two smells with one root: the genesis record banked inside epic 1
+   (wrong home), and product talk being "out of scope" inside epic
+   discovery (wrong altitude). Both came from choosing the container
+   before the conversation revealed its altitude. In real life
+   nobody agrees epic 1 and then holds the initial product
+   conversation inside it.
+
+4. **The product harvest is coarse: horizons + items + provenance
+   pointers. No briefs. No topic shaping.** Topic shaping (the
+   granularity discipline: independence tests, routing) is far too
+   early at product level and is deliberately not loaded. Naming an
+   item is not topic shaping — the test is different and looser: *a
+   roadmap item is whatever chunk you'd move around a roadmap as one
+   thing.* Capability-grain — "loyalty", "white-label" — which may
+   turn out to be a topic, three topics, or a whole epic; nobody
+   knows yet and nobody needs to.
+
+5. **Work units are born at the pull, when the fence is known.** The
+   pull is the commitment point (borrowing upstream-kanban language:
+   everything left of it is options, cheap to reshuffle). Grouping
+   is decided here — N items → one epic; one item → an epic or a
+   feature — and the unit is named here, at fence time, never
+   before. Contrast today, where the epic is created first and then
+   scoped by whatever the exploration says afterwards.
+
+6. **The pull seeds material, not topics.** Pulled items land as the
+   epic's seed set; the epic's discovery map starts empty, exactly
+   like a new epic under `macro_continuation` today. Epic discovery
+   is real — real life hands an epic to a team and says "go explore,
+   pull this apart; we roughly know the shapes" — and as-much-as-
+   needed: five minutes ("looks right, harvest it") or five hours
+   (new threads, splits, parks back up, strays to the inbox). Its
+   harvest shapes the actual topics.
+
+7. **One session chain, two homes; continuity-load spans it.** The
+   product sessions and the epic's sessions are one continuing
+   exploration whose logs live at two levels. Epic entry
+   continuity-loads the product sessions its seed items point to.
+   The same-session pull has no transfer problem at all — the
+   conversation is still in context; the epic's session-001 gets its
+   Exploration backfilled with the fenced slice (the
+   `macro_continuation` move, verbatim).
+
+8. **Briefs are written once, at topic shaping, from the whole
+   chain.** The epic's harvest runs brief-synthesis exactly as
+   today, except its source material is product logs + epic logs
+   instead of epic logs alone. The summarisation ladder stays two
+   rungs deep, as today: session log (the one summary of the
+   verbatim) → brief (the one distillation of the logs). The product
+   level never writes briefs — rejected as
+   summary-of-a-summary-of-a-summary (see Rejected shapes). A
+   roadmap item pulled a year later gets its briefs the same way:
+   continuity-load the sessions its pointers name, converse, harvest,
+   brief — the richness was never flattened in the interim because
+   nobody summarised the logs until a topic existed to be briefed.
+
+9. **The hand-down is three carriers, never a transcript copy.**
+   (a) the seeded items — identity and join; (b) the items' `sources`
+   pointers — the index into the record; (c) the session-001
+   Exploration backfill — conversational continuity. Verbatim
+   copying is banned for three standing-doctrine reasons: *record vs
+   view* (a copy is a second record, and one of them decays); *the
+   fence* (most of the product conversation is deliberately not-MVP;
+   copying re-imports the scope the harvest just fenced out); and
+   *reachability* (product logs are KB-indexed — later phases query
+   back to the source as they do for everything upstream).
+
+10. **The roadmap is born lazily (JIT).** No genesis ceremony is
+    required: the first park creates it — one item, one horizon, no
+    ceremony. This is what makes the layer safe from every angle: a
+    project that never says "later" never sees it. On the product
+    road it is born at the harvest deliberately; on the initiative
+    road it is born by the first park.
+
+11. **The park valve is available wherever staged signal appears** —
+    epic discovery's session loop (which today has no parking
+    mechanism at all: scope-down-to-inbox lives only in
+    detection-core) and discussion (which already reroutes off-topic
+    concerns with `reroute:{origin}` provenance; the park is the same
+    shape aimed at the roadmap). A park is capture-weight: a
+    one-liner, a horizon, a provenance pointer — never shaping.
+    Grooming happens later at product altitude. The valve is named
+    in the flow guidelines so the mechanism is discoverable, not
+    tribal knowledge.
+
+12. **Park vs inbox: the bucket is the ticket.** If the utterance
+    places the thing on the timeline ("that's a v2 thing") it parks
+    to the roadmap with the stated horizon; an unplaced thought ("we
+    should think about gift cards sometime") goes to the inbox; a
+    concern belonging to existing in-flight work takes today's
+    triage reroute. Claude may propose the placement; the user
+    confirms the horizon (placement is a product call —
+    cone-of-collaboration territory). **When ambiguous, inbox** —
+    the asymmetric default: grooming promotes inbox → roadmap
+    cheaply, whereas a wrong horizon on the roadmap looks like a
+    decision someone made.
+
+13. **Inbox = backlog; bugs bypass.** The inbox stays deliberately
+    dumb (raw capture); the roadmap holds product capability only —
+    shaped and placed. Ideas gain a destination at triage: groomed
+    onto the map (or archived). Bugs and quick-fixes never touch the
+    roadmap: inbox → work unit, as today.
+
+14. **Recognition pass at shaping.** When new work is being shaped,
+    match it against both prior homes and offer, softly, on a hit:
+    a roadmap match → "loyalty is on your roadmap (v1) — pull it
+    from there so the record comes along?"; an inbox match → "you
+    logged 'checkout race' on 12 Jul — read it in as the seed?"
+    The inbox side fixes an observed, recurring loss (forgotten
+    inbox items silently duplicated). Both lists are small; the
+    check is cheap; one soft question, only on a match. Without the
+    roadmap check you get twins — a fresh feature beside a waiting
+    item, record stranded.
+
+15. **Pull-forward expands an in-flight epic.** "Actually, bring
+    loyalty into MVP" re-buckets the item and joins it to the epic.
+    Post-harvest: it lands directly as a map topic (source:
+    roadmap). Pre-harvest (epic still fresh, map empty): its record
+    joins the conversation as seed material and it crystallises at
+    the harvest *as itself* — the anti-twin rule: an item pulled
+    pre-harvest keeps its identity through the harvest, never
+    duplicated beside itself.
+
+16. **The epic harvest gains the two-destination sort.** Items
+    surfaced during epic exploration sort into "this epic" (topics)
+    or a horizon (roadmap) in the same proposal and adjust loop. The
+    park valve is the mid-conversation form of the same sort.
+
+17. **Lifecycle by join, never stored.** A pulled item carries
+    `pulled_to`; its display state is computed at render by joining
+    against the work unit (and topic) it became — waiting / in
+    flight / shipped — the same trick the discovery map uses one
+    level down (topics joined against phase items). Nothing is
+    recorded twice, so nothing can disagree.
+
+18. **Horizons are user-named, ordered, and soft.** The concept word
+    is *horizon* (industry term — Now/Next/Later roadmapping;
+    "bucket" survives only as conversation shorthand; stage / phase
+    / tier are all taken by the system). Names shape from the
+    user's own conversation language: now/next/later runs as a
+    conversational current Claude listens for — never a leading seed
+    — and the early soft reads crystallise at the harvest into the
+    project's own names (MVP, V1, V1.5, someday…). A default set
+    (Now / Next / Later) is offered as a suggestion only when no
+    staging language emerged. Position carries the semantics (first
+    = next up); "someday" is the conventional tail, not a special
+    case. Horizon ops: rename, reorder, insert, merge, split —
+    including splitting one horizon's contents into two when it
+    turns out to be bigger than one release.
+
+19. **Data shape: state on the project manifest, substance in the
+    logs, connected by pointers.**
+
+    ```json
+    "roadmap": {
+      "horizons": ["mvp", "v1", "someday"],
+      "items": {
+        "loyalty": {
+          "horizon": "v1",
+          "summary": "repeat-customer rewards to drive reorders",
+          "sources": ["sessions/session-001.md", "sessions/session-003.md"],
+          "origin": "harvest",
+          "pulled_to": { "work_unit": "v1" }
+        }
+      }
+    }
+    ```
+
+    `summary` is a one-liner only — the discovery map's precedent;
+    anything longer is content, and content is banned from
+    manifests. `sources` are provenance pointers (an index, not a
+    summary — zero loss because they distil nothing). `origin` is
+    `harvest` | `park:{origin}` | `inbox:{slug}`. Item substance is
+    never in the manifest: it is the pointed-at session logs. The
+    product session log template gains a harvest section (the analog
+    of Topics Identified) recording what was sorted and why, in
+    prose, in the log where the reasoning lives. Removal is
+    deletion — git history and the logs keep the story; no dismissed
+    list until product-level analyses exist to nag (none are).
+
+20. **Product sessions live in a project-level dir, KB-indexed under
+    a reserved pseudo identity** — the baseline pattern (dotted dir,
+    committed content, pseudo work-unit carve-out, own KB phase).
+    Directory and identity naming are open questions; the indexing
+    grade should match discovery session logs (the record of a
+    conversation), not baseline's advisory-low.
+
+21. **The start screen has three product states; empty only when
+    truly nothing.** (a) *Mid-conversation exit*: a first-class
+    resume row (active-session marker → resume-detection →
+    continuity-load — discovery's own machinery, project-level
+    home). (b) *Harvested, no work units*: the roadmap section plus
+    keys to continue the product conversation or pull a slice — this
+    is the "stopped after shaping, came back later" state, and it
+    must never render as an empty screen. (c) *Work in flight*:
+    today's overview plus a join-computed roadmap section
+    (`mvp ◐ in flight · v1: 2 · someday: 1`). Menu presence is a
+    **management surface** (view, edit, groom, re-enter the
+    conversation); *entry* into genesis shaping is detection-driven
+    via `s/start`. Before any roadmap or product session exists
+    there is no row — the road is reached by detection.
+
+22. **Post-launch product chats are the same loop re-entered.** Next
+    session in the chain; catch-up open via continuity-load over
+    recent product logs + the map + KB over shipped work units; the
+    user brings the new signal (customer learnings, a pivot). Edits
+    are map operations — insert an item, demote v1 → v2 because
+    something more important arrived, re-bucket, rename — mid-loop
+    or at harvest. Then stop, or pull the next slice. Real life
+    preserved: product conversations are always available, always
+    feed the map, and the map feeds work — while "I know what I
+    want, just build it" goes straight to a feature with only the
+    recognition pass watching.
+
+23. **The dormancy gradient is a design invariant.** A bug touches
+    nothing; a feature touches one soft advisory (recognition, only
+    on a match); a small greenfield converges with the epic path and
+    never sees a roadmap until its first "later" thought; a full
+    product uses everything. The layer exists in proportion to the
+    project's staged ambition.
+
+24. **Suggest-never-auto throughout.** Horizon placements, pull
+    offers, recognition matches, harvest sorts — Claude proposes,
+    the user confirms. The product level is the widest end of the
+    cone of collaboration.
+
+## Rejected shapes along the way
+
+The design went through four versions; the rejected ones are recorded
+so they aren't re-derived.
+
+- **v1 — a second conversation layer above the epic** (product
+  shaping, then epic shaping). Rejected: the two layers are the
+  *same activity* (curatorial exploration with a harvest), separated
+  only by scope — and scope is precisely what can't be judged early.
+  Research and discussion differ in kind and still leak into each
+  other; this line would leak worse, and we'd build triage machinery
+  for a boundary we invented.
+
+- **v2 — re-home the whole conversation, gate on a readiness tell**
+  ("am I starting work or just thinking?"). Superseded: readiness
+  misreads — you can be ready to build and still owe the product
+  conversation first. Its container insight survives (decision 3).
+
+- **v3 — lazy epic-first for genesis** (read greenfield as epic,
+  park corrects everything, item briefs written at the product
+  harvest). Rejected on two counts. *Container*: the genesis record
+  banked inside epic 1 and product talk "out of scope" in the epic
+  are one smell — the container chosen before the conversation
+  revealed its altitude; real life never agrees epic 1 and then
+  holds the product conversation inside it. *Briefs*: item briefs at
+  the product harvest plus topic briefs at the epic harvest is a
+  summary of a summary of a summary (the session log is already a
+  summary of the verbatim) — unacceptably lossy. JIT survives as
+  the initiative road's mechanism (decision 10); briefs-once
+  survives as decision 8.
+
+- **A fattened inbox as the staged home.** Rejected: the inbox is
+  deliberately dumb capture; making it the shaped, staged record
+  contorts it. Its promotion mechanics are reused by the pull
+  instead.
+
+- **Fixed horizon vocabulary, dates, milestones.** Rejected: the
+  user's own names, orderable, date-free. Dated roadmaps rot into
+  fiction (Now/Next/Later practice exists because of this).
+
+- **Ceremony borrows considered and declined (for now):** a
+  staleness cue at catch-up ("these someday items are six months
+  old") — Lee grooms manually and the reminder would annoy;
+  a post-launch retro beat at epic completion — Lee retros
+  naturally, and end-of-epic is when you want to finish, not add
+  ceremony. Scoring frameworks (RICE/ICE), sprint mechanics, PI
+  planning, OKR cascades, opportunity solution trees — weight
+  without payoff at this scale. Any of these can be circled back to.
+
+## Real-world cross-check
+
+Landed shape matches established practice arrived at independently —
+Lee's if-it-maps-to-real-life test:
+
+- **Now/Next/Later roadmapping** (ProdPad): horizon-based, date-free
+  — our decisions 18 and the rejection of dates, exactly.
+- **User story mapping** (Patton): lay out the whole, then cut a
+  release as a horizontal slice — our sort-late-at-the-harvest.
+- **Upstream/discovery kanban**: a named commitment point; options
+  left of it are cheap to reshuffle — our pull, and cheap-to-be-
+  wrong is the left-of-the-line property.
+- **Continuous discovery** (Cagan, Torres): product conversation
+  runs permanently alongside delivery — the always-re-enterable
+  product loop plus parks-from-anywhere.
+
+## Scenarios
+
+1. **Greenfield genesis → MVP + v1.** `s/start` → product-altitude
+   read → project-level sessions, hours of exploration → harvest:
+   `mvp: ordering, menu-management, kitchen-display · v1: loyalty,
+   analytics · someday: white-label`, horizons named from the
+   conversation's own language → stop (first-class; roadmap on disk,
+   zero work units) or pull MVP → epic born fenced, seed set +
+   backfill, thin-or-deep epic discovery → topics + briefs from the
+   whole chain → pipeline. Months later: overview shows
+   `mvp ✓ · v1: 2`; pull v1.
+
+2. **Greenfield, small — everything is "now".** Reads as epic →
+   today's path byte-for-byte, roadmap never born (unless a "later"
+   thought parks one item). Reads as product → harvest lands
+   everything in one horizon → pull takes it all into one epic.
+   Same end state either way — the convergence that makes the gate
+   safe.
+
+3. **Brownfield feature.** Today's path plus the recognition pass:
+   a roadmap or inbox match gets one soft offer to pull/read-in;
+   otherwise untouched. Mid-feature tangents go to the inbox as
+   today.
+
+4. **Brownfield bug.** Inbox → bugfix → investigation pipeline.
+   Roadmap never consulted. Zero interaction by design.
+
+5. **Read as epic, product emerges mid-conversation** (very likely
+   in practice). Parks fire as staging language appears; the roadmap
+   is born lazily; the epic harvest sorts two ways; the end state
+   converges with the genesis mainline — one fenced epic plus a
+   roadmap. Only the degenerate case (nothing in the epic is "now")
+   needs surgery: park everything, cancel the epic.
+
+6. **Expanding an in-flight epic.** New thread in epic discovery →
+   belongs here (topic at harvest) / staged later (park) / already
+   on the roadmap (pull-forward — post-harvest as a topic, pre-
+   harvest as seed material crystallising with its identity, the
+   anti-twin rule).
+
+7. **Post-MVP product chat.** `p` → session N+1 of the chain →
+   catch-up (map + logs + KB over shipped units) → pivot talk,
+   insert item, demote v1 → v2 → harvest re-sorts → stop or pull.
+
+8. **Return-visit v1 pull, much later.** Items' `sources` pointers
+   name the product sessions to continuity-load at epic entry; the
+   conversation adds what launching taught; the harvest briefs from
+   all of it — no summary was taken in the interim.
+
+## Engine surface (sketch)
+
+- Project-manifest `roadmap` node (decision 19) + field-surface
+  access; reserved pseudo identity + KB phase for product sessions;
+  session-log template with harvest section.
+- Verbs: park (item + horizon + provenance, JIT-creates the map),
+  pull (join + seed hand-off into `workunit create`), pull-forward,
+  horizon ops (rename / reorder / insert / merge / split), item ops
+  (re-bucket / edit summary / remove), roadmap render surfaces (map
+  view, proposal view, start-screen states and rows).
+- Prose: detection-core gains the product-altitude tell; the product
+  road's session loop (reuse of discovery's loop + guidelines with a
+  product-level delta); park valve named in epic session-loop and
+  discussion guidelines; recognition pass at shaping; pull ceremony;
+  epic-harvest two-destination sort; continuity-load across the
+  chain.
+- Simulation coverage per the house rule; prose cases for the
+  genesis walk, the park, the pull, the recognition pass, and the
+  three start-screen states.
+
+## Open questions
+
+- **Naming.** The user-facing word is *roadmap* and the concept word
+  for a bucket is *horizon* (settled). Open: the project-level dir
+  (`.workflows/.product/`? `.workflows/.roadmap/`?), the reserved
+  pseudo identity name, and what the product road's sessions are
+  called in chrome.
+- **Staleness hop, roadmap → epic.** A post-launch product session
+  that materially deepens or re-buckets an item already pulled into
+  an in-flight epic — should it flag the epic (`reconcile_needed`
+  analog, one hop, as phase inputs do today)? Never discussed;
+  needs a decision.
+- **Cancelled-topic revert.** A topic cancelled inside an epic —
+  does its roadmap item revert to waiting, show "dropped", or stay
+  joined? (It must not read as shipped.)
+- **Recognition match fuzziness.** Name/theme matching — how eager,
+  and against how much of the item/inbox text?
+- **Pull ceremony shape.** The grouping confirm (N items → which
+  unit(s), unit naming) — menu form and edge cases (partial pulls:
+  "take ordering but only the guest-checkout half"?).
+- **Product-road guidelines.** Reuse discovery-guidelines with a
+  delta (no granularity rules, horizon current, park/sort moves) or
+  a sibling file?
+- **KB grade for product sessions** — assumed record-grade like
+  discovery logs; confirm.
+- **Multiple products per repo** — out of scope; one product per
+  project assumed.
