@@ -288,9 +288,10 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 
 // ---------------------------------------------------------------------------
 // proposed-task / tasks-overview — the shared task presentation for the
-// analysis and review synthesis loops and the ad hoc plan-changes gate.
-// Severity/sources are the synthesis loops' fields, placement/priority/
-// depends_on the ad hoc gate's — all optional, rendered only when present.
+// analysis and review synthesis loops, the ad hoc plan-changes gate, and
+// the consolidation-boundary walk. Severity/sources ride the synthesis and
+// consolidation payloads, placement/priority/depends_on the ad hoc and
+// consolidation ones — all optional, rendered only when present.
 // Gate mode rides as a flag, not an address read: the flows carry it in a
 // cycle response or the manifest's staging subtree — the surface guarantees
 // the form of the output, the flow owns the mode.

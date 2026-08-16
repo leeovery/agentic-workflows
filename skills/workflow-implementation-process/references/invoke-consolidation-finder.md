@@ -26,7 +26,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 ## Invoke the Agent
 
-Dispatch a **fresh** `workflow-implementation-consolidation-finder` agent via the Task tool — fresh context is the point: the finder reads the phase's final surface with no memory of how it was built. Pass:
+**Agent path**: `../../../agents/workflow-implementation-consolidation-finder.md`
+
+Dispatch a **fresh** agent via the Task tool — fresh context is the point: the finder reads the phase's final surface with no memory of how it was built. Pass:
 
 1. **Phase files** — the file list from scope identification
 2. **Bank entries** — the full bank JSON (the finder verdicts every entry against the phase's final state)
@@ -53,6 +55,6 @@ SUMMARY: {1 sentence}
 ```
 
 - `findings`: consolidation is owed — proposals and bank verdicts are in the findings file
-- `clean`: nothing above the bar and no confirmed bank entries. The findings file is still written when bank verdicts exist (mooted and residue entries need consuming), and not at all otherwise
+- `clean`: nothing above the bar and no confirmed bank entries. The findings file is still written when bank verdicts, pre-existing debt, or Observations exist, and not at all otherwise
 
 → Return to caller.

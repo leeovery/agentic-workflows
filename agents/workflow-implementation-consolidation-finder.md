@@ -54,7 +54,7 @@ What the plan structurally could not have authored — visible only once sibling
 A candidate that fails any test goes to Observations, never Findings:
 
 - **No behaviour change** — every proposal is a pure refactor: tests stay green, test semantics untouched. A proposal that changes what the code does is not consolidation.
-- **Cause vs subject** — the problem must be *caused by this phase's changes*; the fix may reach outside the diff (consolidating phase code into a pre-existing helper, touching its call sites, is in). A refactor whose subject is wholly pre-existing code the phase merely sits next to is out — an Observation, and `residue` if banked.
+- **Cause vs subject** — the problem must be *caused by this phase's changes*; the fix may reach outside the diff (consolidating phase code into a pre-existing helper, touching its call sites, is in). A refactor whose subject is wholly pre-existing code the phase merely sits next to is out — record it under `## Pre-existing Debt` (the orchestrator banks it for the end-of-implementation analysis), and verdict it `residue` if already banked.
 - **No architecture re-litigation** — cross-phase structural patterns belong to the end-of-implementation analysis, not this pass.
 - **Plan-authorable** — anything that could have been in the plan (a missed requirement, a design gap, work the spec implies) is not consolidation. Observation.
 
@@ -62,7 +62,7 @@ A candidate that fails any test goes to Observations, never Findings:
 
 Write the findings file to `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{phase}.md` in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`) — the harness blocks report-shaped `.md` writes from sub-agents. Bash is for git reads and this rename only.
 
-Skip the file entirely only when there is nothing to say at all: no findings, no Observations worth keeping, and no bank entries to verdict.
+Skip the file entirely only when there is nothing to say at all: no findings, no pre-existing debt, no Observations worth keeping, and no bank entries to verdict.
 
 ## Findings File Format
 
@@ -83,6 +83,12 @@ Skip the file entirely only when there is nothing to say at all: no findings, no
 
 - {entry summary} — {confirmed → F{n} | mooted — {what resolved it} | residue — {reason}}
   {the entry's JSON, verbatim as received}
+
+## Pre-existing Debt
+
+- {summary — one line}
+  DETAIL: {what and where, with file:line references}
+  FILES: {comma-separated paths involved}
 
 ## Observations
 

@@ -22,19 +22,36 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 > Phase {N}'s tasks are done. Before the phase closes: one sweep over what they built side by side — consolidation the plan could not author, plus everything banked along the way.
 ```
 
-Resume guards — check in order, first match wins:
+Resume guards — read the durable state (both prints are empty when the field is absent), then check in order, first match wins:
 
-#### If the manifest's `staging.p{N}` holds a `pending` task
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} staging
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} consolidated_phases
+```
+
+#### If the phase's label (the planning file's `Phase {N}:` heading) names machinery-created remediation work (starts with `Analysis (Cycle` or `Review Remediation`)
+
+The boundary never applies to remediation phases — record the phase without a sweep.
+
+→ Proceed to **F. Record the Phase**.
+
+#### If `staging.p{N}` holds a `pending` task
 
 The walk is mid-approval.
 
-→ Proceed to **D. Process Task**.
+→ Proceed to **C. Approval Overview**.
 
-#### If `staging.p{N}` holds no `pending` task and at least one `approved` and the plan lacks any of those tasks
+#### If `staging.p{N}` holds no `pending` task and at least one `approved` row's task is missing from the plan
 
-The session died between the walk and the plan write.
+The session died between the walk and the plan write — or partway through the task writer's run.
 
 → Proceed to **E. Create Tasks in Plan**.
+
+#### If the format's **reading.md** lists open or in-progress tasks in phase {N}
+
+The pass's tasks are mid-flight — the boundary concludes when they land.
+
+→ Return to caller.
 
 #### If the manifest's `consolidated_phases` contains `{N}`
 
@@ -84,9 +101,14 @@ Consolidation sweep: nothing owed.
 
 Read the findings file. The finder proposes; this stage disposes, with the session context the finder lacks:
 
-1. **Re-apply the bar** — drop findings the session already settled: an ad hoc change that made one moot, a deferral the user chose, ground a finding would trample. Anything that could have been in the plan — a missed requirement, a design gap — is not consolidation: leave it out of the staging, and after the pass returns surface it to the user and offer **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)**.
-2. **Fold the survivors into tasks** — related findings about one pattern become one task; anything giant splits. Normal planning granularity, the count dictated by the work. Every task is a pure refactor: behaviour unchanged, tests stay green, test semantics untouched. Give each task a one-word class tag (its dominant finding class — e.g. `duplication`, `drift`, `dead-code`, `complexity`, `comments`).
+1. **Re-apply the bar** — drop findings the session already settled: an ad hoc change that made one moot, a deferral the user chose, ground a finding would trample. Anything that could have been in the plan — a missed requirement, a design gap — is not consolidation: leave it out of the staging and set it aside — the exit steps (**E**/**F**) surface it and offer **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)**.
+2. **Fold the survivors into tasks** — related findings about one pattern become one task; anything giant splits. Normal planning granularity, the count dictated by the work. Every task is a pure refactor: behaviour unchanged, tests stay green, test semantics untouched. Give each task a one-word class tag (its dominant finding class — e.g. `duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `comments`).
 3. **Settle each bank verdict** — the findings file carries the finder's verdict per banked entry, with the entry's JSON quoted verbatim. Record each disposition in the staging file's `## Bank Disposition` section: `folded into task {n}`, `mooted — {reason}`, or `residue — {reason}` (pre-existing debt and out-of-phase entries ride to the end-of-implementation analysis).
+4. **Bank the finder's pre-existing debt** — push each entry from the findings file's `## Pre-existing Debt` section onto the bank; it rides to the end-of-implementation analysis:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} bank '{"source":"finder","pre_existing":true,"summary":"{one line}","detail":"{what and where, file:line}","files":["{path}"]}'
+   ```
 
 Write the staging file to `.workflows/{work_unit}/implementation/{topic}/consolidation-tasks-p{N}.md`:
 
@@ -95,7 +117,7 @@ Write the staging file to `.workflows/{work_unit}/implementation/{topic}/consoli
 
 ## Task 1: {title}
 placement: phase {N}
-class: {tag}
+severity: {class tag}
 
 **Problem**: {what the phase left duplicated, drifted, dead, or stale}
 **Solution**: {the consolidation}
@@ -222,10 +244,24 @@ Pass via the orchestrator's prompt:
 4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
 5. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
 6. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
-7. **Phase placement** — `per-task` (every staged task carries `placement: phase {N}` — the still-open current phase)
+7. **Phase placement** — `per-task` (every staged task carries `placement: phase {N}`), declared as a **consolidation-boundary placement**: phase {N}'s completion is deferred by the caller — the writer treats the phase as open
 8. **Approved task numbers** — the task numbers whose `staging.p{N}` rows are `approved`
 
-The agent creates exactly the approved tasks; a crash-resume re-invocation is safe (it creates only those not yet present). It returns:
+The agent creates exactly the approved tasks; a crash-resume re-invocation is safe (it creates only those not yet present).
+
+> **CHECKPOINT**: Do not proceed until the task writer has returned.
+
+#### If `STATUS` is `failed`
+
+Nothing further was created, and nothing here proceeds over a refusal: state the writer's reason plainly — the staging and the bank stay untouched.
+
+**STOP.** Wait for user response.
+
+Resolve with the user, then re-invoke — creation is idempotent.
+
+→ Return to **E. Create Tasks in Plan**.
+
+#### If `STATUS` is `complete`
 
 ```
 STATUS: complete
@@ -234,9 +270,7 @@ PHASES: {phase numbers}
 SUMMARY: {1 sentence}
 ```
 
-> **CHECKPOINT**: Do not proceed until the task writer has returned.
-
-**Consume the settled bank entries** — pull each entry whose disposition is `folded` or `mooted`: its work is now a plan task (approved or declined — offered and declined is decided), or its premise is gone. `residue` entries stay for the end-of-implementation analysis. Use the JSON quoted in the staging file's `## Bank Disposition`, verbatim:
+**Consume the settled bank entries** — pull each entry whose disposition is `folded` or `mooted`: its work is now a plan task (approved or declined — offered and declined is decided), or its premise is gone. `residue` entries stay for the end-of-implementation analysis. Use the JSON quoted in the staging file's `## Bank Disposition`, verbatim — a response carrying `"removed": false` means the quote drifted from the banked entry: read the bank back (`manifest get`) and pull the matching entry:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest pull {work_unit}.implementation.{topic} bank '{entry json exactly as banked}'
@@ -250,6 +284,8 @@ Commit — `--plan` stages the work unit and the plan's declared storage:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidation — {K} task(s)" --plan {topic}
 ```
 
+**Surface anything set aside at B** — present each plan-authorable finding and offer **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)**; its task-loop return lands back here.
+
 The loop's next task fetch sees the consolidation tasks; the phase records complete when they land (stage **H**'s `completing` disposition). Any task totals held in session context are stale — re-derive them at the next display.
 
 → Return to caller.
@@ -260,22 +296,25 @@ The loop's next task fetch sees the consolidation tasks; the phase records compl
 
 The pass concluded with nothing to land — close the phase:
 
-1. **Consume the settled bank entries** — pull each entry marked `mooted` (by the staging file's `## Bank Disposition` when **B** ran, else by the findings file's bank verdicts), and each `folded` entry — its task was offered and declined, which is decided. `residue` entries stay. Use the quoted JSON, verbatim:
+1. **Consume the settled bank entries** — pull each entry marked `mooted` (by the staging file's `## Bank Disposition` when **B** ran, else by the findings file's bank verdicts), and each `folded` entry — its task was offered and declined, which is decided. `residue` entries stay. Use the quoted JSON, verbatim — a response carrying `"removed": false` means the quote drifted from the banked entry: read the bank back (`manifest get`) and pull the matching entry:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest pull {work_unit}.implementation.{topic} bank '{entry json exactly as banked}'
    ```
-2. **Mark the boundary** — skip the push when `consolidated_phases` already contains `{N}`:
+2. **Bank the finder's pre-existing debt** — when **B** did not run this pass, push each entry from the findings file's `## Pre-existing Debt` section onto the bank, as at **B** step 4 (**B** already pushed them otherwise).
+3. **Mark the boundary** — skip the push when `consolidated_phases` already contains `{N}`:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} consolidated_phases {N}
    ```
-3. **Complete the phase in the plan** — follow the format's **updating.md** instructions for phase completion.
-4. **Record it via the engine** — re-run the completion for the phase's last completed task (session context; after a crash, any `-{N}-` id from the manifest's `completed_tasks`). The re-record is idempotent — the id and the phase each land once:
+4. **Complete the phase in the plan** — follow the format's **updating.md** instructions for phase completion.
+5. **Record it via the engine** — re-run the completion for the phase's last completed task (session context; after a crash, any `-{N}-` id from the manifest's `completed_tasks`). The re-record is idempotent — the id and the phase each land once:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {N} --phase-complete
    ```
-5. **Commit** — the scoped commit covers the manifest and the plan's declared storage:
+6. **If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`).
+7. **Commit** — the scoped commit covers the manifest and the plan's declared storage:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidated" --plan {topic}
    ```
+8. **Surface anything set aside at B** — present each plan-authorable finding and offer **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)**; its task-loop return lands back here.
 
 → Return to caller.

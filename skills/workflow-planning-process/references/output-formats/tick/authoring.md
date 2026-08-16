@@ -53,7 +53,7 @@ Each command returns the phase's tick ID — this is the phase's external identi
 
 ## Task Storage
 
-Create tasks as children of their phase task. Always set `--refs` to store the workflow's internal ID.
+Create tasks as children of their phase task. Always set `--refs` to store the workflow's internal ID. Creating an open task under a `done` parent reopens that parent's `done` ancestors (recursively upward) — the hierarchy stays consistent, no manual reopen needed.
 
 ```bash
 tick create "{task:(titlecase)}" --parent tick-c3d4 \

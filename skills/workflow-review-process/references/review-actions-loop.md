@@ -74,7 +74,7 @@ The session died between the last gate decision and the plan write — the appro
 
 #### If a `review-tasks-c{N}.md` staging file exists on disk with no matching manifest cycle
 
-A crash between the synthesizer's write and the init — initialise the cycle now from the file's task count (the batched `pending` set from **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)**). Only the `review-tasks-` family counts: `analysis-tasks-c*.md` and `ad-hoc-tasks-*.md` files in the same directory belong to the implementation item and the ad hoc plan-changes flow.
+A crash between the synthesizer's write and the init — initialise the cycle now from the file's task count (the batched `pending` set from **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)**). Only the `review-tasks-` family counts: `analysis-tasks-c*.md`, `ad-hoc-tasks-*.md`, and `consolidation-tasks-p*.md`/`consolidation-findings-p*.md` files in the same directory belong to the implementation item, the ad hoc plan-changes flow, and the consolidation boundary.
 
 → Proceed to **C. Approval Overview**.
 

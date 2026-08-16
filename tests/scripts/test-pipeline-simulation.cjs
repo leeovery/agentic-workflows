@@ -309,7 +309,7 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   // Phase boundary: the completion defers its flag, the consolidation pass
   // finds nothing, and the re-record closes the phase (consolidation-pass.md F).
-  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~']);
+  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -381,7 +381,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // Phase boundary: the completion defers its flag, the consolidation pass
   // verdicts the banked entries residue (they ride to the end-of-implementation
   // analysis), and the re-record closes the phase (consolidation-pass.md F).
-  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--next-task', '~']);
+  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -551,6 +551,8 @@ describe('pipeline simulation', () => {
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
+    // Quick-fix takes no consolidation boundary (its plan never grows), so the
+    // completion keeps the fused --phase-complete.
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--next-task', '~', '--phase-complete']);
     sim.run(['topic', 'complete', wu, 'implementation', wu]);
     sim.run(['topic', 'start', wu, 'review', wu]);
@@ -1193,15 +1195,23 @@ describe('pipeline simulation', () => {
     // its flag (task-loop H `boundary` disposition), the pass stages a
     // consolidation task in the still-open phase (consolidation-pass.md B–E),
     // and the phase records once it lands.
-    sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--next-task', '~']);
     const bankEntry = `{"task":"${wu}-1-2","source":"reviewer","summary":"near-miss helpers","detail":"src/x.js:3 vs src/y.js:9","files":["src/x.js","src/y.js"]}`;
     sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank', bankEntry]);
+    sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--phase', '1', '--next-task', '~']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1=pending']);
     sim.refuses(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'perhaps'], /Invalid staging task status/);
     const overviewPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/tasks-overview.json`,
       { label: 'Phase 1 consolidation', tasks: [{ title: 'Merge the near-miss helpers', severity: 'near-miss', status: 'pending' }] });
     assert.match(sim.render(['tasks-overview', `${wu}.implementation.${wu}`, '--file', overviewPayload], { expect: 'content' }),
       /Phase 1 consolidation/, 'the boundary walk renders the shared overview surface');
+    const consolidationPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+      current: 1, total: 1, title: 'Merge the near-miss helpers', severity: 'near-miss',
+      placement: 'phase 1', problem: 'p', solution: 's', outcome: 'o',
+      steps: ['1. x'], criteria: ['- c'], tests: ['- t'],
+    });
+    assert.match(sim.render(['proposed-task', `${wu}.implementation.${wu}`,
+      '--file', consolidationPayload, '--gate', 'gated', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' }),
+      /Placement: phase 1/, 'the boundary walk renders the shared per-task surface');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'approved']);
     // The pass marks itself landed before the plan write — a crash after this
     // point resumes at task creation, never a re-sweep.
@@ -1249,8 +1259,8 @@ describe('pipeline simulation', () => {
     assert.strictEqual(resumed.gates.task_gate_mode, 'gated', 'resume resets auto to gated');
     assert.strictEqual(resumed.gates.consolidation_gate_mode, 'gated', 'the boundary gate resets with the session');
     const completed = sim.manifest(wu).phases.implementation.items[wu].completed_tasks;
-    assert.deepStrictEqual([...new Set(completed)].sort(), [`${wu}-1-1`, `${wu}-1-2`, `${wu}-1-3`],
-      'completed_tasks carries each id once');
+    assert.deepStrictEqual([...completed].sort(), [`${wu}-1-1`, `${wu}-1-2`, `${wu}-1-3`],
+      'completed_tasks carries each id once — the boundary re-record must not double-count');
   });
 
   it('background agents: dispatch → completion scan → ack → surface → incorporate', () => {

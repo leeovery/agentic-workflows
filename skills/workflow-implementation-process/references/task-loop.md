@@ -4,9 +4,9 @@
 
 ---
 
-Follow stages A through H sequentially for each task. Do not abbreviate, skip, or compress stages based on previous iterations.
+Follow stages A through H sequentially for each task — stage J is the phase-boundary detour H and A route into. Do not abbreviate, skip, or compress stages based on previous iterations.
 
-At loop entry (crash-resume healing): if the plan marks tasks completed — completed, not skipped — that the manifest's `completed_tasks` lacks, run `engine task complete` for each missing internal id before retrieving the next task — the push is an idempotent no-op for ids already recorded, and this reseals the seam a crash between the plan mark and the bookkeeping can leave.
+At loop entry (crash-resume healing): if the plan marks tasks completed — completed, not skipped — that the manifest's `completed_tasks` lacks, run `engine task complete` for each missing internal id — in plan order, passing `--phase` with the phase embedded in the id — before retrieving the next task. The push is an idempotent no-op for ids already recorded, this reseals the seam a crash between the plan mark and the bookkeeping can leave, and the `--phase` keeps `current_phase` honest for the boundary guards below.
 
 ```
 A. Retrieve next task + mark in-progress + present the task brief
@@ -18,7 +18,7 @@ F. Fix approval gate (gated prompt)
 G. Task gate (gated → prompt user / auto → announce)
 H. Update progress + phase check + commit
 J. Consolidation pass (phase boundary) → consolidation-pass.md
-→ loop back to A until done
+→ loop back to A until done — I. All tasks complete exits to the caller
 ```
 
 **Engine sections**: the loop's state-derived sections — the task brief, the result header, and the gates — render via `engine render` calls — each stage below fetches its own section at the moment it displays it and emits what returns, so the section always sits in the tool result directly above its emission. Each section is emitted verbatim as the form its marker names. A section is everything beneath its `===` marker up to the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
@@ -97,7 +97,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
 
 #### If a task is available
 
-**If the task belongs to a later phase than the manifest's `current_phase` and `completed_phases` lacks `current_phase`** (an interrupted consolidation boundary — the previous phase must close first):
+**If the task belongs to a later phase than the manifest's `current_phase`, the current phase's tasks are all complete, and `completed_phases` lacks `current_phase`** (an interrupted consolidation boundary — the previous phase must close first):
 
 → Proceed to **J. Consolidation Pass**.
 
@@ -384,8 +384,8 @@ Include the user's feedback when re-invoking.
 **Determine the phase disposition** — use the format's **reading.md** to list remaining tasks in the current phase, then set `{disposition}`:
 
 - `continuing` — tasks remain open or in-progress in the current phase.
-- `completing` — none remain, and the phase is past its boundary: the manifest's `consolidated_phases` contains the phase number (`manifest get {work_unit}.implementation.{topic} consolidated_phases`; an absent field is empty), or the phase's label names machinery-created remediation work (starts with `Analysis (Cycle` or `Review Remediation`), which never takes the boundary.
-- `boundary` — none remain and neither holds: the consolidation pass is owed. Leave the phase open in the plan — **J. Consolidation Pass** completes it once the pass has landed.
+- `completing` — none remain, and the boundary is not owed: the work type is `quick-fix` (its plan never grows, so the boundary never fires), or the phase's label (the planning file's `Phase {N}:` heading) names machinery-created remediation work (starts with `Analysis (Cycle` or `Review Remediation`), or the manifest's `consolidated_phases` contains the phase number (`manifest get {work_unit}.implementation.{topic} consolidated_phases`; an absent field is empty) with every `approved` row of `staging.p{N}` present in the plan — an approved row whose task is missing marks a partial task-writer run, which is `boundary`.
+- `boundary` — none remain and no `completing` condition holds: the consolidation pass is owed, or unfinished. Leave the phase open in the plan — **J. Consolidation Pass** completes it once the pass has landed.
 
 **If `{disposition}` is `completing`:** follow the format's **updating.md** instructions for phase completion.
 

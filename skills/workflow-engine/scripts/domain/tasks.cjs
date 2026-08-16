@@ -128,7 +128,8 @@ function counterOf(item, field) {
  * (`{status: 'in-progress'}`) plus session defaults. Present → session reset
  * only: the four gate modes back to `gated`, `analysis_cycle_session` to 0 —
  * `analysis_cycle_total`, `linters`, `project_skills`, `current_phase`,
- * `current_task`, `completed_tasks`, and `completed_phases` are never touched.
+ * `current_task`, `completed_tasks`, `completed_phases`, `consolidated_phases`,
+ * and `bank` are never touched.
  * `fix_attempts` resets to 0 UNLESS `current_task` has a live fix-tracking
  * file (a crash-resume mid-task): the counter and file are that task's
  * convergence history and stay in lockstep — zeroing one without the other
