@@ -390,6 +390,59 @@ pipeline, like baseline. The pipeline itself is untouched.
     Claude-app bridge) remain first-class: the workflows require a
     named directory and repo, and an idea can predate its own name.
 
+27. **No mirroring — one home per fact.** The roadmap never mirrors
+    the epic's internals. Detail of what was pulled (topic splits,
+    gap-analysis finds) stays inside the fence — no roadmap row; the
+    roadmap says "in flight" and what the epic contains is the epic
+    map's business, one level down (real roadmaps are always coarser
+    than delivery reality). A genuinely new capability surfacing
+    mid-epic sorts at the valve or harvest — "this epic" (the fence
+    grew, deliberately; still no map row) or a horizon (park; map
+    row created, epic untouched). Capability staging lives on the
+    map, exploration structure on the epic's map, delivery state in
+    the phases; the join is the only thread. Noting a fact in two
+    homes is double bookkeeping — what lifecycle-by-join exists to
+    prevent.
+
+28. **Item operations split by the join; the add flow is strict once
+    a horizon is fully in delivery.** Un-pulled items are the loose
+    zone — add, edit, rename, re-bucket, remove, merge, split, any
+    time, from anywhere (park, direct add, harvest, grooming).
+    Pulled items: summary edits are cosmetic (the row is a window);
+    re-bucket and remove are refused bare (decision 25c); reshaping
+    happens in the epic. Horizon ops (rename, reorder, insert,
+    merge, split one into two) run any time and are presentational
+    for joined items — a horizon of shipped items is the record of
+    what that release was. Adding to a *joined* horizon is a routed
+    confirm keyed on its composition: while the horizon still holds
+    waiting items (release still being composed) the add may land
+    waiting beside them, join a delivery container, or go elsewhere;
+    once the horizon is fully in delivery the confirm is strict
+    two-way — into the epic (as a fresh topic, full phase
+    discipline) or another horizon. No waiting side-door into a
+    release that is now an epic. **Stretch scope is epic machinery,
+    never a map state**: a "if there's room" item enters the epic as
+    a fresh topic (visible to delivery, unstarted), and at wrap an
+    untouched stretch topic is cancelled — the revert hands the item
+    back to the map, waiting, re-sorted at the next catch-up. Fresh
+    topic + cancel + revert: all existing parts.
+
+29. **Horizon ≠ epic — the pull is item-selective.** A horizon is a
+    release label over items, not a delivery container; it drains
+    through as many pulls as it takes. Partial pulls are first-class
+    (three items → epic `mvp-core` now, two wait for a later pull),
+    so "waiting beside in flight" is the truthful render of a
+    partially delivered horizon — derived, never stored. Multiple
+    units per horizon fall out naturally: sequential is the default
+    the pull ceremony assumes, overlap is not forbidden (the system
+    already runs concurrent work units under presence awareness) but
+    never encouraged. Horizon completion is computed — every item
+    shipped or removed — with no stored release state. Naming an
+    epic after its horizon is the natural case when one pull takes
+    the whole horizon, incidental otherwise. Cross-horizon pulls are
+    legal without extra rules: items are the atoms, each keeps its
+    horizon, each joins whatever unit took it.
+
 ## Rejected shapes along the way
 
 The design went through four versions; the rejected ones are recorded
