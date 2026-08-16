@@ -363,9 +363,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
-  // The task loop's stage H deposits cross-scope consolidation opportunities
-  // from the executor's and reviewer's BANK sections — durable on the
-  // manifest, drained at the phase boundary.
+  // Each executor and reviewer report's BANK entries deposit the moment the
+  // report arrives (task-loop B/D) — durable on the manifest, drained at the
+  // phase boundary.
   const bankPush = sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
     `{"task":"${topic}-1-1","source":"executor","summary":"helper duplicated from a sibling task","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}`]);
   assert.strictEqual(bankPush.length, 1, 'first bank deposit creates the array');

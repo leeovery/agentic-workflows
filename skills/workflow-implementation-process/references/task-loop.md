@@ -115,6 +115,12 @@ The turn does not end here — the executor dispatch follows in the same turn.
 
 > **CHECKPOINT**: Do not proceed until the executor has returned its result.
 
+**Deposit banked opportunities** — every executor report that carries BANK entries deposits them the moment it arrives, whatever its STATUS. They are decided at the phase boundary, which may be tasks away, and conversation context does not survive that long — the manifest does; the pushes ride the next commit that stages it. Push each entry:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} bank '{"task":"{internal_id}","source":"executor","summary":"{one line}","detail":"{what and where, file:line}","files":["{path}"]}'
+```
+
 #### If `STATUS` is `blocked` or `failed`
 
 → Proceed to **C. Handle Executor Block**.
@@ -167,6 +173,8 @@ The turn does not end here — the executor dispatch follows in the same turn.
 → Load **[invoke-reviewer.md](invoke-reviewer.md)** and follow its instructions as written. Pass the executor's result.
 
 > **CHECKPOINT**: Do not proceed until the reviewer has returned its result.
+
+**Deposit banked opportunities** — every review that carries BANK entries deposits them the moment it arrives, whatever its verdict: push each as at **B. Execute Task**, with `"source":"reviewer"`. A near-duplicate of an earlier round's entry is fine — the boundary pass folds them.
 
 #### If `VERDICT` is `needs-changes`
 
@@ -365,12 +373,6 @@ Include the user's feedback when re-invoking.
 **Update task progress in the plan** — follow the format's **updating.md** instructions to mark the task complete — or, when this stage was reached via a skip path (stage C `skip`, or the blocked-tasks `skip`), its skip transition instead.
 
 **Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress, follow the format's **updating.md** instructions for phase completion.
-
-**Deposit banked opportunities** — collect the BANK entries from the task's final executor report and the approving review. They are decided at the phase boundary, which may be tasks away, and conversation context does not survive that long — the manifest does. Push each entry onto the durable set (skip this when neither report carries any):
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} bank '{"task":"{internal_id}","source":"{executor|reviewer}","summary":"{one line}","detail":"{what and where, file:line}","files":["{path}"]}'
-```
 
 **Record progress via the engine** — add `--phase-complete` when the current phase has no remaining open/in-progress tasks, and `--skipped` when the task was skipped rather than implemented:
 ```bash
