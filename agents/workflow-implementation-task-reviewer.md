@@ -109,6 +109,10 @@ Be specific and actionable. "Fix the validation" is not useful. "Add a test case
 
 When alternatives exist, explain the tradeoff briefly — don't just list options. State which you recommend and why.
 
+## Confirmation Dispatch
+
+A dispatch that carries **challenged findings and the user's argument** is an adjudication, not a fresh review. Re-examine each challenged finding against the code with the argument in hand — the user may hold intent, scope, or context the review lacked. Return `withdrawn` when the argument holds (the finding was wrong, or real but outside this task's scope); return `stands` with the reason the argument does not. Unchallenged ISSUES carry forward untouched — never re-sweep the task. Recompute VERDICT from the ISSUES that remain after withdrawals: `approved` when no blocking issue survives. Output the confirmation shape the dispatching reference declares in place of the standard finding.
+
 ## Hard Rules
 
 **MANDATORY. No exceptions. Violating these rules invalidates the review.**
