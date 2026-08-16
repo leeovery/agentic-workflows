@@ -356,6 +356,40 @@ pipeline, like baseline. The pipeline itself is untouched.
     the user confirms. The product level is the widest end of the
     cone of collaboration.
 
+25. **The pull cuts authority, not awareness.** Left of the pull the
+    map is authoritative and loose; right of it the work unit is
+    authoritative and the item's row is a computed window (the
+    join). Signal still crosses the line — as a flag or a reroute,
+    never as an edit (the no-gap-editing rule holding at one more
+    boundary; existing propagation doctrine verbatim: "a signal, not
+    a rewrite — soft can prompt re-examination; it can never
+    overwrite hard"). Mechanics, all reuse: (a) *the join routes new
+    signal* — the bucket-is-the-ticket test (decision 12) gains a
+    branch: a thought about a pulled, in-flight item is a concern
+    for the owning epic — topic-triage reroute — never a park;
+    (b) *a product harvest that materially deepened ground under a
+    pulled item* sets `reconcile_needed` on the epic's item —
+    `flagDownstream` semantics, surfaced and cleared by the existing
+    reconcile advisory; (c) *re-bucketing or removing a pulled item
+    is refused bare* — "demote loyalty to v2" while loyalty is in
+    flight means "stop building this", a delivery decision; the
+    engine refuses, names the join, and the confirmed path goes
+    through the epic-side cancel (cancel-cascade mirror), whose
+    revert returns the item to waiting. Session logs never correct
+    (decay doctrine — history, not claims); un-pulled items drifting
+    from post-launch reality re-sort in conversation at the catch-up
+    — human-paced grooming, no nags.
+
+26. **Product-road imports land at project level.** The opener's
+    import weave is universal and unchanged — chat outside, produce
+    a doc, hand the path over, it is read for shaping and landed as
+    an import. With no work unit yet, files shared at a
+    product-altitude opener land in a project-level imports home,
+    KB-indexed — the parked phase-17 "project-level imports"
+    facility realised on this road. External seed docs (the
+    Claude-app bridge) remain first-class: the workflows require a
+    named directory and repo, and an idea can predate its own name.
+
 ## Rejected shapes along the way
 
 The design went through four versions; the rejected ones are recorded
@@ -497,14 +531,10 @@ Lee's if-it-maps-to-real-life test:
   (`.workflows/.product/`? `.workflows/.roadmap/`?), the reserved
   pseudo identity name, and what the product road's sessions are
   called in chrome.
-- **Staleness hop, roadmap → epic.** A post-launch product session
-  that materially deepens or re-buckets an item already pulled into
-  an in-flight epic — should it flag the epic (`reconcile_needed`
-  analog, one hop, as phase inputs do today)? Never discussed;
-  needs a decision.
 - **Cancelled-topic revert.** A topic cancelled inside an epic —
   does its roadmap item revert to waiting, show "dropped", or stay
-  joined? (It must not read as shipped.)
+  joined? (It must not read as shipped.) Decision 25(c) makes this
+  the un-pull path, so the exact semantics need settling.
 - **Recognition match fuzziness.** Name/theme matching — how eager,
   and against how much of the item/inbox text?
 - **Pull ceremony shape.** The grouping confirm (N items → which
