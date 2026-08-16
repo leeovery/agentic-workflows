@@ -47,6 +47,8 @@ SUMMARY: {1-2 sentences}
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank
 ```
 
+---
+
 ## Initialise Gate State
 
 **If `STATUS` is `tasks_proposed`**, initialise the cycle's gate state — one batched write, one `pending` per task from `TASKS_PROPOSED`:

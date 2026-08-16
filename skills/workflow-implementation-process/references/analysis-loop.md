@@ -168,13 +168,13 @@ Commit the analysis findings — the scoped commit covers the findings files and
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — findings"
 ```
 
-#### If all three agents returned `STATUS: clean` and the manifest holds a `bank` with entries
+#### If all three agents returned `STATUS: clean` and the manifest holds a `bank` with entries (`manifest get {work_unit}.implementation.{topic} bank` — an absent field prints empty)
 
 The phase boundaries left residue — the synthesizer runs over the bank alone for its verdicts.
 
 → Proceed to **D. Dispatch Synthesis Agent**.
 
-#### If all three agents returned `STATUS: clean`
+#### If all three agents returned `STATUS: clean` and the manifest holds no `bank` entries
 
 → Return to **[the skill](../SKILL.md)** for **Step 8**.
 
