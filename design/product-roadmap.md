@@ -263,7 +263,12 @@ pipeline, like baseline. The pipeline itself is untouched.
     against the work unit (and topic) it became — waiting / in
     flight / shipped — the same trick the discovery map uses one
     level down (topics joined against phase items). Nothing is
-    recorded twice, so nothing can disagree.
+    recorded twice, so nothing can disagree. "Waiting" is not a
+    stored value — it is the *absence* of a join. The whole chain is
+    asked hop by hop at render time — roadmap row → work unit →
+    phase items → tasks — the way a CEO asks a manager, who asks the
+    tech lead, who asks the devs; only the bottom of the chain
+    stores anything.
 
 18. **Horizons are user-named, ordered, and soft.** The concept word
     is *horizon* (industry term — Now/Next/Later roadmapping;
@@ -315,7 +320,11 @@ pipeline, like baseline. The pipeline itself is untouched.
     committed content, pseudo work-unit carve-out, own KB phase).
     Directory and identity naming are open questions; the indexing
     grade should match discovery session logs (the record of a
-    conversation), not baseline's advisory-low.
+    conversation), not baseline's advisory-low. The product road's
+    opener reads `.workflows/.baseline/overview.md` in full when it
+    exists, exactly as discovery's opener does — baseline is the
+    past, the roadmap is the future, and both are ambient at product
+    altitude.
 
 21. **The start screen has three product states; empty only when
     truly nothing.** (a) *Mid-conversation exit*: a first-class
@@ -425,7 +434,15 @@ pipeline, like baseline. The pipeline itself is untouched.
     a fresh topic (visible to delivery, unstarted), and at wrap an
     untouched stretch topic is cancelled — the revert hands the item
     back to the map, waiting, re-sorted at the next catch-up. Fresh
-    topic + cancel + revert: all existing parts.
+    topic + cancel + revert: all existing parts. Underneath all of
+    this: **the pipeline is the guard, not the map** — a late
+    addition lands as a topic and cannot reach implementation
+    without passing its phases (discussion → spec → planning, soft
+    gates and spec entry hard-blocks included). A new topic entering
+    while siblings are mid-implementation is already normal epic
+    life; the map's job is only to make the choice explicit and
+    route it to the owning container, never to refuse the product
+    owner's call or let it bypass the pipeline.
 
 29. **Horizon ≠ epic — the pull is item-selective.** A horizon is a
     release label over items, not a delivery container; it drains
@@ -441,7 +458,30 @@ pipeline, like baseline. The pipeline itself is untouched.
     epic after its horizon is the natural case when one pull takes
     the whole horizon, incidental otherwise. Cross-horizon pulls are
     legal without extra rules: items are the atoms, each keeps its
-    horizon, each joins whatever unit took it.
+    horizon, each joins whatever unit took it. A horizon never
+    versions — "MVP 2" is a second unit pulled from the mvp horizon,
+    not a new horizon.
+
+30. **The pull ceremony is a working set; the fence governs
+    synthesis, not the reading.** The pull renders the roadmap's
+    items and takes a multi-select — the inbox pickup's established
+    interaction, on a new surface — then the grouping confirm (which
+    unit(s), unit name). The remainder is named at the moment of
+    choice ("3 items stay waiting in mvp") so a partial pull is
+    never silent. Downstream, the epic's continuity-load reads whole
+    sessions, so material about un-pulled items will pass through
+    context — *reading is broad, synthesis is fenced*: the epic's
+    seed set is the fence, and topic-synthesis's proposal validation
+    (today's `exists_on_map` check) gains a sibling — **a proposal
+    colliding with a waiting roadmap item is never created as a
+    fresh topic**; the gate offers the real move instead
+    (pull-forward, or leave it waiting). Deliberate expansion stays
+    possible; accidental twins become impossible. Un-pulled items
+    return **by visibility, never by memory or analysis**: they
+    never left — the overview shows `mvp: 2 in flight · 3 waiting`,
+    the completion catch-up names the remainder, and the next pull
+    takes them with their `sources` pointers intact. The map is the
+    memory; nothing re-proposes, nothing nags.
 
 ## Rejected shapes along the way
 
@@ -557,16 +597,32 @@ Lee's if-it-maps-to-real-life test:
    conversation adds what launching taught; the harvest briefs from
    all of it — no summary was taken in the interim.
 
+9. **Partial pull and the follow-up unit.** Five items in mvp; the
+   pull's working set takes two → epic `mvp` fenced to those, "3
+   items stay waiting in mvp" said at the gate. While the epic runs
+   the overview reads `mvp: 2 in flight · 3 waiting`; its harvest
+   refuses twins of the waiting three (offers pull-forward instead).
+   At completion the catch-up names the remainder; the next pull
+   takes them into `mvp-2` (or re-sorts some to v1 first) with their
+   pointers intact.
+
 ## Engine surface (sketch)
 
 - Project-manifest `roadmap` node (decision 19) + field-surface
   access; reserved pseudo identity + KB phase for product sessions;
   session-log template with harvest section.
 - Verbs: park (item + horizon + provenance, JIT-creates the map),
-  pull (join + seed hand-off into `workunit create`), pull-forward,
-  horizon ops (rename / reorder / insert / merge / split), item ops
-  (re-bucket / edit summary / remove), roadmap render surfaces (map
-  view, proposal view, start-screen states and rows).
+  pull (working-set select → join + seed hand-off into
+  `workunit create`), pull-forward, horizon ops (rename / reorder /
+  insert / merge / split), item ops (re-bucket / edit summary /
+  remove — with the re-bucket/remove guard on joined items,
+  cancel-cascade mirror), the cancel-revert hop (epic-side topic
+  cancel returns the item to waiting), the `reconcile_needed` flag
+  across the join (`flagDownstream` extension), roadmap render
+  surfaces (map view, proposal view, pull working set, the
+  add-to-joined-horizon routed confirm, start-screen states and
+  rows), a `waiting_on_roadmap` collision flag in the epic-harvest
+  proposal validation, and the project-level imports home.
 - Prose: detection-core gains the product-altitude tell; the product
   road's session loop (reuse of discovery's loop + guidelines with a
   product-level delta); park valve named in epic session-loop and
@@ -574,8 +630,8 @@ Lee's if-it-maps-to-real-life test:
   epic-harvest two-destination sort; continuity-load across the
   chain.
 - Simulation coverage per the house rule; prose cases for the
-  genesis walk, the park, the pull, the recognition pass, and the
-  three start-screen states.
+  genesis walk, the park, the pull (full and partial), the
+  recognition pass, and the three start-screen states.
 
 ## Open questions
 
@@ -590,9 +646,11 @@ Lee's if-it-maps-to-real-life test:
   the un-pull path, so the exact semantics need settling.
 - **Recognition match fuzziness.** Name/theme matching — how eager,
   and against how much of the item/inbox text?
-- **Pull ceremony shape.** The grouping confirm (N items → which
-  unit(s), unit naming) — menu form and edge cases (partial pulls:
-  "take ordering but only the guest-checkout half"?).
+- **Partial-item pulls.** The ceremony itself is settled (decision
+  30 — working set + grouping confirm); open is only the sub-item
+  case: "take ordering into the epic but only the guest-checkout
+  half" — split the item at pull time, or refuse and require a
+  map-side split first?
 - **Product-road guidelines.** Reuse discovery-guidelines with a
   delta (no granularity rules, horizon current, park/sort moves) or
   a sibling file?
