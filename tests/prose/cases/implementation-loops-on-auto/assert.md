@@ -51,12 +51,13 @@ The prose should have taken this path:
     next task ~ WITHOUT --phase-complete, one raw git commit lands as
     impl(pay): Tpay-1-2, and the stage routes to the consolidation
     pass
-12. the pass announces itself, reads consolidation_gate_mode, and
-    dispatches the consolidation finder — the stub returns clean with
-    no file; the pass records the phase: consolidated_phases gains 1,
-    the plan-side phase completion lands, the engine re-records
-    pay-1-2 with --phase 1 --phase-complete, and the scoped commit
-    closes the pass
+12. the pass announces itself, reads consolidation_gate_mode and the
+    durable state (both prints empty), sees a plan-authored phase
+    label with no resume state, and dispatches the consolidation
+    finder — the stub returns clean with no file; the pass records the
+    phase: consolidated_phases gains 1, the plan-side phase completion
+    lands, the engine re-records pay-1-2 with --phase 1
+    --phase-complete, and the scoped commit closes the pass
 13. retrieval finds no available and no open tasks, reports all tasks
     complete, and returns to the caller — the walk stops before the
     analysis loop

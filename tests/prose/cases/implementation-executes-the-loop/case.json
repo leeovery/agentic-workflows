@@ -95,7 +95,8 @@
       "engine.cjs commit pay -m impl(pay): T",
       "git add -A",
       "git add --all",
-      "staging.p1"
+      "staging.p1.tasks",
+      "consolidation_gate_mode auto"
     ]
   }
 }

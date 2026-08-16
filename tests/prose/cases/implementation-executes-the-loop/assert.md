@@ -56,10 +56,11 @@ The prose should have taken this path:
     impl(pay): Tpay-1-2, and the stage routes to the consolidation
     pass
 17. the pass announces itself (marker and signpost), reads
-    consolidation_gate_mode, finds no resume state, and dispatches the
-    consolidation finder — the stub returns clean with no file; the
-    findings commit has nothing to pick up; the clean announce
-    renders
+    consolidation_gate_mode and the durable state (the staging and
+    consolidated_phases reads print empty), sees a plan-authored phase
+    label with no resume state, and dispatches the consolidation
+    finder — the stub returns clean with no file; the findings commit
+    has nothing to pick up; the clean announce renders
 18. the pass records the phase: nothing to pull from the bank (no
     entry was ever deposited), consolidated_phases gains 1, the
     plan-side phase completion lands via the format's updating
