@@ -230,9 +230,10 @@ Docs:
 - `CONVENTIONS.md` §Presentation Register: one sentence added — the
   implementation task loop's report moments follow
   `report-register.md` in place of the lens pair.
-- `voice.md` (line 17): the composition sentence extends to name the
-  report register alongside the lens pair, or generalises to
-  "report registers". Voice still owns how sentences sound.
+- `voice.md`: untouched. The register pointer runs one direction
+  only — `report-register.md` names `voice.md` for the loop's
+  conversational turns; a file loaded into every session never
+  names a phase-local register.
 
 Tests:
 
@@ -295,3 +296,7 @@ reading real task summaries. First live use is the review point for:
   holds the arc (plan intent, fix history) that a summarizer agent
   would lack, and the loop has no conversational register to
   protect. (Lee + Claude.)
+- 2026-08-17 — voice.md stays untouched: register pointers run
+  local → global only. Nothing global — loaded or named in every
+  session's context — references the task loop's register. (Lee,
+  at review.)
