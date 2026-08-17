@@ -54,10 +54,13 @@ it is wide.** That one sentence derives the scoping:
   their own shapes unchanged. They are candidates only after the
   task loop has produced evidence about which rules carry the value;
   a findings-specific variant, if any, is designed then — not now.
-- **The shared lens pair is untouched.** `product-lens.md` and
-  `technical-lens.md` are shared with review presentation and
+- **The shared lens pair keeps its content.** `product-lens.md` and
+  `technical-lens.md` still serve review presentation and
   investigation signoff; this feature removes the task loop from
-  their consumer list and changes nothing in either file.
+  their consumer list. Each gains exactly one line — the
+  composes-with-voice sentence that moved to their side when
+  voice.md's composition sentence was deleted (see the decision
+  log); their registers are otherwise unchanged.
 
 Register placement follows the standing rule: presentation only.
 Agent reports (executor SUMMARY, reviewer ISSUES/NOTES), cache files,
@@ -68,8 +71,8 @@ never what agents write or what lands in the record.
 ## The register
 
 One reference file owns it:
-`skills/workflow-implementation-process/references/report-register.md`
-(name provisional). Implementation-local on purpose — promotion to
+`skills/workflow-implementation-process/references/report-register.md`.
+Implementation-local on purpose — promotion to
 `workflow-shared/` happens if and when a second consumer arrives, and
 the filesystem answers "is this global?" until then.
 
@@ -81,8 +84,9 @@ the filesystem answers "is this global?" until then.
    never "the suites were re-run".
 3. **One name per thing, reused verbatim.** No elegant variation —
    the thing introduced as "the history" stays "the history".
-4. **No narrative framing.** No "worth knowing", "on the way",
-   "three things". Facts sit under their section label instead.
+4. **No narrative framing in sentences.** No "worth knowing", "on
+   the way", "three things". Facts sit under their section label
+   instead — the fixed section labels are vocabulary, not framing.
 5. **Labeled sections; lists for parallel facts.** Enumerations go
    vertical. A section with nothing to say is omitted, never padded.
 6. **Cause and effect explicit, in order.** "The preview rebuilds its
@@ -183,13 +187,19 @@ where the findings sit in the flow.
   rule kills hand-drawn *state* displays, which drift from the state
   they mirror. A show-me diagram is judgment content about the code
   just built — the engine has no view of it, and there is no state
-  to drift from. It is conversational content in a fence, like the
-  diff excerpts the loop already shows.
-- **Escalation**: after the diagrams, one line offers an interactive
-  browser artifact when the harness provides an artifact surface
-  ("Want this as an interactive page?"). Declined or unavailable:
-  nothing — the ASCII stands alone. The offer never leads; the
-  diagrams are the deliverable.
+  to drift from. It is conversational content in a fence, with
+  three established siblings: the raise devices in
+  `background-agent-surfacing.md`, the discussion guidelines'
+  concrete-before-abstract rule, and `rerouted-concerns.md`'s
+  concern breakdowns all prescribe small ASCII diagrams.
+- **Escalation is on request, never offered as a question.** After
+  the diagrams, one line notes that an interactive browser page of
+  the same explanation is available on request — only when the
+  session has a tool that can publish one; otherwise the line does
+  not render and the ASCII stands alone. The request is handled as
+  its own gate branch (render the page, return to the gate). A
+  posed question would dangle over the re-emitted gate menu, where
+  a "yes" collides with the gate's own `y/yes`.
 - After the lens, the gate re-emits its menu — same shape as `t`.
 
 ## Touch points (edge enumeration)
@@ -241,11 +251,11 @@ Docs:
 
 Tests:
 
-- `tests/scripts/test-engine-tasks.cjs` and
-  `test-engine-render-surfaces.cjs`: gate menu pins gain the `s`
-  row.
-- `test-pipeline-simulation.cjs`: render-surface audits re-pinned
-  where they assert gate menu content.
+- `tests/scripts/test-engine-tasks.cjs`: the gate menu pins gain
+  the `s` row — the only suite that pins these menus.
+  `test-engine-render-surfaces.cjs` holds no task-loop gate pin,
+  and `test-pipeline-simulation.cjs` matches the gates by section
+  marker only; neither is owed anything.
 - Prose cases `implementation-executes-the-loop` and
   `implementation-loops-on-auto` reference the gate menus — check
   `assert.md` expectations; regenerate snapshots only if an engine
@@ -307,3 +317,11 @@ reading real task summaries. First live use is the review point for:
   pair: voice.md's composition sentence moves to the lens docs'
   side, since only review and investigation actually load them.
   Shared location is not global loading. (Lee, at review.)
+- 2026-08-17 — Review-pass rulings: the page escalation is
+  available on request, never a posed question (a dangling "yes"
+  collides with the gate's `y/yes`); the no-narrative-framing rule
+  scopes to sentences, so the section labels stand as vocabulary;
+  docs/collaboration.md keeps the lens doctrine and gains the task
+  loop as its stated exception; `s/show` keeps its key — per-menu
+  uniqueness is the codified rule, and `t` is already reused
+  across menus. (Lee, on recommendation.)
