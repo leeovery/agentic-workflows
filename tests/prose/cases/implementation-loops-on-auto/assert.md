@@ -46,9 +46,19 @@ The prose should have taken this path:
     result header renders, the summary follows, the gate is fetched
     via `render task-gate` and its DISPLAY: task gate auto-approved
     continuation section emitted, and the commit proceeds in the same
-    turn — one raw git commit lands as impl(pay): Tpay-1-2 with
-    --phase-complete recorded and next task ~
-12. retrieval finds no available and no open tasks, reports all tasks
+    turn — the phase disposition comes out `boundary` (no open tasks,
+    consolidated_phases lacks phase 1), so the engine call carries
+    next task ~ WITHOUT --phase-complete, one raw git commit lands as
+    impl(pay): Tpay-1-2, and the stage routes to the consolidation
+    pass
+12. the pass announces itself, reads consolidation_gate_mode and the
+    durable state (both prints empty), sees a plan-authored phase
+    label with no resume state, and dispatches the consolidation
+    finder — the stub returns clean with no file; the pass records the
+    phase: consolidated_phases gains 1, the plan-side phase completion
+    lands, the engine re-records pay-1-2 with --phase 1
+    --phase-complete, and the scoped commit closes the pass
+13. retrieval finds no available and no open tasks, reports all tasks
     complete, and returns to the caller — the walk stops before the
     analysis loop
 
@@ -76,6 +86,11 @@ Further claims:
   .workflows/.cache are expected residue of the renders
 - the manifest's implementation item ends with both internal ids in
   completed_tasks, current_task null, phase 1 in completed_phases,
-  and both gate modes auto
+  phase 1 in consolidated_phases, and both gate modes auto —
+  consolidation_gate_mode stays gated, its walk never engaged on the
+  clean path
+- exactly one consolidation-finder dispatch fired; no
+  consolidation-findings file, no consolidation-tasks staging file,
+  and no staging.p1 subtree exist
 - the task files both end with status: completed; the source and test
   files for both tasks exist as the stubs gave them

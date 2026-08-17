@@ -333,7 +333,11 @@ function implement(h) {
     "",
   ].join('\n'));
   h.write(`.workflows/${WU}/planning/${WU}/tasks/${WU}-1-2.md`, taskFile(TASKS[1], 'completed'));
-  h.engine('task', 'complete', WU, WU, `${WU}-1-2`, '--next-task', '~', '--phase-complete');
+  // Phase boundary: the completion defers its flag, the consolidation pass
+  // finds nothing, and the re-record closes the phase (consolidation-pass.md F).
+  h.engine('task', 'complete', WU, WU, `${WU}-1-2`, '--phase', '1', '--next-task', '~');
+  h.engine('manifest', 'push', `${WU}.implementation.${WU}`, 'consolidated_phases', '1');
+  h.engine('task', 'complete', WU, WU, `${WU}-1-2`, '--phase', '1', '--phase-complete');
   h.write('.world-history.json', JSON.stringify([
     { message: `impl(${WU}): T${WU}-1-1 — create payment intent`,
       files: ['src/checkout/payment-intent.js', 'tests/checkout/payment-intent.test.js'] },

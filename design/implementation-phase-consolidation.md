@@ -1,5 +1,8 @@
 # Implementation: End-of-Phase Consolidation — the bank, the boundary pass, the seeded backstop
 
+**Status:** built — stack #911 awaiting review. The build notes below
+record where the build diverged from the sketch.
+
 The implementation phase gets a consolidation pass at every phase
 boundary — a sweep over what the phase just built that the plan could
 not have authored, because the opportunities only exist once the

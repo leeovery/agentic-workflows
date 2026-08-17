@@ -68,6 +68,9 @@
             "pay-1-1",
             "pay-1-2"
           ],
+          "consolidated_phases": [
+            1
+          ],
           "completed_phases": [
             1
           ]
