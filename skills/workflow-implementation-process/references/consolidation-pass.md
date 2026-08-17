@@ -75,7 +75,7 @@ The pass ran; only the phase record is outstanding.
 
 > **CHECKPOINT**: Do not proceed until the finder has returned.
 
-Commit the findings (the scoped commit covers the findings file and the manifest):
+When the finder wrote its file, commit the findings (the scoped commit covers the file and the manifest):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidation — findings"
