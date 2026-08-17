@@ -135,6 +135,13 @@ function buildFixture(root) {
   writeFile(path.join(wf, '.baseline', 'dotted.name.md'), '# dotted topic → excluded\n');
   writeFile(path.join(wf, '.baseline', 'notes.txt'), 'not markdown\n');
 
+  // Product roadmap — session logs and imports; anything else excluded.
+  writeFile(path.join(wf, '.roadmap', 'sessions', 'session-001.md'), '# genesis\n');
+  writeFile(path.join(wf, '.roadmap', 'sessions', 'session-002.md'), '# catch-up\n');
+  writeFile(path.join(wf, '.roadmap', 'sessions', 'notes.txt'), 'not a session\n');
+  writeFile(path.join(wf, '.roadmap', 'imports', 'app-idea.md'), '# the Claude-app bridge doc\n');
+  writeFile(path.join(wf, '.roadmap', 'imports', 'dotted.name.md'), '# dotted → excluded\n');
+
   writeJson(path.join(wf, 'manifest.json'), proj);
 }
 
@@ -159,6 +166,9 @@ const EXPECTED = [
   { workUnit: 'payments', phase: 'research', topic: 'ledger', file: '.workflows/payments/research/ledger.md' },
   { workUnit: 'payments', phase: 'seeds', topic: 'original-idea', file: '.workflows/payments/seeds/original-idea.md' },
   { workUnit: 'payments', phase: 'specification', topic: 'ledger', file: '.workflows/payments/specification/ledger/specification.md' },
+  { workUnit: 'roadmap', phase: 'imports', topic: 'app-idea', file: '.workflows/.roadmap/imports/app-idea.md' },
+  { workUnit: 'roadmap', phase: 'roadmap', topic: 'session-001', file: '.workflows/.roadmap/sessions/session-001.md' },
+  { workUnit: 'roadmap', phase: 'roadmap', topic: 'session-002', file: '.workflows/.roadmap/sessions/session-002.md' },
 ];
 
 function normalise(items) {

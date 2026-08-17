@@ -20,13 +20,19 @@ const setupForms = require('./setup-forms');
 // Constants
 // ---------------------------------------------------------------------------
 
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery', 'baseline'];
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery', 'baseline', 'roadmap'];
 
 // Baseline docs are project-level (`.workflows/.baseline/{topic}.md`) — they
 // belong to no work unit, so their chunks carry this reserved pseudo-identity
 // for both work_unit and work_type. The engine reserves the name at
 // work-unit creation, so a real work unit can never collide with it.
 const BASELINE_IDENTITY = 'baseline';
+
+// The product roadmap's session logs and imports are project-level too
+// (`.workflows/.roadmap/sessions/…`, `.workflows/.roadmap/imports/…`) — same
+// reserved-pseudo-identity carve-out: chunks carry `roadmap` for both
+// work_unit and work_type, and the engine reserves the name.
+const ROADMAP_IDENTITY = 'roadmap';
 
 // Phases whose artifact is a flat `{phase}/{basename}.md` file — one identical
 // derivation (topic = basename, no subdirectories). specification (nested under
@@ -346,6 +352,32 @@ function deriveIdentity(filePath) {
     return { workUnit: BASELINE_IDENTITY, phase: 'baseline', topic };
   }
 
+  // Roadmap material lives under .workflows/.roadmap/ — project-level, under
+  // no work unit. Session logs (topic = session basename, so sessions coexist
+  // rather than overwrite) and imports (topic = filename, mirroring the
+  // work-unit imports shape). Anything else under the dir is refused loudly.
+  const roadmapMatch = /\.workflows\/\.roadmap\/(.+)$/.exec(norm);
+  if (roadmapMatch) {
+    const rest = roadmapMatch[1];
+    const sessMatch = /^sessions\/(session-\d+)\.md$/.exec(rest);
+    if (sessMatch) {
+      return { workUnit: ROADMAP_IDENTITY, phase: 'roadmap', topic: sessMatch[1] };
+    }
+    const importMatch = /^imports\/([^/]+)\.md$/.exec(rest);
+    if (importMatch) {
+      const topic = importMatch[1];
+      if (topic === '.' || topic === '..' || topic.startsWith('.')) {
+        throw new UserError(`Invalid topic name: "${topic}"`);
+      }
+      rejectDottedSegment('topic', topic);
+      return { workUnit: ROADMAP_IDENTITY, phase: 'imports', topic };
+    }
+    throw new UserError(
+      `Unexpected roadmap path structure: ${rest}\n` +
+        'Expected: .workflows/.roadmap/sessions/session-NNN.md or .workflows/.roadmap/imports/{name}.md'
+    );
+  }
+
   // Analysis caches live at .workflows/{wu}/.state/{filename}.md and need a
   // separate match — the main phase regex enumerates known phases and would
   // not accept `.state` as a phase segment.
@@ -647,7 +679,9 @@ async function cmdIndex(args, options, cfg, provider) {
 async function indexSingleFile(sourceFile, identity, cfg, provider) {
   // Read work_type from manifest. Baseline is project-level — no work-unit
   // manifest exists to read, so its chunks carry the pseudo work_type.
-  const workType = identity.phase === 'baseline' ? BASELINE_IDENTITY : readWorkType(identity.workUnit);
+  const workType = identity.phase === 'baseline' ? BASELINE_IDENTITY
+    : identity.workUnit === ROADMAP_IDENTITY ? ROADMAP_IDENTITY
+      : readWorkType(identity.workUnit);
 
   // Load chunking config. In the bundle, __dirname is
   // skills/workflow-knowledge/scripts/, whose sibling ../chunking/ ships the
@@ -980,6 +1014,40 @@ function discoverArtifacts(workUnits) {
       file: path.posix.join(baselineDir, f),
       workUnit: BASELINE_IDENTITY,
       phase: 'baseline',
+      topic: f.slice(0, -3),
+    });
+  }
+
+  // Roadmap sessions and imports — project-level like baseline, discovered
+  // ahead of the manifest walk (the genesis conversation predates the first
+  // work unit). Shapes mirror deriveIdentity exactly.
+  const roadmapSessDir = path.posix.join('.workflows', '.roadmap', 'sessions');
+  let roadmapSessions = [];
+  try {
+    roadmapSessions = fs.readdirSync(resolveArtifactPath(roadmapSessDir)).filter((f) => /^session-\d+\.md$/.test(f));
+  } catch (_) {
+    roadmapSessions = [];
+  }
+  for (const f of roadmapSessions) {
+    items.push({
+      file: path.posix.join(roadmapSessDir, f),
+      workUnit: ROADMAP_IDENTITY,
+      phase: 'roadmap',
+      topic: f.slice(0, -3),
+    });
+  }
+  const roadmapImportsDir = path.posix.join('.workflows', '.roadmap', 'imports');
+  let roadmapImports = [];
+  try {
+    roadmapImports = fs.readdirSync(resolveArtifactPath(roadmapImportsDir)).filter((f) => /^[^./]+\.md$/.test(f));
+  } catch (_) {
+    roadmapImports = [];
+  }
+  for (const f of roadmapImports) {
+    items.push({
+      file: path.posix.join(roadmapImportsDir, f),
+      workUnit: ROADMAP_IDENTITY,
+      phase: 'imports',
       topic: f.slice(0, -3),
     });
   }
@@ -2267,12 +2335,12 @@ async function cmdRemove(_args, options) {
   // registry-not-found, fall through to a store probe — if the store has
   // chunks for this WU we treat it as an orphan cleanup and proceed; if
   // not, surface the typo error.
-  // Baseline is file-based, project-level, and never in the work-unit
-  // registry — the registry probe below would misreport a legitimate remove
-  // as an orphan cleanup. Skip straight to removal.
+  // Baseline and roadmap are file-based, project-level, and never in the
+  // work-unit registry — the registry probe below would misreport a
+  // legitimate remove as an orphan cleanup. Skip straight to removal.
   let isOrphanCleanup = false;
-  const projectEntry = options.workUnit === BASELINE_IDENTITY
-    ? BASELINE_IDENTITY
+  const projectEntry = options.workUnit === BASELINE_IDENTITY || options.workUnit === ROADMAP_IDENTITY
+    ? options.workUnit
     : runManifest(['get', `project.work_units.${options.workUnit}`]).trim();
   if (projectEntry === '') {
     const sp = storePath();
