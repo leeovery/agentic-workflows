@@ -1,0 +1,40 @@
+{
+  "origin": "the harvested-no-work start state had no coverage — a roadmap with zero work units must never render an empty screen, and its row must land in the roadmap's home and leave cleanly",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/empty-state.md",
+    "skills/workflow-roadmap/SKILL.md",
+    "skills/workflow-roadmap/references/roadmap-guidelines.md",
+    "skills/workflow-discovery/references/discovery-guidelines.md"
+  ],
+  "answers": [
+    "r — open the roadmap",
+    "b — leave the roadmap as it is"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs view",
+      "workflow-roadmap/scripts/gateway.cjs view"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs view",
+      "workflow-roadmap/scripts/gateway.cjs view"
+    ],
+    "calls_exclude": [
+      "workunit create",
+      "roadmap session open",
+      "roadmap pull",
+      "roadmap add",
+      "workflow-roadmap/scripts/gateway.cjs pull-set"
+    ]
+  }
+}

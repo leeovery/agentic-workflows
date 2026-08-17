@@ -181,17 +181,19 @@ function headingExists(absPath, anchor) {
 /**
  * Where a walk may begin. A session starts at workflow-start, or at the
  * entry skill a bridge plan file names after a context clear, or at
- * discovery for an epic continuation — never anywhere else.
+ * discovery for an epic continuation, or at the roadmap (its own
+ * start-menu row) — never anywhere else.
  */
 function entryErrors(entry) {
   if (!entry) return ['has no entry — name the skill the walk starts at'];
   const allowed = entry === 'workflow-start'
     || entry === 'workflow-discovery'
+    || entry === 'workflow-roadmap'
     || /^workflow-[a-z-]+-entry$/.test(entry);
   if (!allowed) {
     return [`entry "${entry}" is not somewhere a session starts — use workflow-start, `
-      + 'a workflow-*-entry skill, or workflow-discovery. Navigation and processing '
-      + 'skills are only ever reached mid-session, and a reference never directly'];
+      + 'a workflow-*-entry skill, workflow-discovery, or workflow-roadmap. Navigation '
+      + 'and processing skills are only ever reached mid-session, and a reference never directly'];
   }
   if (!fs.existsSync(path.join(ROOT, 'skills', entry, 'SKILL.md'))) {
     return [`entry "${entry}" is not a skill in skills/`];
