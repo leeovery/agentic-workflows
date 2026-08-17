@@ -91,7 +91,7 @@ A project that grew up on the workflows accumulates that record as it goes. A pr
 
 ## An expert in the room
 
-This is multi-agent by design. Thirty-one specialised agents work alongside the pipeline: baseline researchers that map a codebase the workflows were installed into, background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Review findings are verified against the code before anything acts on them; safe contained corrections are applied and checked in-session, and everything needing a decision reaches you — never a wall of notes.
+This is multi-agent by design. More than thirty specialised agents work alongside the pipeline: baseline researchers that map a codebase the workflows were installed into, background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Review findings are verified against the code before anything acts on them; safe contained corrections are applied and checked in-session, and everything needing a decision reaches you — never a wall of notes.
 
 ## Your task tracker
 
