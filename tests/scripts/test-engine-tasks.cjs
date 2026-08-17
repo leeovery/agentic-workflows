@@ -10,7 +10,7 @@ const { setupFixture, cleanupFixture, createManifest } = require('./discovery-te
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
-const GATED_GATES = { task_gate_mode: 'gated', fix_gate_mode: 'gated', analysis_gate_mode: 'gated' };
+const GATED_GATES = { task_gate_mode: 'gated', fix_gate_mode: 'gated', analysis_gate_mode: 'gated', consolidation_gate_mode: 'gated' };
 
 // Menu label continuations indent with non-breaking spaces (the worklist
 // rule) — goldens spell them explicitly.
@@ -42,6 +42,7 @@ function freshItem() {
     task_gate_mode: 'gated',
     fix_gate_mode: 'gated',
     analysis_gate_mode: 'gated',
+    consolidation_gate_mode: 'gated',
     fix_attempts: 0,
     analysis_cycle_total: 0,
     analysis_cycle_session: 0,
@@ -59,6 +60,7 @@ function inFlightItem() {
     task_gate_mode: 'auto',
     fix_gate_mode: 'auto',
     analysis_gate_mode: 'auto',
+    consolidation_gate_mode: 'auto',
     fix_attempts: 2,
     analysis_cycle_total: 7,
     analysis_cycle_session: 2,
@@ -152,6 +154,7 @@ describe('engine task init', () => {
     expected.task_gate_mode = 'gated';
     expected.fix_gate_mode = 'gated';
     expected.analysis_gate_mode = 'gated';
+    expected.consolidation_gate_mode = 'gated';
     expected.fix_attempts = 0;
     expected.analysis_cycle_session = 0;
     assert.deepStrictEqual(implItem(dir), expected);
