@@ -8,7 +8,7 @@ This step invokes the `workflow-implementation-task-reviewer` agent (`../../../a
 
 ---
 
-## Invoke the Agent
+## A. Invoke the Agent
 
 Every review dispatches a **fresh** `workflow-implementation-task-reviewer` agent — including the re-review after a fix round. Never continue a previous reviewer: the review is independent verification, and a continued reviewer checks the fix against its own prior findings instead of reading the result fresh. The numbered payload is the reviewer's complete input — prior review findings and fix history stay out; they would anchor the fresh read.
 
@@ -23,7 +23,7 @@ Invoke `workflow-implementation-task-reviewer` with:
 
 ---
 
-## Expected Result
+## B. Expected Result
 
 The agent returns a structured finding:
 
@@ -61,9 +61,9 @@ NOTES:
 
 ---
 
-## Confirmation Review
+## C. Confirmation Review
 
-Dispatched from the fix gate when the user challenges a finding rather than directing a fix. Invoke a **fresh** `workflow-implementation-task-reviewer` agent — never the reviewer whose finding is under challenge, which would defend its own work, and never a continuation. Pass items 1–6 above, plus:
+Dispatched from the fix gate when the user challenges a finding rather than directing a fix. Invoke a **fresh** `workflow-implementation-task-reviewer` agent — never the reviewer whose finding is under challenge, which would defend its own work, and never a continuation. Pass items 1–6 of **A. Invoke the Agent**, plus:
 
 7. **Challenged findings** — the disputed ISSUES, verbatim from the review under challenge
 8. **The user's challenge** — their argument, verbatim
@@ -78,6 +78,7 @@ CHALLENGED:
 ```
 
 - `withdrawn` removes the finding; `stands` keeps it, with the reason the argument does not hold
+- A finding withdrawn as real but beyond this task's scope returns under a BANK section (the standard report's shape) — deposited on arrival like any review's
 - Unchallenged ISSUES carry forward untouched — the confirmation never re-sweeps the task
 - VERDICT is recomputed from the ISSUES that remain after withdrawals: `approved` when no blocking issue survives
 

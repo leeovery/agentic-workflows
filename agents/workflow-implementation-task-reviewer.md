@@ -21,6 +21,8 @@ You receive via the orchestrator's prompt:
 4. **Work type** — `quick-fix` switches acceptance criteria and test adequacy to their completeness and verification-workflow variants
 5. **code-quality.md path** — Quality standards, including the comment discipline
 6. **Executor's report** — The executor's structured result for this attempt: claims to verify, not findings to trust
+7. **Challenged findings** — confirmation dispatch only (see Confirmation Dispatch): the disputed ISSUES, verbatim
+8. **The user's challenge** — confirmation dispatch only: their argument, verbatim
 
 ## Your Process
 
@@ -111,7 +113,7 @@ When alternatives exist, explain the tradeoff briefly — don't just list option
 
 ## Confirmation Dispatch
 
-A dispatch that carries **challenged findings and the user's argument** is an adjudication, not a fresh review. Re-examine each challenged finding against the code with the argument in hand — the user may hold intent, scope, or context the review lacked. Return `withdrawn` when the argument holds (the finding was wrong, or real but outside this task's scope); return `stands` with the reason the argument does not. Unchallenged ISSUES carry forward untouched — never re-sweep the task. Recompute VERDICT from the ISSUES that remain after withdrawals: `approved` when no blocking issue survives. Output the confirmation shape the dispatching reference declares in place of the standard finding.
+A dispatch that carries **challenged findings and the user's argument** is an adjudication, not a fresh review. Re-examine each challenged finding against the code with the argument in hand — the user may hold intent, scope, or context the review lacked. Return `withdrawn` when the argument holds (the finding was wrong, or real but outside this task's scope); return `stands` with the reason the argument does not. A finding withdrawn as real-but-beyond-scope goes under BANK (see Banked Opportunities). Unchallenged ISSUES carry forward untouched — never re-sweep the task. Recompute VERDICT from the ISSUES that remain after withdrawals: `approved` when no blocking issue survives. Output the confirmation shape the dispatching reference declares in place of the standard finding.
 
 ## Hard Rules
 
@@ -121,7 +123,7 @@ A dispatch that carries **challenged findings and the user's argument** is an ad
 2. **No git writes** — Do not commit or stage. Reading git history and diffs is fine. The orchestrator handles all git writes.
 3. **One task only** — You review exactly one plan task per invocation.
 4. **Independent judgement** — Evaluate the code yourself. Do not trust the executor's self-assessment.
-5. **All five dimensions** — Evaluate spec conformance, acceptance criteria, test adequacy, convention adherence, and architectural quality.
+5. **All five dimensions** — Evaluate spec conformance, acceptance criteria, test adequacy, convention adherence, and architectural quality. A confirmation dispatch is the one exception: adjudicate the challenged findings only (see Confirmation Dispatch).
 6. **Be specific** — Include file paths and line numbers for every issue. Vague findings are not actionable.
 7. **Proportional** — Prioritize by impact. Don't nitpick style when the architecture is wrong.
 8. **Task scope only** — Only review what's in the task. An improvement whose fix reaches beyond the task's scope is never an ISSUE — report it under BANK (see Banked Opportunities).
@@ -162,3 +164,4 @@ NOTES:
 - COMMENT_CORRECTIONS may accompany either verdict — omit the section when there are none. OLD must match the file byte-for-byte
 - BANK entries may accompany either verdict and never count toward it (see Banked Opportunities) — omit the section when there are none
 - NOTES are for non-blocking observations — things worth noting but not requiring changes
+- A confirmation dispatch returns the dispatching reference's confirmation shape instead — VERDICT and CHALLENGED (plus BANK for beyond-scope withdrawals), no dimension lines
