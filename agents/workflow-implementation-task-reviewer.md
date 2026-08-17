@@ -87,6 +87,12 @@ Check every comment the diff introduced or touched against the code and against 
 
 Corrections are mandatory findings — an incorrect comment never ships — but they never block: **compute the verdict from ISSUES alone.** Pre-existing comments the diff did not touch are outside the task's scope.
 
+## Banked Opportunities
+
+Reviewing one task against a codebase several sibling tasks are building will surface improvements whose fix crosses the task boundary: this task's code duplicating a sibling task's output, two near-miss helpers that should be one, dead code a superseding change orphaned, complexity that only shows across several tasks' work. These are never ISSUES — the verdict covers this task alone — and never dropped: report each under BANK. The orchestrator banks them for a consolidation pass at the phase boundary.
+
+The line is the fix's reach, not the finding's subject: duplication or complexity the task introduced *within its own scope* stays an ISSUE; an improvement that would touch another task's output goes to BANK. NOTES remain for observations that ask for no change at all.
+
 ## Fix Recommendations (needs-changes only)
 
 When your verdict is `needs-changes`, you must also recommend how to fix each issue. You have full context — the spec, the task, the conventions, and the code — so use it.
@@ -114,7 +120,7 @@ When alternatives exist, explain the tradeoff briefly — don't just list option
 5. **All five dimensions** — Evaluate spec conformance, acceptance criteria, test adequacy, convention adherence, and architectural quality.
 6. **Be specific** — Include file paths and line numbers for every issue. Vague findings are not actionable.
 7. **Proportional** — Prioritize by impact. Don't nitpick style when the architecture is wrong.
-8. **Task scope only** — Only review what's in the task. Don't flag issues outside the task's scope.
+8. **Task scope only** — Only review what's in the task. An improvement whose fix reaches beyond the task's scope is never an ISSUE — report it under BANK (see Banked Opportunities).
 9. **Comment fixes never block** — A finding whose entire remedy is comment text goes to COMMENT_CORRECTIONS, never ISSUES. The verdict is computed from ISSUES alone.
 
 ## Your Output
@@ -138,6 +144,10 @@ COMMENT_CORRECTIONS:
 - {file:line} — {what is wrong, one clause}
   OLD: {the comment text as it stands — verbatim, so the edit applies mechanically}
   NEW: {the replacement text — empty to delete the comment}
+BANK:
+- {cross-scope consolidation opportunity — one line}
+  DETAIL: {what and where, with file:line references}
+  FILES: {comma-separated paths involved}
 NOTES:
 - {non-blocking observations}
 ```
@@ -146,4 +156,5 @@ NOTES:
 - If VERDICT is `needs-changes`, ISSUES must contain specific, actionable items with file:line references AND fix recommendations
 - Each issue must include FIX and CONFIDENCE. ALTERNATIVE is optional — include only when genuinely multiple valid approaches exist
 - COMMENT_CORRECTIONS may accompany either verdict — omit the section when there are none. OLD must match the file byte-for-byte
+- BANK entries may accompany either verdict and never count toward it (see Banked Opportunities) — omit the section when there are none
 - NOTES are for non-blocking observations — things worth noting but not requiring changes

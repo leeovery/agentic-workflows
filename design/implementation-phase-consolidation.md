@@ -214,3 +214,41 @@ boundary flow.
   flag).
 - The gate's render surface and wording.
 - The finder agent's name.
+
+## Build notes (2026-08-15)
+
+- **The bank needs no engine storage code.** The review phase's
+  `out_of_scope` set is the exact precedent: a plain array field
+  written with the generic `manifest push` (objects JSON-parse on the
+  way in, `pull` removes by deep equality), semantics entirely
+  prose-owned, render surfaces receiving counts as integers. The bank
+  mirrors it: `implementation.{topic}.bank`, entries
+  `{task, source, summary, detail, files}`, deposited at the task
+  loop's stage H from the executor's and reviewer's `BANK` report
+  sections. PR2 becomes the feed (charters + deposit), not an engine
+  surface.
+- **Staging reuses the guarded container.** `staging.<key>.tasks.<n>`
+  validation is key-generic, so the boundary walk records approvals
+  under `staging.p{N}` beside analysis's `staging.c{N}` with no
+  engine change; the `tasks-overview` and `proposed-task` render
+  surfaces are payload-driven and serve the boundary gate as-is. The
+  one real engine touch left is `consolidation_gate_mode` joining the
+  session-reset set in `initTasks`.
+- **The seed rides to the synthesizer, not the analysis agents.**
+  Analysis dispatch has a hard clean-context rule (priming biases
+  results; cross-cycle synthesis lives in the synthesizer by design),
+  so the residual bank becomes a synthesizer input, verified against
+  current code before proposal — and when the analysis agents return
+  clean while residue exists, the synthesizer still runs, over the
+  residue alone.
+- **The boundary lives in the task loop's stage H**, keyed on
+  `completed_phases` vs a `consolidated_phases` marker: a phase whose
+  tasks are done but which is not yet consolidated defers both the
+  plan-side phase-completion transition and `--phase-complete`,
+  detours to the pass, and records completion once the pass (and any
+  tasks it authored, via the task-writer's existing `per-task`
+  placement into the still-open phase) has landed. A retrieve-side
+  guard re-enters an interrupted pass: no task from a later phase
+  starts while the current phase sits complete-but-unrecorded.
+  Synthetic remediation phases (`Analysis (Cycle N)`,
+  `Review Remediation`) never take the detour.

@@ -58,13 +58,19 @@ You do **NOT**:
 
 Those are the orchestrator's responsibility.
 
+## Cross-Scope Opportunities
+
+While implementing you may see improvements whose fix reaches beyond this task's surface: logic this task had to duplicate from a sibling task's output, two near-miss helpers that should be one, dead code a superseding change orphaned, complexity that only shows across several tasks' work. Do not build any of it — and do not stay silent: report each under BANK in your result. The orchestrator banks these for a consolidation pass at the phase boundary.
+
+Within your own task's surface none of this banks — writing clean code there is the job, not a finding.
+
 ## Hard Rules
 
 **MANDATORY. No exceptions. Violating these rules invalidates the work.**
 
 1. **Follow the workflow** — TDD means test-first; verification means baseline-first. Read and follow whichever workflow reference you receive.
 2. **No test changes to pass** — Fix the code, not the test.
-3. **No scope expansion** — Only what's in the task. If you think "I should also handle X" — STOP. It's not in the task, don't build it.
+3. **No scope expansion** — Only what's in the task. If you think "I should also handle X" — STOP. It's not in the task, don't build it. When the X is a consolidation opportunity, report it under BANK (see Cross-Scope Opportunities) instead.
 4. **No assumptions** — Uncertain about intent or approach? STOP and report back.
 5. **No git writes** — Do not commit or stage. Reading git history is fine. The orchestrator handles all git writes after review approval.
 6. **No autonomous decisions that deviate from specification** — If a spec decision is untenable, a package doesn't work as expected, an approach would produce undesirable code, or any situation where the planned approach won't work: **STOP immediately and report back** with the problem, what was discovered, and why it won't work. Do NOT choose an alternative. Do NOT work around it. Report and stop.
@@ -80,9 +86,14 @@ TASK: {task name}
 SUMMARY: {2-5 lines — commentary, decisions made, anything off-script}
 TEST_RESULTS: {all passing | failures — details only if failures}
 ISSUES: {blockers or deviations — omit if none}
+BANK:
+- {cross-scope consolidation opportunity — one line}
+  DETAIL: {what and where, with file:line references}
+  FILES: {comma-separated paths involved}
 ```
 
 - If STATUS is `blocked` or `failed`, ISSUES **must** explain why and what decision is needed.
 - If STATUS is `complete`, all acceptance criteria must be met and all tests passing.
+- BANK entries are opportunities whose fix reaches beyond this task's scope (see Cross-Scope Opportunities) — never work done, never blockers. Omit the section when there are none.
 
 Keep the report minimal. "All passing" is sufficient for TEST_RESULTS when nothing failed. ISSUES can be omitted entirely on a clean run.

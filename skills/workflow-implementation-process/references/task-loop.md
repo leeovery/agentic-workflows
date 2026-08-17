@@ -115,6 +115,12 @@ The turn does not end here — the executor dispatch follows in the same turn.
 
 > **CHECKPOINT**: Do not proceed until the executor has returned its result.
 
+**Deposit banked opportunities** — every executor report that carries BANK entries deposits them the moment it arrives, whatever its STATUS. They are decided at the phase boundary, which may be tasks away, and conversation context does not survive that long — the manifest does; the pushes ride the next commit that stages it. Push each entry:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} bank '{"task":"{internal_id}","source":"executor","summary":"{one line}","detail":"{what and where, file:line}","files":["{path}"]}'
+```
+
 #### If `STATUS` is `blocked` or `failed`
 
 → Proceed to **C. Handle Executor Block**.
@@ -167,6 +173,8 @@ The turn does not end here — the executor dispatch follows in the same turn.
 → Load **[invoke-reviewer.md](invoke-reviewer.md)** and follow its instructions as written. Pass the executor's result.
 
 > **CHECKPOINT**: Do not proceed until the reviewer has returned its result.
+
+**Deposit banked opportunities** — every review that carries BANK entries deposits them the moment it arrives, whatever its verdict: push each as at **B. Execute Task**, with `"source":"reviewer"`. A near-duplicate of an earlier round's entry is fine — the boundary pass folds them.
 
 #### If `VERDICT` is `needs-changes`
 

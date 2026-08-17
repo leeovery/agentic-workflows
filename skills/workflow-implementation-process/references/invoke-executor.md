@@ -73,10 +73,15 @@ TASK: {task name}
 SUMMARY: {2-5 lines — commentary, decisions made, anything off-script}
 TEST_RESULTS: {all passing | failures — details only if failures}
 ISSUES: {blockers or deviations — omit if none}
+BANK:
+- {cross-scope consolidation opportunity — one line}
+  DETAIL: {what and where, with file:line references}
+  FILES: {comma-separated paths involved}
 ```
 
 - `complete`: all acceptance criteria met, tests passing
 - `blocked` or `failed`: ISSUES explains why and what decision is needed
+- BANK: opportunities whose fix reaches beyond the task's scope, omitted when there are none — deposited to the manifest the moment the report arrives ([task-loop.md](task-loop.md) **B. Execute Task**), never acted on mid-task
 
 Keep the report minimal. "All passing" is sufficient for TEST_RESULTS when nothing failed. ISSUES can be omitted entirely on a clean run.
 
