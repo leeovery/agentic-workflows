@@ -20,6 +20,7 @@ The skills are organised into tiers, each with a narrow role, so that a given mo
 | **Bridge** | The clean hand-off between one phase and the next. |
 | **Capture** | Lightweight [inbox logging](capture-and-inbox.md), sitting outside the pipeline entirely. |
 | **Baseline** | The brownfield assessment — project-level, outside the pipeline, reached from the start menus. |
+| **Roadmap** | The product layer above the work unit — project-level conversations, horizons of shaped-but-uncommitted items, and the pull that births work units fenced to a slice. |
 | **Shared** | Protocols loaded by many skills at once — conventions, self-checks, break detection — so they behave identically wherever they apply. |
 
 Two disciplines run through every skill regardless of tier. The first is that a skill produces no chatter — no "proceeding with…", no narration of its own reasoning; its first output is content the instructions explicitly call for. The second is the stop-gate contract described in [the collaboration model](collaboration.md): after presenting a decision to you, the turn ends, and no background directive can talk the system past it. Only your own explicit choice to hand a gate over can skip it.

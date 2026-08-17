@@ -724,10 +724,38 @@ discussion off-topic flows; the epic harvest carries the two-way sort
 flag) persisted at A2 of confirm-and-persist; the reconcile advisory
 gained its `roadmap` branch.
 
+Settled in the review pass (2026-08-17), each ruled with the user:
+
+- **The bind's landing** — the epic harvest is the closing move
+  (confirm-and-persist A2): every unit-grained join binds to the topic
+  its ground crystallised as; a split binds to the identity-carrier.
+- **The add-to-joined-horizon confirm** fires on any joined member
+  (composition, per decision 28) and is wired in the product session's
+  prose with all three answers; the park valves stay ungated — parks
+  are cheap-to-be-wrong, groomed at the next product session.
+- **Absorb re-aims joins** at `{epic, topic}` — the un-pull is
+  cancel's move; absorbed work moved, it didn't stop.
+- **The stretch un-pull** — `discovery-map remove` of a fresh topic
+  holding a join reverts it, completing decision 28's wrap story for
+  never-started topics.
+- **Pre-harvest pull-forward** ships in its post-harvest form
+  uniformly — the map topic is created immediately; the harvest's
+  `exists_on_map` guard keeps the end state identical to decision 15's
+  seed-material path, so the second path was dropped.
+- **Anti-twin scope** — the advisory flag on the harvest-proposal path
+  is the mechanism; themed collisions are the gate's judgment, and
+  analyses/direct adds are legitimate epic-internal overlap, not
+  twins. Decision 30's "impossible" reads as "never silent".
+- **Horizons render as stored** — the user's own release words, never
+  recased.
+- **The parks-only harvest** gates with its own park-labelled confirm;
+  briefs regenerate only on yes.
+
 Still open:
 
 - **Multiple products per repo** — out of scope; one product per
   project assumed.
 - **User docs** — a `docs/roadmap.md` page and a README mention are
   owed once the stack settles; CLAUDE.md carries the system-facing
-  coverage.
+  coverage. The review pass patched the lines the roadmap falsified in
+  the existing docs; the page itself is still owed.

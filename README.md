@@ -83,7 +83,7 @@ Implementation runs task by task: an executor writes the code test-first, a revi
 
 ## The knowledge base
 
-Every completed artifact is indexed: research, discussions, investigations, specifications, the discovery record. Later phases query it in plain language and get answers with provenance. Dead ends count too; a rejected approach stops the next work unit exploring the same ground. Relevance decays with shipped work rather than wall-clock time, and specifications never decay.
+Every completed artifact is indexed: research, discussions, investigations, specifications, the discovery record, the product roadmap's session logs. Later phases query it in plain language and get answers with provenance. Dead ends count too; a rejected approach stops the next work unit exploring the same ground. Relevance decays with shipped work rather than wall-clock time, and specifications never decay.
 
 ## Starting in an existing codebase
 
