@@ -1160,7 +1160,7 @@ describe('pipeline simulation', () => {
       /\*\*◐ Needs changes\*\* — \*attempt 3, escalation threshold reached\*/,
       'threshold-forced needs-changes names the reached threshold');
     assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'approved'], { expect: 'content' }),
-      /\*\*✓ Approved\*\* — \*3 fix rounds\*/, 'approval after fix rounds names the count');
+      /\*\*✓ Approved\*\* — \*after 3 needs-changes rounds\*/, 'approval names the needs-changes round count');
     assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: fix gate/, 'threshold-forced fix gate renders its menu');
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--phase', '1', '--next-task', `${wu}-1-2`]);

@@ -1769,7 +1769,7 @@ function taskBrief(cwd, args) {
 /** @type {Record<string, (attempts: number) => string>} */
 const TASK_RESULT_VERDICTS = {
   approved: (attempts) => attempts > 0
-    ? `**✓ Approved** — *${attempts} fix round${attempts === 1 ? '' : 's'}*`
+    ? `**✓ Approved** — *after ${attempts} needs-changes round${attempts === 1 ? '' : 's'}*`
     : '**✓ Approved**',
   'needs-changes': (attempts) => attempts >= FIX_THRESHOLD
     ? `**◐ Needs changes** — *attempt ${attempts}, escalation threshold reached*`
