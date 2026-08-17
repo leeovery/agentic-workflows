@@ -230,10 +230,14 @@ Docs:
 - `CONVENTIONS.md` §Presentation Register: one sentence added — the
   implementation task loop's report moments follow
   `report-register.md` in place of the lens pair.
-- `voice.md`: untouched. The register pointer runs one direction
-  only — `report-register.md` names `voice.md` for the loop's
-  conversational turns; a file loaded into every session never
-  names a phase-local register.
+- `voice.md`: loses its composition sentence — a file loaded into
+  every session names no report-site files at all. The composition
+  line (lens governs shape and fidelity, voice governs how the
+  sentences sound) moves to `product-lens.md` and
+  `technical-lens.md` themselves, each stating it from its own
+  side; `report-register.md` already carries its own pointer to
+  voice. Behaviour-neutral: the same precedence rule, now stated
+  only where a lens is actually loaded.
 
 Tests:
 
@@ -296,7 +300,10 @@ reading real task summaries. First live use is the review point for:
   holds the arc (plan intent, fix history) that a summarizer agent
   would lack, and the loop has no conversational register to
   protect. (Lee + Claude.)
-- 2026-08-17 — voice.md stays untouched: register pointers run
-  local → global only. Nothing global — loaded or named in every
-  session's context — references the task loop's register. (Lee,
-  at review.)
+- 2026-08-17 — Register pointers run local → global only. Nothing
+  global — loaded or named in every session's context — references
+  the task loop's register. (Lee, at review.)
+- 2026-08-17 — The direction rule generalises to the shared lens
+  pair: voice.md's composition sentence moves to the lens docs'
+  side, since only review and investigation actually load them.
+  Shared location is not global loading. (Lee, at review.)
