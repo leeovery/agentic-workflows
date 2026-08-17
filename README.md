@@ -79,7 +79,7 @@ Every display is computed by the engine from state on disk and emitted byte-for-
 
 ## The hands-off loop
 
-Implementation runs task by task: an executor writes the code test-first, a reviewer checks it against the plan's acceptance criteria, and failures loop back with findings, capped at three attempts before you're consulted. Each gate can be approved by hand or set to auto. Front-load your attention on the discussion and the spec; the loop handles the rest, and every task lands as its own commit. The context each agent sees is engineered by the process: briefs, read-in-full contracts, and scoped handoffs instead of a dumped transcript.
+Implementation runs task by task: an executor writes the code test-first, a reviewer checks it against the plan's acceptance criteria, and failures loop back with findings, capped at three attempts before you're consulted. Each gate can be approved by hand or set to auto. When a phase's last task lands, a consolidation sweep reads what its tasks built side by side — duplication, near-miss helpers, dead code no single task could see — and anything worth fixing becomes tasks you approve before the phase closes. Front-load your attention on the discussion and the spec; the loop handles the rest, and every task lands as its own commit. The context each agent sees is engineered by the process: briefs, read-in-full contracts, and scoped handoffs instead of a dumped transcript.
 
 ## The knowledge base
 
@@ -125,7 +125,7 @@ The [full documentation](docs/README.md) covers every phase in detail, the engin
 | [Introduction](docs/introduction.md) | The ideas behind the design |
 | [How it fits together](docs/how-it-fits-together.md) | The layers, the tiers, and how an action travels through them |
 | [The five work types](docs/work-types.md) | Epic to quick-fix, each pipeline in full |
-| [Implementation](docs/implementation.md) | The TDD loop, gates, and the fix threshold |
+| [Implementation](docs/implementation.md) | The TDD loop, gates, the fix threshold, and the consolidation sweep |
 | [The engine](docs/engine.md) | What the deterministic core does, and why |
 | [The knowledge base](docs/knowledge-base.md) | Recall, provenance, decay |
 | [The agents](docs/agents.md) | All twenty-five, organised by when they act |
