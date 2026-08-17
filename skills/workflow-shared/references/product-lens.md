@@ -8,6 +8,8 @@ The register for presenting a **report about the work** — findings, review sum
 
 Engine-emitted sections sit outside it entirely: `=== DISPLAY … ===` and `=== MENU … ===` content is emitted byte-for-byte, and a gate that follows a report is not part of the report. The register stops at the section boundary. The boundary governs emission, not authorship: judgment content written into an engine payload for a section to render — a summary, a watch line — takes the register at authoring time, at the depth the authoring site prescribes.
 
+This file composes with [voice.md](voice.md) rather than competing: this governs the report's shape and fidelity, voice governs how the sentences sound.
+
 ## Audience
 
 An engineer who knows the product but not this codebase. Full engineering fluency — nothing dumbed down. Zero familiarity with this codebase's files, helpers, or internal names — nothing assumed.
