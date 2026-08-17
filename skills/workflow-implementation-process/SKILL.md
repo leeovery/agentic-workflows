@@ -1,7 +1,7 @@
 ---
 name: workflow-implementation-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(git log), Bash(git add), Bash(git commit)
+allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(git log), Bash(git diff), Bash(git add), Bash(git commit)
 hooks:
   SessionEnd:
     - hooks:

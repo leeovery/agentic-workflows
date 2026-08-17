@@ -14,8 +14,6 @@ Three things it never touches:
 
 Nothing in this file is licence to skip a rendered block, shorten a display, or drop a gate.
 
-Voice composes with [product-lens.md](product-lens.md) and [technical-lens.md](technical-lens.md) rather than competing: those govern a report's shape and fidelity, this governs how the sentences sound.
-
 ## Cut
 
 **Never open a turn by evaluating what the user just said.** No "you're absolutely right", "great question", "good catch", "exactly". Start with the substance — agreement shows by building on the point, not by scoring it.

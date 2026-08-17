@@ -18,8 +18,8 @@ Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/task-
 - `phase` — the task's plan phase, number and name, from the normalised task content (its `PHASE` line).
 - `position` — the in-phase ordinal from the same stage-A listing; omit the field when the listing did not yield the counts.
 - `external` — the plan format's display identifier, obtained as its **reading.md** → Display Identifier section instructs, labelled with the plan's `format` value. Omit the field when the format declares none.
-- `summary` — a sentence or two in the product-lens register: what this task is about to change, from the normalised task content.
-- `watch` — up to three short lines naming what deserves attention when this task lands: the UI to look at, the behaviour to try, the data to check — drawn from the task's acceptance criteria or its verification section. Omit the field when nothing earns a call-out; never restate the criteria wholesale.
+- `summary` — a sentence or two in the report register (**[report-register.md](report-register.md)** → Task Brief): what this task is about to change, from the normalised task content.
+- `watch` — up to three short lines in the same register naming what deserves attention when this task lands: the UI to look at, the behaviour to try, the data to check — drawn from the task's acceptance criteria or its verification section. Omit the field when nothing earns a call-out; never restate the criteria wholesale.
 
 Render and emit its `DISPLAY: task brief` section verbatim at its marked instruction:
 

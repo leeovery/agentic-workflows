@@ -26,7 +26,7 @@ J. Consolidation pass (phase boundary) → consolidation-pass.md
 
 **Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round, a retry, or a gate comment round. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
 
-→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written — the register for the task brief in **A**, and the register and depth for the review and result summaries in **E** and **G**. Findings cache files and records stay fully technical.
+→ Load **[report-register.md](report-register.md)** and follow its instructions as written — the register for the task brief in **A**, the findings summaries and their retells in **E** and **F**, and the result summary and its retells in **G**.
 
 Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** consumes it from session context rather than re-reading it per invocation:
 
@@ -230,7 +230,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_un
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`.
 
-Present the reviewer's findings as a product-lens summary (markdown, not a code block): each issue in a sentence or two — what is wrong or at risk in what was built and the proposed fix, with the alternative or the reviewer's confidence only where it changes the call; non-blocking notes in one line.
+Present the reviewer's findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary).
 
 The turn does not end here — the gate menu follows in the same turn.
 
@@ -238,7 +238,7 @@ The turn does not end here — the gate menu follows in the same turn.
 
 #### If the response's `threshold_reached` is `false`
 
-Present the reviewer's findings as a product-lens summary (markdown, not a code block): each issue in a sentence or two — what is wrong or at risk in what was built and the proposed fix, with the alternative or the reviewer's confidence only where it changes the call; non-blocking notes in one line.
+Present the reviewer's findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary).
 
 Branch on the response's `fix_gate_mode`.
 
@@ -288,9 +288,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 #### If `technical`
 
-→ Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
-
-Retell the reviewer's findings through the technical lens — mechanism-first, from the attempt findings.
+Retell the reviewer's findings as the register's technical retell (**[report-register.md](report-register.md)** → Technical Retell), from the attempt findings.
 
 → Return to **F. Fix Approval Gate**.
 
@@ -330,11 +328,13 @@ Include the reviewer's notes and the user's commentary when re-invoking.
 
 ## G. Task Gate
 
+A return from a retell or an answer re-emits the menu alone — re-run the gated fetch below; the presentation belongs to the gate's first arrival.
+
 After the reviewer approves a task, present the result:
 
 → Load **[display-task-result.md](display-task-result.md)** with result = `approved`.
 
-Present the executor's SUMMARY as a product-lens summary (markdown, not a code block) in four beats: what this part of the product did before, what it does now, any issues hit on the way, and anything to watch. After a fix round, include what changed since the last gate. When comment corrections were applied at **D. Review Task**, add a line saying so — naming any that were dropped.
+Present the result as the register's product summary (**[report-register.md](report-register.md)** → Product Summary). When comment corrections were applied at **D. Review Task**, add a line saying so — naming any that were dropped.
 
 Branch on the `task_gate_mode` carried by this task's `start` response.
 
@@ -374,9 +374,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 **If `technical`:**
 
-→ Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
-
-Retell the same result through the technical lens — mechanism-first, from the executor's SUMMARY and the changes on disk.
+Retell the same result as the register's technical retell (**[report-register.md](report-register.md)** → Technical Retell), from the reports and the changes on disk.
 
 → Return to **G. Task Gate**.
 

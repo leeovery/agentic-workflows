@@ -1,12 +1,14 @@
 # Technical-Lens Presentation
 
-*Shared reference. Loaded by report-class presentation sites when the user asks for the technical perspective.*
+*Reference for **[findings-signoff.md](findings-signoff.md)** — loaded when the user asks for the technical perspective.*
 
 ---
 
-The code-perspective counterpart to [product-lens.md](product-lens.md): the same report retold from the code's side. A perspective shift, not a dump — never raw file contents, never a jargon chain.
+The code-perspective counterpart to [product-lens.md](../../workflow-shared/references/product-lens.md): the same report retold from the code's side. A perspective shift, not a dump — never raw file contents, never a jargon chain.
 
 Engine-emitted sections sit outside it entirely: `=== DISPLAY … ===` and `=== MENU … ===` content is emitted byte-for-byte, and a gate re-emitted after a retell is not part of the retelling. The register stops at the section boundary.
+
+This file composes with [voice.md](../../workflow-shared/references/voice.md) rather than competing: this governs the report's shape and fidelity, voice governs how the sentences sound.
 
 ## Audience
 
