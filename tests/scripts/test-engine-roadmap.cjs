@@ -65,7 +65,7 @@ function projectManifestText(dir) {
   return fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8');
 }
 
-/** Write a joined item directly (the pull verb lands in a later slice). */
+/** Write a joined item directly — corrupt-shape and orphan fixtures the verbs refuse to create. */
 function joinItem(dir, name, workUnit, topic) {
   const manifest = readProject(dir);
   manifest.roadmap.items[name].pulled_to = topic ? { work_unit: workUnit, topic } : { work_unit: workUnit };
@@ -463,6 +463,16 @@ describe('engine CLI: the cancel-revert hop', () => {
     const state = runOk(dir, ['state']);
     assert.strictEqual(state.totals.shipped, 2);
   });
+
+  it('a partial cancel keeps the join — the topic lives on in its other phase item', () => {
+    const p = path.join(dir, '.workflows', 'mvp', 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(p, 'utf8'));
+    manifest.phases.research = { items: { ordering: { status: 'in-progress' } } };
+    fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
+    const res = engineOk(['topic', 'cancel', 'mvp', 'discussion', 'ordering']);
+    assert.strictEqual('roadmap_reverted' in res, false, 'live research keeps the topic alive — no revert');
+    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'mvp', topic: 'ordering' });
+  });
 });
 
 describe('engine CLI: roadmap flag — reconcile across the join', () => {
@@ -644,5 +654,209 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
     assert.deepStrictEqual(res.totals, { items: 5, waiting: 1, in_flight: 1, shipped: 1, orphaned: 2 });
     // Horizon-ordered: mvp members first, then v1's.
     assert.deepStrictEqual(res.items.map((i) => i.name), ['ordering', 'menus', 'loyalty', 'ghost-work', 'dead-work']);
+  });
+
+  it('reads corrupt shapes honestly: scalar node, array items, non-object item, stray horizon, malformed join', () => {
+    const write = (m) => fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(m, null, 2));
+
+    write({ roadmap: 'scalar' });
+    assert.strictEqual(runOk(dir, ['state']).exists, false, 'a scalar node reads as never-born');
+    write({ roadmap: { horizons: ['v1'], items: [] } });
+    assert.deepStrictEqual(runOk(dir, ['state']).items, [], 'array items read as none');
+
+    write({
+      roadmap: {
+        horizons: ['v1'],
+        items: {
+          good: { horizon: 'v1', summary: 's', origin: 'harvest' },
+          bad: 'scalar',
+          stray: { horizon: 'never-listed', summary: 's', origin: 'harvest' },
+          crooked: { horizon: 'v1', summary: 's', origin: 'harvest', pulled_to: 'not-an-object' },
+        },
+      },
+    });
+    const res = runOk(dir, ['state']);
+    assert.deepStrictEqual(res.items.map((i) => i.name), ['good', 'crooked', 'stray'], 'non-object skipped; stray horizon trails last');
+    assert.strictEqual(res.items.find((i) => i.name === 'crooked').state, 'waiting', 'a malformed join reads as no join');
+  });
+
+  it('refuses mutations loudly over a malformed horizons node — add, session open, and import alike', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({ roadmap: { horizons: { not: 'a list' }, items: {} } }, null, 2));
+    assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's']).error, /horizons is malformed/);
+    fs.writeFileSync(path.join(dir, 'draft.md'), '# Session\n');
+    assert.match(runFail(dir, ['session', 'open', '--session-log-file', 'draft.md']).error, /horizons is malformed/);
+    assert.strictEqual(fs.existsSync(path.join(dir, 'draft.md')), true, 'the refused open leaves the draft in place');
+    fs.writeFileSync(path.join(dir, 'ref.md'), '# ref\n');
+    assert.match(runFail(dir, ['import', 'ref.md']).error, /horizons is malformed/);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'the refused import copies nothing');
+  });
+});
+
+describe('engine CLI: roadmap guards the first pass left unexercised', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
+    runOk(dir, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
+    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
+    createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', 'fixture']);
+  });
+  afterEach(() => { cleanup(dir); });
+
+  function epicManifest() {
+    return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'));
+  }
+  function writeEpic(m) {
+    fs.writeFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
+  }
+
+  it('re-binding re-aims the join at the new topic, the unit carried', () => {
+    runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
+    const m = epicManifest();
+    m.phases.discovery.items.ordering = { routing: 'discussion', source: 'roadmap', summary: 's' };
+    m.phases.discovery.items['guest-ordering'] = { routing: 'discussion', source: 'roadmap', summary: 's' };
+    writeEpic(m);
+    runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
+    const res = runOk(dir, ['bind', 'ordering', '--topic', 'guest-ordering']);
+    assert.strictEqual(res.topic, 'guest-ordering');
+    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'mvp', topic: 'guest-ordering' });
+  });
+
+  it('a cross-horizon pull names the remainder per touched horizon', () => {
+    const res = runOk(dir, ['pull', 'ordering', 'loyalty', '--into', 'mvp']);
+    assert.deepStrictEqual(res.remainder, { mvp: 1, v1: 0 });
+  });
+
+  it('add and add-batch refuse an illegal horizon name before anything is written', () => {
+    const before = projectManifestText(dir);
+    assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1.5', '--summary', 's']).error, /not a legal horizon name/);
+    const batch = path.join(dir, 'batch.json');
+    fs.writeFileSync(batch, JSON.stringify([{ name: 'x', horizon: 'v1.5', summary: 's' }]));
+    assert.match(runFail(dir, ['add-batch', '--file', 'batch.json']).error, /entry 1 — "v1\.5" is not a legal horizon name/);
+    assert.strictEqual(projectManifestText(dir), before);
+  });
+
+  it('horizon split honours an explicit --position; merge refuses a missing target', () => {
+    runOk(dir, ['add', 'kds', '--horizon', 'mvp', '--summary', 's']);
+    const res = runOk(dir, ['horizon', 'split', 'mvp', '--new', 'mvp-2', '--items', 'kds', '--position', '1']);
+    assert.deepStrictEqual(res.horizons, ['mvp-2', 'mvp', 'v1']);
+    assert.match(runFail(dir, ['horizon', 'merge', 'v1', '--into', 'never-made']).error, /no horizon "never-made"/);
+  });
+
+  it('bind on an orphaned join names the orphan', () => {
+    joinItem(dir, 'ordering', 'never-created');
+    assert.match(runFail(dir, ['bind', 'ordering', '--topic', 'x']).error, /no longer exists — the join is orphaned/);
+  });
+
+  it('flag lands on research and discussion together when both are live', () => {
+    const m = epicManifest();
+    m.phases.discovery.items.ordering = { routing: 'discussion', source: 'roadmap', summary: 's' };
+    m.phases.research = { items: { ordering: { status: 'in-progress' } } };
+    m.phases.discussion = { items: { ordering: { status: 'in-progress' } } };
+    writeEpic(m);
+    runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
+    runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
+    const res = runOk(dir, ['flag', 'ordering']);
+    assert.deepStrictEqual(res.flagged, [
+      { phase: 'research', topic: 'ordering' },
+      { phase: 'discussion', topic: 'ordering' },
+    ]);
+  });
+});
+
+describe('engine CLI: the un-pull and the re-aim — remove and absorb move joins, never orphan them', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
+    createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', 'fixture']);
+  });
+  afterEach(() => { cleanup(dir); });
+
+  function engineOk(args) {
+    return JSON.parse(execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' }).split('\n')[0].trim());
+  }
+
+  it('discovery-map remove of a fresh joined topic reverts the join, staged in its own commit', () => {
+    runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion']);
+    const res = engineOk(['discovery-map', 'remove', 'mvp', 'loyalty']);
+    assert.deepStrictEqual(res.roadmap_reverted, ['loyalty']);
+    const item = readProject(dir).roadmap.items.loyalty;
+    assert.strictEqual('pulled_to' in item, false);
+    assert.strictEqual(item.origin, 'harvest', 'origin survives the un-pull');
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: un-pull loyalty (loyalty removed from mvp)');
+    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.deepStrictEqual(staged, ['.workflows/manifest.json'], 'the un-pull commit carries the project manifest alone');
+  });
+
+  it('discovery-map remove of an unjoined fresh topic reverts nothing', () => {
+    engineOk(['discovery-map', 'add', 'mvp', 'plain-topic', 'discussion', '--summary', 's']);
+    const res = engineOk(['discovery-map', 'remove', 'mvp', 'plain-topic']);
+    assert.strictEqual('roadmap_reverted' in res, false);
+  });
+
+  it('workunit absorb re-aims the feature-held join at the epic topic', () => {
+    createManifest(dir, 'loyalty-feat', {
+      work_type: 'feature',
+      status: 'in-progress',
+      phases: { discussion: { items: { 'loyalty-feat': { status: 'completed' } } } },
+    });
+    fs.mkdirSync(path.join(dir, '.workflows', 'loyalty-feat', 'discussion'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', 'loyalty-feat', 'discussion', 'loyalty-feat.md'), '# Discussion\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', 'feature fixture']);
+    runOk(dir, ['pull', 'loyalty', '--into', 'loyalty-feat']);
+
+    const res = engineOk(['workunit', 'absorb', 'loyalty-feat', '--into', 'mvp', '--topic', 'loyalty']);
+    assert.deepStrictEqual(res.roadmap_reaimed, ['loyalty']);
+    assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.pulled_to, { work_unit: 'mvp', topic: 'loyalty' });
+    const state = runOk(dir, ['state']);
+    assert.strictEqual(state.items.find((i) => i.name === 'loyalty').state, 'in-flight');
+    assert.strictEqual(state.items.find((i) => i.name === 'loyalty').work_unit, 'mvp');
+  });
+});
+
+describe('engine CLI: import edge discipline and the store-dirt ride', () => {
+  let dir;
+  beforeEach(() => { dir = setupGitFixture(); });
+  afterEach(() => { cleanup(dir); });
+
+  it('skips dotfile-normalising sources and reports them; an all-skipped call refuses', () => {
+    fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
+    fs.writeFileSync(path.join(dir, '.hidden'), 'x');
+    const res = runOk(dir, ['import', 'real.md', '.hidden']);
+    assert.deepStrictEqual(res.imports, [{ path: 'imports/real.md' }]);
+    assert.deepStrictEqual(res.skipped_imports, ['.hidden']);
+
+    const fail = runFail(dir, ['import', '.hidden']);
+    assert.match(fail.error, /nothing to land/);
+    assert.strictEqual(readProject(dir).roadmap.imports.length, 1, 'the refused call recorded nothing');
+  });
+
+  it('a malformed imports node refuses before any file is copied', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({ roadmap: { horizons: [], items: {}, imports: 'corrupt' } }, null, 2));
+    fs.writeFileSync(path.join(dir, 'ref.md'), '# ref\n');
+    assert.match(runFail(dir, ['import', 'ref.md']).error, /imports is malformed/);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'no orphan copy landed');
+  });
+
+  it('close and import stage the knowledge dir when a store exists', () => {
+    fs.mkdirSync(path.join(dir, '.workflows', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', '.knowledge', 'store.msp'), 'store\n');
+    fs.writeFileSync(path.join(dir, 'draft.md'), '# Session\n');
+    runOk(dir, ['session', 'open', '--session-log-file', 'draft.md']);
+    runOk(dir, ['session', 'close', '-m', 'roadmap: session 001']);
+    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('.workflows/.knowledge/store.msp'), 'the close stages the store dirt its indexing produced');
+
+    fs.writeFileSync(path.join(dir, '.workflows', '.knowledge', 'store.msp'), 'store v2\n');
+    fs.writeFileSync(path.join(dir, 'ref.md'), '# ref\n');
+    runOk(dir, ['import', 'ref.md']);
+    const staged2 = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged2.includes('.workflows/.knowledge/store.msp'), 'the import stages the store dirt too');
   });
 });

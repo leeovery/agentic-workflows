@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { fileExists, filesChecksum } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -342,7 +342,7 @@ function computeTopicLifecycle(manifest, topicName) {
   // cueing them would light `input moved` with no entry flow to clear it.
   const flagLive = (/** @type {{status?: string, reconcile_needed?: unknown}|undefined} */ it) =>
     it !== undefined && it.reconcile_needed !== undefined
-    && !['cancelled', 'superseded', 'promoted'].includes(/** @type {string} */ (it.status));
+    && !TERMINAL_STATUSES.includes(/** @type {string} */ (it.status));
   const reconcile_pending = flagLive(research) || flagLive(discussion);
 
   // Stored marker wins over name-matching: a research topic that fanned out

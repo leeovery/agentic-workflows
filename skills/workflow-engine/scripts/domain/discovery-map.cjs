@@ -77,6 +77,8 @@ function lifecyclePhrase(lifecycle, researchState) {
  * @property {boolean} [handled]          handle/unhandle: the marker after the op
  * @property {boolean} [undismissed]      add: a dismissed entry was cleared (--force-dismissed)
  * @property {boolean} [backfill]         add: item landed without summary/description for summary-backfill
+ * @property {string[]} [roadmap_reverted] remove: roadmap items un-pulled (their joins named this topic)
+ * @property {string[]} [warnings]         remove: the un-pull's tail commit failed
  * @property {number} map_total           items on the map after the op — no follow-up read needed
  */
 
@@ -370,14 +372,17 @@ function editItem(cwd, workUnit, name, { summary, description } = {}) {
 /**
  * Hard-delete a fresh map item and push its name onto the dismissed list so
  * analyses won't auto-re-propose it. Fresh-only — anything further along
- * stays on the map (as work-in-flight or historical anchor). No git commit.
+ * stays on the map (as work-in-flight or historical anchor). No git commit
+ * for the map write itself; a roadmap join naming the topic is reverted (the
+ * un-pull for a never-started topic) and that project-manifest write stages
+ * in its own commit, reported as `roadmap_reverted`.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} name
  * @returns {MapOpResult}
  */
 function removeItem(cwd, workUnit, name) {
-  return withWorkUnitLock(cwd, workUnit, () => {
+  const result = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const items = discoveryItems(manifest);
     mapItem(manifest, name);
@@ -398,10 +403,29 @@ function removeItem(cwd, workUnit, name) {
     if (fs.existsSync(brief)) { fs.unlinkSync(brief); briefRemoved = true; }
 
     /** @type {MapOpResult} */
-    const result = { work_unit: workUnit, name, op: 'remove', dismissed: true, lifecycle: 'fresh', map_total: Object.keys(items).length };
-    if (briefRemoved) result.brief_removed = true;
-    return result;
+    const out = { work_unit: workUnit, name, op: 'remove', dismissed: true, lifecycle: 'fresh', map_total: Object.keys(items).length };
+    if (briefRemoved) out.brief_removed = true;
+    return out;
   });
+
+  // The un-pull for a never-started topic: a fresh topic holding a roadmap
+  // join (a pull-forward, or a harvest bind, not yet begun) hands its item
+  // back to the map on removal — the stretch-scope wrap's revert. Lazy
+  // require and after the work-unit lock closes, mirroring the cancel hop —
+  // and like that hop the project manifest is staged in its own commit (the
+  // map op itself stays cadence-committed, wu-scoped, which never covers the
+  // project manifest).
+  const { revertJoins } = require('./roadmap.cjs');
+  const reverted = revertJoins(cwd, workUnit, { topic: name });
+  if (reverted.length > 0) {
+    result.roadmap_reverted = reverted;
+    const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+    /** @type {string[]} */
+    const warnings = [];
+    commitTailPathspec(cwd, PROJECT_MANIFEST_SPEC, `roadmap: un-pull ${reverted.join(', ')} (${name} removed from ${workUnit})`, warnings);
+    if (warnings.length > 0) result.warnings = warnings;
+  }
+  return result;
 }
 
 /**

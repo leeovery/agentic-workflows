@@ -180,8 +180,8 @@ function pivotContinuationMenu(workUnit) {
 }
 
 /**
- * discovery-session close — the indexing advisory; the session is closed and
- * committed either way. Empty without `--warn`.
+ * Session close (discovery and roadmap alike) — the indexing advisory; the
+ * session is closed and committed either way. Empty without `--warn`.
  * @param {{warn?: boolean}} [opts]
  * @returns {string}
  */

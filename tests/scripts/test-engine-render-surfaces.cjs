@@ -1945,17 +1945,55 @@ describe('roadmap surfaces', () => {
     const out = renderSurface(dir, 'roadmap-view', {});
     assert.match(out, /^=== DISPLAY: roadmap \(emit verbatim as a code block\) ===/);
     assert.match(out, /Roadmap \(3 items — 1 in flight · 2 waiting\)/);
-    assert.match(out, /Mvp\n/);
+    assert.match(out, /mvp\n/);
     assert.match(out, /◐ Ordering/);
     assert.match(out, /↳ In flight: mvp/);
     assert.match(out, /○ Menus/);
     assert.match(out, /operators maintain the menu/);
-    assert.match(out, /V1\n/);
+    assert.match(out, /v1\n/);
     assert.match(out, /○ Loyalty/);
   });
 
   it('roadmap-view: refuses a never-born roadmap', () => {
     assert.throws(() => renderSurface(dir, 'roadmap-view', {}), /no roadmap on the project manifest/);
+  });
+
+  it('roadmap-view: shipped and orphaned rows carry their glyphs and join notes; strays group last', () => {
+    writeRoadmap({
+      horizons: ['mvp'],
+      items: {
+        ordering: { horizon: 'mvp', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'done-unit' } },
+        ghosted: { horizon: 'mvp', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'never-created' } },
+        stray: { horizon: 'unlisted', summary: 'hand-edited home', origin: 'harvest' },
+      },
+    }, { 'done-unit': { work_type: 'epic', status: 'completed' } });
+    const out = renderSurface(dir, 'roadmap-view', {});
+    assert.match(out, /✓ Ordering/);
+    assert.match(out, /↳ Shipped: done-unit/);
+    assert.match(out, /⚑ Ghosted/);
+    // Wrap-tolerant: the full note breaks across lines at the pinned width.
+    assert.match(out, /↳ Orphaned — work unit/);
+    assert.match(out, /"never-created"/);
+    assert.match(out, /\(no horizon\)\n/);
+    assert.match(out, /○ Stray/);
+  });
+
+  it('roadmap-add-gate: two delivering units render the name-which label', () => {
+    writeRoadmap({
+      horizons: ['mvp'],
+      items: {
+        ordering: { horizon: 'mvp', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'mvp-core' } },
+        kds: { horizon: 'mvp', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'mvp-2' } },
+        menus: { horizon: 'mvp', summary: 's', origin: 'harvest' },
+        extra: { horizon: 'mvp', summary: 's', origin: 'harvest' },
+      },
+    }, {
+      'mvp-core': { work_type: 'epic', status: 'in-progress' },
+      'mvp-2': { work_type: 'epic', status: 'in-progress' },
+    });
+    const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
+    assert.match(out, /Into the delivery — a fresh topic in one of its units/);
+    assert.match(out, /Waiting in "mvp" beside its 2 uncommitted items/, 'the plural form');
   });
 
   it('roadmap-add-gate: fully-in-delivery renders the strict two-way menu naming the unit', () => {
@@ -1968,7 +2006,7 @@ describe('roadmap surfaces', () => {
     }, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
     assert.match(out, /^=== MENU: roadmap add gate/);
-    assert.match(out, /"Mvp" is being built right now\. Where does this land\?/);
+    assert.match(out, /"mvp" is being built right now\. Where does this land\?/);
     assert.match(out, /Into the delivery — a fresh topic in "mvp"/);
     assert.match(out, /`2`.*Another horizon/);
     assert.ok(!out.includes('Waiting in'), 'no waiting side-door into a fully-delivered horizon');
@@ -1977,7 +2015,7 @@ describe('roadmap surfaces', () => {
   it('roadmap-add-gate: a partly-composed horizon keeps the waiting option', () => {
     writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
     const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
-    assert.match(out, /"Mvp" is partly in delivery\. Where does this land\?/);
+    assert.match(out, /"mvp" is partly in delivery\. Where does this land\?/);
     assert.match(out, /Waiting in "mvp" beside its 1 uncommitted item/);
     assert.match(out, /`3`.*Another horizon/);
   });

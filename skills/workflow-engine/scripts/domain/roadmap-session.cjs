@@ -18,7 +18,8 @@
 // message.
 //
 // import lands user-shared reference files at the product altitude — the
-// project-level imports home (design decision 26): create's normalise/dedupe
+// project-level imports home (design/product-roadmap.md, decision 26):
+// create's normalise/dedupe
 // discipline, `roadmap.imports[]` entries, KB indexing, one self commit.
 // The log content is model-authored — the engine never writes prose.
 // ---------------------------------------------------------------------------
@@ -29,32 +30,28 @@ const {
   readProjectManifest,
   writeProjectManifestAtomic,
   withProjectLock,
-  ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome, KB_DIR, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { dedupe, normaliseBasename } = require('./workunit-create.cjs');
+const { ensureRoadmap } = require('./roadmap.cjs');
+const { isoNow } = require('./dates.cjs');
 
 const ROADMAP_DIR = '.workflows/.roadmap';
-const PROJECT_MANIFEST_SPEC = '.workflows/manifest.json';
-
-/** ISO-8601 UTC to the second (`2026-07-15T09:30:00Z`). */
-function isoNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-}
 
 /**
- * The roadmap node on a project manifest for the session verbs — created
- * just-in-time (the genesis session predates any item or horizon).
- * @param {Record<string, any>} manifest
- * @returns {Record<string, any>}
+ * The pathspec for a KB-touching roadmap transaction: the roadmap dir, the
+ * project manifest, and — exists-guarded, keyword-less projects may have no
+ * store — the knowledge dir, whose index churn this transaction produced
+ * (leaving it unstaged hands it to some later, unrelated commit).
+ * @param {string} cwd
+ * @returns {string[]}
  */
-function ensureRoadmapNode(manifest) {
-  const roadmap = ensureContainer(manifest, 'roadmap', 'roadmap');
-  if (roadmap.horizons === undefined) roadmap.horizons = [];
-  ensureContainer(roadmap, 'items', 'roadmap.items');
-  return roadmap;
+function roadmapKbSpecs(cwd) {
+  const specs = [ROADMAP_DIR, PROJECT_MANIFEST_SPEC];
+  if (fs.existsSync(path.join(cwd, KB_DIR))) specs.push(KB_DIR);
+  return specs;
 }
 
 /**
@@ -90,13 +87,16 @@ function openRoadmapSession(cwd, { sessionLogFile }) {
     const sessionsDir = path.join(cwd, ROADMAP_DIR, 'sessions');
     const session = String(nextSessionNumber(sessionsDir)).padStart(3, '0');
     const rel = `${ROADMAP_DIR}/sessions/session-${session}.md`;
+    // Shape-validate the node before any mutation — a malformed-manifest
+    // refusal must leave the draft in place.
+    const roadmap = ensureRoadmap(manifest);
 
     // Log first, marker second: a failure between the two leaves a log
     // without a marker (a closed-looking session — recoverable), never a
     // marker naming a missing log (corrupt state).
     fs.mkdirSync(sessionsDir, { recursive: true });
     fs.renameSync(draftPath, path.join(cwd, rel));
-    ensureRoadmapNode(manifest).active_session = session;
+    roadmap.active_session = session;
     writeProjectManifestAtomic(cwd, manifest);
     return { session, path: rel };
   });
@@ -131,7 +131,7 @@ function closeRoadmapSession(cwd, { message }) {
   const warnings = [];
   knowledge(cwd, ['index', session.rel], `knowledge index (roadmap/sessions/session-${session.number}.md)`, warnings);
 
-  const outcome = commitTailPathspec(cwd, [ROADMAP_DIR, PROJECT_MANIFEST_SPEC], message, warnings);
+  const outcome = commitTailPathspec(cwd, roadmapKbSpecs(cwd), message, warnings);
   /** @type {Record<string, any>} */
   const result = { session: session.number, session_log: session.rel, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
@@ -143,7 +143,8 @@ function closeRoadmapSession(cwd, { message }) {
  * home. Validation completes before any mutation (a missing path fails the
  * whole call with `missing_imports` so the calling flow can re-prompt);
  * filenames take create's normalise/dedupe discipline (dotfile-normalising
- * sources are skipped and reported); every landing gets a
+ * sources are skipped and reported; a call whose every source skips refuses
+ * loudly — "imported" must mean something landed); every landing gets a
  * `roadmap.imports[]` entry and a knowledge index (warn-don't-block); one
  * commit stages the files and the manifest.
  * @param {string} cwd project root
@@ -163,37 +164,47 @@ function importRoadmapFiles(cwd, paths) {
     throw err;
   }
 
+  // Plan, copy, and record inside one lock hold, manifest shape validated
+  // before any file lands — a refusal leaves no orphan copies, and two
+  // sessions importing the same basename cannot dedupe against one snapshot
+  // (create's discipline: the copies land beside the write that records
+  // them).
   const destDir = path.join(cwd, ROADMAP_DIR, 'imports');
-  fs.mkdirSync(destDir, { recursive: true });
-  /** @type {Set<string>} */
-  const taken = new Set();
-  /** @type {{src: string, dest: string}[]} */
-  const moves = [];
-  /** @type {string[]} */
-  const skipped = [];
-  for (const src of paths) {
-    const name = normaliseBasename(path.basename(src));
-    if (name === null) {
-      skipped.push(src);
-      continue;
-    }
-    const dest = dedupe(name, destDir, taken);
-    taken.add(dest);
-    moves.push({ src, dest });
-  }
-
-  for (const move of moves) {
-    fs.copyFileSync(path.resolve(cwd, move.src), path.join(destDir, move.dest));
-  }
-  withProjectLock(cwd, () => {
+  const { moves, skipped } = withProjectLock(cwd, () => {
     const manifest = readProjectManifest(cwd);
-    const roadmap = ensureRoadmapNode(manifest);
+    const roadmap = ensureRoadmap(manifest);
     if (roadmap.imports === undefined) roadmap.imports = [];
     if (!Array.isArray(roadmap.imports)) throw new Error('roadmap.imports is malformed — expected an array');
-    for (const move of moves) {
+
+    /** @type {Set<string>} */
+    const taken = new Set();
+    /** @type {{src: string, dest: string}[]} */
+    const planned = [];
+    /** @type {string[]} */
+    const dropped = [];
+    for (const src of paths) {
+      const name = normaliseBasename(path.basename(src));
+      if (name === null) {
+        dropped.push(src);
+        continue;
+      }
+      const dest = dedupe(name, destDir, taken);
+      taken.add(dest);
+      planned.push({ src, dest });
+    }
+    if (planned.length === 0) {
+      throw new Error(`import: nothing to land — every source was skipped by filename normalisation (${dropped.join(', ')})`);
+    }
+
+    fs.mkdirSync(destDir, { recursive: true });
+    for (const move of planned) {
+      fs.copyFileSync(path.resolve(cwd, move.src), path.join(destDir, move.dest));
+    }
+    for (const move of planned) {
       roadmap.imports.push({ path: `imports/${move.dest}`, imported_at: isoNow() });
     }
     writeProjectManifestAtomic(cwd, manifest);
+    return { moves: planned, skipped: dropped };
   });
 
   /** @type {string[]} */
@@ -210,7 +221,7 @@ function importRoadmapFiles(cwd, paths) {
   };
   const outcome = commitTailPathspec(
     cwd,
-    [ROADMAP_DIR, PROJECT_MANIFEST_SPEC],
+    roadmapKbSpecs(cwd),
     `roadmap: import ${moves.length} file${moves.length === 1 ? '' : 's'}`,
     warnings,
   );

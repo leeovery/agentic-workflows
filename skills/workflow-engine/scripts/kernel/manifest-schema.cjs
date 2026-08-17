@@ -57,6 +57,11 @@ const VALID_GATE_MODES = ['gated', 'auto'];
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
+// Phase-item statuses that end a topic's life in its phase — excluded from
+// aggregation, never flagged, never reverted. One vocabulary for every
+// consumer (transitions, derivations, the roadmap's cross-join flag).
+const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted'];
+
 // Names a work unit can never take: `project` routes dot-path commands to the
 // project manifest; `baseline` is the knowledge base's pseudo-identity for the
 // project-level baseline docs (.workflows/.baseline/); `roadmap` is the
@@ -72,5 +77,6 @@ module.exports = {
   VALID_ROUTINGS,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
+  TERMINAL_STATUSES,
   RESERVED_WORK_UNIT_NAMES,
 };

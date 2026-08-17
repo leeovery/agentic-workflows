@@ -30,7 +30,7 @@ const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { computeTopicLifecycle } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
 // items (no lifecycle status — computed at render time); they are created and
@@ -191,9 +191,6 @@ function nextConcernNumber(dirAbs) {
   }
   return max + 1;
 }
-
-/** Statuses past reconciliation — no flag, no source-row flip. */
-const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted'];
 
 /**
  * A spec item's `sources` as `[name, row]` entries — the one decoder of the

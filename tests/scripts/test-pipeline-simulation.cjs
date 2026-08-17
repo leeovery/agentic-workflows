@@ -1084,6 +1084,11 @@ describe('pipeline simulation', () => {
     sim.refuses(['roadmap', 'horizon', 'remove', 'v2'], /holds 1 item/);
     sim.run(['roadmap', 'remove', 'white-label']);
     sim.run(['roadmap', 'horizon', 'remove', 'v2']);
+    // A positional insert lands the horizon where the release order says.
+    sim.run(['roadmap', 'horizon', 'add', 'next', '--position', '2']);
+    state = sim.run(['roadmap', 'state']);
+    assert.deepStrictEqual(state.horizons, ['mvp', 'next', 'v1', 'someday']);
+    sim.run(['roadmap', 'horizon', 'remove', 'next']);
 
     // The harvest closes the session: marker cleared, log indexed, one
     // commit covering the session's dirt.
@@ -1146,6 +1151,19 @@ describe('pipeline simulation', () => {
     assert.strictEqual(state.items.find((i) => i.name === 'menu-management').state, 'waiting',
       'reactivation never silently re-joins');
 
+    // The un-pull for a never-started topic: removing the fresh map topic
+    // hands the item back — and the dismissed name then needs the user's
+    // confirmed re-add to pull forward again.
+    sim.run(['roadmap', 'add', 'reporting', '--horizon', 'v1', '--summary', 'owners see the numbers']);
+    sim.run(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion']);
+    const removed = sim.run(['discovery-map', 'remove', 'mvp', 'reporting']);
+    assert.deepStrictEqual(removed.roadmap_reverted, ['reporting']);
+    state = sim.run(['roadmap', 'state']);
+    assert.strictEqual(state.items.find((i) => i.name === 'reporting').state, 'waiting');
+    sim.refuses(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion'], /previously dismissed/);
+    sim.run(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion', '--force-dismissed']);
+    sim.run(['discovery-map', 'remove', 'mvp', 'reporting']);
+
     // The render surfaces hold over the live state: the map view and the
     // add-to-joined-horizon gate.
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /DISPLAY: roadmap/);
@@ -1157,7 +1175,9 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'complete', 'mvp', '-m', 'workflow(mvp): pipeline complete']);
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'guest-ordering').state, 'shipped');
-    assert.deepStrictEqual(state.totals, { items: 3, waiting: 2, in_flight: 0, shipped: 1, orphaned: 0 });
+    assert.deepStrictEqual(state.totals, { items: 4, waiting: 3, in_flight: 0, shipped: 1, orphaned: 0 });
+    // The view renders the shipped row from the join, after the completion.
+    assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /✓ Guest Ordering/);
 
     // The reserved identity holds: no work unit may take the layer's name.
     sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--no-session-log'], /is reserved/);
@@ -1177,6 +1197,31 @@ describe('pipeline simulation', () => {
     sim.refuses(['roadmap', 'pull', 'ordering', '--into', 'mvp'], /active work only/);
     sim.run(['workunit', 'reactivate', 'mvp']);
     sim.run(['roadmap', 'pull', 'ordering', '--into', 'mvp']);
+  });
+
+  it('roadmap: absorb re-aims a feature-held join at the epic topic — never an orphan', () => {
+    sim.run(['roadmap', 'add', 'loyalty', '--horizon', 'v1', '--summary', 'repeat-customer rewards']);
+    const flog = sessionLog(sim, 'loyalty-feat');
+    sim.run(['workunit', 'create', 'loyalty-feat', 'feature', '--description', 'Loyalty', '--session-log-file', flog]);
+    sim.run(['roadmap', 'pull', 'loyalty', '--into', 'loyalty-feat']);
+    sim.run(['topic', 'start', 'loyalty-feat', 'discussion', 'loyalty-feat']);
+    sim.write('.workflows/loyalty-feat/discussion/loyalty-feat.md', '# Loyalty discussion\n');
+    const elog = sessionLog(sim, 'platform');
+    sim.run(['workunit', 'create', 'platform', 'epic', '--description', 'Platform', '--session-log-file', elog]);
+
+    const res = sim.run(['workunit', 'absorb', 'loyalty-feat', '--into', 'platform', '--topic', 'loyalty']);
+    assert.deepStrictEqual(res.roadmap_reaimed, ['loyalty']);
+    let state = sim.run(['roadmap', 'state']);
+    const row = state.items.find((i) => i.name === 'loyalty');
+    assert.strictEqual(row.state, 'in-flight');
+    assert.strictEqual(row.work_unit, 'platform');
+    assert.strictEqual(row.topic, 'loyalty');
+
+    // The re-aimed join keeps the cancel-revert hop live at its new home.
+    const cancelled = sim.run(['topic', 'cancel', 'platform', 'discussion', 'loyalty']);
+    assert.deepStrictEqual(cancelled.roadmap_reverted, ['loyalty']);
+    state = sim.run(['roadmap', 'state']);
+    assert.strictEqual(state.items.find((i) => i.name === 'loyalty').state, 'waiting');
   });
 
   it('pivot: a feature with a discussion becomes an epic and its topic keeps working', () => {
@@ -1609,6 +1654,7 @@ describe('pipeline simulation', () => {
     // the project manifest, `baseline` is the KB's project-baseline identity.
     sim.refuses(['workunit', 'create', 'project', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
     sim.refuses(['workunit', 'create', 'baseline', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
+    sim.refuses(['workunit', 'create', 'roadmap', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
 
     // The project baseline walks its lifecycle on the project manifest, and
     // each render surface serves its prescribed moment: the progress map and

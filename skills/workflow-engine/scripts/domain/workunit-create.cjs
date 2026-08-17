@@ -31,7 +31,7 @@ const {
 const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { parseInboxPath } = require('./inbox.cjs');
-const { todayStamp } = require('./dates.cjs');
+const { todayStamp, isoNow } = require('./dates.cjs');
 const {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -73,11 +73,6 @@ function assertLegalWorkUnitName(workUnit) {
  * @property {string} [note]  set when committed is null
  * @property {string[]} warnings  non-blocking failures (knowledge-base indexing)
  */
-
-/** ISO-8601 UTC to the second (`2026-07-15T09:30:00Z`). */
-function isoNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-}
 
 /**
  * Normalise a source basename into a landing filename: lowercase; runs of
