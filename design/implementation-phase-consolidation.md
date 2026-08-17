@@ -226,10 +226,11 @@ boundary flow.
   way in, `pull` removes by deep equality), semantics entirely
   prose-owned, render surfaces receiving counts as integers. The bank
   mirrors it: `implementation.{topic}.bank`, entries
-  `{task, source, summary, detail, files}`, deposited at the task
-  loop's stage H from the executor's and reviewer's `BANK` report
-  sections. PR2 becomes the feed (charters + deposit), not an engine
-  surface.
+  `{task, source, summary, detail, files}` (the finder's pre-existing
+  debt entries carry `{source: "finder", pre_existing: true}` and no
+  task), deposited the moment each executor or reviewer report
+  arrives (task loop B/D). PR2 becomes the feed (charters + deposit),
+  not an engine surface.
 - **Staging reuses the guarded container.** `staging.<key>.tasks.<n>`
   validation is key-generic, so the boundary walk records approvals
   under `staging.p{N}` beside analysis's `staging.c{N}` with no
@@ -255,3 +256,37 @@ boundary flow.
   starts while the current phase sits complete-but-unrecorded.
   Synthetic remediation phases (`Analysis (Cycle N)`,
   `Review Remediation`) never take the detour.
+
+## Review pass (2026-08-16/17)
+
+Two full finder fleets over the built stack reshaped four contracts;
+the rest of the findings were mechanical and landed in the owning
+PRs.
+
+- **Deposits are per report, not per milestone.** Every executor or
+  reviewer report carrying BANK deposits on arrival (task loop B/D) —
+  no verdict path, fix round, or crash can drop an entry; near
+  duplicates are folded by the boundary pass.
+- **The placement contract survives every format.** The task-writer
+  carves one exception for a prompt-declared consolidation-boundary
+  placement; tick reopens `done` ancestors when an open child is
+  created under them (verified by live probe — parent and topic both
+  reopen), local-markdown's derived phase state self-corrects, linear
+  defers natively. A writer refusal halts loudly at E, with resolve
+  and abandon arms.
+- **The fix gate lost `skip`.** A needs-changes review resolves by
+  fixing or by challenge: a fresh confirmation reviewer adjudicates
+  the disputed findings (stands/withdrawn, verdict recomputed);
+  beyond-scope withdrawals return under BANK, and the original
+  review's comment corrections still apply on the approved arm.
+- **Quick-fix never takes the boundary** — its plan never grows
+  (`ad-hoc-plan-changes.md`'s ceiling doctrine), enforced at H's
+  disposition and backstopped in the pass prelude.
+
+Accepted residue: a crash between the task-writer landing tasks and
+E's tail resolves through H's `completing` — the folded bank entries
+ride to the analysis synthesizer (which verdicts them against code
+and discards the done ones) and the session-memory list of
+plan-authorable set-asides is lost, as any non-durable list is. The
+findings path (B–E) and the challenge branch have no prose-test case
+yet.

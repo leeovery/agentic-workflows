@@ -556,7 +556,7 @@ describe('pipeline simulation', () => {
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     // Quick-fix takes no consolidation boundary (its plan never grows), so the
     // completion keeps the fused --phase-complete.
-    sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--next-task', '~', '--phase-complete']);
+    sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--phase', '1', '--next-task', '~', '--phase-complete']);
     sim.run(['topic', 'complete', wu, 'implementation', wu]);
     sim.run(['topic', 'start', wu, 'review', wu]);
     sim.run(['topic', 'complete', wu, 'review', wu]);
@@ -1225,7 +1225,7 @@ describe('pipeline simulation', () => {
     // The consolidation task runs through the ordinary loop; its completion
     // finds the phase consolidated and records it.
     sim.run(['task', 'start', wu, wu, `${wu}-1-3`]);
-    sim.run(['task', 'complete', wu, wu, `${wu}-1-3`, '--next-task', '~', '--phase-complete']);
+    sim.run(['task', 'complete', wu, wu, `${wu}-1-3`, '--phase', '1', '--next-task', '~', '--phase-complete']);
     const loopItem = sim.manifest(wu).phases.implementation.items[wu];
     assert.deepStrictEqual(loopItem.consolidated_phases, [1], 'the boundary marker survives');
     assert.deepStrictEqual(loopItem.completed_phases, [1], 'the phase records complete after consolidation');

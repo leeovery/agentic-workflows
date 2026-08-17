@@ -51,7 +51,7 @@ What the plan structurally could not have authored — visible only once sibling
 
 ## The Exclusion Bar
 
-A candidate that fails any test goes to Observations, never Findings:
+A candidate that fails any test never reaches Findings — pre-existing debt goes to `## Pre-existing Debt`, everything else to Observations:
 
 - **No behaviour change** — every proposal is a pure refactor: tests stay green, test semantics untouched. A proposal that changes what the code does is not consolidation.
 - **Cause vs subject** — the problem must be *caused by this phase's changes*; the fix may reach outside the diff (consolidating phase code into a pre-existing helper, touching its call sites, is in). A refactor whose subject is wholly pre-existing code the phase merely sits next to is out — record it under `## Pre-existing Debt` (the orchestrator banks it for the end-of-implementation analysis), and verdict it `residue` if already banked.
@@ -119,4 +119,4 @@ SUMMARY: {1 sentence}
 ```
 
 - `findings`: at least one finding survived the bar
-- `clean`: none did — still write the file when bank verdicts or Observations exist
+- `clean`: none did — still write the file when bank verdicts, pre-existing debt, or Observations exist
