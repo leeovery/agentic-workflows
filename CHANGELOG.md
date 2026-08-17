@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.70] - 2026-08-17
+
+✨ Added
+- Task-loop reviews and results now offer an `s/show` option that draws the mechanism as ASCII diagrams, alongside the existing technical retelling.
+- Diagram views can escalate to an interactive browser page on request, when a publishing tool is available in the session.
+
+🔧 Changed
+- Task briefs, findings summaries, and result summaries in the implementation task loop now render as labeled sections (Before/Now/Decisions/Fixed on the way/Watch/Tests) instead of flowing narrative, for faster scanning.
+
 ## [0.6.69] - 2026-08-17
 
 ✨ Added
