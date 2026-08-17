@@ -633,6 +633,53 @@ Lee's if-it-maps-to-real-life test:
   genesis walk, the park, the pull (full and partial), the
   recognition pass, and the three start-screen states.
 
+## Build plan (2026-08-17)
+
+Stacked on this log (PR 1, #915), engine-up like the baseline stack.
+Every engine slice extends the pipeline simulation; every prose slice
+ends with `prose select --diff` per the house rule. No migration —
+the layer is additive; the roadmap node and the project-level dirs
+are created on first use (JIT), and no existing state translates.
+
+1. **#915 — this design log** (open).
+2. **Engine: roadmap state + local ops.** The project-manifest
+   `roadmap` node, `domain/roadmap.cjs` (horizons, items, join
+   lifecycle derivation), field-surface access, reserved identity,
+   park / direct add / item ops / horizon ops, the re-bucket/remove
+   guard on joined items. Engine tests + simulation scenario.
+3. **Engine: pull + cross-boundary hops.** The pull verb
+   (working-set input → joins + seed hand-off into
+   `workunit create`), pull-forward, the cancel-revert hop on topic
+   cancel, `reconcile_needed` across the join (`flagDownstream`
+   extension), the `waiting_on_roadmap` collision flag in proposal
+   validation. Simulation permutations for partial pull, revert,
+   and the guards.
+4. **KB + product sessions.** Project-level sessions dir + log
+   template (harvest section), session open/close verbs at project
+   level (active-session marker), KB phase + `deriveIdentity`
+   carve-out, project-level imports home. Knowledge suites.
+5. **Render surfaces.** Roadmap view, harvest proposal view, pull
+   working set, add-to-joined-horizon routed confirm, the three
+   start-screen states + overview roadmap section, boot/gateway
+   reporting. Simulation render assertions.
+6. **Prose: the product road.** Detection-core product-altitude
+   tell + routing, opener (baseline overview read, imports weave),
+   product session loop + guidelines delta, product harvest
+   ceremony, resume detection at project level.
+7. **Prose: pull + integrations.** Pull ceremony, epic-entry seed
+   set + continuity-load across the chain + Exploration backfill,
+   epic-harvest two-destination sort + anti-twin check, park valve
+   in epic session-loop and discussion, recognition pass at shaping,
+   workflow-start rows and states wiring, post-launch catch-up.
+8. **Prose tests.** Cases: genesis walk, park (epic + discussion),
+   pull (full + partial-horizon), recognition pass, the three
+   start-screen states; run the intersecting-case selection.
+
+Decisions owed before their slice: naming (slices 2/4), cancel-revert
+semantics (slice 3), the product road's skill shape (slice 6),
+partial-item pull handling (slice 3 refuses or splits). Recognition
+fuzziness settles inside slice 7; KB grade inside slice 4.
+
 ## Open questions
 
 - **Naming.** The user-facing word is *roadmap* and the concept word
