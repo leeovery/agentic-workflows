@@ -85,5 +85,6 @@ Further claims:
 - tasks/pay-1-3.md exists with status: completed and the planning
   file's Phase 1 table carries its row
 - the helper source and test files exist as the stub gave them;
-  pay-1-1's files are untouched
+  pay-1-1's task file and test are untouched, and its source changed
+  only by the consolidation task's call-site edit
 - no fix-tracking file and no attempt-findings cache file exist
