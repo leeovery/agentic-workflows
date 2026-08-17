@@ -1,0 +1,83 @@
+{
+  "origin": "the fix gate's challenge branch had no walk — the gate lost its skip, and a disputed finding now resolves through a confirmation review instead of an override. This walks it: the review flags one issue, the user challenges it at the gate, a fresh confirmation reviewer withdraws the finding, the verdict flips to approved, and the task completes with no fix round ever dispatched",
+  "entry": "workflow-implementation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-implementation-entry/references/validate-phase.md",
+    "skills/workflow-implementation-entry/references/validate-dependencies.md",
+    "skills/workflow-implementation-entry/references/invoke-skill.md",
+    "skills/workflow-implementation-process/SKILL.md",
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-process/references/load-plan-adapter.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/updating.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-implementation-process/references/project-skills-discovery.md",
+    "skills/workflow-implementation-process/references/linter-setup.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-implementation-process/references/task-loop.md",
+    "skills/workflow-implementation-process/references/display-task-brief.md",
+    "skills/workflow-implementation-process/references/display-task-result.md",
+    "skills/workflow-shared/references/product-lens.md",
+    "skills/workflow-implementation-process/references/task-normalisation.md",
+    "skills/workflow-implementation-process/references/invoke-executor.md",
+    "skills/workflow-implementation-process/references/invoke-reviewer.md"
+  ],
+  "answers": [
+    "y — skip project skills again",
+    "y — skip linters again",
+    "That finding is wrong — the gateway deduplicates intents by order id server-side, so a client-side guard would be redundant. The task's duplicate-start criterion is met as built and the test drives it. No guard belongs here.",
+    "y — approve the task"
+  ],
+  "stubs": {
+    "executor-task-complete": "when the workflow-implementation-task-executor agent is dispatched for task pay-1-1 — create that task's source and test files as the stub gives them and return that task's STATUS block; one firing, and no fix round ever arrives",
+    "reviewer-flags-then-withdraws": "each time the workflow-implementation-task-reviewer agent is dispatched — the first firing (the task's review) returns the needs-changes block; the second firing (the confirmation dispatch carrying the challenged finding and the user's argument) returns the confirmation block with the finding withdrawn; write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "engine.cjs commit pay -m impl(pay): start implementation",
+      "task start pay pay pay-1-1",
+      "render task-brief pay.implementation.pay",
+      "task fix-attempt pay pay pay-1-1",
+      "render task-result pay.implementation.pay",
+      "render fix-gate pay.implementation.pay",
+      "render task-gate pay.implementation.pay",
+      "task complete pay pay pay-1-1 --phase 1 --next-task pay-1-2",
+      "impl(pay): Tpay-1-1"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "task start pay pay pay-1-1",
+      "render task-brief pay.implementation.pay",
+      "task fix-attempt pay pay pay-1-1",
+      "render fix-gate pay.implementation.pay",
+      "render task-gate pay.implementation.pay",
+      "task complete pay pay pay-1-1",
+      "impl(pay): Tpay-1-1"
+    ],
+    "calls_exclude": [
+      "task start pay pay pay-1-2",
+      "--phase-complete",
+      "fix_gate_mode auto",
+      "task_gate_mode auto",
+      "manifest push pay.implementation.pay bank",
+      "consolidated_phases",
+      "staging.p1",
+      "analysis-cycle",
+      "topic complete pay implementation",
+      "git add -A",
+      "git add --all"
+    ]
+  }
+}
