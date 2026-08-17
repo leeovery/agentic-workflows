@@ -736,12 +736,11 @@ describe('engine render task surfaces', () => {
       '',
       '**`y/yes`**       → Pass to executor',
       ...(auto ? [] : ['**`a/auto`**      → Accept and auto-approve future fix analyses']),
-      '**`s/skip`**      → Override the reviewer and proceed as-is',
       "**`t/technical`** → Retell the review from the code's perspective",
       "**Ask**         → Ask questions about the review (doesn't accept or",
       `${NB(14)}reject)`,
-      '**Comment**     → Accept with adjustments — pass your own direction',
-      `${NB(14)}alongside the review`,
+      '**Comment**     → Give direction for the fix — or challenge a finding',
+      `${NB(14)}you think is wrong`,
       '',
     ].join('\n');
   }

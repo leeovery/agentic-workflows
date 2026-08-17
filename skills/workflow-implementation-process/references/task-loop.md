@@ -285,10 +285,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 → Return to **B. Execute Task**.
 
-#### If `skip`
-
-→ Proceed to **G. Task Gate**.
-
 #### If `technical`
 
 → Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
@@ -305,9 +301,29 @@ Answer the user's questions about the review.
 
 #### If comment
 
-Include the reviewer's notes and the user's commentary when re-invoking.
+Direction for the fix — include the reviewer's notes and the user's commentary when re-invoking.
 
 → Return to **B. Execute Task**.
+
+#### If the user challenges a finding
+
+The reviewer may be wrong — the challenge is adjudicated, never absorbed and never overridden silently.
+
+→ Load **[invoke-reviewer.md](invoke-reviewer.md)** and follow its **Confirmation Review** section.
+
+> **CHECKPOINT**: Do not proceed until the confirmation has returned.
+
+**If every blocking finding is withdrawn** (the confirmation's `VERDICT` is `approved`):
+
+The review stands corrected — note the withdrawals for the result summary.
+
+→ Proceed to **G. Task Gate**.
+
+**If any finding stands:**
+
+Summarise what stands and why, per the confirmation.
+
+→ Return to **F. Fix Approval Gate**.
 
 ---
 

@@ -97,10 +97,9 @@ function fixGateSection(gateMode, thresholdReached) {
   const options = [
     cmdOption('y', 'yes', 'Pass to executor'),
     cmdOption('a', 'auto', 'Accept and auto-approve future fix analyses'),
-    cmdOption('s', 'skip', 'Override the reviewer and proceed as-is'),
     cmdOption('t', 'technical', "Retell the review from the code's perspective"),
     promptOption('Ask', "Ask questions about the review (doesn't accept or reject)"),
-    promptOption('Comment', 'Accept with adjustments — pass your own direction alongside the review'),
+    promptOption('Comment', 'Give direction for the fix — or challenge a finding you think is wrong'),
   ];
   // An auto gate only reaches this menu via the threshold — offering auto
   // again would be a no-op option.

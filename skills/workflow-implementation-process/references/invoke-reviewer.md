@@ -58,3 +58,27 @@ NOTES:
 - BANK may accompany either verdict and never counts toward it — opportunities whose fix reaches beyond the task's scope, deposited to the manifest the moment the report arrives ([task-loop.md](task-loop.md) **D. Review Task**)
 
 → Return to caller.
+
+---
+
+## Confirmation Review
+
+Dispatched from the fix gate when the user challenges a finding rather than directing a fix. Invoke a **fresh** `workflow-implementation-task-reviewer` agent — never the reviewer whose finding is under challenge, which would defend its own work, and never a continuation. Pass items 1–6 above, plus:
+
+7. **Challenged findings** — the disputed ISSUES, verbatim from the review under challenge
+8. **The user's challenge** — their argument, verbatim
+
+The agent adjudicates (see the charter's Confirmation Dispatch) and returns:
+
+```
+TASK: {task name}
+VERDICT: approved | needs-changes
+CHALLENGED:
+- {finding}: stands | withdrawn — {why, in one clause}
+```
+
+- `withdrawn` removes the finding; `stands` keeps it, with the reason the argument does not hold
+- Unchallenged ISSUES carry forward untouched — the confirmation never re-sweeps the task
+- VERDICT is recomputed from the ISSUES that remain after withdrawals: `approved` when no blocking issue survives
+
+→ Return to caller.
