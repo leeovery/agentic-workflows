@@ -264,7 +264,7 @@ The turn does not end here — the gate menu follows in the same turn.
 
 ## F. Fix Approval Gate
 
-Every arrival emits the menu in the turn it arrives — from **E**, and back from a lens, an answer, or a standing challenge alike.
+Every arrival emits the menu in the turn it arrives — from **E**, and back from a lens, the page, an answer, or a standing challenge alike.
 
 Fetch the fix gate and emit its `MENU: fix gate` section (the `a/auto` option renders only while the fix gate is `gated` — a threshold-forced gate in auto mode omits it):
 
@@ -295,6 +295,12 @@ Retell the reviewer's findings as the register's technical retell (**[report-reg
 #### If `show`
 
 Compose the register's show-me diagrams (**[report-register.md](report-register.md)** → Show Me) for the reviewer's findings.
+
+→ Return to **F. Fix Approval Gate**.
+
+#### If the user asks for the interactive page
+
+Render the show-me explanation as an interactive browser page with the publishing tool.
 
 → Return to **F. Fix Approval Gate**.
 
@@ -334,7 +340,7 @@ Include the reviewer's notes and the user's commentary when re-invoking.
 
 ## G. Task Gate
 
-A return from a retell or an answer re-emits the menu alone — re-run the gated fetch below; the presentation belongs to the gate's first arrival.
+A return from a lens, the page, or an answer re-emits the menu alone — re-run the gated fetch below; the presentation belongs to the gate's first arrival.
 
 After the reviewer approves a task, present the result:
 
@@ -380,13 +386,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 **If `technical`:**
 
-Retell the same result as the register's technical retell (**[report-register.md](report-register.md)** → Technical Retell), from the reports and the changes on disk.
+Retell the same result as the register's technical retell (**[report-register.md](report-register.md)** → Technical Retell), from the executor's and reviewer's reports and the changes on disk.
 
 → Return to **G. Task Gate**.
 
 **If `show`:**
 
 Compose the register's show-me diagrams (**[report-register.md](report-register.md)** → Show Me) for the same result.
+
+→ Return to **G. Task Gate**.
+
+**If the user asks for the interactive page:**
+
+Render the show-me explanation as an interactive browser page with the publishing tool.
 
 → Return to **G. Task Gate**.
 

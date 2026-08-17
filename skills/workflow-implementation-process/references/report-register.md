@@ -20,7 +20,7 @@ Every sentence in a report block follows these:
 - **Cause before effect, both explicit.** "The preview rebuilds its DOM after each structural edit. That rebuild destroyed the browser's undo stack."
 - **Numbers stay exact.** Measurements, counts, and versions appear as measured, with their conditions.
 
-The audience is an engineer with full engineering fluency who knows the product but not this codebase — nothing dumbed down, nothing assumed. The lens sets the naming: the task brief, findings summary, and product summary translate codebase-internal names into what they do; the technical retell uses real names with `file:line` anchors.
+The audience is an engineer with full engineering fluency who knows the product but not this codebase — nothing dumbed down, nothing assumed. The lens sets the naming: the task brief, findings summary, and product summary translate codebase-internal names into what they do; the technical retell and the show-me diagrams use real names with `file:line` anchors.
 
 ## Task Brief
 
@@ -62,4 +62,4 @@ The mechanism as a picture. On the task gate, diagram what was built; on the fix
 - ASCII diagrams in a plain code block — topology, dataflow, sequence, or state, whichever exposes the mechanism at hand. One caption line above each diagram; a legend only when a symbol is not obvious.
 - Diagrams stay under 60 columns — a fenced block never reflows.
 - Nodes carry real names, with `file:line` where it helps. A sentence or two under the rules may connect the diagrams, never replace them.
-- After the diagrams, when a tool for publishing browser pages is available in the session, offer once, in one line, to render the same explanation as an interactive page. Declined or unavailable: the ASCII stands alone. The offer never leads — the diagrams are the deliverable.
+- After the diagrams, one line notes that an interactive page of the same explanation is available on request — only when the session has a tool that can publish a browser page; without one the line does not render and the ASCII stands alone. Never pose it as a question — a dangling ask collides with the gate menu that follows. The diagrams are the deliverable.
