@@ -24,4 +24,4 @@ An engineer who knows the product but not this codebase. Full engineering fluenc
 
 ## Depth
 
-A summary the user takes in at a glance — two or three short paragraphs, never a wall of text. Complete in coverage, compact in telling: every substantive point in the record is represented, in a sentence or two each, never at its full depth. Detail is deferred, not lost — the technical retelling and the record itself sit one option away at the site's gate. The record file on disk stays fully technical and remains authoritative — the summary presents it, never replaces it.
+A summary the user takes in at a glance — two or three short paragraphs, never a wall of text. Complete in coverage, compact in telling: every substantive point in the record is represented, in a sentence or two each, never at its full depth. Detail is deferred, not lost — it sits one option away at the site's gate, through whichever deeper paths that gate offers: a technical retelling, a record view, **Ask**. The record file on disk stays fully technical and remains authoritative — the summary presents it, never replaces it.
