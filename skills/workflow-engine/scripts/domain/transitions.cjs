@@ -27,6 +27,8 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { computeTopicLifecycle } = require('./derivations.cjs');
+const { revertJoins } = require('./roadmap.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 
@@ -59,6 +61,7 @@ function assertLegalWrite(phase, status) {
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
  * @property {string[]} [cascaded]  started spec items cancelled with their source (cancel --cascade)
  * @property {string[]} [discarded] proposed groupings deleted with their source (cancel --cascade)
+ * @property {string[]} [roadmap_reverted] roadmap items handed back to waiting by the cancel-revert hop
  */
 
 /**
@@ -811,11 +814,22 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
     knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'specification', '--topic', name], 'knowledge remove', warnings);
   }
 
-  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): cancel ${topic} (${phase})`, warnings);
+  // The cancel-revert hop: a topic whose cancellation leaves its map
+  // lifecycle cancelled hands any roadmap item joined to it back to
+  // waiting (sources/origin intact) — the un-pull path. The project
+  // manifest rides this transaction's commit when a revert landed.
+  const lifecycleAfter = computeTopicLifecycle(loadWorkUnitManifest(cwd, workUnit), topic).lifecycle;
+  const reverted = lifecycleAfter === 'cancelled' ? revertJoins(cwd, workUnit, { topic }) : [];
+
+  const cancelSpec = reverted.length > 0
+    ? [`.workflows/${workUnit}`, '.workflows/manifest.json']
+    : `.workflows/${workUnit}`;
+  const outcome = commitTailWithKb(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${phase})`, warnings);
   /** @type {TopicTransitionResult} */
   const result = { topic, phase, status: 'cancelled', committed: outcome.committed, warnings };
   if (cascaded.length > 0) result.cascaded = cascaded;
   if (discarded.length > 0) result.discarded = discarded;
+  if (reverted.length > 0) result.roadmap_reverted = reverted;
   noteCommitOutcome(result, outcome);
   return result;
 }

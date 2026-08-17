@@ -31,6 +31,8 @@ const {
   writeProjectManifestAtomic,
   withProjectLock,
   loadWorkUnitManifest,
+  saveWorkUnitManifest,
+  withWorkUnitLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
@@ -657,6 +659,253 @@ function removeHorizon(cwd, name) {
   return commitRoadmap(cwd, result, `roadmap: horizon remove ${name}`);
 }
 
+/**
+ * Pull items into a work unit — the commitment point. Sets `pulled_to` on
+ * each named item; the unit must exist and be in-progress, every item must
+ * exist and be un-joined. The response names the remainder per touched
+ * horizon ("3 items stay waiting in mvp") so a partial pull is never
+ * silent (design decision 30). The epic's seed set is derivable from these
+ * joins — nothing is mirrored onto the work unit (one home per fact).
+ * Self-commits.
+ * @param {string} cwd @param {string[]} names @param {{into?: string}} [opts]
+ * @returns {object}
+ */
+function pullItems(cwd, names, { into } = {}) {
+  if (!Array.isArray(names) || names.length === 0) {
+    throw new Error('pull: at least one item name is required');
+  }
+  const dupe = names.find((n, i) => names.indexOf(n) !== i);
+  if (dupe) throw new Error(`pull: "${dupe}" appears more than once`);
+  if (typeof into !== 'string' || into === '') throw new Error('--into is required');
+
+  /** @type {any} */
+  let unit;
+  try {
+    unit = loadWorkUnitManifest(cwd, into);
+  } catch {
+    throw new Error(`no work unit "${into}" — the pull joins items to an existing unit (create it first)`);
+  }
+  if (unit.status !== 'in-progress') {
+    throw new Error(`work unit "${into}" is ${unit.status} — items pull into active work only`);
+  }
+
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    for (const name of names) {
+      const item = roadmapItem(roadmap, name);
+      const join = itemJoin(item);
+      if (join) throw new Error(`"${name}" is already joined to work unit "${join.work_unit}" — nothing was pulled`);
+    }
+    const touched = new Set();
+    for (const name of names) {
+      roadmap.items[name].pulled_to = { work_unit: into };
+      touched.add(roadmap.items[name].horizon);
+    }
+    // The remainder: waiting items left in each touched horizon.
+    /** @type {Record<string, number>} */
+    const remainder = {};
+    for (const horizon of touched) {
+      remainder[horizon] = Object.values(roadmap.items)
+        .filter((it) => it && typeof it === 'object' && it.horizon === horizon && !itemJoin(it)).length;
+    }
+    return { op: 'pull', into, pulled: [...names], remainder, item_total: Object.keys(roadmap.items).length };
+  });
+  const what = names.length === 1 ? names[0] : `${names.length} items`;
+  return commitRoadmap(cwd, result, `roadmap: pull ${what} into ${into}`);
+}
+
+/**
+ * Bind a pulled item to the topic it crystallised as — the epic harvest's
+ * closing move for a pulled item (the anti-twin rule: an item pulled
+ * pre-harvest comes out of the harvest as itself). The topic must exist on
+ * the joined unit's discovery map. Re-binding updates the topic (a split or
+ * rename at the harvest re-aims the join). Self-commits.
+ * @param {string} cwd @param {string} name @param {{topic?: string}} [opts]
+ * @returns {object}
+ */
+function bindItem(cwd, name, { topic } = {}) {
+  if (typeof topic !== 'string' || topic === '') throw new Error('--topic is required');
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    const item = roadmapItem(roadmap, name);
+    const join = itemJoin(item);
+    if (!join) throw new Error(`"${name}" is not joined to a work unit — pull it first`);
+    /** @type {any} */
+    let unit;
+    try {
+      unit = loadWorkUnitManifest(cwd, join.work_unit);
+    } catch {
+      throw new Error(`"${name}" is joined to work unit "${join.work_unit}", which no longer exists — the join is orphaned`);
+    }
+    const mapItems = (unit.phases && unit.phases.discovery && unit.phases.discovery.items) || {};
+    if (!mapItems[topic] || typeof mapItems[topic] !== 'object') {
+      throw new Error(`no discovery item "${topic}" on "${join.work_unit}" — bind names a topic the harvest landed`);
+    }
+    item.pulled_to = { work_unit: join.work_unit, topic };
+    return { op: 'bind', name, work_unit: join.work_unit, topic };
+  });
+  return commitRoadmap(cwd, result, `roadmap: bind ${name} to ${result.work_unit}/${result.topic}`);
+}
+
+/**
+ * Pull-forward: bring a waiting item into an in-flight epic as a map topic —
+ * the mid-epic expansion move (design decision 15, post-harvest form), one
+ * confirm in prose, one composed transaction here. Creates the discovery-map
+ * item (topic = item name, source `roadmap`, summary carried from the item)
+ * via the discovery-map domain's own add (its lock, its gates — the dismissed
+ * list included; `forceDismissed` passes the user's confirmed re-add
+ * through), then writes the join, then one commit staging both manifests.
+ * Map item first, join second: a crash between leaves a visible, repairable
+ * topic (pull + bind recovers), never a dangling join.
+ * @param {string} cwd @param {string} name
+ * @param {{into?: string, routing?: string, forceDismissed?: boolean}} [opts]
+ * @returns {object}
+ */
+function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = {}) {
+  if (typeof into !== 'string' || into === '') throw new Error('--into is required');
+  if (typeof routing !== 'string' || routing === '') throw new Error('--routing is required');
+
+  // Validate the roadmap side before touching the epic's map.
+  const preflight = readProjectManifest(cwd);
+  const rm = preflight.roadmap;
+  const preItem = rm && typeof rm === 'object' && rm.items && typeof rm.items === 'object' ? rm.items[name] : undefined;
+  if (!preItem || typeof preItem !== 'object') throw new Error(`no roadmap item "${name}"`);
+  const preJoin = itemJoin(preItem);
+  if (preJoin) throw new Error(`"${name}" is already joined to work unit "${preJoin.work_unit}" — pull-forward takes a waiting item`);
+
+  /** @type {any} */
+  let unit;
+  try {
+    unit = loadWorkUnitManifest(cwd, into);
+  } catch {
+    throw new Error(`no work unit "${into}"`);
+  }
+  if (unit.work_type !== 'epic') {
+    throw new Error(`"${into}" is a ${unit.work_type} — pull-forward lands a topic on an epic's discovery map`);
+  }
+  if (unit.status !== 'in-progress') {
+    throw new Error(`work unit "${into}" is ${unit.status} — items pull into active work only`);
+  }
+
+  // The discovery-map domain owns the map write: its lock, its name gates,
+  // its dismissed-list discipline.
+  const { addItem: addMapItem } = require('./discovery-map.cjs');
+  addMapItem(cwd, into, name, {
+    routing,
+    source: 'roadmap',
+    summary: typeof preItem.summary === 'string' ? preItem.summary : '',
+    forceDismissed,
+  });
+
+  /** @type {Record<string, any>} */
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    const item = roadmapItem(roadmap, name);
+    item.pulled_to = { work_unit: into, topic: name };
+    return { op: 'pull-forward', name, into, topic: name, routing, state: 'in-flight' };
+  });
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitTailPathspec(
+    cwd,
+    [PROJECT_MANIFEST_SPEC, `.workflows/${into}/manifest.json`],
+    `roadmap: pull-forward ${name} into ${into}`,
+    warnings,
+  );
+  result.committed = outcome.committed;
+  if (outcome.failed) result.warnings = warnings;
+  noteCommitOutcome(result, outcome);
+  return result;
+}
+
+/**
+ * Revert every join into a work unit — the cancel-revert hop's project-side
+ * write (design decision 25c): deletes `pulled_to` where it names the unit
+ * (and the topic, when given), returning the items to waiting with their
+ * `sources`/`origin` intact. Runs under the project lock, **no commit** —
+ * the calling transaction (topic cancel, work-unit cancel) stages the
+ * project manifest alongside its own write. Returns the reverted names
+ * (empty when nothing was joined — a no-op writes nothing).
+ * @param {string} cwd @param {string} workUnit @param {{topic?: string}} [opts]
+ * @returns {string[]}
+ */
+function revertJoins(cwd, workUnit, { topic } = {}) {
+  return withProjectLock(cwd, () => {
+    const manifest = readProjectManifest(cwd);
+    const rm = manifest.roadmap;
+    if (!rm || typeof rm !== 'object' || Array.isArray(rm) || !rm.items || typeof rm.items !== 'object') {
+      return [];
+    }
+    /** @type {string[]} */
+    const reverted = [];
+    for (const [name, item] of Object.entries(rm.items)) {
+      if (!item || typeof item !== 'object') continue;
+      const join = itemJoin(/** @type {Record<string, any>} */ (item));
+      if (!join || join.work_unit !== workUnit) continue;
+      if (topic !== undefined && join.topic !== topic) continue;
+      delete (/** @type {Record<string, any>} */ (item).pulled_to);
+      reverted.push(name);
+    }
+    if (reverted.length > 0) writeProjectManifestAtomic(cwd, manifest);
+    return reverted;
+  });
+}
+
+/**
+ * Flag the epic side of a join after a product session materially deepened
+ * the item's ground (design decision 25b): `reconcile_needed: "roadmap"` on
+ * the joined topic's live research/discussion items — `flagDownstream`
+ * semantics across the roadmap boundary: terminal items skipped, an
+ * existing flag never clobbered, a signal never a rewrite. What counts as
+ * "materially deepened" is the calling flow's judgment; this records it.
+ * A join with no topic (or no live phase item) flags nothing — the epic
+ * reads the record fresh at its harvest. Self-commits (the epic's manifest).
+ * @param {string} cwd @param {string} name
+ * @returns {object}
+ */
+function flagJoined(cwd, name) {
+  const project = readProjectManifest(cwd);
+  const rm = project.roadmap;
+  const item = rm && typeof rm === 'object' && rm.items && typeof rm.items === 'object' ? rm.items[name] : undefined;
+  if (!item || typeof item !== 'object') throw new Error(`no roadmap item "${name}"`);
+  const join = itemJoin(item);
+  if (!join) throw new Error(`"${name}" is not joined to a work unit — a waiting item needs no flag; its record is read at the pull`);
+
+  /** @type {{phase: string, topic: string}[]} */
+  const flagged = [];
+  if (join.topic !== undefined) {
+    const topic = join.topic;
+    withWorkUnitLock(cwd, join.work_unit, () => {
+      const manifest = loadWorkUnitManifest(cwd, join.work_unit);
+      for (const phase of ['research', 'discussion']) {
+        const items = (manifest.phases && manifest.phases[phase] && manifest.phases[phase].items) || {};
+        const phaseItem = items[topic];
+        if (!phaseItem || typeof phaseItem !== 'object') continue;
+        if (['cancelled', 'superseded', 'promoted'].includes(phaseItem.status)) continue;
+        if (phaseItem.reconcile_needed !== undefined) continue;
+        phaseItem.reconcile_needed = 'roadmap';
+        flagged.push({ phase, topic });
+      }
+      if (flagged.length > 0) saveWorkUnitManifest(cwd, join.work_unit, manifest);
+    });
+  }
+
+  /** @type {Record<string, any>} */
+  const result = { op: 'flag', name, work_unit: join.work_unit, flagged };
+  if (flagged.length === 0) {
+    result.note = 'no live phase item to flag — the epic reads the record fresh at its harvest';
+    result.committed = null;
+    return result;
+  }
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitTailPathspec(cwd, `.workflows/${join.work_unit}/manifest.json`, `roadmap: flag ${name} — input moved`, warnings);
+  result.committed = outcome.committed;
+  if (outcome.failed) result.warnings = warnings;
+  noteCommitOutcome(result, outcome);
+  return result;
+}
+
 module.exports = {
   roadmapState,
   deriveItemState,
@@ -672,4 +921,9 @@ module.exports = {
   mergeHorizons,
   splitHorizon,
   removeHorizon,
+  pullItems,
+  bindItem,
+  pullForwardItem,
+  revertJoins,
+  flagJoined,
 };

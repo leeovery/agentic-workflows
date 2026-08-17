@@ -28,6 +28,7 @@ const conventions = require('./domain/conventions.cjs');
 const reads = require('./domain/reads.cjs');
 const derivations = require('./domain/derivations.cjs');
 const discoverySession = require('./domain/discovery-session.cjs');
+const roadmapDomain = require('./domain/roadmap.cjs');
 const presence = require('./domain/presence.cjs');
 const gateway = require('./gateway.cjs');
 const epic = require('./domain/epic-detail.cjs');
@@ -85,6 +86,9 @@ module.exports = {
   },
   session: {
     nextSessionNumber: discoverySession.nextSessionNumber,
+  },
+  roadmap: {
+    roadmapState: roadmapDomain.roadmapState,
   },
   presence: {
     scanPresence: presence.scanPresence,

@@ -1076,12 +1076,12 @@ describe('pipeline simulation', () => {
     sim.run(['roadmap', 'remove', 'white-label']);
     sim.run(['roadmap', 'horizon', 'remove', 'v2']);
 
-    // The pull's join (the pull verb lands in the next slice — the join is
-    // written through the field surface's project route here) flips the
-    // derived state; storage never carries it.
+    // The pull is the commitment point: the join flips the derived state,
+    // and the remainder is named at the moment of choice.
     const log = sessionLog(sim, 'mvp');
     sim.run(['workunit', 'create', 'mvp', 'epic', '--description', 'The MVP slice', '--session-log-file', log]);
-    sim.run(['manifest', 'set', 'project.roadmap.items.ordering.pulled_to', '{"work_unit":"mvp"}']);
+    const pulled = sim.run(['roadmap', 'pull', 'ordering', '--into', 'mvp']);
+    assert.deepStrictEqual(pulled.remainder, { mvp: 1 }, 'the remainder names what stays waiting');
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'ordering').state, 'in-flight');
 
@@ -1098,6 +1098,36 @@ describe('pipeline simulation', () => {
     assert.strictEqual(joined.horizon, 'launch');
     assert.strictEqual(joined.state, 'in-flight');
 
+    // The epic harvest binds the item to the topic it crystallised as.
+    sim.run(['discovery-map', 'add', 'mvp', 'guest-ordering', 'discussion', '--summary', 'guests order', '--source', 'roadmap']);
+    sim.run(['roadmap', 'bind', 'guest-ordering', '--topic', 'guest-ordering']);
+
+    // Pull-forward: a waiting item joins the in-flight epic as a map topic
+    // in one composed transaction.
+    sim.run(['roadmap', 'pull-forward', 'menu-management', '--into', 'mvp', '--routing', 'discussion']);
+    assert.strictEqual(sim.manifest('mvp').phases.discovery.items['menu-management'].source, 'roadmap');
+
+    // A product session that deepens pulled ground flags across the join —
+    // a signal on the live phase item, never a rewrite.
+    sim.run(['topic', 'start', 'mvp', 'discussion', 'guest-ordering']);
+    const flag = sim.run(['roadmap', 'flag', 'guest-ordering']);
+    assert.deepStrictEqual(flag.flagged, [{ phase: 'discussion', topic: 'guest-ordering' }]);
+    assert.strictEqual(sim.manifest('mvp').phases.discussion.items['guest-ordering'].reconcile_needed, 'roadmap');
+    sim.run(['manifest', 'delete', 'mvp.discussion.guest-ordering', 'reconcile_needed']);
+
+    // The cancel-revert hop: cancelling the joined topic hands the item back
+    // to waiting; reactivation does NOT re-join (the revert is one-way — a
+    // re-pull re-binds deliberately).
+    sim.run(['topic', 'start', 'mvp', 'discussion', 'menu-management']);
+    const cancelled = sim.run(['topic', 'cancel', 'mvp', 'discussion', 'menu-management']);
+    assert.deepStrictEqual(cancelled.roadmap_reverted, ['menu-management']);
+    state = sim.run(['roadmap', 'state']);
+    assert.strictEqual(state.items.find((i) => i.name === 'menu-management').state, 'waiting');
+    sim.run(['topic', 'reactivate', 'mvp', 'discussion', 'menu-management']);
+    state = sim.run(['roadmap', 'state']);
+    assert.strictEqual(state.items.find((i) => i.name === 'menu-management').state, 'waiting',
+      'reactivation never silently re-joins');
+
     // Shipping the unit flips the derived state to shipped — nothing stored.
     sim.run(['workunit', 'complete', 'mvp', '-m', 'workflow(mvp): pipeline complete']);
     state = sim.run(['roadmap', 'state']);
@@ -1106,6 +1136,22 @@ describe('pipeline simulation', () => {
 
     // The reserved identity holds: no work unit may take the layer's name.
     sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--no-session-log'], /is reserved/);
+  });
+
+  it('roadmap: work-unit cancel reverts every join into the unit', () => {
+    sim.run(['roadmap', 'add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
+    sim.run(['roadmap', 'add', 'menus', '--horizon', 'mvp', '--summary', 's']);
+    const log = sessionLog(sim, 'mvp');
+    sim.run(['workunit', 'create', 'mvp', 'epic', '--description', 'MVP', '--session-log-file', log]);
+    sim.run(['roadmap', 'pull', 'ordering', 'menus', '--into', 'mvp']);
+    const res = sim.run(['workunit', 'cancel', 'mvp']);
+    assert.deepStrictEqual([...res.roadmap_reverted].sort(), ['menus', 'ordering']);
+    const state = sim.run(['roadmap', 'state']);
+    assert.deepStrictEqual(state.totals, { items: 2, waiting: 2, in_flight: 0, shipped: 0, orphaned: 0 });
+    // Pulling into the cancelled unit refuses; reactivation reopens the road.
+    sim.refuses(['roadmap', 'pull', 'ordering', '--into', 'mvp'], /active work only/);
+    sim.run(['workunit', 'reactivate', 'mvp']);
+    sim.run(['roadmap', 'pull', 'ordering', '--into', 'mvp']);
   });
 
   it('pivot: a feature with a discussion becomes an epic and its topic keeps working', () => {
