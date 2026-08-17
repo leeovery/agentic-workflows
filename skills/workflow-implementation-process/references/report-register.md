@@ -4,7 +4,7 @@
 
 ---
 
-The register for the task loop's report moments — the task brief, the findings summary, the result summary, and the technical retells. A report is sectioned facts, not narrative: the user takes the state of the work in at a glance, and depth is pulled, not pushed — the technical retell and **Ask** sit one option away at the gate. The record files stay fully technical and remain authoritative — a report presents them, never replaces them.
+The register for the task loop's report moments — the task brief, the findings summary, the result summary, the technical retells, and the show-me diagrams. A report is sectioned facts, not narrative: the user takes the state of the work in at a glance, and depth is pulled, not pushed — the technical retell and **Ask** sit one option away at the gate. The record files stay fully technical and remain authoritative — a report presents them, never replaces them.
 
 The register governs report blocks only — within one, it composes with **[voice.md](../../workflow-shared/references/voice.md)** rather than competing: this file governs the report's shape and sentence form, voice governs the manner. Conversational turns inside the loop — Ask answers, comment exchanges, blocker discussion — follow voice.md alone. Engine-emitted `DISPLAY`/`MENU` sections sit outside it entirely, byte-for-byte. Agent reports and records are never written in it — the register applies when composing for the user, never to what lands on disk. The boundary governs emission, not authorship: judgment content written into an engine payload for a section to render — the brief's `summary` and `watch` lines — takes the register at authoring time.
 
@@ -54,3 +54,12 @@ Markdown, not a code block. The same item decomposed from the code's side, under
 - **Costs and invariants** — measurements, complexity notes, what must stay true.
 
 A perspective shift, not a dump — never raw file contents, never a jargon chain, and each mechanism ties back to what it produces in the product. A retelling, not a summary: every substantive point in the record appears, nothing softened, nothing dropped. On the fix gate, the same decomposition applies to the findings — the mechanism of each issue and where it sits.
+
+## Show Me
+
+The mechanism as a picture. On the task gate, diagram what was built; on the fix gate, where each finding sits in the flow.
+
+- ASCII diagrams in a plain code block — topology, dataflow, sequence, or state, whichever exposes the mechanism at hand. One caption line above each diagram; a legend only when a symbol is not obvious.
+- Diagrams stay under 60 columns — a fenced block never reflows.
+- Nodes carry real names, with `file:line` where it helps. A sentence or two under the rules may connect the diagrams, never replace them.
+- After the diagrams, when a tool for publishing browser pages is available in the session, offer once, in one line, to render the same explanation as an interactive page. Declined or unavailable: the ASCII stands alone. The offer never leads — the diagrams are the deliverable.

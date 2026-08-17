@@ -72,6 +72,7 @@ function taskGateSection(gateMode) {
       cmdOption('y', 'yes', 'Commit and continue to next task'),
       cmdOption('a', 'auto', 'Approve this and all future tasks automatically'),
       cmdOption('t', 'technical', "Retell the result from the code's perspective"),
+      cmdOption('s', 'show', 'Show the result as diagrams'),
       promptOption('Ask', "Ask questions about the implementation (doesn't approve or reject)"),
       promptOption('Comment', 'Request changes (triggers a fix round)'),
     ]),
@@ -98,6 +99,7 @@ function fixGateSection(gateMode, thresholdReached) {
     cmdOption('y', 'yes', 'Pass to executor'),
     cmdOption('a', 'auto', 'Accept and auto-approve future fix analyses'),
     cmdOption('t', 'technical', "Retell the review from the code's perspective"),
+    cmdOption('s', 'show', 'Show the findings as diagrams'),
     promptOption('Ask', "Ask questions about the review (doesn't accept or reject)"),
     promptOption('Comment', 'Give direction for the fix — or challenge a finding you think is wrong'),
   ];
