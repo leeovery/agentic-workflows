@@ -316,7 +316,7 @@ function implement(h) {
     "",
   ].join('\n'));
   h.write(`.workflows/${WU}/planning/${WU}/tasks/${WU}-1-1.md`, taskFile(TASKS[0], 'completed'));
-  h.engine('task', 'complete', WU, WU, `${WU}-1-1`, '--next-task', `${WU}-1-2`);
+  h.engine('task', 'complete', WU, WU, `${WU}-1-1`, '--phase', '1', '--next-task', `${WU}-1-2`);
   h.engine('task', 'start', WU, WU, `${WU}-1-2`);
   h.write('src/webhooks/capture.js', [
     "// Consume gateway capture webhooks and mark the order paid. There",

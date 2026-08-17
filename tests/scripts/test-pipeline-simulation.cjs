@@ -1163,7 +1163,7 @@ describe('pipeline simulation', () => {
       /\*\*✓ Approved\*\* — \*3 fix rounds\*/, 'approval after fix rounds names the count');
     assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: fix gate/, 'threshold-forced fix gate renders its menu');
-    sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--next-task', `${wu}-1-2`]);
+    sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--phase', '1', '--next-task', `${wu}-1-2`]);
     sim.run(['task', 'analysis-cycle', wu, wu]);
     assert.match(sim.render(['cycle-gate'], { expect: 'content' }),
       /MENU: cycle gate/, 'cycle gate renders its menu');
