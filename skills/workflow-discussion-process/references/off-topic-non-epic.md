@@ -48,7 +48,7 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 Confirm the horizon in conversation (propose from the user's own staging words when they placed it; ask when they didn't), then park — the roadmap is born at the first park, and the verb validates and self-commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}" --origin park:{topic} --source {work_unit}/discussion/{topic}.md
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discussion/{topic}.md
 ```
 
 Note the park in the Summary so the discussion records where the concern went.

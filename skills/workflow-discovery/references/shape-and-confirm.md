@@ -47,7 +47,19 @@ The work type is committed. Set `work_type`; compile a one-line `description` fr
 
 #### If `other`
 
-Take the user's call as authoritative — adjust the read without re-litigating (if they describe rather than name a shape, map it via the detection core and reflect back for a quick confirm). A settled product-road read routes exactly as `yes` does — hold `import_paths`, invoke `/workflow-roadmap genesis`, terminal. Once a work type is settled, set `work_type` and compile the `description`.
+Take the user's call as authoritative — adjust the read without re-litigating (if they describe rather than name a shape, map it via the detection core and reflect back for a quick confirm).
+
+**If the settled read is the product road:**
+
+Hold any import paths surfaced during shaping as `import_paths`.
+
+Invoke `/workflow-roadmap genesis` via the Skill tool.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
+**If the settled read is a work type:**
+
+Set `work_type` and compile the `description`.
 
 → Return to caller.
 
