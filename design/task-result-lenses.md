@@ -54,13 +54,17 @@ it is wide.** That one sentence derives the scoping:
   their own shapes unchanged. They are candidates only after the
   task loop has produced evidence about which rules carry the value;
   a findings-specific variant, if any, is designed then — not now.
-- **The shared lens pair keeps its content.** `product-lens.md` and
-  `technical-lens.md` still serve review presentation and
-  investigation signoff; this feature removes the task loop from
-  their consumer list. Each gains exactly one line — the
-  composes-with-voice sentence that moved to their side when
-  voice.md's composition sentence was deleted (see the decision
-  log); their registers are otherwise unchanged.
+- **The shared pair narrows.** `product-lens.md` stays shared —
+  review presentation and investigation signoff both load it; its
+  Depth deferral is stated gate-relative, since only
+  investigation's gate carries a technical retell and a record
+  view. `technical-lens.md` is left with a single loader once the
+  task loop exits (investigation's findings signoff), so it moves
+  to `workflow-investigation-process/references/` — a reference
+  lives with its only consumer, the same rule that keeps
+  `report-register.md` implementation-local. Each lens doc gains
+  the composes-with-voice line (see the decision log); their
+  registers are otherwise unchanged.
 
 Register placement follows the standing rule: presentation only.
 Agent reports (executor SUMMARY, reviewer ISSUES/NOTES), cache files,
@@ -325,3 +329,11 @@ reading real task summaries. First live use is the review point for:
   loop as its stated exception; `s/show` keeps its key — per-menu
   uniqueness is the codified rule, and `t` is already reused
   across menus. (Lee, on recommendation.)
+- 2026-08-17 — Nothing left open by the review pass:
+  `technical-lens.md` moves to
+  `workflow-investigation-process/references/` (single consumer
+  after the loop's exit); `product-lens.md`'s Depth deferral goes
+  gate-relative, ending the false record-view promise at review's
+  gate; the lens round-trip gets a prose case
+  (`implementation-retells-at-the-gate`) pinning that a lens
+  return re-fetches the gate menu. (Lee, at review.)
