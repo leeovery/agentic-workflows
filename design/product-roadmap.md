@@ -318,8 +318,11 @@ pipeline, like baseline. The pipeline itself is untouched.
 20. **Product sessions live in a project-level dir, KB-indexed under
     a reserved pseudo identity** — the baseline pattern (dotted dir,
     committed content, pseudo work-unit carve-out, own KB phase).
-    Directory and identity naming are open questions; the indexing
-    grade should match discovery session logs (the record of a
+    Settled at build kickoff (2026-08-17): **roadmap everywhere** —
+    dir `.workflows/.roadmap/` (sessions inside), reserved identity
+    `roadmap`, manifest node `roadmap`, chrome "Roadmap"; one word
+    for the whole layer, the baseline one-name precedent. The
+    indexing grade matches discovery session logs (the record of a
     conversation), not baseline's advisory-low. The product road's
     opener reads `.workflows/.baseline/overview.md` in full when it
     exists, exactly as discovery's opener does — baseline is the
@@ -384,7 +387,12 @@ pipeline, like baseline. The pipeline itself is untouched.
     flight means "stop building this", a delivery decision; the
     engine refuses, names the join, and the confirmed path goes
     through the epic-side cancel (cancel-cascade mirror), whose
-    revert returns the item to waiting. Session logs never correct
+    revert returns the item to waiting. Revert semantics (settled
+    2026-08-17): cancelling a joined topic — or the whole work unit
+    — deletes the affected items' `pulled_to`; they render waiting
+    again with `sources`/`origin` intact, re-sorted at the next
+    catch-up; nothing ever reads as shipped that wasn't. Session
+    logs never correct
     (decay doctrine — history, not claims); un-pulled items drifting
     from post-launch reality re-sort in conversation at the catch-up
     — human-paced grooming, no nags.
@@ -466,7 +474,10 @@ pipeline, like baseline. The pipeline itself is untouched.
     synthesis, not the reading.** The pull renders the roadmap's
     items and takes a multi-select — the inbox pickup's established
     interaction, on a new surface — then the grouping confirm (which
-    unit(s), unit name). The remainder is named at the moment of
+    unit(s), unit name). The pull takes whole items (settled
+    2026-08-17): wanting half an item means the item is two items —
+    split it on the map first (the split op exists); the ceremony
+    points at the split, never performs it inline. The remainder is named at the moment of
     choice ("3 items stay waiting in mvp") so a partial pull is
     never silent. Downstream, the epic's continuity-load reads whole
     sessions, so material about un-pulled items will pass through
@@ -662,10 +673,13 @@ are created on first use (JIT), and no existing state translates.
    working set, add-to-joined-horizon routed confirm, the three
    start-screen states + overview roadmap section, boot/gateway
    reporting. Simulation render assertions.
-6. **Prose: the product road.** Detection-core product-altitude
-   tell + routing, opener (baseline overview read, imports weave),
-   product session loop + guidelines delta, product harvest
-   ceremony, resume detection at project level.
+6. **Prose: the product road.** A separate model-only skill
+   (settled 2026-08-17 — the baseline precedent; discovery stays
+   two-mode), reusing discovery's shared references where the loop
+   overlaps: detection-core product-altitude tell + routing, opener
+   (baseline overview read, imports weave), product session loop +
+   guidelines delta, product harvest ceremony, resume detection at
+   project level.
 7. **Prose: pull + integrations.** Pull ceremony, epic-entry seed
    set + continuity-load across the chain + Exploration backfill,
    epic-harvest two-destination sort + anti-twin check, park valve
@@ -682,26 +696,20 @@ fuzziness settles inside slice 7; KB grade inside slice 4.
 
 ## Open questions
 
-- **Naming.** The user-facing word is *roadmap* and the concept word
-  for a bucket is *horizon* (settled). Open: the project-level dir
-  (`.workflows/.product/`? `.workflows/.roadmap/`?), the reserved
-  pseudo identity name, and what the product road's sessions are
-  called in chrome.
-- **Cancelled-topic revert.** A topic cancelled inside an epic —
-  does its roadmap item revert to waiting, show "dropped", or stay
-  joined? (It must not read as shipped.) Decision 25(c) makes this
-  the un-pull path, so the exact semantics need settling.
+Settled at build kickoff (2026-08-17), recorded in their decisions:
+naming — roadmap everywhere (decision 20); cancelled-topic revert —
+revert to waiting, sources intact (decision 25); partial-item pulls
+— refuse, split on the map first (decision 30); skill shape —
+separate model-only skill (build plan, slice 6); KB grade —
+record-grade like discovery logs (decision 20).
+
+Still open:
+
 - **Recognition match fuzziness.** Name/theme matching — how eager,
-  and against how much of the item/inbox text?
-- **Partial-item pulls.** The ceremony itself is settled (decision
-  30 — working set + grouping confirm); open is only the sub-item
-  case: "take ordering into the epic but only the guest-checkout
-  half" — split the item at pull time, or refuse and require a
-  map-side split first?
+  and against how much of the item/inbox text? Settles inside
+  slice 7.
 - **Product-road guidelines.** Reuse discovery-guidelines with a
   delta (no granularity rules, horizon current, park/sort moves) or
-  a sibling file?
-- **KB grade for product sessions** — assumed record-grade like
-  discovery logs; confirm.
+  a sibling file? Settles inside slice 6.
 - **Multiple products per repo** — out of scope; one product per
   project assumed.
