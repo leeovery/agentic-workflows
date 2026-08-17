@@ -4,7 +4,13 @@
 
 ---
 
-Detect an interrupted prior shaping session before re-shaping an existing epic's map. Read the active-session marker:
+Detect an interrupted prior shaping session before re-shaping an existing epic's map.
+
+**If `pull_continuation` is held** (this conversation created the epic at a roadmap pull moments ago): the marker names the session this conversation opened — nothing was interrupted. Keep the held `session_number`.
+
+→ Return to caller.
+
+Otherwise, read the active-session marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery active_session

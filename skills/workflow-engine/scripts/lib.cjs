@@ -129,6 +129,7 @@ module.exports = {
     roadmapMapView: roadmapProjections.roadmapMapView,
     roadmapProposalView: roadmapProjections.roadmapProposalView,
     roadmapPullSetView: roadmapProjections.roadmapPullSetView,
+    roadmapHomeMenu: roadmapProjections.roadmapHomeMenu,
     discussionMap: discussionProjections.discussionMap,
     discussionDeferGate: discussionProjections.discussionDeferGate,
     startOverview: startProjections.startOverview,

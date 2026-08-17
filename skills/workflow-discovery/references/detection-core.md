@@ -21,6 +21,7 @@ Two levels, gathered simultaneously, committed in dependency order:
 
 Resolve in order of cost + terminality — settle the cheap, terminal shapes first, then explore the rest.
 
+0. **Product-altitude, not a unit of work?** The conversation is about a product's future rather than a nameable piece of work: a brand-new product being conceived (greenfield genesis — the paradigm case), or release-staging talk with no single deliverable proposed (*"lay out the next few months"*, *"what should v2 be"*). → **the product road** (→ roadmap). The tell is neither breadth (epics are broad too) nor readiness — it is that no single unit of work is on the table. The read is cheap to be wrong in both directions: misread as epic, later-staged material parks to the roadmap as it surfaces; misread as product, everything lands in the first horizon and one epic takes it all at the pull.
 1. **A constrained, terminal shape?** These confirm fast and route straight out — no topic work, no micro routing:
    - **something that worked is now failing** — specific symptoms, a root cause still to find → **bugfix** (→ investigation)
    - **a small, known, mechanical change** — *"bump the timeout"*, *"rename X to Y"*, *"add a flag"*; no behaviour debate, nothing to diagnose → **quick-fix** (→ scoping)
@@ -43,6 +44,7 @@ Listen for plain shape-cues in the user's framing — these are illustrative, no
 |---|---|
 | New behaviour, single coherent scope, clear actors and flows | feature |
 | Multiple distinct concerns from one description; multi-week / multi-phase; *"project"* / *"initiative"* framing | epic |
+| A product from nothing; staged ambition (*"eventually"*, *"for launch we just need"*, *"once we have revenue"*); release-planning framing with no single deliverable | product road |
 | System-wide pattern / principle / strategy; no customer-facing deliverable | cross-cutting |
 | Past-tense or present-broken; specific failure cases; error messages / stack traces | bugfix |
 | Imperative scoped change; one-shot adjustment without behaviour debate | quick-fix |
@@ -54,6 +56,7 @@ The bucket names (epic / feature / …) are workflow internals; they mean nothin
 
 | Internal | User-facing |
 |---|---|
+| product road | *"the whole product across time — we'd lay it out as a roadmap and pull the first slice into delivery"* |
 | epic | *"several distinct things — more than one feature in scope"* |
 | feature | *"a single coherent piece of work"* |
 | cross-cutting | *"a pattern or principle that affects the whole project — something to define, not ship as a feature"* |
@@ -86,6 +89,8 @@ A pivot is this detection core pointed at a *competing* shape — same threshold
 |---|---|
 | feature → epic | Multiple distinct concerns surface; topic seeds cluster into independent groups; scope expands mid-conversation |
 | epic → feature | Synthesis converges on one coherent topic; "multiple shapes" never materialises |
+| epic → product road | Staging language takes over — the conversation sorts material into releases rather than shaping one initiative; a whole new product emerges |
+| product road → epic | One deliverable initiative crystallises and the staging talk was incidental — everything discussed is "now" |
 | bugfix → feature | The "broken" behaviour is missing-by-design, not a malfunction |
 | feature → bugfix | The "new" behaviour is restoring something that should already work; "it used to work" |
 | quick-fix → feature/bugfix | Scope discussion gets substantive; behaviour debate emerges |

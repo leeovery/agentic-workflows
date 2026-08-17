@@ -179,7 +179,7 @@ Hold the output in conversation context as **the most recent discovery output**.
 
 The authoritative resume signal (`active_session`) is a manifest field, read via `engine manifest` at Step 6 — not carried in this dump.
 
-If `session_number` was not already set (no resume at Step 6, no `macro_continuation` from Step 5), set it now: `session_number` = `next_session_number`. When `macro_continuation` is set, the confirm-trigger already created `session-{session_number}.md` — keep that `session_number` and ignore `next_session_number`.
+If `session_number` was not already set (no resume at Step 6, no `macro_continuation` from Step 5, no `pull_continuation` from a roadmap pull), set it now: `session_number` = `next_session_number`. When `macro_continuation` or `pull_continuation` is set, the creating flow already installed `session-{session_number}.md` — keep that `session_number` and ignore `next_session_number`.
 
 `map-operations.md` and `show-dismissed.md` re-invoke discovery on entry because they validate against post-mutation state.
 

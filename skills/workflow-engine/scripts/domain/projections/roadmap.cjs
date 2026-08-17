@@ -235,6 +235,35 @@ function roadmapAddGate(state, horizon) {
   return menu('', options, { question });
 }
 
+/**
+ * The roadmap home menu — the `r/roadmap` row's landing. Option set varies
+ * at runtime (pull only over waiting items; converse reads as resume over an
+ * open session), so it is engine-rendered. `keys` carries the machine action
+ * keys the skill routes on.
+ * @param {RoadmapState} state
+ * @returns {{keys: {key: string, word?: string, action: string, label: string}[], rendered: string}}
+ */
+function roadmapHomeMenu(state) {
+  /** @type {{key: string, word?: string, action: string, label: string}[]} */
+  const keys = [];
+  keys.push({
+    key: 'c',
+    word: 'converse',
+    action: 'converse',
+    label: state.active_session !== null
+      ? 'Resume the open product session'
+      : 'Open a product session — talk, add, re-sort, groom',
+  });
+  if (state.totals.waiting > 0) {
+    keys.push({ key: 'p', word: 'pull', action: 'pull', label: `Pull waiting item(s) into delivery (${state.totals.waiting} waiting)` });
+  }
+  keys.push({ key: 'b', word: 'back', action: 'back', label: 'Leave the roadmap as it is' });
+
+  const options = keys.map((k) => cmdOption(k.key, k.word ?? null, k.label));
+  options.push(promptOption('Ask', 'Ask about the roadmap'));
+  return { keys, rendered: menu('', options, { question: 'What would you like to do?' }) };
+}
+
 /** The view's chrome heading — project-level, no unit. */
 function roadmapTitle() { return 'Roadmap'; }
 
@@ -244,4 +273,5 @@ module.exports = {
   roadmapProposalView,
   roadmapPullSetView,
   roadmapAddGate,
+  roadmapHomeMenu,
 };

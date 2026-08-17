@@ -14,6 +14,23 @@ Read `discovery_map` and `dismissed` from the most recent discovery output. `des
 
 If `.workflows/.baseline/overview.md` exists, read it in full — silent ambient context about the product the workflows were installed into (the baseline's other docs surface per-topic through the knowledge base). Never narrate it back.
 
+#### If `pull_continuation` is set (an epic just born at a roadmap pull)
+
+The slice was fenced at the pull and its record backfilled into `session-{session_number}.md` — the conversation continues, narrower. Name the fenced slice in one conversational sentence (the pulled items, by name), then render the transition:
+
+> *Output the next fenced block as a code block:*
+
+```
+Topics come later — they fall out once we've deepened the slice;
+the pulled items are the rough shapes.
+
+Anything to reshape before we go deeper — or shall we dig in?
+```
+
+**STOP.** Wait for user response.
+
+→ Proceed to **B. Session Loop**.
+
 #### If `macro_continuation` is set (new epic, just confirmed)
 
 The macro shaping at Step 4 already explored the work enough to confirm it's an epic and surfaced the first topic seeds; the confirm-trigger backfilled that into `session-{session_number}.md`. Don't re-open with a cold prompt — the conversation is already live. Render a brief transition that moves from "what is this" into exploring the whole:
