@@ -295,7 +295,7 @@ pipeline, like baseline. The pipeline itself is untouched.
         "loyalty": {
           "horizon": "v1",
           "summary": "repeat-customer rewards to drive reorders",
-          "sources": ["sessions/session-001.md", "sessions/session-003.md"],
+          "sources": [".roadmap/sessions/session-001.md", ".roadmap/sessions/session-003.md"],
           "origin": "harvest",
           "pulled_to": { "work_unit": "v1" }
         }
