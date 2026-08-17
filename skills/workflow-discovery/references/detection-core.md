@@ -107,6 +107,8 @@ When a tangential concern surfaces that doesn't fit the current shape, offer to 
 
 If the user accepts, invoke the matching capture skill (`/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now (`node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"`) — it's a side-excursion from the main work, easy to leave uncommitted otherwise, and committing it means the capture survives even if this discovery session is abandoned. Note the surfacing so it's recoverable, then continue with the original work, now without scope creep. If the user says it's actually part of this work, fold it in. Soft, conversational — no structured gate.
 
+**The bucket is the ticket.** When the tangent is a product capability the user *places on the timeline* (*"that's a v2 thing"*), it parks on the roadmap instead — confirmed placement, then `engine roadmap add {name} --horizon {h} --summary "{one-liner}" --origin park:discovery` (self-commits; the roadmap is born at the first park). An unplaced thought stays the inbox's — when ambiguous, inbox: grooming promotes cheaply later, while a wrong horizon reads as a decision someone made.
+
 ## H. Anchor and return — shape, don't dive
 
 While you're determining the type, you're shaping the work, not resolving it. Substance — mechanism, feasibility, design decisions, root cause — belongs to the phase the work routes into. If the conversation tunnels into it, anchor and return: note the thread for the right later phase, then keep shaping.
@@ -124,5 +126,12 @@ Commit only when signals have **converged AND been stable** across the last few 
 1. **State the read** in plain user-facing terms (per **D**), with the workflow bucket name folded in naturally — not before.
 2. **Give the specific signals** that drove it — one or two sentences, concrete enough that the user can challenge a *cue*, not just accept/reject the whole.
 3. **Invite confirm or override** via the gate Step 4 renders. On confirm, the work type is committed. On override, take the user's call as authoritative — adjust `work_type` without re-litigating (if they describe rather than name, map via **B**/**C** and reflect back for a quick confirm). On "keep shaping", continue the loop.
+
+## J. Recognition — the work may already exist
+
+The forming work may already have a home the user forgot: a waiting roadmap item, or an inbox capture. The opener read both indexes; as the shape converges, match it against them by name and theme — a match earns one soft question, a miss earns silence.
+
+- **A waiting roadmap item holds this ground** — a fresh work unit beside it would strand its record and twin the item. Offer the pull instead: *"Loyalty is already on your roadmap (v1) — pull it from there so the record comes along?"* On accept, invoke `/workflow-roadmap pull` via the Skill tool — this skill ends, terminal. On decline, continue shaping; never create the twin silently — a deliberate fresh start renames.
+- **A live inbox item captured this thought** — *"You logged 'checkout race' on 12 Jul — read it in as the seed?"* On accept, add the item's path to `inbox_seeds` and read it — it becomes the work's seed through the normal confirm-trigger landing. On decline, continue.
 
 → Return to caller.

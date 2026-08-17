@@ -712,10 +712,22 @@ product↔epic pivot rows; the pull's epic path re-enters discovery
 under a `pull_continuation` flag (resume-detection skips its menu,
 the session loop opens on the fenced slice).
 
+Settled in slice 7: recognition — the opener reads both indexes
+silently (roadmap state + live inbox filenames), the detection core's
+new section J matches the converging shape by name and theme with
+judgment (a match earns one soft question, a miss earns silence), a
+roadmap match offers `/workflow-roadmap pull` (a third dispatch
+mode), an inbox match joins `inbox_seeds` through the normal landing.
+The park valve landed in epic discovery's session loop and both
+discussion off-topic flows; the epic harvest carries the two-way sort
+(park set + pull-forward set, the `waiting_on_roadmap` anti-twin
+flag) persisted at A2 of confirm-and-persist; the reconcile advisory
+gained its `roadmap` branch.
+
 Still open:
 
-- **Recognition match fuzziness.** Name/theme matching — how eager,
-  and against how much of the item/inbox text? Settles inside
-  slice 7.
 - **Multiple products per repo** — out of scope; one product per
   project assumed.
+- **User docs** — a `docs/roadmap.md` page and a README mention are
+  owed once the stack settles; CLAUDE.md carries the system-facing
+  coverage.

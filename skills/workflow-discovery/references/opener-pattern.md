@@ -12,6 +12,8 @@ Inputs held from Step 1: `work_type` pre-seed (or none), `inbox_seeds` — a lis
 
 If `.workflows/.baseline/overview.md` exists, read it in full — silent ambient context about the product the workflows were installed into (the baseline's other docs surface per-topic through the knowledge base). Never narrate it back.
 
+Read the recognition indexes silently for the detection core's **J** (skip either that is empty): the roadmap state (`node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state` — `exists: false` means no roadmap) and the live inbox filenames (Glob `.workflows/.inbox/{ideas,bugs,quickfixes}/*.md`). Hold both; never narrate them.
+
 #### If `inbox_seeds` is non-empty
 
 Read every inbox file in `inbox_seeds`. They are the work's *origin* — pre-captured thoughts that become this work unit. Use them to shape the opening: sketch what you picked up — across all of them when there are several — then ask a targeted question that elicits a shape signal. Do not dump them back verbatim — synthesise. The folder already pre-seeded `work_type` (bugs → bugfix, quick-fixes → quick-fix, ideas → none); the seeds are still confirmed like any other pick.

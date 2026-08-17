@@ -14,9 +14,10 @@ The caller provides `work_type`, `work_unit`, `topic`, and the `concern` with it
 · · · · · · · · · · · ·
 **{concern}** is beyond this topic's scope.
 
-**`l/log`**    → Capture it as an idea in the inbox for later
-**`p/pivot`**  → Convert this work to an epic so it can hold the concern as its own topic
-**`i/ignore`** → Note it in the Summary and move on
+**`l/log`**     → Capture it as an idea in the inbox for later
+**`r/roadmap`** → Park it on the product roadmap with a horizon
+**`p/pivot`**   → Convert this work to an epic so it can hold the concern as its own topic
+**`i/ignore`**  → Note it in the Summary and move on
 ```
 
 **STOP.** Wait for user response.
@@ -29,8 +30,9 @@ The caller provides `work_type`, `work_unit`, `topic`, and the `concern` with it
 · · · · · · · · · · · ·
 **{concern}** is beyond this topic's scope.
 
-**`l/log`**    → Capture it as an idea in the inbox for later
-**`i/ignore`** → Note it in the Summary and move on
+**`l/log`**     → Capture it as an idea in the inbox for later
+**`r/roadmap`** → Park it on the product roadmap with a horizon
+**`i/ignore`**  → Note it in the Summary and move on
 ```
 
 **STOP.** Wait for user response.
@@ -38,6 +40,18 @@ The caller provides `work_type`, `work_unit`, `topic`, and the `concern` with it
 **If `log`:**
 
 Capture the concern via the `workflow-log-idea` skill so it lands in the inbox for later triage.
+
+→ Return to caller for **B. Session Loop**.
+
+**If `roadmap`:**
+
+Confirm the horizon in conversation (propose from the user's own staging words when they placed it; ask when they didn't), then park — the roadmap is born at the first park, and the verb validates and self-commits:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}" --origin park:{topic} --source {work_unit}/discussion/{topic}.md
+```
+
+Note the park in the Summary so the discussion records where the concern went.
 
 → Return to caller for **B. Session Loop**.
 
