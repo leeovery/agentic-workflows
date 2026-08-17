@@ -8,12 +8,13 @@ The prose should have taken this path:
    scopes verification from the per-task implementation commits, and
    dispatches a verifier per task — stubbed clean; both task ids land
    on the reviewed list
-3. the review report is produced with an Approve verdict and committed;
-   the verdict is presented, the scripted answer continues past the
-   questions gate, and the compliance self-check runs
-4. the actions loop finds every verdict Approve: the no-actionable
-   display renders, the review completes through the engine, and the
-   completion commit lands
+3. the review report is produced with a Pass verdict — no
+   `actions.json` exists on the clean path, so the verdict derives
+   from nothing outstanding — and committed; the presentation renders
+   with zero counts, the scripted answer continues past the gate, and
+   the compliance self-check runs
+4. the review completes through the engine, and the completion commit
+   lands
 5. the pipeline continuation invokes the bridge with the work unit and
    the completed phase review, and the walk crosses into the bridge
 6. the bridge reads the work type — feature, not discovery, not epic —
@@ -39,7 +40,7 @@ Further claims:
   ids in reviewed_tasks
 - no cache directory for the work unit remains at
   `.workflows/.cache/pay/` after the completion
-- the review report at `.workflows/pay/review/pay/report.md` holds an
-  Approve verdict; one per-task report file exists per task suffix
+- the review report at `.workflows/pay/review/pay/report.md` holds a
+  Pass verdict; one per-task report file exists per task suffix
 - the plan, tasks, specification, and source files are untouched; no
   second work unit exists
