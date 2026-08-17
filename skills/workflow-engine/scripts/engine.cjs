@@ -38,6 +38,7 @@ const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
 const { openDiscoverySession, closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
+const roadmap = require('./domain/roadmap.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -165,6 +166,19 @@ Commands:
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
+  roadmap state
+  roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]
+  roadmap add-batch --file <items.json>
+  roadmap edit <name> --summary <text>
+  roadmap rename <old> <new>
+  roadmap move <name> --horizon <h>
+  roadmap remove <name>
+  roadmap horizon add <name> [--position <n>]
+  roadmap horizon rename <old> <new>
+  roadmap horizon reorder <name> [<name> …]   (the complete order)
+  roadmap horizon merge <from> --into <to>
+  roadmap horizon split <name> --new <name> --items <a,b,…> [--position <n>]
+  roadmap horizon remove <name>
   cache stamp <work-unit> (research-analysis|gap-analysis)
   agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>]
   agent scan     <work-unit> <phase> <topic>
@@ -813,6 +827,104 @@ function runInbox(argv) {
 }
 
 // ---------------------------------------------------------------------------
+// roadmap — the product-roadmap layer on the project manifest
+// (domain/roadmap.cjs): horizons + capability-grain items, lifecycle by
+// join. Every mutation is one transaction under the project lock with its
+// own pathspec commit of the project manifest — no work-unit cadence covers
+// it, and a park fired mid-session must be durable immediately. `state` is
+// the derived read every consumer shares.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runRoadmap(argv) {
+  const [command, ...rest] = argv;
+  const cwd = process.cwd();
+  try {
+    if (command === 'state') {
+      if (rest.length !== 0) throw new Error('Usage: engine roadmap state');
+      respond(roadmap.roadmapState(cwd));
+      return;
+    }
+    if (command === 'horizon') {
+      const [sub, ...hrest] = rest;
+      const { opts, positional } = parseArgs(hrest);
+      /** @type {number|undefined} */
+      let position;
+      if (opts.position !== undefined) {
+        position = parseInt(opts.position, 10);
+        if (!Number.isInteger(position)) throw new Error(`--position must be a number (got "${opts.position}")`);
+      }
+      if (sub === 'add') {
+        if (positional.length !== 1) throw new Error('Usage: engine roadmap horizon add <name> [--position <n>]');
+        respond(roadmap.addHorizon(cwd, positional[0], { position }));
+      } else if (sub === 'rename') {
+        if (positional.length !== 2) throw new Error('Usage: engine roadmap horizon rename <old> <new>');
+        respond(roadmap.renameHorizon(cwd, positional[0], positional[1]));
+      } else if (sub === 'reorder') {
+        if (positional.length === 0) throw new Error('Usage: engine roadmap horizon reorder <name> [<name> …] (the complete order)');
+        respond(roadmap.reorderHorizons(cwd, positional));
+      } else if (sub === 'merge') {
+        if (positional.length !== 1 || !opts.into) throw new Error('Usage: engine roadmap horizon merge <from> --into <to>');
+        respond(roadmap.mergeHorizons(cwd, positional[0], opts.into));
+      } else if (sub === 'split') {
+        if (positional.length !== 1 || !opts.new || !opts.items) {
+          throw new Error('Usage: engine roadmap horizon split <name> --new <name> --items <a,b,…> [--position <n>]');
+        }
+        const items = opts.items.split(',').map((s) => s.trim()).filter((s) => s !== '');
+        respond(roadmap.splitHorizon(cwd, positional[0], { newName: opts.new, items, position }));
+      } else if (sub === 'remove') {
+        if (positional.length !== 1) throw new Error('Usage: engine roadmap horizon remove <name>');
+        respond(roadmap.removeHorizon(cwd, positional[0]));
+      } else {
+        throw new Error('Usage: engine roadmap horizon <add|rename|reorder|merge|split|remove> …');
+      }
+      return;
+    }
+    const { opts, lists, positional } = parseArgs(rest, [], ['source']);
+    if (command === 'add') {
+      // Strict positional count: an unquoted summary would spill into
+      // positionals and silently truncate the text — refuse instead.
+      if (positional.length !== 1) {
+        throw new Error('Usage: engine roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]');
+      }
+      respond(roadmap.addRoadmapItem(cwd, positional[0], {
+        horizon: opts.horizon,
+        summary: opts.summary,
+        origin: opts.origin,
+        sources: lists.source || [],
+      }));
+    } else if (command === 'add-batch') {
+      if (positional.length !== 0 || !opts.file) throw new Error('Usage: engine roadmap add-batch --file <items.json>');
+      let parsed;
+      try {
+        parsed = JSON.parse(fs.readFileSync(path.resolve(cwd, opts.file), 'utf8'));
+      } catch (err) {
+        throw new Error(`roadmap add-batch: cannot read payload: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      respond(roadmap.addRoadmapItemsBatch(cwd, parsed));
+    } else if (command === 'edit') {
+      if (positional.length !== 1 || opts.summary === undefined) {
+        throw new Error('Usage: engine roadmap edit <name> --summary <text>');
+      }
+      respond(roadmap.editRoadmapItem(cwd, positional[0], { summary: opts.summary }));
+    } else if (command === 'rename') {
+      if (positional.length !== 2) throw new Error('Usage: engine roadmap rename <old> <new>');
+      respond(roadmap.renameRoadmapItem(cwd, positional[0], positional[1]));
+    } else if (command === 'move') {
+      if (positional.length !== 1 || !opts.horizon) throw new Error('Usage: engine roadmap move <name> --horizon <h>');
+      respond(roadmap.moveRoadmapItem(cwd, positional[0], opts.horizon));
+    } else if (command === 'remove') {
+      if (positional.length !== 1) throw new Error('Usage: engine roadmap remove <name>');
+      respond(roadmap.removeRoadmapItem(cwd, positional[0]));
+    } else {
+      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|remove|horizon> …');
+    }
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // cache — analysis-cache stamping. Checksums the current completed inputs
 // exactly as the read side does and writes the cache object. No git commit —
 // the calling flow's commit cadence picks the manifest change up.
@@ -1169,6 +1281,9 @@ function runCli(argv) {
       break;
     case 'inbox':
       runInbox(rest);
+      break;
+    case 'roadmap':
+      runRoadmap(rest);
       break;
     case 'cache':
       runCache(rest);

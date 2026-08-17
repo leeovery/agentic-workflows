@@ -1,0 +1,675 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the product roadmap — the project-level layer above the work
+// unit, stored on the project manifest's `roadmap` node: an ordered
+// `horizons` list (user-named release labels; position carries the
+// semantics) and an `items` record of capability-grain chunks, each
+// `{horizon, summary, origin[, sources][, pulled_to]}` — never a status
+// field: item lifecycle is computed at render time by joining `pulled_to`
+// against the named work unit, the same trick the discovery map uses one
+// level down. "Waiting" is the absence of a join.
+//
+// Authority splits at the pull (design/product-roadmap.md, decision 25):
+// left of it the map is loose — un-pulled items take every edit; right of it
+// the work unit is authoritative — re-bucketing or removing a pulled item is
+// refused here (the delivery decision routes through the epic-side cancel,
+// whose revert returns the item to waiting). Horizon-level restructuring
+// (rename/reorder/merge/split) stays open at any join state: it relabels the
+// release, it never un-commits work (decision 28).
+//
+// Every mutation is one transaction under the project-manifest lock plus its
+// own pathspec-confined tail commit of `.workflows/manifest.json`: no
+// work-unit commit cadence covers the project manifest, and a park fired
+// from the middle of any session must be durable immediately. The node and
+// any named horizon are created just-in-time — the roadmap has no genesis
+// ceremony (decision 10).
+// ---------------------------------------------------------------------------
+
+const {
+  readProjectManifest,
+  writeProjectManifestAtomic,
+  withProjectLock,
+  loadWorkUnitManifest,
+  ensureContainer,
+} = require('../kernel/manifest.cjs');
+const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+
+// The one pathspec every roadmap mutation commits — the project manifest.
+const PROJECT_MANIFEST_SPEC = '.workflows/manifest.json';
+
+// Item provenance vocabulary (design decision 19): how the item landed.
+// `harvest` (a product/epic harvest sort), `park:{origin}` (the mid-flow
+// valve, origin = the session's container), `inbox:{slug}` (groomed off the
+// backlog).
+/** @param {*} origin */
+function validateOrigin(origin) {
+  if (typeof origin !== 'string' || !/^(harvest|park:[^\s]+|inbox:[^\s]+)$/.test(origin)) {
+    throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, park:{origin}, inbox:{slug}`);
+  }
+}
+
+// Same structural rule work-unit and topic names live under: dots break the
+// field surface's dot-path addressing, slashes break paths. Applies to items
+// and horizons alike (both are manifest keys/labels). Name-shape conventions
+// beyond that (kebab-case) are the calling flow's job.
+/** @param {string} kind @param {*} name */
+function validateName(kind, name) {
+  if (typeof name !== 'string' || name === '' || /[./]/.test(name)) {
+    throw new Error(`"${name}" is not a legal ${kind} name — dots and slashes break manifest addressing`);
+  }
+}
+
+// Source pointers are provenance indexes into session logs — relative paths
+// under `.workflows/`, never absolute, never traversing.
+/** @param {*} sources */
+function validateSources(sources) {
+  if (!Array.isArray(sources) || sources.some((s) => typeof s !== 'string')) {
+    throw new Error(`invalid sources ${JSON.stringify(sources)} — must be an array of relative path strings`);
+  }
+  for (const s of sources) {
+    if (s === '' || s.startsWith('/') || s.split('/').includes('..')) {
+      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative under .workflows/, never absolute or traversing`);
+    }
+  }
+}
+
+/** @param {*} summary */
+function validateSummary(summary) {
+  if (typeof summary !== 'string' || summary.trim() === '') {
+    throw new Error('summary must be a non-empty one-liner');
+  }
+}
+
+// 1-based position in the horizons list; length+1 appends.
+/** @param {*} position @param {number} max */
+function validatePosition(position, max) {
+  if (!Number.isInteger(position) || position < 1 || position > max) {
+    throw new Error(`position must be an integer between 1 and ${max} (got ${JSON.stringify(position)})`);
+  }
+}
+
+/**
+ * The roadmap node, created just-in-time. Malformed shapes are refused loud —
+ * a scalar `roadmap`, an object `horizons`, an array `items` all name their
+ * corruption instead of being silently rebuilt.
+ * @param {Record<string, any>} manifest
+ * @returns {{horizons: string[], items: Record<string, any>}}
+ */
+function ensureRoadmap(manifest) {
+  const roadmap = ensureContainer(manifest, 'roadmap', 'roadmap');
+  if (roadmap.horizons === undefined) roadmap.horizons = [];
+  if (!Array.isArray(roadmap.horizons) || roadmap.horizons.some((h) => typeof h !== 'string')) {
+    throw new Error('roadmap.horizons is malformed — expected an array of horizon names');
+  }
+  ensureContainer(roadmap, 'items', 'roadmap.items');
+  return /** @type {{horizons: string[], items: Record<string, any>}} */ (roadmap);
+}
+
+/**
+ * The roadmap node for ops that require it to exist — a loud miss otherwise.
+ * @param {Record<string, any>} manifest
+ * @returns {{horizons: string[], items: Record<string, any>}}
+ */
+function requireRoadmap(manifest) {
+  if (!manifest.roadmap || typeof manifest.roadmap !== 'object' || Array.isArray(manifest.roadmap)) {
+    throw new Error('no roadmap on the project manifest — nothing to operate on');
+  }
+  return ensureRoadmap(manifest);
+}
+
+/**
+ * The item for `name`, or a loud error.
+ * @param {{items: Record<string, any>}} roadmap @param {string} name
+ * @returns {Record<string, any>}
+ */
+function roadmapItem(roadmap, name) {
+  const item = roadmap.items[name];
+  if (!item || typeof item !== 'object') {
+    throw new Error(`no roadmap item "${name}"`);
+  }
+  return item;
+}
+
+/**
+ * The join, when the item carries one. A malformed `pulled_to` (not an
+ * object, no work_unit) reads as no join — the write side owns shape.
+ * @param {Record<string, any>} item
+ * @returns {{work_unit: string, topic?: string}|null}
+ */
+function itemJoin(item) {
+  const j = item.pulled_to;
+  if (j && typeof j === 'object' && !Array.isArray(j) && typeof j.work_unit === 'string' && j.work_unit !== '') {
+    return j;
+  }
+  return null;
+}
+
+/**
+ * Refuse a delivery-falsifying op on a pulled item — the cancel-cascade
+ * mirror (design decision 25c). The error names the join and points at the
+ * recovery path.
+ * @param {Record<string, any>} item @param {string} name @param {string} verbPhrase
+ */
+function refuseJoined(item, name, verbPhrase) {
+  const join = itemJoin(item);
+  if (join) {
+    throw new Error(
+      `"${name}" is joined to work unit "${join.work_unit}" — ${verbPhrase} a pulled item is a delivery decision; cancel it from the epic menu and the revert returns it to waiting`,
+    );
+  }
+}
+
+/**
+ * Derive one item's display state from its join — asked at read time, never
+ * stored. `waiting` is the absence of a join; a join names a work unit whose
+ * status answers the rest. `orphaned` is the honest fallback for a join the
+ * revert should have cleared (a missing or cancelled unit) — surfaced, never
+ * papered over. Topic-level nuance (a pull-forward's `pulled_to.topic`)
+ * stays work-unit-grained here until the pull lands.
+ * @param {string} cwd
+ * @param {Record<string, any>} item
+ * @returns {{state: 'waiting'|'in-flight'|'shipped'|'orphaned', work_unit?: string, topic?: string}}
+ */
+function deriveItemState(cwd, item) {
+  const join = itemJoin(item);
+  if (!join) return { state: 'waiting' };
+  /** @type {{state: 'in-flight'|'shipped'|'orphaned', work_unit: string, topic?: string}} */
+  const base = { state: 'in-flight', work_unit: join.work_unit };
+  if (typeof join.topic === 'string' && join.topic !== '') base.topic = join.topic;
+  /** @type {any} */
+  let unit;
+  try {
+    unit = loadWorkUnitManifest(cwd, join.work_unit);
+  } catch {
+    return { ...base, state: 'orphaned' };
+  }
+  if (unit.status === 'completed') return { ...base, state: 'shipped' };
+  if (unit.status === 'cancelled') return { ...base, state: 'orphaned' };
+  return base;
+}
+
+/**
+ * @typedef {object} RoadmapItemRow
+ * @property {string} name
+ * @property {string} horizon
+ * @property {string} summary
+ * @property {string} origin
+ * @property {string[]} sources
+ * @property {'waiting'|'in-flight'|'shipped'|'orphaned'} state
+ * @property {string} [work_unit]  the join's unit, when joined
+ * @property {string} [topic]      the join's topic, when a pull-forward set one
+ */
+
+/**
+ * The whole roadmap, derived — the read every consumer shares (gateways,
+ * render surfaces, tests). Absent or malformed state reads as no roadmap:
+ * `{exists: false}` with empty collections, the never-born state the JIT
+ * birth keys on. Items come back horizon-ordered (list order, then insertion
+ * order within a horizon; items naming an unknown horizon trail last so a
+ * hand-edited manifest still renders).
+ * @param {string} cwd
+ * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}}}
+ */
+function roadmapState(cwd) {
+  const empty = { exists: false, horizons: /** @type {string[]} */ ([]), items: /** @type {RoadmapItemRow[]} */ ([]), totals: { items: 0, waiting: 0, in_flight: 0, shipped: 0, orphaned: 0 } };
+  /** @type {Record<string, any>} */
+  let manifest = {};
+  try {
+    manifest = readProjectManifest(cwd);
+  } catch {
+    return empty;
+  }
+  const roadmap = manifest.roadmap;
+  if (!roadmap || typeof roadmap !== 'object' || Array.isArray(roadmap)) return empty;
+  const horizons = Array.isArray(roadmap.horizons) ? roadmap.horizons.filter((/** @type {*} */ h) => typeof h === 'string') : [];
+  const itemsObj = roadmap.items && typeof roadmap.items === 'object' && !Array.isArray(roadmap.items) ? roadmap.items : {};
+
+  /** @type {RoadmapItemRow[]} */
+  const items = [];
+  for (const [name, raw] of Object.entries(itemsObj)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const item = /** @type {Record<string, any>} */ (raw);
+    const derived = deriveItemState(cwd, item);
+    /** @type {RoadmapItemRow} */
+    const row = {
+      name,
+      horizon: typeof item.horizon === 'string' ? item.horizon : '',
+      summary: typeof item.summary === 'string' ? item.summary : '',
+      origin: typeof item.origin === 'string' ? item.origin : '',
+      sources: Array.isArray(item.sources) ? item.sources.filter((/** @type {*} */ s) => typeof s === 'string') : [],
+      state: derived.state,
+    };
+    if (derived.work_unit !== undefined) row.work_unit = derived.work_unit;
+    if (derived.topic !== undefined) row.topic = derived.topic;
+    items.push(row);
+  }
+  const rank = (/** @type {RoadmapItemRow} */ row) => {
+    const i = horizons.indexOf(row.horizon);
+    return i === -1 ? horizons.length : i;
+  };
+  items.sort((a, b) => rank(a) - rank(b)); // stable: insertion order within a horizon holds
+
+  const totals = { items: items.length, waiting: 0, in_flight: 0, shipped: 0, orphaned: 0 };
+  for (const row of items) {
+    if (row.state === 'waiting') totals.waiting++;
+    else if (row.state === 'in-flight') totals.in_flight++;
+    else if (row.state === 'shipped') totals.shipped++;
+    else totals.orphaned++;
+  }
+  return { exists: true, horizons, items, totals };
+}
+
+/**
+ * One transaction under the project lock: read, mutate via `fn`, write
+ * atomically. `fn` throws to refuse — nothing is written on any refusal.
+ * @template T
+ * @param {string} cwd @param {(manifest: Record<string, any>) => T} fn
+ * @returns {T}
+ */
+function transactProject(cwd, fn) {
+  return withProjectLock(cwd, () => {
+    const manifest = readProjectManifest(cwd);
+    const out = fn(manifest);
+    writeProjectManifestAtomic(cwd, manifest);
+    return out;
+  });
+}
+
+/**
+ * Tail-commit the project manifest and stamp the result — the shared close
+ * of every mutation. The state write has landed; a git failure degrades to
+ * a warning and a pending note, never a failed verb.
+ * @param {string} cwd @param {Record<string, any>} result @param {string} message
+ * @returns {Record<string, any>}
+ */
+function commitRoadmap(cwd, result, message) {
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitTailPathspec(cwd, PROJECT_MANIFEST_SPEC, message, warnings);
+  result.committed = outcome.committed;
+  if (outcome.failed) result.warnings = warnings;
+  noteCommitOutcome(result, outcome);
+  return result;
+}
+
+/**
+ * JIT-append (or insert) a horizon when the named one is missing. Returns
+ * whether it was created.
+ * @param {{horizons: string[]}} roadmap @param {string} horizon @param {number} [position]
+ * @returns {boolean}
+ */
+function ensureHorizon(roadmap, horizon, position) {
+  if (roadmap.horizons.includes(horizon)) return false;
+  validateName('horizon', horizon);
+  if (position !== undefined) {
+    validatePosition(position, roadmap.horizons.length + 1);
+    roadmap.horizons.splice(position - 1, 0, horizon);
+  } else {
+    roadmap.horizons.push(horizon);
+  }
+  return true;
+}
+
+/**
+ * Add one item — the JIT birth path: the node and the named horizon are
+ * created when missing. Refuses a duplicate name; never touches existing
+ * items. Self-commits.
+ * @param {string} cwd
+ * @param {string} name
+ * @param {{horizon?: string, summary?: string, origin?: string, sources?: string[]}} [fields]
+ * @returns {object}
+ */
+function addRoadmapItem(cwd, name, { horizon, summary, origin = 'harvest', sources = [] } = {}) {
+  validateName('item', name);
+  if (typeof horizon !== 'string' || horizon === '') throw new Error('--horizon is required');
+  validateSummary(summary);
+  validateOrigin(origin);
+  validateSources(sources);
+
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = ensureRoadmap(manifest);
+    if (roadmap.items[name]) {
+      throw new Error(`"${name}" is already on the roadmap — edit it, or pick a different name`);
+    }
+    const horizonCreated = ensureHorizon(roadmap, horizon);
+    /** @type {Record<string, unknown>} */
+    const item = { horizon, summary, origin };
+    if (sources.length > 0) item.sources = sources;
+    roadmap.items[name] = item;
+    /** @type {Record<string, any>} */
+    const out = { op: 'add', name, horizon, origin, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length };
+    if (horizonCreated) out.horizon_created = true;
+    return out;
+  });
+  return commitRoadmap(cwd, result, `roadmap: add ${name} (${result.horizon})`);
+}
+
+/**
+ * Add a whole item set in one transaction — the harvest's batch form. Every
+ * entry is validated before anything is applied (a failing entry means
+ * nothing persisted), horizons are JIT-created in entry order, and the whole
+ * batch lands under one commit.
+ * @param {string} cwd
+ * @param {{name: string, horizon: string, summary: string, origin?: string, sources?: string[]}[]} entries
+ * @returns {object}
+ */
+function addRoadmapItemsBatch(cwd, entries) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throw new Error('add-batch: entries must be a non-empty array of {name, horizon, summary, origin?, sources?}');
+  }
+  entries.forEach((e, i) => {
+    const at = `entry ${i + 1}`;
+    if (!e || typeof e !== 'object' || Array.isArray(e)) throw new Error(`add-batch: ${at} must be an object`);
+    try {
+      validateName('item', e.name);
+      if (typeof e.horizon !== 'string' || e.horizon === '') throw new Error('"horizon" is required');
+      validateSummary(e.summary);
+      if (e.origin !== undefined) validateOrigin(e.origin);
+      if (e.sources !== undefined) validateSources(e.sources);
+    } catch (err) {
+      throw new Error(`add-batch: ${at} — ${err instanceof Error ? err.message : String(err)}`);
+    }
+  });
+  const names = entries.map((e) => e.name);
+  const dupe = names.find((n, i) => names.indexOf(n) !== i);
+  if (dupe) throw new Error(`add-batch: "${dupe}" appears more than once in the batch`);
+
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = ensureRoadmap(manifest);
+    for (const e of entries) {
+      if (roadmap.items[e.name]) {
+        throw new Error(`add-batch: "${e.name}" is already on the roadmap — nothing was added; edit it, or pick a different name`);
+      }
+    }
+    /** @type {string[]} */
+    const horizonsCreated = [];
+    for (const e of entries) {
+      if (ensureHorizon(roadmap, e.horizon)) horizonsCreated.push(e.horizon);
+      /** @type {Record<string, unknown>} */
+      const item = { horizon: e.horizon, summary: e.summary, origin: e.origin ?? 'harvest' };
+      if (e.sources !== undefined && e.sources.length > 0) item.sources = e.sources;
+      roadmap.items[e.name] = item;
+    }
+    return {
+      op: 'add-batch',
+      added: entries.map((e) => ({ name: e.name, horizon: e.horizon })),
+      horizons_created: horizonsCreated,
+      horizons: [...roadmap.horizons],
+      item_total: Object.keys(roadmap.items).length,
+    };
+  });
+  return commitRoadmap(cwd, result, `roadmap: add ${entries.length} item${entries.length === 1 ? '' : 's'}`);
+}
+
+/**
+ * Set an item's summary — allowed at any join state (on a pulled item the
+ * row is a window; the edit is cosmetic). Self-commits.
+ * @param {string} cwd @param {string} name @param {{summary?: string}} [fields]
+ * @returns {object}
+ */
+function editRoadmapItem(cwd, name, { summary } = {}) {
+  validateSummary(summary);
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    const item = roadmapItem(roadmap, name);
+    item.summary = summary;
+    return { op: 'edit', name, summary, state: deriveItemState(cwd, item).state, item_total: Object.keys(roadmap.items).length };
+  });
+  return commitRoadmap(cwd, result, `roadmap: edit ${name}`);
+}
+
+/**
+ * Rename an item, carrying every field across — the join included (a rename
+ * relabels the capability, it never touches delivery). Keeps the item's
+ * insertion position. Self-commits.
+ * @param {string} cwd @param {string} oldName @param {string} newName
+ * @returns {object}
+ */
+function renameRoadmapItem(cwd, oldName, newName) {
+  validateName('item', newName);
+  if (newName === oldName) throw new Error(`new name must differ from "${oldName}"`);
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    const item = roadmapItem(roadmap, oldName);
+    if (roadmap.items[newName]) {
+      throw new Error(`"${newName}" is already on the roadmap — pick a different name`);
+    }
+    /** @type {Record<string, any>} */
+    const rebuilt = {};
+    for (const [key, value] of Object.entries(roadmap.items)) {
+      rebuilt[key === oldName ? newName : key] = value;
+    }
+    roadmap.items = rebuilt;
+    return {
+      op: 'rename',
+      name: newName,
+      renamed_from: oldName,
+      preserved_fields: Object.keys(item),
+      state: deriveItemState(cwd, item).state,
+      item_total: Object.keys(rebuilt).length,
+    };
+  });
+  return commitRoadmap(cwd, result, `roadmap: rename ${oldName} to ${newName}`);
+}
+
+/**
+ * Re-bucket an item into another horizon (JIT-created when missing). Refused
+ * on a pulled item — that is "stop building this", the epic's decision.
+ * Self-commits.
+ * @param {string} cwd @param {string} name @param {string} horizon
+ * @returns {object}
+ */
+function moveRoadmapItem(cwd, name, horizon) {
+  if (typeof horizon !== 'string' || horizon === '') throw new Error('--horizon is required');
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    const item = roadmapItem(roadmap, name);
+    refuseJoined(item, name, 're-bucketing');
+    if (item.horizon === horizon) throw new Error(`"${name}" is already in "${horizon}"`);
+    const horizonCreated = ensureHorizon(roadmap, horizon);
+    const from = item.horizon;
+    item.horizon = horizon;
+    /** @type {Record<string, any>} */
+    const out = { op: 'move', name, horizon, moved_from: from, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length };
+    if (horizonCreated) out.horizon_created = true;
+    return out;
+  });
+  return commitRoadmap(cwd, result, `roadmap: move ${name} to ${horizon}`);
+}
+
+/**
+ * Delete an item. Refused on a pulled item (the epic-side cancel is the
+ * path; its revert returns the item first). No dismissed list — git history
+ * and the session logs keep the story. Self-commits.
+ * @param {string} cwd @param {string} name
+ * @returns {object}
+ */
+function removeRoadmapItem(cwd, name) {
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    const item = roadmapItem(roadmap, name);
+    refuseJoined(item, name, 'removing');
+    delete roadmap.items[name];
+    return { op: 'remove', name, item_total: Object.keys(roadmap.items).length };
+  });
+  return commitRoadmap(cwd, result, `roadmap: remove ${name}`);
+}
+
+/**
+ * Add a horizon at a position (1-based; default appends). Self-commits.
+ * @param {string} cwd @param {string} name @param {{position?: number}} [opts]
+ * @returns {object}
+ */
+function addHorizon(cwd, name, { position } = {}) {
+  validateName('horizon', name);
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = ensureRoadmap(manifest);
+    if (roadmap.horizons.includes(name)) {
+      throw new Error(`horizon "${name}" already exists`);
+    }
+    ensureHorizon(roadmap, name, position);
+    return { op: 'horizon-add', name, horizons: [...roadmap.horizons] };
+  });
+  return commitRoadmap(cwd, result, `roadmap: horizon add ${name}`);
+}
+
+/**
+ * Rename a horizon in place, cascading to every member item's `horizon`
+ * field — pulled members included: relabeling the release is presentational,
+ * it never un-commits work. Self-commits.
+ * @param {string} cwd @param {string} oldName @param {string} newName
+ * @returns {object}
+ */
+function renameHorizon(cwd, oldName, newName) {
+  validateName('horizon', newName);
+  if (newName === oldName) throw new Error(`new name must differ from "${oldName}"`);
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    const idx = roadmap.horizons.indexOf(oldName);
+    if (idx === -1) throw new Error(`no horizon "${oldName}"`);
+    if (roadmap.horizons.includes(newName)) throw new Error(`horizon "${newName}" already exists`);
+    roadmap.horizons[idx] = newName;
+    let itemsUpdated = 0;
+    for (const item of Object.values(roadmap.items)) {
+      if (item && typeof item === 'object' && item.horizon === oldName) {
+        item.horizon = newName;
+        itemsUpdated++;
+      }
+    }
+    return { op: 'horizon-rename', name: newName, renamed_from: oldName, items_updated: itemsUpdated, horizons: [...roadmap.horizons] };
+  });
+  return commitRoadmap(cwd, result, `roadmap: horizon rename ${oldName} to ${newName}`);
+}
+
+/**
+ * Reorder the horizons — the argument must be a complete permutation of the
+ * current list (position carries the semantics, so a partial order is
+ * ambiguous and refused). Self-commits.
+ * @param {string} cwd @param {string[]} order
+ * @returns {object}
+ */
+function reorderHorizons(cwd, order) {
+  if (!Array.isArray(order) || order.length === 0) {
+    throw new Error('reorder: a complete horizon order is required');
+  }
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    const current = [...roadmap.horizons].sort();
+    const proposed = [...order].sort();
+    if (current.length !== proposed.length || current.some((h, i) => h !== proposed[i])) {
+      throw new Error(`reorder: the order must name every existing horizon exactly once (current: ${roadmap.horizons.join(', ')})`);
+    }
+    roadmap.horizons = [...order];
+    return { op: 'horizon-reorder', horizons: [...roadmap.horizons] };
+  });
+  return commitRoadmap(cwd, result, 'roadmap: horizon reorder');
+}
+
+/**
+ * Merge one horizon into another: every member moves (pulled members
+ * included — horizon restructuring is presentational for joins), the source
+ * label is dropped. Self-commits.
+ * @param {string} cwd @param {string} from @param {string} into
+ * @returns {object}
+ */
+function mergeHorizons(cwd, from, into) {
+  if (from === into) throw new Error('merge: the two horizons must differ');
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    if (!roadmap.horizons.includes(from)) throw new Error(`no horizon "${from}"`);
+    if (!roadmap.horizons.includes(into)) throw new Error(`no horizon "${into}"`);
+    let moved = 0;
+    for (const item of Object.values(roadmap.items)) {
+      if (item && typeof item === 'object' && item.horizon === from) {
+        item.horizon = into;
+        moved++;
+      }
+    }
+    roadmap.horizons = roadmap.horizons.filter((h) => h !== from);
+    return { op: 'horizon-merge', merged: from, into, items_moved: moved, horizons: [...roadmap.horizons] };
+  });
+  return commitRoadmap(cwd, result, `roadmap: horizon merge ${from} into ${into}`);
+}
+
+/**
+ * Split a horizon: create a new one (default position: right after the
+ * source) and move the named members into it. Every named item must belong
+ * to the source horizon — a split relabels part of one release, it never
+ * gathers strays. Pulled members move too (presentational). Self-commits.
+ * @param {string} cwd @param {string} name
+ * @param {{newName?: string, items?: string[], position?: number}} [opts]
+ * @returns {object}
+ */
+function splitHorizon(cwd, name, { newName, items, position } = {}) {
+  if (typeof newName !== 'string' || newName === '') throw new Error('--new is required');
+  validateName('horizon', newName);
+  if (newName === name) throw new Error('split: the new horizon must differ from the source');
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('--items is required — the members moving to the new horizon');
+  }
+  const dupe = items.find((n, i) => items.indexOf(n) !== i);
+  if (dupe) throw new Error(`split: "${dupe}" appears more than once in --items`);
+
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    if (!roadmap.horizons.includes(name)) throw new Error(`no horizon "${name}"`);
+    if (roadmap.horizons.includes(newName)) throw new Error(`horizon "${newName}" already exists`);
+    for (const itemName of items) {
+      const item = roadmapItem(roadmap, itemName);
+      if (item.horizon !== name) {
+        throw new Error(`split: "${itemName}" is in "${item.horizon}", not "${name}" — a split moves members of the source horizon only`);
+      }
+    }
+    if (position !== undefined) {
+      validatePosition(position, roadmap.horizons.length + 1);
+      roadmap.horizons.splice(position - 1, 0, newName);
+    } else {
+      roadmap.horizons.splice(roadmap.horizons.indexOf(name) + 1, 0, newName);
+    }
+    for (const itemName of items) {
+      roadmap.items[itemName].horizon = newName;
+    }
+    return { op: 'horizon-split', name, new_horizon: newName, items_moved: items.length, horizons: [...roadmap.horizons] };
+  });
+  return commitRoadmap(cwd, result, `roadmap: horizon split ${name} — ${newName}`);
+}
+
+/**
+ * Remove an empty horizon — one with members refuses and points at merge/
+ * move. Self-commits.
+ * @param {string} cwd @param {string} name
+ * @returns {object}
+ */
+function removeHorizon(cwd, name) {
+  const result = transactProject(cwd, (manifest) => {
+    const roadmap = requireRoadmap(manifest);
+    if (!roadmap.horizons.includes(name)) throw new Error(`no horizon "${name}"`);
+    const members = Object.entries(roadmap.items)
+      .filter(([, item]) => item && typeof item === 'object' && item.horizon === name)
+      .map(([n]) => n);
+    if (members.length > 0) {
+      throw new Error(`horizon "${name}" holds ${members.length} item${members.length === 1 ? '' : 's'} (${members.join(', ')}) — merge it or move them first`);
+    }
+    roadmap.horizons = roadmap.horizons.filter((h) => h !== name);
+    return { op: 'horizon-remove', name, horizons: [...roadmap.horizons] };
+  });
+  return commitRoadmap(cwd, result, `roadmap: horizon remove ${name}`);
+}
+
+module.exports = {
+  roadmapState,
+  deriveItemState,
+  addRoadmapItem,
+  addRoadmapItemsBatch,
+  editRoadmapItem,
+  renameRoadmapItem,
+  moveRoadmapItem,
+  removeRoadmapItem,
+  addHorizon,
+  renameHorizon,
+  reorderHorizons,
+  mergeHorizons,
+  splitHorizon,
+  removeHorizon,
+};
