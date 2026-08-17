@@ -14,7 +14,7 @@ Three things it never touches:
 
 Nothing in this file is licence to skip a rendered block, shorten a display, or drop a gate.
 
-Voice composes with the report registers — [product-lens.md](product-lens.md), [technical-lens.md](technical-lens.md), and the task loop's [report-register.md](../../workflow-implementation-process/references/report-register.md) — rather than competing: those govern a report's shape and fidelity, this governs how the sentences sound.
+Voice composes with [product-lens.md](product-lens.md) and [technical-lens.md](technical-lens.md) rather than competing: those govern a report's shape and fidelity, this governs how the sentences sound.
 
 ## Cut
 
