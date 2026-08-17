@@ -26,7 +26,7 @@ J. Consolidation pass (phase boundary) → consolidation-pass.md
 
 **Agent lifecycle**: every review dispatches a fresh reviewer agent, and every task's first attempt dispatches a fresh executor agent; the only continuation is re-invoking the current task's executor for a fix round, a retry, or a gate comment round. Warm context never justifies crossing these lines — **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** carry the dispatch mechanics.
 
-→ Load **[report-register.md](report-register.md)** and follow its instructions as written — the register for every report moment in the loop: the task brief in **A**, the findings summaries in **E**, and the result summary and technical retells in **F** and **G**. Findings cache files and records stay fully technical.
+→ Load **[report-register.md](report-register.md)** and follow its instructions as written — the register for the task brief in **A**, the findings summaries and their retells in **E** and **F**, and the result summary and its retells in **G**.
 
 Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** consumes it from session context rather than re-reading it per invocation:
 
@@ -327,6 +327,8 @@ Include the reviewer's notes and the user's commentary when re-invoking.
 ---
 
 ## G. Task Gate
+
+A return from a retell or an answer re-emits the menu alone — re-run the gated fetch below; the presentation belongs to the gate's first arrival.
 
 After the reviewer approves a task, present the result:
 
