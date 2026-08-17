@@ -880,7 +880,7 @@ describe('engine render task surfaces', () => {
     const file = writeResultPayload({ id: 'auth-flow-1-1', title: 'Wire the login form', phase: '1 — Core' });
     assert.match(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file, '--result', 'approved']),
-      /\*\*✓ Approved\*\* — \*1 fix round\*/);
+      /\*\*✓ Approved\*\* — \*after 1 needs-changes round\*/);
 
     cleanupFixture(dir);
     dir = setupFixture();
@@ -888,7 +888,7 @@ describe('engine render task surfaces', () => {
     const file2 = writeResultPayload({ id: 'auth-flow-1-1', title: 'Wire the login form', phase: '1 — Core' });
     assert.match(
       render(['task-result', 'auth.implementation.auth-flow', '--file', file2, '--result', 'approved']),
-      /\*\*✓ Approved\*\* — \*2 fix rounds\*/);
+      /\*\*✓ Approved\*\* — \*after 2 needs-changes rounds\*/);
   });
 
   it('task-result needs-changes below the threshold: the calm verdict with the attempt count, optional rows omitted', () => {
