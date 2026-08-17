@@ -679,6 +679,67 @@ describe('start projections: baseline rows', () => {
   });
 });
 
+describe('start projections: roadmap rows', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function writeProjectRoadmap(dir2, roadmap) {
+    const fs = require('fs');
+    const path = require('path');
+    const p = path.join(dir2, '.workflows', 'manifest.json');
+    const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
+    fs.writeFileSync(p, JSON.stringify({ ...existing, roadmap }, null, 2));
+  }
+
+  const MAP = {
+    horizons: ['mvp', 'v1', 'someday'],
+    items: {
+      ordering: { horizon: 'mvp', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'auth-flow' } },
+      menus: { horizon: 'mvp', summary: 's', origin: 'harvest' },
+      loyalty: { horizon: 'v1', summary: 's', origin: 'park:mvp' },
+    },
+  };
+
+  it('the overview gains a Roadmap section — per-horizon join breakdowns, empty horizons omitted', () => {
+    fullFixture(dir);
+    writeProjectRoadmap(dir, MAP);
+    const overview = startOverview(startDetail(dir));
+    assert.match(overview, /Roadmap\n  ├─ Mvp — 1 in flight · 1 waiting\n  └─ V1 — 1 waiting\n/);
+    assert.ok(!overview.includes('Someday'), 'an empty horizon renders no row');
+  });
+
+  it('startMenu and emptyMenu carry the r/roadmap row only once the layer exists', () => {
+    const bare = startMenu(fullFixture(dir));
+    assert.ok(!bare.keys.some((k) => k.action === 'open_roadmap'), 'no roadmap row before the layer is born');
+
+    writeProjectRoadmap(dir, MAP);
+    const m = startMenu(startDetail(dir));
+    const row = m.keys.find((k) => k.action === 'open_roadmap');
+    assert.ok(row, 'the layer renders its row');
+    assert.strictEqual(row.key, 'r');
+    assert.strictEqual(row.route, '/workflow-roadmap');
+    assert.strictEqual(row.label, 'Roadmap — the product conversation, the map, or pull a slice');
+    const keys = m.keys.map((k) => k.key);
+    assert.ok(keys.indexOf('r') < keys.indexOf('s'), 'the roadmap row precedes the start options');
+
+    writeProjectRoadmap(dir, { ...MAP, active_session: '002' });
+    const resumed = startMenu(startDetail(dir)).keys.find((k) => k.action === 'open_roadmap');
+    assert.strictEqual(resumed.label, 'Resume the product session — *roadmap, in progress*');
+  });
+
+  it('the harvested-no-work state never renders an empty screen', () => {
+    writeProjectRoadmap(dir, MAP);
+    const detail = startDetail(dir);
+    assert.strictEqual(detail.state.has_any_work, false);
+    const overview = emptyOverview(detail);
+    assert.match(overview, /^No work in flight\.\n\nRoadmap\n/);
+    assert.match(overview, /├─ Mvp — 1 waiting · 1 orphaned/); // no work units exist in this fixture — the join names a missing unit honestly
+    const menu = emptyMenu(detail);
+    assert.ok(menu.keys.some((k) => k.action === 'open_roadmap'));
+  });
+});
+
 describe('start projections: manage unit', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });

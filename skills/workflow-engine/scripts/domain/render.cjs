@@ -23,6 +23,8 @@ const {
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
+const { roadmapState } = require('./roadmap.cjs');
+const { roadmapMapView, roadmapAddGate } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
@@ -1985,6 +1987,46 @@ function planTopics(cwd, args) {
 }
 
 // ---------------------------------------------------------------------------
+// The roadmap surfaces — project-level, no address. Each handler resolves
+// the derived roadmap state (domain/roadmap.cjs — lifecycle by join, never
+// stored), refuses states the calling prose never reaches, and hands the
+// pure projection its detail. The pull working set and the proposal overlay
+// are gateway views (they carry DATA the flow resolves numbers through), not
+// render surfaces.
+// ---------------------------------------------------------------------------
+
+/** @param {string} cwd @param {object} _args @returns {string} */
+function roadmapViewSurface(cwd, _args) {
+  const state = roadmapState(cwd);
+  if (!state.exists) {
+    throw new Error('render roadmap-view: no roadmap on the project manifest — it is born at the first park, add, or session');
+  }
+  return section('DISPLAY: roadmap', 'emit verbatim as a code block', roadmapMapView(state));
+}
+
+/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
+function roadmapAddGateSurface(cwd, args) {
+  const state = roadmapState(cwd);
+  if (!state.exists) {
+    throw new Error('render roadmap-add-gate: no roadmap on the project manifest');
+  }
+  if (!args.horizon) throw new Error('render roadmap-add-gate: --horizon is required');
+  if (!state.horizons.includes(args.horizon)) {
+    throw new Error(`render roadmap-add-gate: unknown horizon "${args.horizon}"`);
+  }
+  return section(
+    'MENU: roadmap add gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    roadmapAddGate(state, args.horizon),
+  );
+}
+
+/** @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
+function roadmapSessionReceiptSurface(_cwd, args) {
+  return sessionReceipt({ warn: args.warn === '1' });
+}
+
+// ---------------------------------------------------------------------------
 // The baseline surfaces — project-level, no address. Each handler resolves
 // the one BaselineState (domain/baseline.cjs), refuses states the calling
 // prose never reaches, and hands the pure projection its detail.
@@ -2192,6 +2234,9 @@ const SURFACES = {
   'absorb-target': absorbTarget,
   'plan-topics': planTopics,
   'revisit-phases': revisitPhasesSurface,
+  'roadmap-view': roadmapViewSurface,
+  'roadmap-add-gate': roadmapAddGateSurface,
+  'roadmap-session-receipt': roadmapSessionReceiptSurface,
   'baseline-progress': baselineProgressSurface,
   'baseline-area-gate': baselineAreaGateSurface,
   'baseline-paused': baselinePausedSurface,

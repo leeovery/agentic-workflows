@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const { baselineState } = require('./baseline.cjs');
+const { roadmapState } = require('./roadmap.cjs');
 const {
   phaseItems,
   computeUnitPhaseState,
@@ -112,6 +113,7 @@ function pipelineOf(workType) {
  * @property {number} cancelled_count
  * @property {InboxDetail} inbox
  * @property {import('./baseline.cjs').BaselineState} baseline
+ * @property {ReturnType<import('./roadmap.cjs').roadmapState>} roadmap
  * @property {StartState} state
  */
 
@@ -274,6 +276,7 @@ function startDetail(cwd) {
     cancelled_count: cancelled.length,
     inbox,
     baseline: baselineState(cwd),
+    roadmap: roadmapState(cwd),
     state: {
       has_any_work: (epics.length + features.length + bugfixes.length + quick_fixes.length + cross_cutting.length) > 0,
       epic_count: epics.length,

@@ -1839,7 +1839,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -1912,6 +1912,87 @@ describe('single-source invariants', () => {
     })(skillsRoot);
     assert.deepStrictEqual(offenders, [],
       'artefact content is framed by its emission fence, never drawn borders — a box glyph reintroduces a fixed-width commitment the terminal cannot honour');
+  });
+});
+
+describe('roadmap surfaces', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  /** @param {object} roadmap @param {Record<string, object>} [workUnits] */
+  function writeRoadmap(roadmap, workUnits = {}) {
+    const wf = path.join(dir, '.workflows');
+    fs.mkdirSync(wf, { recursive: true });
+    fs.writeFileSync(path.join(wf, 'manifest.json'), JSON.stringify({ work_units: {}, roadmap }, null, 2));
+    for (const [name, manifest] of Object.entries(workUnits)) {
+      fs.mkdirSync(path.join(wf, name), { recursive: true });
+      fs.writeFileSync(path.join(wf, name, 'manifest.json'), JSON.stringify({ name, phases: {}, ...manifest }, null, 2));
+    }
+  }
+
+  const TWO_HORIZONS = {
+    horizons: ['mvp', 'v1'],
+    items: {
+      ordering: { horizon: 'mvp', summary: 'customers order from a menu', origin: 'harvest', pulled_to: { work_unit: 'mvp' } },
+      menus: { horizon: 'mvp', summary: 'operators maintain the menu', origin: 'harvest' },
+      loyalty: { horizon: 'v1', summary: 'repeat-customer rewards', origin: 'park:mvp' },
+    },
+  };
+
+  it('roadmap-view: horizon groups, join notes, the breakdown header', () => {
+    writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
+    const out = renderSurface(dir, 'roadmap-view', {});
+    assert.match(out, /^=== DISPLAY: roadmap \(emit verbatim as a code block\) ===/);
+    assert.match(out, /Roadmap \(3 items — 1 in flight · 2 waiting\)/);
+    assert.match(out, /Mvp\n/);
+    assert.match(out, /◐ Ordering/);
+    assert.match(out, /↳ In flight: mvp/);
+    assert.match(out, /○ Menus/);
+    assert.match(out, /operators maintain the menu/);
+    assert.match(out, /V1\n/);
+    assert.match(out, /○ Loyalty/);
+  });
+
+  it('roadmap-view: refuses a never-born roadmap', () => {
+    assert.throws(() => renderSurface(dir, 'roadmap-view', {}), /no roadmap on the project manifest/);
+  });
+
+  it('roadmap-add-gate: fully-in-delivery renders the strict two-way menu naming the unit', () => {
+    writeRoadmap({
+      horizons: ['mvp', 'v1'],
+      items: {
+        ordering: { horizon: 'mvp', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'mvp' } },
+        loyalty: { horizon: 'v1', summary: 's', origin: 'harvest' },
+      },
+    }, { mvp: { work_type: 'epic', status: 'in-progress' } });
+    const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
+    assert.match(out, /^=== MENU: roadmap add gate/);
+    assert.match(out, /"Mvp" is being built right now\. Where does this land\?/);
+    assert.match(out, /Into the delivery — a fresh topic in "mvp"/);
+    assert.match(out, /`2`.*Another horizon/);
+    assert.ok(!out.includes('Waiting in'), 'no waiting side-door into a fully-delivered horizon');
+  });
+
+  it('roadmap-add-gate: a partly-composed horizon keeps the waiting option', () => {
+    writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
+    const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' });
+    assert.match(out, /"Mvp" is partly in delivery\. Where does this land\?/);
+    assert.match(out, /Waiting in "mvp" beside its 1 uncommitted item/);
+    assert.match(out, /`3`.*Another horizon/);
+  });
+
+  it('roadmap-add-gate: refuses an unknown horizon and one with no delivery', () => {
+    writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
+    assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'ghost' }), /unknown horizon/);
+    assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'v1' }), /no member of "v1" is in delivery/);
+    assert.throws(() => renderSurface(dir, 'roadmap-add-gate', {}), /--horizon is required/);
+  });
+
+  it('roadmap-session-receipt: empty without --warn, the advisory with it', () => {
+    assert.strictEqual(renderSurface(dir, 'roadmap-session-receipt', {}), '');
+    const out = renderSurface(dir, 'roadmap-session-receipt', { warn: '1' });
+    assert.match(out, /Knowledge indexing warning/);
   });
 });
 

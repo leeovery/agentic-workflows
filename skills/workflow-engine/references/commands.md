@@ -278,6 +278,9 @@ engine render session-receipt <wu> [--warn]                       # discovery-se
 engine render absorb-target <feature>                             # the absorb flow's target-epic selection menu; refuses when the absorb guard doesn't hold
 engine render plan-topics <wu>                                    # the view-plan topic selection menu; refuses without a multi-topic epic plan
 engine render revisit-phases <wu>                                 # the revisit-phase selection menu over completed earlier phases; linear work types only, refuses when nothing is revisitable
+engine render roadmap-view                                        # the Roadmap display — horizon groups, item rows with join notes, the breakdown header; refuses a never-born roadmap
+engine render roadmap-add-gate --horizon <name>                   # the add-to-joined-horizon routed confirm (decision 28): fully-in-delivery → strict two-way (into the epic / another horizon), partly composed → three-way (waiting beside its uncommitted members); refuses an unknown horizon and one with no delivery
+engine render roadmap-session-receipt [--warn]                    # roadmap session-close advisory — empty without --warn
 engine render baseline-progress                                   # the baseline area map from the project manifest — in-progress: per-area statuses + remaining count; completed: the landed doc list; refuses with no baseline or no areas
 engine render baseline-area-gate --area <name>                    # the between-areas continue/pause gate after the named area's doc lands; refuses an unlanded area, and refuses when nothing remains (that path concludes instead)
 engine render baseline-paused                                     # the interview's pause receipt — documented count + the workflow-start pointer; in-progress only
