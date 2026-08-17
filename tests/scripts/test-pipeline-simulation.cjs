@@ -1170,6 +1170,11 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['roadmap-add-gate', '--horizon', 'launch'], { expect: 'content' }),
       /MENU: roadmap add gate/);
     sim.render(['roadmap-session-receipt'], { expect: 'empty' });
+    // The static gate menus render like every menu — engine-served.
+    assert.match(sim.render(['roadmap-harvest-gate'], { expect: 'content' }), /MENU: roadmap harvest gate/);
+    assert.match(sim.render(['roadmap-parks-gate'], { expect: 'content' }), /MENU: roadmap parks gate/);
+    assert.match(sim.render(['roadmap-shape-gate'], { expect: 'content' }), /MENU: roadmap shape gate/);
+    assert.match(sim.render(['roadmap-conclude-gate'], { expect: 'content' }), /MENU: roadmap conclude gate/);
 
     // Shipping the unit flips the derived state to shipped — nothing stored.
     sim.run(['workunit', 'complete', 'mvp', '-m', 'workflow(mvp): pipeline complete']);

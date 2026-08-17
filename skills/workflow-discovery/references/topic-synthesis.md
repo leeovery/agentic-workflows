@@ -158,15 +158,10 @@ Render the roadmap overlay, emitting its `=== DISPLAY` section verbatim as a cod
 node .claude/skills/workflow-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**`◆ Park these on the roadmap, or tell me what to adjust.`**
-
-**`y/yes`**     → Commit these items to the roadmap and conclude
-**`e/explore`** → Go back to exploration; not ready to commit yet
-**Adjust**    → Tell me what to change (move between horizons, rename, re-word)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-parks-gate
 ```
 
 **STOP.** Wait for user response.

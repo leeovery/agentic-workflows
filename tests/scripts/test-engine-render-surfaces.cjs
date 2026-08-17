@@ -1839,7 +1839,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -2356,5 +2356,68 @@ describe('render off-topic-offer', () => {
       () => renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file: blank }),
       /"concern" must be a non-empty string/,
     );
+  });
+
+  it('the discussion variant adds the roadmap park and speaks the Summary register', () => {
+    writeManifest(dir, 'pay', {
+      work_type: 'feature',
+      phases: { discussion: { items: { pay: { status: 'in-progress' } } } },
+    });
+    const file = writePayload(dir, 'o.json', { concern: 'Gift cards' });
+    const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.discussion.pay', file, variant: 'discussion' });
+    assert.strictEqual(out, [
+      "=== MENU: off-topic offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      "**Gift cards** is beyond this topic's scope.",
+      '',
+      '**`l/log`**     → Capture it as an idea in the inbox for later',
+      '**`r/roadmap`** → Park it on the product roadmap with a horizon',
+      '**`p/pivot`**   → Convert this work to an epic so it can hold the',
+      `${NB(12)}concern as its own topic`,
+      '**`i/ignore`**  → Note it in the Summary and move on',
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses an unknown variant', () => {
+    feature();
+    const file = writePayload(dir, 'o.json', { concern: 'X' });
+    assert.throws(
+      () => renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file, variant: 'nope' }),
+      /--variant takes "discussion"/,
+    );
+  });
+});
+
+describe('render roadmap gate menus — static sets, engine-rendered like every menu', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  it('roadmap-harvest-gate: the sort confirm', () => {
+    const out = renderSurface(dir, 'roadmap-harvest-gate', {});
+    assert.match(out, /^=== MENU: roadmap harvest gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /`◆ Confirm the sort, or tell me what to adjust\.`/);
+    assert.match(out, /`y\/yes`.*Commit these items to the roadmap/);
+    assert.match(out, /`e\/explore`.*Go back to the conversation; not ready yet/);
+    assert.match(out, /\*\*Adjust\*\*.*Tell me what to change \(move, split, merge, rename,/);
+  });
+
+  it('roadmap-parks-gate: the parks-only confirm in the park register', () => {
+    const out = renderSurface(dir, 'roadmap-parks-gate', {});
+    assert.match(out, /`◆ Park these on the roadmap, or tell me what to adjust\.`/);
+    assert.match(out, /`y\/yes`.*Commit these items to the roadmap and conclude/);
+    assert.match(out, /\*\*Adjust\*\*.*move between horizons/);
+  });
+
+  it('roadmap-shape-gate and roadmap-conclude-gate: the pull ceremony pair', () => {
+    const shape = renderSurface(dir, 'roadmap-shape-gate', {});
+    assert.match(shape, /`◆ Shape it this way\?`/);
+    assert.match(shape, /`y\/yes`.*Create it and continue into delivery/);
+    assert.match(shape, /\*\*Adjust\*\*.*epic vs feature, the framing/);
+    const conclude = renderSurface(dir, 'roadmap-conclude-gate', {});
+    assert.match(conclude, /`◆ Pull a slice into delivery now\?`/);
+    assert.match(conclude, /`p\/pull`.*Pick the item\(s\) going into delivery/);
+    assert.match(conclude, /`s\/stop`.*Stop here — the roadmap keeps everything warm/);
   });
 });

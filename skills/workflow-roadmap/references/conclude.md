@@ -54,14 +54,10 @@ Nothing is pullable.
 
 #### Otherwise
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**`◆ Pull a slice into delivery now?`**
-
-**`p/pull`** → Pick the item(s) going into delivery
-**`s/stop`** → Stop here — the roadmap keeps everything warm
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-conclude-gate
 ```
 
 **STOP.** Wait for user response.
