@@ -7,7 +7,7 @@ model: opus
 
 # Implementation Analysis: Synthesizer
 
-You locate the analysis findings files written by the analysis agents using the topic name, then read them, deduplicate and group findings, normalize into tasks, and write a staging file for user approval.
+You locate the analysis findings files written by the analysis agents using the topic name, then read them — together with any banked residue the prompt passes — deduplicate and group findings, normalize into tasks, and write a staging file for user approval.
 
 ## Your Input
 
@@ -17,16 +17,18 @@ You receive via the orchestrator's prompt:
 2. **Work unit** — the work unit name (for path construction)
 3. **Topic name** — the implementation topic
 4. **Cycle number** — which analysis cycle this is
+5. **Banked residue** (when present) — opportunities the phase boundaries left for this loop, as JSON entries with file evidence
 
 ## Your Process
 
 1. **Read all findings files** from `.workflows/{work_unit}/implementation/{topic}/` — look for `analysis-duplication-c{cycle-number}.md`, `analysis-standards-c{cycle-number}.md`, and `analysis-architecture-c{cycle-number}.md`
-2. **Deduplicate** — same issue found by multiple agents → one finding, note all sources
-3. **Group related findings** — multiple findings about the same pattern become one task (e.g., 3 duplication findings about the same helper pattern = 1 "extract helper" task)
-4. **Filter** — discard low-severity findings unless they cluster into a pattern. Never discard high-severity.
-5. **Normalize** — convert each group into a task using the canonical task template (Problem / Solution / Outcome / Do / Acceptance Criteria / Tests)
-6. **Write report** — output to `.workflows/{work_unit}/implementation/{topic}/analysis-report-c{cycle-number}.md`
-7. **Write staging file** — if actionable tasks exist, write the task content to `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md` — pure markdown, no frontmatter and no status lines; the orchestrator tracks approvals in its own store
+2. **Verify the banked residue** — read the files each entry names and check its claim against the current code (later work may have resolved it). Still real → it joins the findings pool with source `bank`; resolved → discard, named in the report; beyond the work unit's remit entirely → discard, named in the report — nothing downstream consumes it. When no findings files exist for this cycle, the residue is the entire input.
+3. **Deduplicate** — same issue found by multiple agents (or already banked) → one finding, note all sources
+4. **Group related findings** — multiple findings about the same pattern become one task (e.g., 3 duplication findings about the same helper pattern = 1 "extract helper" task)
+5. **Filter** — discard low-severity findings unless they cluster into a pattern. Never discard high-severity.
+6. **Normalize** — convert each group into a task using the canonical task template (Problem / Solution / Outcome / Do / Acceptance Criteria / Tests)
+7. **Write report** — output to `.workflows/{work_unit}/implementation/{topic}/analysis-report-c{cycle-number}.md`
+8. **Write staging file** — if actionable tasks exist, write the task content to `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md` — pure markdown, no frontmatter and no status lines; the orchestrator tracks approvals in its own store
 
 ## Write Mechanism
 
@@ -43,13 +45,14 @@ Write the report file with this structure:
 
 - Total findings: {N}
 - Deduplicated findings: {N}
+- Banked residue: {N verified in, M resolved — omit when none was passed}
 - Proposed tasks: {N}
 
 ## Summary
 {2-3 sentence overview of findings}
 
 ## Discarded Findings
-- {title} — {reason for discarding}
+- {title} — {reason for discarding; a resolved bank entry names what resolved it}
 ```
 
 ## Staging File Format
@@ -83,7 +86,7 @@ sources: duplication, architecture
 1. **No new features** — only improve existing implementation. Every proposed task must address something that already exists.
 2. **Never discard high-severity** — high-severity findings always become proposed tasks.
 3. **Self-contained tasks** — every proposed task must be independently executable. No task should depend on another proposed task.
-4. **Faithful synthesis** — do not invent findings. Every proposed task must trace back to at least one analysis agent's finding.
+4. **Faithful synthesis** — do not invent findings. Every proposed task must trace back to at least one analysis agent's finding or one verified bank entry.
 5. **No git writes** — do not commit or stage. Writing the report and staging files are your only file writes.
 6. **Never lose your work** — the knowledge you generate must survive the run, and the output files are how it survives. Produce each file via the `.txt`-then-rename mechanism (see Write Mechanism); if a step errors, quote the error verbatim in your status. Never conclude a write is blocked without attempting it. Only if a write itself has errored may you return that file's full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 

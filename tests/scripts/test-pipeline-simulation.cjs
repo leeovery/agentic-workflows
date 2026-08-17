@@ -384,6 +384,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
+  // The analysis loop's synthesizer consumes the residue (invoke-synthesizer.md);
+  // conclude's hygiene covers a loop that never got its verdicts in.
+  sim.run(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 
   // Review — verification, then the prepped pipeline: out-of-scope
@@ -1232,6 +1235,12 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1', 'skipped']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.2', 'skipped']);
+
+    // The synthesizer's dispatch consumes the residual bank — verdicts land in
+    // its report, then the field is deleted (invoke-synthesizer.md).
+    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank',
+      `{"task":"${wu}-1-2","source":"executor","summary":"pre-existing debt","detail":"src/legacy.js predates the phase","files":["src/legacy.js"]}`]);
+    sim.run(['manifest', 'delete', `${wu}.implementation.${wu}`, 'bank']);
 
     // The ad hoc plan-changes gate stages under its own family key (ad-hoc-plan-changes.md E/F)
     // and renders the shared proposed-task surface without the synthesis-only fields.

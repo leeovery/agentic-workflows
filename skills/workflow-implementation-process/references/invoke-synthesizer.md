@@ -18,6 +18,7 @@ Pass via the orchestrator's prompt:
 2. **Work unit** — the work unit name (for path construction)
 3. **Topic name** — the implementation topic
 4. **Cycle number** — the current analysis cycle number
+5. **Banked residue** — the manifest's `bank` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} bank`): entries the phase boundaries left for this loop. Omit when the field is absent or empty.
 
 The agent locates findings files and writes output files using the work unit and topic name.
 
@@ -35,6 +36,16 @@ SUMMARY: {1-2 sentences}
 
 - `tasks_proposed`: tasks written to staging file — present for approval
 - `clean`: no actionable findings — orchestrator should proceed to completion
+
+---
+
+## Consume the Bank
+
+**If banked residue was passed**, the synthesizer has verdicted every entry — proposed into the staging or discarded in its report. Delete the field; the deletion rides the synthesis commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank
+```
 
 ---
 

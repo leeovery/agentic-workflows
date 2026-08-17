@@ -30,7 +30,7 @@ While tasks are built one at a time, each was written in isolation — and thing
 
 ## After the tasks
 
-Building every task is not quite the end. Once the task list is drained, an analysis loop runs. The system takes a checkpoint — flagging any unexpected files first — then dispatches agents to review what was actually built against the plan and the spec, and a synthesiser proposes any remediation tasks the review turned up. You approve those tasks the same way you approved the originals; approved ones are written into the plan, and the build loop runs again over them. Build, analyse, perhaps build again — this repeats until the analysis finds nothing more, capped at three cycles per session. At the cap the system shows the convergence diagnostic and asks whether to continue or stop; it never silently gives up, and never silently loops.
+Building every task is not quite the end. Once the task list is drained, an analysis loop runs. The system takes a checkpoint — flagging any unexpected files first — then dispatches agents to review what was actually built against the plan and the spec, and a synthesiser proposes any remediation tasks the review turned up — verdicting anything still banked from the phase boundaries along the way. You approve those tasks the same way you approved the originals; approved ones are written into the plan, and the build loop runs again over them. Build, analyse, perhaps build again — this repeats until the analysis finds nothing more, capped at three cycles per session. At the cap the system shows the convergence diagnostic and asks whether to continue or stop; it never silently gives up, and never silently loops.
 
 ## The quick-fix variant
 
