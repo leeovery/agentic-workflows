@@ -12,6 +12,7 @@ The product session runs on discovery's exploration stance — the register, the
 
 - **Capability-grain, always.** An item is whatever the user would move around a roadmap as one thing — "loyalty", "white-label". It may turn out to be a topic, three topics, or a whole epic; nobody knows yet and nobody needs to. No granularity discipline applies here — the independence tests belong to the epic's harvest, after a pull.
 - **Whether and when, not how.** The conversation decides what the product needs and what order it earns — mechanism, feasibility depth, and design decisions belong to the work units a pull creates. Substance is still welcome the way discovery welcomes it (soft decisions, rejected paths, recorded plainly); what changes is where the conversation anchors when a thread has given what it has.
+- **No self-healing analyses run at this level.** The roadmap fills through conversation, parks, and grooming alone — nothing auto-adds later, so harvest what the session actually surfaced. Documentation cadence and map operations live in the roadmap's own [session-loop.md](session-loop.md), never in the epic loop the imported guidance points at.
 
 ## B. The Staging Current
 
@@ -22,8 +23,11 @@ Listen for now/next/later throughout — staging language is this altitude's sha
 Items joined to work units are windows, not material:
 
 - A thread about a **waiting** item is this session's business — explore, re-sort, edit freely.
-- A thread about a **pulled, in-flight** item belongs to its work unit. When the session materially deepens its ground, record the exploration in the log and flag the join so the epic re-examines (`engine roadmap flag {name}`); never treat the roadmap as the place to redirect in-flight work — re-bucketing or removing a pulled item is refused engine-side, and the recovery is the epic's cancel.
-- An add aimed at a horizon that is fully in delivery takes the routed confirm (`engine render roadmap-add-gate --horizon {h}`) — into the epic as a fresh topic, or another horizon; no waiting side-door into a release that is now an epic.
+- A thread about a **pulled, in-flight** item belongs to its work unit. When the session materially deepens its ground, record the exploration in the log and flag the join so the epic re-examines (`engine roadmap flag {name}`; a join the epic has not yet bound to a topic answers `committed: null` with a note — nothing lands, the epic reads the record fresh at its harvest; relay that in a line). Never treat the roadmap as the place to redirect in-flight work — re-bucketing or removing a pulled item is refused engine-side, and the recovery is the epic's cancel.
+- An add aimed at a horizon with **any member in delivery** takes the routed confirm (`engine render roadmap-add-gate --horizon {h}` — emit its section verbatim, then STOP for the answer). While waiting members remain the menu is three-way; once the horizon is fully in delivery it is strict two-way — no waiting side-door into a release that is now an epic. Route the answer:
+  - **Into the delivery** (`1`) — the item is delivery scope now: `roadmap add` it into the horizon, then `roadmap pull-forward {name} --into {unit} --routing {research|discussion, per the thread's need}` (when the gate named several units, the user's answer names which). Record both under **Edits**.
+  - **Waiting beside the uncommitted members** (`2`, three-way only) — a plain `roadmap add`.
+  - **Another horizon** — the user names it; a plain `roadmap add` there.
 
 ## D. Tangents
 

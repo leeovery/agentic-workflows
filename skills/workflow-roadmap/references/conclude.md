@@ -8,7 +8,13 @@ Close the session, then offer the pull. Stopping here is first-class — a harve
 
 ## A. Close the Session
 
-#### If no session log exists (browse only)
+Read the roadmap state:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
+```
+
+#### If `active_session` is `null` (browse only — no session was ever opened)
 
 Nothing to close.
 
@@ -32,11 +38,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-session-re
 
 ## B. Stop or Pull
 
-Read the roadmap state:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
-```
+Branch on the state read in **A**:
 
 #### If `totals.waiting` is `0`
 
@@ -66,7 +68,7 @@ Nothing is pullable.
 
 #### If `pull`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 9**.
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 #### If `stop`
 

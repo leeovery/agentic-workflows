@@ -6,7 +6,9 @@
 // this script selects which view the skill's flow needs and sections it.
 //
 //   gateway.cjs view                       → DATA + TITLE + DISPLAY + MENU home snapshot
-//   gateway.cjs pull-set                   → DATA + TITLE + DISPLAY + MENU pull working set
+//   gateway.cjs pull-set                   → DATA + DISPLAY + MENU pull working set
+//                                            (no TITLE — the skill's step marker
+//                                            heads the ceremony)
 //   gateway.cjs proposal --file {path}     → harvest overlay: the proposed item
 //                                            set (model-authored JSON) rendered
 //                                            over the existing roadmap
@@ -76,7 +78,6 @@ function pullSet() {
   }
   return [
     engine.gateway.dataBlock(v.data),
-    engine.gateway.titleBlock('Pull Into Delivery'),
     engine.gateway.displayBlock(v.display),
     engine.gateway.menuBlock(v.menu),
   ].join('\n');

@@ -6,7 +6,7 @@
 
 Follow the stance and hard rules from **[roadmap-guidelines.md](roadmap-guidelines.md)** throughout. No background agents, no review cycles.
 
-**A. Open** picks the opening shape from how the session arrived; **B. Session Loop** runs the exploration; **C. Harvest** hands over when the user pulls.
+**A. Open** picks the opening shape from how the session arrived; **B. Session Loop** runs the exploration; **C. Harvest** sorts when the user pulls — an unconfirmed sort drops straight back into **B**.
 
 ## A. Open
 
@@ -26,6 +26,8 @@ say here commits you to building anything.
 Where do you want to dig in?
 ```
 
+Clear `genesis_continuation` — the transition is spent; any later pass through **A** takes the resume or fresh branch.
+
 **STOP.** Wait for user response.
 
 → Proceed to **B. Session Loop**.
@@ -39,8 +41,7 @@ The log at `.workflows/.roadmap/sessions/session-{session_number}.md` is the wor
 ```
 Where we'd got to:
 
-  {2–4 lines from the recent session(s): the threads we were
-  circling, what you were leaning toward, what was still open}
+  {2–4 lines from the recent session(s): the threads circled, what the user was leaning toward, what was still open}
 ```
 
 > *Output the next fenced block as a code block:*
@@ -78,10 +79,10 @@ What's on your mind?
 No fixed cadence — follow the conversation, not a checklist. **The loop is the exploration.** Items and horizons are sorted at the harvest in **C**, when the user pulls.
 
 1. **Listen.** Take in what the user just said.
-2. **Recognise intent.** The user's message may contain:
+2. **Recognise intent.** An **Edits** write below conjures the log first when none exists yet — the lazy rule, [session-template.md](session-template.md). The user's message may contain:
    - **Exploration content** — the product's shape, who it serves, what matters when. Continue the conversation per the guidelines' stance, the staging current running throughout.
-   - **A map operation on an existing item or horizon** — *"move X to v2"*, *"rename X"*, *"merge those horizons"*. Run the matching engine verb (`roadmap move|rename|edit|remove`, `roadmap horizon …` — each validates and self-commits; a refusal on a pulled item is the authority split speaking: relay it, offer the epic-side path). Record the op under **Edits**. An add aimed at a fully-delivered horizon takes the routed confirm first (guidelines **C**).
-   - **A direct add** — a placed capability named mid-conversation with no more shaping owed: `roadmap add {name} --horizon {h} --summary "{one-liner}" --source .roadmap/sessions/session-{session_number}.md` (origin defaults to `harvest`). Most material waits for the harvest instead — add directly only when the user places it themselves.
+   - **A map operation on an existing item or horizon** — *"move X to v2"*, *"rename X"*, *"merge those horizons"*. Run the matching engine verb (`roadmap move|rename|edit|remove`, `roadmap horizon …` — each validates and self-commits; a refusal on a pulled item is the authority split speaking: relay it, offer the epic-side path). Record the op under **Edits**. An add aimed at a horizon with any member in delivery takes the routed confirm first (guidelines **C**).
+   - **A direct add** — a placed capability named mid-conversation with no more shaping owed: `roadmap add {name} --horizon {h} --summary "{one-liner}" --source .roadmap/sessions/session-{session_number}.md` (origin defaults to `harvest`; the same guidelines-**C** confirm applies when the horizon has a member in delivery). Most material waits for the harvest instead — add directly only when the user places it themselves.
    - **Grooming an inbox idea on** — archive first so the pointer is durable, then add with the archived path as the source: `engine inbox archive {path}`, then `roadmap add {name} --horizon {h} --summary "{one-liner}" --origin inbox:{slug} --source .inbox/.archived/ideas/{file}`.
    - **Shared files** — paths offered in conversation land via `engine roadmap import {path} …` (self-commits; on `missing_imports`, re-prompt); read them for the conversation and record under **Edits**.
    - **A request to see the map** — *"show roadmap"*. Re-run `gateway.cjs view` and emit its TITLE and DISPLAY sections per their markers (skip the menu — the conversation is live). No STOP; render and continue.
@@ -95,10 +96,20 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    node .claude/skills/workflow-engine/scripts/engine.cjs commit --roadmap -m "roadmap: exploration notes — session-{session_number}"
    ```
 
-→ On return, proceed to **C. Harvest** when the user pulls (recognised in step 2). Otherwise loop within **B**.
+→ Proceed to **C. Harvest** when the user pulls (recognised in step 2); otherwise loop within **B**.
 
 ## C. Harvest
 
 Reached from **B** step 2 when the user pulls. The sort is user-pulled — there is no Claude-side gate here.
 
+→ Load **[harvest.md](harvest.md)** and follow its instructions as written. It owns its own confirmation and returns an outcome:
+
+#### If the outcome is `confirmed`
+
 → Return to caller.
+
+#### If the outcome is `explore`
+
+The conversation continues where it left off — no re-open, no fresh chrome.
+
+→ Return to **B. Session Loop**.
