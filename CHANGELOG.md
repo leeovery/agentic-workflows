@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.69] - 2026-08-17
+
+✨ Added
+- Implementation phases now close through a consolidation sweep — an agent reads what a phase's tasks built side by side and proposes fixes for duplication, near-miss helpers, dead code, and drift the plan couldn't have foreseen, gated for your approval like any other task.
+- Executors and reviewers can now bank cross-task consolidation opportunities they spot mid-task instead of silently dropping or overstepping scope — these feed the new phase-boundary sweep and the end-of-implementation analysis.
+- A disputed review finding can now be challenged rather than only fixed or skipped — a fresh reviewer adjudicates the challenge against the code and your argument, and the verdict updates accordingly.
+
+🔧 Changed
+- The end-of-implementation analysis loop now also verdicts any leftover banked consolidation opportunities, even when the review agents themselves come back clean.
+- Approved task results now show "after N needs-changes rounds" instead of the more ambiguous "N fix rounds".
+- Creating a new open task under a completed tick parent now automatically reopens that parent (and its completed ancestors) instead of leaving the hierarchy inconsistent.
+
+🗑️ Removed
+- The fix-gate "skip" option is gone — a needs-changes review is now resolved only by fixing or by challenging the finding, never by silently overriding it.
+
 ## [0.6.68] - 2026-08-15
 
 🔧 Changed
