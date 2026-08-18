@@ -511,6 +511,90 @@ describe('engine CLI: roadmap flag — reconcile across the join', () => {
   });
 });
 
+describe('engine CLI: roadmap sessions and imports', () => {
+  let dir;
+  beforeEach(() => { dir = setupGitFixture(); });
+  afterEach(() => { cleanup(dir); });
+
+  function draft(name, content) {
+    fs.writeFileSync(path.join(dir, name), content);
+    return name;
+  }
+
+  it('open installs the draft as session-001, sets the marker, JIT-births the node — no commit', () => {
+    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    const res = runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Roadmap Session 001\n')]);
+    assert.strictEqual(res.session, '001');
+    assert.strictEqual(res.path, '.workflows/.roadmap/sessions/session-001.md');
+    assert.strictEqual(fs.existsSync(path.join(dir, 'draft.md')), false, 'draft consumed (moved)');
+    assert.strictEqual(readProject(dir).roadmap.active_session, '001');
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head, 'open never commits — the session is live');
+
+    assert.match(runFail(dir, ['session', 'open', '--session-log-file', draft('d2.md', 'x')]).error, /already open/);
+    const state = runOk(dir, ['state']);
+    assert.strictEqual(state.active_session, '001');
+    assert.deepStrictEqual(state.session_logs, [{ number: 1, path: '.workflows/.roadmap/sessions/session-001.md' }]);
+    assert.strictEqual(state.next_session_number, 2);
+  });
+
+  it('open refuses a missing or empty draft, everything pristine', () => {
+    assert.match(runFail(dir, ['session', 'open', '--session-log-file', 'ghost.md']).error, /draft not found/);
+    assert.match(runFail(dir, ['session', 'open', '--session-log-file', draft('empty.md', '  \n')]).error, /draft is empty/);
+    assert.strictEqual(fs.existsSync(path.join(dir, 'empty.md')), true, 'refusal leaves the draft in place');
+  });
+
+  it('close clears the marker, indexes, and commits the roadmap dir + project manifest', () => {
+    runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Session\n\nExploration.\n')]);
+    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
+    const res = runOk(dir, ['session', 'close', '-m', 'roadmap: session 001 — genesis']);
+    assert.strictEqual(res.session, '001');
+    assert.strictEqual('active_session' in readProject(dir).roadmap, false);
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: session 001 — genesis');
+    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('.workflows/.roadmap/sessions/session-001.md'), 'session log staged');
+    assert.match(runFail(dir, ['session', 'close', '-m', 'again']).error, /no active roadmap session/);
+
+    // The next open allocates from disk: session-002.
+    const again = runOk(dir, ['session', 'open', '--session-log-file', draft('d2.md', '# Session 2\n')]);
+    assert.strictEqual(again.session, '002');
+  });
+
+  it('import lands files with create discipline: normalise, dedupe, track, one commit', () => {
+    fs.writeFileSync(path.join(dir, 'My App Idea.md'), '# The idea\n');
+    fs.writeFileSync(path.join(dir, 'my-app-idea.md'), '# A colliding name\n');
+    const res = runOk(dir, ['import', 'My App Idea.md', 'my-app-idea.md']);
+    assert.deepStrictEqual(res.imports, [{ path: 'imports/my-app-idea.md' }, { path: 'imports/my-app-idea-2.md' }]);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'my-app-idea.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'my-app-idea-2.md')));
+    const entries = readProject(dir).roadmap.imports;
+    assert.strictEqual(entries.length, 2);
+    assert.strictEqual(entries[0].path, 'imports/my-app-idea.md');
+    assert.ok(entries[0].imported_at, 'entries carry a timestamp');
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: import 2 files');
+    const state = runOk(dir, ['state']);
+    assert.deepStrictEqual(state.imports, [{ path: 'imports/my-app-idea.md' }, { path: 'imports/my-app-idea-2.md' }]);
+  });
+
+  it('import fails whole with missing_imports so the flow can re-prompt', () => {
+    fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
+    const res = runFail(dir, ['import', 'real.md', 'ghost.md']);
+    assert.deepStrictEqual(res.missing_imports, ['ghost.md']);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'nothing landed');
+  });
+
+  it('commit --roadmap sweeps the roadmap dir + project manifest, nothing else', () => {
+    runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Session\n')]);
+    fs.appendFileSync(path.join(dir, '.workflows', '.roadmap', 'sessions', 'session-001.md'), '\nMore exploration.\n');
+    fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
+    const res = JSON.parse(execFileSync('node', [ENGINE, 'commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001'], { cwd: dir, encoding: 'utf8' }).trim());
+    assert.ok(res.committed);
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: exploration notes — session-001');
+    assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
+    const clean = JSON.parse(execFileSync('node', [ENGINE, 'commit', '--roadmap', '-m', 'nothing'], { cwd: dir, encoding: 'utf8' }).trim());
+    assert.strictEqual(clean.committed, null);
+  });
+});
+
 describe('engine CLI: roadmap state — lifecycle by join', () => {
   let dir;
   beforeEach(() => { dir = setupGitFixture(); });
@@ -524,6 +608,10 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
       horizons: [],
       items: [],
       totals: { items: 0, waiting: 0, in_flight: 0, shipped: 0, orphaned: 0 },
+      active_session: null,
+      session_logs: [],
+      next_session_number: 1,
+      imports: [],
     });
   });
 

@@ -39,6 +39,7 @@ const { openDiscoverySession, closeDiscoverySession } = require('./domain/discov
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const roadmap = require('./domain/roadmap.cjs');
+const roadmapSession = require('./domain/roadmap-session.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -177,6 +178,9 @@ Commands:
   roadmap bind <name> --topic <topic>
   roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]
   roadmap flag <name>
+  roadmap session open --session-log-file <path>
+  roadmap session close -m <message>
+  roadmap import <path> [<path> …]
   roadmap horizon add <name> [--position <n>]
   roadmap horizon rename <old> <new>
   roadmap horizon reorder <name> [<name> …]   (the complete order)
@@ -192,6 +196,7 @@ Commands:
   agent incorporate <work-unit> <phase> <topic> <id>
   commit <work-unit> -m <message> [--plan <topic>]
   commit --inbox -m <message>
+  commit --roadmap -m <message>
   commit --workflows -m <message>
   render resume-gate <wu.phase.topic> [--triage N] [--variant plan|review|scoping|session]  (session: bare <wu>)
   render task-list   <wu.planning.topic> --file <payload.json>
@@ -849,6 +854,37 @@ function runRoadmap(argv) {
       respond(roadmap.roadmapState(cwd));
       return;
     }
+    if (command === 'session') {
+      const [sub, ...srest] = rest;
+      if (sub === 'open') {
+        /** @type {string|null} */ let sessionLogFile = null;
+        for (let i = 0; i < srest.length; i++) {
+          if (srest[i] === '--session-log-file') sessionLogFile = srest[++i];
+          else throw new Error(`unexpected argument "${srest[i]}"`);
+        }
+        if (!sessionLogFile) throw new Error('Usage: engine roadmap session open --session-log-file <path>');
+        respond(roadmapSession.openRoadmapSession(cwd, { sessionLogFile }));
+        return;
+      }
+      if (sub === 'close') {
+        /** @type {string|null} */ let message = null;
+        for (let i = 0; i < srest.length; i++) {
+          if (srest[i] === '-m' || srest[i] === '--message') message = srest[++i];
+          else throw new Error(`unexpected argument "${srest[i]}"`);
+        }
+        if (!message) throw new Error('Usage: engine roadmap session close -m <message>');
+        respond(roadmapSession.closeRoadmapSession(cwd, { message }));
+        return;
+      }
+      throw new Error('Usage: engine roadmap session <open|close> …');
+    }
+    if (command === 'import') {
+      if (rest.length === 0 || rest.some((a) => a.startsWith('--'))) {
+        throw new Error('Usage: engine roadmap import <path> [<path> …]');
+      }
+      respond(roadmapSession.importRoadmapFiles(cwd, rest));
+      return;
+    }
     if (command === 'horizon') {
       const [sub, ...hrest] = rest;
       const { opts, positional } = parseArgs(hrest);
@@ -1117,6 +1153,7 @@ function runCommit(argv) {
     /** @type {string|null} */ let topicSpec = null;
     let inbox = false;
     let workflows = false;
+    let roadmapScope = false;
     let kb = false;
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i];
@@ -1126,14 +1163,15 @@ function runCommit(argv) {
       else if (a === '--kb') kb = true;
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
+      else if (a === '--roadmap') roadmapScope = true;
       else if (workUnit === null) workUnit = a;
       else throw new Error(`unexpected argument "${a}"`);
     }
-    const scopeCount = [inbox, workflows, workUnit !== null].filter(Boolean).length;
+    const scopeCount = [inbox, workflows, roadmapScope, workUnit !== null].filter(Boolean).length;
     if (!message || scopeCount !== 1 || (plan !== null && workUnit === null) || plan === '' || plan === undefined ||
         (topicSpec !== null && workUnit === null) || topicSpec === '' || topicSpec === undefined ||
         (topicSpec !== null && plan !== null) || (kb && topicSpec === null)) {
-      throw new Error('Usage: engine commit <work-unit> -m <message> [--plan <topic> | --topic <phase>/<topic> [--kb]] | engine commit --inbox -m <message> | engine commit --workflows -m <message>');
+      throw new Error('Usage: engine commit <work-unit> -m <message> [--plan <topic> | --topic <phase>/<topic> [--kb]] | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message>');
     }
     const cwd = process.cwd();
     /** @type {string|string[]} */ let scope;
@@ -1141,6 +1179,15 @@ function runCommit(argv) {
       scope = '.workflows';
     } else if (inbox) {
       scope = '.workflows/.inbox';
+    } else if (roadmapScope) {
+      // The product session's cadence commit: the roadmap dir (sessions,
+      // imports) plus the project manifest (the roadmap node lives there).
+      const specs = stageableSpecs(cwd, ['.workflows/.roadmap', '.workflows/manifest.json']);
+      if (specs.length === 0) {
+        respond({ committed: null, note: 'nothing to commit' });
+        return;
+      }
+      scope = specs;
     } else {
       const wu = /** @type {string} */ (workUnit);
       if (wu === '' || wu.includes('/') || wu.includes('..')) throw new Error(`invalid work unit name "${wu}"`);

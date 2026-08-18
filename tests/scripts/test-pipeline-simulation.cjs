@@ -1050,11 +1050,20 @@ describe('pipeline simulation', () => {
   });
 
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
+    // The genesis conversation: a product-road session opens before any item
+    // or work unit exists, its cadence commit is --roadmap, and imports land
+    // at the product altitude.
+    const roadmapDraft = sim.write('.workflows/.cache/roadmap-draft.md', '# Roadmap Session 001\n\nExploration.\n');
+    sim.run(['roadmap', 'session', 'open', '--session-log-file', roadmapDraft]);
+    const bridgeDoc = sim.write('app-idea.md', '# The idea, shaped outside\n');
+    sim.run(['roadmap', 'import', bridgeDoc]);
+    sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
+
     // Born lazily: the first park creates the node and its horizon — no
     // genesis ceremony, no prior state.
     sim.run(['roadmap', 'add', 'loyalty', '--horizon', 'v1',
       '--summary', 'repeat-customer rewards', '--origin', 'park:mvp',
-      '--source', 'mvp/discovery/sessions/session-001.md']);
+      '--source', '.roadmap/sessions/session-001.md']);
 
     // The harvest's batch form: one transaction, horizons JIT in entry order.
     const items = sim.write('.workflows/.cache/roadmap-items.json', [
@@ -1075,6 +1084,15 @@ describe('pipeline simulation', () => {
     sim.refuses(['roadmap', 'horizon', 'remove', 'v2'], /holds 1 item/);
     sim.run(['roadmap', 'remove', 'white-label']);
     sim.run(['roadmap', 'horizon', 'remove', 'v2']);
+
+    // The harvest closes the session: marker cleared, log indexed, one
+    // commit covering the session's dirt.
+    const closed = sim.run(['roadmap', 'session', 'close', '-m', 'roadmap: session 001 — horizons sorted']);
+    assert.strictEqual(closed.session, '001');
+    state = sim.run(['roadmap', 'state']);
+    assert.strictEqual(state.active_session, null);
+    assert.strictEqual(state.next_session_number, 2);
+    assert.deepStrictEqual(state.imports, [{ path: 'imports/app-idea.md' }]);
 
     // The pull is the commitment point: the join flips the derived state,
     // and the remainder is named at the moment of choice.

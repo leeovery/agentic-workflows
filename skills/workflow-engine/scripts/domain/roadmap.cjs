@@ -26,6 +26,8 @@
 // ceremony (decision 10).
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
+const path = require('path');
 const {
   readProjectManifest,
   writeProjectManifestAtomic,
@@ -36,6 +38,7 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+const { nextSessionNumber } = require('./discovery-session.cjs');
 
 // The one pathspec every roadmap mutation commits — the project manifest.
 const PROJECT_MANIFEST_SPEC = '.workflows/manifest.json';
@@ -209,12 +212,42 @@ function deriveItemState(cwd, item) {
  * `{exists: false}` with empty collections, the never-born state the JIT
  * birth keys on. Items come back horizon-ordered (list order, then insertion
  * order within a horizon; items naming an unknown horizon trail last so a
- * hand-edited manifest still renders).
+ * hand-edited manifest still renders). Session material rides along:
+ * `active_session` (the marker, or null), `session_logs` (number + path,
+ * ascending, from disk), `next_session_number`, and the `imports` entries —
+ * a session can exist before any item does (the genesis conversation), so
+ * these are read even when the node itself is absent.
  * @param {string} cwd
- * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}}}
+ * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}, active_session: string|null, session_logs: {number: number, path: string}[], next_session_number: number, imports: {path: string}[]}}
  */
 function roadmapState(cwd) {
-  const empty = { exists: false, horizons: /** @type {string[]} */ ([]), items: /** @type {RoadmapItemRow[]} */ ([]), totals: { items: 0, waiting: 0, in_flight: 0, shipped: 0, orphaned: 0 } };
+  const sessionsDir = path.join(cwd, '.workflows', '.roadmap', 'sessions');
+  /** @type {{number: number, path: string}[]} */
+  let sessionLogs = [];
+  try {
+    sessionLogs = fs.readdirSync(sessionsDir)
+      .filter((f) => /^session-\d+\.md$/.test(f))
+      .sort()
+      .map((f) => ({
+        number: parseInt(/** @type {RegExpMatchArray} */ (f.match(/^session-(\d+)\.md$/))[1], 10),
+        path: path.posix.join('.workflows', '.roadmap', 'sessions', f),
+      }));
+  } catch {
+    sessionLogs = [];
+  }
+  const sessionBase = {
+    session_logs: sessionLogs,
+    next_session_number: nextSessionNumber(sessionsDir),
+  };
+  const empty = {
+    exists: false,
+    horizons: /** @type {string[]} */ ([]),
+    items: /** @type {RoadmapItemRow[]} */ ([]),
+    totals: { items: 0, waiting: 0, in_flight: 0, shipped: 0, orphaned: 0 },
+    active_session: /** @type {string|null} */ (null),
+    ...sessionBase,
+    imports: /** @type {{path: string}[]} */ ([]),
+  };
   /** @type {Record<string, any>} */
   let manifest = {};
   try {
@@ -224,6 +257,12 @@ function roadmapState(cwd) {
   }
   const roadmap = manifest.roadmap;
   if (!roadmap || typeof roadmap !== 'object' || Array.isArray(roadmap)) return empty;
+  const activeSession = typeof roadmap.active_session === 'string' && roadmap.active_session !== ''
+    ? roadmap.active_session
+    : null;
+  const importEntries = Array.isArray(roadmap.imports)
+    ? roadmap.imports.filter((/** @type {*} */ e) => e && typeof e.path === 'string').map((/** @type {*} */ e) => ({ path: e.path }))
+    : [];
   const horizons = Array.isArray(roadmap.horizons) ? roadmap.horizons.filter((/** @type {*} */ h) => typeof h === 'string') : [];
   const itemsObj = roadmap.items && typeof roadmap.items === 'object' && !Array.isArray(roadmap.items) ? roadmap.items : {};
 
@@ -259,7 +298,7 @@ function roadmapState(cwd) {
     else if (row.state === 'shipped') totals.shipped++;
     else totals.orphaned++;
   }
-  return { exists: true, horizons, items, totals };
+  return { exists: true, horizons, items, totals, active_session: activeSession, ...sessionBase, imports: importEntries };
 }
 
 /**

@@ -314,4 +314,4 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   return result;
 }
 
-module.exports = { createWorkUnit, dedupe, assertLegalWorkUnitName };
+module.exports = { createWorkUnit, dedupe, normaliseBasename, assertLegalWorkUnitName };
