@@ -49,8 +49,9 @@ The prose should have taken this path:
     adapter
 13. the writer records the created task in planning.md — one row
     appended to Phase 1's existing #### Tasks table — and does not
-    touch phase-1-tasks.md, whatever its drifted contents suggest
-    about where later tasks go. It records task_map.pay-1-4 and, the
+    write phase-1-tasks.md, whatever its drifted contents suggest
+    about where later tasks go (reading it is not a violation; the
+    file ending changed is). It records task_map.pay-1-4 and, the
     plan's external_id being unset, sets it to the topic name per the
     format. No graph adapter mechanics run — the staged task carried
     no priority and no depends_on
