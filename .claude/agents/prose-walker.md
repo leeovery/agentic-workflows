@@ -100,6 +100,13 @@ any harness substitutions. Follow it exactly.
   as a live invocation would have loaded it. Expected, not a
   `DEVIATION`, no marker. Where the task says to stop at the handoff,
   stop there.
+- **Crossing an agent boundary is the same, when nothing substitutes.**
+  Where the prose dispatches an agent and an armed substitution names
+  that moment, the stub fires — `SUBSTITUTED:`, as ever. Where none
+  does, there is no Task tool here either: read the named agent's file
+  under `.claude/agents/` and follow it with the inputs the prose
+  passes, exactly as the dispatched agent would have received them.
+  Expected, not a `DEVIATION`, no marker.
 - **A report-shaped `.md` write may be refused.** The harness blocks
   subagents writing report-looking `.md` files. Where the prose or an
   armed substitution calls for one, write the same path with a `.txt`
