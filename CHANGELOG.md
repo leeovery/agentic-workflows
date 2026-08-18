@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-08-18
+
+✨ Added
+
+- The product roadmap — a project-level layer above work units for holding product conversations, staging capabilities into user-named horizons, and pulling slices into delivery as fenced epics or features.
+- Discovery now recognises product-altitude conversations ("lay out the next few months") and routes them to the roadmap instead of forcing a work unit into existence.
+- A park valve lets any epic discovery session or discussion defer a surfaced capability straight to the roadmap with a stated horizon (`"that's a v2 thing"`), instead of only the inbox.
+- A recognition pass at the shaping gate offers to pull a matching waiting roadmap item, or read in a matching inbox capture, instead of letting a fresh work unit twin an existing record.
+- The `workflow-start` menu and empty-state screen gain a roadmap section and an `r/roadmap` row, including a dedicated "harvested but nothing pulled yet" state.
+- The knowledge base now indexes product-roadmap session logs and imports, gradable and queryable like discovery session logs.
+
+🔧 Changed
+
+- Every remaining static menu across discovery and discussion is now engine-rendered rather than hand-authored in prose, closing out the "static menus stay in prose" carve-out.
+- Cancelling a work unit or topic that holds a pulled roadmap item now reverts that item back to waiting instead of leaving a dangling join; absorbing a feature into an epic re-aims its joins instead of orphaning them.
+- Report writing now leads with the condition before the fact ("If X, then Y") for easier scanning, and prose voice guidance now explicitly bans minimizing ("just", "simply") and marketing inflation ("powerful", "seamless").
+
 ## [0.6.70] - 2026-08-17
 
 ✨ Added
