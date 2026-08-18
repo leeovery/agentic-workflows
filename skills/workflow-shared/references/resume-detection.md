@@ -20,7 +20,7 @@ Emit each returned section verbatim at its marked instruction — the triage war
 
 #### If `continue`
 
-→ Return to caller for **{continue_step}**.
+→ Return to caller for **{continue_step}**. The steps before it are the fresh path's — the artifact's existence means they already ran.
 
 #### If `restart`
 
