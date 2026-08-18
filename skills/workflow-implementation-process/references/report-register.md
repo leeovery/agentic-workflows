@@ -18,6 +18,7 @@ Every sentence in a report block follows these:
 - **No narrative framing in sentences.** No "worth noting", "on the way", "three things". A fact sits under its section label — the fixed section labels are vocabulary, not framing.
 - **Labeled sections; lists for parallel facts.** Enumerations go vertical. A section with nothing to say is omitted, never padded.
 - **Cause before effect, both explicit.** "The preview rebuilds its DOM after each structural edit. That rebuild destroyed the browser's undo stack."
+- **Condition first.** A fact that holds only in a circumstance opens with the circumstance, so the reader skips what does not apply: "If the input exceeds 1000 rows, the sweep re-scans", never the reverse.
 - **Numbers stay exact.** Measurements, counts, and versions appear as measured, with their conditions.
 
 The audience is an engineer with full engineering fluency who knows the product but not this codebase — nothing dumbed down, nothing assumed. The lens sets the naming: the task brief, findings summary, and product summary translate codebase-internal names into what they do; the technical retell and the show-me diagrams use real names with `file:line` anchors.
