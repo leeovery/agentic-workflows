@@ -42,6 +42,8 @@ When creating any new `.md` file with the Write tool, write it to the same path 
 
 ## Record in the Planning File
 
+The planning file is the live structure record — write it on every run, regardless of what the project's existing artifacts suggest. `phase-{N}-tasks.md` is owned by the planning phase and is never written here.
+
 Record the created tasks in the planning file (path provided in inputs):
 
 - **New phase** (label mode, or a `new phase "{label}"` placement): phase heading `### Phase {N}: {phase_label}` — the gate already approved these tasks; the plan carries no approval markers. Phase goal: `Address findings from {phase_label}.` in label mode, or `Ad hoc additions.` for a per-task new phase. Task table under a `#### Tasks` heading, columns Internal ID, Name, and Edge Cases
