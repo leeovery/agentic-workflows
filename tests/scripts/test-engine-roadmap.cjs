@@ -531,10 +531,14 @@ describe('engine CLI: roadmap sessions and imports', () => {
     return name;
   }
 
-  it('open installs the draft as session-001, sets the marker, JIT-births the node — no commit', () => {
+  it('open installs the draft as session-001, resolves {NNN}, sets the marker, JIT-births the node — no commit', () => {
     const head = git(dir, ['rev-parse', 'HEAD']).trim();
-    const res = runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Roadmap Session 001\n')]);
+    const res = runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Roadmap Session {NNN}\n')]);
     assert.strictEqual(res.session, '001');
+    assert.strictEqual(
+      fs.readFileSync(path.join(dir, '.workflows', '.roadmap', 'sessions', 'session-001.md'), 'utf8'),
+      '# Roadmap Session 001\n',
+      'the template-literal {NNN} resolves to the allocated number at install');
     assert.strictEqual(res.path, '.workflows/.roadmap/sessions/session-001.md');
     assert.strictEqual(fs.existsSync(path.join(dir, 'draft.md')), false, 'draft consumed (moved)');
     assert.strictEqual(readProject(dir).roadmap.active_session, '001');
