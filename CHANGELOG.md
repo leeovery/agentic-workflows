@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-08-18
+
+🐛 Fixed
+- Discovery and roadmap session logs now get their real session number written into the file header instead of a literal `{NNN}` placeholder.
+- Ad hoc task writes to planning files no longer get skipped when the project's existing artifacts made it look unnecessary — the record is now written on every run.
+- New task tables no longer carry a stray leftover `status: draft` line.
+
+🔧 Changed
+- Background-agent findings that need a decision now open as a short stated position with one reason, rather than a scripted three-beat case, and the conversation carries the depth from there.
+- Roadmap harvest now splits a narrated multi-step launch into its separate pullable capabilities instead of bundling them into one roadmap item.
+
 ## [0.7.0] - 2026-08-18
 
 ✨ Added
