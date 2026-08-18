@@ -242,3 +242,28 @@ describe('knowledge bulk discovery — baseline without work units', () => {
     ]);
   });
 });
+
+describe('deriveIdentity: the roadmap carve-out', () => {
+  const { deriveIdentity, UserError } = require('../../src/knowledge/index');
+
+  it('derives session and import identities under the reserved pseudo work-unit', () => {
+    assert.deepStrictEqual(deriveIdentity('.workflows/.roadmap/sessions/session-001.md'),
+      { workUnit: 'roadmap', phase: 'roadmap', topic: 'session-001' });
+    assert.deepStrictEqual(deriveIdentity('.workflows/.roadmap/imports/app-idea.md'),
+      { workUnit: 'roadmap', phase: 'imports', topic: 'app-idea' });
+  });
+
+  it('refuses unexpected structure and dotted import names loudly', () => {
+    assert.throws(() => deriveIdentity('.workflows/.roadmap/notes.md'),
+      (err) => err instanceof UserError && /Unexpected roadmap path structure/.test(err.message));
+    assert.throws(() => deriveIdentity('.workflows/.roadmap/sessions/nested/session-001.md'),
+      (err) => err instanceof UserError && /Unexpected roadmap path structure/.test(err.message));
+    assert.throws(() => deriveIdentity('.workflows/.roadmap/imports/.hidden.md'),
+      (err) => err instanceof UserError && /Invalid topic name/.test(err.message));
+  });
+
+  it('never captures a lookalike directory — .roadmapX is an ordinary bad path', () => {
+    assert.throws(() => deriveIdentity('.workflows/.roadmapX/sessions/session-001.md'),
+      (err) => err instanceof UserError && !/roadmap path structure/.test(err.message));
+  });
+});

@@ -37,11 +37,9 @@ const {
   withWorkUnitLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
-
-// The one pathspec every roadmap mutation commits — the project manifest.
-const PROJECT_MANIFEST_SPEC = '.workflows/manifest.json';
+const { TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 // Item provenance vocabulary (design decision 19): how the item landed.
 // `harvest` (a product/epic harvest sort), `park:{origin}` (the mid-flow
@@ -99,7 +97,7 @@ function validatePosition(position, max) {
  * a scalar `roadmap`, an object `horizons`, an array `items` all name their
  * corruption instead of being silently rebuilt.
  * @param {Record<string, any>} manifest
- * @returns {{horizons: string[], items: Record<string, any>}}
+ * @returns {{horizons: string[], items: Record<string, any>, active_session?: string, imports?: Record<string, any>[]}}
  */
 function ensureRoadmap(manifest) {
   const roadmap = ensureContainer(manifest, 'roadmap', 'roadmap');
@@ -108,7 +106,7 @@ function ensureRoadmap(manifest) {
     throw new Error('roadmap.horizons is malformed — expected an array of horizon names');
   }
   ensureContainer(roadmap, 'items', 'roadmap.items');
-  return /** @type {{horizons: string[], items: Record<string, any>}} */ (roadmap);
+  return /** @type {{horizons: string[], items: Record<string, any>, active_session?: string, imports?: Record<string, any>[]}} */ (roadmap);
 }
 
 /**
@@ -170,8 +168,8 @@ function refuseJoined(item, name, verbPhrase) {
  * stored. `waiting` is the absence of a join; a join names a work unit whose
  * status answers the rest. `orphaned` is the honest fallback for a join the
  * revert should have cleared (a missing or cancelled unit) — surfaced, never
- * papered over. Topic-level nuance (a pull-forward's `pulled_to.topic`)
- * stays work-unit-grained here until the pull lands.
+ * papered over. `pulled_to.topic` rides along for display; lifecycle
+ * derives from the unit alone.
  * @param {string} cwd
  * @param {Record<string, any>} item
  * @returns {{state: 'waiting'|'in-flight'|'shipped'|'orphaned', work_unit?: string, topic?: string}}
@@ -204,6 +202,39 @@ function deriveItemState(cwd, item) {
  * @property {'waiting'|'in-flight'|'shipped'|'orphaned'} state
  * @property {string} [work_unit]  the join's unit, when joined
  * @property {string} [topic]      the join's topic, when a pull-forward set one
+ */
+
+/**
+ * @typedef {object} RoadmapOpResult  one mutation's response — `op` always;
+ *   the rest per-op, plus the shared commit stamp.
+ * @property {string} op
+ * @property {string} [name]
+ * @property {string} [horizon]
+ * @property {string} [origin]
+ * @property {string} [state]
+ * @property {string[]} [horizons]
+ * @property {number} [item_total]
+ * @property {boolean} [horizon_created]
+ * @property {{name: string, horizon: string}[]} [added]
+ * @property {string[]} [horizons_created]
+ * @property {string} [summary]
+ * @property {string} [renamed_from]
+ * @property {string[]} [preserved_fields]
+ * @property {string} [moved_from]
+ * @property {number} [items_updated]
+ * @property {string} [merged]
+ * @property {string} [into]
+ * @property {number} [items_moved]
+ * @property {string} [new_horizon]
+ * @property {string[]} [pulled]
+ * @property {Record<string, number>} [remainder]
+ * @property {string} [work_unit]
+ * @property {string} [topic]
+ * @property {string} [routing]
+ * @property {{phase: string, topic: string}[]} [flagged]
+ * @property {string|null} [committed]  short sha, or null when nothing staged
+ * @property {string} [note]            set when committed is null
+ * @property {string[]} [warnings]      commit-tail failures
  */
 
 /**
@@ -321,8 +352,8 @@ function transactProject(cwd, fn) {
  * Tail-commit the project manifest and stamp the result — the shared close
  * of every mutation. The state write has landed; a git failure degrades to
  * a warning and a pending note, never a failed verb.
- * @param {string} cwd @param {Record<string, any>} result @param {string} message
- * @returns {Record<string, any>}
+ * @param {string} cwd @param {RoadmapOpResult} result @param {string} message
+ * @returns {RoadmapOpResult}
  */
 function commitRoadmap(cwd, result, message) {
   /** @type {string[]} */
@@ -359,11 +390,12 @@ function ensureHorizon(roadmap, horizon, position) {
  * @param {string} cwd
  * @param {string} name
  * @param {{horizon?: string, summary?: string, origin?: string, sources?: string[]}} [fields]
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function addRoadmapItem(cwd, name, { horizon, summary, origin = 'harvest', sources = [] } = {}) {
   validateName('item', name);
   if (typeof horizon !== 'string' || horizon === '') throw new Error('--horizon is required');
+  validateName('horizon', horizon);
   validateSummary(summary);
   validateOrigin(origin);
   validateSources(sources);
@@ -378,7 +410,7 @@ function addRoadmapItem(cwd, name, { horizon, summary, origin = 'harvest', sourc
     const item = { horizon, summary, origin };
     if (sources.length > 0) item.sources = sources;
     roadmap.items[name] = item;
-    /** @type {Record<string, any>} */
+    /** @type {RoadmapOpResult} */
     const out = { op: 'add', name, horizon, origin, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length };
     if (horizonCreated) out.horizon_created = true;
     return out;
@@ -393,7 +425,7 @@ function addRoadmapItem(cwd, name, { horizon, summary, origin = 'harvest', sourc
  * batch lands under one commit.
  * @param {string} cwd
  * @param {{name: string, horizon: string, summary: string, origin?: string, sources?: string[]}[]} entries
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function addRoadmapItemsBatch(cwd, entries) {
   if (!Array.isArray(entries) || entries.length === 0) {
@@ -405,6 +437,7 @@ function addRoadmapItemsBatch(cwd, entries) {
     try {
       validateName('item', e.name);
       if (typeof e.horizon !== 'string' || e.horizon === '') throw new Error('"horizon" is required');
+      validateName('horizon', e.horizon);
       validateSummary(e.summary);
       if (e.origin !== undefined) validateOrigin(e.origin);
       if (e.sources !== undefined) validateSources(e.sources);
@@ -447,7 +480,7 @@ function addRoadmapItemsBatch(cwd, entries) {
  * Set an item's summary — allowed at any join state (on a pulled item the
  * row is a window; the edit is cosmetic). Self-commits.
  * @param {string} cwd @param {string} name @param {{summary?: string}} [fields]
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function editRoadmapItem(cwd, name, { summary } = {}) {
   validateSummary(summary);
@@ -465,7 +498,7 @@ function editRoadmapItem(cwd, name, { summary } = {}) {
  * relabels the capability, it never touches delivery). Keeps the item's
  * insertion position. Self-commits.
  * @param {string} cwd @param {string} oldName @param {string} newName
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function renameRoadmapItem(cwd, oldName, newName) {
   validateName('item', newName);
@@ -499,7 +532,7 @@ function renameRoadmapItem(cwd, oldName, newName) {
  * on a pulled item — that is "stop building this", the epic's decision.
  * Self-commits.
  * @param {string} cwd @param {string} name @param {string} horizon
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function moveRoadmapItem(cwd, name, horizon) {
   if (typeof horizon !== 'string' || horizon === '') throw new Error('--horizon is required');
@@ -511,7 +544,7 @@ function moveRoadmapItem(cwd, name, horizon) {
     const horizonCreated = ensureHorizon(roadmap, horizon);
     const from = item.horizon;
     item.horizon = horizon;
-    /** @type {Record<string, any>} */
+    /** @type {RoadmapOpResult} */
     const out = { op: 'move', name, horizon, moved_from: from, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length };
     if (horizonCreated) out.horizon_created = true;
     return out;
@@ -524,7 +557,7 @@ function moveRoadmapItem(cwd, name, horizon) {
  * path; its revert returns the item first). No dismissed list — git history
  * and the session logs keep the story. Self-commits.
  * @param {string} cwd @param {string} name
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function removeRoadmapItem(cwd, name) {
   const result = transactProject(cwd, (manifest) => {
@@ -540,7 +573,7 @@ function removeRoadmapItem(cwd, name) {
 /**
  * Add a horizon at a position (1-based; default appends). Self-commits.
  * @param {string} cwd @param {string} name @param {{position?: number}} [opts]
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function addHorizon(cwd, name, { position } = {}) {
   validateName('horizon', name);
@@ -560,7 +593,7 @@ function addHorizon(cwd, name, { position } = {}) {
  * field — pulled members included: relabeling the release is presentational,
  * it never un-commits work. Self-commits.
  * @param {string} cwd @param {string} oldName @param {string} newName
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function renameHorizon(cwd, oldName, newName) {
   validateName('horizon', newName);
@@ -588,7 +621,7 @@ function renameHorizon(cwd, oldName, newName) {
  * current list (position carries the semantics, so a partial order is
  * ambiguous and refused). Self-commits.
  * @param {string} cwd @param {string[]} order
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function reorderHorizons(cwd, order) {
   if (!Array.isArray(order) || order.length === 0) {
@@ -612,7 +645,7 @@ function reorderHorizons(cwd, order) {
  * included — horizon restructuring is presentational for joins), the source
  * label is dropped. Self-commits.
  * @param {string} cwd @param {string} from @param {string} into
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function mergeHorizons(cwd, from, into) {
   if (from === into) throw new Error('merge: the two horizons must differ');
@@ -640,7 +673,7 @@ function mergeHorizons(cwd, from, into) {
  * gathers strays. Pulled members move too (presentational). Self-commits.
  * @param {string} cwd @param {string} name
  * @param {{newName?: string, items?: string[], position?: number}} [opts]
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function splitHorizon(cwd, name, { newName, items, position } = {}) {
   if (typeof newName !== 'string' || newName === '') throw new Error('--new is required');
@@ -680,7 +713,7 @@ function splitHorizon(cwd, name, { newName, items, position } = {}) {
  * Remove an empty horizon — one with members refuses and points at merge/
  * move. Self-commits.
  * @param {string} cwd @param {string} name
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function removeHorizon(cwd, name) {
   const result = transactProject(cwd, (manifest) => {
@@ -707,7 +740,7 @@ function removeHorizon(cwd, name) {
  * joins — nothing is mirrored onto the work unit (one home per fact).
  * Self-commits.
  * @param {string} cwd @param {string[]} names @param {{into?: string}} [opts]
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function pullItems(cwd, names, { into } = {}) {
   if (!Array.isArray(names) || names.length === 0) {
@@ -760,7 +793,7 @@ function pullItems(cwd, names, { into } = {}) {
  * the joined unit's discovery map. Re-binding updates the topic (a split or
  * rename at the harvest re-aims the join). Self-commits.
  * @param {string} cwd @param {string} name @param {{topic?: string}} [opts]
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function bindItem(cwd, name, { topic } = {}) {
   if (typeof topic !== 'string' || topic === '') throw new Error('--topic is required');
@@ -798,7 +831,7 @@ function bindItem(cwd, name, { topic } = {}) {
  * topic (pull + bind recovers), never a dangling join.
  * @param {string} cwd @param {string} name
  * @param {{into?: string, routing?: string, forceDismissed?: boolean}} [opts]
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = {}) {
   if (typeof into !== 'string' || into === '') throw new Error('--into is required');
@@ -836,7 +869,7 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
     forceDismissed,
   });
 
-  /** @type {Record<string, any>} */
+  /** @type {RoadmapOpResult} */
   const result = transactProject(cwd, (manifest) => {
     const roadmap = requireRoadmap(manifest);
     const item = roadmapItem(roadmap, name);
@@ -891,6 +924,38 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
 }
 
 /**
+ * Re-aim every join naming `fromUnit` at `{work_unit: into, topic}` —
+ * absorb's hop: an absorbed feature's material continues as an epic topic,
+ * so its items' delivery follows it there (the un-pull is cancel's move,
+ * never absorb's — the work did not stop, it moved). Runs under the project
+ * lock, **no commit** — the calling transaction stages the project manifest
+ * alongside its own write. Returns the re-aimed names (empty when nothing
+ * was joined — a no-op writes nothing).
+ * @param {string} cwd @param {string} fromUnit @param {{into: string, topic: string}} opts
+ * @returns {string[]}
+ */
+function reaimJoins(cwd, fromUnit, { into, topic }) {
+  return withProjectLock(cwd, () => {
+    const manifest = readProjectManifest(cwd);
+    const rm = manifest.roadmap;
+    if (!rm || typeof rm !== 'object' || Array.isArray(rm) || !rm.items || typeof rm.items !== 'object') {
+      return [];
+    }
+    /** @type {string[]} */
+    const reaimed = [];
+    for (const [name, item] of Object.entries(rm.items)) {
+      if (!item || typeof item !== 'object') continue;
+      const join = itemJoin(/** @type {Record<string, any>} */ (item));
+      if (!join || join.work_unit !== fromUnit) continue;
+      /** @type {Record<string, any>} */ (item).pulled_to = { work_unit: into, topic };
+      reaimed.push(name);
+    }
+    if (reaimed.length > 0) writeProjectManifestAtomic(cwd, manifest);
+    return reaimed;
+  });
+}
+
+/**
  * Flag the epic side of a join after a product session materially deepened
  * the item's ground (design decision 25b): `reconcile_needed: "roadmap"` on
  * the joined topic's live research/discussion items — `flagDownstream`
@@ -900,7 +965,7 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
  * A join with no topic (or no live phase item) flags nothing — the epic
  * reads the record fresh at its harvest. Self-commits (the epic's manifest).
  * @param {string} cwd @param {string} name
- * @returns {object}
+ * @returns {RoadmapOpResult}
  */
 function flagJoined(cwd, name) {
   const project = readProjectManifest(cwd);
@@ -920,7 +985,7 @@ function flagJoined(cwd, name) {
         const items = (manifest.phases && manifest.phases[phase] && manifest.phases[phase].items) || {};
         const phaseItem = items[topic];
         if (!phaseItem || typeof phaseItem !== 'object') continue;
-        if (['cancelled', 'superseded', 'promoted'].includes(phaseItem.status)) continue;
+        if (TERMINAL_STATUSES.includes(phaseItem.status)) continue;
         if (phaseItem.reconcile_needed !== undefined) continue;
         phaseItem.reconcile_needed = 'roadmap';
         flagged.push({ phase, topic });
@@ -929,7 +994,7 @@ function flagJoined(cwd, name) {
     });
   }
 
-  /** @type {Record<string, any>} */
+  /** @type {RoadmapOpResult} */
   const result = { op: 'flag', name, work_unit: join.work_unit, flagged };
   if (flagged.length === 0) {
     result.note = 'no live phase item to flag — the epic reads the record fresh at its harvest';
@@ -947,7 +1012,7 @@ function flagJoined(cwd, name) {
 
 module.exports = {
   roadmapState,
-  deriveItemState,
+  ensureRoadmap,
   addRoadmapItem,
   addRoadmapItemsBatch,
   editRoadmapItem,
@@ -964,5 +1029,6 @@ module.exports = {
   bindItem,
   pullForwardItem,
   revertJoins,
+  reaimJoins,
   flagJoined,
 };

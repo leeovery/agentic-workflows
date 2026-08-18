@@ -6,7 +6,7 @@
 // this script selects which view the skill's flow needs and sections it.
 //
 //   gateway.cjs view                       → DATA + TITLE + DISPLAY + MENU home snapshot
-//   gateway.cjs pull-set                   → DATA + DISPLAY + MENU pull working set
+//   gateway.cjs pull-set                   → DATA + TITLE + DISPLAY + MENU pull working set
 //   gateway.cjs proposal --file {path}     → harvest overlay: the proposed item
 //                                            set (model-authored JSON) rendered
 //                                            over the existing roadmap
@@ -25,7 +25,9 @@ function stateLines(s) {
   const lines = [
     `exists: ${s.exists}`,
     `active_session: ${s.active_session ?? 'null'}`,
-    `next_session_number: ${s.next_session_number}`,
+    // Padded like the log's own filename — the flow interpolates this into
+    // durable source pointers, so the two spellings must never diverge.
+    `next_session_number: ${String(s.next_session_number).padStart(3, '0')}`,
     `session_count: ${s.session_logs.length}`,
     `import_count: ${s.imports.length}`,
     `horizons: ${s.horizons.join(', ') || '(none)'}`,
@@ -129,6 +131,7 @@ function proposal(...rest) {
       `horizon=${t.horizon}`,
       `exists_on_roadmap=${s.items.some((i) => i.name === t.name)}`,
       `legal_name=${!/[./]/.test(t.name)}`,
+      `legal_horizon=${!/[./]/.test(t.horizon)}`,
       `new_horizon=${!s.horizons.includes(t.horizon)}`,
     ];
     dataLines.push(`  ${t.name} ${flags.join(' ')}`);

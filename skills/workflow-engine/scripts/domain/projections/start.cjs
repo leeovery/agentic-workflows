@@ -96,7 +96,8 @@ function roadmapRows(roadmap) {
       .map(([state, label]) => [members.filter((m) => m.state === state).length, label])
       .filter(([n]) => Number(n) > 0)
       .map(([n, label]) => `${n} ${label}`);
-    return `  ${i === horizons.length - 1 ? '└─' : '├─'} ${titlecase(h)} — ${parts.join(' · ')}`;
+    // Horizon labels render as stored — the user's own release words.
+    return `  ${i === horizons.length - 1 ? '└─' : '├─'} ${h} — ${parts.join(' · ')}`;
   });
 }
 
@@ -109,7 +110,7 @@ function roadmapMenuRow(detail) {
   const label = detail.roadmap.active_session !== null
     ? 'Resume the product session — *roadmap, in progress*'
     : 'Roadmap — the product conversation, the map, or pull a slice';
-  return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/workflow-roadmap', label };
+  return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/workflow-roadmap open', label };
 }
 
 // ---------------------------------------------------------------------------
@@ -243,7 +244,7 @@ function startMenu(detail) {
 
 /**
  * The empty-state Workflow Overview: no active work, closed counts when any.
- * A project with a roadmap never renders an empty screen (design decision 21
+ * A project with a roadmap never renders an empty screen (design/product-roadmap.md decision 21
  * — the harvested-no-work state is a real state): the horizon rows stand in
  * for the missing work sections.
  * @param {StartDetail} detail
@@ -253,6 +254,10 @@ function emptyOverview(detail) {
   let out;
   if (detail.roadmap.exists && detail.roadmap.items.length > 0) {
     out = 'No work in flight.\n\nRoadmap\n' + roadmapRows(detail.roadmap).join('\n') + '\n';
+  } else if (detail.roadmap.exists && detail.roadmap.active_session !== null) {
+    // Mid-genesis: a session is open but no item has landed yet. The menu
+    // carries the resume row — "no active work" would contradict it.
+    out = 'No work in flight.\n\nA product session is open — resume it from the menu.\n';
   } else {
     out = 'No active work found.\n';
   }

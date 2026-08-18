@@ -80,11 +80,14 @@ function breakdown(totals) {
   return ' — ' + present.map(([key, label]) => `${totals[key]} ${label}`).join(' · ');
 }
 
+// Horizon labels render as stored — they are the user's own release words
+// ("MVP", "v1.5", "someday"), never recased. Item names stay titlecased,
+// matching the discovery map's display convention for topics.
 /** Horizon-grouped item trees, shared by the map and proposal views. @param {string[]} horizons @param {RoadmapItemRow[]} rows */
 function horizonTrees(horizons, rows) {
   const parts = [];
   for (const g of groupByHorizon(horizons, rows)) {
-    parts.push(titlecase(g.horizon));
+    parts.push(g.horizon);
     parts.push(renderTree(roadmapNodes(g.rows), { width: TREE_WIDTH, gap: true }));
   }
   return parts;
@@ -170,7 +173,7 @@ function roadmapPullSetView(state) {
   const lines = [];
   for (const g of groupByHorizon(state.horizons, waiting)) {
     if (lines.length) lines.push('');
-    lines.push(titlecase(g.horizon));
+    lines.push(g.horizon);
     g.rows.forEach((row, gi) => {
       rows.push({ n: rows.length + 1, name: row.name, horizon: row.horizon });
       lines.push(`  ${gi === g.rows.length - 1 ? '└─' : '├─'} ${rows.length}. ${titlecase(row.name)} — ${row.summary}`);
@@ -200,7 +203,8 @@ function roadmapPullSetView(state) {
 }
 
 /**
- * The add-to-joined-horizon routed confirm (design decision 28): a horizon
+ * The add-to-joined-horizon routed confirm (design/product-roadmap.md
+ * decision 28): a horizon
  * fully in delivery takes the strict two-way menu (into the epic / another
  * horizon — no waiting side-door into a release that is now an epic); one
  * still holding waiting members keeps the three-way (waiting beside them is
@@ -230,8 +234,8 @@ function roadmapAddGate(state, horizon) {
   options.push(promptOption('Ask', 'Talk it through first'));
 
   const question = waiting.length > 0
-    ? `"${titlecase(horizon)}" is partly in delivery. Where does this land?`
-    : `"${titlecase(horizon)}" is being built right now. Where does this land?`;
+    ? `"${horizon}" is partly in delivery. Where does this land?`
+    : `"${horizon}" is being built right now. Where does this land?`;
   return menu('', options, { question });
 }
 

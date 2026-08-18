@@ -705,8 +705,8 @@ describe('start projections: roadmap rows', () => {
     fullFixture(dir);
     writeProjectRoadmap(dir, MAP);
     const overview = startOverview(startDetail(dir));
-    assert.match(overview, /Roadmap\n  ├─ Mvp — 1 in flight · 1 waiting\n  └─ V1 — 1 waiting\n/);
-    assert.ok(!overview.includes('Someday'), 'an empty horizon renders no row');
+    assert.match(overview, /Roadmap\n  ├─ mvp — 1 in flight · 1 waiting\n  └─ v1 — 1 waiting\n/);
+    assert.ok(!overview.includes('someday —'), 'an empty horizon renders no row');
   });
 
   it('startMenu and emptyMenu carry the r/roadmap row only once the layer exists', () => {
@@ -718,7 +718,7 @@ describe('start projections: roadmap rows', () => {
     const row = m.keys.find((k) => k.action === 'open_roadmap');
     assert.ok(row, 'the layer renders its row');
     assert.strictEqual(row.key, 'r');
-    assert.strictEqual(row.route, '/workflow-roadmap');
+    assert.strictEqual(row.route, '/workflow-roadmap open');
     assert.strictEqual(row.label, 'Roadmap — the product conversation, the map, or pull a slice');
     const keys = m.keys.map((k) => k.key);
     assert.ok(keys.indexOf('r') < keys.indexOf('s'), 'the roadmap row precedes the start options');
@@ -734,9 +734,19 @@ describe('start projections: roadmap rows', () => {
     assert.strictEqual(detail.state.has_any_work, false);
     const overview = emptyOverview(detail);
     assert.match(overview, /^No work in flight\.\n\nRoadmap\n/);
-    assert.match(overview, /├─ Mvp — 1 waiting · 1 orphaned/); // no work units exist in this fixture — the join names a missing unit honestly
+    assert.match(overview, /├─ mvp — 1 waiting · 1 orphaned/); // no work units exist in this fixture — the join names a missing unit honestly
     const menu = emptyMenu(detail);
     assert.ok(menu.keys.some((k) => k.action === 'open_roadmap'));
+  });
+
+  it('the mid-genesis state — open session, zero items — never contradicts its own resume row', () => {
+    writeProjectRoadmap(dir, { horizons: [], items: {}, active_session: '001' });
+    const detail = startDetail(dir);
+    const overview = emptyOverview(detail);
+    assert.match(overview, /^No work in flight\.\n\nA product session is open — resume it from the menu\.\n/);
+    assert.ok(!overview.includes('No active work found'), 'the empty copy never renders above a resume row');
+    const row = emptyMenu(detail).keys.find((k) => k.action === 'open_roadmap');
+    assert.strictEqual(row.label, 'Resume the product session — *roadmap, in progress*');
   });
 });
 

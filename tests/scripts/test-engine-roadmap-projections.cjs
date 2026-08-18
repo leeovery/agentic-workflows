@@ -46,8 +46,8 @@ describe('roadmap projections: pull working set', () => {
     ]);
     assert.match(view.data, /waiting_count: 3/);
     assert.match(view.data, /  2  kds  mvp/);
-    assert.match(view.display, /Mvp\n  ├─ 1\. Menus — operators maintain\n  └─ 2\. Kds — orders reach the kitchen/);
-    assert.match(view.display, /V1\n  └─ 3\. Loyalty — rewards/);
+    assert.match(view.display, /mvp\n  ├─ 1\. Menus — operators maintain\n  └─ 2\. Kds — orders reach the kitchen/);
+    assert.match(view.display, /v1\n  └─ 3\. Loyalty — rewards/);
     assert.ok(!view.display.includes('Ordering'), 'joined items never offer themselves for a pull');
     assert.match(view.menu, /`1–3`/);
     assert.match(view.menu, /`b\/back`/);
@@ -69,8 +69,8 @@ describe('roadmap projections: harvest proposal', () => {
     ]);
     assert.match(out, /^Proposed Roadmap\n/);
     assert.match(out, /New this session \(2\)/);
-    const v1 = out.indexOf('V1\n', out.indexOf('New this session'));
-    const someday = out.indexOf('Someday\n');
+    const v1 = out.indexOf('v1\n', out.indexOf('New this session'));
+    const someday = out.indexOf('someday\n');
     assert.ok(v1 !== -1 && someday !== -1 && v1 < someday, 'existing horizons order first, JIT ones after');
     assert.match(out, /Already on the roadmap \(4\)/);
     assert.match(out, /placement\s+is\s+my\s+read/);

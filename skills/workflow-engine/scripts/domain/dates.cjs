@@ -10,4 +10,9 @@ function todayStamp() {
   return new Date().toISOString().slice(0, 10);
 }
 
-module.exports = { todayStamp };
+/** ISO-8601 UTC to the second (`2026-07-15T09:30:00Z`). */
+function isoNow() {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+module.exports = { todayStamp, isoNow };

@@ -39,7 +39,8 @@
 // `entry` names where the walk starts, and it may only be somewhere a
 // real session starts: `workflow-start` (the user's way in), a
 // `workflow-*-entry` skill (what the bridge's plan file invokes after a
-// context clear), or `workflow-discovery` (epic continuation). Nothing
+// context clear), `workflow-discovery` (epic continuation), or
+// `workflow-roadmap` (the product layer's own sessions). Nothing
 // else is a legitimate opening — navigation and processing skills are
 // always invoked mid-session, and a reference is never entered directly.
 //

@@ -33,6 +33,7 @@ const { purgeWorkUnitCache } = require('./cache.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { dedupe } = require('./workunit-create.cjs');
 const { addItem } = require('./discovery-map.cjs');
+const { reaimJoins } = require('./roadmap.cjs');
 
 // A feature with any of these phases has moved past discussion — absorption
 // would orphan the downstream artifacts, so the guard refuses.
@@ -48,6 +49,7 @@ const SPEC_OR_BEYOND = ['specification', 'planning', 'implementation', 'review']
  * @property {{path: string}[]} imports  moved import entries (epic-relative)
  * @property {{path: string, source: string}[]} seeds  moved seed entries (epic-relative)
  * @property {string} routing   the map item's routing (research when the feature did research, else discussion)
+ * @property {string[]} [roadmap_reaimed]  roadmap items whose joins now name the epic topic
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]    set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
@@ -286,6 +288,12 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     writeProjectManifestAtomic(cwd, projectManifest);
   });
 
+  // Roadmap joins follow the material: an item pulled into the feature is
+  // now delivered by the epic topic it became — re-aim, never orphan (the
+  // un-pull is cancel's move; this work did not stop, it moved). Its own
+  // lock hold; the project manifest already rides this transaction's commit.
+  const reaimed = reaimJoins(cwd, feature, { into, topic });
+
   fs.rmSync(path.join(cwd, '.workflows', feature), { recursive: true, force: true });
 
   // KB: drop the feature's chunks, index the moved artifacts at their epic
@@ -327,6 +335,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     committed: outcome.committed,
     warnings,
   };
+  if (reaimed.length > 0) result.roadmap_reaimed = reaimed;
   noteCommitOutcome(result, outcome);
   return result;
 }

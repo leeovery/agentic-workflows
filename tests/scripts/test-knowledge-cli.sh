@@ -1063,6 +1063,28 @@ after_real=$(run_kb query "content" --limit 100 2>&1 | grep -c '^\[discussion' |
 assert_eq "real remove actually deletes" "0" "$after_real"
 teardown_project
 
+# --- Test 38c: remove --work-unit roadmap resolves the reserved identity ---
+# The reserved pseudo work-unit short-circuits the registry lookup — a
+# regression that drops the arm surfaces here as a "no work unit" error.
+echo "Test 38c: remove --work-unit roadmap (reserved identity, no registry row)"
+setup_project
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/.roadmap/sessions"
+cat > "$TEST_ROOT/.workflows/.roadmap/sessions/session-001.md" <<'MD'
+# Roadmap Session 001
+
+## Exploration
+
+Product content about horizons and staged capabilities.
+MD
+run_kb index .workflows/.roadmap/sessions/session-001.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit roadmap 2>&1)
+assert_eq "removes the roadmap chunks by identity" "true" \
+  "$(echo "$output" | grep -qE 'Removed [1-9][0-9]* chunks for roadmap' && echo true || echo false)"
+assert_eq "never consults the work-unit registry" "false" \
+  "$(echo "$output" | grep -qi 'no work unit' && echo true || echo false)"
+teardown_project
+
 # --- Test 39: Remove chunks for a work unit + phase ---
 echo "Test 39: Remove chunks for work unit + phase"
 setup_project

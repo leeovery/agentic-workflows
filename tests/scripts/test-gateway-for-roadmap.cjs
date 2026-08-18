@@ -48,7 +48,7 @@ describe('workflow-roadmap gateway: view', () => {
     assert.match(res.stdout, /=== DATA /);
     assert.match(res.stdout, /exists: true/);
     assert.match(res.stdout, /active_session: 002/);
-    assert.match(res.stdout, /next_session_number: 3/);
+    assert.match(res.stdout, /next_session_number: 003/);
     assert.match(res.stdout, /import_count: 1/);
     assert.match(res.stdout, /ITEMS \(name {2}horizon {2}state {2}work_unit\):/);
     assert.match(res.stdout, /  ordering {2}mvp {2}in-flight {2}mvp/);
@@ -124,9 +124,9 @@ describe('workflow-roadmap gateway: proposal', () => {
     ]));
     const res = run(['proposal', '--file', 'proposed.json']);
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.match(res.stdout, /gift-cards horizon=v1 exists_on_roadmap=false legal_name=true new_horizon=false/);
-    assert.match(res.stdout, /loyalty horizon=v1 exists_on_roadmap=true legal_name=true new_horizon=false/);
-    assert.match(res.stdout, /bad\.name horizon=v2 exists_on_roadmap=false legal_name=false new_horizon=true/);
+    assert.match(res.stdout, /gift-cards horizon=v1 exists_on_roadmap=false legal_name=true legal_horizon=true new_horizon=false/);
+    assert.match(res.stdout, /loyalty horizon=v1 exists_on_roadmap=true legal_name=true legal_horizon=true new_horizon=false/);
+    assert.match(res.stdout, /bad\.name horizon=v2 exists_on_roadmap=false legal_name=false legal_horizon=true new_horizon=true/);
     assert.match(res.stdout, /=== DISPLAY[\s\S]*Proposed Roadmap/);
     assert.match(res.stdout, /Already on the roadmap \(3\)/);
   });

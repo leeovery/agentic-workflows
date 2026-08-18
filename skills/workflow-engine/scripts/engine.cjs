@@ -1185,7 +1185,7 @@ function runCommit(argv) {
     } else if (roadmapScope) {
       // The product session's cadence commit: the roadmap dir (sessions,
       // imports) plus the project manifest (the roadmap node lives there).
-      const specs = stageableSpecs(cwd, ['.workflows/.roadmap', '.workflows/manifest.json']);
+      const specs = stageableSpecs(cwd, [roadmapSession.ROADMAP_DIR, '.workflows/manifest.json']);
       if (specs.length === 0) {
         respond({ committed: null, note: 'nothing to commit' });
         return;

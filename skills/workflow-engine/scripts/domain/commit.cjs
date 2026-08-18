@@ -23,6 +23,7 @@ const { git, commitScoped, commitPathspec } = require('../kernel/git.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 
 const KB_DIR = '.workflows/.knowledge';
+const PROJECT_MANIFEST_SPEC = '.workflows/manifest.json';
 
 /**
  * The commit lock lives in the `.git` dir (like git's own transient locks) —
@@ -179,4 +180,5 @@ module.exports = {
   noteIfNothingCommitted,
   withCommitLock,
   KB_DIR,
+  PROJECT_MANIFEST_SPEC,
 };
