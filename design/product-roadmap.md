@@ -703,13 +703,19 @@ revert to waiting, sources intact (decision 25); partial-item pulls
 separate model-only skill (build plan, slice 6); KB grade —
 record-grade like discovery logs (decision 20).
 
+Settled in slice 6: product-road guidelines — a thin
+`roadmap-guidelines.md` loads discovery-guidelines cross-skill (one
+source of truth for the register) and states the altitude deltas;
+the gate tell is encoded in detection-core as discriminator step 0
+(product-altitude: no single unit of work on the table) with the
+product↔epic pivot rows; the pull's epic path re-enters discovery
+under a `pull_continuation` flag (resume-detection skips its menu,
+the session loop opens on the fenced slice).
+
 Still open:
 
 - **Recognition match fuzziness.** Name/theme matching — how eager,
   and against how much of the item/inbox text? Settles inside
   slice 7.
-- **Product-road guidelines.** Reuse discovery-guidelines with a
-  delta (no granularity rules, horizon current, park/sort moves) or
-  a sibling file? Settles inside slice 6.
 - **Multiple products per repo** — out of scope; one product per
   project assumed.

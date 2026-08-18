@@ -31,13 +31,23 @@ Make the commit move. State the read as plain prose first — bucket name folded
 
 #### If `yes`
 
+**If the committed read is the product road:**
+
+Product-altitude work creates no work unit — the roadmap owns the conversation from here. Hold any import paths surfaced during shaping as `import_paths` (the roadmap lands them).
+
+Invoke `/workflow-roadmap genesis` via the Skill tool.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
+**If the read is a work type:**
+
 The work type is committed. Set `work_type`; compile a one-line `description` from the user's framing (captured from the conversation, never silently invented). Hold any topic seeds and imports surfaced during shaping.
 
 → Return to caller.
 
 #### If `other`
 
-Take the user's call as authoritative — adjust `work_type` without re-litigating (if they describe rather than name a shape, map it via the detection core and reflect back for a quick confirm). Once a work type is settled, set `work_type` and compile the `description`.
+Take the user's call as authoritative — adjust the read without re-litigating (if they describe rather than name a shape, map it via the detection core and reflect back for a quick confirm). A settled product-road read routes exactly as `yes` does — hold `import_paths`, invoke `/workflow-roadmap genesis`, terminal. Once a work type is settled, set `work_type` and compile the `description`.
 
 → Return to caller.
 
