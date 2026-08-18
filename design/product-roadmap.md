@@ -755,7 +755,3 @@ Still open:
 
 - **Multiple products per repo** — out of scope; one product per
   project assumed.
-- **User docs** — a `docs/roadmap.md` page and a README mention are
-  owed once the stack settles; CLAUDE.md carries the system-facing
-  coverage. The review pass patched the lines the roadmap falsified in
-  the existing docs; the page itself is still owed.

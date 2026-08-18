@@ -11,6 +11,7 @@ This is the book of the system for the person about to live inside it: what will
 
 The phases in order — the journey from a rough idea to landed, reviewed code. Each page covers what happens, what you are asked, what comes out, and why it works that way.
 
+- [The product roadmap](roadmap.md) — the layer above the work unit: hold the product conversation, stage capabilities in horizons you name, and pull slices into delivery when they earn it.
 - [Discovery](discovery.md) — the universal first phase: settle what the work is, shape it, and route it into the pipeline.
 - [Research and discussion](research-and-discussion.md) — explore the space, then argue it to a decision, with background agents challenging the work live.
 - [Investigation and scoping](investigation-and-scoping.md) — the bugfix's route to root cause, and the quick-fix's one-pass shortcut.
