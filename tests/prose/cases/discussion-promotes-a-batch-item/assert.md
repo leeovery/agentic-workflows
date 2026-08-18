@@ -26,8 +26,8 @@ The prose should have taken this path:
    ids, each committed under its own subject marker. The row stays
    acknowledged: one finding remains
 9. with the apply lane empty, the promoted finding is raised as a
-   decision — the lane heading, then the full raise, ending in a single
-   question, and the turn ends
+   decision — the lane heading, then the raise, ending in its single
+   question (the user holds the real figure), and the turn ends
 
 Presentation claims:
 
