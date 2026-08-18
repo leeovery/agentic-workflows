@@ -102,7 +102,7 @@ To create it, draft the complete log at the staging path `.workflows/.cache/{wor
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-session open {work_unit} --session-log-file .workflows/.cache/{work_unit}/discovery/session-draft.md
 ```
 
-The engine allocates the session number, installs the draft as `discovery/sessions/session-{NNN}.md`, and sets the active-session marker so it always pairs with an existing log. The response's `session` is authoritative — set `session_number` from it. Later writes this session edit the installed file directly. The caller's own commit step stages and commits the log and marker.
+The engine allocates the session number, resolves any literal `{NNN}` in the draft to it (leave the header as the template writes it), installs the log as `discovery/sessions/session-{NNN}.md`, and sets the active-session marker so it always pairs with an existing log. The response's `session` is authoritative — set `session_number` from it. Later writes this session edit the installed file directly. The caller's own commit step stages and commits the log and marker.
 
 The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.discovery.active_session` manifest marker (see [resume-detection](resume-detection.md)). Always replace it at finalisation so the next entry sees a closed state.
 

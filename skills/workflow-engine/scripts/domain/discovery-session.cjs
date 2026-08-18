@@ -108,9 +108,14 @@ function openDiscoverySession(cwd, workUnit, { sessionLogFile }) {
 
     // Log first, marker second: a failure between the two leaves a log
     // without a marker (a closed-looking session — recoverable), never a
-    // marker naming a missing log (corrupt state).
+    // marker naming a missing log (corrupt state). The install resolves any
+    // literal {NNN} to the allocated number — the template's placeholder,
+    // written before the number exists — so the durable header matches the
+    // filename. Write-then-unlink preserves the move; a crash between the
+    // two leaves only a scratch draft behind.
     fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.renameSync(draftPath, path.join(cwd, rel));
+    fs.writeFileSync(path.join(cwd, rel), draft.split('{NNN}').join(session));
+    fs.unlinkSync(draftPath);
     ensureContainer(ensureContainer(manifest, 'phases', 'phases'), 'discovery', 'phases.discovery').active_session = session;
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return { work_unit: workUnit, session, path: rel };

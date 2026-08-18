@@ -73,7 +73,7 @@ On the `open` path the log is **not created at session start** — it is conjure
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap session open --session-log-file .workflows/.cache/roadmap/session-draft.md
 ```
 
-The engine allocates the number, installs the draft, and sets `roadmap.active_session`. The response's `session` is authoritative — set `session_number` from it. Later writes edit the installed file directly; commit with `engine commit --roadmap`. Browse-and-bail produces no file.
+The engine allocates the number, resolves any literal `{NNN}` in the draft to it (leave the header as the template writes it), installs the log, and sets `roadmap.active_session`. The response's `session` is authoritative — set `session_number` from it. Later writes edit the installed file directly; commit with `engine commit --roadmap`. Browse-and-bail produces no file.
 
 The `(none)` Conclusion plus the `roadmap.active_session` marker is the resume signal. At finalisation (conclude), replace it with one of:
 

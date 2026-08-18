@@ -321,6 +321,17 @@ describe('engine discovery-session open — happy path', () => {
     assert.strictEqual(fs.existsSync(path.join(fix.project, '.workflows/payments/.lock')), false);
   });
 
+  it('a template-literal {NNN} in the draft resolves to the allocated number at install', () => {
+    fix = setupFixture({ epic: closedEpicManifest() });
+    writeFile(fix.project, DRAFT_REL, '# Discovery Session {NNN}\n\nMore exploration ({NNN}).\n');
+    const res = engine(fix, OPEN);
+    assert.strictEqual(res.session, '003');
+    assert.strictEqual(
+      fs.readFileSync(path.join(fix.project, '.workflows/payments/discovery/sessions/session-003.md'), 'utf8'),
+      '# Discovery Session 003\n\nMore exploration (003).\n',
+      'the durable header matches the filename');
+  });
+
   it('a legacy manifest with no discovery phase and no logs opens session 001', () => {
     const epic = closedEpicManifest();
     epic.phases = {};
