@@ -337,3 +337,7 @@ reading real task summaries. First live use is the review point for:
   gate; the lens round-trip gets a prose case
   (`implementation-retells-at-the-gate`) pinning that a lens
   return re-fetches the gate menu. (Lee, at review.)
+- 2026-08-18 — Condition-first rule added to the register — the one
+  adoption from the Google developer-docs style guide comparison; the
+  guide's other residue (word bans) landed in `voice.md`, outside the
+  register's scope. (Lee.)
