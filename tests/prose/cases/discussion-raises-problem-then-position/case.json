@@ -1,0 +1,59 @@
+{
+  "origin": "the walked raise is an opener, never a case: it puts the user in front of the problem and states a position with one load-bearing reason, and the report's depth — per-option costs, secondary consequences — stays back until the conversation asks. The drift this guards is the pre-solved raise: a finding surfaced with its full derivation, costs, and conclusion in one turn, leaving the user nothing to do but assent. The report is fixture-authored rich on purpose, so what the raise omits is checkable against what the report holds",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/final-review-menu.md"
+  ],
+  "answers": [
+    "c — continue",
+    "y — yes, work through them now"
+  ],
+  "conduct": "The user is mid-flight on a card-payments discussion, back after a break. They remember a background review returned while they were away and want to hear it before picking the threads back up. They opt in when offered, and they read the first raised finding with interest — but the walk stops before they answer. They volunteer nothing new and do not steer the conversation anywhere else.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "agent scan pay discussion pay",
+      "agent surface pay discussion pay review-001"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "agent scan pay discussion pay",
+      "agent surface pay discussion pay review-001"
+    ],
+    "calls_exclude": [
+      "render finding-batch",
+      "agent dispatch",
+      "agent ack",
+      "agent incorporate",
+      "discussion-map add",
+      "topic complete",
+      "knowledge.cjs index"
+    ]
+  }
+}

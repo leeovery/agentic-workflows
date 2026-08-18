@@ -34,8 +34,8 @@ the behaviour under test:
   engagement, which predates this session's context
 - any term borrowed from another subtopic or an earlier decision is
   restated in place, never referenced bare
-- the raise ends in a single question — no list of remaining findings,
-  no menu, no bundled follow-ups
+- the raise ends awaiting the user — at most one question, no list of
+  remaining findings, no menu, no bundled follow-ups
 
 Further claims:
 
@@ -46,7 +46,7 @@ Further claims:
   commit — the only state change is the surface call's (per-turn
   presence heartbeats under `.workflows/.cache/` are expected, not
   writes)
-- the walk stops with the question pending; the user never answers it
+- the walk stops with the raise pending; the user never answers it
 
 EXPECTED WORLD — the fixture plus exactly one change: the agent store
 row `review-001` has both findings surfaced and stands `incorporated`.

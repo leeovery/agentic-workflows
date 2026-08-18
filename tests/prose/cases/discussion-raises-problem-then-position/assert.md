@@ -17,24 +17,34 @@ The prose should have taken this path:
    need a call), naming no batch lanes because none have findings —
    and the user opts in
 6. with no apply findings and no route findings, no batch screen
-   renders at any point: the walk raises the first finding directly,
-   opening with the `Needs A Decision` heading
-7. the raise is fuel-framed: it names the untouched ground (failure
-   UX or idempotency — contextual relevance picks), connects it to
-   the exploring subtopic, and invites opening the area — a lean
-   stated or a question asked, never a determined fix, never
-   a correction. It ends awaiting the user — at most one question —
-   and the turn ends
+   renders at any point: the walk raises the payment-intent finding
+   directly (the broadest implications — nothing in the short session
+   context outranks it), opening with the `Needs A Decision` heading
+7. the raise is an opener, not the case: the problem made concrete
+   first — a shopper-level instance of the retry double-charge (a
+   declined first attempt, a second attempt, the first attempt's
+   capture webhook still in flight), as a worked instance or small
+   diagram — then a stated position: a lean between reuse and
+   fresh-intent with one load-bearing reason, and the turn ends
+   awaiting the user
 
-Presentation claims — the early shape is the behaviour under test:
+Presentation claims — the opener shape is the behaviour under test:
 
 - no finding-batch render occurs anywhere in the walk
 - the announce menu names only the walked lane's ask; it does not
   mention batches, applying, or sending
-- the raise reads as an invitation to explore, not a defect report:
-  no "amend", no "correction", no proposed text
-- the raise opens with the walked lane's declared heading and ends
-  awaiting the user — at most one question, no menu
+- the problem lands before the position: the double-charge instance is
+  concrete and graspable before any lean is stated
+- the raise states a position — a lean with one load-bearing reason —
+  never a neutral option survey, and never "what do you think?"
+- the report's depth stays back: the refund-path consequence, the
+  orphaned-intent reconciliation burden, and the intent-expiry cost
+  appear nowhere in the raise — the alternative direction gets at most
+  a clause, not a costed comparison
+- the raise ends awaiting the user — at most one question, no menu,
+  no bundled follow-ups
+- no outcome is documented in the raise's turn: nothing is written to
+  the discussion file and no direction is recorded as chosen
 
 Further claims:
 
@@ -46,5 +56,5 @@ Further claims:
 - the walk stops with the raise pending; the user never answers it
 
 EXPECTED WORLD — the fixture plus exactly one change: the agent store
-row `review-001` has one finding surfaced and stands `acknowledged`
-with the other remaining.
+row `review-001` has the payment-intent finding surfaced and stands
+`acknowledged` with the other remaining.
