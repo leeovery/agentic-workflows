@@ -57,7 +57,6 @@ Phase {N}: {Phase Name}
 
 ```markdown
 #### Tasks
-status: draft
 
 | Internal ID | Name | Edge Cases |
 |-------------|------|------------|
