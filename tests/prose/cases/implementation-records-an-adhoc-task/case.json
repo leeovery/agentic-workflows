@@ -1,0 +1,90 @@
+{
+  "origin": "the ad hoc plan-changes route had no coverage, and a live project's task-writer runs deviated under artifact lore — a phase-N-tasks.md grown past planning.md's table read as a local convention that planning.md is frozen. This walks a gate-answer aside through draft, approval, and an unstubbed task-writer against exactly that world: the writer must append the new task to planning.md's table and leave phase-1-tasks.md alone",
+  "entry": "workflow-implementation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-implementation-entry/references/validate-phase.md",
+    "skills/workflow-implementation-entry/references/validate-dependencies.md",
+    "skills/workflow-implementation-entry/references/invoke-skill.md",
+    "skills/workflow-implementation-process/SKILL.md",
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-process/references/load-plan-adapter.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/updating.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/graph.md",
+    "skills/workflow-implementation-process/references/project-skills-discovery.md",
+    "skills/workflow-implementation-process/references/linter-setup.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-implementation-process/references/task-loop.md",
+    "skills/workflow-implementation-process/references/display-task-brief.md",
+    "skills/workflow-implementation-process/references/display-task-result.md",
+    "skills/workflow-implementation-process/references/report-register.md",
+    "skills/workflow-implementation-process/references/task-normalisation.md",
+    "skills/workflow-implementation-process/references/invoke-executor.md",
+    "skills/workflow-implementation-process/references/invoke-reviewer.md",
+    "skills/workflow-implementation-process/references/ad-hoc-plan-changes.md",
+    "agents/workflow-implementation-task-writer.md"
+  ],
+  "answers": [
+    "y — skip project skills again",
+    "y — skip linters again",
+    "hold this approval a moment — separate from this task: we need a nightly reconciliation job that compares gateway captures against orders marked paid and flags mismatches. Add it to the plan as its own task; it belongs in this phase with the payment core work — no particular priority, no dependencies",
+    "y — create the task"
+  ],
+  "conduct": "Beyond the scripted answers, the user wants the reconciliation job absorbed as one task in the open phase; asked anything about scope, placement, priority, or dependencies, they repeat that preference and add nothing new.",
+  "stubs": {
+    "executor-task-complete": "when the workflow-implementation-task-executor agent is dispatched for pay-1-1 — create the dispatched task's source and test files as the stub gives them and return that task's STATUS block; one firing",
+    "reviewer-task-approves": "when the workflow-implementation-task-reviewer agent is dispatched for pay-1-1 — return the stub's verdict with the TASK line filled from the dispatched task; write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "task start pay pay pay-1-1",
+      "render task-brief pay.implementation.pay",
+      "render task-result pay.implementation.pay",
+      "render task-gate pay.implementation.pay",
+      "staging.ad-hoc-1.gate_mode=gated",
+      "staging.ad-hoc-1.tasks.1=pending",
+      "render proposed-task pay.implementation.pay",
+      "staging.ad-hoc-1.tasks.1 approved",
+      "task_map.pay-1-4",
+      "manifest set pay.planning.pay external_id",
+      "impl(pay): add 1 ad hoc task(s)"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.implementation.pay",
+      "task start pay pay pay-1-1",
+      "render task-gate pay.implementation.pay",
+      "write:.workflows/pay/implementation/pay/ad-hoc-tasks-1",
+      "staging.ad-hoc-1.gate_mode=gated",
+      "render proposed-task pay.implementation.pay",
+      "staging.ad-hoc-1.tasks.1 approved",
+      "write:.workflows/pay/planning/pay/tasks/pay-1-4",
+      "write:.workflows/pay/planning/pay/planning.md",
+      "task_map.pay-1-4",
+      "impl(pay): add 1 ad hoc task(s)",
+      "render task-gate pay.implementation.pay"
+    ],
+    "calls_exclude": [
+      "phase-1-tasks",
+      "task complete pay pay pay-1-1",
+      "task start pay pay pay-1-2",
+      "task start pay pay pay-1-3",
+      "manifest set pay.planning.pay task_map.pay-1-3",
+      "task_gate_mode auto",
+      "task fix-attempt",
+      "analysis-cycle",
+      "topic complete pay implementation"
+    ]
+  }
+}
