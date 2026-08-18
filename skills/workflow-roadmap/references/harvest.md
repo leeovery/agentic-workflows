@@ -1,12 +1,14 @@
 # Harvest
 
-*Reference for **[workflow-roadmap](../SKILL.md)***
+*Reference for **[session-loop](session-loop.md)** — loaded at the user's pull*
 
 ---
 
 The sort ceremony. Analyse the session's exploration as a whole, propose the item set in horizons, confirm it with the user, persist. Coarse on purpose: horizons and items, provenance pointers, no briefs, no topic shaping — an item's substance stays in the session logs the pointers name, distilled only when a pull creates the topic to brief.
 
 ## A. Gather Source Material
+
+If no session is open yet (a browse that grew content without an Exploration pause), conjure the log now — [session-template.md](session-template.md)'s lazy creation, **Exploration** backfilled from the conversation — so the sort's provenance pointers resolve and the close has a session to close.
 
 Three sources of truth, cross-referenced:
 
@@ -23,6 +25,14 @@ Read out the **capability-grain chunks** the exploration named — each one thin
 Sort the chunks into horizons using the conversation's own staging language, crystallised into named horizons — existing ones where they fit, new ones where the conversation named a stage the map lacks. "Someday" is the conventional tail for real-but-unscheduled. When no staging language emerged, offer **Now / Next / Later** as a suggested default set. Position carries the semantics — order the horizons as the user talks about them.
 
 An item whose ground already sits on the map is not a new item: deepenings of a **waiting** item fold into its summary (an `Edits` entry); a thread that deepened a **pulled** item's ground flags the join instead (`engine roadmap flag {name}` — guidelines **C**).
+
+#### If no new items emerged
+
+The session surfaced nothing beyond what the map already holds — grooming, folds, and flags are already recorded under **Edits**. There is nothing to sort; tell the user in one line. Outcome: `confirmed`.
+
+→ Return to caller.
+
+#### Otherwise
 
 → Proceed to **C. Render Proposal**.
 
@@ -46,6 +56,7 @@ Read `=== DATA` to reason from (never display it) — a per-name flag row for ea
 
 - `exists_on_roadmap=true` — the name collides with an existing item. Fold the material into that item or pick a different name (revise the set, rewrite the file, re-run) before rendering the gate.
 - `legal_name=false` — dots or slashes break manifest addressing. Rename and re-run.
+- `legal_horizon=false` — the release word itself carries a dot or slash ("v1.5"). Respell it with the user's blessing at the gate ("v1-5", "v15") and re-run — the persist refuses it as written.
 - `new_horizon=true` — informational: the horizon will be created at persist, in the file's order.
 
 Emit the `=== DISPLAY` section verbatim **as a code block** — the proposed items over the existing roadmap, so the full picture is visible.
@@ -87,7 +98,7 @@ Land the whole set in one transaction (horizons are created JIT in entry order; 
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/roadmap/proposed-items.json
 ```
 
-Apply any horizon re-ordering the confirmed sort implies (`roadmap horizon reorder {name} {name} …` — the complete order). Then write the log's **Items Sorted** section (one subsection per item: horizon + one-line why) and any **Edits** entries the harvest produced, and commit:
+Apply any horizon re-ordering the conversation's staging stated (`roadmap horizon reorder {name} {name} …` — the complete order; the user's words are the order, never the display's append order). Then write the log's **Items Sorted** section (one subsection per item: horizon + one-line why) and any **Edits** entries the harvest produced, and commit:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --roadmap -m "roadmap: harvest — session-{session_number}"

@@ -29,8 +29,7 @@ Synthesise the recent-in-full logs into a short briefing that resumes the conver
 ```
 Where we'd got to:
 
-  {2–4 lines from the recent session(s): the threads we were
-  circling, what you were leaning toward, what was still open}
+  {2–4 lines from the recent session(s): the threads circled, what the user was leaning toward, what was still open}
 
   {older sessions, if any: one line each from their Conclusion,
   under an "Earlier:" lead — only when it aids orientation}

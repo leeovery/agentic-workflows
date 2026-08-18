@@ -4,7 +4,7 @@
 
 ---
 
-The commitment point. Select waiting items, shape them into a work unit, create it fenced, join the items, route into delivery. The unit's seed set stays derivable from the joins — nothing is mirrored onto it; the record crosses as the session-log backfill plus the items' source pointers. The pull takes whole items — wanting half an item means the item is two items; split it on the map first (`roadmap horizon split` / a rename-and-add), never inline here.
+The commitment point. Select waiting items, shape them into a work unit, create it fenced, join the items, route into delivery. The unit's seed set stays derivable from the joins — nothing is mirrored onto it; the record crosses as the session-log backfill plus the items' source pointers. The pull takes whole items — wanting half an item means the item is two items; split it on the map first (rename the item to one half, `roadmap add` the other), never inline here.
 
 ## A. Select the Working Set
 
@@ -14,7 +14,7 @@ Render the pull working set:
 node .claude/skills/workflow-roadmap/scripts/gateway.cjs pull-set
 ```
 
-The output arrives in demarcated sections: read `=== DATA` to reason from (the `ITEMS` table resolves selection numbers — never display it); emit the TITLE section (markdown), then the DISPLAY section verbatim as a code block, then the MENU section verbatim as markdown.
+The output arrives in demarcated sections: read `=== DATA` to reason from (the `ITEMS` table resolves selection numbers — never display it); emit the DISPLAY section verbatim as a code block, then the MENU section verbatim as markdown.
 
 **STOP.** Wait for user response.
 
@@ -32,7 +32,7 @@ Resolve the selected number(s) through the `ITEMS` table and hold the item names
 
 Decide the unit's shape with the user. The default is **one epic** — several items become its rough topic shapes, and even one broad item usually opens into several. A **feature** fits only a single pulled item that reads as one coherent, single-topic build; infer its first phase (`discussion` when the material is decision-shaped, `research` when unknowns dominate) and hold it as `routing`.
 
-Compile a one-line `description` for the unit from the pulled items' summaries and the record. Then confirm the shape (state your read and why above the gate — when the selection is a whole horizon, its name is the natural work-unit name):
+Compile a one-line `description` for the unit from the pulled items' summaries and the record. Then confirm the shape — state your read and why above the gate, **naming the remainder** so a partial pull is spoken at the moment of choice (*"3 items stay waiting in mvp"*); when the selection is a whole horizon, its name is the natural work-unit name:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -62,7 +62,7 @@ Apply the user's changes to the shape, framing, or pulled set, then re-render th
 
 ## C. Read the Record
 
-The items' substance lives in the session logs their `sources` name (the home snapshot's `ITEMS`/`SESSIONS` tables and `engine manifest get project.roadmap.items.{name} sources` resolve them). Read every named log **not already current in this conversation's context** in full — a same-session pull has nothing to read; a return-visit pull reads the record cold.
+The items' substance lives in the session logs their `sources` name (the home snapshot's `ITEMS`/`SESSIONS` tables and `engine manifest get project.roadmap.items.{name}.sources` resolve them). Read every named log **not already current in this conversation's context** in full — a same-session pull has nothing to read; a return-visit pull reads the record cold. An item with no `sources` (a pre-commit shaping park) has only its summary — its ground is the live conversation and whatever a KB query surfaces; never invent a record for it.
 
 → Proceed to **D. Author the Backfill**.
 

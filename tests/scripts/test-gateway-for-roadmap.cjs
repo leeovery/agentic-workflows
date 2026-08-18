@@ -93,7 +93,7 @@ describe('workflow-roadmap gateway: pull-set', () => {
     assert.match(res.stdout, /ITEMS \(n {2}name {2}horizon\):/);
     assert.match(res.stdout, /  1 {2}menus {2}mvp/);
     assert.match(res.stdout, /  2 {2}loyalty {2}v1/);
-    assert.match(res.stdout, /=== TITLE[\s\S]*Pull Into Delivery/);
+    assert.ok(!/=== TITLE/.test(res.stdout), 'no TITLE — the skill step marker heads the ceremony');
     assert.match(res.stdout, /=== MENU[\s\S]*What goes into delivery\?/);
   });
 

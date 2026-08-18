@@ -432,7 +432,7 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['workflow-engine', 'workflow-knowledge', 'workflow-baseline']);
+  const H1_KNOWN = new Set(['workflow-engine', 'workflow-knowledge', 'workflow-baseline', 'workflow-roadmap']);
   for (const file of files) {
     const name = skillNameOf(file);
     if (!name || !name.startsWith('workflow-')) continue; // only workflow backbones
@@ -663,6 +663,7 @@ const RATCHET_PINS = {
   'skills/workflow-continue-epic/references/epic-display-and-menu.md': 3,
   'skills/workflow-continue-epic/references/summary-backfill.md': 3,
   'skills/workflow-discovery/references/confirm-trigger.md': 1,
+  'skills/workflow-discovery/references/continuity-load.md': 1,
   'skills/workflow-discovery/references/map-operations.md': 9,
   'skills/workflow-discovery/references/name-resolution.md': 2,
   'skills/workflow-discovery/references/opener-pattern.md': 1,
@@ -707,6 +708,7 @@ const RATCHET_PINS = {
   'skills/workflow-research-process/references/epic-session.md': 2,
   'skills/workflow-research-process/references/feature-session.md': 1,
   'skills/workflow-research-process/references/topic-splitting.md': 2,
+  'skills/workflow-roadmap/references/session-loop.md': 1,
   'skills/workflow-scoping-process/SKILL.md': 2,
   'skills/workflow-scoping-process/references/complexity-check.md': 2,
   'skills/workflow-discovery/references/first-phase-routing.md': 1,
