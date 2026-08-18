@@ -20,7 +20,7 @@ Three sources of truth, cross-referenced:
 
 ## B. Identify Items and Horizons
 
-Read out the **capability-grain chunks** the exploration named — each one thing the user would move around a roadmap as one thing, with a clear name and a one-line summary worded product-first. Note but don't force material touched only in passing — it can land in a later session.
+Read out the **capability-grain chunks** the exploration named — each one thing the user would move around a roadmap as one thing, with a clear name and a one-line summary worded product-first. A stage the user narrates end-to-end unpacks into its member capabilities — the horizon carries the togetherness, the items stay separately pullable; a summary that needs two "and"s is usually several items. Note but don't force material touched only in passing — it can land in a later session.
 
 Sort the chunks into horizons using the conversation's own staging language, crystallised into named horizons — existing ones where they fit, new ones where the conversation named a stage the map lacks. "Someday" is the conventional tail for real-but-unscheduled. When no staging language emerged, offer **Now / Next / Later** as a suggested default set. Position carries the semantics — order the horizons as the user talks about them.
 
