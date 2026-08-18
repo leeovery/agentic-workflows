@@ -173,6 +173,10 @@ Commands:
   roadmap rename <old> <new>
   roadmap move <name> --horizon <h>
   roadmap remove <name>
+  roadmap pull <name> [<name> …] --into <work-unit>
+  roadmap bind <name> --topic <topic>
+  roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]
+  roadmap flag <name>
   roadmap horizon add <name> [--position <n>]
   roadmap horizon rename <old> <new>
   roadmap horizon reorder <name> [<name> …]   (the complete order)
@@ -880,7 +884,7 @@ function runRoadmap(argv) {
       }
       return;
     }
-    const { opts, lists, positional } = parseArgs(rest, [], ['source']);
+    const { opts, flags, lists, positional } = parseArgs(rest, ['force-dismissed'], ['source']);
     if (command === 'add') {
       // Strict positional count: an unquoted summary would spill into
       // positionals and silently truncate the text — refuse instead.
@@ -916,8 +920,30 @@ function runRoadmap(argv) {
     } else if (command === 'remove') {
       if (positional.length !== 1) throw new Error('Usage: engine roadmap remove <name>');
       respond(roadmap.removeRoadmapItem(cwd, positional[0]));
+    } else if (command === 'pull') {
+      if (positional.length === 0 || !opts.into) {
+        throw new Error('Usage: engine roadmap pull <name> [<name> …] --into <work-unit>');
+      }
+      respond(roadmap.pullItems(cwd, positional, { into: opts.into }));
+    } else if (command === 'bind') {
+      if (positional.length !== 1 || !opts.topic) {
+        throw new Error('Usage: engine roadmap bind <name> --topic <topic>');
+      }
+      respond(roadmap.bindItem(cwd, positional[0], { topic: opts.topic }));
+    } else if (command === 'pull-forward') {
+      if (positional.length !== 1 || !opts.into || !opts.routing) {
+        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]');
+      }
+      respond(roadmap.pullForwardItem(cwd, positional[0], {
+        into: opts.into,
+        routing: opts.routing,
+        forceDismissed: flags.has('force-dismissed'),
+      }));
+    } else if (command === 'flag') {
+      if (positional.length !== 1) throw new Error('Usage: engine roadmap flag <name>');
+      respond(roadmap.flagJoined(cwd, positional[0]));
     } else {
-      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|remove|horizon> …');
+      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|remove|pull|bind|pull-forward|flag|horizon> …');
     }
   } catch (err) {
     failJson(err);

@@ -30,6 +30,7 @@ const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { knowledge } = require('./kb.cjs');
 const { addItem } = require('./discovery-map.cjs');
+const { revertJoins } = require('./roadmap.cjs');
 const { todayStamp } = require('./dates.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
 
@@ -54,6 +55,7 @@ function assertLegalStatus(status) {
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
+ * @property {string[]} [roadmap_reverted] cancel: roadmap items handed back to waiting by the cancel-revert hop
  */
 
 /**
@@ -132,10 +134,19 @@ function cancelWorkUnit(cwd, workUnit) {
   const warnings = [];
   knowledge(cwd, ['remove', '--work-unit', workUnit], 'knowledge remove', warnings);
 
+  // The cancel-revert hop, whole-unit form: every roadmap item joined to
+  // the unit returns to waiting (the delivery attempt is over; the record
+  // stays). The project manifest rides this commit when a revert landed.
+  const reverted = revertJoins(cwd, workUnit);
+
   const cacheSpec = purgeWorkUnitCache(cwd, workUnit);
-  const outcome = commitTailWithKb(cwd, cacheSpec ? [`.workflows/${workUnit}`, cacheSpec] : `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`, warnings);
+  const specs = [`.workflows/${workUnit}`];
+  if (cacheSpec) specs.push(cacheSpec);
+  if (reverted.length > 0) specs.push('.workflows/manifest.json');
+  const outcome = commitTailWithKb(cwd, specs.length === 1 ? specs[0] : specs, `workflow(${workUnit}): mark as cancelled`, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', committed: outcome.committed, warnings };
+  if (reverted.length > 0) result.roadmap_reverted = reverted;
   noteCommitOutcome(result, outcome);
   return result;
 }

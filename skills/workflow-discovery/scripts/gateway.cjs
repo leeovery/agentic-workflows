@@ -205,7 +205,12 @@ function mapView(workUnit, ...rest) {
   if (proposedFile) {
     const proposed = readProposedFile(cwd, proposedFile);
     // Per-name flags the flow routes on: an active collision must be resolved
-    // before the gate; a dismissed match needs --force-dismissed at persist.
+    // before the gate; a dismissed match needs --force-dismissed at persist;
+    // a waiting-roadmap-item match is the anti-twin check — never created as
+    // a fresh topic (the real move is pull-forward, or leave it waiting).
+    const waitingOnRoadmap = new Set(
+      engine.roadmap.roadmapState(cwd).items.filter((i) => i.state === 'waiting').map((i) => i.name),
+    );
     dataLines.push(`proposed (${proposed.length}):`);
     for (const t of proposed) {
       const flags = [
@@ -213,6 +218,7 @@ function mapView(workUnit, ...rest) {
         `exists_on_map=${result.discovery_map.some((r) => r.name === t.name)}`,
         `matches_dismissed=${result.dismissed.includes(t.name)}`,
         `legal_name=${!/[./]/.test(t.name)}`,
+        `waiting_on_roadmap=${waitingOnRoadmap.has(t.name)}`,
       ];
       dataLines.push(`  ${t.name} ${flags.join(' ')}`);
     }
