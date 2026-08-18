@@ -101,15 +101,10 @@ Then render the roadmap overlay beneath the topic proposal, emitting its `=== DI
 node .claude/skills/workflow-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**`◆ Confirm to commit, or tell me what to adjust.`**
-
-**`y/yes`**     → Commit these topics and conclude
-**`e/explore`** → Go back to exploration; not ready to commit yet
-**Adjust**    → Tell me what to change (split, merge, rename, re-route, edit summary)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render synthesis-gate
 ```
 
 **STOP.** Wait for user response.

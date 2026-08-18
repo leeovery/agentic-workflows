@@ -14,17 +14,10 @@ Gather all signal flavours simultaneously (work-type cues and topic seeds co-eme
 
 ## B. Commit
 
-Make the commit move. State the read as plain prose first — bucket name folded in, plus the signals that drove it — held above the gate, never inside it. Then render the gate (static; the read stays above):
+Make the commit move. State the read as plain prose first — bucket name folded in, plus the signals that drove it — held above the gate, never inside it. Then fetch the gate and emit its section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Have I read this right?`**
-
-**`y/yes`**        → That's the right shape, set it up
-**`o/other`**      → It's something else (tell me what)
-**Keep shaping** → Tell me what I'm missing
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render shape-gate
 ```
 
 **STOP.** Wait for user response.

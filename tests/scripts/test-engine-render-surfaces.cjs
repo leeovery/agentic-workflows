@@ -1839,7 +1839,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -2419,5 +2419,49 @@ describe('render roadmap gate menus — static sets, engine-rendered like every 
     assert.match(conclude, /`◆ Pull a slice into delivery now\?`/);
     assert.match(conclude, /`p\/pull`.*Pick the item\(s\) going into delivery/);
     assert.match(conclude, /`s\/stop`.*Stop here — the roadmap keeps everything warm/);
+  });
+});
+
+describe('render — the adopted cross-flow static gates', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  it('name-gate: the confirm shape, and the collision re-ask variant', () => {
+    const confirm = renderSurface(dir, 'name-gate', {});
+    assert.match(confirm, /^=== MENU: name gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(confirm, /`◆ Is this name okay\?`/);
+    assert.match(confirm, /`y\/yes`.*Use this name/);
+    assert.match(confirm, /\*\*A different name\*\*.*Tell me what to call it instead/);
+
+    const collision = renderSurface(dir, 'name-gate', { variant: 'collision' });
+    assert.match(collision, /`◆ Choose a different name, or resume via \/workflow-start\.`/);
+    assert.match(collision, /\*\*A different name\*\*.*Tell me what to call it instead/);
+    assert.ok(!/y\/yes/.test(collision), 'the collided suggestion is not re-offerable');
+
+    assert.throws(() => renderSurface(dir, 'name-gate', { variant: 'nope' }), /--variant takes "collision"/);
+  });
+
+  it('shape-gate: the work-type commit confirm', () => {
+    const out = renderSurface(dir, 'shape-gate', {});
+    assert.match(out, /`◆ Have I read this right\?`/);
+    assert.match(out, /`y\/yes`.*That's the right shape, set it up/);
+    assert.match(out, /`o\/other`.*It's something else \(tell me what\)/);
+    assert.match(out, /\*\*Keep shaping\*\*.*Tell me what I'm missing/);
+  });
+
+  it('synthesis-gate: the epic topic sort confirm', () => {
+    const out = renderSurface(dir, 'synthesis-gate', {});
+    assert.match(out, /`◆ Confirm to commit, or tell me what to adjust\.`/);
+    assert.match(out, /`y\/yes`.*Commit these topics and conclude/);
+    assert.match(out, /`e\/explore`.*Go back to exploration; not ready to commit yet/);
+    assert.match(out, /\*\*Adjust\*\*.*split, merge, rename,/);
+  });
+
+  it('query-failure-gate: retry or proceed without context', () => {
+    const out = renderSurface(dir, 'query-failure-gate', {});
+    assert.match(out, /`◆ How should I proceed\?`/);
+    assert.match(out, /`r\/retry`.*I'll fix the issue; retry the query/);
+    assert.match(out, /`s\/skip`.*Proceed without knowledge context for this phase/);
   });
 });

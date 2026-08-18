@@ -2065,6 +2065,56 @@ function roadmapConcludeGateSurface(_cwd, _args) {
   return section('MENU: roadmap conclude gate', STOP_FOR_RESPONSE, roadmapConcludeGate());
 }
 
+// The cross-flow static gates — adopted engine-side as their files were
+// touched (menus are engine-rendered, static sets included). Wording is
+// the gates' own; each is fetched at the exact point it displays.
+
+/**
+ * Discovery's work-unit name confirm; `--variant collision` is the re-ask
+ * after a name collided with an existing unit.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function nameGateSurface(_cwd, { variant }) {
+  if (variant !== undefined && variant !== 'collision') {
+    throw new Error('render name-gate: --variant takes "collision" (omit it for the confirm shape)');
+  }
+  const body = variant === 'collision'
+    ? menu('', [
+      promptOption('A different name', 'Tell me what to call it instead'),
+    ], { question: 'Choose a different name, or resume via /workflow-start.' })
+    : menu('', [
+      cmdOption('y', 'yes', 'Use this name'),
+      promptOption('A different name', 'Tell me what to call it instead'),
+    ], { question: 'Is this name okay?' });
+  return section('MENU: name gate', STOP_FOR_RESPONSE, body);
+}
+
+/** Discovery's work-type commit confirm — the shaping conversation's hinge. @param {string} _cwd @param {object} _args @returns {string} */
+function shapeGateSurface(_cwd, _args) {
+  return section('MENU: shape gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', "That's the right shape, set it up"),
+    cmdOption('o', 'other', "It's something else (tell me what)"),
+    promptOption('Keep shaping', "Tell me what I'm missing"),
+  ], { question: 'Have I read this right?' }));
+}
+
+/** The epic synthesis' topic sort confirm. @param {string} _cwd @param {object} _args @returns {string} */
+function synthesisGateSurface(_cwd, _args) {
+  return section('MENU: synthesis gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', 'Commit these topics and conclude'),
+    cmdOption('e', 'explore', 'Go back to exploration; not ready to commit yet'),
+    promptOption('Adjust', 'Tell me what to change (split, merge, rename, re-route, edit summary)'),
+  ], { question: 'Confirm to commit, or tell me what to adjust.' }));
+}
+
+/** The knowledge query-failure gate — retry or proceed without context. @param {string} _cwd @param {object} _args @returns {string} */
+function queryFailureGateSurface(_cwd, _args) {
+  return section('MENU: query failure gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('r', 'retry', "I'll fix the issue; retry the query"),
+    cmdOption('s', 'skip', 'Proceed without knowledge context for this phase'),
+  ], { question: 'How should I proceed?' }));
+}
+
 // ---------------------------------------------------------------------------
 // The baseline surfaces — project-level, no address. Each handler resolves
 // the one BaselineState (domain/baseline.cjs), refuses states the calling
@@ -2280,6 +2330,10 @@ const SURFACES = {
   'roadmap-parks-gate': roadmapParksGateSurface,
   'roadmap-shape-gate': roadmapShapeGateSurface,
   'roadmap-conclude-gate': roadmapConcludeGateSurface,
+  'name-gate': nameGateSurface,
+  'shape-gate': shapeGateSurface,
+  'synthesis-gate': synthesisGateSurface,
+  'query-failure-gate': queryFailureGateSurface,
   'baseline-progress': baselineProgressSurface,
   'baseline-area-gate': baselineAreaGateSurface,
   'baseline-paused': baselinePausedSurface,

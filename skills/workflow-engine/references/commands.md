@@ -284,6 +284,10 @@ engine render roadmap-harvest-gate                                # the roadmap 
 engine render roadmap-parks-gate                                  # the epic synthesis' parks-only confirm (y/e/Adjust, park register)
 engine render roadmap-shape-gate                                  # the pull's shape confirm (y/Adjust)
 engine render roadmap-conclude-gate                               # conclude's stop-or-pull offer (p/s)
+engine render name-gate [--variant collision]                     # discovery's work-unit name confirm (y / a different name); the collision variant is the re-ask after a name matched an existing unit
+engine render shape-gate                                          # discovery's work-type commit confirm (y/o/keep shaping) — the read stays above the gate in prose
+engine render synthesis-gate                                      # the epic synthesis' topic sort confirm (y/e/Adjust)
+engine render query-failure-gate                                  # the knowledge query-failure gate (r/retry, s/skip)
 engine render roadmap-session-receipt [--warn]                    # roadmap session-close advisory — empty without --warn
 engine render baseline-progress                                   # the baseline area map from the project manifest — in-progress: per-area statuses + remaining count; completed: the landed doc list; refuses with no baseline or no areas
 engine render baseline-area-gate --area <name>                    # the between-areas continue/pause gate after the named area's doc lands; refuses an unlanded area, and refuses when nothing remains (that path concludes instead)

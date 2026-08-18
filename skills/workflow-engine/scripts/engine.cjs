@@ -248,6 +248,10 @@ Commands:
   render roadmap-parks-gate
   render roadmap-shape-gate
   render roadmap-conclude-gate
+  render name-gate [--variant collision]
+  render shape-gate
+  render synthesis-gate
+  render query-failure-gate
   render baseline-progress
   render baseline-area-gate --area <name>
   render baseline-paused
