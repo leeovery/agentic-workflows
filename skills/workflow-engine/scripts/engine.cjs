@@ -241,6 +241,9 @@ Commands:
   render absorb-target     <feature>
   render plan-topics       <wu>
   render revisit-phases    <wu>
+  render roadmap-view
+  render roadmap-add-gate --horizon <name>
+  render roadmap-session-receipt [--warn]
   render baseline-progress
   render baseline-area-gate --area <name>
   render baseline-paused

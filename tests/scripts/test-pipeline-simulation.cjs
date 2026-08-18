@@ -1146,6 +1146,13 @@ describe('pipeline simulation', () => {
     assert.strictEqual(state.items.find((i) => i.name === 'menu-management').state, 'waiting',
       'reactivation never silently re-joins');
 
+    // The render surfaces hold over the live state: the map view and the
+    // add-to-joined-horizon gate.
+    assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /DISPLAY: roadmap/);
+    assert.match(sim.render(['roadmap-add-gate', '--horizon', 'launch'], { expect: 'content' }),
+      /MENU: roadmap add gate/);
+    sim.render(['roadmap-session-receipt'], { expect: 'empty' });
+
     // Shipping the unit flips the derived state to shipped — nothing stored.
     sim.run(['workunit', 'complete', 'mvp', '-m', 'workflow(mvp): pipeline complete']);
     state = sim.run(['roadmap', 'state']);

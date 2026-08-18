@@ -78,6 +78,40 @@ function inboxRows(inbox) {
   return items.map((item, i) => `  ${i === items.length - 1 ? '└─' : '├─'} ${item.title} [${item.type}]`);
 }
 
+// The Roadmap section rows: one per horizon, list order, the join breakdown
+// riding inline — unnumbered on purpose, `r/roadmap` is where the map is
+// acted on. Lifecycle arrives derived (lifecycle by join, never stored).
+/** @param {StartDetail['roadmap']} roadmap */
+function roadmapRows(roadmap) {
+  const CATEGORIES = /** @type {const} */ ([
+    ['in-flight', 'in flight'],
+    ['waiting', 'waiting'],
+    ['shipped', 'shipped'],
+    ['orphaned', 'orphaned'],
+  ]);
+  const horizons = roadmap.horizons.filter((h) => roadmap.items.some((i) => i.horizon === h));
+  return horizons.map((h, i) => {
+    const members = roadmap.items.filter((item) => item.horizon === h);
+    const parts = CATEGORIES
+      .map(([state, label]) => [members.filter((m) => m.state === state).length, label])
+      .filter(([n]) => Number(n) > 0)
+      .map(([n, label]) => `${n} ${label}`);
+    return `  ${i === horizons.length - 1 ? '└─' : '├─'} ${titlecase(h)} — ${parts.join(' · ')}`;
+  });
+}
+
+// The roadmap menu row — one key, the skill self-routes on state (baseline's
+// pattern): an open session reads as unfinished work, otherwise the layer's
+// management/continue entry. Rendered only once the layer exists.
+/** @param {StartDetail} detail @returns {StartMenuKey|null} */
+function roadmapMenuRow(detail) {
+  if (!detail.roadmap.exists) return null;
+  const label = detail.roadmap.active_session !== null
+    ? 'Resume the product session — *roadmap, in progress*'
+    : 'Roadmap — the product conversation, the map, or pull a slice';
+  return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/workflow-roadmap', label };
+}
+
 // ---------------------------------------------------------------------------
 // Overview
 // ---------------------------------------------------------------------------
@@ -102,6 +136,11 @@ function startOverview(detail) {
       n += 1;
       lines.push(`  ${i === units.length - 1 ? '└─' : '├─'} ${n}. ${titlecase(u.name)}`);
     });
+    lines.push('');
+  }
+  if (detail.roadmap.exists && detail.roadmap.items.length > 0) {
+    lines.push('Roadmap');
+    lines.push(...roadmapRows(detail.roadmap));
     lines.push('');
   }
   if (detail.state.has_inbox) {
@@ -169,6 +208,8 @@ function startMenu(detail) {
   if (detail.baseline.status === 'in-progress') {
     options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: baselineResumeLabel(detail) });
   }
+  const roadmapRow = roadmapMenuRow(detail);
+  if (roadmapRow) options.push(roadmapRow);
   options.push(
     { key: 's', word: 'start', action: 'start_new', pre_seed: 'none', route: null, label: 'Start something new (not sure what kind yet)' },
     { key: 'f', word: 'feature', action: 'start_new', pre_seed: 'feature', route: null, label: 'Start new feature' },
@@ -202,11 +243,19 @@ function startMenu(detail) {
 
 /**
  * The empty-state Workflow Overview: no active work, closed counts when any.
+ * A project with a roadmap never renders an empty screen (design decision 21
+ * — the harvested-no-work state is a real state): the horizon rows stand in
+ * for the missing work sections.
  * @param {StartDetail} detail
  * @returns {string}
  */
 function emptyOverview(detail) {
-  let out = 'No active work found.\n';
+  let out;
+  if (detail.roadmap.exists && detail.roadmap.items.length > 0) {
+    out = 'No work in flight.\n\nRoadmap\n' + roadmapRows(detail.roadmap).join('\n') + '\n';
+  } else {
+    out = 'No active work found.\n';
+  }
   if (detail.completed_count > 0 || detail.cancelled_count > 0) {
     out += `\n${detail.completed_count} completed, ${detail.cancelled_count} cancelled.\n`;
   }
@@ -236,6 +285,8 @@ function emptyMenu(detail) {
     // stays hidden: a greenfield project never sees a baseline row.
     options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: 'Start the project baseline assessment' });
   }
+  const roadmapRow = roadmapMenuRow(detail);
+  if (roadmapRow) options.push(roadmapRow);
   options.push(
     { key: 's', word: 'start', action: 'start_new', pre_seed: 'none', route: null, label: "Not sure what kind yet — describe it and we'll shape it" },
     { key: 'f', word: 'feature', action: 'start_new', pre_seed: 'feature', route: null, label: 'Single topic: (research →) discussion → spec → plan → implement → review' },
