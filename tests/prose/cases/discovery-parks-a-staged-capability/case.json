@@ -1,0 +1,48 @@
+{
+  "origin": "the park valve had no coverage — mid-epic-discovery, a capability the user stages beyond the epic lands on the roadmap (born at that first park) instead of swelling the epic or vanishing",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-discovery/SKILL.md",
+    "skills/workflow-discovery/references/resume-detection.md",
+    "skills/workflow-discovery/references/initialize-discovery.md",
+    "skills/workflow-discovery/references/discovery-guidelines.md",
+    "skills/workflow-discovery/references/session-loop.md",
+    "skills/workflow-discovery/references/continuity-load.md",
+    "skills/workflow-discovery/references/template.md",
+    "skills/workflow-continue-epic/references/select-epic.md"
+  ],
+  "answers": [
+    "1 — continue the search relevance epic",
+    "i — resume the in-progress discovery session",
+    "c — pick up where we left off"
+  ],
+  "conduct": "The user is back on the search-relevance epic they shaped recently, continuing the exploration. As the conversation moves through the ranking ground, they mention that merchandisers keep asking for relevance analytics — dashboards showing which queries fail and which succeed. Pressed on whether that belongs in this overhaul, they are clear: not this epic — 'that's a phase-two thing, after the relevance work itself lands'. They agree when parking it on the roadmap under that placement is proposed, and carry on with the ranking thread afterwards as though the aside had cost nothing.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "manifest get search-relevance.discovery active_session",
+      "workflow-discovery/scripts/gateway.cjs search-relevance",
+      "roadmap add",
+      "--origin park:search-relevance"
+    ],
+    "calls_exclude": [
+      "workunit create",
+      "discovery-map add",
+      "roadmap pull",
+      "roadmap session open"
+    ]
+  }
+}

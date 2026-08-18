@@ -1,0 +1,61 @@
+{
+  "origin": "the product road's genesis walk had no coverage — a shaping conversation reads as product-altitude, routes to the roadmap before any work unit exists, lays the product out in horizons, and banks it with zero commitments",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/empty-state.md",
+    "skills/workflow-start/references/route-to-discovery.md",
+    "skills/workflow-discovery/SKILL.md",
+    "skills/workflow-discovery/references/opener-pattern.md",
+    "skills/workflow-discovery/references/shape-and-confirm.md",
+    "skills/workflow-discovery/references/detection-core.md",
+    "skills/workflow-roadmap/SKILL.md",
+    "skills/workflow-roadmap/references/roadmap-guidelines.md",
+    "skills/workflow-discovery/references/discovery-guidelines.md",
+    "skills/workflow-roadmap/references/session-template.md",
+    "skills/workflow-roadmap/references/session-loop.md",
+    "skills/workflow-discovery/references/harvest-nudge.md",
+    "skills/workflow-roadmap/references/harvest.md",
+    "skills/workflow-roadmap/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-roadmap/references/conclude.md"
+  ],
+  "answers": [
+    "s — start something new",
+    "y — that's the right read, lay it out as a roadmap",
+    "y — commit these items to the roadmap",
+    "s — stop here"
+  ],
+  "conduct": "The user has a new business idea: Orderflow, a white-label ordering platform small restaurants can run under their own name. They describe it the way it sits in their head — customers ordering from a menu on their phones, operators keeping that menu current, orders landing in the kitchen — and their ambition is staged from the first breath: for launch they only need those basics working end to end; loyalty and repeat-customer rewards come once real restaurants are on it; reselling the platform white-label to agencies is the long game they do not want to over-think yet. They answer questions concretely and place things on the timeline in their own words — 'that is a launch thing', 'that can wait until we have revenue'. Once the conversation has walked the whole shape and nothing new is coming up, they say it feels laid out and ask to sort it. Presented with a proposal, they accept it when it reflects what was discussed and correct it when it does not. When offered a pull into delivery, they stop — they want to sleep on it.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "roadmap session open",
+      "commit --roadmap",
+      "workflow-roadmap/scripts/gateway.cjs proposal --file",
+      "roadmap add-batch",
+      "roadmap session close"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "roadmap session open",
+      "workflow-roadmap/scripts/gateway.cjs proposal --file",
+      "roadmap add-batch",
+      "roadmap session close"
+    ],
+    "calls_exclude": [
+      "workunit create",
+      "discovery-map add",
+      "discovery-session open",
+      "roadmap pull",
+      "render resume-gate"
+    ]
+  }
+}

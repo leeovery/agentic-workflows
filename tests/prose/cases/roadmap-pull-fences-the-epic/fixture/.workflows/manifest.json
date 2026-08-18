@@ -1,0 +1,42 @@
+{
+  "roadmap": {
+    "horizons": [
+      "mvp",
+      "v1"
+    ],
+    "items": {
+      "ordering": {
+        "horizon": "mvp",
+        "summary": "customers order from a menu",
+        "origin": "harvest",
+        "sources": [
+          ".roadmap/sessions/session-001.md"
+        ]
+      },
+      "menu-management": {
+        "horizon": "mvp",
+        "summary": "operators maintain the menu",
+        "origin": "harvest",
+        "sources": [
+          ".roadmap/sessions/session-001.md"
+        ]
+      },
+      "kitchen-display": {
+        "horizon": "mvp",
+        "summary": "orders reach the kitchen",
+        "origin": "harvest",
+        "sources": [
+          ".roadmap/sessions/session-001.md"
+        ]
+      },
+      "loyalty": {
+        "horizon": "v1",
+        "summary": "repeat-customer rewards to drive reorders",
+        "origin": "harvest",
+        "sources": [
+          ".roadmap/sessions/session-001.md"
+        ]
+      }
+    }
+  }
+}
