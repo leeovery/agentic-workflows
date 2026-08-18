@@ -169,6 +169,31 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
+#### If output is `roadmap` (the product record deepened beneath this work)
+
+A roadmap session materially deepened this item's ground after the work started. The joined roadmap item's `sources` name the record — read the roadmap state, find the item whose `pulled_to` names this work unit and topic, and read its most recent source log fresh into context. Then clear the flag.
+
+> *Output the next fenced block as a code block:*
+
+```
+  ⚑ The product-level record deepened this ground after the
+    work started. Re-read the roadmap session it points at —
+    decisions here may need revisiting. Nothing has been
+    overwritten.
+```
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
+```
+
+Read the newest log the item's `sources` names (paths are relative to `.workflows/`), then clear the flag:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+```
+
+→ Return to caller.
+
 #### Otherwise (brief reconcile flagged)
 
 A discovery brief was written or regenerated after this work started. Surface the advisory, re-read the regenerated brief into context, and clear the flag.

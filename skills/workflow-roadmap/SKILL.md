@@ -44,11 +44,21 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 Read the positional argument:
 
-- `$0` — **mode**: `genesis` (from discovery's shaping gate — the conversation is live) or `open` (from the workflow-start menu).
+- `$0` — **mode**: `genesis` (from discovery's shaping gate — the conversation is live), `open` (from the workflow-start menu), or `pull` (from a recognition offer — straight to the pull ceremony).
 
 #### If `$0` is `genesis`
 
 → Proceed to **Step 2**.
+
+#### If `$0` is `pull`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+# **`■ Roadmap`**
+```
+
+→ Proceed to **Step 9**.
 
 #### Otherwise
 
