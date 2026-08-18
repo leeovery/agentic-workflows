@@ -76,7 +76,6 @@
       "render task-gate pay.implementation.pay"
     ],
     "calls_exclude": [
-      "phase-1-tasks",
       "task complete pay pay pay-1-1",
       "task start pay pay pay-1-2",
       "task start pay pay pay-1-3",
