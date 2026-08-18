@@ -1,7 +1,7 @@
 ---
 name: workflow-discovery
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(git log), Bash(mkdir -p .workflows/), Bash(rm .workflows/), Bash(rm -f .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-roadmap/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(git log), Bash(mkdir -p .workflows/), Bash(rm .workflows/), Bash(rm -f .workflows/)
 hooks:
   SessionEnd:
     - hooks:
@@ -27,10 +27,10 @@ Discovery is the universal **first phase** — every work type begins here. It s
 
 It runs in two modes:
 
-- **New mode** — from `workflow-start`. Decide the work type (epic / feature / bugfix / quick-fix / cross-cutting), shape the outline, persist at the work-type commit, route to the first phase.
-- **Existing-epic mode** — from `workflow-continue-epic`. The work type is already known; re-shape the epic's discovery map (refinement or resuming an interrupted sketch).
+- **New mode** — from `workflow-start`. Decide the work type (epic / feature / bugfix / quick-fix / cross-cutting), shape the outline, persist at the work-type commit, route to the first phase. A **product-altitude** read — no single unit of work on the table — routes out to the roadmap instead, before any unit exists.
+- **Existing-epic mode** — from `workflow-continue-epic`, or continuing straight from a roadmap pull that just created the epic. The work type is already known; shape (or re-shape) the epic's discovery map.
 
-**Stay in your lane**: Discovery settles *what the work is* and shapes it — determine the type first (epic / feature / bugfix / quick-fix / cross-cutting), then route it into the pipeline. How much substance the conversation engages is set per work type by the guidance loaded on each path, not fixed here: while determining the type you shape rather than resolve; once an epic is settled, its path opens into deep exploration. Name the work, shape it, route it.
+**Stay in your lane**: Discovery settles *what the work is* and shapes it — determine the type first (epic / feature / bugfix / quick-fix / cross-cutting, or the product road when no single unit is on the table), then route it into the pipeline. How much substance the conversation engages is set per work type by the guidance loaded on each path, not fixed here: while determining the type you shape rather than resolve; once an epic is settled, its path opens into deep exploration. Name the work, shape it, route it.
 
 ---
 
@@ -71,7 +71,7 @@ New work — nothing is on disk yet; pre-confirmation shaping is ephemeral.
 
 #### Otherwise
 
-`$1` names an existing epic. Skip macro shaping and re-shape its map.
+`$1` names an existing epic. Skip macro shaping and shape its map — a re-shape on a return visit, a first shaping when a roadmap pull created the epic moments ago (the map is empty; `pull_continuation` is held).
 
 → Proceed to **Step 6**.
 

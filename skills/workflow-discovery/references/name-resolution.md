@@ -4,7 +4,7 @@
 
 ---
 
-Resolve the work-unit name and clear any collision before the confirm-trigger creates the manifest. Loaded by [confirm-trigger.md](confirm-trigger.md). On return, `work_unit` is a confirmed, collision-free kebab-case name.
+Resolve the work-unit name and clear any collision before the unit is created. Loaded by [confirm-trigger.md](confirm-trigger.md) and by the roadmap pull ([pull.md](../../workflow-roadmap/references/pull.md)). On return, `work_unit` is a confirmed, collision-free kebab-case name.
 
 Inputs held from earlier steps: `work_type` (for phrasing), `inbox_seeds` (the promoted inbox file path(s), if the work came from the inbox), and the shaped one-line `description`.
 

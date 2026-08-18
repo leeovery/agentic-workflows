@@ -10,7 +10,7 @@ Detect an interrupted prior shaping session before re-shaping an existing epic's
 
 → Return to caller.
 
-Otherwise, read the active-session marker:
+**Otherwise:** read the active-session marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery active_session

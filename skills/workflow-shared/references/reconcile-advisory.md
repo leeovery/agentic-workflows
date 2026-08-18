@@ -171,7 +171,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 #### If output is `roadmap` (the product record deepened beneath this work)
 
-A roadmap session materially deepened this item's ground after the work started. The joined roadmap item's `sources` name the record — read the roadmap state, find the item whose `pulled_to` names this work unit and topic, and read its most recent source log fresh into context. Then clear the flag.
+A roadmap session materially deepened this item's ground after the work started. The joined roadmap item's `sources` name the record — read the roadmap state, find the item whose row's `work_unit` and `topic` name this work, and read its most recent source log fresh into context. Then clear the flag.
 
 > *Output the next fenced block as a code block:*
 

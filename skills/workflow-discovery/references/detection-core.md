@@ -12,7 +12,7 @@ These rules apply only to the work-type decision during shaping (Step 4) — a o
 
 Two levels, gathered simultaneously, committed in dependency order:
 
-- **Macro / work type** — *what kind of work is this?* (epic / feature / bugfix / quick-fix / cross-cutting). Resolved first.
+- **Macro / work type** — *what kind of work is this?* (epic / feature / bugfix / quick-fix / cross-cutting — or none: a product-altitude read routes out to the roadmap before any unit exists). Resolved first.
 - **Micro / topic** — topic existence (one coherent thing vs many) and, where the type has it, per-topic routing. For example, you cannot route an epic's topics, or choose research-vs-discussion for a feature or cross-cutting concern, until you know which it is.
 
 **Gather freely; commit in order.** Work-type cues and topic seeds co-emerge in the same breath — never sequence the *conversation* into "first interrogate type, then topics." Only *commitment* is ordered.
@@ -107,7 +107,7 @@ When a tangential concern surfaces that doesn't fit the current shape, offer to 
 
 If the user accepts, invoke the matching capture skill (`/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now (`node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"`) — it's a side-excursion from the main work, easy to leave uncommitted otherwise, and committing it means the capture survives even if this discovery session is abandoned. Note the surfacing so it's recoverable, then continue with the original work, now without scope creep. If the user says it's actually part of this work, fold it in. Soft, conversational — no structured gate.
 
-**The bucket is the ticket.** When the tangent is a product capability the user *places on the timeline* (*"that's a v2 thing"*), it parks on the roadmap instead — confirmed placement, then `engine roadmap add {name} --horizon {h} --summary "{one-liner}" --origin park:discovery` (self-commits; the roadmap is born at the first park). An unplaced thought stays the inbox's — when ambiguous, inbox: grooming promotes cheaply later, while a wrong horizon reads as a decision someone made.
+**The stated placement is the ticket.** When the tangent is a product capability the user *places on the timeline* (*"that's a v2 thing"*), it parks on the roadmap instead — confirmed placement, then `engine roadmap add {name} --horizon {h} --summary "{one-liner}" --origin park:discovery` (self-commits; the roadmap is born at the first park). An unplaced thought stays the inbox's — when ambiguous, inbox: grooming promotes cheaply later, while a wrong horizon reads as a decision someone made.
 
 ## H. Anchor and return — shape, don't dive
 
@@ -131,7 +131,11 @@ Commit only when signals have **converged AND been stable** across the last few 
 
 The forming work may already have a home the user forgot: a waiting roadmap item, or an inbox capture. The opener read both indexes; as the shape converges, match it against them by name and theme — a match earns one soft question, a miss earns silence.
 
-- **A waiting roadmap item holds this ground** — a fresh work unit beside it would strand its record and twin the item. Offer the pull instead: *"Loyalty is already on your roadmap (v1) — pull it from there so the record comes along?"* On accept, invoke `/workflow-roadmap pull` via the Skill tool — this skill ends, terminal. On decline, continue shaping; never create the twin silently — a deliberate fresh start renames.
+- **A waiting roadmap item holds this ground** — epic- and feature-shaped reads only; bugs and quick-fixes never touch the roadmap. A fresh work unit beside the item would strand its record and twin it. Offer the pull instead: *"Loyalty is already on your roadmap (v1) — pull it from there so the record comes along?"* On decline, continue shaping; never create the twin silently — a deliberate fresh start renames.
 - **A live inbox item captured this thought** — *"You logged 'checkout race' on 12 Jul — read it in as the seed?"* On accept, add the item's path to `inbox_seeds` and read it — it becomes the work's seed through the normal confirm-trigger landing. On decline, continue.
+
+**If the user accepts a pull offer:** invoke `/workflow-roadmap pull` via the Skill tool. This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
+**Otherwise** — no match, a declined offer, or an inbox seed read in:
 
 → Return to caller.

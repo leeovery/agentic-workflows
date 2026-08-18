@@ -6,6 +6,18 @@
 
 The caller provides `work_unit`, `topic`, and the `concern` with its discussed context. The concern is already judged off-topic for this discussion — on an epic it belongs to a sibling topic, existing or new. Offer the reroute, resolve the target yourself, and land the concern where it belongs.
 
+**If the concern is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. Park it (born at the first park; the verb validates and self-commits), note it in the discussion's running record, and continue — capture-weight, never shaping:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discussion/{topic}.md
+```
+
+→ Return to caller for **B. Session Loop**.
+
+**Otherwise:**
+
+→ Proceed to **A. Resolve the Target**.
+
 ## A. Resolve the Target
 
 Read the live map:
@@ -14,15 +26,7 @@ Read the live map:
 node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 ```
 
-**If the concern is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. Park it (born at the first park; the verb validates and self-commits), note it in the discussion's running record, and continue — capture-weight, never shaping:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}" --origin park:{topic} --source {work_unit}/discussion/{topic}.md
-```
-
-→ Return to caller for **B. Session Loop**.
-
-Otherwise: you hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The concern's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the concern. Don't put the reading back on the user. Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** — the concern's nature decides, so the judgement holds whatever the target.
+You hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The concern's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the concern. Don't put the reading back on the user. Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** — the concern's nature decides, so the judgement holds whatever the target.
 
 #### If the resolved target is the current topic
 

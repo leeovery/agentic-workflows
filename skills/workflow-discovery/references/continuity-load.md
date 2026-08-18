@@ -16,7 +16,7 @@ Bounded regardless of how many sessions exist:
 - **Recent in full** — read the most recent **2** session logs in full: their **Exploration**, **Edits**, and **Topics Identified**. On the resume branch the active log is the most recent and already loaded (re-reading is idempotent) — read the next concluded log below it.
 - **Older — one-line index** — for every session older than the recent two, read **only its `## Conclusion` line** (the finalisation digest: topics added, edits applied, map size). One line each. This is the bound — older sessions never load their full Exploration.
 
-**KB-on-demand.** Once discovery logs are knowledge-base indexed, an older session's full thinking can be pulled back by semantic query when a live thread calls for it. Until then, older sessions stay at the one-line Conclusion index, and recent-in-full is the floor — enough to resume on its own. A pulled epic's chain extends upward the same way: the product-level record (the roadmap sessions its items' `sources` name — read in full at the pull and backfilled into session-001) is KB-indexed and reachable by query whenever a thread reaches past the backfill.
+**KB-on-demand.** Discovery logs are indexed at each session's close, so an older session's full thinking can be pulled back by semantic query when a live thread calls for it — older sessions stay at the one-line Conclusion index here, and recent-in-full is the floor, enough to resume on its own. A pulled epic's chain extends upward the same way: the product-level record (the roadmap sessions its items' `sources` name — read in full at the pull and backfilled into session-001) is indexed and reachable by query whenever a thread reaches past the backfill.
 
 → Proceed to **B. Briefing**.
 
