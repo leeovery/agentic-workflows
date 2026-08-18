@@ -180,6 +180,26 @@ engine inbox restore <path> [<path> …]   # .archived/{folder}/ → live
 engine inbox delete <path> [<path> …]    # git rm archived items
 ```
 
+**`roadmap`** — the product-roadmap layer (design/product-roadmap.md): the project manifest's `roadmap` node — an ordered `horizons` list (user-named release labels; position carries the semantics) and an `items` record of capability-grain chunks, each `{horizon, summary, origin[, sources][, pulled_to]}` — never a status field. Item lifecycle is computed at read time by joining `pulled_to` against the named work unit (`waiting` = no join; `in-flight` = unit in-progress; `shipped` = completed; `orphaned` = the join names a missing or cancelled unit — the honest fallback for a revert that never ran). Every mutation is one transaction under the project-manifest lock **plus its own pathspec commit of `.workflows/manifest.json`** (engine-owned message, e.g. `roadmap: add {name} ({horizon})`) — no work-unit commit cadence covers the project manifest, and a park fired mid-session must be durable immediately; a git failure degrades to the standard commit-pending note. The node and any named horizon are created just-in-time by `add`/`add-batch`/`move` (`horizon_created: true` rides the response) — the roadmap has no genesis ceremony. `origin` is `harvest` | `park:{origin}` | `inbox:{slug}`; `--source` entries are provenance pointers into session logs (relative paths under `.workflows/`, validated non-absolute and non-traversing). Item and horizon names follow the dot/slash-free rule, and `roadmap` is a reserved work-unit name (the layer's identity).
+
+Authority splits at the pull: un-pulled items take every edit (`edit`, `rename`, `move`, `remove`); a **pulled** item refuses `move` and `remove` — re-bucketing or deleting in-flight delivery is the epic's decision, and the refusal names the join and the cancel-revert recovery — while `edit` (cosmetic; the row is a window) and `rename` (every field carried, the join included) stay open. Horizon ops run at any join state — relabeling a release never un-commits work: `rename` cascades to every member's `horizon` field, `reorder` demands a complete permutation of the current list, `merge` moves every member and drops the source label, `split` creates the new horizon (default: right after the source; `--position` overrides, 1-based) and moves the named members (each must belong to the source), `remove` refuses a horizon with members, naming them. `add-batch` validates every entry before applying any (a failing entry means nothing persisted) and lands under one commit. `state` is the derived read every consumer shares: `{"ok": true, "exists": bool, "horizons": […], "items": [{name, horizon, summary, origin, sources, state[, work_unit][, topic]}…], "totals": {items, waiting, in_flight, shipped, orphaned}}` — items horizon-ordered, absent/malformed state reading `exists: false`. Mutation responses are decision-ready: `add`/`move` echo the placement plus `horizons` and `item_total`; `rename` carries `renamed_from`/`preserved_fields`; horizon ops echo the list after (`horizons`) plus op-specifics (`items_updated`, `items_moved`).
+
+```bash
+engine roadmap state
+engine roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]
+engine roadmap add-batch --file <items.json>       # entries {name, horizon, summary, origin?, sources?} — atomic, one commit
+engine roadmap edit <name> --summary <text>        # any join state (cosmetic on a pulled item)
+engine roadmap rename <old> <new>                  # any join state; every field carried, join included
+engine roadmap move <name> --horizon <h>           # waiting items only; JIT-creates the horizon
+engine roadmap remove <name>                       # waiting items only; no dismissed list — git history keeps the story
+engine roadmap horizon add <name> [--position <n>]
+engine roadmap horizon rename <old> <new>          # cascades to member items, joins included
+engine roadmap horizon reorder <name> [<name> …]   # the complete order — a permutation of the current list
+engine roadmap horizon merge <from> --into <to>    # moves every member, drops the source label
+engine roadmap horizon split <name> --new <name> --items <a,b,…> [--position <n>]
+engine roadmap horizon remove <name>               # empty horizons only
+```
+
 **`cache`** — analysis-cache stamping: record that an analysis ran over the current completed inputs. Collects and checksums the input files exactly as the read side (`computeAnalysisCacheStatus` in domain/derivations) does — a fresh stamp is `valid` by construction. Writes `checksum`, `generated` (current ISO timestamp), and the input file names to the kind's manifest home: `phases.research.analysis_cache` (`files`) for `research-analysis`, `phases.discovery.gap_analysis_cache` (`input_files`) for `gap-analysis` — then indexes the kind's `.state/` cache file (`research-analysis.md` / `discovery-gap-analysis.md`) into the knowledge base (warn-don't-block). Errors when no qualifying inputs exist — the analyses' preconditions skip the stamp in that case. Response: `{"ok": true, "kind": "…", "checksum": "…", "files": N, "warnings": []}`. No git commit — the calling flow's commit cadence picks the manifest change up.
 
 ```bash

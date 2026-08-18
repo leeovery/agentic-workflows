@@ -33,6 +33,7 @@ const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
 
 const schema = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
 const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/derivations.cjs'));
+const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -86,6 +87,14 @@ function auditState(dir, label) {
   const projPath = path.join(dir, '.workflows', 'manifest.json');
   if (fs.existsSync(projPath)) {
     JSON.parse(fs.readFileSync(projPath, 'utf8'));
+  }
+
+  // The roadmap always derives — every item's state lands in vocabulary
+  // (lifecycle by join: never stored, so it must always be computable).
+  const rm = roadmapState(dir);
+  for (const row of rm.items) {
+    assert.ok(['waiting', 'in-flight', 'shipped', 'orphaned'].includes(row.state),
+      ctx(`roadmap item ${row.name}: state "${row.state}" not in vocabulary`));
   }
 
   for (const wu of listWorkUnits(dir)) {
@@ -1038,6 +1047,65 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).status, 'in-progress');
     assert.match(sim.render(['workunit-receipt', wu, '--verb', 'reactivate'], { expect: 'content' }),
       /reactivated/, 'reactivate receipt renders from the restored state');
+  });
+
+  it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
+    // Born lazily: the first park creates the node and its horizon — no
+    // genesis ceremony, no prior state.
+    sim.run(['roadmap', 'add', 'loyalty', '--horizon', 'v1',
+      '--summary', 'repeat-customer rewards', '--origin', 'park:mvp',
+      '--source', 'mvp/discovery/sessions/session-001.md']);
+
+    // The harvest's batch form: one transaction, horizons JIT in entry order.
+    const items = sim.write('.workflows/.cache/roadmap-items.json', [
+      { name: 'ordering', horizon: 'mvp', summary: 'customers order from a menu' },
+      { name: 'menu-management', horizon: 'mvp', summary: 'operators maintain the menu' },
+      { name: 'white-label', horizon: 'someday', summary: 'resell the platform' },
+    ]);
+    sim.run(['roadmap', 'add-batch', '--file', items]);
+    let state = sim.run(['roadmap', 'state']);
+    assert.deepStrictEqual(state.horizons, ['v1', 'mvp', 'someday']);
+    assert.strictEqual(state.totals.waiting, 4);
+
+    // The map is loose left of the pull: reorder, re-bucket, split, remove.
+    sim.run(['roadmap', 'horizon', 'reorder', 'mvp', 'v1', 'someday']);
+    sim.run(['roadmap', 'move', 'white-label', '--horizon', 'v2']);
+    sim.run(['roadmap', 'horizon', 'split', 'mvp', '--new', 'mvp-2', '--items', 'menu-management']);
+    sim.run(['roadmap', 'horizon', 'merge', 'mvp-2', '--into', 'mvp']);
+    sim.refuses(['roadmap', 'horizon', 'remove', 'v2'], /holds 1 item/);
+    sim.run(['roadmap', 'remove', 'white-label']);
+    sim.run(['roadmap', 'horizon', 'remove', 'v2']);
+
+    // The pull's join (the pull verb lands in the next slice — the join is
+    // written through the field surface's project route here) flips the
+    // derived state; storage never carries it.
+    const log = sessionLog(sim, 'mvp');
+    sim.run(['workunit', 'create', 'mvp', 'epic', '--description', 'The MVP slice', '--session-log-file', log]);
+    sim.run(['manifest', 'set', 'project.roadmap.items.ordering.pulled_to', '{"work_unit":"mvp"}']);
+    state = sim.run(['roadmap', 'state']);
+    assert.strictEqual(state.items.find((i) => i.name === 'ordering').state, 'in-flight');
+
+    // Right of the pull the work unit is authoritative: re-bucket and remove
+    // refuse; cosmetic edits and renames stay open, the join carried across.
+    sim.refuses(['roadmap', 'move', 'ordering', '--horizon', 'v1'], /delivery decision/);
+    sim.refuses(['roadmap', 'remove', 'ordering'], /joined to work unit "mvp"/);
+    sim.run(['roadmap', 'edit', 'ordering', '--summary', 'guests order from a menu']);
+    sim.run(['roadmap', 'rename', 'ordering', 'guest-ordering']);
+    // Horizon restructuring is presentational for joins — rename cascades.
+    sim.run(['roadmap', 'horizon', 'rename', 'mvp', 'launch']);
+    state = sim.run(['roadmap', 'state']);
+    const joined = state.items.find((i) => i.name === 'guest-ordering');
+    assert.strictEqual(joined.horizon, 'launch');
+    assert.strictEqual(joined.state, 'in-flight');
+
+    // Shipping the unit flips the derived state to shipped — nothing stored.
+    sim.run(['workunit', 'complete', 'mvp', '-m', 'workflow(mvp): pipeline complete']);
+    state = sim.run(['roadmap', 'state']);
+    assert.strictEqual(state.items.find((i) => i.name === 'guest-ordering').state, 'shipped');
+    assert.deepStrictEqual(state.totals, { items: 3, waiting: 2, in_flight: 0, shipped: 1, orphaned: 0 });
+
+    // The reserved identity holds: no work unit may take the layer's name.
+    sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--no-session-log'], /is reserved/);
   });
 
   it('pivot: a feature with a discussion becomes an epic and its topic keeps working', () => {

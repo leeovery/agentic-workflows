@@ -489,6 +489,7 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, createArgs('research', 'epic')).error, /conflicts with a phase name/);
     assert.match(engineFails(fix, createArgs('project', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('baseline', 'epic')).error, /is reserved/);
+    assert.match(engineFails(fix, createArgs('roadmap', 'epic')).error, /is reserved/);
   });
 
   it('rejects a missing session-log file before any mutation', () => {
