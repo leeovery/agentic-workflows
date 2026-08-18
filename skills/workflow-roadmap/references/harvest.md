@@ -61,15 +61,10 @@ Read `=== DATA` to reason from (never display it) — a per-name flag row for ea
 
 Emit the `=== DISPLAY` section verbatim **as a code block** — the proposed items over the existing roadmap, so the full picture is visible.
 
-> *Output the next fenced block as markdown (not a code block):*
+Then fetch the gate and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**`◆ Confirm the sort, or tell me what to adjust.`**
-
-**`y/yes`**     → Commit these items to the roadmap
-**`e/explore`** → Go back to the conversation; not ready yet
-**Adjust**    → Tell me what to change (move, split, merge, rename, re-word)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-harvest-gate
 ```
 
 **STOP.** Wait for user response.

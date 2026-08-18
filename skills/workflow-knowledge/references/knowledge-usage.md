@@ -56,14 +56,10 @@ If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not 
   or provider mismatch. Run `knowledge status` to diagnose.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**`◆ How should I proceed?`**
-
-**`r/retry`** → I'll fix the issue; retry the query
-**`s/skip`**  → Proceed without knowledge context for this phase
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render query-failure-gate
 ```
 
 **STOP.** Wait for user response.

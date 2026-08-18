@@ -268,6 +268,44 @@ function roadmapHomeMenu(state) {
   return { keys, rendered: menu('', options, { question: 'What would you like to do?' }) };
 }
 
+// The static gate menus — engine-rendered like every menu (one renderer,
+// one alignment rule, one register), fetched by the prose at the exact
+// point each is displayed.
+
+/** The roadmap harvest's sort confirm. */
+function roadmapHarvestGate() {
+  return menu('', [
+    cmdOption('y', 'yes', 'Commit these items to the roadmap'),
+    cmdOption('e', 'explore', 'Go back to the conversation; not ready yet'),
+    promptOption('Adjust', 'Tell me what to change (move, split, merge, rename, re-word)'),
+  ], { question: 'Confirm the sort, or tell me what to adjust.' });
+}
+
+/** The epic synthesis' parks-only confirm — the whole sort is the roadmap's. */
+function roadmapParksGate() {
+  return menu('', [
+    cmdOption('y', 'yes', 'Commit these items to the roadmap and conclude'),
+    cmdOption('e', 'explore', 'Go back to exploration; not ready to commit yet'),
+    promptOption('Adjust', 'Tell me what to change (move between horizons, rename, re-word)'),
+  ], { question: 'Park these on the roadmap, or tell me what to adjust.' });
+}
+
+/** The pull's shape confirm — epic vs feature, the framing. */
+function roadmapShapeGate() {
+  return menu('', [
+    cmdOption('y', 'yes', 'Create it and continue into delivery'),
+    promptOption('Adjust', 'Tell me what to change (epic vs feature, the framing)'),
+  ], { question: 'Shape it this way?' });
+}
+
+/** Conclude's stop-or-pull offer. */
+function roadmapConcludeGate() {
+  return menu('', [
+    cmdOption('p', 'pull', 'Pick the item(s) going into delivery'),
+    cmdOption('s', 'stop', 'Stop here — the roadmap keeps everything warm'),
+  ], { question: 'Pull a slice into delivery now?' });
+}
+
 /** The view's chrome heading — project-level, no unit. */
 function roadmapTitle() { return 'Roadmap'; }
 
@@ -277,5 +315,9 @@ module.exports = {
   roadmapProposalView,
   roadmapPullSetView,
   roadmapAddGate,
+  roadmapHarvestGate,
+  roadmapParksGate,
+  roadmapShapeGate,
+  roadmapConcludeGate,
   roadmapHomeMenu,
 };

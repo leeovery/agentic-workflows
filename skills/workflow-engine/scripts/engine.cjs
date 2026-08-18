@@ -210,7 +210,7 @@ Commands:
   render triage-block     <wu.phase.topic>
   render reroute-offer    <wu.phase.topic> --file <payload.json>
   render reroute-candidates <wu.phase.topic> --file <payload.json>
-  render off-topic-offer  <wu.phase.topic> --file <payload.json>
+  render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
   render cancel-cascade-gate <wu.phase.topic>
@@ -244,6 +244,14 @@ Commands:
   render roadmap-view
   render roadmap-add-gate --horizon <name>
   render roadmap-session-receipt [--warn]
+  render roadmap-harvest-gate
+  render roadmap-parks-gate
+  render roadmap-shape-gate
+  render roadmap-conclude-gate
+  render name-gate [--variant collision]
+  render shape-gate
+  render synthesis-gate
+  render query-failure-gate
   render baseline-progress
   render baseline-area-gate --area <name>
   render baseline-paused

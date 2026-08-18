@@ -6,34 +6,13 @@
 
 The caller provides `work_type`, `work_unit`, `topic`, and the `concern` with its discussed context. The concern is already judged off-topic — single-topic work types have no sibling topic to route to, so it is preserved outside this discussion or noted and set aside.
 
-#### If `work_type` is `feature`
+Write the offer payload to `.workflows/.cache/{work_unit}/discussion/{topic}/off-topic-offer.json` with the Write tool (`{"concern": "…"}` — the concern's short title), then render it (the pivot row is derived from the work type; the discussion variant carries the roadmap park):
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**{concern}** is beyond this topic's scope.
-
-**`l/log`**     → Capture it as an idea in the inbox for later
-**`r/roadmap`** → Park it on the product roadmap with a horizon
-**`p/pivot`**   → Convert this work to an epic so it can hold the concern as its own topic
-**`i/ignore`**  → Note it in the Summary and move on
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render off-topic-offer {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/off-topic-offer.json --variant discussion
 ```
 
-**STOP.** Wait for user response.
-
-#### Otherwise
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**{concern}** is beyond this topic's scope.
-
-**`l/log`**     → Capture it as an idea in the inbox for later
-**`r/roadmap`** → Park it on the product roadmap with a horizon
-**`i/ignore`**  → Note it in the Summary and move on
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

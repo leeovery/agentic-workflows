@@ -20,14 +20,10 @@ Render the suggestion (for bugfix / feature / quick-fix the name becomes both `{
 Suggested {work-type} name: {work_unit}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**`◆ Is this name okay?`**
-
-**`y/yes`**            → Use this name
-**A different name** → Tell me what to call it instead
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render name-gate
 ```
 
 **STOP.** Wait for user response.
@@ -55,13 +51,10 @@ To pick that work back up, run /workflow-start and select it. Or
 choose a different name to start fresh.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**`◆ Choose a different name, or resume via /workflow-start.`**
-
-**A different name** → Tell me what to call it instead
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render name-gate --variant collision
 ```
 
 **STOP.** Wait for user response.

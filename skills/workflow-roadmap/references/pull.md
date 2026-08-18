@@ -34,14 +34,10 @@ Decide the unit's shape with the user. The default is **one epic** — several i
 
 Compile a one-line `description` for the unit from the pulled items' summaries and the record. Then confirm the shape — state your read and why above the gate, **naming the remainder** so a partial pull is spoken at the moment of choice (*"3 items stay waiting in mvp"*); when the selection is a whole horizon, its name is the natural work-unit name:
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**`◆ Shape it this way?`**
-
-**`y/yes`**   → Create it and continue into delivery
-**Adjust**  → Tell me what to change (epic vs feature, the framing)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-shape-gate
 ```
 
 **STOP.** Wait for user response.
