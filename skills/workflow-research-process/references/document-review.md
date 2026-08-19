@@ -31,7 +31,7 @@ Pull the current state fresh into context — don't rely on your memory of what 
 
 ## B. Compare and Reconcile
 
-Walk the conversation against the document and check five dimensions (the fifth sweeps the document alone):
+Walk the conversation against the document and check six dimensions (the last two sweep the document alone):
 
 1. **Undocumented substance** — threads, insights, constraints, open questions, tradeoffs, or preliminary positions that came up in conversation but never made it into the document. Not verbatim — the *substance* of what was explored. This is the most common failure mode as sessions grow long and later exchanges crowd out earlier ones.
 
@@ -43,6 +43,8 @@ Walk the conversation against the document and check five dimensions (the fifth 
 
 5. **Pipeline meta** — the document stating its own pipeline position: notes that the research is complete or ready for discussion, review-cycle counts — whether written this session or in an earlier session. The manifest carries that state.
 
+6. **Unverified claims** — every load-bearing empirical claim about the codebase or toolchain, whatever session wrote it. Re-run its recorded command; construct the obvious measurement where none is recorded, and record it with the result. The documents' own figures, and anything asserted as verified earlier, are claims — not measurements. A load-bearing claim no command can check is softened to observation.
+
 **Apply the reconciliation.** For each finding:
 
 - Gap → add the missing substance to the research file at the appropriate place
@@ -50,6 +52,7 @@ Walk the conversation against the document and check five dimensions (the fifth 
 - Drift → rewrite to faithfully reflect the conversation
 - Misdirected knowledge → set aside for **C. Route Misdirected Knowledge** — never silently deleted, never landed without the gate
 - Pipeline meta → remove it — fold any genuine substance it carries into the research file at the appropriate place, never the status itself
+- False claim → correct to the measured value, recording the command, and repair citing prose — raising in the session anything the corrected value undermines
 
 Commit the changes (`engine commit {work_unit} --topic research/{topic} -m "..."`) with a descriptive message (e.g., `docs(research): capture undocumented tradeoff thread`, `docs(research): correct drift on storage preference`).
 
