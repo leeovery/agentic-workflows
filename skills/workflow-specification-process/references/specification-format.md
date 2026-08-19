@@ -62,7 +62,7 @@ Lifecycle `status` transitions go through the engine, not `set` — `engine topi
 [Optional - capture in-progress discussion if needed]
 ```
 
-Bracketed lines are placeholders, not content — create the file with the headings and leave the sections empty; never copy placeholder text into the file. Topic content nests beneath `## Specification` as `###` sections — never as sibling `##` headings.
+Bracketed lines are placeholders, not content — create the file with the headings and leave the sections empty; never copy placeholder text into the file. Topic content nests beneath `## Specification` as numbered `###` sections (`### 3. Sweep Scope`), subdivided where a section has distinct parts as decimal `####` subsections (`#### 3.2 The in-scope set`) — never as sibling `##` headings. The numbering is the reference grammar: a one-home reference cites the owning section (`§3.2`) instead of restating or describing it, and survives sections being reworded.
 
 A specification corrected after its work unit completed may additionally carry a `## Corrigenda` section as its final section — the durable record of post-completion amendments, written only through `workflow-shared/references/correcting-historical-artifacts.md`, never during specification work.
 

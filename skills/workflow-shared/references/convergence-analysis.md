@@ -178,6 +178,13 @@ Open with one markdown sentence above the block — what the cycles show, in pla
   @if(trend = diverging)
   ⚑ Fixes are introducing new issues. Consider reviewing the approach.
   @endif
+  @if(loop_type is spec-review and trend = churning and review_growth > 0)
+  ⚑ The cycles are adding words while findings churn — later reviews
+    are reviewing earlier reviews' writing, a shape the review rules
+    forbid: findings add missing source content or remove wrong
+    content, never rework sound ground. Check the recent additions
+    against the sources before running another cycle.
+  @endif
   @if(loop_type is spec-review and review_growth > review_baseline_words / 4)
   ⚑ Review has added {review_growth} words to a
     {review_baseline_words}-word construction. Growth that traces to
