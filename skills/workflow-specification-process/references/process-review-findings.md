@@ -59,7 +59,7 @@ A finding whose Category is **Source defect** or **Unsourced decision** indicts 
 
 → Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with doc = `{the owning source's topic}` (for an unsourced decision, the source that should own the missing decision), taking the finding's Details as the material to classify.
 
-On return, update the tracking file — Resolution `Routed`, a note naming what landed where — and commit. (The gap exit does not return: the specification pauses and the reference routes the session out; the tracking entry stays `in-progress` in the manifest, and its remaining findings re-process at the next entry.)
+On return, re-align the specification's own copy: the resolution now stands in the corrected source, so the affected spec content is updated to match it — a fidelity repair the record settles, logged without a gate. Then update the tracking file — Resolution `Routed`, a note naming what landed where — and commit. (The gap exit does not return: the specification pauses and the reference routes the session out; the tracking entry stays `in-progress` in the manifest, and its remaining findings re-process at the next entry.)
 
 → Return to **B. Process One Item at a Time**.
 
