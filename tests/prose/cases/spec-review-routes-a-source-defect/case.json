@@ -1,0 +1,75 @@
+{
+  "origin": "idea 40's review loop could only apply, adjust, or skip — a finding indicting the source had nowhere to go. This walks the fourth verb: a claims finding whose false count lives in the discussion routes through the incoherence flow on the value-only lane, the correction lands in the source in place, and the spec's own copy re-aligns",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/compliance-check.md"
+  ],
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting and they want the review pass, so offered the resume choice they continue. They know the record cold and treat the module count as descriptive — the telemetry decision is per-module whatever the number. Told the claims pass measured five checkout modules where both documents say four, and that the correction has landed in the discussion's own record with the spec re-aligned, they take the one-line notify without ceremony — that is exactly where they expect a count fix to go, and they would object to being asked to choose a side over an arithmetic fact. At the re-loop prompt they proceed to completion: the one finding was a count correction, another cycle is not owed. At sign-off they confirm. Throughout they answer concretely, never add scope, and never reopen decided questions.",
+  "stubs": {
+    "spec-claims-source-defect": "when the prose dispatches the claims verification agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes",
+    "spec-review-clean": "when the prose dispatches the input review or gap analysis agent via the Task tool — each returns the content below and writes no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle 1",
+      "tracking.review-claims-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "presence scan pay",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "--topic discussion/pay",
+      "tracking.review-claims-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "topic complete pay specification pay",
+      "spec(pay): conclude specification"
+    ],
+    "calls_in_order": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle 1",
+      "tracking.review-claims-tracking-c1 in-progress",
+      "presence scan pay",
+      "write:.workflows/pay/discussion/pay.md",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "write:.workflows/pay/specification/pay/specification.md",
+      "tracking.review-claims-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "topic complete pay specification pay"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic triage",
+      "topic supersede",
+      "sources stale",
+      "render incoherence-gate",
+      "construction_gate_mode auto",
+      "finding_gate_mode auto",
+      "workunit create"
+    ]
+  }
+}

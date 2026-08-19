@@ -37,8 +37,9 @@ The prose should have taken this path:
 9. construction continues against the updated source; the chunk the
    conflict blocked is extracted from the now-coherent record; both
    source rows flip to incorporated when their extraction exhausts
-10. review cycle 1 initialises; the input review and gap analysis
-    agents run sequentially and return clean through the stubs
+10. review cycle 1 initialises; the claims verification, input review,
+    and gap analysis agents run sequentially and return clean through
+    the stubs
 11. compliance self-check, then completion: the epic's cross-cutting
     assessment is confirmed with the user, tracking and sources verify,
     sign-off is put to the user, and on their yes the topic completes

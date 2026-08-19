@@ -1,5 +1,5 @@
 {
-  "origin": "the specification pass had entry coverage only — this walks the whole phase: gated extraction from a completed discussion, the two-phase review run clean through stubs, and the engine-completed conclusion",
+  "origin": "idea 40 observed a spec session silently patching a source's false tree claim in the spec alone — this walks the reality trigger: construction verifies the load-bearing claim, meets the mismatch, stops conversationally because the decision leans on it, and lands the settlement in the discussion's own record",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [
@@ -19,14 +19,16 @@
     "skills/workflow-specification-process/references/session-setup.md",
     "skills/workflow-specification-process/references/specification-principles.md",
     "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
     "skills/workflow-specification-process/references/exhaustive-extraction.md",
     "skills/workflow-specification-process/references/spec-review.md",
     "skills/workflow-specification-process/references/review-tracking-format.md",
     "skills/workflow-specification-process/references/process-review-findings.md",
     "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-shared/references/compliance-check.md"
   ],
-  "conduct": "The user is turning their completed card-payments discussion into the specification. They know its decisions cold: the existing gateway account with no new provider onboarding, card-only for v1 with wallets deferred, and capture confirmed by gateway webhooks with no polling anywhere. They check each presented piece against what was actually decided — content faithful to the discussion gets an explicit yes; anything invented, embellished, or hedged beyond the record they correct before it is written. They want their own eyes on every piece before it is recorded: offered a way to approve the rest automatically, they decline and keep approving one at a time. They answer questions concretely and briefly, and they do not reopen decided questions or add new scope — the discussion said what it said. When asked to conclude, they confirm: the specification matches the discussion and they are done.",
+  "conduct": "The user is turning their completed card-payments discussion into the specification and knows its record cold: the existing gateway account, webhook-confirmed capture with no polling, and no reconciliation job for v1 on the strength of every handler retrying. When the session raises the failed measurement — the refund handler does not wrap in withRetry — they engage on the merits and settle it: require the refund handler to wrap in withRetry as part of this work; with that, the no-reconciliation decision stands. They expect the correction to land in the discussion's own record as that format's dated re-decision, not a rewrite, and would object to it being patched only in the specification. Otherwise they check each presented piece against what was decided — faithful content gets an explicit yes; anything invented or hedged beyond the record they correct before it is written. Offered a way to approve the rest automatically, they decline and keep approving one piece at a time. They answer concretely, never add scope, and never reopen decided questions beyond the one raised to them. When asked to conclude, they confirm.",
   "stubs": {
     "spec-review-clean": "each time the prose dispatches a specification review agent via the Task tool — claims verification, input review, and gap analysis alike return the content below and write no file"
   },
@@ -40,26 +42,29 @@
       "sources.pay.status incorporated",
       "review_cycle=0",
       "finding_gate_mode=gated",
-      "spec(pay): initialize specification",
+      "presence scan pay",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "--topic discussion/pay",
       "manifest set pay.specification.pay review_cycle 1",
       "topic complete pay specification pay",
       "spec(pay): conclude specification"
     ],
     "calls_in_order": [
-      "render entry-gate pay.specification.pay",
-      "manifest get pay.specification.pay status",
       "topic start pay specification pay",
-      "sources.pay.status incorporated",
-      "review_cycle 1",
-      "topic complete pay specification pay",
-      "spec(pay): conclude specification"
+      "presence scan pay",
+      "write:.workflows/pay/discussion/pay.md",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "manifest set pay.specification.pay review_cycle 1",
+      "topic complete pay specification pay"
     ],
     "calls_exclude": [
       "topic reopen",
+      "topic triage",
       "topic supersede",
+      "sources stale",
+      "render incoherence-gate",
       "construction_gate_mode auto",
       "finding_gate_mode auto",
-      "knowledge.cjs",
       "workunit create"
     ]
   }
