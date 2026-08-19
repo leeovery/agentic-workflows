@@ -64,9 +64,21 @@ Walk the conversation against the document and check seven dimensions (the last 
 - Mislanded re-decision → restructure the block into the timeline shape (wrap the original prose as `#### Initial`, place the dated entry above it); restore any edited earlier entry from git
 - Misdirected knowledge → set aside for **C. Route Misdirected Knowledge** — never silently deleted, never landed without the gate
 - Pipeline meta → remove it — fold any genuine substance it carries back into the document (an open condition becomes an Open Thread), never the status itself
-- False claim → correct to the measured value, recording the command, and repair citing prose. When the corrected value undermines a decision or insight built on the claim, raise it in the session before concluding — what the conclusion means under the true value is the user's to re-weigh, never patched silently
+- False claim → correct to the measured value, recording the command, and repair citing prose — except where the corrected value undermines a decision or insight built on the claim: hold that one for the raise below, never patched silently
 
 Commit the changes (`engine commit {work_unit} --topic discussion/{topic} -m "..."`) with a descriptive message (e.g., `docs(discussion): capture undocumented trade-off thread`, `docs(discussion): correct drift on caching decision`, `docs(discussion): soften Map state to converging`).
+
+**If a corrected value undermines a decision or insight built on the claim:**
+
+Put the measurement to the user — what the document asserts, the command and its result, and which decision or insight leans on it. What the conclusion means under the true value is theirs to re-weigh.
+
+**STOP.** Wait for user response.
+
+Land their answer in the document — a changed decision as the template's dated timeline revision, the citing prose repaired either way — and commit.
+
+→ Proceed to **C. Route Misdirected Knowledge**.
+
+**Otherwise:**
 
 → Proceed to **C. Route Misdirected Knowledge**.
 

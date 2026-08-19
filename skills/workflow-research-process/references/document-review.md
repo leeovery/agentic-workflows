@@ -43,7 +43,7 @@ Walk the conversation against the document and check six dimensions (the last tw
 
 5. **Pipeline meta** — the document stating its own pipeline position: notes that the research is complete or ready for discussion, review-cycle counts — whether written this session or in an earlier session. The manifest carries that state.
 
-6. **Unverified claims** — every load-bearing empirical claim about the codebase or toolchain, whatever session wrote it. Re-run its recorded command; construct the obvious measurement where none is recorded, and record it with the result. The documents' own figures, and anything asserted as verified earlier, are claims — not measurements. A load-bearing claim no command can check is softened to observation.
+6. **Unverified claims** — every load-bearing empirical claim about the codebase or toolchain, whatever session wrote it. Re-run its recorded command; construct the obvious measurement where none is recorded, and record it with the result per the template's measured-claims convention. The documents' own figures, and anything asserted as verified earlier, are claims — not measurements. A load-bearing claim no command can check is softened to observation.
 
 **Apply the reconciliation.** For each finding:
 
@@ -52,9 +52,21 @@ Walk the conversation against the document and check six dimensions (the last tw
 - Drift → rewrite to faithfully reflect the conversation
 - Misdirected knowledge → set aside for **C. Route Misdirected Knowledge** — never silently deleted, never landed without the gate
 - Pipeline meta → remove it — fold any genuine substance it carries into the research file at the appropriate place, never the status itself
-- False claim → correct to the measured value, recording the command, and repair citing prose — raising in the session anything the corrected value undermines
+- False claim → correct to the measured value, recording the command, and repair citing prose — except where the corrected value undermines a conclusion the document draws: hold that one for the raise below, never patched silently
 
 Commit the changes (`engine commit {work_unit} --topic research/{topic} -m "..."`) with a descriptive message (e.g., `docs(research): capture undocumented tradeoff thread`, `docs(research): correct drift on storage preference`).
+
+**If a corrected value undermines a conclusion the document draws:**
+
+Put the measurement to the user — what the document asserts, the command and its result, and which conclusion leans on it. What the conclusion means under the true value is theirs to re-weigh.
+
+**STOP.** Wait for user response.
+
+Land their answer in the affected passages and commit.
+
+→ Proceed to **C. Route Misdirected Knowledge**.
+
+**Otherwise:**
 
 → Proceed to **C. Route Misdirected Knowledge**.
 
@@ -80,25 +92,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 Take the next unhandled note. Handled-ness lives in the walk and is recoverable from the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
 
-Judge the target topic from the note's own addressing, and `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Present it:
+Judge the target topic from the note's own addressing, and `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Write the payload to `.workflows/.cache/{work_unit}/research/{topic}/carry-note.json` with the Write tool — `{"note": [the note's lines, quoted], "target": "{target}", "landing_phase": "{landing_phase}"}` — then fetch the gate, emitting each section verbatim at its marked instruction:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-{the note, quoted}
-
-*Addressed to: {target} — lands in its {landing_phase} triage queue*
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Land this note in "{target}"'s triage queue? If "{target}" is completed, landing reopens it.
-
-**`y/yes`**   → Land it there; this document keeps a reroute record
-**`s/skip`**  → Leave it as prose in this document
-**Comment** → Tell me what to change (target, phase, or content)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render carry-note-gate {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/carry-note.json
 ```
 
 **STOP.** Wait for user response.

@@ -1,0 +1,76 @@
+{
+  "origin": "idea 40's second failure class — sixteen decisions made in the spec that no source made — had the route but no walk. This pins the Unsourced-decision lane end to end: input review flags it, the orchestrator routes it, the no-sides exchange settles it, the settlement lands in the discussion as a new subtopic section, and the spec re-aligns to what was actually decided",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/compliance-check.md"
+  ],
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. When the session raises the webhook verification mechanism as a decision the record never made, they recognise it immediately — that section was invented at construction, nobody discussed verification — and they settle it on the merits: use the gateway SDK's built-in signature verification with its default tolerance; a hand-rolled HMAC check and a custom five-minute window are exactly the kind of thing they do not want to own. They expect the decision to land in the discussion's own record as its own ground, and the spec to say what was decided rather than what was invented. At the re-loop prompt they proceed to completion — the one finding was routed and settled, another cycle is not owed. At sign-off they confirm. Throughout they answer concretely, decline any offer to approve things automatically, and never reopen decided questions beyond the one raised to them.",
+  "stubs": {
+    "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool — each returns the content below and writes no file",
+    "spec-input-unsourced-decision": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle 1",
+      "tracking.review-input-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "presence scan pay",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "--topic discussion/pay",
+      "tracking.review-input-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
+      "topic complete pay specification pay",
+      "spec(pay): conclude specification"
+    ],
+    "calls_in_order": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle 1",
+      "tracking.review-input-tracking-c1 in-progress",
+      "presence scan pay",
+      "write:.workflows/pay/discussion/pay.md",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "write:.workflows/pay/specification/pay/specification.md",
+      "tracking.review-input-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "topic complete pay specification pay"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic triage",
+      "topic supersede",
+      "sources stale",
+      "render incoherence-gate",
+      "construction_gate_mode auto",
+      "finding_gate_mode auto",
+      "workunit create"
+    ]
+  }
+}

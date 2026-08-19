@@ -34,8 +34,6 @@ module.exports = {
     mod('payment', 'payment');
     mod('confirm', 'confirm');
     mod('wallet-stub', 'walletStub');
-    h.git('add', 'src');
-    h.git('commit', '-q', '-m', 'src: checkout modules');
 
     // The completed discussion — the false measured count in Telemetry
     // Coverage's Journey; the decision survives any count.
@@ -101,7 +99,8 @@ module.exports = {
       `sources.${WU}.status=pending`,
       'review_cycle=0',
       'finding_gate_mode=gated',
-      'construction_gate_mode=gated');
+      'construction_gate_mode=gated',
+      'date=2026-01-01');
     h.write(`.workflows/${WU}/specification/${WU}/specification.md`, [
       '# Specification: Pay',
       '',

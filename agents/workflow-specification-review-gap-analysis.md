@@ -60,7 +60,7 @@ No source material — this phase looks inward only.
    - Terms used inconsistently across sections
    - "It should" without defining what "it" is
    - Implicit assumptions that aren't stated
-   - Open-decision markers — "Decision required", "TBD", "to be decided", or any marker parking an unmade decision in the artifact. A specification decides nothing and defers nothing; flag every marker as Critical — the parked question must be resolved, not shipped
+   - Open-decision markers — "Decision required", "TBD", "to be decided", or any marker parking an unmade decision in the artifact. A specification decides nothing and defers nothing; flag every marker as Critical, category **Unsourced decision** — the marker itself is the evidence that no validated decision stands behind the text, no source comparison needed. The orchestrator routes these back toward the source record — never propose spec text for them
 
    **Contradictions**
    - Requirements that conflict with each other
@@ -97,7 +97,7 @@ No source material — this phase looks inward only.
 **MANDATORY. No exceptions.**
 
 1. **No git writes** — do not commit or stage. Writing the output file is your only file write.
-2. **One concern only** — standalone document quality. Do not compare against source material — that's the input review agent's job.
+2. **One concern only** — standalone document quality. Do not compare against source material — that's the input review agent's job — and never measure claims against the codebase — that's the claims verification agent's job.
 3. **Don't expand scope** — look for gaps *within* what's specified, not suggesting features the product should have. A feature spec for "user login" doesn't need you to ask about password reset if it wasn't in scope.
 4. **No gold-plating** — only flag gaps that would actually impact implementation of what's specified.
 5. **Don't second-guess decisions** — the spec reflects validated decisions. Check for clarity and completeness, not re-open debates.
@@ -117,7 +117,7 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-track
 ### 1. {Brief Title}
 
 **Source**: Specification analysis
-**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Duplication
+**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Duplication | Unsourced decision
 **Priority**: Critical | Important | Minor
 **Affects**: {which section(s) of the specification}
 

@@ -703,7 +703,6 @@ const RATCHET_PINS = {
   'skills/workflow-planning-process/references/process-review-findings.md': 1,
   'skills/workflow-planning-process/references/resolve-dependencies.md': 1,
   'skills/workflow-research-process/references/deep-dive-agent.md': 2,
-  'skills/workflow-research-process/references/document-review.md': 2,
   'skills/workflow-research-process/references/epic-session.md': 2,
   'skills/workflow-research-process/references/feature-session.md': 1,
   'skills/workflow-research-process/references/topic-splitting.md': 2,

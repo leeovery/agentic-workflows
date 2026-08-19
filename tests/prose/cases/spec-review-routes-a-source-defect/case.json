@@ -46,6 +46,7 @@
       "--topic discussion/pay",
       "tracking.review-claims-tracking-c1 complete",
       "render spec-review-gate pay.specification.pay --variant reloop",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
       "topic complete pay specification pay",
       "spec(pay): conclude specification"
     ],

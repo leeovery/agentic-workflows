@@ -990,6 +990,71 @@ describe('render spec-review-gate', () => {
   });
 });
 
+describe('render spec-completion-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('assessment variant renders the confirm menu', () => {
+    const out = renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal', variant: 'assessment' });
+    assert.ok(out.includes('=== MENU: spec assessment gate'));
+    assert.ok(out.includes('**`◆ Confirm this assessment?`**'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Confirm assessment/.test(out));
+    assert.ok(/\*\*Comment\*\* +→ Suggest a different classification/.test(out));
+  });
+
+  it('signoff variant renders the conclude consent', () => {
+    const out = renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal', variant: 'signoff' });
+    assert.ok(out.includes('=== MENU: spec signoff gate'));
+    assert.ok(out.includes('**`◆ Ready to conclude?`**'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Conclude specification and mark as completed/.test(out));
+    assert.ok(/\*\*Comment\*\* +→ Add context before concluding/.test(out));
+  });
+
+  it('rejects a missing or unknown variant and a non-specification address', () => {
+    assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal' }), /--variant must be "assessment" or "signoff"/);
+    writeManifest(dir, 'pay', { phases: { discussion: { items: { portal: { status: 'in-progress' } } } } });
+    assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.discussion.portal', variant: 'signoff' }), /address must be <work_unit>\.specification\.<topic>/);
+  });
+});
+
+describe('render carry-note-gate', () => {
+  let dir;
+  const payload = { note: ['→ search-cache: the eviction rule this session settled invalidates its TTL note.'], target: 'search-cache', landing_phase: 'discussion' };
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { research: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the note, the addressed-to line, and the landing menu', () => {
+    const file = writePayload(dir, 'n.json', payload);
+    const out = renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.research.portal', file });
+    assert.ok(out.includes('=== DISPLAY: carry note'));
+    assert.ok(out.includes(payload.note[0]));
+    assert.ok(out.includes('*Addressed to: search-cache — lands in its discussion triage queue*'));
+    assert.ok(out.includes('=== MENU: carry note gate'));
+    assert.ok(out.includes('Land this note in "search-cache"\'s triage queue? If "search-cache" is completed, landing reopens it.'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Land it there; this document keeps a reroute record/.test(out));
+    assert.ok(/\*\*`s\/skip`\*\* +→ Leave it as prose in this document/.test(out));
+    assert.ok(/\*\*Comment\*\* +→ Tell me what to change \(target, phase, or content\)/.test(out));
+  });
+
+  it('validates the payload and the address', () => {
+    assert.throws(() => renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.research.portal' }), /--file <payload\.json> is required/);
+    const bad = writePayload(dir, 'bad.json', { ...payload, note: [] });
+    assert.throws(() => renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.research.portal', file: bad }), /"note" must be non-empty/);
+    const noTarget = writePayload(dir, 'bad2.json', { ...payload, target: ' ' });
+    assert.throws(() => renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.research.portal', file: noTarget }), /"target" must be a non-empty string/);
+    writeManifest(dir, 'pay', { phases: { discussion: { items: { portal: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'n.json', payload);
+    assert.throws(() => renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.discussion.portal', file }), /address must be <work_unit>\.research\.<topic>/);
+  });
+});
+
 describe('render finding', () => {
   let dir;
   const base = {
@@ -1055,6 +1120,7 @@ describe('render finding', () => {
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
     assert.ok(out.includes('MENU: finding gate'));
     assert.ok(!out.includes('finding auto-approved'));
+    assert.ok(!out.includes('a/auto'), 'a gate forced over an auto manifest offers no a/auto row');
   });
 
   it('a non-gap category rides auto as before', () => {
@@ -1071,7 +1137,9 @@ describe('render finding', () => {
       [{ ...base, total: 0 }, /"total" must be an integer/],
       [{ ...base, meta: [['x']] }, /"meta" must be an array of \[label, value\] pairs/],
       [{ ...base, details: ' ' }, /"details" must be a non-empty string/],
-      [{ ...base, category: 'source-defect' }, /unknown category "source-defect"/],
+      [{ ...base, category: 'source-defect' }, /"source-defect" findings route via resolve-source-incoherence and never render at the gate/],
+      [{ ...base, category: 'unsourced-decision' }, /"unsourced-decision" findings route via resolve-source-incoherence/],
+      [{ ...base, category: 'severity' }, /unknown category "severity"/],
       [{ ...base, diff: { current: [], proposed: [] }, content: { label: 'X', lines: ['y'] } }, /pass "diff" or "content", not both/],
       [{ ...base, diff: { current: [], proposed: [] } }, /"diff" must carry at least one/],
       [{ ...base, content: { label: 'X', lines: [] } }, /"content.lines" must be non-empty/],
@@ -1888,7 +1956,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, spec-review-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, carry-note-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 

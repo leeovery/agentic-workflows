@@ -24,19 +24,19 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 
 ### 1. [Brief Title]
 
-**Source**: [Where this came from — file/section reference, or "Specification analysis" for Gap Analysis]
+**Source**: [Where this came from — file/section reference, "Specification analysis" for Gap Analysis, or "Tree measurement — `{command}`" for Claims Verification]
 **Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Duplication | Source defect | Unsourced decision
-**Priority**: [Gap Analysis only — Critical | Important | Minor. Omit for Input Review.]
+**Priority**: [Gap Analysis only — Critical | Important | Minor. Omit for Claims Verification and Input Review.]
 **Affects**: [Which section(s) of the specification]
 
 **Details**:
 [Explanation of what was found and why it matters]
 
 **Current**:
-[For findings that modify existing content (Enhancement, Duplication) — the existing specification content that will be modified. Omit for New topic and Gap/Ambiguity findings.]
+[For findings that modify existing content (Enhancement, Duplication) — the existing specification content that will be modified. Omit for New topic, Gap/Ambiguity, Source defect, and Unsourced decision findings.]
 
 **Proposed Change**:
-[What you would add or change in the specification — leave blank until discussed]
+[What you would add or change in the specification — leave blank until discussed. Source defect and Unsourced decision findings leave it blank permanently: their fix belongs to the source record]
 
 **Resolution**: Pending | Approved | Adjusted | Skipped | Routed
 **Notes**: [Any discussion notes or adjustments made]
@@ -60,10 +60,8 @@ Two categories indict a source rather than the specification, and their findings
 2. Commit the tracking file — ensures it survives context refresh
 3. Present the summary to the user (from the tracking file)
 4. Work through items one at a time:
-   - Present the item
-   - Discuss and refine
-   - Get approval
-   - Log to specification
+   - A Source defect or Unsourced decision routes per process-review-findings.md — Resolution `Routed`, never presented at the gate
+   - Every other item: present, discuss and refine, get approval, log to specification
    - Update the tracking file: mark resolution, add notes
 5. After all items resolved, record the flip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`
 

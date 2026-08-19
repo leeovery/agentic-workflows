@@ -16,6 +16,8 @@ Three-phase review of the specification. Phase 1 (Claims Verification) measures 
 
 ## A. Cycle Initialization
 
+Before opening a cycle, read `manifest get {work_unit}.specification.{topic} tracking` — an `in-progress` entry is a prior cycle's tracking file whose findings were never fully processed. Work each one now per **[process-review-findings.md](process-review-findings.md)** for that file; never open a fresh cycle over live findings.
+
 Check the `review_cycle` field via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_cycle`).
 
 #### If `review_cycle` is 0 or not set

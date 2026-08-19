@@ -5,7 +5,7 @@ The prose should have taken this path:
    new entry; the handoff carries the work into the processing skill
 2. the specification pass runs as it did before: registered through
    the engine, extracted gated piece by piece with the described user
-   approving faithful content and declining auto, the two-phase
+   approving faithful content and declining auto, the three-phase
    review clean through the stub, and the engine-completed conclusion
    with its commit
 3. the pipeline continuation takes the feature arm — the planning

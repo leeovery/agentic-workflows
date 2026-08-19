@@ -4,9 +4,9 @@
 
 ---
 
-Specification makes decisions clear; it never makes them — and classification is yours. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the construction session.
+Specification makes decisions clear; it never makes them — and classification is yours. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the calling session.
 
-Three moves, by effort. Anything the record settles is derived silently — that is the phase doing its job, and it earns no mention. A point a brief exchange settles stops for the user and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. A measured falsehood is never a silent derivation: reality corrects the record, and the correction lands in the owning document — never in the spec alone. Start at **A. Classify**.
+Four moves, by effort. A measured falsehood is never a silent derivation — reality corrects the record, and the correction lands in the owning document, never in the spec alone. Anything else the record settles is derived silently — that is the phase doing its job, and it earns no mention. A point a brief exchange settles stops for the user and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. Start at **A. Classify**.
 
 ## A. Classify
 
@@ -16,13 +16,13 @@ Pick by first match:
 
 A claim about the codebase or toolchain fails against the tree. Re-run the measurement before classifying — quote the command and its result in the exchange that follows; a remembered figure, or one asserted as verified earlier in the session, is not a measurement.
 
-**If the mismatch is value-only and every conclusion citing the claim survives the corrected value:**
+**If the corrected claim stands on its own — no conclusion, decision, or insight leans on what changed:**
 
 Tell the user in one line what was measured and what it corrects — no gate; the measurement made the choice.
 
 → Proceed to **C. Landing a Resolution** with resolution = `{the corrected claim, carrying its command and result}`, doc = `{the owning source's topic}`.
 
-**If the corrected value undermines a conclusion, decision, or insight built on the claim:**
+**Otherwise** — the corrected value undermines a conclusion, decision, or insight built on the claim:
 
 **This stop overrides `auto`.** Put the measurement to the user in conversation — what the document asserts, what the command measured, which conclusion leans on it — and take a stance on whether the conclusion survives. No engine surface: this is an exchange, not a gate.
 
@@ -166,18 +166,18 @@ The resolution is written into the owning source document in that phase's own id
    node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
    ```
 
-   **STOP.** Wait for user response. Either answer first delivers the agreed resolution to the held session's queue — epic: load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic triage` transaction shown in **B**, concern = the agreed resolution. Then, on `next`: → Return to caller — construction sets this topic's remaining extraction aside and continues with others; its unextracted rows hold conclusion until the resolution lands. On `stop`: commit the session's work and stop — terminal condition.
+   **STOP.** Wait for user response. Either answer first delivers the agreed resolution to the held session's queue — epic: load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic triage` transaction shown in **B**, concern = the agreed resolution. The delivery reopens the source, and its stale row holds this specification's conclusion until the resolution lands there. Then, on `next`: → Return to caller — the resolution is queued, not landed: construction sets this topic's remaining extraction aside and continues with others; a findings walk leaves the specification's copy untouched and continues with its remaining findings. On `stop`: commit the session's work and stop — terminal condition.
 
    **Otherwise** — no row holds `{doc}`:
 
    → Proceed to step 2.
 
-2. **Edit the document** — targeted, in the owning phase's own idiom. A discussion's decided Decision block is revised as its format prescribes (**[../../workflow-discussion-process/references/template.md](../../workflow-discussion-process/references/template.md)** → Decision revisions): the new decision lands as a dated timeline entry above the prior prose, wrapped verbatim under `#### Initial`, with the `Trigger:` line citing the substantive cause — the colliding decision or the failed measurement, never this session. Citing prose the resolution invalidates is repaired in place. A correction that revises no decision — a measured value and the prose citing it — is repaired in place wherever it sits. Investigation and research documents carry no timeline rule — edit the affected passages directly.
+2. **Edit the document** — targeted, in the owning phase's own idiom. A discussion's decided Decision block is revised as its format prescribes (**[../../workflow-discussion-process/references/template.md](../../workflow-discussion-process/references/template.md)** → Decision revisions): the new decision lands as a dated timeline entry above the prior prose, wrapped verbatim under `#### Initial`, with the `Trigger:` line citing the substantive cause — the colliding decision or the failed measurement, never this session. Citing prose the resolution invalidates is repaired in place. A correction that revises no decision — a measured value and the prose citing it — is repaired in place wherever it sits. A decision the document never made lands as a new subtopic section in the template's own shape (Context → Journey → Decision) — there is no prior block to revise, so no timeline entry and no `#### Initial`. Investigation and research documents carry no timeline rule — edit the affected passages directly.
 3. **Reindex it**: `node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {the resolved artifact path}` — the knowledge base serves the resolution for the rest of the work.
 4. **Stale the other extractions** — only when `{doc}` is a discussion (the reverse join covers discussion sources; single-topic work types have no sibling specs and skip this): `node .claude/skills/workflow-engine/scripts/engine.cjs sources stale {work_unit} {doc} --except {topic}`. When the response's `staled` is non-empty, tell the user in one line which specification(s) it named.
 5. **Commit**: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{source phase}({work_unit}/{doc}): {what the resolution settled}" --topic {source phase}/{doc} --kb`.
 
-The topic continues against the updated source.
+The caller continues against the updated source.
 
 → Return to caller.
 

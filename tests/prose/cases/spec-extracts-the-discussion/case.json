@@ -1,5 +1,5 @@
 {
-  "origin": "the specification pass had entry coverage only — this walks the whole phase: gated extraction from a completed discussion, the two-phase review run clean through stubs, and the engine-completed conclusion",
+  "origin": "the specification pass had entry coverage only — this walks the whole phase: gated extraction from a completed discussion, the three-phase review run clean through stubs, and the engine-completed conclusion",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [

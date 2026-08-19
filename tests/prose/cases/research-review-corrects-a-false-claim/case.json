@@ -1,0 +1,55 @@
+{
+  "origin": "the research side of the measured-claims discipline had authoring, a review dimension, and no walk — this pins document review's unverified-claims sweep at research conclusion: the recorded command re-runs, the value corrects in place, and a conclusion that survives the correction never turns into a question",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-research-process/references/initialize-research.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/feature-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/review-agent.md",
+    "skills/workflow-research-process/references/topic-completion.md",
+    "skills/workflow-research-process/references/final-review.md",
+    "skills/workflow-research-process/references/document-review.md",
+    "skills/workflow-research-process/references/template.md",
+    "skills/workflow-research-process/references/conclude-research.md",
+    "skills/workflow-shared/references/compliance-check.md"
+  ],
+  "conduct": "The user settled this research last sitting and is back only to wrap it up. Shown where things stand they confirm both threads are done and ask to conclude — they open nothing new and decline any offered exploration. They treat the checkout module count as descriptive: the per-module conclusion holds whatever the number, and the document says so itself. Told during the review brief that the recorded count was re-measured and corrected from four to five, they take the note without ceremony — that is exactly what they expect a document review to do — and they would object to being asked to decide an arithmetic fact. Asked to conclude, they confirm.",
+  "stubs": {
+    "research-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.research.pay status",
+      "render resume-gate pay.research.pay",
+      "agent dispatch pay research pay --kind review",
+      "topic complete pay research pay"
+    ],
+    "calls_in_order": [
+      "render resume-gate pay.research.pay",
+      "agent dispatch pay research pay --kind review",
+      "topic complete pay research pay"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic triage",
+      "sources stale",
+      "workunit create"
+    ]
+  }
+}

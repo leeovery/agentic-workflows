@@ -33,8 +33,6 @@ module.exports = {
     mod('payment', 'payment');
     mod('confirm', 'confirm');
     mod('wallet-stub', 'walletStub');
-    h.git('add', 'src');
-    h.git('commit', '-q', '-m', 'src: checkout modules');
 
     h.engine('topic', 'start', WU, 'discussion', WU);
     h.write(`.workflows/${WU}/discussion/${WU}.md`, [
