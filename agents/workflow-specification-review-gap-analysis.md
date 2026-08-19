@@ -60,6 +60,7 @@ No source material — this phase looks inward only.
    - Terms used inconsistently across sections
    - "It should" without defining what "it" is
    - Implicit assumptions that aren't stated
+   - Open-decision markers — "Decision required", "TBD", "to be decided", or any marker parking an unmade decision in the artifact. A specification decides nothing and defers nothing; flag every marker as Critical — the parked question must be resolved, not shipped
 
    **Contradictions**
    - Requirements that conflict with each other

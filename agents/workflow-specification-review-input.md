@@ -29,6 +29,7 @@ You receive via the orchestrator's prompt:
 - Technical details that seemed minor at the time
 - Error handling, validation rules, or boundary conditions
 - Integration points or data flows mentioned but not elaborated
+- Content in the specification that traces to no source — a requirement or design decision the sources never made
 
 ## Your Process
 
@@ -46,16 +47,18 @@ You receive via the orchestrator's prompt:
    - Decisions made early that may have been overshadowed
    - Error handling, validation rules, or boundary conditions
    - Integration points or data flows mentioned but not elaborated
-6. **Categorize each finding**:
+6. **Check the reverse direction** — for each requirement or design decision the specification states, can you point to source material that decides it? A normative choice with real consequence that no source makes — a rule, a threshold, a scope call, a mechanism choice — is a finding: category **Unsourced decision**, quoting the spec content and naming the sources you checked. Spec-native scaffolding (structure, wording, organisation, faithful derivations of what sources do decide) is not a decision. Treat any open-decision marker in the spec ("Decision required", "TBD", "to be decided") as this finding class — a parked decision is still a decision the sources never made.
+7. **Categorize each finding**:
    - **Enhancement to existing topic** — details that belong in an already-documented section. Note which section.
    - **New topic** — something that warrants its own section but was glossed over.
-7. **Surface potential gaps** — after reviewing source material, consider whether the specification has gaps the sources didn't address:
+   - **Unsourced decision** — spec content deciding what no source decides. The orchestrator routes these back toward the source record — never propose spec text for them.
+8. **Surface potential gaps** — after reviewing source material, consider whether the specification has gaps the sources didn't address:
    - Edge cases that weren't discussed
    - Error scenarios not covered
    - Integration points that seem implicit but aren't specified
    - Behaviors that are ambiguous without clarification
    This should be infrequent — most gaps come from source material. But occasionally sources have blind spots worth surfacing.
-8. **Write findings** to `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c{cycle-number}.md` using the tracking format, via the `.txt`-then-rename mechanism (see Output File Format)
+9. **Write findings** to `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c{cycle-number}.md` using the tracking format, via the `.txt`-then-rename mechanism (see Output File Format)
 
 ## Hard Rules
 
@@ -63,7 +66,7 @@ You receive via the orchestrator's prompt:
 
 1. **No git writes** — do not commit or stage. Writing the output file is your only file write.
 2. **One concern only** — source material comparison. Do not assess standalone document quality, internal consistency, or planning readiness — that's the gap analysis agent's job.
-3. **Never fabricate** — every item you flag must trace back to specific source material. If you can't point to where it came from, don't suggest it. The goal is to catch missed content, not invent new requirements.
+3. **Never fabricate** — every item you flag must trace back to specific source material. If you can't point to where it came from, don't suggest it. The goal is to catch missed content, not invent new requirements. The one class where the evidence is an absence is **Unsourced decision** — there, quote the spec content and name the sources checked.
 4. **Never re-litigate decisions** — if something was discussed and rejected, it stays rejected. Where a source Decision block holds dated timeline entries, the top entry is the current decision — earlier entries are superseded lineage, never missing content.
 5. **No padding** — only flag what's genuinely missing and relevant. Don't inflate findings for thoroughness.
 6. **Never propose that the specification state its own pipeline position** — readiness for planning, incorporation status, or review-cycle counts. That state lives in the work unit's manifest; source material carrying such a statement is not missing content.
@@ -81,8 +84,8 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c{c
 
 ### 1. {Brief Title}
 
-**Source**: {file/section reference where this came from}
-**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity
+**Source**: {file/section reference where this came from, or "No source decides this" for Unsourced decision}
+**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Unsourced decision
 **Affects**: {which section(s) of the specification}
 
 **Details**:

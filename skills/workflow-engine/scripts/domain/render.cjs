@@ -1137,6 +1137,10 @@ function finding(cwd, { dotpath, file }) {
   }
   if (!isFilled(p.details)) throw new Error('render finding: "details" must be a non-empty string');
   if (p.diff && p.content) throw new Error('render finding: pass "diff" or "content", not both');
+  const FINDING_CATEGORIES = ['enhancement', 'new-topic', 'gap', 'duplication'];
+  if (p.category !== undefined && !FINDING_CATEGORIES.includes(p.category)) {
+    throw new Error(`render finding: unknown category "${p.category}" (expected ${FINDING_CATEGORIES.join('/')})`);
+  }
 
   const applyLabel = isFilled(p.apply_label) ? p.apply_label : 'Apply verbatim';
   const appliedLabel = isFilled(p.applied_label) ? p.applied_label : 'approved. Applied.';
@@ -1168,7 +1172,9 @@ function finding(cwd, { dotpath, file }) {
   }
 
   const items = (((manifest.phases || {})[phase] || {}).items || {})[topic] || {};
-  const gateMode = items.finding_gate_mode === 'auto' ? 'auto' : 'gated';
+  // A gap finding is a question, not a correction — auto covers applying
+  // agreed corrections, never answering questions on the user's behalf.
+  const gateMode = items.finding_gate_mode === 'auto' && p.category !== 'gap' ? 'auto' : 'gated';
 
   if (gateMode === 'auto') {
     parts.push(section(
