@@ -9,8 +9,9 @@ Review tracking files capture analysis findings so work persists across context 
 ## Location
 
 Store tracking files in the specification directory (`.workflows/{work_unit}/specification/{topic}/`), cycle-numbered:
-- `review-input-tracking-c{N}.md` — Phase 1 findings for cycle N
-- `review-gap-analysis-tracking-c{N}.md` — Phase 2 findings for cycle N
+- `review-claims-tracking-c{N}.md` — Phase 1 (Claims Verification) findings for cycle N
+- `review-input-tracking-c{N}.md` — Phase 2 (Input Review) findings for cycle N
+- `review-gap-analysis-tracking-c{N}.md` — Phase 3 (Gap Analysis) findings for cycle N
 
 Tracking files are **never deleted** — pure markdown, no frontmatter; previous cycles' files persist as analysis history. The orchestrator records each file's gate state in the manifest (`tracking.{file stem}`: `in-progress` at dispatch, `complete` when all findings are processed).
 
