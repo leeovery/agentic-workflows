@@ -1,16 +1,40 @@
 # Resolve Source Incoherence
 
-*Reference for **[workflow-specification-process](../SKILL.md)** — loaded by [spec-construction.md](spec-construction.md) when source material disagrees or cannot be extracted without assumption.*
+*Reference for **[workflow-specification-process](../SKILL.md)** — loaded by [spec-construction.md](spec-construction.md) when source material disagrees — with itself, another source, or the codebase it describes — or cannot be extracted without assumption.*
 
 ---
 
 Specification makes decisions clear; it never makes them — and classification is yours. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the construction session.
 
-Three moves, by effort. Anything the record settles is derived silently — that is the phase doing its job, and it earns no mention. A point a brief exchange settles stops for the user and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. Start at **A. Classify**.
+Three moves, by effort. Anything the record settles is derived silently — that is the phase doing its job, and it earns no mention. A point a brief exchange settles stops for the user and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. A measured falsehood is never a silent derivation: reality corrects the record, and the correction lands in the owning document — never in the spec alone. Start at **A. Classify**.
 
 ## A. Classify
 
 Pick by first match:
+
+#### If direct measurement contradicts it
+
+A claim about the codebase or toolchain fails against the tree. Re-run the measurement before classifying — quote the command and its result in the exchange that follows; a remembered figure, or one asserted as verified earlier in the session, is not a measurement.
+
+**If the mismatch is value-only and every conclusion citing the claim survives the corrected value:**
+
+Tell the user in one line what was measured and what it corrects — no gate; the measurement made the choice.
+
+→ Proceed to **C. Landing a Resolution** with resolution = `{the corrected claim, carrying its command and result}`, doc = `{the owning source's topic}`.
+
+**If the corrected value undermines a conclusion, decision, or insight built on the claim:**
+
+**This stop overrides `auto`.** Put the measurement to the user in conversation — what the document asserts, what the command measured, which conclusion leans on it — and take a stance on whether the conclusion survives. No engine surface: this is an exchange, not a gate.
+
+**STOP.** Wait for user response.
+
+**If the answer settles it:**
+
+→ Proceed to **C. Landing a Resolution** with resolution = `{the settled position, carrying the corrected measurement}`, doc = `{the owning source's topic}`.
+
+**If the exchange shows it needs more than this session can give:**
+
+→ Proceed to **B. The Gap Exit**.
 
 #### If the record settles it
 
@@ -148,7 +172,7 @@ The resolution is written into the owning source document in that phase's own id
 
    → Proceed to step 2.
 
-2. **Edit the document** — targeted, in the owning phase's own idiom. A discussion's decided Decision block is revised as its format prescribes (**[../../workflow-discussion-process/references/template.md](../../workflow-discussion-process/references/template.md)** → Decision revisions): the new decision lands as a dated timeline entry above the prior prose, wrapped verbatim under `#### Initial`, with the `Trigger:` line citing the substantive cause — the colliding decision, never this session. Citing prose the resolution invalidates is repaired in place. Investigation and research documents carry no timeline rule — edit the affected passages directly.
+2. **Edit the document** — targeted, in the owning phase's own idiom. A discussion's decided Decision block is revised as its format prescribes (**[../../workflow-discussion-process/references/template.md](../../workflow-discussion-process/references/template.md)** → Decision revisions): the new decision lands as a dated timeline entry above the prior prose, wrapped verbatim under `#### Initial`, with the `Trigger:` line citing the substantive cause — the colliding decision or the failed measurement, never this session. Citing prose the resolution invalidates is repaired in place. A correction that revises no decision — a measured value and the prose citing it — is repaired in place wherever it sits. Investigation and research documents carry no timeline rule — edit the affected passages directly.
 3. **Reindex it**: `node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {the resolved artifact path}` — the knowledge base serves the resolution for the rest of the work.
 4. **Stale the other extractions** — only when `{doc}` is a discussion (the reverse join covers discussion sources; single-topic work types have no sibling specs and skip this): `node .claude/skills/workflow-engine/scripts/engine.cjs sources stale {work_unit} {doc} --except {topic}`. When the response's `staled` is non-empty, tell the user in one line which specification(s) it named.
 5. **Commit**: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{source phase}({work_unit}/{doc}): {what the resolution settled}" --topic {source phase}/{doc} --kb`.
