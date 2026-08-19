@@ -38,6 +38,7 @@ Lifecycle `status` transitions go through the engine, not `set` — `engine topi
 | `status` | Spec creation → `in-progress`; completion → `completed` |
 | `date` | Spec creation — today's date; update on each commit |
 | `review_cycle` | Starts at 0; incremented each review cycle. Missing field treated as 0. |
+| `review_baseline_words` | Set when review opens (cycle 0 → 1) — the document's word count at the end of construction. The convergence diagnostic measures review growth against it. |
 | `finding_gate_mode` | Spec creation → `gated`; user opts in → `auto` |
 | `construction_gate_mode` | Spec creation → `gated`; user opts in → `auto` |
 | `sources` | Spec creation — all sources as `pending`; updated as extraction completes. The engine sets a row to `stale` when its source discussion reopens after extraction; reconciliation sets it back to `incorporated` |
