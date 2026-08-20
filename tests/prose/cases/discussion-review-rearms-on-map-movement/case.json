@@ -1,0 +1,63 @@
+{
+  "origin": "companion to discussion-review-holds-until-map-moves — the movement backoff's armed half: a decided subtopic is exactly the movement one completed cycle demands, so the dispatch fires on the decision's commit, bare (never --final), without waiting on the agent; pins that the backoff damps churn without silencing reviews over genuinely moved ground (design/review-cadence.md)",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user left the retry policy hanging last sitting and returns to settle it. They open with the answer — three attempts per payment, exponential backoff, the counter resetting only on a new checkout — and confirm briefly if the session mirrors it back. They add nothing else: no new threads, no tangents, no request for a review, no wrap-up signal. Once the decision is documented they acknowledge and go quiet.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "discussion-map set pay pay failed-payment-retries decided",
+      "agent scan pay discussion pay",
+      "--topic discussion/pay",
+      "agent dispatch pay discussion pay --kind review"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "discussion-map set pay pay failed-payment-retries decided",
+      "agent dispatch pay discussion pay --kind review"
+    ],
+    "calls_exclude": [
+      "--final",
+      "--kind perspective",
+      "topic complete",
+      "topic reopen",
+      "knowledge.cjs index"
+    ]
+  }
+}

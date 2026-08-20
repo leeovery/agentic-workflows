@@ -1,0 +1,55 @@
+{
+  "agents": {
+    "review-001": {
+      "id": "review-001",
+      "kind": "review",
+      "phase": "discussion",
+      "topic": "pay",
+      "set": "001",
+      "status": "incorporated",
+      "announced": false,
+      "findings": [],
+      "surfaced": [],
+      "created": "2026-01-01T00:00:00.000Z",
+      "map_snapshot": {
+        "capture-confirmation": "pending",
+        "card-data-handling": "pending",
+        "failed-payment-retries": "pending"
+      }
+    },
+    "review-002": {
+      "id": "review-002",
+      "kind": "review",
+      "phase": "discussion",
+      "topic": "pay",
+      "set": "002",
+      "status": "incorporated",
+      "announced": false,
+      "findings": [],
+      "surfaced": [],
+      "created": "2026-01-01T00:00:00.000Z",
+      "map_snapshot": {
+        "capture-confirmation": "decided",
+        "card-data-handling": "pending",
+        "failed-payment-retries": "pending"
+      }
+    },
+    "review-003": {
+      "id": "review-003",
+      "kind": "review",
+      "phase": "discussion",
+      "topic": "pay",
+      "set": "003",
+      "status": "incorporated",
+      "announced": false,
+      "findings": [],
+      "surfaced": [],
+      "created": "2026-01-01T00:00:00.000Z",
+      "map_snapshot": {
+        "capture-confirmation": "decided",
+        "card-data-handling": "decided",
+        "failed-payment-retries": "exploring"
+      }
+    }
+  }
+}
