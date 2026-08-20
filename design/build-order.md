@@ -97,7 +97,7 @@ they warn about is still unmitigated.
 The gating derivation confirms the shape is deliberately permissive:
 `can_start_planning: hasCompletedSpec`, `can_start_implementation:
 hasCompletedPlan` — **any** one completed item opens the next phase
-(`domain/epic-detail.cjs:394`).
+(`domain/epic-detail.cjs:396-397`).
 
 ### The precedent is already built
 
@@ -112,24 +112,45 @@ Mechanically: Claude reads the live topic set holistically, weighs what is
 foundational versus dependent, assigns contiguous integers `1..N`, and
 writes them in one call (`engine discovery-map sequence {wu} {topic}={N}
 …`). The engine derives `needs_sequencing` when any live item lacks an
-order (`computeNeedsSequencing`), and `compareMapRows` sorts tier → order
-→ name. Cancelling a topic stashes `previous_order`; reactivation restores
-it.
+order (`computeNeedsSequencing`), and `compareMapRows` sorts lifecycle
+tier first, with `order` as the tiebreak *within* a tier. Cancelling a
+topic stashes `previous_order` and reactivation restores it — on the
+discovery-map item only (`transitions.cjs:795-802, 862-864`).
 
 This programme extends that pattern to the build phases. It is not new
 machinery — it is the second half of something already half-built.
+
+Three places where the analogy is looser than it looks, each addressed in
+the decisions below: the discovery precedent sorts tier-first rather than
+flat (B6), its `needs_sequencing` flag is derived from map items alone and
+cannot see a spec item (B4), and its cancel/reactivate stash reaches only
+the map (Open items).
 
 ## The settled shape
 
 **B1 — The build order is born at grouping.** All discussions settle
 (existing hard gate), the grouping analysis collapses them into
-specification topics, and the same analysis assigns the order. One read,
-one confirmation gate. Grouping already reads every discussion
-holistically; ordering is that same read asked one more question.
+specification topics, and the same analysis assigns the order. Grouping
+already reads every discussion holistically; ordering is that same read
+asked one more question.
 
 Specification is a lens on the discussions, so the moment the topic set
 first exists is the moment it can be sequenced — and that is before the
 user starts specifying, which is when they need it.
+
+Two corrections to how this reads at first glance:
+
+- **There is no confirmation gate on the grouping itself.**
+  `analysis-flow.md` persists the whole reconcile through `manifest apply`
+  and commits *before* the user sees anything; `display-groupings.md` then
+  offers a *selection* menu, not an approve/reject. The order lands
+  silently on the manifest the same way the groupings do — which is what
+  B10 wants, but nobody should go looking for a gate that does not exist.
+- **Grouping is not the only birth site.** A one-discussion epic takes the
+  `single` fast path (`projections/specification.cjs:228-230`) and creates
+  its spec item through `confirm-create.md`, never running the grouping
+  analysis. That path must assign order `1`. The same hole swallows a
+  pivoted feature — see Open items.
 
 **B2 — One order, three phases, joined by name.** A single `order` field
 on the specification item. Planning and implementation items share the
@@ -137,8 +158,8 @@ topic name, so they read it by join. No duplication, no drift, no
 per-phase orders that can disagree.
 
 **B3 — Advisory everywhere. It never blocks.** Specification, planning and
-implementation all sort by it and recommend its head. None of them gate on
-it. Being out of order is visible and permitted.
+implementation all sort by it. None of them gate on it. Being out of order
+is visible and permitted.
 
 The asymmetry decides this. A wrong order costs one switch. A hard gate on
 a ten-topic epic costs every spec and every plan before a line of code —
@@ -146,11 +167,48 @@ weeks with no working software, which is the failure mode walking
 skeletons exist to prevent. The existing design already made this call
 twice, in the same table, and it holds.
 
-**B4 — Re-derived, never frozen.** Wholesale renumber of the live set,
-matching discovery. Triggers: any live topic lacking an order
-(`needs_sequencing`, automatic), and a specification completing since the
-last sequencing — declared dependencies sharpen an order that product
-intuition alone could only approximate.
+**The order feeds the existing recommendation; it does not replace it.**
+`pickRecommendation` (`domain/projections/epic.cjs:601-667`) is already a
+first-match-wins cascade, and three of its existing rules outrank anything
+this programme adds:
+
+- An interrupted discovery session wins absolutely (`:606-609`).
+- With a map and `convergence_state === 'in-progress'`, the picker returns
+  a discovery entry and never reaches the build phases at all (`:611-618`)
+  — so a freshly-rerouted or gap-analysis topic suspends build-order
+  recommendation entirely, by design.
+- `!e.blocked` and `!e.input_moved` are hard filters. A topic carrying
+  `reconcile_needed` is not recommended however low its order.
+
+The order is therefore a **tiebreak inside the existing cascade**, not a
+new top-level rule. It orders the candidates the cascade already permits.
+There is a second picker in the no-map branch (`:639-666`); both need the
+same treatment.
+
+**B4 — Re-derived, never frozen.** Wholesale renumber of the live set.
+Two automatic triggers plus B5's manual one:
+
+1. **Any live topic lacking an order.** This needs a *new* flag. The
+   existing `needs_sequencing` is derived from discovery-map items alone
+   (`derivations.cjs:317`, fed by `buildDiscoveryMap`) and a spec item
+   moves it not at all. Call the new one `build_order_needs_sequencing`
+   and derive it on `EpicDetail` beside its sibling. Reusing the name
+   would collide exactly as the shared `order` field nearly does.
+2. **On specification completion** — an *event* at the point of
+   completion, not a derived staleness. Declared dependencies sharpen an
+   order that product intuition alone could only approximate. Framing it
+   as an event matters: "a spec completed since the last sequencing" would
+   need a last-sequenced marker, and none exists — `sequenceMap` writes
+   orders and nothing else.
+
+**The live set is every spec item except `cancelled`, `superseded` and
+`promoted`.** `completed` items keep their number. This is the one
+predicate an implementer must not invent, and it follows discovery, which
+excludes exactly the terminal and non-actionable tiers (`⊘`, `⊙`) and
+keeps decided topics numbered. Excluding `completed` would renumber the
+remaining queue every time a spec finished — churn under the user for no
+gain — and including the three terminal statuses would leave the flag
+stuck true forever, since no judgment pass has any reason to order them.
 
 **B5 — A re-sequence action on the epic menu.** B4's triggers fire on a
 *missing* or *stale* order, never on a *wrong* one. The user needs a way
@@ -160,24 +218,57 @@ description, handle/unhandle — no re-sequence); this is a deliberate
 divergence, taken because the build order governs three phases and drifts
 as plans reveal what specs could not.
 
-**B6 — Sorts the dashboard, not just the menu.** The specification,
-planning and implementation trees render in build order. The dashboard is
-where the shape of an epic is read; ordering only the menu would leave the
-two surfaces contradicting each other.
+**B6 — Sorts the dashboard and the spec-entry menu, not just the epic
+menu.** The dashboard is where the shape of an epic is read; ordering only
+one surface would leave them contradicting each other.
 
-**B7 — The soft gates are rewritten in terms of the order.** Counting is
-the weakest thing the engine can say with the state it holds. Replace:
+**Order is a tiebreak within an existing grouping, never a flat re-sort.**
+This follows the precedent exactly: `compareMapRows` sorts lifecycle tier
+first and uses `order` to break ties inside a tier. So the specification
+tree keeps `displayOrder`'s proposed-first split
+(`domain/projections/epic.cjs:138-141`) and orders *within* each half.
+Nothing that is grouped today becomes ungrouped.
 
-```
-before   "3 of 5 specifications not yet completed. Completing all
-          specifications first helps identify cross-cutting dependencies."
+Three surfaces, not one:
 
-after    "You're about to plan topic 5 — topics 2 and 3 are ahead of it
-          in the build order and unplanned."
-```
+- The epic dashboard's specification, planning and implementation trees.
+- **The spec-entry menu** (`domain/projections/specification.cjs:312-361`,
+  over `detail.actionable`) — currently manifest insertion order,
+  unsorted. This is the surface whose entire job is "which of these do I
+  take next", so leaving it arbitrary would miss the point of B3's
+  queue-position argument more completely than the dashboard would.
+- The epic menu's numbered entries.
 
-Same advisory character, same "Proceed anyway?" — a specific claim instead
-of a vague one.
+The sub-view pickers — `epicCompletedMenu`, `epicCancelMenu`,
+`epicReactivateMenu` (`domain/projections/epic.cjs:873-930`) — stay
+pipeline-ordered. They are lifecycle management, not "what next".
+
+**B7 — Two soft gates are rewritten in terms of the order — condition as
+well as message.** Counting is the weakest thing the engine can say with
+the state it holds.
+
+The condition has to change with the message, because the two predicates
+are independent. Today `start_planning` fires on *"specification items
+exist with some in-progress or proposed"*. That is not the same claim as
+"topics ahead of this one are unplanned": a ten-topic epic where topic 1
+is the only unfinished spec fires the gate when the user plans topic 2,
+and the new message would name nothing. Conversely an epic with every spec
+complete and topics 2–3 unplanned fires nothing while the user plans topic
+5 — the case the gate exists for.
+
+| Action | New condition | New message |
+|---|---|---|
+| `start_planning` · `continue_planning` | a lower-ordered live topic has no completed plan | "You're about to plan topic 5 — topics 2 and 3 are ahead of it in the build order and unplanned." |
+| `start_implementation` · `continue_implementation` | a lower-ordered live topic has no completed implementation | "You're about to implement topic 5 — topic 3 is ahead of it in the build order and unbuilt." |
+
+The table's other two rows (`start_discussion*`, `start_specification`)
+keep the counting idiom deliberately. Their condition is upstream *phase
+completeness*, not sequence, so the order has nothing to say about them.
+The table carries two voices on purpose.
+
+**Specification gets no order gate at all.** Its order is a queue-position
+signal (see below), and gating on it would be exactly the ceremony B10
+forbids. It shows in the menu ordering and nowhere else.
 
 **B8 — No verification pass.** The order is one integer per topic on a
 read the grouping analysis already performs. B4's re-derivation at spec
@@ -198,20 +289,57 @@ inconsistent with both existing precedents:
   instead"* (`domain/epic-detail.cjs:313`).
 - **In-session topic** — struck through, still selectable, behind a
   confirm gate. Presence is awareness, not exclusion; the held session
-  might be dead.
+  might be dead. Noted only to be dismissed: presence covers `research`
+  and `discussion` alone (`presence.cjs:26`), so a `start_implementation`
+  entry can never carry `in_session`. This precedent cannot apply here
+  even in principle — the blocked-spec shape is the only live candidate.
 
-A blocked plan is the first kind. It leaves the menu; the dashboard's
-existing `⚑ Plans not ready for implementation` block already carries it,
-so nothing is lost from the display.
+A blocked plan is the first kind, so it leaves the menu.
 
-This orphans the `u/unblock` escape hatch, which is currently reached *by*
-selecting the blocked row. It becomes a command option, surfaced when any
-plan is blocked.
+**Removing the row costs more display than it first appears**, and the
+gap has to be closed in the same change. The blocked-spec precedent leans
+on a tree cue that plans do not have:
 
-**B10 — The order must never grow ceremony.** Sort, recommend, one cue
-when off-sequence. No confirmation prompt, no "are you sure", no
-justification required. The moment it asks permission it is a gate wearing
-a costume, and B3 has been reversed by accident.
+- The tree renders `· blocked` off `item.blocked_by`
+  (`domain/projections/epic.cjs:146-148`), and `blocked_by` is set only on
+  specification entries (`domain/epic-detail.cjs:306-309`). A dep-blocked
+  planning item's tree row shows a bare status.
+- The key's blocked legend fires on `specBlockedAny` (`:415, :420`) and
+  its text — *"a source discussion is back in-progress; re-conclude it and
+  the item returns to the menu"* — is simply wrong for a dep-blocked plan.
+
+What *does* carry them is the `⚑ Plans not ready for implementation` block
+(`plansNotReadyBlock`, `:281-297`). That is enough to justify the removal,
+but the tree cue and a plan-appropriate key line are part of the work, not
+a bonus.
+
+**The `u/unblock` replacement is a new render surface, not a menu line.**
+It is reached today *by* selecting the blocked row, so the flow knows the
+topic. Standalone it needs a plan picker and then a dependency picker —
+and under the standing rule that every menu is engine-rendered, that is a
+new projection. It would also become the third UI writing the same
+`satisfied_externally` state, alongside `epic-display-and-menu.md:79` and
+`check-dependencies.md:150`; consolidating those three is worth
+considering while the surface is being built.
+
+**B10 — The order must never grow ceremony of its own.** Sort, recommend,
+one cue when off-sequence. No new confirmation prompt, no new "are you
+sure", no justification required for working out of order. The moment the
+order starts asking permission it is a gate wearing a costume, and B3 has
+been reversed by accident.
+
+Scope: this forbids *new* ceremony. It does not touch the existing soft
+gates. B7 rewrites those two rows in place and they keep their
+`◆ Proceed anyway?` — that prompt predates this programme, applies to
+phase progression rather than to the order, and stays exactly as advisory
+as it is today. B10 is the rule that stops a *third* prompt appearing
+because a topic was taken out of sequence.
+
+Silent renumbering is the other half of this rule. B4 re-derives on every
+spec completion, so a ten-topic epic reshuffles its queue up to ten times.
+That churn is invisible by design — a re-sequence notice on every
+completion would be exactly the ceremony this forbids. The order is
+advisory; a user who cares reads the dashboard.
 
 ### Where the value actually sits
 
@@ -294,10 +422,18 @@ programme: **cross-plan dependency edges at task granularity**, so a plan
 skips blocked tasks (verified against the installed binary: *"lists tasks
 with no unresolved blockers, no open children, and no dependency-blocked
 ancestor"*), so the plan would yield every workable task and only hand off
-when genuinely dry — and the hand-off is to the other *topic*,
-worked from its own ready head, never a jump to a specific blocking task
-(which may itself be blocked). This is separable from the rejected
-epic-wide queue: the edges are cheap, it is the unscoped queue that is not.
+when dry — and the hand-off is to the other *topic*, worked from its own
+ready head, never a jump to a specific blocking task (which may itself be
+blocked). This is separable from the rejected epic-wide queue: the edges
+are cheap, it is the unscoped queue that is not.
+
+The drain is **phase-scoped, not plan-scoped**, which bounds the win.
+Implementation reads `tick ready --parent {phase}`
+(`output-formats/tick/reading.md:73`) and each plan-authored phase closes
+through a consolidation boundary, so a blocked task in the *current* phase
+still stalls the topic even when later-phase tasks are workable. The
+change turns "one dependency freezes 30 tasks" into "one dependency
+freezes the rest of this phase" — a real improvement, not an elimination.
 
 Cheap in the literal sense — tick already claims the capability
 (`output-formats/tick/about.md:56`: *"Explicit dependencies (`tick dep
@@ -309,35 +445,150 @@ edge today.
 
 Build only if a frozen plan with idle tasks is actually hit in practice.
 
-## Open items
+## Consequences to handle at build time
 
-- **The engine verb.** `discovery-map sequence` writes the discovery map's
-  order atomically across topics. The build order needs an equivalent —
-  the order lives on specification items, so per-topic `manifest set` is
-  not atomic across the set. Shape to settle during implementation.
+- **Regrouping wrecks the order, and B4 must own the repair.**
+  `analysis-flow.md`'s reconcile deletes every existing-proposed item not
+  in the new target set (§C step 5) and re-upserts survivors (step 7),
+  while *never* touching an anchor's status or sources (`:108`). So after
+  a regroup: recreated and renamed groupings hold no order, anchors hold
+  their old numbers, and the set is a partial ordering with holes and
+  duplicates. B4's wholesale renumber repairs it — but only once the flag
+  from B4 exists, and it should ride the same `reconcile-ops.json` rather
+  than run as a second pass.
+
+- **Cancel and reactivate need a spec-side stash — and expose a live
+  bug.** `cancelTopic` stashes `previous_order` and deletes `order` on the
+  **discovery-map** item, keyed by topic name, *regardless of which phase
+  was cancelled* (`transitions.cjs:795-802`). Spec topic names collide
+  with discovery topic names by construction — an independent discussion
+  becomes a grouping of one (`analysis-flow.md:110`) — so
+  `engine topic cancel {wu} specification auth-flow` **today** strips the
+  discovery map item `auth-flow`'s order, flipping `needs_sequencing` and
+  renumbering the whole map on next entry. It is reachable from the cancel
+  menu. That is a pre-existing bug this programme forces into the open:
+  the stash must be gated on the cancelled phase, and a separate
+  spec-side stash added. Both belong in the pipeline simulation.
+
+- **Pivot leaves a spec item that can never be ordered.**
+  `pivotWorkUnit` (`workunit-lifecycle.cjs:245-295`) flips a feature to an
+  epic and backfills one discovery-map item, no order. Pivot is legal for
+  a feature with a completed specification, and a single spec item routes
+  to the `single` fast path, never through grouping. The map item gets
+  order 1 on next entry; the spec item gets nothing, forever. B4's
+  live-set predicate closes this — its flag must see ordered-less
+  non-terminal spec items, not just map items.
+
+- **Absorption** is guarded to no-spec-or-beyond, so it cannot strand an
+  order — but the absorbed topic changes the set the next regroup
+  produces, which is the regrouping case above.
+
+- **Concurrent re-sequencing races, and that is accepted.** Presence
+  tracks `research` and `discussion` only, so a spec/planning/
+  implementation session is invisible to it, and B5's re-sequence is
+  epic-scoped anyway — no presence row could cover it. `sequenceMap` runs
+  under the work-unit lock, so the write is atomic, but two epic sessions
+  re-sequencing is last-write-wins with no warning, and a session
+  mid-specification can have the queue renumbered under it. Accepted: the
+  order is advisory and a stale number costs a suggestion, not a
+  correctness failure. Recorded so the next reader does not mistake it for
+  an oversight.
 
 - **Two orders now exist.** The discovery map orders *discovery* topics
   for research and discussion. The build order orders *specification*
   topics for spec, planning and implementation. Grouping collapses N
   discussion topics into M specification topics, so these are different
   sets over different phases — same field name, same soft character,
-  neither derived from the other. Displays must not imply they are one
-  sequence.
-
-- **Topics arriving after grouping** (gap analysis, reroutes, regrouping)
-  land without an order. `needs_sequencing` catches them and B4 renumbers
-  wholesale, matching discovery's behaviour.
+  neither derived from the other. The flag names must differ (B4) and
+  displays must not imply they are one sequence.
 
 - **Epic-only.** Single-topic work types have nothing to order. The
   sequencing reference gates on work type exactly as
   `sequence-discovery-map.md` §A does.
 
+## Engine surface (sketch)
+
+- **`build-order sequence <work-unit> <topic>=<N> …`** — the spec-side
+  twin of `discovery-map sequence`. Note the atomicity argument for a
+  dedicated verb does *not* hold: `manifest apply --file <ops.json>` is
+  already one lock and one atomic write across dotpaths, and
+  `analysis-flow.md` already uses it for the grouping reconcile, so the
+  order can ride `reconcile-ops.json` at birth with no new surface. The
+  case for the verb is **validation** — `sequenceMap` enforces positive
+  contiguous integers and existence (`discovery-map.cjs:165-175`), which
+  `apply` does not. Decide whether the verb also enforces the full
+  renumber: `sequenceMap` writes only the topics handed to it and never
+  clears unnamed ones, so "wholesale renumber" is prose discipline today,
+  not an engine guarantee.
+
+- **`build_order_needs_sequencing`** on `EpicDetail`, derived beside
+  `needs_sequencing` over the live-set predicate in B4.
+
+- **A blocked-plan unblock projection** — the plan-then-dependency picker
+  B9 orphans.
+
+- **Tree cue and key line for a dep-blocked plan** — `blocked_by` is
+  spec-only today (B9).
+
+## Test plan
+
+- **Pipeline simulation** (`tests/scripts/test-pipeline-simulation.cjs`) —
+  mandatory: a new engine verb and changed prose call sequences both
+  trigger the standing rule. Scenarios: order born at grouping; order born
+  on the `single` fast path; regroup-then-renumber; spec cancel not
+  touching the map's order (the bug above); spec cancel/reactivate
+  round-tripping its own order; pivot leaving no unordered spec item.
+
+- **Projection suites** — `test-engine-epic-projections.cjs` and
+  `test-gateway-for-workflow-continue-epic.cjs` both assert menu and tree
+  contents; B6's re-sort and B9's row removal will move existing
+  expectations. Re-pin deliberately.
+
+- **Prose cases** — at minimum the re-sequence action, the regroup-then-
+  renumber path, and a blocked plan no longer appearing in the menu. Run
+  `node tests/prose/run.cjs select --diff main` at the end of each PR in
+  the stack.
+
+## Open questions
+
+- **Who hosts the re-derivation?** Discovery's sequencing fires from
+  `workflow-continue-epic` Step 7 and the bridge's epic continuation —
+  both at *epic entry*. The build order is born inside
+  `workflow-specification-entry`. Three defensible hosts: a new epic-entry
+  step mirroring discovery, a hook in spec completion, or the grouping
+  flow owning it end to end. Unsettled.
+
+- **What does "the head" mean when the order is a tiebreak?** B3 makes the
+  order a tiebreak inside `pickRecommendation`'s existing cascade, and
+  that cascade takes the first build-phase start entry *in pipeline
+  order*. So on an epic past its first spec, "order-1's next action"
+  (which might be implementation) and "the earliest phase's lowest-ordered
+  topic" (specification) give different answers. Unsettled.
+
+## Build plan (provisional)
+
+Gated on the two open questions — the host decides where the sequencing
+reference is loaded from, which shapes the first PR.
+
+1. **Engine** — the live-set derivation, `build_order_needs_sequencing`,
+   the `build-order sequence` verb, spec-side `previous_order` stash, and
+   the `topic cancel` phase-gating bug fix. Simulation extended.
+2. **Prose — birth** — the sequencing reference, wired into grouping and
+   the `single` fast path; the order rides `reconcile-ops.json`.
+3. **Prose — surfaces** — B6's three sorts, B3's tiebreak in both
+   pickers, B7's two rewritten gate rows.
+4. **Prose — blocked plans** — B9: row removal, tree cue, key line, and
+   the unblock projection.
+5. **Prose cases** — the walks named in the test plan.
+
 ## Log
 
 - 2026-08-20 — Programme opened out of a discussion that started as a
   review of idea 21 and reframed it. Established by measurement against
-  the tree: `external_dependencies` has a single writer (the spec's
-  Dependencies section); §C sweeps unbacked entries; the epic menu and
+  the tree: the spec's Dependencies section is the only *creator* of
+  `external_dependencies` (two other prose sites flip an existing entry to
+  `satisfied_externally`); §C sweeps unbacked entries but only on a
+  re-planning session whose spec declares dependencies; the epic menu and
   implementation entry both gate at topic granularity; idea 21's layers 2
   and 3 never shipped; the discovery map's soft `order` is fully built and
   is the precedent. The reframe: three problems were wearing one coat —
@@ -350,4 +601,30 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
   gates rewritten (B7), no verification (B8), blocked entries leave the
   menu (B9), no ceremony (B10). Merged plans, the epic-wide ready queue,
   hard gates, the appraisal agent and a verification pass all rejected.
-  Sub-grouping within an epic raised and parked as an idea.
+  Sub-grouping within an epic raised and parked as idea 44.
+
+- 2026-08-20 — Two verification passes over the draft, both against the
+  tree. **Claims:** five corrections, the substantive one being that §C's
+  stale sweep is conditional — a spec declaring no dependencies skips it —
+  so an inferred entry's survival would be unpredictable rather than
+  impossible; the appraisal-agent rejection now rests on the write-back
+  tension, not the sweep. **Coherence:** the analogy to discovery was
+  looser than the draft claimed at three seams, each now addressed —
+  `needs_sequencing` is map-only and needs a separately named twin (B4),
+  `compareMapRows` sorts tier-first so order is a tiebreak and never a
+  flat re-sort (B6), and `previous_order` stashes only on the map.
+  Corrected: B1 claimed a grouping confirmation gate that does not exist
+  and missed the `single` fast path as a second birth site; B3 ignored
+  `pickRecommendation`'s existing cascade, which outranks the order in
+  three ways; B4's second trigger needed a last-sequenced marker that does
+  not exist, so it became an event; B6 missed the spec-entry menu, the one
+  surface whose job is "what next"; B7 changed the message but not the
+  condition, which are independent predicates; B9's in-session precedent
+  cannot apply (presence covers research and discussion only) and removing
+  the row loses a tree cue plans never had; B10 read as forbidding the
+  soft gates B7 keeps. Live-set predicate settled (everything but
+  `cancelled`, `superseded`, `promoted`). Concurrent re-sequence races
+  accepted as advisory. Two questions left open: the re-derivation host,
+  and what "the head" means once the order is a tiebreak. One pre-existing
+  bug surfaced and scheduled into the build: `topic cancel` on a
+  specification strips the same-named discovery-map item's order.
