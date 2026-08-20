@@ -156,7 +156,8 @@ findings likewise.
   consumes this document be wrong or blocked* — becomes the canonical
   settled-end formulation in both briefs.
 - Cadence numbers, ceilings, and the offer gate: out of scope until
-  field data exists (M7).
+  field data exists (M7). Answered 2026-08-20 — the field data arrived
+  and settled a movement-gated backoff; see `design/review-cadence.md`.
 
 ## Log
 
