@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2026-08-20
+
+✨ Added
+
+- Discussion background reviews now pace themselves to how much the Discussion Map has actually moved instead of firing on a fixed conversation rhythm — quiet topics stop getting reviewed on churn alone, and you can still request a review directly at any time.
+
+🔧 Changed
+
+- The final review before a discussion concludes is now explicitly marked as the mandatory closing pass, bypassing the new movement gate so it always runs.
+
 ## [0.7.2] - 2026-08-20
 
 ✨ Added
