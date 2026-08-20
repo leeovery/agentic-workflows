@@ -6,17 +6,19 @@
 
 These instructions are loaded into context at the start of the discussion session. A review agent reads the discussion file with a clean slate in the background, identifying gaps, shallow coverage, and missing edge cases. The dispatch check is mandatory after every commit (session loop step 5) — not optional, not deferred.
 
+**A review the user explicitly asks for** skips the trigger checklist — proceed to **A. Dispatch**, appending `--final` to the dispatch command (their request outranks the movement backoff; the engine still refuses over a non-empty triage queue).
+
 **Trigger checklist** — evaluate after every commit as part of the session loop's dispatch check:
 
 - □ Meaningful content committed? (a decision documented, a question explored, options analysed — not a typo fix or reformatting; a commit whose subject carries a `review-` or `synthesis-` drain marker — e.g. `(review-003 F2)` — doesn't tick this box, nor does one carrying a `(deferral)` marker: the concluding flow's deferral write is bookkeeping, and a review dispatched on it would be in flight before the closing gates it delays)
 - □ All prior reviews drained? (`agent scan` shows no `review` row in flight, pending, or acknowledged — or no review row exists yet; an in-flight row an earlier session dispatched is dead, not running — incorporate it and count it drained)
 - □ Not the first commit? (the discussion needs enough content to review)
-- □ At least 2-3 conversational exchanges since the last review dispatch?
+- □ Review armed? (`review_arming.armed` is `true` on the same `agent scan` — the engine's movement backoff: the first review is free, review n+1 needs min(n, 3) Discussion Map moves — subtopics added or advanced, never unwound — since the last review's dispatch; when quiet, `reason` names the movement owed, and the topic's next review comes from map movement, an explicit user request, or the concluding flow's `--final` pass)
 - □ Triage queue empty? (`topic queue` shows `count: 0` — the session loop's triage check reads it each iteration; a queued rerouted concern is a pending change to this document, so a review dispatched over it is stale on arrival; self-healing like the drain block — the first meaningful commit after the queue empties re-fires the check)
 - □ Calls queue empty? (`.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` absent or drained — a queued settled call is a pending change to this document, stale-on-arrival and self-healing the same way)
 - □ The user hasn't signalled conclusion? (a wrap-up signal hands review duty to the closing gates — their final review covers the closing commit; a dispatch now lands `pending` at classification and forces a drain detour)
 
-**Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being discussed produces stale analysis — the document will look different once those findings land, and the new review would be critiquing a version the user is already fixing. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check and dispatch a fresh review, so no trigger is lost. If the session ends before drainage completes, the final review in Step 6 picks up the outstanding findings via the shared surfacing protocol.
+**Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being discussed produces stale analysis — the document will look different once those findings land, and the new review would be critiquing a version the user is already fixing. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check, so no trigger is lost — whether it dispatches is then the movement backoff's call. If the session ends before drainage completes, the final review in Step 6 picks up the outstanding findings via the shared surfacing protocol.
 
 **If all checked:**
 
@@ -43,7 +45,7 @@ The shared surfacing protocol reads this declaration when presenting this phase'
 
 ## A. Dispatch
 
-Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal):
+Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal). `--final` rides only a user-requested dispatch — the automatic trigger never bypasses the backoff:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review
