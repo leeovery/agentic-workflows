@@ -92,7 +92,7 @@ For each cycle, extract:
 - Category
 - Resolution (Approved/Adjusted/Skipped/Routed)
 
-Also read the document-growth pair — the construction baseline (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_baseline_words`) and the live count (`wc -w < .workflows/{work_unit}/specification/{topic}/specification.md`). An absent baseline (a review begun before it was recorded) skips the growth line and its flag.
+Also read the document-growth pair — the construction baseline (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_baseline_words`) and the live count as `live_words` (`wc -w < .workflows/{work_unit}/specification/{topic}/specification.md`). An absent baseline skips the growth line and its note.
 
 → Proceed to **B. Classify Findings**.
 
@@ -113,7 +113,7 @@ Compute:
 - `recurring_count` — findings persisting across cycles
 - `new_count` — findings appearing for the first time in the latest cycle
 - `stream_counts` — (multi-stream loop types only: `spec-review`, `planning-review`) latest-cycle finding counts per tracking stream, rendered `{label} {count}` and ` · `-joined in stream order
-- `review_growth` — (`spec-review` only, when the baseline exists) live word count minus `review_baseline_words`: the text review itself has added. Declining finding counts track declining *new text*, not convergence — this is the number that says which is happening
+- `review_growth` — (`spec-review` only, when the baseline exists) `live_words` minus `review_baseline_words`, sign and all: the net text review has added. Growth from source material being pulled in is the loop working; growth while findings churn is the loop reviewing its own writing — the trend beside it says which
 - `trend` (first match wins):
   - **churning** — recurring_count is 0 or near 0 while resolved_count and new_count are both above 0 and roughly equal (every cycle's findings are new — the edits themselves are generating them)
   - **converging** — resolved_count > new_count (progress is being made)
@@ -139,7 +139,7 @@ Open with one markdown sentence above the block — what the cycles show, in pla
   Per stream: {stream_counts}
   @endif
   @if(loop_type is spec-review and review_growth is known)
-  Document growth: {review_baseline_words} → {live word count} words (+{review_growth} across review)
+  Document growth: {review_baseline_words} → {live_words} words ({review_growth} net across review)
   @endif
 
   @if(resolved_count > 0)
@@ -179,11 +179,10 @@ Open with one markdown sentence above the block — what the cycles show, in pla
   ⚑ Fixes are introducing new issues. Consider reviewing the approach.
   @endif
   @if(loop_type is spec-review and review_growth > review_baseline_words / 4)
-  ⚑ Review has added {review_growth} words to a {review_baseline_words}-word
-    construction — at this rate the loop is authoring, not correcting.
-    Weigh whether construction under-delivered before running another
-    cycle; falling finding counts here track falling new text, not
-    convergence.
+  ⚑ Review has added {review_growth} words to a
+    {review_baseline_words}-word construction. Growth that traces to
+    source material is the loop working; check that these additions
+    do — additions from nowhere mean the loop is feeding on itself.
   @endif
 ```
 

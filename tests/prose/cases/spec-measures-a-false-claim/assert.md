@@ -71,7 +71,7 @@ webhook handler files, and nothing later:
   claim carried with its command and result, the refund-handler retry
   requirement present, no reconciliation job required
 - the manifest holding the specification completed with a date, the
-  discussion source incorporated, review_cycle at 1, both gate modes
+  discussion source incorporated, review_cycle at 1 with the construction baseline recorded (review_baseline_words), both gate modes
   gated, and no tracking entries; the discussion item untouched and
   still completed
 - src/lib/retry.js and the three files under src/webhooks/

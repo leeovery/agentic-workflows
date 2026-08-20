@@ -25,7 +25,7 @@ Check the `review_cycle` field via `engine manifest` (`node .claude/skills/workf
 Set `review_cycle` to 1 and record the construction baseline — the word count review growth is measured against at every escalation:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle=1 review_baseline_words=$(wc -w < .workflows/{work_unit}/specification/{topic}/specification.md | tr -d ' ')
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle=1 review_baseline_words=$(wc -w < .workflows/{work_unit}/specification/{topic}/specification.md)
 ```
 
 Record the current cycle number — used for tracking file naming (`c{N}`).

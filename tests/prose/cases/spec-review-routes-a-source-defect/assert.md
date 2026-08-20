@@ -67,7 +67,7 @@ checkout modules, and a constructed specification awaiting review:
   Routed and a note naming where it landed; no input-review or
   gap-analysis tracking files — clean reviews write none
 - the manifest holding the specification completed with a date, the
-  source incorporated, review_cycle at 1, both gate modes gated, and
+  source incorporated, review_cycle at 1 with the construction baseline recorded (review_baseline_words), both gate modes gated, and
   the claims tracking entry complete; the discussion item untouched
   and still completed
 - the five files under src/checkout/ byte-identical to the fixture
