@@ -1,5 +1,5 @@
 {
-  "origin": "the killed-dispatch anchor gap — a review dispatched at a dying close attempt and closed as bookkeeping occupied the only slot, and the classifier took its incorporated status as proof a review had run: a skip-happy user could then conclude with no review ever reading the document; this walk pins the reclassification — a row with no report is not a review, so the close still owes the mandatory pass",
+  "origin": "companion to discussion-review-holds-until-map-moves — the backoff's escape hatch: a review the user explicitly asks for is its own trigger, dispatched --final past the movement gate the automatic path respects, with the safety conditions (drained store, empty queues) still holding; pins that a quiet topic never refuses the user (design/review-cadence.md C5)",
   "entry": "workflow-discussion-entry",
   "world": "claims",
   "files": [
@@ -27,18 +27,12 @@
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-shared/references/background-agent-surfacing.md",
-    "skills/workflow-shared/references/natural-breaks.md",
-    "skills/workflow-discussion-process/references/final-review.md",
-    "skills/workflow-shared/references/final-review-menu.md",
-    "skills/workflow-discussion-process/references/document-review.md",
-    "skills/workflow-shared/references/compliance-check.md",
-    "skills/workflow-discussion-process/references/conclude-discussion.md",
-    "skills/workflow-shared/references/closing-recap.md"
+    "skills/workflow-shared/references/natural-breaks.md"
   ],
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user settled how card payments at checkout should work in earlier sessions and is returning only to close the discussion out. Everything they cared about is decided and documented — capture confirmed by gateway webhooks, hosted fields keeping card data off their servers, a pinned retry policy — and they add nothing new: picking the session back up they confirm in a sentence that nothing has changed for them, say that covers it, and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: another final review is skipped when offered, offers of new threads are declined. They never introduce new material.",
+  "conduct": "The user returns with one intent: before taking the retry thread any further, they want a fresh pair of eyes over the whole document — they open by asking directly for a review of the discussion as it stands. They decide nothing, settle nothing, and add no new material; if asked whether anything changed for them, nothing has. Once the review is dispatched and announced they acknowledge and go quiet.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   },
@@ -47,23 +41,18 @@
     "calls_include": [
       "manifest get pay.discussion.pay status",
       "render resume-gate pay.discussion.pay",
-      "knowledge.cjs query",
-      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
       "agent scan pay discussion pay",
-      "agent dispatch pay discussion pay --kind review --final",
-      "--clean",
-      "topic complete pay discussion pay"
+      "agent dispatch pay discussion pay --kind review --final"
     ],
     "calls_in_order": [
       "manifest get pay.discussion.pay status",
       "render resume-gate pay.discussion.pay",
-      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
-      "agent scan pay discussion pay",
-      "agent dispatch pay discussion pay --kind review --final",
-      "topic complete pay discussion pay"
+      "agent dispatch pay discussion pay --kind review --final"
     ],
     "calls_exclude": [
-      "--kind perspective",
+      "discussion-map set",
+      "discussion-map add",
+      "topic complete",
       "topic reopen",
       "knowledge.cjs index"
     ]

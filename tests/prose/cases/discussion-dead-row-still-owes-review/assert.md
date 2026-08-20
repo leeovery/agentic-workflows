@@ -43,8 +43,8 @@ The prose should have taken this path:
 Further claims:
 
 - a review is dispatched exactly once in this walk, and it is
-  review-002 — the dead row is never re-used, re-opened, or counted as
-  the review pass
+  review-002, carrying `--final` (the mandatory closing pass) — the
+  dead row is never re-used, re-opened, or counted as the review pass
 - review-001 stays inert throughout: never acknowledged, never
   surfaced, never treated as a running agent
 - the gate the user answers for the review is the mandatory shape
