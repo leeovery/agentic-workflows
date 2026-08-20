@@ -28,7 +28,8 @@
     "skills/workflow-specification-process/references/process-review-findings.md",
     "skills/workflow-specification-process/references/spec-completion.md",
     "skills/workflow-shared/references/triage-landing.md",
-    "skills/workflow-shared/references/compliance-check.md"
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/template.md"
   ],
   "conduct": "The user is specifying the expansion pipeline from their two completed discussions and knows both records cold. When the batch-vs-live-stream conflict is raised they engage on the merits: the live click-signal stream will never be built — behavioural-ranking settled that — so they settle expansion as behaviour-driven computed from the nightly batch aggregates, refreshing daily; they accept the recommendation if it says exactly that, and correct it if it does not. They expect the fix to land in the discussion's own record — as that format's dated re-decision, not a rewrite — and would object to being asked to reopen a discussion for it. Otherwise they check each presented piece against what was decided — faithful content gets an explicit yes; invention gets corrected before writing. They keep approving one piece at a time when offered auto. They answer questions concretely, never add scope, and never reopen decided questions beyond the one conflict raised to them. Asked to confirm dependencies, the assessment, or the conclusion, they read and confirm; offered optional extras, they decline.",
   "stubs": {

@@ -25,10 +25,11 @@ The prose should have taken this path:
    built-in verification and its default tolerance — no custom
    window), the walk checks presence, then lands the decision in the
    discussion's own document as a **new subtopic section** in the
-   template's shape — Context, the short Journey, the Decision — with
-   no dated timeline entry and no Initial wrapper, because no prior
-   block exists to revise; nothing in the document narrates
-   specification or this session
+   template's subtopic shape — Context, Options Considered where sides
+   were weighed, Journey, Decision — with no dated timeline entry and
+   no Initial wrapper, because no prior block exists to revise; the
+   section speaks in the document's own voice, and nothing in it
+   narrates specification or this session
 7. the edited discussion is reindexed through the knowledge CLI; the
    sources-stale safety valve is skipped — single-topic work has no
    sibling specs — and the resolution commits scoped to the discussion
@@ -60,9 +61,10 @@ constructed specification awaiting review:
 
 - the discussion gains a new subtopic section owning the webhook
   verification decision — SDK-built-in verification with its default
-  tolerance, no custom window — in the template's Context/Journey/
-  Decision shape, with the two original subtopics and the Summary
-  intact; no timeline entry anywhere
+  tolerance, no custom window — in the template's subtopic shape
+  (Options Considered included where sides were weighed), with the two
+  original subtopics and the Summary intact; no timeline entry
+  anywhere
 - the specification's Webhook Verification content matches the settled
   decision, with the custom five-minute window gone
 - the c1 input tracking file on disk with its one finding resolved
