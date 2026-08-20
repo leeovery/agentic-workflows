@@ -7,7 +7,7 @@
 // output.
 //
 //   gateway.cjs map {work_unit} {topic}
-//     → DATA (counts, all_decided, unresolved, review_cycles, review_arming)
+//     → DATA (counts, all_decided, unresolved, review_arming)
 //       + DISPLAY (the Discussion Map block)
 //       + MENU: defer gate (while undecided subtopics remain — emitted only
 //         at the concluding step, per its marker)
@@ -29,7 +29,6 @@ function map(workUnit, topic) {
       counts: state.counts,
       all_decided: state.all_decided,
       unresolved: state.unresolved,
-      review_cycles: engine.agents.completedReviewCycles(cwd, workUnit, 'discussion', topic),
       review_arming: engine.agents.reviewArming(cwd, workUnit, topic),
     }),
     engine.gateway.displayBlock(engine.project.discussionMap(topic, manifest)),

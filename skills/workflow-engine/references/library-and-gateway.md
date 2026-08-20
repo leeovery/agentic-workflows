@@ -66,7 +66,7 @@ engine.discussionMap.mapState(manifest, topic)    // → { counts, total, all_de
 
 // domain: background-agent derivations
 engine.agents.completedReviewCycles(cwd, wu, phase, topic) // → number — report-backed review cycles (legacy files counted by existence; tolerant reads)
-engine.agents.reviewArming(cwd, wu, topic)        // → { armed, cycles, movement_seen, movement_needed, reason } — discussion review-arming verdict
+engine.agents.reviewArming(cwd, wu, topic)        // → { armed, cycles, map_moves_seen, map_moves_needed, reason } — discussion review-arming verdict (tolerant reads)
 
 // domain: discovery-session queries
 engine.session.nextSessionNumber(sessionsDir)     // → next session-NNN number from the on-disk logs (1 when none)

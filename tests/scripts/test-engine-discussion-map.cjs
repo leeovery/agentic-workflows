@@ -403,7 +403,7 @@ describe('discussion adapter: map verb', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('emits DATA (counts, all_decided, unresolved, review_cycles, review_arming) and the DISPLAY block', () => {
+  it('emits DATA (counts, all_decided, unresolved, review_arming) and the DISPLAY block', () => {
     createManifest(dir, 'auth', manifestWith({
       'token-refresh': { status: 'exploring', parent: null },
       'session-storage': { status: 'decided', parent: null },
@@ -420,8 +420,7 @@ describe('discussion adapter: map verb', () => {
       'counts: {"pending":0,"exploring":1,"converging":0,"decided":1,"deferred":0}',
       'all_decided: false',
       'unresolved: ["token-refresh"]',
-      'review_cycles: 1',
-      'review_arming: {"armed":true,"cycles":1,"movement_seen":null,"movement_needed":1,"reason":"no snapshot on record (pre-arming rows) — armed; this dispatch stamps one"}',
+      'review_arming: {"armed":true,"cycles":1,"map_moves_seen":null,"map_moves_needed":1,"reason":"no snapshot on record — armed; this dispatch stamps one"}',
       '',
       '=== DISPLAY (emit verbatim as a code block) ===',
       'Discussion Map — Auth Flow (2 subtopics — 1 decided · 1',
@@ -455,13 +454,13 @@ describe('discussion adapter: map verb', () => {
     assert.ok(!settled.includes('MENU: defer gate'), 'no defer gate once all subtopics are settled');
   });
 
-  it('review_cycles is 0 when the cache directory does not exist', () => {
+  it('the free verdict rides DATA whole when the cache directory does not exist', () => {
     createManifest(dir, 'auth', manifestWith());
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
-    assert.match(out, /review_cycles: 0/);
+    assert.match(out, /review_arming: \{"armed":true,"cycles":0,"map_moves_seen":null,"map_moves_needed":0,"reason":"no completed review cycle — the first review is free"\}/);
   });
 
-  it('review_cycles reads the agent store — in-flight rows excluded, legacy files counted by existence', () => {
+  it('the verdict counts cycles from the agent store — in-flight rows excluded, legacy files counted by existence', () => {
     createManifest(dir, 'auth', manifestWith());
     const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
@@ -477,10 +476,10 @@ describe('discussion adapter: map verb', () => {
     // A pre-programme legacy file with no row: counted by existence, frontmatter never read.
     fs.writeFileSync(path.join(cacheDir, 'review-007.md'), '---\nstatus: in-flight\n---\nlegacy');
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
-    assert.match(out, /review_cycles: 2/);
+    assert.match(out, /review_arming: \{"armed":true,"cycles":2,/);
   });
 
-  it('review_cycles counts a finished-but-unscanned review (report landed, no scan yet)', () => {
+  it('the verdict counts a finished-but-unscanned review (report landed, no scan yet)', () => {
     createManifest(dir, 'auth', manifestWith());
     const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
@@ -491,7 +490,7 @@ describe('discussion adapter: map verb', () => {
     }));
     fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'the report landed');
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
-    assert.match(out, /review_cycles: 1/, 'mirror of scan promotion — the cycle happened');
+    assert.match(out, /review_arming: \{"armed":true,"cycles":1,/, 'mirror of scan promotion — the cycle happened');
   });
 
   it('review_arming rides DATA — the quiet verdict names the movement owed', () => {
@@ -506,6 +505,38 @@ describe('discussion adapter: map verb', () => {
       },
     }));
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
-    assert.match(out, /review_arming: \{"armed":false,"cycles":1,"movement_seen":0,"movement_needed":1,"reason":"quiet — 0 of 1 map moves since review-001"\}/);
+    assert.match(out, /review_arming: \{"armed":false,"cycles":1,"map_moves_seen":0,"map_moves_needed":1,"reason":"quiet — 0 of 1 map moves since review-001"\}/);
+  });
+
+  it('a corrupt store never bricks the map display — the verdict degrades, the map renders', () => {
+    createManifest(dir, 'auth', manifestWith({
+      'token-refresh': { status: 'exploring', parent: null },
+    }));
+    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, 'state.json'), '{not json');
+    fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'legacy report'); // cycles 1 — the arming path past the free return
+    const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
+    assert.match(out, /review_arming: \{"armed":true,"cycles":1,"map_moves_seen":null,"map_moves_needed":1,/);
+    assert.match(out, /Discussion Map — Auth Flow/, 'the display survives the garbage');
+  });
+});
+
+describe('discussion-map domain: subtopicStatuses', () => {
+  const { subtopicStatuses } = require('../../skills/workflow-engine/scripts/domain/discussion-map.cjs');
+
+  it('answers {} for a topic with no discussion item — absence is empty, never an error', () => {
+    assert.deepStrictEqual(subtopicStatuses({ phases: {} }, 'ghost'), {});
+    assert.deepStrictEqual(subtopicStatuses({}, 'ghost'), {});
+  });
+
+  it('extracts name → status and drops malformed entries silently', () => {
+    const m = manifestWith({
+      a: { status: 'decided', parent: null },
+      b: null,
+      c: { parent: null },
+      d: { status: 42, parent: null },
+    });
+    assert.deepStrictEqual(subtopicStatuses(m, 'auth-flow'), { a: 'decided' });
   });
 });

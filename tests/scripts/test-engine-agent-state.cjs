@@ -500,7 +500,7 @@ describe('engine agent — discussion review arming', () => {
     completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
     const scan = runJson(dir, ['scan', 'pay', 'discussion', 'auth']);
     assert.deepStrictEqual(scan.review_arming, {
-      armed: false, cycles: 1, movement_seen: 0, movement_needed: 1,
+      armed: false, cycles: 1, map_moves_seen: 0, map_moves_needed: 1,
       reason: 'quiet — 0 of 1 map moves since review-001',
     });
     assert.strictEqual(runJson(dir, ['scan', 'pay', 'research', 'auth']).review_arming, undefined,
@@ -516,5 +516,58 @@ describe('engine agent — discussion review arming', () => {
     assert.strictEqual(b.id, 'review-002', 'no refusal, cycles notwithstanding');
     assert.strictEqual(readStore(dir, 'pay', 'research', 'auth').agents['review-002'].map_snapshot, undefined,
       'no snapshot outside discussion');
+  });
+
+  it('--final is refused outside a discussion review, like --set off its kind', () => {
+    assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'auth', '--kind', 'review', '--final']).error,
+      /--final bypasses a discussion review's movement gate/);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'deep-dive', '--label', 'scope', '--final']).error,
+      /legal only with --kind review in the discussion phase/);
+  });
+
+  it('the middle rung holds: two cycles demand two moves', () => {
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    writeMap({ tokens: 'decided' });
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    writeMap({ tokens: 'decided', refresh: 'pending' });
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
+      /1 of 2 map moves since review-002/);
+    writeMap({ tokens: 'decided', refresh: 'pending', expiry: 'pending' });
+    assert.strictEqual(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).id, 'review-003');
+  });
+
+  it('the conclusion\'s deferral sweep is bookkeeping, never movement', () => {
+    writeMap({ tokens: 'exploring', refresh: 'pending' });
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    writeMap({ tokens: 'deferred', refresh: 'deferred' });
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
+      /0 of 1 map moves/, 'parking every thread arms nothing');
+    writeMap({ tokens: 'deferred', refresh: 'exploring' });
+    assert.strictEqual(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).id, 'review-002',
+      'reactivating a deferred thread is new ground and counts');
+  });
+
+  it('a killed dispatch never anchors — banked movement survives a dead row', () => {
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    writeMap({ tokens: 'decided' });
+    const dead = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
+    runJson(dir, ['incorporate', 'pay', 'discussion', 'auth', dead.id]);
+    const c = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
+    assert.strictEqual(c.id, 'review-003',
+      'movement measures from review-001, the last real review — not the reportless kill');
+  });
+
+  it('a corrupt store fails a dispatch loudly — mutations never run over garbage', () => {
+    fs.mkdirSync(path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'auth'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'auth', 'state.json'), '{not json');
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
+      /Corrupt agent state/);
+  });
+
+  it('SUBTOPIC_RANK covers the map\'s whole state vocabulary', () => {
+    const { SUBTOPIC_RANK } = require('../../skills/workflow-engine/scripts/domain/agent-state.cjs');
+    const { SUBTOPIC_STATES } = require('../../skills/workflow-engine/scripts/domain/discussion-map.cjs');
+    assert.deepStrictEqual(Object.keys(SUBTOPIC_RANK).sort(), [...SUBTOPIC_STATES].sort(),
+      'a state outside the rank map would silently score 0');
   });
 });

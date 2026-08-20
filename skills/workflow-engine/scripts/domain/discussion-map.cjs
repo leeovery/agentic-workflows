@@ -86,10 +86,13 @@ function subtopicsOf(manifest, topic) {
  * @returns {Record<string, string>}
  */
 function subtopicStatuses(manifest, topic) {
-  const items = manifest && manifest.phases && manifest.phases.discussion && manifest.phases.discussion.items;
-  const item = items && typeof items === 'object' ? items[topic] : undefined;
-  const subs = item && typeof item === 'object' && item.subtopics && typeof item.subtopics === 'object'
-    ? item.subtopics : {};
+  /** @type {Record<string, Subtopic>} */
+  let subs;
+  try {
+    subs = subtopicsOf(manifest, topic);
+  } catch {
+    return {};
+  }
   /** @type {Record<string, string>} */
   const out = {};
   for (const [name, sub] of Object.entries(subs)) {

@@ -165,6 +165,10 @@ function auditState(dir, label) {
               ctx(`agent ${ph.name}/${tp.name}/${key}: status "${row.status}" not in vocabulary`));
             assert.ok(row.surfaced.every((f) => row.findings.includes(f)),
               ctx(`agent ${ph.name}/${tp.name}/${key}: surfaced ids must be recorded findings`));
+            if (ph.name === 'discussion' && row.kind === 'review') {
+              assert.ok(row.map_snapshot && typeof row.map_snapshot === 'object',
+                ctx(`agent ${ph.name}/${tp.name}/${key}: a discussion review row must carry its dispatch-time map_snapshot — a stampless dispatch degrades to permanent permissive arming`));
+            }
           }
         }
       }
@@ -651,7 +655,7 @@ describe('pipeline simulation', () => {
       /review dispatch blocked: quiet — 0 of 1 map moves since review-001/);
     const quietScan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     assert.deepStrictEqual(quietScan.review_arming,
-      { armed: false, cycles: 1, movement_seen: 0, movement_needed: 1, reason: 'quiet — 0 of 1 map moves since review-001' },
+      { armed: false, cycles: 1, map_moves_seen: 0, map_moves_needed: 1, reason: 'quiet — 0 of 1 map moves since review-001' },
       'scan answers the same verdict dispatch enforces');
     sim.run(['discussion-map', 'set', wu, 'beta', 'retry-policy', 'decided']);
     const rev2 = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
@@ -1664,7 +1668,8 @@ describe('pipeline simulation', () => {
       'consumed perspectives never mask the synthesis');
 
     // The discussion closing sequence: the synthesis drains, the closing
-    // probe classifies off the scan lists, the final review dispatches and
+    // probe classifies off the scan lists, the final review dispatches
+    // (--final — the mandatory pass is exempt from the movement gate) and
     // drains, and a satisfied probe precedes completion.
     sim.run(['agent', 'ack', wu, 'discussion', 'alpha', syn.id, '--findings', 'T1']);
     sim.run(['agent', 'announce', wu, 'discussion', 'alpha', syn.id]);
@@ -1677,7 +1682,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(reviewRows(probe).length, 0, 'probe: no review row — the due classification');
     assert.deepStrictEqual(probe.pending, [], 'nothing else awaits surfacing');
 
-    const fin = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'review']);
+    const fin = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'review', '--final']);
     sim.write(fin.file, '# Final review\n\n## G1\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
     sim.run(['agent', 'ack', wu, 'discussion', 'alpha', fin.id, '--findings', 'G1']);
