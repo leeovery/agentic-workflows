@@ -386,6 +386,39 @@ function proposedTask(cwd, args) {
 }
 
 // ---------------------------------------------------------------------------
+// spec-review-gate — the review loop's two gates, variant-keyed and
+// payload-less: the options are static, the state that picks the variant
+// (cycle count, gate mode, finding statuses) lives with the caller.
+//   continue — the cycle-count escape hatch: keep reviewing or skip out
+//   reloop   — after findings: another full cycle or proceed to completion
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string}} args
+ * @returns {string}
+ */
+function specReviewGate(cwd, { dotpath, variant }) {
+  if (variant === undefined || !['continue', 'reloop'].includes(variant)) {
+    throw new Error('render spec-review-gate: --variant must be "continue" or "reloop"');
+  }
+  const { phase } = resolveAddress(cwd, dotpath, 'spec-review-gate');
+  if (phase !== 'specification') {
+    throw new Error(`render spec-review-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
+  }
+  const stop = 'emit verbatim as markdown, then STOP for the user\'s response';
+  if (variant === 'continue') {
+    return section('MENU: spec review continue gate', stop, menu('', [
+      cmdOption('p', 'proceed', 'Continue review'),
+      cmdOption('s', 'skip', 'Skip review, proceed to completion'),
+    ], { question: 'Continue with review?' }));
+  }
+  return section('MENU: spec review reloop gate', stop, menu('', [
+    cmdOption('r', 'reanalyse', 'Run another review cycle (all three phases)'),
+    cmdOption('p', 'proceed', 'Proceed to completion'),
+  ], { question: 'Run another review cycle?' }));
+}
+
 // incoherence-gate — spec construction's Resolve Source Incoherence raises.
 // Three variants; the stops here override the construction auto mode by
 // design, so no --gate flag exists.
@@ -2293,6 +2326,7 @@ const SURFACES = {
   'finding': finding,
   'review-presentation': reviewPresentation,
   'review-gate': reviewGate,
+  'spec-review-gate': specReviewGate,
   'triage-announce': triageAnnounce,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,

@@ -10,6 +10,8 @@ The specification is a single file per topic. Structure is **flexible** — orga
 
 Structure is flexible; facts are not. Every value, rule, threshold, and enumeration has exactly one section that states it — its **home**. Every other mention references the home and never restates it. Reference only to avoid restating — never to justify, compare, or note consistency: if deleting the sentence containing a reference loses no information, delete the sentence. Never state a derived fact (a count or summary of a list sitting beside it) — it drifts when the list changes.
 
+An empirical claim about the codebase or toolchain — a count, an enumeration, an "all X are Y" — is recorded at its home with the command that measured it (`… (rg -l 'pattern' | wc -l → 14)`). A claim with no command is a claim review cannot re-check; a load-bearing claim that cannot be measured is written as observation, not fact. A specification carries no open-decision markers — "Decision required", "TBD", and kin park a decision the record never made; the point routes per **[resolve-source-incoherence.md](resolve-source-incoherence.md)** instead of landing in the document.
+
 > **CHECKPOINT**: You should NOT be creating or writing to this file unless you have explicit user approval for specific content. If you're about to create this file with content you haven't presented and had approved, **STOP**. That violates the workflow.
 
 ---

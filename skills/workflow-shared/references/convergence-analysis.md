@@ -17,7 +17,7 @@ The caller provides these via context before loading:
 
 ## Threshold Check
 
-Cross-cycle analysis requires at least 2 data points. Determine the number of available cycles from how the loop type stores them: the `fix` loop appends every cycle as an `## Attempt {N}` section inside its single tracking file — count those sections; the other three loop types write numbered `-c{N}` files, up to two per cycle — count the **distinct `{N}` suffixes**, never the files.
+Cross-cycle analysis requires at least 2 data points. Determine the number of available cycles from how the loop type stores them: the `fix` loop appends every cycle as an `## Attempt {N}` section inside its single tracking file — count those sections; the other three loop types write numbered `-c{N}` files, up to one per stream per cycle — count the **distinct `{N}` suffixes**, never the files.
 
 #### If fewer than 2 cycles of data exist
 
@@ -80,16 +80,17 @@ For each cycle, extract:
 
 Read tracking files for all available cycles:
 ```
+.workflows/{work_unit}/specification/{topic}/review-claims-tracking-c{1..N}.md
 .workflows/{work_unit}/specification/{topic}/review-input-tracking-c{1..N}.md
 .workflows/{work_unit}/specification/{topic}/review-gap-analysis-tracking-c{1..N}.md
 ```
 
 For each cycle, extract:
 - Each finding's title
-- Which stream it came from (input review or gap analysis — by tracking file)
+- Which stream it came from (claims, input review, or gap analysis — by tracking file)
 - Affects field (which specification section)
 - Category
-- Resolution (Approved/Adjusted/Skipped)
+- Resolution (Approved/Adjusted/Skipped/Routed)
 
 → Proceed to **B. Classify Findings**.
 
@@ -109,7 +110,7 @@ Compute:
 - `resolved_count` — findings from prior cycles no longer appearing
 - `recurring_count` — findings persisting across cycles
 - `new_count` — findings appearing for the first time in the latest cycle
-- `stream_counts` — (two-stream loop types only: `spec-review`, `planning-review`) latest-cycle finding counts per tracking stream
+- `stream_counts` — (multi-stream loop types only: `spec-review`, `planning-review`) latest-cycle finding counts per tracking stream, rendered `{label} {count}` and ` · `-joined in stream order
 - `trend` (first match wins):
   - **churning** — recurring_count is 0 or near 0 while resolved_count and new_count are both above 0 and roughly equal (every cycle's findings are new — the edits themselves are generating them)
   - **converging** — resolved_count > new_count (progress is being made)
@@ -132,7 +133,7 @@ Open with one markdown sentence above the block — what the cycles show, in pla
   Trend: {trend:[churning|converging|stable|diverging]}
   Latest cycle: {finding_count} findings ({new_count} new, {recurring_count} recurring)
   @if(loop_type is spec-review or planning-review)
-  Per stream: {stream_a_label} {stream_a_count} · {stream_b_label} {stream_b_count}
+  Per stream: {stream_counts}
   @endif
 
   @if(resolved_count > 0)
@@ -180,7 +181,7 @@ Where `loop_type_label` maps:
 - `spec-review` → `Spec Review`
 
 Stream labels map:
-- `spec-review` → `input review` / `gap analysis`
+- `spec-review` → `claims` / `input review` / `gap analysis`
 - `planning-review` → `traceability` / `integrity`
 
 → Return to caller.
