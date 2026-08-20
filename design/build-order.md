@@ -464,9 +464,12 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
   with discovery topic names by construction — an independent discussion
   becomes a grouping of one (`analysis-flow.md:110`) — so
   `engine topic cancel {wu} specification auth-flow` **today** strips the
-  discovery map item `auth-flow`'s order, flipping `needs_sequencing` and
-  renumbering the whole map on next entry. It is reachable from the cancel
-  menu. That is a pre-existing bug this programme forces into the open:
+  discovery map item `auth-flow`'s order. Reproduced against a fixture: a
+  map of `auth-flow: 1, billing: 2` becomes `billing: 2, auth-flow: null`
+  after cancelling only the *specification* item, `needs_sequencing` flips
+  true, and the still-live topic sorts last until the whole map renumbers
+  on next entry. It is reachable from the cancel menu. That is a
+  pre-existing bug this programme forces into the open:
   the stash must be gated on the cancelled phase, and a separate
   spec-side stash added. Both belong in the pipeline simulation.
 
