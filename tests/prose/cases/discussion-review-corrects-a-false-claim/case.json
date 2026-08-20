@@ -1,0 +1,63 @@
+{
+  "origin": "idea 40's root defect was a discussion shipping unmeasured false tree claims that every downstream phase inherited — this walks the document review's unverified-claims dimension: the resumed session re-runs the recorded command at conclusion, corrects the value in place, and never turns an arithmetic fact into a decision",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/compliance-check.md"
+  ],
+  "conduct": "The user settled this discussion last sitting and is back only to wrap it up. Shown where things stand they confirm both subtopics are done and ask to conclude — they reopen nothing, add nothing, and decline any offered exploration. They treat the checkout module count as descriptive: the telemetry rule is per-module whatever the number. Told during the review brief that the recorded count was re-measured and corrected from four to five, they take the note without ceremony — that is exactly what they expect a document review to do — and they would object to being asked to decide an arithmetic fact. Asked to conclude, they confirm.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "agent dispatch pay discussion pay --kind review",
+      "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "topic complete pay discussion pay"
+    ],
+    "calls_in_order": [
+      "render resume-gate pay.discussion.pay",
+      "agent dispatch pay discussion pay --kind review",
+      "topic complete pay discussion pay"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic triage",
+      "discussion-map add",
+      "sources stale",
+      "workunit create"
+    ]
+  }
+}
