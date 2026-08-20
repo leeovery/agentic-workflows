@@ -13,6 +13,7 @@
 //   engine.reads          domain — generic manifest/file reads (no phase semantics)
 //   engine.derivations    domain — shared derivations (phase joins, lifecycle, cache status)
 //   engine.discussionMap  domain — discussion-map transitions + queries
+//   engine.agents         domain — background-agent derivations (review cycles, arming)
 //   engine.detail         domain — detail builders (the one structured object per work unit)
 //   engine.project        domain — projections (dashboard / key / menu / map views)
 //   engine.gateway        adapter harness — verb dispatch + output sections
@@ -39,6 +40,7 @@ const workunit = require('./domain/workunit-detail.cjs');
 const workunitManage = require('./domain/workunit-manage.cjs');
 const specification = require('./domain/specification.cjs');
 const discussionMap = require('./domain/discussion-map.cjs');
+const agentState = require('./domain/agent-state.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
 const discoveryProjections = require('./domain/projections/discovery-map.cjs');
 const discussionProjections = require('./domain/projections/discussion-map.cjs');
@@ -84,6 +86,10 @@ module.exports = {
     setSubtopicState: discussionMap.setSubtopicState,
     mapState: discussionMap.mapState,
     SUBTOPIC_STATES: discussionMap.SUBTOPIC_STATES,
+  },
+  agents: {
+    completedReviewCycles: agentState.completedReviewCycles,
+    reviewArming: agentState.reviewArming,
   },
   session: {
     nextSessionNumber: discoverySession.nextSessionNumber,

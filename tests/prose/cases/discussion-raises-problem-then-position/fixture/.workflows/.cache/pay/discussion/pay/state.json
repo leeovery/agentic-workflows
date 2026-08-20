@@ -13,7 +13,13 @@
         "F2"
       ],
       "surfaced": [],
-      "created": "2026-01-01T00:00:00.000Z"
+      "created": "2026-01-01T00:00:00.000Z",
+      "map_snapshot": {
+        "capture-confirmation": "decided",
+        "currency-handling": "decided",
+        "failed-payment-retries": "exploring",
+        "card-data-handling": "pending"
+      }
     }
   }
 }

@@ -24,6 +24,8 @@ const fs = require('fs');
 const path = require('path');
 const io = require('../kernel/manifest-io.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
+const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { subtopicStatuses } = require('./discussion-map.cjs');
 
 const AGENT_KINDS = [
   'review',
@@ -35,6 +37,18 @@ const AGENT_KINDS = [
 ];
 
 const AGENT_STATUSES = ['in-flight', 'pending', 'acknowledged', 'incorporated'];
+
+// Review-arming backoff: review n+1 needs min(n, MOVEMENT_CAP) map moves
+// since the last dispatch. The cap keeps late reviews permanently reachable
+// on genuinely new ground instead of climbing toward a de-facto ceiling.
+const MOVEMENT_CAP = 3;
+
+// Forward rank for map movement — a transition counts only when it climbs.
+// `deferred` ranks 0: the conclusion's deferral sweep is bookkeeping, never
+// movement (its commit carries the `(deferral)` marker for the same reason),
+// while reactivating a deferred thread onto live ground is new ground and
+// counts.
+const SUBTOPIC_RANK = { pending: 0, exploring: 1, converging: 2, decided: 3, deferred: 0 };
 
 /** @param {string} cwd */
 function workflowsDir(cwd) {
@@ -128,18 +142,155 @@ function requireRow(state, phase, topic, id) {
 }
 
 /**
+ * Tolerant row read for derivations — a corrupt store or malformed row must
+ * never brick a display. Mutations go through `loadState`, which is loud.
+ * @param {string} dir @returns {any[]}
+ */
+function derivationRows(dir) {
+  try {
+    const store = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
+    const rows = store && typeof store === 'object' ? store.agents : null;
+    return rows && typeof rows === 'object'
+      ? Object.values(rows).filter((r) => r && typeof r === 'object' && typeof r.id === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * A row that delivered — findings recorded, or its report on disk. An
+ * abandoned row closed by the dead-session arm never produced one.
+ * @param {any} row @param {string} dir
+ */
+function reportBacked(row, dir) {
+  if (Array.isArray(row.findings) && row.findings.length > 0) return true;
+  try {
+    return fs.statSync(path.join(dir, `${row.id}.md`)).size > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Completed review cycles for a topic. The agent store is authoritative:
+ * review rows past `in-flight` are cycles that happened, counted only when
+ * a real report backs them; a finished-but-unscanned row counts — the
+ * report landed, no scan has promoted it yet. Legacy review-*.md files with
+ * no store row (pre-programme caches) count by existence alone. Tolerant
+ * throughout — a derivation read must never brick a display.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function completedReviewCycles(cwd, workUnit, phase, topic) {
+  const dir = agentDir(cwd, workUnit, phase, topic);
+  const rowIds = new Set();
+  let fromRows = 0;
+  for (const row of derivationRows(dir)) {
+    if (row.kind !== 'review') continue;
+    rowIds.add(`${row.id}.md`);
+    if (row.status !== 'in-flight') {
+      if (reportBacked(row, dir)) fromRows += 1;
+    } else {
+      try {
+        if (fs.statSync(path.join(dir, `${row.id}.md`)).size > 0) fromRows += 1;
+      } catch { /* still running */ }
+    }
+  }
+  try {
+    const legacy = fs.readdirSync(dir)
+      .filter((f) => /^review-.*\.md$/.test(f))
+      .filter((f) => !rowIds.has(f))
+      .length;
+    return fromRows + legacy;
+  } catch {
+    return fromRows;
+  }
+}
+
+/**
+ * Map movement between two subtopic→status snapshots: additions plus
+ * forward transitions. Backward moves never count — a reopen re-arms
+ * machinery elsewhere, and unwinding a decision is not new ground to review.
+ * @param {Record<string, string>} before @param {Record<string, string>} after
+ */
+function mapMovement(before, after) {
+  let n = 0;
+  for (const [name, status] of Object.entries(after)) {
+    if (!(name in before)) n += 1;
+    else if ((SUBTOPIC_RANK[status] ?? 0) > (SUBTOPIC_RANK[before[name]] ?? 0)) n += 1;
+  }
+  return n;
+}
+
+/**
+ * @typedef {object} ReviewArming
+ * @property {boolean} armed
+ * @property {number} cycles              completed (report-backed) review cycles
+ * @property {number|null} map_moves_seen forward map movement since the anchor; null when nothing anchors the measure
+ * @property {number} map_moves_needed    min(cycles, MOVEMENT_CAP)
+ * @property {string} reason              one line, always present
+ */
+
+/**
+ * The review-arming verdict for a discussion topic — is a background review
+ * worth dispatching, measured by how far the Discussion Map has moved since
+ * the last real review. The first review is free; review n+1 needs min(n,
+ * MOVEMENT_CAP) moves since the anchor: the latest report-backed review row
+ * carrying its dispatch-time snapshot. A row with no report is a killed
+ * dispatch closed as bookkeeping, never a review — anchoring on it would
+ * hide every map move between the real review and the kill. Rows with no
+ * snapshot (dispatched before arming existed) arm permissively — the next
+ * dispatch stamps one and the damping engages. Discussion only: research
+ * has no map to measure against. Tolerant reads throughout — the verdict
+ * rides displays and must never brick one.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ * @returns {ReviewArming}
+ */
+function reviewArming(cwd, workUnit, topic) {
+  requireWorkUnit(cwd, workUnit);
+  validateSegment(topic, 'topic');
+  const dir = agentDir(cwd, workUnit, 'discussion', topic);
+  const cycles = completedReviewCycles(cwd, workUnit, 'discussion', topic);
+  const needed = Math.min(cycles, MOVEMENT_CAP);
+  if (needed === 0) {
+    return { armed: true, cycles, map_moves_seen: null, map_moves_needed: 0, reason: 'no completed review cycle — the first review is free' };
+  }
+  const last = derivationRows(dir)
+    .filter((r) => r.kind === 'review' && r.map_snapshot && typeof r.map_snapshot === 'object' && reportBacked(r, dir))
+    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
+    .pop();
+  if (!last) {
+    return { armed: true, cycles, map_moves_seen: null, map_moves_needed: needed, reason: 'no snapshot on record — armed; this dispatch stamps one' };
+  }
+  const current = subtopicStatuses(loadWorkUnitManifest(cwd, workUnit), topic);
+  const moves = mapMovement(last.map_snapshot, current);
+  return {
+    armed: moves >= needed,
+    cycles,
+    map_moves_seen: moves,
+    map_moves_needed: needed,
+    reason: moves >= needed
+      ? `armed on ${moves} map move(s) since ${last.id}`
+      : `quiet — ${moves} of ${needed} map moves since ${last.id}`,
+  };
+}
+
+/**
  * Dispatch: allocate the next id for this kind, record the row in-flight,
  * and answer with the content-file path the sub-agent must write. No file
  * is created — the content file's later existence is the completion signal.
  * A review dispatch refuses while the topic's triage queue holds entries —
  * a queued rerouted concern is a pending change to the document the review
- * would read, so the report would be stale on arrival.
+ * would read, so the report would be stale on arrival. A discussion review
+ * additionally refuses while unarmed (`reviewArming`) — `final: true`, the
+ * mandatory closing pass, bypasses the movement gate; every discussion
+ * review row is stamped with the map snapshot arming measures against.
  * Numbering starts after both existing rows AND any legacy files already in
  * the cache dir (pre-programme skeletons keep their names; ids never collide).
  * @param {string} cwd @param {string} workUnit @param {string} phase
- * @param {string} topic @param {{kind: string, labels?: string[], set?: string}} opts
+ * @param {string} topic @param {{kind: string, labels?: string[], set?: string, final?: boolean}} opts
  */
-function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) {
+function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, final = false }) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateSegment(topic, 'topic');
@@ -161,6 +312,9 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
   if (kind === 'synthesis' && labels.length) {
     throw new Error('a synthesis takes no --label — its identity is synthesis-{set}');
   }
+  if (final && !(kind === 'review' && phase === 'discussion')) {
+    throw new Error('--final bypasses a discussion review\'s movement gate — legal only with --kind review in the discussion phase');
+  }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     if (kind === 'review' && (phase === 'research' || phase === 'discussion')) {
       const queueDir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
@@ -172,6 +326,17 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
       if (queued > 0) {
         throw new Error(`review dispatch blocked: ${queued} rerouted concern(s) wait in the ${phase}/${topic} triage queue — absorb them (topic absorb) before dispatching a review`);
       }
+    }
+    /** @type {Record<string, string> | null} */
+    let mapSnapshot = null;
+    if (kind === 'review' && phase === 'discussion') {
+      if (!final) {
+        const arming = reviewArming(cwd, workUnit, topic);
+        if (!arming.armed) {
+          throw new Error(`review dispatch blocked: ${arming.reason} — the map must move before another review arms (--final bypasses the movement gate)`);
+        }
+      }
+      mapSnapshot = subtopicStatuses(loadWorkUnitManifest(cwd, workUnit), topic);
     }
     const state = loadState(cwd, workUnit, phase, topic);
     const dir = agentDir(cwd, workUnit, phase, topic);
@@ -240,6 +405,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
         findings: [],
         surfaced: [],
         created,
+        ...(mapSnapshot ? { map_snapshot: mapSnapshot } : {}),
       };
       return { id, file: path.relative(cwd, path.join(dir, `${id}.md`)) };
     });
@@ -320,6 +486,9 @@ function scanAgents(cwd, workUnit, phase, topic) {
       pending: byStatus('pending').map(publicRow),
       acknowledged: byStatus('acknowledged').map(publicRow),
       incorporated: byStatus('incorporated').map(publicRow),
+      // The dispatch check reads drained state and the arming verdict from
+      // this one scan — discussion only; research has no map to measure.
+      ...(phase === 'discussion' ? { review_arming: reviewArming(cwd, workUnit, topic) } : {}),
     };
   });
 }
@@ -445,10 +614,13 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
 module.exports = {
   AGENT_KINDS,
   AGENT_STATUSES,
+  SUBTOPIC_RANK,
   dispatchAgent,
   scanAgents,
   ackAgent,
   announceAgent,
   surfaceFinding,
   incorporateAgent,
+  completedReviewCycles,
+  reviewArming,
 };

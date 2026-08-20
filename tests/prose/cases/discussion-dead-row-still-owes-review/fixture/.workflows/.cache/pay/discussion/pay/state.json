@@ -10,7 +10,12 @@
       "announced": false,
       "findings": [],
       "surfaced": [],
-      "created": "2026-01-01T00:00:00.000Z"
+      "created": "2026-01-01T00:00:00.000Z",
+      "map_snapshot": {
+        "capture-confirmation": "decided",
+        "card-data-handling": "decided",
+        "failed-payment-retries": "decided"
+      }
     }
   }
 }
