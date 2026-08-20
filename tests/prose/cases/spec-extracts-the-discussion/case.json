@@ -41,7 +41,8 @@
       "review_cycle=0",
       "finding_gate_mode=gated",
       "spec(pay): initialize specification",
-      "manifest set pay.specification.pay review_cycle 1",
+      "manifest set pay.specification.pay review_cycle=1",
+      "review_baseline_words=",
       "topic complete pay specification pay",
       "spec(pay): conclude specification"
     ],
@@ -50,7 +51,7 @@
       "manifest get pay.specification.pay status",
       "topic start pay specification pay",
       "sources.pay.status incorporated",
-      "review_cycle 1",
+      "review_cycle=1",
       "topic complete pay specification pay",
       "spec(pay): conclude specification"
     ],

@@ -39,7 +39,8 @@
     "engine_before_write": true,
     "calls_include": [
       "render resume-gate pay.specification.pay",
-      "manifest set pay.specification.pay review_cycle 1",
+      "manifest set pay.specification.pay review_cycle=1",
+      "review_baseline_words=",
       "tracking.review-claims-tracking-c1 in-progress",
       "render findings-summary pay.specification.pay",
       "presence scan pay",
@@ -53,7 +54,7 @@
     ],
     "calls_in_order": [
       "render resume-gate pay.specification.pay",
-      "manifest set pay.specification.pay review_cycle 1",
+      "manifest set pay.specification.pay review_cycle=1",
       "tracking.review-claims-tracking-c1 in-progress",
       "presence scan pay",
       "write:.workflows/pay/discussion/pay.md",

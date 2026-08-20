@@ -41,7 +41,7 @@
       "sources.error-handling.status pending",
       "sources.error-handling.status incorporated",
       "spec(error-handling): initialize specification",
-      "review_cycle 1",
+      "review_cycle=1",
       "topic complete error-handling specification error-handling",
       "spec(error-handling): conclude specification",
       "manifest get error-handling work_type",

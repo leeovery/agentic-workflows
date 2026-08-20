@@ -57,7 +57,7 @@ nothing later:
   webhook-confirmed capture with no polling — with wallets excluded
   from requirements, and no reliance on reading the discussion back
 - the manifest holding the specification completed with a date, the
-  discussion source incorporated, review_cycle at 1, both gate modes
+  discussion source incorporated, review_cycle at 1 with the construction baseline recorded (review_baseline_words), both gate modes
   gated, and no tracking entries; the discussion item untouched and
   still completed
 - no review tracking files on disk — clean reviews write none

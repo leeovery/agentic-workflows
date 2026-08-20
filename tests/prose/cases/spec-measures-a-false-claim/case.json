@@ -46,7 +46,8 @@
       "presence scan pay",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
       "--topic discussion/pay",
-      "manifest set pay.specification.pay review_cycle 1",
+      "manifest set pay.specification.pay review_cycle=1",
+      "review_baseline_words=",
       "render spec-completion-gate pay.specification.pay --variant signoff",
       "topic complete pay specification pay",
       "spec(pay): conclude specification"
@@ -56,7 +57,7 @@
       "presence scan pay",
       "write:.workflows/pay/discussion/pay.md",
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
-      "manifest set pay.specification.pay review_cycle 1",
+      "manifest set pay.specification.pay review_cycle=1",
       "topic complete pay specification pay"
     ],
     "calls_exclude": [

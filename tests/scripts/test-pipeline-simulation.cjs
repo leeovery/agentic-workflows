@@ -894,6 +894,9 @@ describe('pipeline simulation', () => {
 
     // Staging, candidate, and tracking state walks the manifest with
     // validated vocabularies at every step.
+    sim.run(['manifest', 'set', `${wu}.specification.unified`, 'review_cycle=1', 'review_baseline_words=6835']);
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.specification.unified`, 'review_baseline_words']), '6835',
+      'the construction baseline survives as a number the growth diagnostic can read');
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'tracking.review-claims-tracking-c1', 'in-progress']);
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'tracking.review-claims-tracking-c1', 'complete']);
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'tracking.review-input-tracking-c1', 'in-progress']);
