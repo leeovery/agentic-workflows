@@ -403,7 +403,7 @@ describe('discussion adapter: map verb', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('emits DATA (counts, all_decided, unresolved, review_cycles) and the DISPLAY block', () => {
+  it('emits DATA (counts, all_decided, unresolved, review_cycles, review_arming) and the DISPLAY block', () => {
     createManifest(dir, 'auth', manifestWith({
       'token-refresh': { status: 'exploring', parent: null },
       'session-storage': { status: 'decided', parent: null },
@@ -421,6 +421,7 @@ describe('discussion adapter: map verb', () => {
       'all_decided: false',
       'unresolved: ["token-refresh"]',
       'review_cycles: 1',
+      'review_arming: {"armed":true,"cycles":1,"movement_seen":null,"movement_needed":1,"reason":"no snapshot on record (pre-arming rows) — armed; this dispatch stamps one"}',
       '',
       '=== DISPLAY (emit verbatim as a code block) ===',
       'Discussion Map — Auth Flow (2 subtopics — 1 decided · 1',
@@ -491,5 +492,20 @@ describe('discussion adapter: map verb', () => {
     fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'the report landed');
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
     assert.match(out, /review_cycles: 1/, 'mirror of scan promotion — the cycle happened');
+  });
+
+  it('review_arming rides DATA — the quiet verdict names the movement owed', () => {
+    createManifest(dir, 'auth', manifestWith({
+      'token-refresh': { status: 'exploring', parent: null },
+    }));
+    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, 'state.json'), JSON.stringify({
+      agents: {
+        'review-001': { id: 'review-001', kind: 'review', phase: 'discussion', topic: 'auth-flow', set: '001', status: 'incorporated', announced: false, findings: ['F1'], surfaced: ['F1'], created: '2026-08-01T00:00:00.000Z', map_snapshot: { 'token-refresh': 'exploring' } },
+      },
+    }));
+    const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
+    assert.match(out, /review_arming: \{"armed":false,"cycles":1,"movement_seen":0,"movement_needed":1,"reason":"quiet — 0 of 1 map moves since review-001"\}/);
   });
 });

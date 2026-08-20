@@ -403,3 +403,118 @@ describe('engine agent — lifecycle store', () => {
       'the prior report must be discarded so the fresh agent\'s write is the completion signal');
   });
 });
+
+describe('engine agent — discussion review arming', () => {
+  let dir;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-arming-'));
+    const wuDir = path.join(dir, '.workflows', 'pay');
+    fs.mkdirSync(wuDir, { recursive: true });
+    writeMap({ tokens: 'exploring' });
+  });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+
+  /** @param {Record<string, string>} statuses */
+  function writeMap(statuses) {
+    const subtopics = Object.fromEntries(Object.entries(statuses)
+      .map(([name, status]) => [name, { status, parent: null }]));
+    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify({
+      name: 'pay', work_type: 'epic', status: 'in-progress',
+      phases: { discussion: { items: { auth: { status: 'in-progress', subtopics } } } },
+    }, null, 2));
+  }
+
+  /** Land the report and drain the row — a completed cycle. @param {{id: string, file: string}} d */
+  function completeCycle(d) {
+    writeContent(dir, d.file, '# Findings\n');
+    runJson(dir, ['scan', 'pay', 'discussion', 'auth']);
+    runJson(dir, ['ack', 'pay', 'discussion', 'auth', d.id, '--clean']);
+  }
+
+  it('the first review is free and stamps the map snapshot', () => {
+    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
+    assert.strictEqual(a.id, 'review-001');
+    const store = readStore(dir, 'pay', 'discussion', 'auth');
+    assert.deepStrictEqual(store.agents['review-001'].map_snapshot, { tokens: 'exploring' });
+  });
+
+  it('a second review refuses at zero movement, then arms on one forward move', () => {
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    const err = runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error;
+    assert.match(err, /review dispatch blocked/);
+    assert.match(err, /0 of 1 map moves since review-001/);
+    assert.match(err, /--final/, 'the refusal names the closing pass\'s bypass');
+    writeMap({ tokens: 'decided' });
+    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
+    assert.strictEqual(b.id, 'review-002');
+    assert.deepStrictEqual(readStore(dir, 'pay', 'discussion', 'auth').agents['review-002'].map_snapshot,
+      { tokens: 'decided' }, 'the new row snapshots the moved map');
+  });
+
+  it('subtopic additions count as movement', () => {
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    writeMap({ tokens: 'exploring', refresh: 'pending' });
+    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
+    assert.strictEqual(b.id, 'review-002');
+  });
+
+  it('a backward move never arms', () => {
+    writeMap({ tokens: 'decided' });
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    writeMap({ tokens: 'exploring' });
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
+      /0 of 1 map moves/, 'unwinding a decision is not new ground');
+  });
+
+  it('the requirement escalates per completed cycle and caps at 3', () => {
+    for (let i = 0; i < 4; i += 1) {
+      completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review', '--final']));
+    }
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
+      /0 of 3 map moves since review-004/, 'four cycles in, the bar holds at the cap');
+    writeMap({ tokens: 'decided', refresh: 'pending', expiry: 'pending' });
+    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
+    assert.strictEqual(b.id, 'review-005', 'three fresh moves re-arm however many cycles have run');
+  });
+
+  it('--final bypasses the movement gate and still stamps the snapshot', () => {
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review', '--final']);
+    assert.strictEqual(b.id, 'review-002');
+    assert.deepStrictEqual(readStore(dir, 'pay', 'discussion', 'auth').agents['review-002'].map_snapshot,
+      { tokens: 'exploring' });
+  });
+
+  it('rows predating the snapshot arm permissively once', () => {
+    fs.mkdirSync(path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'auth'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'auth', 'state.json'), JSON.stringify({
+      agents: { 'review-001': { id: 'review-001', kind: 'review', phase: 'discussion', topic: 'auth', set: '001', status: 'incorporated', announced: false, findings: ['F1'], surfaced: ['F1'], created: '2026-08-01T00:00:00.000Z' } },
+    }));
+    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
+    assert.strictEqual(b.id, 'review-002', 'a pre-upgrade history never wedges the topic');
+    assert.ok(readStore(dir, 'pay', 'discussion', 'auth').agents['review-002'].map_snapshot,
+      'the dispatch stamps the snapshot that engages the damping');
+  });
+
+  it('scan answers the arming verdict on discussion topics only', () => {
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    const scan = runJson(dir, ['scan', 'pay', 'discussion', 'auth']);
+    assert.deepStrictEqual(scan.review_arming, {
+      armed: false, cycles: 1, movement_seen: 0, movement_needed: 1,
+      reason: 'quiet — 0 of 1 map moves since review-001',
+    });
+    assert.strictEqual(runJson(dir, ['scan', 'pay', 'research', 'auth']).review_arming, undefined,
+      'research has no map to measure');
+  });
+
+  it('research reviews never take the movement gate', () => {
+    const a = runJson(dir, ['dispatch', 'pay', 'research', 'auth', '--kind', 'review']);
+    writeContent(dir, a.file, '# Findings\n');
+    runJson(dir, ['scan', 'pay', 'research', 'auth']);
+    runJson(dir, ['ack', 'pay', 'research', 'auth', a.id, '--clean']);
+    const b = runJson(dir, ['dispatch', 'pay', 'research', 'auth', '--kind', 'review']);
+    assert.strictEqual(b.id, 'review-002', 'no refusal, cycles notwithstanding');
+    assert.strictEqual(readStore(dir, 'pay', 'research', 'auth').agents['review-002'].map_snapshot, undefined,
+      'no snapshot outside discussion');
+  });
+});

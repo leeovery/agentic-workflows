@@ -78,6 +78,27 @@ function subtopicsOf(manifest, topic) {
 }
 
 /**
+ * Subtopic → status snapshot for review-arming comparisons. Tolerant where
+ * `subtopicsOf` is loud: a topic with no discussion item yet is an empty
+ * map, never an error — arming must answer for topics the map hasn't
+ * reached, and a dispatch-time snapshot must never brick on a bare manifest.
+ * @param {object} manifest @param {string} topic
+ * @returns {Record<string, string>}
+ */
+function subtopicStatuses(manifest, topic) {
+  const items = manifest && manifest.phases && manifest.phases.discussion && manifest.phases.discussion.items;
+  const item = items && typeof items === 'object' ? items[topic] : undefined;
+  const subs = item && typeof item === 'object' && item.subtopics && typeof item.subtopics === 'object'
+    ? item.subtopics : {};
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const [name, sub] of Object.entries(subs)) {
+    if (sub && typeof sub === 'object' && typeof sub.status === 'string') out[name] = sub.status;
+  }
+  return out;
+}
+
+/**
  * Add a subtopic to a discussion item's map. New subtopics start `pending`.
  * @param {object} manifest
  * @param {string} topic
@@ -241,4 +262,4 @@ function recordSubtopicStates(cwd, workUnit, topic, entries) {
   };
 }
 
-module.exports = { SUBTOPIC_STATES, addSubtopic, setSubtopicState, mapState, subtopicsOf, recordSubtopicAdd, recordSubtopicState, recordSubtopicStates };
+module.exports = { SUBTOPIC_STATES, addSubtopic, setSubtopicState, mapState, subtopicsOf, subtopicStatuses, recordSubtopicAdd, recordSubtopicState, recordSubtopicStates };

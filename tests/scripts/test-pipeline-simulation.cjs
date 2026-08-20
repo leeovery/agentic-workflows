@@ -639,7 +639,31 @@ describe('pipeline simulation', () => {
     // reactivated later.
     sim.run(['topic', 'start', wu, 'discussion', 'beta']);
     sim.run(['discussion-map', 'add', wu, 'beta', 'retry-policy']);
+    // Review arming: the first background review is free and snapshots the
+    // map; after a completed cycle the next refuses until the Discussion Map
+    // moves forward min(cycles, 3) times; --final — the mandatory closing
+    // pass — bypasses the movement gate.
+    const rev1 = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
+    sim.write(rev1.file, '# Findings\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev1.id, '--clean']);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
+      /review dispatch blocked: quiet — 0 of 1 map moves since review-001/);
+    const quietScan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    assert.deepStrictEqual(quietScan.review_arming,
+      { armed: false, cycles: 1, movement_seen: 0, movement_needed: 1, reason: 'quiet — 0 of 1 map moves since review-001' },
+      'scan answers the same verdict dispatch enforces');
     sim.run(['discussion-map', 'set', wu, 'beta', 'retry-policy', 'decided']);
+    const rev2 = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
+    assert.strictEqual(rev2.id, 'review-002', 'one forward move re-arms the second review');
+    sim.write(rev2.file, '# Findings\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev2.id, '--clean']);
+    const revFinal = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review', '--final']);
+    assert.strictEqual(revFinal.id, 'review-003', 'the closing pass dispatches over a quiet map');
+    sim.write(revFinal.file, '# Findings\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', revFinal.id, '--clean']);
     sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
     sim.run(['topic', 'start', wu, 'research', 'gamma-prime']);
