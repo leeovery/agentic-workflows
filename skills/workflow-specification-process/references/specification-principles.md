@@ -87,6 +87,8 @@ The specification is the **golden document** — planning uses only this. If inf
 
 **Surface conflicts**: When sources contain conflicting decisions, flag the conflict to the user. Don't silently pick one — let the user decide what makes it into the specification, per **[resolve-source-incoherence.md](resolve-source-incoherence.md)**. Dated supersession inside one Decision block's timeline is not a conflict — the top entry governs.
 
+**Measure load-bearing claims**: When a source claim about the codebase or toolchain is load-bearing — a decision, gate, or scope leans on it — verify it against the tree before extracting it, and extract it with the command and result. A claim that fails measurement routes per **[resolve-source-incoherence.md](resolve-source-incoherence.md)** — never extracted as-is, never corrected only in the spec: a "validated correction" the owning document never received is the source rotting in place.
+
 ## Self-Check: Are You Following the Rules?
 
 Before ANY write operation to the specification, ask yourself:

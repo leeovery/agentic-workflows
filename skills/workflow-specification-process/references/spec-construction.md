@@ -19,7 +19,7 @@ F. Topic complete → loop back to A or exit
 
 ## A. Exhaustive Extraction
 
-Every topic's content must be derivable from its sources. When source material disagrees — with itself, or with another source — or is too unclear to extract without assumption, never silently pick a side: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** and follow its instructions as written, in the moment it surfaces; on return, continue where extraction left off. Tension notes held from session setup are raised the same way when the topic that touches them arrives.
+Every topic's content must be derivable from its sources. When source material disagrees — with itself, with another source, or with the codebase or toolchain it describes — or is too unclear to extract without assumption, never silently pick a side and never patch the mismatch in the spec alone: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** and follow its instructions as written, in the moment it surfaces; on return, continue where extraction left off. Tension notes held from session setup are raised the same way when the topic that touches them arrives.
 
 → Load **[exhaustive-extraction.md](exhaustive-extraction.md)** and follow its instructions as written.
 
@@ -87,7 +87,7 @@ Already-`addressed` references are skipped on later topic cycles.
 
 Check the draft against the one-home rule (**[specification-format.md](specification-format.md)**): a fact already stated in the specification is referenced at its home, never restated. If the new topic should own the fact, move it — edits to already-logged content go through **Context Resurfacing**.
 
-Source disagreement first noticed here — while forcing two sources into one draft — routes exactly as it does during extraction: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** and follow its instructions as written; its stops override `auto`. Never let the auto branch below absorb an unresolved conflict.
+Source disagreement or a measured mismatch first noticed here — while forcing two sources into one draft — routes exactly as it does during extraction: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** and follow its instructions as written; its stops override `auto`. Never let the auto branch below absorb an unresolved conflict.
 
 Present your understanding to the user **in the format it would appear in the specification** (shown in both modes):
 
