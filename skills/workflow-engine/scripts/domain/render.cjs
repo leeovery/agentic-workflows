@@ -406,14 +406,13 @@ function specReviewGate(cwd, { dotpath, variant }) {
   if (phase !== 'specification') {
     throw new Error(`render spec-review-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
   }
-  const stop = 'emit verbatim as markdown, then STOP for the user\'s response';
   if (variant === 'continue') {
-    return section('MENU: spec review continue gate', stop, menu('', [
+    return section('MENU: spec review continue gate', STOP_FOR_RESPONSE, menu('', [
       cmdOption('p', 'proceed', 'Continue review'),
       cmdOption('s', 'skip', 'Skip review, proceed to completion'),
     ], { question: 'Continue with review?' }));
   }
-  return section('MENU: spec review reloop gate', stop, menu('', [
+  return section('MENU: spec review reloop gate', STOP_FOR_RESPONSE, menu('', [
     cmdOption('r', 'reanalyse', 'Run another review cycle (all three phases)'),
     cmdOption('p', 'proceed', 'Proceed to completion'),
   ], { question: 'Run another review cycle?' }));
@@ -440,14 +439,13 @@ function specCompletionGate(cwd, { dotpath, variant }) {
   if (phase !== 'specification') {
     throw new Error(`render spec-completion-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
   }
-  const stop = 'emit verbatim as markdown, then STOP for the user\'s response';
   if (variant === 'assessment') {
-    return section('MENU: spec assessment gate', stop, menu('', [
+    return section('MENU: spec assessment gate', STOP_FOR_RESPONSE, menu('', [
       cmdOption('y', 'yes', 'Confirm assessment'),
       promptOption('Comment', 'Suggest a different classification'),
     ], { question: 'Confirm this assessment?' }));
   }
-  return section('MENU: spec signoff gate', stop, menu('', [
+  return section('MENU: spec signoff gate', STOP_FOR_RESPONSE, menu('', [
     cmdOption('y', 'yes', 'Conclude specification and mark as completed'),
     promptOption('Comment', 'Add context before concluding'),
   ], { question: 'Ready to conclude?' }));
@@ -474,19 +472,22 @@ function carryNoteGate(cwd, { dotpath, file }) {
   const note = stringLines(p.note, 'carry-note-gate', 'note');
   if (note.length === 0) throw new Error('render carry-note-gate: "note" must be non-empty');
   if (!isFilled(p.target)) throw new Error('render carry-note-gate: "target" must be a non-empty string');
-  if (!isFilled(p.landing_phase)) throw new Error('render carry-note-gate: "landing_phase" must be a non-empty string');
+  if (p.landing_phase !== 'research' && p.landing_phase !== 'discussion') {
+    throw new Error(`render carry-note-gate: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
+  }
   const display = section('DISPLAY: carry note', 'emit verbatim as markdown', [
     ...note,
     '',
     `*Addressed to: ${p.target} — lands in its ${p.landing_phase} triage queue*`,
   ].join('\n'));
-  const gate = section('MENU: carry note gate', 'emit verbatim as markdown, then STOP for the user\'s response', menu(
-    `Land this note in "${p.target}"'s triage queue? If "${p.target}" is completed, landing reopens it.`,
+  const gate = section('MENU: carry note gate', STOP_FOR_RESPONSE, menu(
+    `This note lands in "${p.target}"'s triage queue; if "${p.target}" is completed, landing reopens it.`,
     [
       cmdOption('y', 'yes', 'Land it there; this document keeps a reroute record'),
       cmdOption('s', 'skip', 'Leave it as prose in this document'),
       promptOption('Comment', 'Tell me what to change (target, phase, or content)'),
     ],
+    { question: 'Land it there?' },
   ));
   return [display, gate].join('\n');
 }
@@ -579,7 +580,7 @@ function incoherenceGate(cwd, args) {
   return section('MENU: incoherence held doc', INCOHERENCE_STOP, menu(
     `"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,
     [
-      cmdOption('n', 'next', 'Set this topic aside and move to the next'),
+      cmdOption('n', 'next', 'Queue the resolution and carry on here'),
       cmdOption('s', 'stop', 'Stop here; re-enter after that session lands it'),
     ],
     { question: 'How do you want to continue?' },

@@ -125,10 +125,10 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-track
 {Explanation of what was found and why it matters}
 
 **Current**:
-{For findings that modify existing content (Enhancement, Duplication) — copy the existing specification content that will be modified. This enables diff presentation to the user. Omit for New topic and Gap/Ambiguity findings.}
+{For findings that modify existing content (Enhancement, Duplication) — copy the existing specification content that will be modified. This enables diff presentation to the user. Omit for New topic, Gap/Ambiguity, and Unsourced decision findings.}
 
 **Proposed Change**:
-{What you would add or change in the specification — leave blank until discussed}
+{What you would add or change in the specification — leave blank until discussed. Leave blank permanently for Unsourced decision: the fix belongs to the source record}
 
 **Resolution**: Pending
 **Notes**:

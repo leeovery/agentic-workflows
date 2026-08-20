@@ -43,7 +43,7 @@ Walk the conversation against the document and check six dimensions (the last tw
 
 5. **Pipeline meta** — the document stating its own pipeline position: notes that the research is complete or ready for discussion, review-cycle counts — whether written this session or in an earlier session. The manifest carries that state.
 
-6. **Unverified claims** — every load-bearing empirical claim about the codebase or toolchain, whatever session wrote it. Re-run its recorded command; construct the obvious measurement where none is recorded, and record it with the result per the template's measured-claims convention. The documents' own figures, and anything asserted as verified earlier, are claims — not measurements. A load-bearing claim no command can check is softened to observation.
+6. **Unverified claims** — every load-bearing empirical claim about the codebase or toolchain, whatever session wrote it. Re-run its recorded command; construct the obvious measurement where none is recorded, and record it with the result — the command alone in its span so it re-runs by copy: `` `cmd` `` → result. The documents' own figures, and anything asserted as verified earlier, are claims — not measurements. A load-bearing claim no command can check is softened to observation.
 
 **Apply the reconciliation.** For each finding:
 
@@ -56,17 +56,17 @@ Walk the conversation against the document and check six dimensions (the last tw
 
 Commit the changes (`engine commit {work_unit} --topic research/{topic} -m "..."`) with a descriptive message (e.g., `docs(research): capture undocumented tradeoff thread`, `docs(research): correct drift on storage preference`).
 
-**If a corrected value undermines a conclusion the document draws:**
+#### If a corrected value undermines a conclusion the document draws
 
 Put the measurement to the user — what the document asserts, the command and its result, and which conclusion leans on it. What the conclusion means under the true value is theirs to re-weigh.
 
 **STOP.** Wait for user response.
 
-Land their answer in the affected passages and commit.
+Land their answer in the affected passages — the measured value and its command recorded either way — and commit.
 
 → Proceed to **C. Route Misdirected Knowledge**.
 
-**Otherwise:**
+#### Otherwise
 
 → Proceed to **C. Route Misdirected Knowledge**.
 

@@ -23,7 +23,7 @@ The tracking file:
 
 **Details**:
 The specification asserts the checkout flow spans four modules
-(`ls src/checkout/*.js | wc -l → 4`). Measured now, the command prints
+(`ls src/checkout/*.js | wc -l` → 4). Measured now, the command prints
 5 — src/checkout/wallet-stub.js also exists. The same claim, with the
 same recorded command, sits in the source discussion's Telemetry
 Coverage ground; the specification carries it faithfully. The fix

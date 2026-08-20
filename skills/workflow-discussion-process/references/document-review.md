@@ -54,7 +54,7 @@ Walk the conversation against the document and check seven dimensions (the last 
 
 6. **Pipeline meta** — the document stating its own pipeline position: readiness declarations ("ready for specification"), decided-subtopic counts, review-cycle tallies — whether written this session or in an earlier sitting. Usually lands in Summary → Current State, but check everywhere except earlier dated entries and the wrapped `#### Initial`, which stay as written. Per-subtopic resolution prose ("X decided — {substance}") is substance and stays; the aggregate goes. The manifest carries that state.
 
-7. **Unverified claims** — every load-bearing empirical claim about the codebase or toolchain, whatever session wrote it. Re-run its recorded command; construct the obvious measurement where none is recorded (and record it with the result, per the template's measured-claims convention). The documents' own figures, and anything asserted as verified earlier, are claims — not measurements. A load-bearing claim no command can check is softened to observation.
+7. **Unverified claims** — every load-bearing empirical claim about the codebase or toolchain, whatever session wrote it. Re-run its recorded command; construct the obvious measurement where none is recorded (and record it with the result — the command alone in its span so it re-runs by copy: `` `cmd` `` → result). The documents' own figures, and anything asserted as verified earlier, are claims — not measurements. A load-bearing claim no command can check is softened to observation.
 
 **Apply the reconciliation.** For each finding:
 
@@ -68,7 +68,7 @@ Walk the conversation against the document and check seven dimensions (the last 
 
 Commit the changes (`engine commit {work_unit} --topic discussion/{topic} -m "..."`) with a descriptive message (e.g., `docs(discussion): capture undocumented trade-off thread`, `docs(discussion): correct drift on caching decision`, `docs(discussion): soften Map state to converging`).
 
-**If a corrected value undermines a decision or insight built on the claim:**
+#### If a corrected value undermines a decision or insight built on the claim
 
 Put the measurement to the user — what the document asserts, the command and its result, and which decision or insight leans on it. What the conclusion means under the true value is theirs to re-weigh.
 
@@ -78,7 +78,7 @@ Land their answer in the document — a changed decision as the template's dated
 
 → Proceed to **C. Route Misdirected Knowledge**.
 
-**Otherwise:**
+#### Otherwise
 
 → Proceed to **C. Route Misdirected Knowledge**.
 

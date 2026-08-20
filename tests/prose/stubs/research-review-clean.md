@@ -15,9 +15,17 @@ Read fresh, the research holds its ground: the threads it opens are
 followed to conclusions, and the trade-offs it weighs are recorded with
 their reasoning. Coverage is thorough for the document's own scope.
 
-## Findings
+## Unexplored Areas
 
-None — no gaps, no unvalidated assumptions.
+None identified.
+
+## Shallow Coverage
+
+None identified.
+
+## Unvalidated Assumptions
+
+None identified.
 
 STATUS: clean
 GAPS_COUNT: 0

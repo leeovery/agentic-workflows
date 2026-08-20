@@ -18,6 +18,52 @@ module.exports = {
     m.init(h);
     m.create(h);
 
+    // The mainline's log routes straight to discussion; this feature went
+    // to research first — the log records that shaping.
+    h.write(`.workflows/${WU}/discovery/sessions/session-001.md`, [
+      '# Discovery Session 001',
+      '',
+      'Date: 2026-01-01',
+      `Work unit: ${WU}`,
+      '',
+      '## Description (as of session)',
+      '',
+      'Accept card payments at checkout.',
+      '',
+      '## Seed',
+      '',
+      '(none)',
+      '',
+      '## Imports',
+      '',
+      '(none)',
+      '',
+      '## Map State at Start',
+      '',
+      '(n/a — single-topic work)',
+      '',
+      '## Exploration',
+      '',
+      'Shaped as a single feature: accept card payments at checkout using',
+      'the existing gateway account. Card-only for v1 came up early and was',
+      'softly agreed; wallet support was noted as a likely deferral. Where',
+      'payment telemetry should land was open ground — routed to research',
+      'first, to map the instrumentation options before any decisions.',
+      '',
+      '## Edits',
+      '',
+      '(none)',
+      '',
+      '## Topics Identified',
+      '',
+      '(none)',
+      '',
+      '## Conclusion',
+      '',
+      '(none)',
+      '',
+    ].join('\n'));
+
     // The checkout flow the research counted: five modules, not four.
     const mod = (name, fn) => h.write(`src/checkout/${name}.js`, [
       "'use strict';",

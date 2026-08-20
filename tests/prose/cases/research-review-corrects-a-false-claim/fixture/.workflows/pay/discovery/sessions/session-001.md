@@ -23,8 +23,9 @@ Accept card payments at checkout.
 
 Shaped as a single feature: accept card payments at checkout using
 the existing gateway account. Card-only for v1 came up early and was
-softly agreed; wallet support was noted as a likely deferral. No
-research need surfaced — routed straight to discussion.
+softly agreed; wallet support was noted as a likely deferral. Where
+payment telemetry should land was open ground — routed to research
+first, to map the instrumentation options before any decisions.
 
 ## Edits
 

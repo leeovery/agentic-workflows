@@ -1016,6 +1016,7 @@ describe('render spec-completion-gate', () => {
 
   it('rejects a missing or unknown variant and a non-specification address', () => {
     assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal' }), /--variant must be "assessment" or "signoff"/);
+    assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal', variant: 'sign-off' }), /--variant must be "assessment" or "signoff"/);
     writeManifest(dir, 'pay', { phases: { discussion: { items: { portal: { status: 'in-progress' } } } } });
     assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.discussion.portal', variant: 'signoff' }), /address must be <work_unit>\.specification\.<topic>/);
   });
@@ -1037,7 +1038,8 @@ describe('render carry-note-gate', () => {
     assert.ok(out.includes(payload.note[0]));
     assert.ok(out.includes('*Addressed to: search-cache — lands in its discussion triage queue*'));
     assert.ok(out.includes('=== MENU: carry note gate'));
-    assert.ok(out.includes('Land this note in "search-cache"\'s triage queue? If "search-cache" is completed, landing reopens it.'));
+    assert.ok(out.includes('This note lands in "search-cache"\'s triage queue; if "search-cache" is completed, landing reopens it.'));
+    assert.ok(out.includes('**`◆ Land it there?`**'), 'a consent gate carries its glyphed question');
     assert.ok(/\*\*`y\/yes`\*\* +→ Land it there; this document keeps a reroute record/.test(out));
     assert.ok(/\*\*`s\/skip`\*\* +→ Leave it as prose in this document/.test(out));
     assert.ok(/\*\*Comment\*\* +→ Tell me what to change \(target, phase, or content\)/.test(out));
@@ -1049,6 +1051,8 @@ describe('render carry-note-gate', () => {
     assert.throws(() => renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.research.portal', file: bad }), /"note" must be non-empty/);
     const noTarget = writePayload(dir, 'bad2.json', { ...payload, target: ' ' });
     assert.throws(() => renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.research.portal', file: noTarget }), /"target" must be a non-empty string/);
+    const badPhase = writePayload(dir, 'bad3.json', { ...payload, landing_phase: 'specification' });
+    assert.throws(() => renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.research.portal', file: badPhase }), /"landing_phase" must be "research" or "discussion", got "specification"/);
     writeManifest(dir, 'pay', { phases: { discussion: { items: { portal: { status: 'in-progress' } } } } });
     const file = writePayload(dir, 'n.json', payload);
     assert.throws(() => renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.discussion.portal', file }), /address must be <work_unit>\.research\.<topic>/);
@@ -1090,6 +1094,7 @@ describe('render finding', () => {
     assert.ok(out.includes('=== MENU: finding gate'));
     assert.ok(/\*\*`v\/view full`\*\* +→ Show full Current and Proposed content/.test(out), 'diff findings offer view full');
     assert.ok(/\*\*`y\/yes`\*\* +→ Apply to the plan verbatim/.test(out));
+    assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining findings/.test(out), 'a normal gated finding still offers the auto opt-in');
     assert.ok(/\*\*Provide feedback\*\* +→ Tell me what to change before approving/.test(out));
   });
 

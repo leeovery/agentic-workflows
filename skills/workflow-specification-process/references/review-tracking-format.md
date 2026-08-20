@@ -60,7 +60,7 @@ Two categories indict a source rather than the specification, and their findings
 2. Commit the tracking file — ensures it survives context refresh
 3. Present the summary to the user (from the tracking file)
 4. Work through items one at a time:
-   - A Source defect or Unsourced decision routes per process-review-findings.md — Resolution `Routed`, never presented at the gate
+   - A Source defect or Unsourced decision routes per **[process-review-findings.md](process-review-findings.md)** — Resolution `Routed`, never presented at the gate
    - Every other item: present, discuss and refine, get approval, log to specification
    - Update the tracking file: mark resolution, add notes
 5. After all items resolved, record the flip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`

@@ -1,5 +1,5 @@
 {
-  "origin": "idea 40's review loop could only apply, adjust, or skip — a finding indicting the source had nowhere to go. This walks the fourth verb: a claims finding whose false count lives in the discussion routes through the incoherence flow on the value-only lane, the correction lands in the source in place, and the spec's own copy re-aligns",
+  "origin": "idea 40's review loop could only apply, adjust, or skip — a finding indicting the source had nowhere to go. This walks the fourth verb: a claims finding whose false count lives in the discussion routes through the incoherence flow on the no-gate lane (conclusions survive the corrected value), the correction lands in the source in place, and the spec's own copy re-aligns",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [
@@ -23,6 +23,7 @@
     "skills/workflow-specification-process/references/resolve-source-incoherence.md",
     "skills/workflow-specification-process/references/exhaustive-extraction.md",
     "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
     "skills/workflow-specification-process/references/review-tracking-format.md",
     "skills/workflow-specification-process/references/process-review-findings.md",
     "skills/workflow-specification-process/references/spec-completion.md",
