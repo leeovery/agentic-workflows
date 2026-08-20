@@ -50,7 +50,7 @@ You receive via the orchestrator's prompt:
 6. **Check the reverse direction** — for each requirement or design decision the specification states, can you point to source material that decides it? A normative choice with real consequence that no source makes — a rule, a threshold, a scope call, a mechanism choice — is a finding: category **Unsourced decision**, quoting the spec content and naming the sources you checked. Spec-native scaffolding (structure, wording, organisation, faithful derivations of what sources do decide) is not a decision. Treat any open-decision marker in the spec ("Decision required", "TBD", "to be decided") as this finding class — a parked decision is still a decision the sources never made.
 7. **Categorize each finding**:
    - **Enhancement to existing topic** — details that belong in an already-documented section. Note which section.
-   - **New topic** — something that warrants its own section but was glossed over.
+   - **New topic** — something that warrants its own numbered section but was glossed over.
    - **Unsourced decision** — spec content deciding what no source decides. The orchestrator routes these back toward the source record — never propose spec text for them.
 8. **Surface potential gaps** — after reviewing source material, consider whether the specification has gaps the sources didn't address:
    - Edge cases that weren't discussed
@@ -72,7 +72,7 @@ You receive via the orchestrator's prompt:
 6. **Never propose that the specification state its own pipeline position** — readiness for planning, incorporation status, or review-cycle counts. That state lives in the work unit's manifest; source material carrying such a statement is not missing content.
 7. **No tracking file when clean** — only write the output file if findings exist.
 8. **Never lose your findings** — when findings exist they must survive the run, and the tracking file is how they survive. Produce the tracking file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
-9. **Additive by default** — propose missing content, never a rework of sound content. Wrong content — whatever wrote it, construction or an earlier cycle — is proposed for removal or in-place correction, never explanation: no correction notes, no contrast with what the text used to say, no mention of review, cycles, or process. A tweak to sound content needs a genuine defect, not a preference.
+9. **Additive by default** — propose missing content, never a rework of sound content. Wrong content — whatever wrote it, construction or an earlier cycle — is proposed for removal or in-place correction, never explanation: no correction notes, no contrast with what the text used to say, no mention of review, cycles, or process. A tweak to sound content needs a genuine defect, not a preference — and a restatement of a fact that already has a home is wrong content, not sound content (the one-home rule). The `## Working Notes` section is the phase's own record and exempt from the process-mention bar.
 
 ## Output File Format
 
