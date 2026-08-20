@@ -917,6 +917,16 @@ describe('pipeline simulation', () => {
       /address must be <work_unit>\.specification\.<topic>/);
     sim.refuses(['render', 'spec-completion-gate', `${wu}.review.unified`, '--variant', 'signoff'],
       /address must be <work_unit>\.specification\.<topic>/);
+    // The escalation diagnostic renders from a judgment payload; the counts,
+    // growth arithmetic, and advisory flags are the surface's own.
+    sim.write('.workflows/.cache/scratch/convergence.json', JSON.stringify({
+      loop_type: 'spec-review', latest_cycle: 5, trend: 'converging',
+      resolved: [], recurring: [], new: [{ title: 'Sweep table omits a file' }],
+      stream_counts: [{ label: 'claims', count: 0 }, { label: 'input review', count: 1 }, { label: 'gap analysis', count: 0 }],
+      review_baseline_words: 6835, live_words: 13637,
+    }));
+    assert.match(sim.render(['convergence-diagnostic', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/convergence.json'], { expect: 'content' }),
+      /Document growth: 6835 → 13637 words \(\+6802 net across review\)/);
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.1', 'approved']);
     sim.refuses(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.2', 'later'], /Invalid staging task status/);
