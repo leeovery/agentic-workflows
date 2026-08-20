@@ -34,7 +34,7 @@ Best practices for documenting discussions. For DOCUMENTATION only - no plans or
 
 **Document uncertainty**: "Confidence: Medium. Confirmed throughput OK. Uncertain on memory/cost at scale"
 
-**Facts vs assumptions**: Label what's verified, what's assumed, what needs validation
+**Facts vs assumptions**: A fact-shaped claim about the codebase is measured before it's asserted — for everything else, label what's verified, what's assumed, what needs validation
 
 ## When to Document
 

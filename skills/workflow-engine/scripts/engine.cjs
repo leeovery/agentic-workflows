@@ -208,6 +208,7 @@ Commands:
   render spec-review-gate <wu.specification.topic> --variant continue|reloop
   render spec-completion-gate <wu.specification.topic> --variant assessment|signoff
   render carry-note-gate  <wu.research.topic> --file <payload.json>
+  render convergence-diagnostic <wu.phase.topic> --file <payload.json>
   render triage-announce  <wu.phase.topic>
   render triage-offer     <wu.phase.topic> --file <payload.json>
   render triage-block     <wu.phase.topic>

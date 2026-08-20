@@ -128,72 +128,21 @@ Compute:
 
 Open with one markdown sentence above the block — what the cycles show, in plain terms: what is resolving and what keeps coming back.
 
-> *Output the next fenced block as a code block:*
+Write the payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/convergence-diagnostic.json` with the Write tool — classification is yours, arithmetic and flags are the surface's. `{phase}` is the loop's own: `implementation` for `fix` and `analysis`, `planning` for `planning-review`, `specification` for `spec-review`.
 
-```
-{loop_type_label:(titlecase)} — cycle {latest_cycle} diagnostic
-
-  Trend: {trend:[churning|converging|stable|diverging]}
-  Latest cycle: {finding_count} findings ({new_count} new, {recurring_count} recurring)
-  @if(loop_type is spec-review or planning-review)
-  Per stream: {stream_counts}
-  @endif
-  @if(loop_type is spec-review and review_growth is known)
-  Document growth: {review_baseline_words} → {live_words} words ({review_growth} net across review)
-  @endif
-
-  @if(resolved_count > 0)
-  Resolved:
-  @foreach(finding in resolved)
-    • {finding.title} (fixed in cycle {finding.last_seen_cycle})
-  @endforeach
-  @endif
-
-  @if(recurring_count > 0)
-  Recurring:
-  @foreach(finding in recurring)
-    • {finding.title} (cycles {finding.cycle_list})
-      {1-line root cause hypothesis in plain behaviour terms, from the finding's history and affected area}
-  @endforeach
-  @endif
-
-  @if(new_count > 0)
-  New this cycle:
-  @foreach(finding in new)
-    • {finding.title}
-  @endforeach
-  @endif
-
-  @if(trend = churning)
-  ⚑ Findings resolve but are replaced at the same rate — the edits are
-    likely generating new findings. Consider consolidating duplicated
-    statements rather than running another cycle.
-  @endif
-  @if(trend = converging)
-  ⚑ Continuing is likely to resolve remaining items.
-  @endif
-  @if(trend = stable)
-  ⚑ Same issues are cycling. Consider manual intervention on the recurring items.
-  @endif
-  @if(trend = diverging)
-  ⚑ Fixes are introducing new issues. Consider reviewing the approach.
-  @endif
-  @if(loop_type is spec-review and review_growth > review_baseline_words / 4)
-  ⚑ Review has added {review_growth} words to a
-    {review_baseline_words}-word construction. Growth that traces to
-    source material is the loop working; check that these additions
-    do — additions from nowhere mean the loop is feeding on itself.
-  @endif
+```json
+{"loop_type": "…", "latest_cycle": N, "trend": "…", "resolved": [{"title": "…", "last_seen_cycle": N}], "recurring": [{"title": "…", "cycles": "3, 4", "hypothesis": "…"}], "new": [{"title": "…"}]}
 ```
 
-Where `loop_type_label` maps:
-- `fix` → `Fix Loop`
-- `analysis` → `Analysis`
-- `planning-review` → `Plan Review`
-- `spec-review` → `Spec Review`
+- `loop_type`, `latest_cycle`, `trend` — from **A** and **B**.
+- `resolved` / `recurring` / `new` — the classified findings; each recurring entry carries its cycle list and a 1-line root-cause `hypothesis` in plain behaviour terms, from the finding's history and affected area.
+- `stream_counts` — multi-stream loop types only (`spec-review`, `planning-review`): one `{"label": "…", "count": N}` per tracking stream, in stream order. Stream labels: `spec-review` → `claims` / `input review` / `gap analysis`; `planning-review` → `traceability` / `integrity`.
+- `review_baseline_words` and `live_words` — `spec-review` only, when the baseline exists; omit both otherwise.
 
-Stream labels map:
-- `spec-review` → `claims` / `input review` / `gap analysis`
-- `planning-review` → `traceability` / `integrity`
+Fetch the diagnostic and emit its section verbatim at its marked instruction:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render convergence-diagnostic {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/convergence-diagnostic.json
+```
 
 → Return to caller.

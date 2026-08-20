@@ -990,6 +990,77 @@ describe('render spec-review-gate', () => {
   });
 });
 
+describe('render convergence-diagnostic', () => {
+  let dir;
+  const base = {
+    loop_type: 'spec-review', latest_cycle: 5, trend: 'converging',
+    resolved: [{ title: 'Marker semantics restated twice', last_seen_cycle: 4 }],
+    recurring: [{ title: 'Guard scope drifts per section', cycles: '3, 4, 5', hypothesis: 'Each fix re-words the guard where it lands instead of at its home.' }],
+    new: [{ title: 'Sweep table omits the two below-the-line files' }],
+    stream_counts: [{ label: 'claims', count: 0 }, { label: 'input review', count: 1 }, { label: 'gap analysis', count: 1 }],
+    review_baseline_words: 6835, live_words: 13637,
+  };
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the head, streams, signed growth, finding sections, and the growth note', () => {
+    const file = writePayload(dir, 'c.json', base);
+    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file });
+    assert.ok(out.includes('=== DISPLAY: convergence diagnostic (emit verbatim as a code block) ==='));
+    assert.ok(out.includes('Spec Review — cycle 5 diagnostic'));
+    assert.ok(out.includes('  Trend: converging'));
+    assert.ok(out.includes('  Latest cycle: 2 findings (1 new, 1 recurring)'), 'counts derive from the arrays');
+    assert.ok(out.includes('  Per stream: claims 0 · input review 1 · gap analysis 1'));
+    assert.ok(out.includes('  Document growth: 6835 → 13637 words (+6802 net across review)'));
+    assert.ok(out.includes('    • Marker semantics restated twice (fixed in cycle 4)'));
+    assert.ok(out.includes('    • Guard scope drifts per section (cycles 3, 4, 5)\n      Each fix re-words the guard where it lands instead of at its home.'));
+    assert.ok(out.includes('  ⚑ Continuing is likely to resolve remaining items.'));
+    assert.ok(out.includes('⚑ Review has added 6802 words'), 'the >25% growth note fires');
+    assert.ok(!out.includes('reviewing earlier reviews'), 'the churn warning stays quiet on a converging trend');
+  });
+
+  it('churning with growth fires both spec flags; negative growth renders signed and quiets the note', () => {
+    const churn = writePayload(dir, 'c2.json', { ...base, trend: 'churning' });
+    let out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file: churn });
+    assert.ok(out.includes('reviewing earlier reviews'), 'the churn-growth warning fires');
+    assert.ok(out.includes('⚑ Review has added 6802 words'));
+    const shrink = writePayload(dir, 'c3.json', { ...base, live_words: 6500 });
+    out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file: shrink });
+    assert.ok(out.includes('(-335 net across review)'), 'shrink renders a signed value, never +-');
+    assert.ok(!out.includes('Review has added'), 'no growth note on a shrinking document');
+  });
+
+  it('single-stream loops skip streams and growth; a fix-loop shape renders lean', () => {
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'f.json', { loop_type: 'fix', latest_cycle: 3, trend: 'stable', resolved: [], recurring: [{ title: 'Assertion drifts', cycles: '2, 3', hypothesis: 'The fixture regenerates with a shifting seed.' }], new: [] });
+    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
+    assert.ok(out.includes('Fix Loop — cycle 3 diagnostic'));
+    assert.ok(!out.includes('Per stream'));
+    assert.ok(!out.includes('Document growth'));
+    assert.ok(!out.includes('Resolved:'), 'empty sections are skipped');
+    assert.ok(out.includes('  ⚑ Same issues are cycling. Consider manual intervention on the'), 'the stable flag wraps via the callout');
+  });
+
+  it('validates loudly: enums, cycle floor, shapes, stream and growth pairing', () => {
+    const cases = [
+      [{ ...base, loop_type: 'review' }, /"loop_type" must be one of fix\/analysis\/planning-review\/spec-review/],
+      [{ ...base, trend: 'oscillating' }, /"trend" must be one of/],
+      [{ ...base, latest_cycle: 1 }, /"latest_cycle" must be an integer ≥ 2/],
+      [{ ...base, recurring: [{ title: 'x', cycles: '2, 3' }] }, /recurring\[0\] is missing "hypothesis"/],
+      [{ ...base, stream_counts: undefined }, /"spec-review" carries "stream_counts"/],
+      [{ ...base, loop_type: 'fix', review_baseline_words: undefined, live_words: undefined, stream_counts: [{ label: 'a', count: 1 }, { label: 'b', count: 2 }] }, /"fix" is single-stream/],
+      [{ ...base, live_words: undefined }, /"review_baseline_words" and "live_words" travel together/],
+    ];
+    cases.forEach(([payload, re], i) => {
+      const file = writePayload(dir, `bad-${i}.json`, payload);
+      assert.throws(() => renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.specification.portal', file }), re);
+    });
+  });
+});
+
 describe('render spec-completion-gate', () => {
   let dir;
   beforeEach(() => {
@@ -1961,7 +2032,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, carry-note-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 

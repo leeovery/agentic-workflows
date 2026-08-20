@@ -24,6 +24,8 @@ The conversation follows the thinking, not a checklist. Subtopics emerge, get ex
 
 **Challenge and probe**: Push back on assumptions, surface edge cases, propose alternatives. The goal is depth of understanding, not speed of coverage. A challenge lands where the record leaves a genuine choice — a point it settles is called and queued (**[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**), never presented for ratification.
 
+**Facts are measured before they're asserted**: A fact-shaped statement about the codebase or toolchain — a count, a name, what something does, whether a pattern holds — is run before it enters the conversation, not when it reaches the document: state the measured truth and quote the command, so the document can carry both. A figure attributed to a document is a citation; measure it before adopting it as this session's fact. Ideas are free; facts get run first. A conversation reasoned over a false premise stays poisoned however well the document is corrected later.
+
 **Don't force transitions**: If the user is deep in a subtopic, don't interrupt to check off progress. Let the conversation breathe. Transition when there's a natural pause or a decision lands.
 
 **Circle back**: Track what's been partially explored. When a related subtopic resolves, suggest returning to the one left open — new context may change the thinking.
