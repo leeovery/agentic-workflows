@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-08-20
+
+✨ Added
+- Specification review adds a third pass that measures the spec's factual claims against the actual codebase before checking source fidelity or standalone quality.
+- Discussion and research documents now measure fact-shaped claims against the codebase at the moment they're written, not just at document review — catching false premises before decisions form on top of them.
+- Specification review can now flag content that traces to no source at all, routing it back to the owning discussion instead of letting it sit unvalidated in the spec.
+- Specification documents now carry stable numbered sections (`§3.2`) so references and edits target a fixed address instead of a shifting position.
+- The review escalation diagnostic now tracks document word growth across spec-review cycles and warns when growth pairs with churning findings — a sign later cycles are reviewing earlier cycles' writing instead of the sources.
+
+🔧 Changed
+- Specification's source-incoherence resolution flow now also fires when a review finding indicts a source, not just during construction — routing the fix to the owning document either way.
+- Several previously hand-written specification and research menus (review continuation, completion sign-off, convergence diagnostics, carry-note landing) now render through the shared engine surface instead of hardcoded prose, keeping wording consistent.
+- Subagent dispatches must now carry exactly the inputs their prompt prescribes — no prior-cycle summaries, exclusion lists, or steering — so agents can't be biased toward re-confirming a session's own earlier mistakes.
+- A specification can no longer carry open "Decision required" or "TBD" markers — these now route back to the source record instead of parking unmade decisions in the document.
+
+🐛 Fixed
+- The "held document" gate's wording no longer implies moving to another topic abandons the current one — it now says the resolution is queued and work continues here.
+- A gap finding now still stops for user input even when auto-approve mode is active, since a gap is a question rather than a correction that can be auto-applied.
+
 ## [0.7.1] - 2026-08-18
 
 🐛 Fixed
