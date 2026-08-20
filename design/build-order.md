@@ -40,17 +40,27 @@ of §E, planning order does not matter — a dependency declared before its
 target is planned gets fixed up later. The graph converges. It just
 converges on whatever was written down.
 
-Verified: `external_dependencies` has exactly one writer, the spec's
-Dependencies section. §C additionally deletes any manifest entry not
-backed by a spec row, calling it stale.
+Verified: the spec's Dependencies section is the only thing that
+**creates** an `external_dependencies` entry. Two other places flip an
+existing entry's `state` to `satisfied_externally` — the menu's `u/unblock`
+(`epic-display-and-menu.md:79`) and implementation entry's `s/satisfied`
+(`check-dependencies.md:150`) — which is why §B explicitly preserves that
+state rather than overwriting it.
+
+§C additionally deletes any manifest entry not backed by a spec row,
+calling it stale. That sweep is **conditional**: a spec with no
+Dependencies section routes straight to §E, skipping §B and §C entirely
+(`resolve-dependencies.md:18-26`).
 
 ### What blocking currently does, and why it is the wrong move
 
 Two gates enforce declared dependencies today:
 
-- **The epic menu.** `resolveDeps` (`domain/epic-detail.cjs:141`) joins
-  each dependency against the dep topic's `implementation.completed_tasks`
-  and marks the entry `blocked`. `epic-display-and-menu.md` §B refuses the
+- **The epic menu.** `resolveDeps` (`domain/epic-detail.cjs:141`) treats a
+  dependency as satisfied when the dep topic's implementation is
+  `completed` *or* its `completed_tasks` contains the referenced
+  `internal_id`; its callers mark the plan item and the menu entry
+  `blocked` (`:241`, `:339`). `epic-display-and-menu.md` §B refuses the
   selection and offers `u/unblock`.
 - **Implementation entry.** `validate-dependencies.md` →
   `check-dependencies.md` re-evaluates from the manifest; `i/implement`
@@ -63,10 +73,16 @@ the other 29 tasks are workable and unreachable.
 
 ### The soft gates already argue for this design
 
-`epic-display-and-menu.md` carries one hard gate and a table of soft ones.
-The hard gate: the `analyze_discussions` route refuses while any discussion
-is in-progress and no specification items exist — **all discussions must
-settle before the first grouping**. Everything downstream is advisory:
+`epic-display-and-menu.md` carries one gate labelled **Hard gate check**
+plus a table of soft ones. The labelled gate is on a *route*: the
+`analyze_discussions` selection refuses while any discussion is
+in-progress and no specification items exist — **all discussions must
+settle before the first grouping**.
+
+(That is the only gate on a *phase route*. The blocked-dependency refusal
+described above is a separate hard gate on an *item*, and B9 changes it.)
+
+Phase-to-phase progression, though, is advisory:
 
 | Selected action | Gate message |
 |---|---|
@@ -172,10 +188,14 @@ key is the ceremony B10 forbids.
 plan gets a selectable menu row that refuses when chosen. That is
 inconsistent with both existing precedents:
 
-- **Blocked specification** — no menu row at all. The code says it
-  outright: *"A blocked spec is not actionable — no menu row; the display
-  tree carries its blocked state"* (`projections/epic.cjs:489`,
-  `epic-detail.cjs:317`).
+- **Blocked specification** — no menu row at all, enforced twice by two
+  mechanisms, and the code says it outright in both. A blocked *continue*
+  entry is filtered: *"A blocked spec is not actionable — no menu row; the
+  display tree carries its blocked state"*
+  (`domain/projections/epic.cjs:487`). A blocked *proposed grouping* never
+  becomes a start entry: *"A blocked grouping is not actionable: it stays
+  out of the menu and shows its blocked state on the display tree
+  instead"* (`domain/epic-detail.cjs:313`).
 - **In-session topic** — struck through, still selectable, behind a
   confirm gate. Presence is awareness, not exclusion; the held session
   might be dead.
@@ -234,13 +254,28 @@ random one.
 - **A hard gate on all-specs-done or all-plans-done.** Rejected per B3.
 
 - **An appraisal agent that infers dependencies into the manifest** (idea
-  21's layer 1, as written). Even setting aside cost, the output does not
-  survive: `resolve-dependencies.md` §C sweeps any `external_dependencies`
-  entry not backed by a spec row. Inferred entries would be deleted by the
-  next planning session on that topic. Landing them in the spec instead
-  means a planning-phase step writing into a completed specification,
-  which cuts against artifacts changing only inside their own phase. The
-  order sidesteps the whole tension by not being a dependency.
+  21's layer 1, as written). Two problems, and the second is the one that
+  settles it.
+
+  First, the inferred entry's survival is **unpredictable**.
+  `resolve-dependencies.md` §C sweeps any `external_dependencies` entry
+  not backed by a spec row — but only on a re-planning session, and only
+  when that spec *has* a Dependencies section. So an inferred entry on a
+  spec that declares nothing survives indefinitely, then silently vanishes
+  the moment that spec is reopened and gains its first declared
+  dependency. A rule that deletes data depending on an unrelated later
+  edit is worse than one that deletes it predictably.
+
+  Second, the fix for that is worse than the disease. Landing inferred
+  entries in the spec instead means a planning-phase step writing into a
+  completed specification, which cuts against artifacts changing only
+  inside their own phase. Marking them with provenance and teaching §C to
+  spare them creates a second source of dependency truth the spec does not
+  know about.
+
+  The order sidesteps the entire tension by not being a dependency. It
+  makes no claim the spec must agree with, so nothing has to sweep it and
+  nothing has to write back.
 
 - **A verification pass over the order.** Rejected per B8.
 
@@ -256,11 +291,22 @@ problems.
 One residue is worth keeping as optional future work, separable from this
 programme: **cross-plan dependency edges at task granularity**, so a plan
 *drains* as far as it can rather than freezing whole. `tick ready` already
-skips blocked tasks, so the plan would yield every workable task and only
-hand off when genuinely dry — and the hand-off is to the other *topic*,
+skips blocked tasks (verified against the installed binary: *"lists tasks
+with no unresolved blockers, no open children, and no dependency-blocked
+ancestor"*), so the plan would yield every workable task and only hand off
+when genuinely dry — and the hand-off is to the other *topic*,
 worked from its own ready head, never a jump to a specific blocking task
 (which may itself be blocked). This is separable from the rejected
 epic-wide queue: the edges are cheap, it is the unscoped queue that is not.
+
+Cheap in the literal sense — tick already claims the capability
+(`output-formats/tick/about.md:56`: *"Explicit dependencies (`tick dep
+add`) handle cross-phase and cross-topic blocking"*), so this needs prose
+to author the edges, not a new format capability. Note the same line is a
+trap for a reader skimming the format docs: it describes what tick *can*
+do, not something the workflow currently does. Nothing authors a cross-plan
+edge today.
+
 Build only if a frozen plan with idle tasks is actually hit in practice.
 
 ## Open items
