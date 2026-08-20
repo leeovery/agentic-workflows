@@ -66,40 +66,64 @@ rounds-per-topic is unchanged:
 
 - **C1 — movement replaces conversation rhythm.** The "2–3 exchanges
   since last dispatch" condition is deleted. A review arms on Discussion
-  Map movement since the last review dispatch: subtopics added, plus
-  forward state transitions (`pending → exploring → converging →
-  decided`). Backward moves and reopens do not count — a reopen already
-  re-arms machinery elsewhere.
+  Map movement: subtopics added, plus forward state transitions
+  (`pending → exploring → converging → decided`). Backward moves and
+  reopens do not count — a reopen already re-arms machinery elsewhere —
+  and `deferred` ranks with `pending`: the conclusion's deferral sweep
+  is bookkeeping (its commit carries the `(deferral)` marker for the
+  same reason) and banks no movement, while reactivating a deferred
+  thread is new ground and counts. Movement is a snapshot diff, not an
+  event count: a subtopic added and advanced inside one interval is one
+  move — slightly stricter than the replay's event-based measurement,
+  irrelevant under the bimodal distribution.
 
 - **C2 — linear backoff, capped at 3.** The first review is free
   (existing conditions). Review n+1 requires `min(n, 3)` movements
-  since the last dispatch. The cap keeps late reviews permanently
-  reachable at "3 fresh moves" instead of climbing toward a de-facto
-  ceiling; a hard ceiling N is rejected because fumi shows the natural
-  count is topic-size-dependent (6–9 on real topics).
+  since the anchor: the latest **report-backed** review row's
+  dispatch-time snapshot. A killed dispatch closed as bookkeeping never
+  anchors — the closing gates' own rule ("anchoring on it would hide
+  every commit between the real review and the kill") — so movement a
+  dead session banked survives the kill. The cap keeps late reviews
+  permanently reachable at "3 fresh moves" instead of climbing toward a
+  de-facto ceiling; a hard ceiling N is rejected because fumi shows the
+  natural count is topic-size-dependent (6–9 on real topics).
 
-- **C3 — the engine owns the verdict.** At dispatch, a discussion
-  review row is stamped with a map snapshot (subtopic → state). The
-  arming verdict — `{armed, cycles, movement_seen, movement_needed}` —
-  is computed engine-side from the latest snapshot against the current
-  map, folded together with what the engine already knows (prior review
-  drained, triage queue, calls queue), and surfaced where the session
-  already looks. `agent dispatch` refuses an unarmed review outright —
-  the same backstop pattern as the triage-queue guard. The prose
-  checklist shrinks to the two judgments only the conversation can see:
-  meaningful content, and no wrap-up signal.
+- **C3 — the engine owns the verdict, scoped to movement.** At
+  dispatch, a discussion review row is stamped with a map snapshot
+  (subtopic → state). The arming verdict — `{armed, cycles,
+  map_moves_seen, map_moves_needed, reason}` — is computed engine-side
+  from the anchor snapshot against the current map, with tolerant reads
+  (a derivation must never brick the map display; mutations stay loud).
+  `agent dispatch` refuses an unarmed review outright — the same
+  backstop pattern as the triage-queue guard. The verdict deliberately
+  folds nothing else: the calls queue is prose-owned, and the drained
+  box carries a judgment the engine cannot make (a dead row from an
+  earlier session counts as drained). The checklist keeps those boxes;
+  what it loses is the exchanges condition, and the drained box's scan
+  now runs at the check so the verdict is read fresh, both answered by
+  one `agent scan`. The fields say "map moves" so the closing gates'
+  commit-residue movement shares no name with the scan's measure.
 
 - **C4 — the closing gate is exempt.** The mandatory final review
   before conclusion is the coverage guarantee; mid-session reviews are
   advisory fuel and carry no correctness burden. The final pass
-  dispatches with an explicit flag that bypasses the movement gate
-  (still stamping the snapshot). Its own trigger — has the discussion
-  moved since the last review — is untouched by this programme.
+  dispatches `--final`, which bypasses the movement gate (still
+  stamping the snapshot) and is refused on any other kind or phase.
+  Its own trigger — has the discussion moved since the last review —
+  is untouched by this programme.
 
-- **C5 — quiet is visible.** The verdict struct rides the surfaces the
-  session already reads, so a quiet topic can say why no review is
-  coming ("6 cycles, 1 of 3 moves"), and a user-requested review always
-  works. No mid-flow rendering — silence is the point.
+- **C5 — quiet is visible, and the user always gets a review.** The
+  verdict rides `agent scan` (which the session reads every loop) and
+  the map call's DATA — the one arming struct, `review_cycles` retired
+  from DATA as the dead signal the Motivation names — so a quiet topic
+  can say why no review is coming ("6 cycles, 1 of 3 moves") when
+  asked. No mid-flow rendering — silence is the point. A review the
+  user explicitly asks for is its own trigger: it dispatches `--final`
+  past the backoff and the content conditions, while the safety
+  conditions hold for every dispatch — prior reviews drained, both
+  queues empty, no wrap-up signal — because a review over an undrained
+  predecessor or a pending queue entry is stale on arrival whoever
+  asked.
 
 - **C6 — research waits.** Research shares the checklist but has no
   map; its movement currency would be commits — cruder. All field
@@ -152,3 +176,22 @@ question, superseding its deferral.
   offer gate rejected. Stack: engine (snapshot + arming + refusal) →
   prose (checklist shrinks to judgment conditions) → prose cases
   (suppressed and re-armed walks).
+
+- 2026-08-20 — Review pass over the stack (eight finder dimensions,
+  every surviving finding verified against the code). Rulings folded
+  into the contract above: the anchor is the last report-backed review
+  (C2), `deferred` ranks with `pending` so the deferral sweep banks
+  nothing (C1), the verdict folds movement only and the checklist keeps
+  its engine-backed boxes (C3), fields say "map moves" to stay clear of
+  the closing gates' commit-residue movement (C3), the map DATA carries
+  the one arming struct with `review_cycles` retired (C5), the
+  user-request path honours the safety boxes and dispatches `--final`
+  (C5), and `--final` off a discussion review refuses like `--set` off
+  a synthesis (C4). Accepted edges, deliberately unguarded: a
+  discussion with an empty map goes quiet after its first review
+  (`--final` and the user request still work; the map is seeded at
+  initialisation, so the shape is legacy-only), and a reopened topic
+  resumes with its cycle history — fresh input arrives through triage
+  absorbs, which move the map and re-arm naturally. Watch: whether
+  `workunit pivot` can strand snapshot-bearing rows (absorb and
+  lifecycle purge the cache; pivot untraced).
