@@ -9,7 +9,8 @@ reset condition — and chargeback disputes, identified but untouched.
 The topic is three background-review cycles deep. Each review came back
 clean and was drained in an earlier sitting; each store row carries the
 map snapshot its dispatch measured, and the latest snapshot matches the
-current map exactly — nothing has moved since review-003 went out.
+current map exactly — nothing has moved since review-003 went out, so
+the movement backoff holds the automatic trigger quiet.
 
 Hours have passed. The context was cleared — this session opens cold at
 the entry skill with nothing but the two arguments and what is on disk.

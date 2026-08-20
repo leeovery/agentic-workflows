@@ -17,6 +17,10 @@
             "failed-payment-retries": {
               "status": "exploring",
               "parent": null
+            },
+            "chargeback-disputes": {
+              "status": "pending",
+              "parent": null
             }
           }
         }

@@ -24,7 +24,9 @@ The prose should have taken this path:
    dispatch is recorded through the engine, the harness stub stands in
    for the background agent's report, and the discussion continues
    without waiting. More than one cycle is legitimate — a drained
-   review re-arms once further meaningful commits land
+   review re-arms once the map has moved enough since the last
+   dispatch (the engine's movement backoff decides; a meaningful
+   commit alone only re-fires the check)
 8. each returned report is found on a later check, read, and — carrying
    no findings — acknowledged clean in one engine call: no announce
    menu is rendered, no finding is ever surfaced

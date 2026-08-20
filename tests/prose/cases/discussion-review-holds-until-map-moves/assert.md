@@ -35,7 +35,8 @@ Further claims:
   scan), never computed by the prose counting exchanges or commits
 
 EXPECTED WORLD — the fixture, with: the failed-payment-retries
-subtopic decided on the map; the discussion file's Failed Payment
-Retries section carrying the pinned decision (three attempts,
-exponential backoff, reset on new checkout) and the Summary reflecting
-it; one new commit on the discussion file. Nothing else moved.
+subtopic decided on the map (chargeback-disputes still pending — the
+map does not converge); the discussion file's Failed Payment Retries
+section carrying the pinned decision (three attempts, exponential
+backoff, reset on new checkout) and the Summary reflecting it; one new
+commit on the discussion file. Nothing else moved.

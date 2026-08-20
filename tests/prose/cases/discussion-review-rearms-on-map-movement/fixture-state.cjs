@@ -78,6 +78,10 @@ module.exports = {
 
     h.engine('discussion-map', 'add', WU, WU, 'capture-confirmation');
     h.engine('discussion-map', 'add', WU, WU, 'failed-payment-retries');
+    // A thread nobody reaches in the walk — the map must not converge
+    // when the retry decision lands, or the walk would face the
+    // concluding ceremony instead of the dispatch it pins.
+    h.engine('discussion-map', 'add', WU, WU, 'chargeback-disputes');
     h.engine('discussion-map', 'set', WU, WU, 'capture-confirmation', 'decided');
     h.engine('discussion-map', 'set', WU, WU, 'failed-payment-retries', 'exploring');
 

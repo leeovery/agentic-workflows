@@ -17,11 +17,11 @@ The prose should have taken this path:
 5. the session runs as an organic conversation: every thread the user
    engages is driven to a decision, the transitions recorded through
    the engine, the file written and committed at natural pauses
-6. the review checkpoint fires on meaningful content: each dispatch is
-   engine-recorded, the harness stub stands in for the report, and the
-   discussion never waits on it; each returned report, carrying no
-   findings, is acknowledged clean — no announce menu, no finding
-   surfaced
+6. the review checkpoint fires where meaningful content lands and the
+   map has moved enough to arm: each dispatch is engine-recorded, the
+   harness stub stands in for the report, and the discussion never
+   waits on it; each returned report, carrying no findings, is
+   acknowledged clean — no announce menu, no finding surfaced
 7. on the user's wrap-up the map is read through the gateway and comes
    back fully decided — and the closing work is still classified and
    gated: the pending closing work is read from the agent store, and

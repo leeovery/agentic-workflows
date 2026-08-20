@@ -1,12 +1,11 @@
 'use strict';
 
-// A discussion three review cycles deep: every dispatch took the real
-// arming gate at build time (map movement between cycles), so each row
-// carries its dispatch-time map snapshot and the store's latest
-// snapshot equals the current map exactly. One subtopic is still
-// exploring — the session that resumes here will decide it, and one
-// move against a three-cycle backoff (needs 3) must leave the dispatch
-// check quiet.
+// A discussion three review cycles deep and fully quiet: every
+// dispatch took the real arming gate at build time (map movement
+// between cycles), and the store's latest snapshot equals the current
+// map exactly, so the automatic trigger is held at 0 of 3 moves. The
+// session that resumes here dispatches only because the user asks —
+// the --final path past the backoff.
 
 const m = require('../../mainlines/feature.cjs');
 
