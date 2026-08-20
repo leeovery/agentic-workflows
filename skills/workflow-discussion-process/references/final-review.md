@@ -152,10 +152,10 @@ Findings from the current review are still being drained.
 > Dispatching a final review to catch any gaps before concluding. This ensures the discussion is thorough for specification.
 ```
 
-Record the dispatch — the engine allocates the id and answers with the content-file path:
+Record the dispatch — the engine allocates the id and answers with the content-file path; `--final` marks the mandatory closing pass:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review --final
 ```
 
 **If the response is `ok: false` naming the triage queue** — a concern landed after the queue gate (a peer session's delivery): surface the engine's error verbatim; the queue owns the close now.
