@@ -22,6 +22,7 @@
     "skills/workflow-specification-process/references/resolve-source-incoherence.md",
     "skills/workflow-specification-process/references/exhaustive-extraction.md",
     "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
     "skills/workflow-specification-process/references/review-tracking-format.md",
     "skills/workflow-specification-process/references/process-review-findings.md",
     "skills/workflow-specification-process/references/spec-completion.md",
@@ -46,6 +47,7 @@
       "knowledge.cjs index .workflows/pay/discussion/pay.md",
       "--topic discussion/pay",
       "manifest set pay.specification.pay review_cycle 1",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
       "topic complete pay specification pay",
       "spec(pay): conclude specification"
     ],

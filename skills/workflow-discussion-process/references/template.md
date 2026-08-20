@@ -125,7 +125,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 
 The marker opens the Decision block on a fresh section, and follows the `*Trigger:*` line inside the dated entry on a revision — it marks the derived text, never a block whose `#### Initial` was argued. The section's Journey carries the derivation, not a debate; a later revision wraps the block exactly as above.
 
-**Measured claims**: when a claim about the codebase or toolchain is load-bearing — a decision or insight leans on it — measure it in the moment it's written and record the command with the result (`rg -l 'pattern' | wc -l → 14`). A claim that can't be measured is written as observation, not fact. Downstream phases re-run these commands; an unmeasured load-bearing claim is the defect they inherit.
+**Measured claims**: when a claim about the codebase or toolchain is load-bearing — a decision or insight leans on it — measure it in the moment it's written and record the command with the result, the command alone in its span so it re-runs by copy (`` `rg -l 'pattern' | wc -l` → 14 ``). A claim that can't be measured is written as observation, not fact. Downstream phases re-run these commands; an unmeasured load-bearing claim is the defect they inherit.
 
 **Discussion Map**:
 - Subtopic states (`pending`, `exploring`, `converging`, `decided`, `deferred`) live in the manifest — the file holds the knowledge, the map holds the live state

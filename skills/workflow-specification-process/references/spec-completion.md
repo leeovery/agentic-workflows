@@ -38,14 +38,10 @@ multiple features handle data retrieval, rather than being a standalone piece
 of functionality to build."}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its section verbatim at its marked instruction:
 
-```
-· · · · · · · · · · · ·
-**`◆ Confirm this assessment?`**
-
-**`y/yes`**   → Confirm assessment
-**Comment** → Suggest a different classification
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant assessment
 ```
 
 **STOP.** Wait for user response.
@@ -106,14 +102,10 @@ If any show `status: pending`, work them now per **[spec-construction.md](spec-c
 
 ## C. Sign-Off
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its section verbatim at its marked instruction:
 
-```
-· · · · · · · · · · · ·
-**`◆ Ready to conclude?`**
-
-**`y/yes`**   → Conclude specification and mark as completed
-**Comment** → Add context before concluding
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant signoff
 ```
 
 **STOP.** Wait for user response.

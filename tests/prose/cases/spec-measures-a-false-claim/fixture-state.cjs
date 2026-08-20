@@ -68,8 +68,6 @@ module.exports = {
       '};',
       '',
     ].join('\n'));
-    h.git('add', 'src');
-    h.git('commit', '-q', '-m', 'src: webhook handlers');
 
     // The completed discussion — template-shaped, with the false
     // measured claim in Failure Handling and a Key Insight leaning on

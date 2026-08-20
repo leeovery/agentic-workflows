@@ -406,22 +406,96 @@ function specReviewGate(cwd, { dotpath, variant }) {
   if (phase !== 'specification') {
     throw new Error(`render spec-review-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
   }
-  const stop = 'emit verbatim as markdown, then STOP for the user\'s response';
   if (variant === 'continue') {
-    return section('MENU: spec review continue gate', stop, menu('', [
+    return section('MENU: spec review continue gate', STOP_FOR_RESPONSE, menu('', [
       cmdOption('p', 'proceed', 'Continue review'),
       cmdOption('s', 'skip', 'Skip review, proceed to completion'),
     ], { question: 'Continue with review?' }));
   }
-  return section('MENU: spec review reloop gate', stop, menu('', [
+  return section('MENU: spec review reloop gate', STOP_FOR_RESPONSE, menu('', [
     cmdOption('r', 'reanalyse', 'Run another review cycle (all three phases)'),
     cmdOption('p', 'proceed', 'Proceed to completion'),
   ], { question: 'Run another review cycle?' }));
 }
 
-// incoherence-gate — spec construction's Resolve Source Incoherence raises.
-// Three variants; the stops here override the construction auto mode by
-// design, so no --gate flag exists.
+// ---------------------------------------------------------------------------
+// spec-completion-gate — the conclusion flow's two consent gates,
+// variant-keyed and payload-less: the surrounding content (the assessment
+// display, the completion state) is the caller's; only the ask renders here.
+//   assessment — confirm the epic cross-cutting assessment
+//   signoff    — the final conclude consent
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string}} args
+ * @returns {string}
+ */
+function specCompletionGate(cwd, { dotpath, variant }) {
+  if (variant === undefined || !['assessment', 'signoff'].includes(variant)) {
+    throw new Error('render spec-completion-gate: --variant must be "assessment" or "signoff"');
+  }
+  const { phase } = resolveAddress(cwd, dotpath, 'spec-completion-gate');
+  if (phase !== 'specification') {
+    throw new Error(`render spec-completion-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
+  }
+  if (variant === 'assessment') {
+    return section('MENU: spec assessment gate', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('y', 'yes', 'Confirm assessment'),
+      promptOption('Comment', 'Suggest a different classification'),
+    ], { question: 'Confirm this assessment?' }));
+  }
+  return section('MENU: spec signoff gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', 'Conclude specification and mark as completed'),
+    promptOption('Comment', 'Add context before concluding'),
+  ], { question: 'Ready to conclude?' }));
+}
+
+// ---------------------------------------------------------------------------
+// carry-note-gate — research document review's per-note landing consent: the
+// note itself and its judged target ride as the payload, the ask renders
+// here. The statement label carries the reopen warning, so the menu keeps it.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function carryNoteGate(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render carry-note-gate: --file <payload.json> is required');
+  const { phase } = resolveAddress(cwd, dotpath, 'carry-note-gate');
+  if (phase !== 'research') {
+    throw new Error(`render carry-note-gate: address must be <work_unit>.research.<topic>, got phase "${phase}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'carry-note-gate');
+  const note = stringLines(p.note, 'carry-note-gate', 'note');
+  if (note.length === 0) throw new Error('render carry-note-gate: "note" must be non-empty');
+  if (!isFilled(p.target)) throw new Error('render carry-note-gate: "target" must be a non-empty string');
+  if (p.landing_phase !== 'research' && p.landing_phase !== 'discussion') {
+    throw new Error(`render carry-note-gate: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
+  }
+  const display = section('DISPLAY: carry note', 'emit verbatim as markdown', [
+    ...note,
+    '',
+    `*Addressed to: ${p.target} — lands in its ${p.landing_phase} triage queue*`,
+  ].join('\n'));
+  const gate = section('MENU: carry note gate', STOP_FOR_RESPONSE, menu(
+    `This note lands in "${p.target}"'s triage queue; if "${p.target}" is completed, landing reopens it.`,
+    [
+      cmdOption('y', 'yes', 'Land it there; this document keeps a reroute record'),
+      cmdOption('s', 'skip', 'Leave it as prose in this document'),
+      promptOption('Comment', 'Tell me what to change (target, phase, or content)'),
+    ],
+    { question: 'Land it there?' },
+  ));
+  return [display, gate].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// incoherence-gate — the Resolve Source Incoherence raises (spec construction
+// and the review findings walk). Three variants; the stops here override the
+// calling flow's auto mode by design, so no --gate flag exists.
 //   conflict  — the settle-it-here menu: one numbered option per documented
 //               side (recommended first) plus Comment — classification is
 //               Claude's, the menu offers only the documented sides
@@ -506,7 +580,7 @@ function incoherenceGate(cwd, args) {
   return section('MENU: incoherence held doc', INCOHERENCE_STOP, menu(
     `"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,
     [
-      cmdOption('n', 'next', 'Set this topic aside and move to the next'),
+      cmdOption('n', 'next', 'Queue the resolution and carry on here'),
       cmdOption('s', 'stop', 'Stop here; re-enter after that session lands it'),
     ],
     { question: 'How do you want to continue?' },
@@ -1152,6 +1226,13 @@ function findingBatch(cwd, { dotpath, file }) {
   ].join('\n');
 }
 
+// The finding payload's category vocabulary. Only the gate-rendered four are
+// legal here — the two source-lane categories (Source defect, Unsourced
+// decision) route via resolve-source-incoherence before any render, so their
+// arrival at this surface is a caller bug and refuses by name.
+const FINDING_CATEGORIES = ['enhancement', 'new-topic', 'gap', 'duplication'];
+const ROUTED_CATEGORIES = ['source-defect', 'unsourced-decision'];
+
 /**
  * @param {string} cwd
  * @param {{dotpath: string, file?: string}} args
@@ -1170,8 +1251,10 @@ function finding(cwd, { dotpath, file }) {
   }
   if (!isFilled(p.details)) throw new Error('render finding: "details" must be a non-empty string');
   if (p.diff && p.content) throw new Error('render finding: pass "diff" or "content", not both');
-  const FINDING_CATEGORIES = ['enhancement', 'new-topic', 'gap', 'duplication'];
   if (p.category !== undefined && !FINDING_CATEGORIES.includes(p.category)) {
+    if (ROUTED_CATEGORIES.includes(p.category)) {
+      throw new Error(`render finding: "${p.category}" findings route via resolve-source-incoherence and never render at the gate`);
+    }
     throw new Error(`render finding: unknown category "${p.category}" (expected ${FINDING_CATEGORIES.join('/')})`);
   }
 
@@ -1218,8 +1301,12 @@ function finding(cwd, { dotpath, file }) {
   } else {
     const options = [cmdOption('y', 'yes', applyLabel)];
     if (p.diff) options.push(cmdOption('v', 'view full', 'Show full Current and Proposed content'));
+    // A gate forced by category over an auto manifest offers no a/auto row —
+    // auto is already set, and this stop exists despite it.
+    if (items.finding_gate_mode !== 'auto') {
+      options.push(cmdOption('a', 'auto', 'Approve this and all remaining findings automatically'));
+    }
     options.push(
-      cmdOption('a', 'auto', 'Approve this and all remaining findings automatically'),
       cmdOption('s', 'skip', 'Leave as-is, move to next finding'),
       promptOption('Provide feedback', feedbackHint),
     );
@@ -2327,6 +2414,8 @@ const SURFACES = {
   'review-presentation': reviewPresentation,
   'review-gate': reviewGate,
   'spec-review-gate': specReviewGate,
+  'spec-completion-gate': specCompletionGate,
+  'carry-note-gate': carryNoteGate,
   'triage-announce': triageAnnounce,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,

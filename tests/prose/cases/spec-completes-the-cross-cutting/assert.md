@@ -10,9 +10,10 @@ The prose should have taken this path:
    piece — the described user approves faithful content and declines
    any offer to approve automatically — and the source flips to
    incorporated when its extraction lands
-4. the two-phase review runs clean through the stub — both dispatches
-   return the stubbed clean result and write no file — and the review
-   cycle is recorded
+4. the three-phase review runs clean through the stub — claims
+   verification, input review, and gap analysis each dispatched in
+   turn, every dispatch returning the stubbed clean result and writing
+   no file — and the review cycle is recorded
 5. completion concludes through the engine — the specification item
    completes and the conclusion commit lands
 6. the pipeline continuation takes the cross-cutting arm: the

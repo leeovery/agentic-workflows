@@ -6,7 +6,7 @@
 
 Process findings from a review phase interactively with the user. The analysis phase writes findings to a tracking file. Read the tracking file and present each finding for approval.
 
-**Review type**: `{review_type:[Claims Verification|Input Review|Gap Analysis]}` — set by the calling context (C, D, or E in spec-review.md).
+**Review type**: `{review_type:[Claims Verification|Input Review|Gap Analysis]}` — set by the calling context (C, D, or E in spec-review.md); a caller that names a tracking file rather than a phase derives it, and the file's path, from the tracking stem (`review-claims-…` → Claims Verification, `review-input-…` → Input Review, `review-gap-analysis-…` → Gap Analysis).
 
 Check if the tracking file exists at the expected path.
 
@@ -51,17 +51,41 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, `Routed`, or `Skipped` was settled in an earlier sitting; never re-present or re-apply it. For each finding: present it, show the proposed content, then route through the gate.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, `Routed`, or `Skipped` was settled in an earlier sitting; never re-present or re-apply it.
+
+**If no unresolved finding remains** — every row already settled, whether this sitting or an earlier one:
+
+→ Proceed to **C. After All Findings Processed**.
+
+**If the next unresolved finding's Category is `Source defect` or `Unsourced decision`:**
+
+→ Proceed to **Route Source-Lane Findings**.
+
+**Otherwise:**
+
+→ Proceed to **Present Finding**.
 
 ### Route Source-Lane Findings
 
 A finding whose Category is **Source defect** or **Unsourced decision** indicts a source, not the specification — it is never applied, adjusted, or skipped here, and never rides `auto`. Instead of presenting it:
 
-→ Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with doc = `{the owning source's topic}` (for an unsourced decision, the source that should own the missing decision), taking the finding's Details as the material to classify.
+→ Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with doc = `{the owning source's topic}` (for an unsourced decision, whichever of this specification's **own sources** should own the missing decision — the route never leaves the spec's sources; a spec cites no discussion it doesn't source), taking the finding's Details as the material to classify.
 
-On return, re-align the specification's own copy: the resolution now stands in the corrected source, so the affected spec content is updated to match it — a fidelity repair the record settles, logged without a gate. Then update the tracking file — Resolution `Routed`, a note naming what landed where — and commit. (The gap exit does not return: the specification pauses and the reference routes the session out; the tracking entry stays `in-progress` in the manifest, and its remaining findings re-process at the next entry.)
+On return, land the outcome by what actually happened there:
+
+- **A resolution landed in the source document** (edited and reindexed): re-align the specification's affected content to it — the write lands the resolution the user just settled (or the measurement made), never new content, announced in one line. A re-aligned section invalidates any later finding's Current block that quotes it — re-derive from the file before presenting that finding.
+- **The record already settled the point** (no edit was needed): align the specification's affected content to the governing decision the record names, announced the same way.
+- **The resolution was queued to a session holding the document** (nothing landed): leave the specification's copy alone — the delivery flagged the source's extractions stale, and this specification cannot conclude while its row for `{doc}` is `pending` or `stale`; the reconcile runs when the source re-concludes.
+
+Then update the tracking file — Resolution `Routed`, a note naming what landed (or queued) where — and commit. (The gap exit does not return: the specification pauses and the reference routes the session out; the tracking entry stays `in-progress` in the manifest, and its remaining findings re-process at the next entry.)
+
+**If pending findings remain:**
 
 → Return to **B. Process One Item at a Time**.
+
+**If all findings are processed:**
+
+→ Proceed to **C. After All Findings Processed**.
 
 ### Present Finding
 
@@ -144,9 +168,9 @@ Finding {N} of {total}: {brief_title:(titlecase)} — applied.
 2. Update the tracking file: set resolution to "Approved"
 3. Update `finding_gate_mode` to `auto` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto`)
 4. Commit
-5. Process all remaining findings using the auto-mode flow above
+5. Process each remaining finding from **B** — the mode change removes the approval stops, never the per-finding pass: source-lane findings still route, and every other finding is still rendered, the surface deciding its gate per finding
 
-→ Proceed to **C. After All Findings Processed**.
+→ Return to **B. Process One Item at a Time**.
 
 #### If `skip`
 

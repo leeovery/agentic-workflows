@@ -899,12 +899,21 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'tracking.review-input-tracking-c1', 'in-progress']);
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'tracking.review-input-tracking-c1', 'complete']);
     sim.refuses(['manifest', 'set', `${wu}.specification.unified`, 'tracking.review-input-tracking-c1', 'done'], /Invalid tracking status/);
-    // The review loop's two gates render from the same address the prose
-    // fetches them at; a non-specification address refuses.
+    // The review loop's two gates and the conclusion's consent gates render
+    // from the same address the prose fetches them at; a non-specification
+    // address refuses.
     assert.match(sim.render(['spec-review-gate', `${wu}.specification.unified`, '--variant', 'continue'], { expect: 'content' }),
       /Continue with review\?/);
     assert.match(sim.render(['spec-review-gate', `${wu}.specification.unified`, '--variant', 'reloop'], { expect: 'content' }),
       /Run another review cycle\?/);
+    assert.match(sim.render(['spec-completion-gate', `${wu}.specification.unified`, '--variant', 'assessment'], { expect: 'content' }),
+      /Confirm this assessment\?/);
+    assert.match(sim.render(['spec-completion-gate', `${wu}.specification.unified`, '--variant', 'signoff'], { expect: 'content' }),
+      /Ready to conclude\?/);
+    sim.refuses(['render', 'spec-review-gate', `${wu}.review.unified`, '--variant', 'reloop'],
+      /address must be <work_unit>\.specification\.<topic>/);
+    sim.refuses(['render', 'spec-completion-gate', `${wu}.review.unified`, '--variant', 'signoff'],
+      /address must be <work_unit>\.specification\.<topic>/);
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.1', 'approved']);
     sim.refuses(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.2', 'later'], /Invalid staging task status/);

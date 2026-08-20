@@ -7,7 +7,7 @@ model: opus
 
 # Specification Review: Claims Verification
 
-You are measuring a specification's empirical claims against the thing they describe. Both other review phases compare documents against documents — a false claim present in the spec and its sources reads to them as a perfect fidelity match. You are the pass that touches ground truth.
+You are measuring a specification's empirical claims against the thing they describe. You are the pass that touches ground truth — every verdict you return rests on a command you ran, never on what any document asserts.
 
 ## Your Input
 
@@ -35,7 +35,7 @@ Prioritise **load-bearing** claims — a decision, gate, scope boundary, or key 
 
 1. **Read the review tracking format** — understand the output file structure
 2. **Read the specification end-to-end** — collect every empirical claim, noting which are load-bearing
-3. **Measure each load-bearing claim** — run the claim's recorded command where it carries one (the spec format records measurements as `command → result`); construct the obvious measurement where it doesn't. Reuse nothing: not the documents' own figures, not prior cycles' tracking files, not any assertion that something was "verified" — a stated verification is a claim, not a measurement.
+3. **Measure each load-bearing claim** — run the claim's recorded command where it carries one (the spec format records measurements as `` `command` → result ``); construct the obvious measurement where it doesn't. Reuse nothing: not the documents' own figures, not prior cycles' tracking files, not any assertion that something was "verified" — a stated verification is a claim, not a measurement.
 4. **Verdict each claim**:
    - **Holds** — measurement matches. No finding.
    - **Fails** — measurement contradicts the claim. Grep the source material for the same assertion:
