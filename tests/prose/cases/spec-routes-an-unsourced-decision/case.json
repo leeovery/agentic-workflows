@@ -28,7 +28,8 @@
     "skills/workflow-specification-process/references/process-review-findings.md",
     "skills/workflow-specification-process/references/spec-completion.md",
     "skills/workflow-discussion-process/references/template.md",
-    "skills/workflow-shared/references/compliance-check.md"
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
   ],
   "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. When the session raises the webhook verification mechanism as a decision the record never made, they recognise it immediately — that section was invented at construction, nobody discussed verification — and they settle it on the merits: use the gateway SDK's built-in signature verification with its default tolerance; a hand-rolled HMAC check and a custom five-minute window are exactly the kind of thing they do not want to own. They expect the decision to land in the discussion's own record as its own ground, and the spec to say what was decided rather than what was invented. At the re-loop prompt they proceed to completion — the one finding was routed and settled, another cycle is not owed. At sign-off they confirm. Throughout they answer concretely, decline any offer to approve things automatically, and never reopen decided questions beyond the one raised to them.",
   "stubs": {

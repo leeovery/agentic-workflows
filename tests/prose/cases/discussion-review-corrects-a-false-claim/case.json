@@ -32,7 +32,9 @@
     "skills/workflow-discussion-process/references/final-review.md",
     "skills/workflow-discussion-process/references/document-review.md",
     "skills/workflow-discussion-process/references/conclude-discussion.md",
-    "skills/workflow-shared/references/compliance-check.md"
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/closing-recap.md",
+    "skills/workflow-shared/references/final-review-menu.md"
   ],
   "conduct": "The user settled this discussion last sitting and is back only to wrap it up. Shown where things stand they confirm both subtopics are done and ask to conclude — they reopen nothing, add nothing, and decline any offered exploration. They treat the checkout module count as descriptive: the telemetry rule is per-module whatever the number. Told during the review brief that the recorded count was re-measured and corrected from four to five, they take the note without ceremony — that is exactly what they expect a document review to do — and they would object to being asked to decide an arithmetic fact. Asked to conclude, they confirm.",
   "stubs": {

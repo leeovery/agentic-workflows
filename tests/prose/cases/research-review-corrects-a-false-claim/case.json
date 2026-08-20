@@ -28,7 +28,12 @@
     "skills/workflow-research-process/references/document-review.md",
     "skills/workflow-research-process/references/template.md",
     "skills/workflow-research-process/references/conclude-research.md",
-    "skills/workflow-shared/references/compliance-check.md"
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-shared/references/closing-recap.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md"
   ],
   "conduct": "The user settled this research last sitting and is back only to wrap it up. Shown where things stand they confirm both threads are done and ask to conclude — they open nothing new and decline any offered exploration. They treat the checkout module count as descriptive: the per-module conclusion holds whatever the number, and the document says so itself. Told during the review brief that the recorded count was re-measured and corrected from four to five, they take the note without ceremony — that is exactly what they expect a document review to do — and they would object to being asked to decide an arithmetic fact. Asked to conclude, they confirm.",
   "stubs": {

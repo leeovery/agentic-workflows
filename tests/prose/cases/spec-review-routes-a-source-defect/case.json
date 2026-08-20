@@ -28,7 +28,8 @@
     "skills/workflow-specification-process/references/process-review-findings.md",
     "skills/workflow-specification-process/references/spec-completion.md",
     "skills/workflow-discussion-process/references/template.md",
-    "skills/workflow-shared/references/compliance-check.md"
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
   ],
   "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting and they want the review pass, so offered the resume choice they continue. They know the record cold and treat the module count as descriptive — the telemetry decision is per-module whatever the number. Told the claims pass measured five checkout modules where both documents say four, and that the correction has landed in the discussion's own record with the spec re-aligned, they take the one-line notify without ceremony — that is exactly where they expect a count fix to go, and they would object to being asked to choose a side over an arithmetic fact. At the re-loop prompt they proceed to completion: the one finding was a count correction, another cycle is not owed. At sign-off they confirm. Throughout they answer concretely, never add scope, and never reopen decided questions.",
   "stubs": {
