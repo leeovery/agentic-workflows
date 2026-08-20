@@ -152,7 +152,7 @@ Findings from the current review are still being drained.
 > Dispatching a final review to catch any gaps before concluding. This ensures the discussion is thorough for specification.
 ```
 
-Record the dispatch — the engine allocates the id and answers with the content-file path. `--final` marks the mandatory closing pass: coverage at conclusion is exempt from the movement backoff mid-session dispatches take:
+Record the dispatch — the engine allocates the id and answers with the content-file path; `--final` marks the mandatory closing pass:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review --final

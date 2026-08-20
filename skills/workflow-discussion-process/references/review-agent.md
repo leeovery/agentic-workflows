@@ -6,14 +6,16 @@
 
 These instructions are loaded into context at the start of the discussion session. A review agent reads the discussion file with a clean slate in the background, identifying gaps, shallow coverage, and missing edge cases. The dispatch check is mandatory after every commit (session loop step 5) — not optional, not deferred.
 
-**A review the user explicitly asks for** skips the trigger checklist — proceed to **A. Dispatch**, appending `--final` to the dispatch command (their request outranks the movement backoff; the engine still refuses over a non-empty triage queue).
+**If the user explicitly asks for a review:** their request is the trigger — the movement backoff and the content conditions don't apply, and the dispatch carries `--final`. The safety boxes still hold — prior reviews drained, both queues empty, no wrap-up signal: a review is stale on arrival over any of them, whoever asked. Document and commit anything the conversation has settled first — the agent reads the file, not the room — and clear what blocks (drain the review, absorb the queue), then:
+
+→ Proceed to **A. Dispatch**.
 
 **Trigger checklist** — evaluate after every commit as part of the session loop's dispatch check:
 
 - □ Meaningful content committed? (a decision documented, a question explored, options analysed — not a typo fix or reformatting; a commit whose subject carries a `review-` or `synthesis-` drain marker — e.g. `(review-003 F2)` — doesn't tick this box, nor does one carrying a `(deferral)` marker: the concluding flow's deferral write is bookkeeping, and a review dispatched on it would be in flight before the closing gates it delays)
-- □ All prior reviews drained? (`agent scan` shows no `review` row in flight, pending, or acknowledged — or no review row exists yet; an in-flight row an earlier session dispatched is dead, not running — incorporate it and count it drained)
+- □ All prior reviews drained? (run `agent scan` now — no `review` row in flight, pending, or acknowledged, or no review row exists yet; an in-flight row an earlier session dispatched is dead, not running — incorporate it and count it drained)
 - □ Not the first commit? (the discussion needs enough content to review)
-- □ Review armed? (`review_arming.armed` is `true` on the same `agent scan` — the engine's movement backoff: the first review is free, review n+1 needs min(n, 3) Discussion Map moves — subtopics added or advanced, never unwound — since the last review's dispatch; when quiet, `reason` names the movement owed, and the topic's next review comes from map movement, an explicit user request, or the concluding flow's `--final` pass)
+- □ Review armed? (`review_arming.armed` is `true` on that scan — the engine's movement backoff: a review arms only once the Discussion Map has moved enough since the last one; when quiet, `reason` names the moves owed, and the topic's next review comes from map movement, an explicit user request, or the concluding flow's `--final` pass)
 - □ Triage queue empty? (`topic queue` shows `count: 0` — the session loop's triage check reads it each iteration; a queued rerouted concern is a pending change to this document, so a review dispatched over it is stale on arrival; self-healing like the drain block — the first meaningful commit after the queue empties re-fires the check)
 - □ Calls queue empty? (`.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` absent or drained — a queued settled call is a pending change to this document, stale-on-arrival and self-healing the same way)
 - □ The user hasn't signalled conclusion? (a wrap-up signal hands review duty to the closing gates — their final review covers the closing commit; a dispatch now lands `pending` at classification and forces a drain detour)
@@ -45,11 +47,15 @@ The shared surfacing protocol reads this declaration when presenting this phase'
 
 ## A. Dispatch
 
-Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal). `--final` rides only a user-requested dispatch — the automatic trigger never bypasses the backoff:
+Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal). `--final` rides a user-requested dispatch only:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review [--final]
 ```
+
+**If the response is `ok: false`:** a peer session moved the ground between the check and the dispatch — a concern landed in the triage queue, or its own review re-anchored the movement gate. Surface the engine's error verbatim — the refusal names what owns the close — and continue with the session loop; the next check re-evaluates.
+
+**Otherwise:**
 
 **Agent path**: `../../../agents/workflow-discussion-review.md`
 
