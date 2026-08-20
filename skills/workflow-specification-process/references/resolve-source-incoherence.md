@@ -1,6 +1,6 @@
 # Resolve Source Incoherence
 
-*Reference for **[workflow-specification-process](../SKILL.md)** — loaded by [spec-construction.md](spec-construction.md) when source material disagrees — with itself, another source, or the codebase it describes — or cannot be extracted without assumption.*
+*Reference for **[workflow-specification-process](../SKILL.md)** — loaded by [spec-construction.md](spec-construction.md) and [process-review-findings.md](process-review-findings.md) when source material disagrees — with itself, another source, or the codebase it describes — or cannot be extracted without assumption.*
 
 ---
 

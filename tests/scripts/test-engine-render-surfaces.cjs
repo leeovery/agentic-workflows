@@ -1017,12 +1017,29 @@ describe('render finding', () => {
     assert.ok(!out.includes('view full'));
   });
 
+  it('a gap finding renders its gate even when the manifest holds auto — a question never auto-applies', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
+    const file = writePayload(dir, 'f.json', { ...base, category: 'gap' });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
+    assert.ok(out.includes('MENU: finding gate'));
+    assert.ok(!out.includes('finding auto-approved'));
+  });
+
+  it('a non-gap category rides auto as before', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
+    const file = writePayload(dir, 'f.json', { ...base, category: 'enhancement' });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
+    assert.ok(out.includes('finding auto-approved'));
+    assert.ok(!out.includes('MENU: finding gate'));
+  });
+
   it('validates loudly: shape, exclusivity, and empty diff', () => {
     const cases = [
       [{ ...base, n: 0 }, /"n" must be a positive integer/],
       [{ ...base, total: 0 }, /"total" must be an integer/],
       [{ ...base, meta: [['x']] }, /"meta" must be an array of \[label, value\] pairs/],
       [{ ...base, details: ' ' }, /"details" must be a non-empty string/],
+      [{ ...base, category: 'source-defect' }, /unknown category "source-defect"/],
       [{ ...base, diff: { current: [], proposed: [] }, content: { label: 'X', lines: ['y'] } }, /pass "diff" or "content", not both/],
       [{ ...base, diff: { current: [], proposed: [] } }, /"diff" must carry at least one/],
       [{ ...base, content: { label: 'X', lines: [] } }, /"content.lines" must be non-empty/],

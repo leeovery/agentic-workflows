@@ -36,8 +36,8 @@ Write the summary payload to `.workflows/.cache/{work_unit}/specification/{topic
 {"review_label": "{review_type}", "items": [{"title": "…", "tag": "…", "summary": "{1-2 line summary from the Details field}", "status": "…"}]}
 ```
 
-- `tag` — the Category's token: `enhancement` (Enhancement to existing topic), `new-topic` (New topic), `gap` (Gap/Ambiguity), `duplication` (Duplication). The tracking file keeps the full phrase.
-- `status` — the finding's Resolution: `Approved` or `Adjusted` → `approved`, `Skipped` → `skipped`, `Pending` or unset → `pending`.
+- `tag` — the Category's token: `enhancement` (Enhancement to existing topic), `new-topic` (New topic), `gap` (Gap/Ambiguity), `duplication` (Duplication), `source-defect` (Source defect), `unsourced-decision` (Unsourced decision). The tracking file keeps the full phrase.
+- `status` — the finding's Resolution: `Approved`, `Adjusted`, or `Routed` → `approved`, `Skipped` → `skipped`, `Pending` or unset → `pending`.
 
 Render and emit the section verbatim at its marked instruction:
 
@@ -51,7 +51,17 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, or `Skipped` was settled in an earlier sitting; never re-present or re-apply it. For each finding: present it, show the proposed content, then route through the gate.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, `Routed`, or `Skipped` was settled in an earlier sitting; never re-present or re-apply it. For each finding: present it, show the proposed content, then route through the gate.
+
+### Route Source-Lane Findings
+
+A finding whose Category is **Source defect** or **Unsourced decision** indicts a source, not the specification — it is never applied, adjusted, or skipped here, and never rides `auto`. Instead of presenting it:
+
+→ Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with doc = `{the owning source's topic}` (for an unsourced decision, the source that should own the missing decision), taking the finding's Details as the material to classify.
+
+On return, re-align the specification's own copy: the resolution now stands in the corrected source, so the affected spec content is updated to match it — a fidelity repair the record settles, logged without a gate. Then update the tracking file — Resolution `Routed`, a note naming what landed where — and commit. (The gap exit does not return: the specification pauses and the reference routes the session out; the tracking entry stays `in-progress` in the manifest, and its remaining findings re-process at the next entry.)
+
+→ Return to **B. Process One Item at a Time**.
 
 ### Present Finding
 
@@ -61,6 +71,7 @@ Write the finding payload to `.workflows/.cache/{work_unit}/specification/{topic
 
 - `n`, `total`, `title` — the finding's position and titlecased brief title.
 - `meta` — `[label, value]` pairs: Source / Category / Affects, plus Priority for Gap Analysis findings.
+- `category` — the Category's token (`enhancement`, `new-topic`, `gap`, `duplication`). A `gap` finding is a question, not a correction — the surface renders its gate even when the manifest holds `auto`.
 - `details` — the Details field.
 - If a Current field is present: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side (Proposed Change as the proposed lines).
 - Otherwise: `content` — `{"label": "Proposed Change", "lines": […]}` with the proposed content.

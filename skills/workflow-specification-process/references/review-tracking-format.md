@@ -24,7 +24,7 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 ### 1. [Brief Title]
 
 **Source**: [Where this came from — file/section reference, or "Specification analysis" for Gap Analysis]
-**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Duplication
+**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Duplication | Source defect | Unsourced decision
 **Priority**: [Gap Analysis only — Critical | Important | Minor. Omit for Input Review.]
 **Affects**: [Which section(s) of the specification]
 
@@ -37,7 +37,7 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 **Proposed Change**:
 [What you would add or change in the specification — leave blank until discussed]
 
-**Resolution**: Pending | Approved | Adjusted | Skipped
+**Resolution**: Pending | Approved | Adjusted | Skipped | Routed
 **Notes**: [Any discussion notes or adjustments made]
 
 ---
@@ -47,6 +47,11 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 ```
 
 Some tracking files name the **Proposed Change** field **Proposed Addition** — read both as the same field.
+
+Two categories indict a source rather than the specification, and their findings are never applied, adjusted, or skipped against the spec — the orchestrator routes them per [resolve-source-incoherence.md](resolve-source-incoherence.md), and the resolution lands as `Routed`:
+
+- **Source defect** — the specification faithfully carries a source claim or decision that is itself wrong: it fails direct measurement against the tree, or rests on ground the record has since superseded.
+- **Unsourced decision** — the specification states a requirement or design decision that no source makes. The spec makes decisions clear; it never makes them.
 
 ## Workflow with Tracking Files
 
