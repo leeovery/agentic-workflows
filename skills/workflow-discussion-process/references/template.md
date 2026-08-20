@@ -125,6 +125,8 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 
 The marker opens the Decision block on a fresh section, and follows the `*Trigger:*` line inside the dated entry on a revision — it marks the derived text, never a block whose `#### Initial` was argued. The section's Journey carries the derivation, not a debate; a later revision wraps the block exactly as above.
 
+**Measured claims**: when a claim about the codebase or toolchain is load-bearing — a decision or insight leans on it — measure it in the moment it's written and record the command with the result (`rg -l 'pattern' | wc -l → 14`). A claim that can't be measured is written as observation, not fact. Downstream phases re-run these commands; an unmeasured load-bearing claim is the defect they inherit.
+
 **Discussion Map**:
 - Subtopic states (`pending`, `exploring`, `converging`, `decided`, `deferred`) live in the manifest — the file holds the knowledge, the map holds the live state
 - New child subtopics can be added under top-level parents (two levels max)
@@ -138,6 +140,7 @@ The marker opens the Decision block on a fresh section, and follows the `*Trigge
 - Don't write code — unless it came up in discussion (e.g., API shape, pattern example) and is relevant to capture
 - Don't summarise the journey — document it
 - Don't stuff concerns that belong to a different topic into subtopics — reroute them to that topic
+- Don't assert tree facts from memory — a load-bearing count, enumeration, or "all X are Y" is measured when written, and carries its command
 - Don't record the pipeline — no readiness declarations ("ready for specification"), decided-subtopic counts, or review-cycle tallies, in Current State or anywhere else; the resolved/uncertain rows carry substance, the manifest carries state
 
 **Complete when**:
