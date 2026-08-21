@@ -251,7 +251,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker — exce
 
 **If `yes`:**
 
-Document each call in turn — into the subtopic that owns it (the template's full structure where the subtopic has no section yet, a dated revision entry where a decided block exists), the Decision block carrying the template's derivation marker; when no subtopic on the Discussion Map owns it, add one and set it `decided` in the same move (`discussion-map add`, then `discussion-map set … decided`). Commit each write before starting the next (session loop step 5's dispatch check included), then remove the landed items from the queue file's `items`.
+Document each call in turn — into the subtopic that owns it (the template's full structure where the subtopic has no section yet, a dated revision entry where a decided block exists), the Decision block carrying the template's derivation marker; when no subtopic on the Discussion Map owns it, add one and set it `decided` in the same move (`discussion-map add`, then `discussion-map set … decided`). Each call's write-up is its own edit and its own commit (session loop step 5's dispatch check included) before the next begins — never two calls in one write — then remove the landed items from the queue file's `items`.
 
 Confirm in one line total — `All {N} documented.` — never a per-call recap. Nothing is pending, so the turn continues.
 

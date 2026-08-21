@@ -650,6 +650,12 @@ describe('pipeline simulation', () => {
     const rev1 = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
     sim.write(rev1.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    // The surfacing protocol's opt-in gate renders from a judgment payload.
+    sim.write('.workflows/.cache/scratch/announce.json',
+      JSON.stringify({ agent_type: 'review', count: 1, shape: '1 needs a call' }));
+    assert.match(
+      sim.render(['finding-announce', `${wu}.discussion.beta`, '--file', '.workflows/.cache/scratch/announce.json'], { expect: 'content' }),
+      /Work through them now\?/, 'the announce gate renders from the payload');
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev1.id, '--clean']);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /review dispatch blocked: quiet — 0 of 1 map moves since review-001/);
