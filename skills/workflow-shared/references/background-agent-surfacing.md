@@ -129,21 +129,13 @@ Route on the row's `surfaced` list: empty means the user has not yet opted in; n
 
 **If `surfaced` is empty (first time at a break):**
 
-Render the announce menu. `{shape}` is the lane split in one clause, in lane order — the count in each lane and what each asks of the user, e.g. *3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere*; name only lanes that have findings. Do not describe individual findings, do not summarise, do not preview.
+Render the announce menu. `shape` is the lane split in one clause, in lane order — the count in each lane and what each asks of the user, e.g. *3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere*; name only lanes that have findings. Do not describe individual findings, do not summarise, do not preview. Write the payload to the topic's cache directory with the Write tool (`{"agent_type": "…", "count": N, "shape": "…"}`), then render it, emitting the section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Background {agent_type} returned — {N} finding(s): {shape}.
-
-**`◆ Work through them now?`**
-
-**`y/yes`**   → Start on them
-**`l/later`** → Keep pulling on the current thread, I'll raise them at the next pause
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding-announce {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/announce.json
 ```
 
-After rendering the menu, record the announce — skip the call when the row already reads `announced: true`:
+After emitting the menu, record the announce — skip the call when the row already reads `announced: true`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}
@@ -227,7 +219,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker — exce
 
 **If `yes`:**
 
-Take the screen's findings one at a time — apply, then commit under that finding's own subject marker (`({id} {finding})`) — before starting the next.
+Take the screen's findings one at a time — each finding's fix is its own edit and its own commit, under that finding's subject marker (`({id} {finding})`), before the next begins; the screen presents them together, the landing never batches them.
 
 Each fix lands as the **Lanes** declaration's `apply` resolution prescribes.
 
@@ -289,7 +281,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker — exce
 
 **If `yes`:**
 
-Take the screen's findings one at a time — document, then commit under that finding's own subject marker (`({id} {finding})`) — before starting the next.
+Take the screen's findings one at a time — each call's write-up is its own edit and its own commit, under that finding's subject marker (`({id} {finding})`), before the next begins; the screen presents them together, the landing never batches them.
 
 Each call lands as the **Lanes** declaration's `decide` resolution prescribes, carrying its derivation — the record it names is what a later reader checks the call against.
 
@@ -336,7 +328,7 @@ This section runs once per invocation and then exits. It never waits in-protocol
    ```
 3. Digest the finding from the content file — never read it out — and compose the raise as an opener, never a case: its whole job is to put the user in front of the problem and say where you stand. Everything else — the report's full case, your own supporting analysis, the costs, secondary consequences — stays back and enters the conversation as responses, when the user's reply calls for it. Two beats:
    - **The problem, made immediately graspable.** Say where it came from (the background {agent_type}) and what it observed — for a synthesis, the two positions in tension — then make the problem land before your position arrives: product perspective first, one to three devices (**Making it land** below), technical depth only as deep as seeing the problem needs. A findings walk is a series of cold starts — each raise lands in a corner of the document the user last held fully hours or days ago — so rebuild what seeing the problem requires, and nothing more. Restate any term borrowed from another subtopic or an earlier decision; never reference it bare. Never use a bare id (`F5`, `T2`) as a label in conversational prose — name the finding by its report title on first mention, or describe it by what it is; ids belong in commit subjects (`(review-003 F5)`) and in-document markers (`(resolves review-003 F5)`), not in the conversation. When earlier findings from this set have been raised, open with a one-line bridge: what the previous one settled — or simply that it was raised, when that engagement predates this session — and how many follow this one (the surface response's `remaining`, counted within this lane).
-   - **Your position, always.** Where you stand and the one load-bearing reason that carries it — a clause, not the derivation — at the firmness the answer has actually earned (**The position's firmness** below).
+   - **Your position, always.** Where you stand and the one load-bearing reason that carries it — a clause, not the derivation — at the firmness the answer has actually earned (**The position's firmness** below). A reason that weighs a cost against a risk names the cost's kind, never the report's items — an itemised cost accounting is the case, and the case stays back.
 4. Raise it in the current turn, then stop — one raise per turn, and the turn's end is the invitation. No menu, no bundled follow-ups, no manufactured closing question: a stated position awaiting the user's response is a complete raise, and "what do you think?" is never the ask. A genuine question belongs where the position turns on something only the user holds; a natural closing remark, where one occurs, is fine. The raise proposes and never lands: whatever its firmness, nothing is documented until the user has replied, and the next finding waits until this one's outcome is documented — the write-up turn picks it up (below).
 
 When this row's `surfaced` list holds no walked finding yet, the raise opens with the walked lane's declared heading as sub-step chrome, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:

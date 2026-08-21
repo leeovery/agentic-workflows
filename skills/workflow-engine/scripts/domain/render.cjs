@@ -1242,6 +1242,33 @@ function rerouteCandidates(cwd, { dotpath, file }) {
   );
 }
 
+// finding-announce — the surfacing protocol's opt-in gate: a background
+// agent's return announced as a count and a lane shape, never a preview.
+// The chrome is fixed; the payload carries only judgment content (the
+// agent type and the lane-split clause).
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function findingAnnounce(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render finding-announce: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'finding-announce');
+  const p = readJsonPayload(cwd, file, 'finding-announce');
+  if (!isFilled(p.agent_type)) throw new Error('render finding-announce: "agent_type" must be a non-empty string');
+  if (!Number.isInteger(p.count) || p.count < 1) throw new Error('render finding-announce: "count" must be a positive integer');
+  if (!isFilled(p.shape)) throw new Error('render finding-announce: "shape" must be a non-empty string — the lane split in one clause');
+  return section(
+    'MENU: finding announce',
+    'emit verbatim as markdown',
+    menu(`Background ${p.agent_type} returned — ${p.count} finding(s): ${p.shape}.`, [
+      cmdOption('y', 'yes', 'Start on them'),
+      cmdOption('l', 'later', "Keep pulling on the current thread, I'll raise them at the next pause"),
+    ], { question: 'Work through them now?' }),
+  );
+}
+
 // finding-batch — a surfacing lane whose findings need at most a scan from
 // the user: the `apply` batch (corrections determined by decisions already
 // made), the `decide` batch (calls settled by the record or first
@@ -2514,6 +2541,7 @@ const SURFACES = {
   'resume-gate': resumeGate,
   'task-list': taskList,
   'findings-summary': findingsSummary,
+  'finding-announce': findingAnnounce,
   'finding-batch': findingBatch,
   'finding': finding,
   'review-presentation': reviewPresentation,

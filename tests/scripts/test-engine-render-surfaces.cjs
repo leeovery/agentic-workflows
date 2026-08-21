@@ -715,6 +715,48 @@ describe('render reroute-candidates', () => {
   });
 });
 
+describe('render finding-announce', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the opt-in gate — statement, glyphed question, y/l options', () => {
+    const file = writePayload(dir, 'ann.json', {
+      agent_type: 'review',
+      count: 16,
+      shape: '3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere',
+    });
+    const out = renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file });
+    assert.strictEqual(out, [
+      '=== MENU: finding announce (emit verbatim as markdown) ===',
+      DOTS,
+      'Background review returned — 16 finding(s): 3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere.',
+      '',
+      '**`◆ Work through them now?`**',
+      '',
+      '**`y/yes`**   → Start on them',
+      "**`l/later`** → Keep pulling on the current thread, I'll raise them at",
+      `${NB(10)}the next pause`,
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a missing or malformed payload field by name', () => {
+    const noShape = writePayload(dir, 'n1.json', { agent_type: 'review', count: 2 });
+    assert.throws(() => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file: noShape }),
+      /"shape" must be a non-empty string/);
+    const badCount = writePayload(dir, 'n2.json', { agent_type: 'review', count: 0, shape: '2 need a call' });
+    assert.throws(() => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file: badCount }),
+      /"count" must be a positive integer/);
+    const noType = writePayload(dir, 'n3.json', { count: 2, shape: '2 need a call' });
+    assert.throws(() => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file: noType }),
+      /"agent_type" must be a non-empty string/);
+  });
+});
+
 describe('render finding-batch', () => {
   let dir;
   beforeEach(() => {
@@ -2032,7 +2074,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
