@@ -156,7 +156,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Revisiting scoping for "{topic:(titlecase)}".

@@ -20,7 +20,7 @@ Requires the Linear MCP server to be configured.
 
 Check if Linear MCP is available by looking for Linear tools. If not configured, inform the user that Linear MCP is required for this format.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Which team should own this project?

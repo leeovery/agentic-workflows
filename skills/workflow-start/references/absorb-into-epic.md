@@ -81,11 +81,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_e
 
 #### If `true`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Topic "{topic}" already exists in {target_epic:(titlecase)}.
-Enter a different name (kebab-case):
+Topic "{topic}" already exists in {target_epic:(titlecase)}. Enter a different name (kebab-case):
 ```
 
 **STOP.** Wait for user response.
