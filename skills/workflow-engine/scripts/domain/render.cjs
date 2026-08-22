@@ -614,6 +614,20 @@ const HYPOTHESIS_VARIANTS = ['plan', 'resume', 'check-in', 'pivot'];
 const HYPOTHESIS_STATUSES = ['suspected', 'tracing', 'confirmed', 'ruled-out'];
 const CHECKPOINT_DEPTHS = ['straight-through', 'check-ins'];
 
+// Every ledger field lands inside a markdown construct that lives on one
+// line — a bold head, a `- **Label**: value` bullet — so an embedded newline
+// would break the construct around it and put a bare fragment on the page.
+// A hypothesis with more to say takes more rows; an artefact too big for a
+// row (a trace, a diff) stays in the investigation file, which the board
+// cites rather than reproduces.
+/** @param {string} v @param {string} field @returns {string} */
+function oneLine(v, field) {
+  if (/[\r\n]/.test(v)) {
+    throw new Error(`render hypothesis-board: ${field} runs to more than one line — split it across rows, or leave the detail in the investigation file`);
+  }
+  return v;
+}
+
 /**
  * Validate the ledger and answer its ids in payload order.
  * @param {unknown} v @returns {string[]}
@@ -627,8 +641,10 @@ function hypothesisLedger(v) {
   v.forEach((h, i) => {
     if (!h || typeof h !== 'object') throw new Error(`render hypothesis-board: hypotheses[${i}] must be an object`);
     if (!isFilled(h.id)) throw new Error(`render hypothesis-board: hypotheses[${i}] is missing "id"`);
+    oneLine(h.id, `hypotheses[${i}] id`);
     if (ids.includes(h.id)) throw new Error(`render hypothesis-board: duplicate hypothesis id "${h.id}" — an id is the ledger's stable reference and is never reused`);
     if (!isFilled(h.claim)) throw new Error(`render hypothesis-board: hypotheses[${i}] is missing "claim"`);
+    oneLine(h.claim, `hypotheses[${i}] claim`);
     if (!HYPOTHESIS_STATUSES.includes(h.status)) {
       throw new Error(`render hypothesis-board: hypotheses[${i}] carries unknown status "${h.status}" (expected ${HYPOTHESIS_STATUSES.join('/')})`);
     }
@@ -639,6 +655,8 @@ function hypothesisLedger(v) {
       if (!Array.isArray(r) || r.length !== 2 || !isFilled(r[0]) || !isFilled(r[1])) {
         throw new Error(`render hypothesis-board: hypotheses[${i}] row ${j + 1} must be a [label, value] pair of non-empty strings`);
       }
+      oneLine(r[0], `hypotheses[${i}] row ${j + 1} label`);
+      oneLine(r[1], `hypotheses[${i}] row ${j + 1} value`);
     });
     ids.push(h.id);
   });
@@ -668,6 +686,7 @@ function traceLines(v) {
   if (lines.length === 0 || lines.some((l) => !isFilled(l))) {
     throw new Error('render hypothesis-board: "trace_lines" must be a non-empty array of non-empty strings');
   }
+  lines.forEach((l, i) => oneLine(l, `trace_lines[${i}]`));
   return ['**Trace lines**', ...lines.map((l) => `- ${l}`)].join('\n');
 }
 
@@ -704,11 +723,11 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
       throw new Error('render hypothesis-board: "changed" must be a non-empty string — a pivot names the finding that invalidated the plan');
     }
     const body = [pivot ? `**Plan pivot — ${name}**` : `**Investigation plan — ${name}**`, ''];
-    if (pivot) body.push(`**What changed**: ${p.changed}`, '', '**Proposed direction**', '');
+    if (pivot) body.push(`**What changed**: ${oneLine(p.changed, '"changed"')}`, '', '**Proposed direction**', '');
     body.push(ledger.join('\n\n'), '', traceLines(p.trace_lines));
     if (!pivot) {
       if (!isFilled(p.depth_reasoning)) throw new Error('render hypothesis-board: "depth_reasoning" must be a non-empty string');
-      body.push('', `**Depth**: ${checkpointDepth(p)} — ${p.depth_reasoning}`);
+      body.push('', `**Depth**: ${checkpointDepth(p)} — ${oneLine(p.depth_reasoning, '"depth_reasoning"')}`);
     }
     return [
       section(pivot ? 'DISPLAY: plan pivot' : 'DISPLAY: investigation plan', 'emit verbatim as markdown', body.join('\n')),
@@ -734,7 +753,7 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
       ledger.join('\n\n'),
       '',
       `**Depth**: ${checkpointDepth(p)}`,
-      `**Remaining**: ${p.remaining}`,
+      `**Remaining**: ${oneLine(p.remaining, '"remaining"')}`,
     ];
     return [
       section('DISPLAY: resumed plan', 'emit verbatim as markdown', body.join('\n')),
@@ -763,7 +782,7 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
     '',
     ledger.join('\n\n'),
     '',
-    `**Next**: ${p.next}`,
+    `**Next**: ${oneLine(p.next, '"next"')}`,
   ];
   return [
     section('DISPLAY: hypothesis board', 'emit verbatim as markdown', body.join('\n')),

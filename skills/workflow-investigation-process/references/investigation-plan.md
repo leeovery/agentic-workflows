@@ -71,7 +71,7 @@ The plan was agreed in an earlier session — re-render the position from the le
 
 Open with one markdown sentence above the display — what we think is happening and where the remaining analysis will look, in product terms.
 
-Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — every hypothesis in the ledger at its current status, each carrying the evidence rows the ledger holds for it: `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "{status:[suspected|tracing|confirmed|ruled-out]}", "rows": [["{label}", "{value}"]]}], "depth": "{depth:[straight-through|check-ins]}", "remaining": "{unresolved hypotheses and open trace lines, or \"all hypotheses resolved\"}"}` — then fetch the board, emitting each section verbatim at its marked instruction:
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — every hypothesis in the ledger at its current status, each carrying the rows the ledger holds for it, labelled for what they carry and one line apiece: `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "{status:[suspected|tracing|confirmed|ruled-out]}", "rows": [["{label}", "{value}"]]}], "depth": "{depth:[straight-through|check-ins]}", "remaining": "{unresolved hypotheses and open trace lines, or \"all hypotheses resolved\"}"}` — then fetch the board, emitting each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant resume

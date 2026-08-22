@@ -1278,6 +1278,41 @@ describe('render hypothesis-board', () => {
     assert.throws(bad([{ ...confirmed, rows: [['Evidence']] }]), /row 1 must be a \[label, value\] pair/);
   });
 
+  it('refuses a field that runs to more than one line — it would break the markdown around it', () => {
+    const bad = (h) => () => render('check-in', { hypotheses: [h], resolved_now: ['H2'], next: 'x' });
+    assert.throws(bad({ ...confirmed, claim: 'Coordinate drift\norphans a hook' }), /hypotheses\[0\] claim runs to more than one line — split it across rows, or leave the detail in the investigation file/);
+    assert.throws(bad({ ...confirmed, rows: [['Evidence', 'line one\nline two']] }), /hypotheses\[0\] row 1 value runs to more than one line/);
+    assert.throws(bad({ ...confirmed, rows: [['Ev\nidence', 'x']] }), /hypotheses\[0\] row 1 label runs to more than one line/);
+    assert.throws(
+      () => render('check-in', { hypotheses: [confirmed], resolved_now: ['H2'], next: 'Trace the reaper\nthen the doctor' }),
+      /"next" runs to more than one line/,
+    );
+    assert.throws(
+      () => render('plan', { hypotheses: [confirmed], trace_lines: ['daemon/reaper.go\nhooks/key.go'], depth: 'check-ins', depth_reasoning: 'x' }),
+      /trace_lines\[0\] runs to more than one line/,
+    );
+  });
+
+  it('carries any ledger shape — free row labels, however many a hypothesis needs', () => {
+    const out = render('check-in', {
+      hypotheses: [
+        { id: 'A', claim: 'One line of basis is enough', status: 'ruled-out', rows: [['Ruled out by', 'The sampled runs disagree with it.']] },
+        {
+          id: 'B',
+          claim: 'This one earned six rows',
+          status: 'confirmed',
+          rows: [['Evidence', 'a'], ['Measured', 'b'], ['Reproduced', 'c'], ['Blast radius', 'd'], ['Why it hid', 'e'], ['Owner', 'f']],
+        },
+      ],
+      resolved_now: ['A', 'B'],
+      next: 'x',
+    });
+    assert.ok(out.includes('**A — One line of basis is enough** — *ruled-out*'));
+    assert.ok(out.includes('- **Ruled out by**: The sampled runs disagree with it.'));
+    assert.ok(out.includes('- **Why it hid**: e'), 'a label the surface has never seen renders like any other');
+    assert.ok(out.includes('(2 tracked, 1 confirmed, 1 ruled out, 0 open)'));
+  });
+
   it('validates each variant against what it must carry', () => {
     assert.throws(() => render('check-in', { hypotheses: [confirmed], resolved_now: [], next: 'x' }), /"resolved_now" must be a non-empty array/);
     assert.throws(() => render('check-in', { hypotheses: [confirmed], resolved_now: ['H9'], next: 'x' }), /"resolved_now" names "H9", which is not on the board/);
