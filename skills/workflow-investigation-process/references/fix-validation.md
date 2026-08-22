@@ -14,14 +14,10 @@ An independent agent pressure-tests the agreed fix direction — does it actuall
 > An independent agent can pressure-test the agreed direction — confirming it resolves the root cause and hunting for side effects before the investigation concludes.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the offer, emitting the section verbatim at its marked instruction:
 
-```
-· · · · · · · · · · · ·
-**`◆ Fix direction agreed. Run fix validation?`**
-
-**`y/yes`**  → Run fix validation
-**`s/skip`** → Skip to wrap-up
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render validation-gate {work_unit}.investigation.{topic} --variant fix
 ```
 
 **STOP.** Wait for user response.
@@ -83,42 +79,25 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_u
 
 Read the report at the row's content file.
 
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/validation.json` with the Write tool — the agent's own `STATUS` and `CONFIDENCE` verbatim, and on `risks_found` the key risks as one line each, stating what could break in behaviour terms with code refs as anchors rather than the lead. Do not dump the full output; the analysis path carries the reader there.
+
+`{"status": "{STATUS:[validated|risks_found]}", "confidence": "{CONFIDENCE:[high|medium|low]}", "items": ["{risk}"], "analysis_path": "{the row's content file path}"}`
+
+Fetch the report, emitting each section verbatim at its marked instruction:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render validation-report {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/validation.json --variant fix
+```
+
 #### If `validated`
 
-> *Output the next fenced block as a code block:*
-
-```
-Fix validation: Direction confirmed ({CONFIDENCE} confidence). No unaddressed risks.
-```
+The verdict is the whole response — there is nothing to decide.
 
 → Return to caller.
 
 #### If `risks_found`
 
-Extract the key risks from the validation file. Present a brief summary — do not dump the full output. Each risk line states what could break in behaviour terms — code refs as anchors, not the lead.
-
-> *Output the next fenced block as a code block:*
-
-```
-Fix validation: {CONFIDENCE} confidence. {RISKS_COUNT} risk(s) identified.
-
-  {risk 1}
-  {risk 2}
-
-Full analysis: {the row's content file path}
-```
-
-The risks live only in cache — each must land in the investigation file or be explicitly dismissed before the phase concludes over them:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ How should these risks be handled?`**
-
-**`a/address`** → Work through them and fold the outcome into the fix direction
-**`d/dismiss`** → Note them as considered-and-dismissed and proceed
-```
+The risks live only in cache — each must land in the investigation file or be explicitly dismissed before the phase concludes over them, which is what the gate above asks.
 
 **STOP.** Wait for user response.
 

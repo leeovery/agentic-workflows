@@ -210,6 +210,10 @@ Commands:
   render spec-completion-gate <wu.specification.topic> --variant assessment|signoff
   render carry-note-gate  <wu.research.topic> --file <payload.json>
   render hypothesis-board <wu.investigation.topic> --file <payload.json> --variant plan|resume|check-in|pivot
+  render validation-gate   <wu.investigation.topic> --variant root-cause|fix
+  render validation-report <wu.investigation.topic> --file <payload.json> --variant root-cause|fix
+  render project-skills   <wu.implementation.topic> --variant confirm|discovery|skipped [--file <payload.json>]
+  render linters          <wu.implementation.topic> --variant confirm|discovery|skipped [--file <payload.json>]
   render convergence-diagnostic <wu.phase.topic> --file <payload.json>
   render triage-announce  <wu.phase.topic>
   render triage-offer     <wu.phase.topic> --file <payload.json>

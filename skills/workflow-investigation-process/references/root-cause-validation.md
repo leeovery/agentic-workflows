@@ -14,14 +14,10 @@ An independent agent validates the root cause hypothesis by tracing the code fre
 > An independent agent can trace the code fresh to validate the root cause before the findings are presented for sign-off.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the offer, emitting the section verbatim at its marked instruction:
 
-```
-· · · · · · · · · · · ·
-**`◆ Root cause documented. Run validation?`**
-
-**`y/yes`**  → Run root cause validation
-**`s/skip`** → Skip straight to findings sign-off
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render validation-gate {work_unit}.investigation.{topic} --variant root-cause
 ```
 
 **STOP.** Wait for user response.
@@ -83,42 +79,25 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_u
 
 Read the report at the row's content file.
 
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/validation.json` with the Write tool — the agent's own `STATUS` and `CONFIDENCE` verbatim, and on `gaps_found` the key gaps as one line each, stating what could be wrong in behaviour terms with code refs as anchors rather than the lead. Do not dump the full output; the analysis path carries the reader there.
+
+`{"status": "{STATUS:[validated|gaps_found]}", "confidence": "{CONFIDENCE:[high|medium|low]}", "items": ["{gap}"], "analysis_path": "{the row's content file path}"}`
+
+Fetch the report, emitting each section verbatim at its marked instruction:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render validation-report {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/validation.json --variant root-cause
+```
+
 #### If `validated`
 
-> *Output the next fenced block as a code block:*
-
-```
-Validation: Root cause validated ({CONFIDENCE} confidence). No gaps found.
-```
+The verdict is the whole response — there is nothing to decide.
 
 → Return to caller.
 
 #### If `gaps_found`
 
-Extract the key gaps from the validation file. Present a brief summary — do not dump the full output. Each gap line states what could be wrong in behaviour terms — code refs as anchors, not the lead.
-
-> *Output the next fenced block as a code block:*
-
-```
-Validation: {CONFIDENCE} confidence. {GAPS_COUNT} gap(s) identified.
-
-  {gap 1}
-  {gap 2}
-
-Full analysis: {the row's content file path}
-```
-
-The gaps live only in cache — each must land in the investigation file or be explicitly dismissed before the phase concludes over them:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ How should these gaps be handled?`**
-
-**`a/address`** → Work through them and fold the answers into the investigation
-**`d/dismiss`** → Note them as considered-and-dismissed and proceed
-```
+The gaps live only in cache — each must land in the investigation file or be explicitly dismissed before the phase concludes over them, which is what the gate above asks.
 
 **STOP.** Wait for user response.
 

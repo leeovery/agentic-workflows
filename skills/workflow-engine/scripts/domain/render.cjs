@@ -794,6 +794,248 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
 }
 
 // ---------------------------------------------------------------------------
+// validation-report — the investigation's two independent-agent passes, which
+// differ only in what they hunt: root-cause validation looks for gaps in the
+// diagnosis, fix validation for risks in the agreed direction. One surface,
+// because a divergence between them would be drift rather than design. The
+// agent's own STATUS travels verbatim in the payload and is checked against
+// the findings, so a verdict can never disagree with the list beneath it.
+// A clean pass renders the verdict alone — nothing to decide, so no menu.
+// ---------------------------------------------------------------------------
+
+const VALIDATION_CONFIDENCE = ['high', 'medium', 'low'];
+const VALIDATION_VARIANTS = {
+  'root-cause': {
+    label: 'Root cause validation',
+    found: 'gaps_found',
+    noun: 'gap',
+    clean: 'validated ({confidence} confidence). No gaps found.',
+    question: 'How should these gaps be handled?',
+    address: 'Work through them and fold the answers into the investigation',
+    offer: 'Root cause documented. Run validation?',
+    run: 'Run root cause validation',
+    decline: 'Skip straight to findings sign-off',
+  },
+  fix: {
+    label: 'Fix validation',
+    found: 'risks_found',
+    noun: 'risk',
+    clean: 'direction confirmed ({confidence} confidence). No unaddressed risks.',
+    question: 'How should these risks be handled?',
+    address: 'Work through them and fold the outcome into the fix direction',
+    offer: 'Fix direction agreed. Run fix validation?',
+    run: 'Run fix validation',
+    decline: 'Skip to wrap-up',
+  },
+};
+
+/**
+ * The offer that opens each validation — payload-less: the ask is the same
+ * every time, and what it is offering comes from the variant.
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string}} args
+ * @returns {string}
+ */
+function validationGate(cwd, { dotpath, variant }) {
+  const v = VALIDATION_VARIANTS[/** @type {keyof typeof VALIDATION_VARIANTS} */ (variant)];
+  if (!v) {
+    throw new Error(`render validation-gate: --variant must be one of ${Object.keys(VALIDATION_VARIANTS).join('/')}`);
+  }
+  const { phase } = resolveAddress(cwd, dotpath, 'validation-gate');
+  if (phase !== 'investigation') {
+    throw new Error(`render validation-gate: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
+  }
+  return section(`MENU: ${variant} validation offer`, STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', v.run),
+    cmdOption('s', 'skip', v.decline),
+  ], { question: v.offer }));
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, variant?: string}} args
+ * @returns {string}
+ */
+function validationReport(cwd, { dotpath, file, variant }) {
+  const v = VALIDATION_VARIANTS[/** @type {keyof typeof VALIDATION_VARIANTS} */ (variant)];
+  if (!v) {
+    throw new Error(`render validation-report: --variant must be one of ${Object.keys(VALIDATION_VARIANTS).join('/')}`);
+  }
+  if (!file) throw new Error('render validation-report: --file <payload.json> is required');
+  const { phase } = resolveAddress(cwd, dotpath, 'validation-report');
+  if (phase !== 'investigation') {
+    throw new Error(`render validation-report: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'validation-report');
+  if (!VALIDATION_CONFIDENCE.includes(p.confidence)) {
+    throw new Error(`render validation-report: "confidence" must be one of ${VALIDATION_CONFIDENCE.join('/')}`);
+  }
+  if (p.status !== 'validated' && p.status !== v.found) {
+    throw new Error(`render validation-report: "status" must be "validated" or "${v.found}" for the ${variant} variant, got "${p.status}"`);
+  }
+  const items = p.items === undefined ? [] : stringLines(p.items, 'validation-report', 'items');
+  items.forEach((it, i) => {
+    if (!isFilled(it)) throw new Error(`render validation-report: items[${i}] must be a non-empty string`);
+  });
+
+  if (p.status === 'validated') {
+    if (items.length) {
+      throw new Error(`render validation-report: "status" is "validated" but ${items.length} ${v.noun}(s) are listed — the verdict and the findings must agree`);
+    }
+    return section(
+      `DISPLAY: ${variant} validation verdict`,
+      CONTINUE_MARKDOWN_INSTRUCTION,
+      `**${v.label}** — ${v.clean.replace('{confidence}', p.confidence)}`,
+    );
+  }
+
+  if (!items.length) {
+    throw new Error(`render validation-report: "status" is "${v.found}" but no ${v.noun}s are listed — the verdict and the findings must agree`);
+  }
+  if (!isFilled(p.analysis_path)) {
+    throw new Error('render validation-report: "analysis_path" must be a non-empty string — the full analysis stays in cache and the display points at it');
+  }
+  const body = worklist({
+    heading: { label: `${v.label} · ${p.confidence} confidence`, noun: v.noun },
+    items: items.map((title) => ({ title })),
+  });
+  return [
+    section(`DISPLAY: ${variant} validation findings`, 'emit verbatim as markdown', `${body}\n\n*Full analysis: \`${p.analysis_path}\`*`),
+    section(`MENU: ${variant} validation gate`, STOP_FOR_RESPONSE, menu('', [
+      cmdOption('a', 'address', v.address),
+      cmdOption('d', 'dismiss', 'Note them as considered-and-dismissed and proceed'),
+    ], { question: v.question })),
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// project-skills / linters — implementation's two setup discoveries. Each is
+// asked twice: confirm a set already stored, or approve one just discovered.
+// Same list shape both times, so the difference is the menu and, for a fresh
+// linter discovery, the installed-state tag and the install recommendations.
+// ---------------------------------------------------------------------------
+
+const SETUP_VARIANTS = ['confirm', 'discovery', 'skipped'];
+
+/**
+ * Validate a `{name, detail}` list and render it as the batch worklist.
+ * `tagOf` answers a row's short state term, or null where none applies.
+ * @param {unknown} v @param {string} surface @param {string} field @param {string} label @param {string} noun
+ * @param {(row: any) => string|null} [tagOf]
+ * @returns {string}
+ */
+function setupList(v, surface, field, label, noun, tagOf) {
+  if (!Array.isArray(v) || v.length === 0) {
+    throw new Error(`render ${surface}: "${field}" must be a non-empty array of {name, detail}`);
+  }
+  const items = v.map((row, i) => {
+    if (!row || typeof row !== 'object') throw new Error(`render ${surface}: ${field}[${i}] must be an object`);
+    if (!isFilled(row.name)) throw new Error(`render ${surface}: ${field}[${i}] is missing "name"`);
+    if (!isFilled(row.detail)) throw new Error(`render ${surface}: ${field}[${i}] is missing "detail"`);
+    const tag = tagOf ? tagOf(row) : null;
+    return tag === null ? { title: `${row.name} — ${row.detail}` } : { title: `${row.name} — ${row.detail}`, tag };
+  });
+  return worklist({ heading: { label, noun }, items });
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, variant?: string}} args
+ * @returns {string}
+ */
+function projectSkills(cwd, { dotpath, file, variant }) {
+  if (!variant || !SETUP_VARIANTS.includes(variant)) {
+    throw new Error(`render project-skills: --variant must be one of ${SETUP_VARIANTS.join('/')}`);
+  }
+  const { phase } = resolveAddress(cwd, dotpath, 'project-skills');
+  if (phase !== 'implementation') {
+    throw new Error(`render project-skills: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
+  }
+  if (variant === 'skipped') {
+    return [
+      section('DISPLAY: project skills skipped', 'emit verbatim as markdown', 'Previous implementations used no project skills.'),
+      section('MENU: project skills skipped gate', STOP_FOR_RESPONSE, menu('', [
+        cmdOption('y', 'yes', 'Skip and proceed'),
+        cmdOption('n', 'no', 'Analyse for project skills'),
+      ], { question: 'Skip project skills again?' })),
+    ].join('\n');
+  }
+  if (!file) throw new Error('render project-skills: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'project-skills');
+  const body = setupList(p.skills, 'project-skills', 'skills', 'Project skills', 'skill');
+  const confirm = variant === 'confirm';
+  return [
+    section(`DISPLAY: project skills ${variant}`, 'emit verbatim as markdown', body),
+    section(`MENU: project skills ${variant} gate`, STOP_FOR_RESPONSE, confirm
+      ? menu('', [
+        cmdOption('y', 'yes', 'Use and proceed'),
+        cmdOption('n', 'no', 'Re-discover and choose skills'),
+      ], { question: 'Use these project skills?' })
+      : menu('', [
+        cmdOption('a', 'all', 'Use all listed skills'),
+        cmdOption('n', 'none', 'Skip project skills'),
+        promptOption('List the ones you want', 'Name them — e.g. "golang-pro, react-patterns"'),
+      ], { question: 'Which project skills should be used?' })),
+  ].join('\n');
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, variant?: string}} args
+ * @returns {string}
+ */
+function linters(cwd, { dotpath, file, variant }) {
+  if (!variant || !SETUP_VARIANTS.includes(variant)) {
+    throw new Error(`render linters: --variant must be one of ${SETUP_VARIANTS.join('/')}`);
+  }
+  const { phase } = resolveAddress(cwd, dotpath, 'linters');
+  if (phase !== 'implementation') {
+    throw new Error(`render linters: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
+  }
+  if (variant === 'skipped') {
+    return [
+      section('DISPLAY: linters skipped', 'emit verbatim as markdown', 'Previous implementations skipped linters.'),
+      section('MENU: linters skipped gate', STOP_FOR_RESPONSE, menu('', [
+        cmdOption('y', 'yes', 'Skip and proceed'),
+        cmdOption('n', 'no', 'Run full linter discovery'),
+      ], { question: 'Skip linters again?' })),
+    ].join('\n');
+  }
+  if (!file) throw new Error('render linters: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'linters');
+  const discovery = variant === 'discovery';
+  // A fresh discovery reports what is actually on the machine; a stored set
+  // was already approved, so its rows carry no installed state to re-assert.
+  const body = setupList(p.linters, 'linters', 'linters', discovery ? 'Linter discovery' : 'Linters', 'linter',
+    discovery
+      ? (row) => {
+        if (typeof row.installed !== 'boolean') {
+          throw new Error('render linters: every row of a discovery needs "installed" (true or false)');
+        }
+        return row.installed ? 'installed' : 'missing';
+      }
+      : undefined);
+  const parts = [body];
+  if (discovery && p.recommendations !== undefined) {
+    if (!isFilled(p.recommendations)) throw new Error('render linters: "recommendations" must be a non-empty string when present');
+    parts.push('', `**Recommended**: ${p.recommendations}`);
+  }
+  return [
+    section(`DISPLAY: linters ${variant}`, 'emit verbatim as markdown', parts.join('\n')),
+    section(`MENU: linters ${variant} gate`, STOP_FOR_RESPONSE, discovery
+      ? menu('', [
+        cmdOption('y', 'yes', 'Approve and proceed'),
+        cmdOption('c', 'change', 'Modify the linter list'),
+        cmdOption('s', 'skip', 'Skip linter setup (no linting during TDD)'),
+      ], { question: 'Approve these linters?' })
+      : menu('', [
+        cmdOption('y', 'yes', 'Use and proceed'),
+        cmdOption('n', 'no', 'Re-discover linters'),
+      ], { question: 'Use these linters?' })),
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // incoherence-gate — the Resolve Source Incoherence raises (spec construction
 // and the review findings walk). Three variants; the stops here override the
 // calling flow's auto mode by design, so no --gate flag exists.
@@ -2747,6 +2989,10 @@ const SURFACES = {
   'convergence-diagnostic': convergenceDiagnostic,
   'carry-note-gate': carryNoteGate,
   'hypothesis-board': hypothesisBoard,
+  'validation-gate': validationGate,
+  'validation-report': validationReport,
+  'project-skills': projectSkills,
+  'linters': linters,
   'triage-announce': triageAnnounce,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,

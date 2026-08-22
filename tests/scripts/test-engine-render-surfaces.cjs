@@ -1329,6 +1329,161 @@ describe('render hypothesis-board', () => {
   });
 });
 
+describe('render validation-gate / validation-report', () => {
+  let dir;
+  const inv = 'hooks.investigation.crash';
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  const report = (variant, payload) => renderSurface(dir, 'validation-report', {
+    dotpath: inv, variant, file: writePayload(dir, `v-${variant}.json`, payload),
+  });
+
+  it('offers each validation in its own words, payload-less', () => {
+    const rc = renderSurface(dir, 'validation-gate', { dotpath: inv, variant: 'root-cause' });
+    assert.ok(rc.includes('=== MENU: root-cause validation offer'));
+    assert.ok(rc.includes('**`◆ Root cause documented. Run validation?`**'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Run root cause validation/.test(rc));
+    assert.ok(/\*\*`s\/skip`\*\* +→ Skip straight to findings sign-off/.test(rc));
+    const fx = renderSurface(dir, 'validation-gate', { dotpath: inv, variant: 'fix' });
+    assert.ok(fx.includes('**`◆ Fix direction agreed. Run fix validation?`**'));
+    assert.ok(/\*\*`s\/skip`\*\* +→ Skip to wrap-up/.test(fx));
+    assert.throws(() => renderSurface(dir, 'validation-gate', { dotpath: inv }), /--variant must be one of root-cause\/fix/);
+  });
+
+  it('a clean pass is the verdict alone — nothing to decide, so no menu', () => {
+    const out = report('root-cause', { status: 'validated', confidence: 'high' });
+    assert.ok(out.includes('**Root cause validation** — validated (high confidence). No gaps found.'));
+    assert.ok(!out.includes('=== MENU'), 'a validated verdict asks nothing');
+    const fx = report('fix', { status: 'validated', confidence: 'medium' });
+    assert.ok(fx.includes('**Fix validation** — direction confirmed (medium confidence). No unaddressed risks.'));
+  });
+
+  it('findings list under the confidence, with the analysis path and the handling gate', () => {
+    const long = 'The trace stops at the tax context, but nothing checks whether the billing address is reliably present on a digital-only order.';
+    const out = report('root-cause', {
+      status: 'gaps_found', confidence: 'medium', items: [long, 'Empty-string addresses were never exercised.'],
+      analysis_path: '.workflows/.cache/hooks/investigation/crash/agents/003.md',
+    });
+    assert.ok(out.includes('**Root cause validation · medium confidence** — 2 gaps'));
+    assert.ok(out.includes('1\\. The trace stops at the tax context'), 'a batch list numbers its rows and never walks them');
+    assert.ok(!out.includes('○ 1.'), 'nothing here is walked, so no state glyph');
+    assert.ok(out.includes('*Full analysis: `.workflows/.cache/hooks/investigation/crash/agents/003.md`*'));
+    assert.ok(out.includes('**`◆ How should these gaps be handled?`**'));
+    assert.ok(unwrap(out).includes('**`a/address`** → Work through them and fold the answers into the investigation'));
+    const fx = report('fix', { status: 'risks_found', confidence: 'low', items: ['x'], analysis_path: 'p.md' });
+    assert.ok(fx.includes('**Fix validation · low confidence** — 1 risk'));
+    assert.ok(unwrap(fx).includes('**`a/address`** → Work through them and fold the outcome into the fix direction'));
+  });
+
+  it('refuses a verdict that disagrees with its own findings', () => {
+    assert.throws(
+      () => report('root-cause', { status: 'validated', confidence: 'high', items: ['a gap'] }),
+      /"status" is "validated" but 1 gap\(s\) are listed — the verdict and the findings must agree/,
+    );
+    assert.throws(
+      () => report('root-cause', { status: 'gaps_found', confidence: 'high', items: [] }),
+      /"status" is "gaps_found" but no gaps are listed/,
+    );
+    assert.throws(
+      () => report('root-cause', { status: 'risks_found', confidence: 'high', items: ['x'], analysis_path: 'p' }),
+      /"status" must be "validated" or "gaps_found" for the root-cause variant/,
+    );
+    assert.throws(
+      () => report('fix', { status: 'risks_found', confidence: 'certain', items: ['x'], analysis_path: 'p' }),
+      /"confidence" must be one of high\/medium\/low/,
+    );
+    assert.throws(
+      () => report('fix', { status: 'risks_found', confidence: 'low', items: ['x'] }),
+      /"analysis_path" must be a non-empty string/,
+    );
+  });
+
+  it('holds the address to the investigation phase', () => {
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { discussion: { items: { crash: { status: 'in-progress' } } } } });
+    assert.throws(
+      () => renderSurface(dir, 'validation-gate', { dotpath: 'hooks.discussion.crash', variant: 'fix' }),
+      /address must be <work_unit>\.investigation\.<topic>, got phase "discussion"/,
+    );
+  });
+});
+
+describe('render project-skills / linters', () => {
+  let dir;
+  const imp = 'hooks.implementation.crash';
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { implementation: { items: { crash: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  const render = (surface, variant, payload) => renderSurface(dir, surface, {
+    dotpath: imp, variant, file: payload && writePayload(dir, `${surface}-${variant}.json`, payload),
+  });
+
+  it('project skills: a stored set is confirmed, a fresh scan is chosen from', () => {
+    const c = render('project-skills', 'confirm', { skills: [{ name: 'laravel-conventions', detail: '.claude/skills/laravel-conventions' }] });
+    assert.ok(c.includes('**Project skills** — 1 skill'));
+    assert.ok(c.includes('1\\. laravel-conventions — .claude/skills/laravel-conventions'));
+    assert.ok(c.includes('**`◆ Use these project skills?`**'));
+    const d = render('project-skills', 'discovery', { skills: [{ name: 'a', detail: 'x' }, { name: 'b', detail: 'y' }] });
+    assert.ok(d.includes('**Project skills** — 2 skills'));
+    assert.ok(d.includes('**`◆ Which project skills should be used?`**'));
+    assert.ok(unwrap(d).includes('**List the ones you want** → Name them — e.g. "golang-pro, react-patterns"'));
+  });
+
+  it('linters: a discovery carries installed state as the row tag and its recommendations beneath', () => {
+    const out = render('linters', 'discovery', {
+      linters: [{ name: 'pint', detail: 'vendor/bin/pint', installed: true }, { name: 'phpstan', detail: 'vendor/bin/phpstan', installed: false }],
+      recommendations: 'phpstan is not installed — `composer require --dev phpstan/phpstan`.',
+    });
+    assert.ok(out.includes('**Linter discovery** — 2 linters'));
+    assert.ok(out.includes('1\\. pint — vendor/bin/pint `[installed]`'));
+    assert.ok(out.includes('2\\. phpstan — vendor/bin/phpstan `[missing]`'));
+    assert.ok(out.includes('**Recommended**: phpstan is not installed'));
+    assert.ok(out.includes('**`◆ Approve these linters?`**'));
+    assert.ok(/\*\*`s\/skip`\*\* +→ Skip linter setup \(no linting during TDD\)/.test(out));
+  });
+
+  it('linters: a stored set re-asserts no installed state and carries no recommendations', () => {
+    const out = render('linters', 'confirm', { linters: [{ name: 'pint', detail: 'vendor/bin/pint' }] });
+    assert.ok(out.includes('**Linters** — 1 linter'));
+    assert.ok(!out.includes('`[installed]`'), 'an approved set was already checked');
+    assert.ok(out.includes('**`◆ Use these linters?`**'));
+    assert.throws(
+      () => render('linters', 'discovery', { linters: [{ name: 'pint', detail: 'vendor/bin/pint' }] }),
+      /every row of a discovery needs "installed"/,
+    );
+  });
+
+  it('the skipped variants ask again without a payload', () => {
+    const s = render('project-skills', 'skipped');
+    assert.ok(s.includes('Previous implementations used no project skills.'));
+    assert.ok(s.includes('**`◆ Skip project skills again?`**'));
+    assert.ok(/\*\*`n\/no`\*\* +→ Analyse for project skills/.test(s));
+    const l = render('linters', 'skipped');
+    assert.ok(l.includes('Previous implementations skipped linters.'));
+    assert.ok(l.includes('**`◆ Skip linters again?`**'));
+    assert.ok(/\*\*`n\/no`\*\* +→ Run full linter discovery/.test(l));
+  });
+
+  it('validates the variant, the payload and the address', () => {
+    assert.throws(() => renderSurface(dir, 'linters', { dotpath: imp }), /--variant must be one of confirm\/discovery\/skipped/);
+    assert.throws(() => renderSurface(dir, 'linters', { dotpath: imp, variant: 'confirm' }), /--file <payload\.json> is required/);
+    assert.throws(() => render('linters', 'confirm', { linters: [] }), /"linters" must be a non-empty array/);
+    assert.throws(() => render('project-skills', 'confirm', { skills: [{ name: 'a' }] }), /skills\[0\] is missing "detail"/);
+    assert.throws(() => render('project-skills', 'confirm', { skills: [{ detail: 'a' }] }), /skills\[0\] is missing "name"/);
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { planning: { items: { crash: { status: 'in-progress' } } } } });
+    assert.throws(
+      () => renderSurface(dir, 'project-skills', { dotpath: 'hooks.planning.crash', variant: 'skipped' }),
+      /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/,
+    );
+  });
+});
+
 describe('render finding', () => {
   let dir;
   const base = {
@@ -2231,7 +2386,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
