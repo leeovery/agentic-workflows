@@ -31,12 +31,11 @@ The prose should have taken this path:
 7. the flush re-enters, finds `items` and `pulled` both empty, deletes
    the queue file, confirms in one line, and the session resumes — no
    further screen, no conclusion gate
-8. the dispatch check rides those commits as the session loop
-   prescribes, and on this topic every condition holds — the calls
-   queue is now drained, no review has ever run, so the first review
-   is free — so a background review dispatches and is announced in one
-   line. The walk does not wait on it: nothing is scanned, read, or
-   surfaced from it before the turn ends
+8. the dispatch check rides each of those commits as the session loop
+   prescribes, and stays quiet at every one: the queue still holds the
+   calls not yet landed when each commit is made, so its box is
+   unchecked and no review dispatches. The drain that follows is not a
+   commit, so nothing re-fires the check before the turn ends
 
 Presentation claims — deliberate display claims; the flush's shape is
 the behaviour under test:
@@ -54,10 +53,9 @@ the behaviour under test:
 
 Further claims:
 
-- the calls queue and the agent store stay separate: the flush itself
-  reads and writes neither agent rows nor findings, and the only agent
-  verb the walk runs is the dispatch its commits arm — no ack, no
-  surface, no incorporate, since nothing has come back yet
+- no agent verbs run beyond the scan: no dispatch, no ack, no surface,
+  no incorporate — the queue is not the agent store, and a flush arms
+  no review
 - each documented call lands as a new section whose Decision block
   opens with the derivation marker naming its determinant; no finding
   id appears anywhere (these calls came from the conversation, not a
@@ -69,7 +67,6 @@ Further claims:
 EXPECTED WORLD — the fixture plus: the Discussion Map carries two new
 subtopics, both `decided`; the discussion file carries a new section
 per call, each Decision opening with the **Settled by derivation**
-marker; each call is committed on its own;
+marker; each call is committed on its own; and
 `.workflows/.cache/pay/discussion/pay/calls-queue.json` no longer
-exists; and the agent store holds one `review` row in flight with the
-stub's report on disk.
+exists. The agent store is untouched.
