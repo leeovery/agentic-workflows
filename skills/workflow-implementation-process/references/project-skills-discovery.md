@@ -39,20 +39,10 @@ Set `source` = `project`.
 
 **If `true` and project default is empty:**
 
-> *Output the next fenced block as a code block:*
+Fetch the gate, emitting each section verbatim at its marked instruction:
 
-```
-Previous implementations used no project skills.
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Skip project skills again?`**
-
-**`y/yes`** → Skip and proceed
-**`n/no`**  → Analyse for project skills
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --variant skipped
 ```
 
 **STOP.** Wait for user response.
@@ -69,25 +59,10 @@ Previous implementations used no project skills.
 
 ## B. Confirm Skills
 
-List the skills returned by the `source` level manifest query.
+Write the skills returned by the `source` level manifest query to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — `{"skills": [{"name": "{skill-name}", "detail": "{path}"}]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
 
-> *Output the next fenced block as a code block:*
-
-```
-Project skills found:
-
-  • {skill-name} — {path}
-  • ...
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Use these project skills?`**
-
-**`y/yes`** → Use and proceed
-**`n/no`**  → Re-discover and choose skills
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json --variant confirm
 ```
 
 **STOP.** Wait for user response.
@@ -140,27 +115,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defa
 
 #### If the scan finds project skills
 
-Present findings:
+Write the findings to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — one entry per skill, its `detail` a one-line description of what the skill governs: `{"skills": [{"name": "{skill-name}", "detail": "{what it governs}"}]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
 
-> *Output the next fenced block as a code block:*
-
-```
-Found these project skills that may be relevant to implementation:
-
-  • {skill-name} — {brief description}
-  • {skill-name} — {brief description}
-  • ...
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Which project skills should be used?`**
-
-**`a/all`**                  → Use all listed skills
-**`n/none`**                 → Skip project skills
-**List the ones you want** → e.g. "golang-pro, react-patterns"
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json --variant discovery
 ```
 
 **STOP.** Wait for user response.

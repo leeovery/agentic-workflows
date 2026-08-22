@@ -384,3 +384,20 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   The ledger gains permanent ids (`H1`, `H2`, …) — the check-in names
   what resolved, so the reference has to survive a session. Ratchet pins
   shrink 3→1 and 2→0.
+
+- 2026-08-22 — The rest of the bugfix journey's judgment displays (7d).
+  A scan for the board's failure shape — a judgment placeholder sitting at
+  an indent inside a code fence — found six on the bugfix path. Four
+  convert here. `validation-report --variant root-cause|fix` folds the two
+  independent-agent passes, which were byte-level twins differing only in
+  gaps/risks vocabulary; the agent's own STATUS rides in the payload and is
+  checked against the findings, so a verdict cannot disagree with the list
+  beneath it, and a clean pass renders the verdict alone with no gate.
+  `validation-gate` carries their offers. `project-skills` and `linters`
+  take implementation's two setup discoveries with the same
+  confirm|discovery|skipped shape; a linter discovery's installed state
+  becomes the row's tag. Four more pins to zero. Left standing, both
+  deliberately: `fix-exploration`'s "format naturally" fence, which needs
+  a presentation decided rather than transcribed, and `opener-pattern`'s
+  conversational sketch, where the question is whether an ask block should
+  be fenced at all — CONVENTIONS says yes, and the register says no.

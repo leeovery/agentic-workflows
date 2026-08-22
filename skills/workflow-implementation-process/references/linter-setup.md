@@ -42,20 +42,10 @@ Set `source` = `project`.
 
 **If output is `[]` (previously skipped):**
 
-> *Output the next fenced block as a code block:*
+Fetch the gate, emitting each section verbatim at its marked instruction:
 
-```
-Previous implementations skipped linters.
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Skip linters again?`**
-
-**`y/yes`** → Skip and proceed
-**`n/no`**  → Run full linter discovery
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --variant skipped
 ```
 
 **STOP.** Wait for user response.
@@ -72,25 +62,10 @@ Previous implementations skipped linters.
 
 ## B. Confirm Linters
 
-List the linters returned by the `source` level manifest query.
+Write the linters returned by the `source` level manifest query to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `{"linters": [{"name": "{name}", "detail": "{command}"}]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
 
-> *Output the next fenced block as a code block:*
-
-```
-Linters found:
-
-  • {name} — {command}
-  • ...
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Use these linters?`**
-
-**`y/yes`** → Use and proceed
-**`n/no`**  → Re-discover linters
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/linters.json --variant confirm
 ```
 
 **STOP.** Wait for user response.
@@ -129,28 +104,10 @@ Analyse the project to determine which linters are appropriate:
 2. **Check installed tooling** — verify availability of candidate linters via the command line (e.g., `--version`). Check common install locations including package managers (brew, npm global, pip, cargo, etc.).
 3. **Recommend a linter set** — based on project analysis and available tooling. Include install commands for any recommended tools that aren't yet installed.
 
-Present discovery findings to the user:
+Write the findings to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `installed` is what the check above actually found, and `recommendations` (omit it when there are none) carries any install commands as one line: `{"linters": [{"name": "{tool}", "detail": "{command}", "installed": true|false}], "recommendations": "{suggested tools with their install commands}"}` — then fetch the gate, emitting each section verbatim at its marked instruction:
 
-> *Output the next fenced block as a code block:*
-
-```
-Linter discovery:
-
-  • {tool} — {command} (installed / not installed)
-  • ...
-
-Recommendations: {any suggested tools with install commands}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Approve these linters?`**
-
-**`y/yes`**    → Approve and proceed
-**`c/change`** → Modify the linter list
-**`s/skip`**   → Skip linter setup (no linting during TDD)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/linters.json --variant discovery
 ```
 
 **STOP.** Wait for user response.
