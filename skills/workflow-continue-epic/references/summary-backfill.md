@@ -86,7 +86,7 @@ No manifest writes, no commit.
 
 ## C. Edit Loop
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Which line would you like to edit? Enter the number, or `done` to accept the current set.
@@ -100,7 +100,7 @@ Which line would you like to edit? Enter the number, or `done` to accept the cur
 
 #### If a number
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 New summary for "{item.name:(titlecase)}":

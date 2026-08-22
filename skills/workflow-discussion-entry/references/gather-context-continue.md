@@ -18,7 +18,7 @@
 
 Read the existing discussion document first, then ask:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Continuing: {topic}

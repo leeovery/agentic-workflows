@@ -22,7 +22,7 @@ Ask each question below **one at a time**. After each, stop and wait for the use
 
 ## A. Core Problem
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 New discussion: {topic}
@@ -40,7 +40,7 @@ Remember the response — it defines the central problem or decision that the di
 
 ## B. Constraints
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Any constraints or context I should know about?
@@ -56,7 +56,7 @@ Remember the response — these constraints will bound the solution space during
 
 ## C. Codebase
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Are there specific files in the codebase I should review first?

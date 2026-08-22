@@ -35,11 +35,10 @@ Execute each instruction and verify it succeeds before proceeding.
 
 #### If setup document is missing
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-No environment setup document found. Are there any setup instructions
-I should follow before implementing?
+No environment setup document found. Are there any setup instructions I should follow before implementing?
 ```
 
 **STOP.** Wait for user response.

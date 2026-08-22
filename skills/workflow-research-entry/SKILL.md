@@ -45,7 +45,7 @@ Resolve filename:
 
 #### If no `topic`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 What topic would you like to research?
