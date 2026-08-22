@@ -60,11 +60,10 @@ Check whether `proposed_name` matches any `name` in `discovery_map` (case-sensit
 
 Set `result = "collision-active"` and render the rejection:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-"{proposed_name}" is already on the map. Pick a different name
-or use edit-summary / change-routing on the existing item.
+"{proposed_name}" is already on the map. Pick a different name or use edit-summary / change-routing on the existing item.
 ```
 
 → Return to caller.

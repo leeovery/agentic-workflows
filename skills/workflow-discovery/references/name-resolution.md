@@ -42,13 +42,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_uni
 
 A name collision is most often the user re-entering work that already exists — signpost the resume path rather than silently re-prompting.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 A work unit named "{work_unit}" already exists.
 
-To pick that work back up, run /workflow-start and select it. Or
-choose a different name to start fresh.
+To pick that work back up, run /workflow-start and select it. Or choose a different name to start fresh.
 ```
 
 Fetch the gate and emit its section verbatim per its marker:
