@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.4] - 2026-08-22
+
+✨ Added
+- Investigation's hypothesis board, fix-direction comparison, validation reports, and implementation's project-skills/linter setup are now rendered by the engine at any pane width, instead of hand-wrapped in fixed-width fences.
+- Background agent returns are announced with an explicit engine-rendered gate instead of hand-authored menu text.
+
+🔧 Changed
+- Investigation hypotheses now carry permanent ids (H1, H2, …) so a resolved check-in can name exactly which claims it settled.
+- Conversational opener questions across work types now render as reflowable markdown instead of fixed-width fences.
+- Discussion and review-findings write-ups land as one edit and one commit per call, never batched together.
+
 ## [0.7.3] - 2026-08-20
 
 ✨ Added
