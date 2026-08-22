@@ -18,7 +18,7 @@ A bounded first pass — enough to form hypotheses, never the investigation itse
 - Locate the entry points implicated by the symptoms and skim the surrounding code
 - Check what the contextual query surfaced — a prior investigation may already point at the mechanism
 
-Form the initial hypotheses. Each needs a one-line basis (what points at it), not proof. If the seed material already pinpoints the cause, say so — a single near-confirmed hypothesis is a valid plan.
+Form the initial hypotheses. Each needs a one-line basis (what points at it), not proof, and an id (`H1`, `H2`, …) — the ledger's stable reference, assigned here and never reused. If the seed material already pinpoints the cause, say so — a single near-confirmed hypothesis is a valid plan.
 
 Deep tracing belongs to code analysis. If recon starts confirming rather than forming, stop — that work belongs after the plan is agreed.
 
@@ -35,33 +35,12 @@ Choose the checkpoint depth to propose:
 
 The depth is a suggestion — the user decides.
 
-Open with one markdown sentence above the block — what we think is happening and where the analysis will look, in product terms.
+Open with one markdown sentence above the display — what we think is happening and where the analysis will look, in product terms.
 
-> *Output the next fenced block as a code block:*
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "suspected", "rows": [["Basis", "{one-line basis}"]]}], "trace_lines": ["{code path or area to trace, in intended order}"], "depth": "{depth:[straight-through|check-ins]}", "depth_reasoning": "{one-line reasoning}"}` — then fetch the plan, emitting each section verbatim at its marked instruction:
 
-```
-Investigation Plan: {work_unit}
-
-Hypotheses:
-  1. {hypothesis} [suspected]
-     {one-line basis}
-
-  2. ...
-
-Trace lines:
-  • {code path or area to trace, in intended order}
-
-Depth: {depth:[straight-through|check-ins]} — {one-line reasoning}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Does this plan look right?`**
-
-**`y/yes`**  → Proceed with the analysis as planned
-**Adjust** → Tell me what to change: hypotheses, trace lines, or depth
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant plan
 ```
 
 **STOP.** Wait for user response.
@@ -80,7 +59,7 @@ Incorporate the changes — add or drop hypotheses, re-order trace lines, switch
 
 ## C. Record
 
-Write the agreed plan into the Hypotheses section of the investigation file: the checkpoint depth, then each hypothesis with status `[suspected]` and its basis. Commit (`investigation({work_unit}): investigation plan`).
+Write the agreed plan into the Hypotheses section of the investigation file: the checkpoint depth, then each hypothesis under its id with status `[suspected]` and its basis. Commit (`investigation({work_unit}): investigation plan`).
 
 → Return to caller.
 
@@ -90,30 +69,12 @@ Write the agreed plan into the Hypotheses section of the investigation file: the
 
 The plan was agreed in an earlier session — re-render the position from the ledger; never re-run recon over settled state.
 
-Open with one markdown sentence above the block — what we think is happening and where the remaining analysis will look, in product terms.
+Open with one markdown sentence above the display — what we think is happening and where the remaining analysis will look, in product terms.
 
-> *Output the next fenced block as a code block:*
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — every hypothesis in the ledger at its current status, each carrying the rows the ledger holds for it, labelled for what they carry and one line apiece: `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "{status:[suspected|tracing|confirmed|ruled-out]}", "rows": [["{label}", "{value}"]]}], "depth": "{depth:[straight-through|check-ins]}", "remaining": "{unresolved hypotheses and open trace lines, or \"all hypotheses resolved\"}"}` — then fetch the board, emitting each section verbatim at its marked instruction:
 
-```
-Investigation Plan: {work_unit} (resumed)
-
-Board:
-  • {hypothesis} [{status}]
-  • ...
-
-Depth: {depth:[straight-through|check-ins]}
-
-Remaining: {unresolved hypotheses and open trace lines, or "all hypotheses resolved"}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Picking up where we left off — still good?`**
-
-**`y/yes`**  → Continue as agreed
-**Revise** → Tell me what to change: hypotheses, trace lines, or depth
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant resume
 ```
 
 **STOP.** Wait for user response.

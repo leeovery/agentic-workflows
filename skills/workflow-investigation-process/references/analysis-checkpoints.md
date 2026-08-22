@@ -11,7 +11,7 @@ The collaboration protocol that governs code analysis. The agreed investigation 
 The Hypotheses section of the investigation file is live state, not a record of first guesses. Statuses: `suspected`, `tracing`, `confirmed`, `ruled-out`.
 
 - Update a hypothesis the moment its status changes, with the evidence that changed it, and commit alongside the finding
-- New suspects discovered mid-trace join the ledger as `[suspected]`
+- New suspects discovered mid-trace join the ledger as `[suspected]` under the next free id — ids are never reused, so a reference made in an earlier session still names the same claim
 - After compaction the ledger is how the analysis position is recovered — keep it current enough that a fresh read shows exactly where the investigation stands
 
 ## Progress Notes
@@ -20,29 +20,12 @@ When a hypothesis flips or a significant finding lands, note it in a line or two
 
 ## Check-in Gate
 
-Only at `check-ins` depth. When a hypothesis resolves — `confirmed` or `ruled-out` — pause and let the user steer. Open with one markdown sentence above the board — what just got established and what it means, in product terms:
+Only at `check-ins` depth. When a hypothesis resolves — `confirmed` or `ruled-out` — pause and let the user steer. Open with one markdown sentence above the board — what just got established and what it means, in product terms.
 
-> *Output the next fenced block as a code block:*
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — every hypothesis in the ledger at its current status, `resolved_now` naming the ones that resolved at this check-in, and one row per thing the ledger holds about it. Row labels are yours to choose and name what the row carries (`Evidence`, `Measured`, `Gap`, `Ruled out by`); a hypothesis with more to say takes more rows, each one line. Detail too long for a row stays in the investigation file — the board cites it, never reproduces it: `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "{status:[suspected|tracing|confirmed|ruled-out]}", "rows": [["{label}", "{value}"]]}], "resolved_now": ["{id}"], "next": "{what will be traced next}"}` — then fetch the board, emitting each section verbatim at its marked instruction:
 
-```
-Hypothesis resolved: {hypothesis} [{status:[confirmed|ruled-out]}]
-  {one-line evidence}
-
-Board:
-  • {hypothesis} [{status}]
-  • ...
-
-Next: {what will be traced next}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Continue as planned?`**
-
-**`y/yes`** → Continue with the next trace line
-**Steer** → Tell me what to look at instead, or what this changes
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant check-in
 ```
 
 **STOP.** Wait for user response.
@@ -53,28 +36,12 @@ Next: {what will be traced next}
 
 ## Pivot Gate
 
-Any depth. When a finding invalidates the agreed plan — the root cause is clearly elsewhere, a new dominant suspect emerges, the remaining trace lines are moot — never silently re-plan. Update the ledger, then open with one markdown sentence above the block — what changed, in product terms:
+Any depth. When a finding invalidates the agreed plan — the root cause is clearly elsewhere, a new dominant suspect emerges, the remaining trace lines are moot — never silently re-plan. Update the ledger, then open with one markdown sentence above the display — what changed, in product terms.
 
-> *Output the next fenced block as a code block:*
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — the hypotheses the new direction rests on, each under its ledger id: `{"changed": "{finding that invalidated the plan}", "hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "{status:[suspected|tracing|confirmed|ruled-out]}", "rows": [["{label}", "{value}"]]}], "trace_lines": ["{code path or area to trace, in intended order}"]}` — then fetch the pivot, emitting each section verbatim at its marked instruction:
 
-```
-Plan pivot: {work_unit}
-
-What changed:
-  {finding that invalidated the plan}
-
-Proposed direction:
-  {new hypotheses / trace lines}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Proceed on the new direction?`**
-
-**`y/yes`**  → Proceed as proposed
-**Adjust** → Tell me what to change
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant pivot
 ```
 
 **STOP.** Wait for user response.

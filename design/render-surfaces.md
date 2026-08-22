@@ -371,3 +371,16 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   and the auto-gate form naming the user's a/auto choice — guarded by a
   single-source invariant. Contract item 5's code-block-only output shape
   is superseded accordingly (marked in place).
+
+- 2026-08-22 — Hypothesis board (7d family). Lee hit the failure the
+  programme predicts: a check-in board hand-drawn in a fence, wrapped at
+  ~75 columns by the session that authored it, breaking to column zero on
+  a narrower pane. The investigation's four ledger presentations — the
+  plan, its resumed re-render, the check-in, the pivot — were four
+  templated fences over one object; they become `render hypothesis-board
+  --variant plan|resume|check-in|pivot`, emitted as markdown so the
+  renderer owns the wrap at any width. Judgment supplies the claims and
+  their evidence rows; the counts and the four gates are the surface's.
+  The ledger gains permanent ids (`H1`, `H2`, …) — the check-in names
+  what resolved, so the reference has to survive a session. Ratchet pins
+  shrink 3→1 and 2→0.

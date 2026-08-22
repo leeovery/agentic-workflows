@@ -1172,6 +1172,163 @@ describe('render carry-note-gate', () => {
   });
 });
 
+describe('render hypothesis-board', () => {
+  let dir;
+  const dot = 'hooks.investigation.resume-hooks-silently-lost';
+  // One long evidence line — the bug this surface exists to kill was a
+  // hand-wrapped board, so the pins below check it survives as one line.
+  const EVIDENCE = "The cleanup interval is 10s on the daemon's IDLE branch — exactly when a user is rearranging panes, so a moved pane is reaped within ~10s of the move.";
+  const confirmed = {
+    id: 'H2', claim: "Coordinate drift orphans a live pane's hook", status: 'confirmed',
+    rows: [['Evidence', EVIDENCE], ['Measured', '`grep hookCleanupInterval daemon/reaper.go` → 10s, IDLE branch']],
+  };
+  const tracing = { id: 'H3', claim: 'Identity design half-finished is the root cause', status: 'tracing', rows: [['Basis', 'Half the key was fixed in July.']] };
+  const ruledOut = { id: 'H1', claim: 'Restore races the daemon', status: 'ruled-out', rows: [['Evidence', 'Restore completes before the first prune pass.']] };
+
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { investigation: { items: { 'resume-hooks-silently-lost': { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  const render = (variant, payload) => renderSurface(dir, 'hypothesis-board', {
+    dotpath: dot, variant, file: writePayload(dir, `${variant}.json`, payload),
+  });
+
+  it('check-in names what resolved, counts the board, and gates', () => {
+    const out = render('check-in', { hypotheses: [ruledOut, confirmed, tracing], resolved_now: ['H1', 'H2'], next: 'Synthesise the root cause' });
+    assert.ok(out.includes('=== DISPLAY: hypothesis board (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('**Hypothesis board — Resume Hooks Silently Lost** (3 tracked, 1 confirmed, 1 ruled out, 1 open)'));
+    assert.ok(out.includes('Resolved this check-in: H1, H2'));
+    assert.ok(out.includes("**H2 — Coordinate drift orphans a live pane's hook** — *confirmed*"));
+    assert.ok(out.includes('- **Measured**: `grep hookCleanupInterval daemon/reaper.go` → 10s, IDLE branch'));
+    assert.ok(out.includes('**Next**: Synthesise the root cause'));
+    assert.ok(out.includes('=== MENU: check-in gate'));
+    assert.ok(out.includes('**`◆ Continue as planned?`**'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Continue with the next trace line/.test(out));
+    assert.ok(/\*\*Steer\*\* +→ Tell me what to look at instead, or what this changes/.test(out));
+  });
+
+  it('never hand-wraps: an evidence row is one authored line whatever its length', () => {
+    const out = render('check-in', { hypotheses: [confirmed], resolved_now: ['H2'], next: 'x' });
+    assert.ok(out.includes(`- **Evidence**: ${EVIDENCE}`), 'the evidence survives as a single line for the renderer to reflow');
+    const display = out.split('=== MENU')[0];
+    assert.ok(!/\n {2,}\S/.test(display), 'no drawn indentation — the display is markdown, not a laid-out block');
+  });
+
+  it('plan carries trace lines and the depth, with the plan gate', () => {
+    const out = render('plan', {
+      hypotheses: [{ ...tracing, status: 'suspected' }],
+      trace_lines: ['daemon/reaper.go — the prune pass', 'hooks/key.go — the key-producing sites'],
+      depth: 'check-ins', depth_reasoning: 'two systems and an intermittent symptom',
+    });
+    assert.ok(out.includes('=== DISPLAY: investigation plan (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('**Investigation plan — Resume Hooks Silently Lost**'));
+    assert.ok(out.includes('**Trace lines**\n- daemon/reaper.go — the prune pass\n- hooks/key.go — the key-producing sites'));
+    assert.ok(out.includes('**Depth**: check-ins — two systems and an intermittent symptom'));
+    assert.ok(out.includes('**`◆ Does this plan look right?`**'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Proceed with the analysis as planned/.test(out));
+    assert.ok(unwrap(out).includes('**Adjust** → Tell me what to change: hypotheses, trace lines, or depth'));
+    assert.ok(!out.includes('Resolved this check-in'), 'a plan resolves nothing');
+  });
+
+  it('resume re-renders the ledger with what is left', () => {
+    const out = render('resume', { hypotheses: [ruledOut, tracing], depth: 'check-ins', remaining: 'H3 is mid-trace' });
+    assert.ok(out.includes('=== DISPLAY: resumed plan (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('**Investigation plan — Resume Hooks Silently Lost · resumed** (2 tracked, 1 ruled out, 1 open)'));
+    assert.ok(out.includes('**Depth**: check-ins\n**Remaining**: H3 is mid-trace'));
+    assert.ok(out.includes('**`◆ Picking up where we left off — still good?`**'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Continue as agreed/.test(out));
+  });
+
+  it('pivot leads with what changed, then the replacement direction', () => {
+    const out = render('pivot', {
+      changed: 'The key format itself is malformed.',
+      hypotheses: [{ ...tracing, status: 'suspected' }],
+      trace_lines: ['hooks/key.go — the four key-producing sites'],
+    });
+    assert.ok(out.includes('=== DISPLAY: plan pivot (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('**Plan pivot — Resume Hooks Silently Lost**'));
+    assert.ok(out.includes('**What changed**: The key format itself is malformed.'));
+    assert.ok(out.includes('**Proposed direction**'));
+    assert.ok(out.includes('**`◆ Proceed on the new direction?`**'));
+    assert.ok(!out.includes('**Depth**'), 'a pivot proposes a direction, never a new checkpoint depth');
+  });
+
+  it('validates the variant, the address, and the ledger', () => {
+    const file = writePayload(dir, 'v.json', { hypotheses: [confirmed], resolved_now: ['H2'], next: 'x' });
+    assert.throws(() => renderSurface(dir, 'hypothesis-board', { dotpath: dot, file }), /--variant must be one of plan\/resume\/check-in\/pivot/);
+    assert.throws(() => renderSurface(dir, 'hypothesis-board', { dotpath: dot, variant: 'board' }), /--variant must be one of/);
+    assert.throws(() => renderSurface(dir, 'hypothesis-board', { dotpath: dot, variant: 'check-in' }), /--file <payload\.json> is required/);
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { discussion: { items: { hooks: { status: 'in-progress' } } } } });
+    assert.throws(
+      () => renderSurface(dir, 'hypothesis-board', { dotpath: 'hooks.discussion.hooks', variant: 'check-in', file }),
+      /address must be <work_unit>\.investigation\.<topic>, got phase "discussion"/,
+    );
+  });
+
+  it('validates the ledger entries', () => {
+    const bad = (h) => () => render('check-in', { hypotheses: h, resolved_now: ['H2'], next: 'x' });
+    assert.throws(bad([]), /"hypotheses" must be a non-empty array/);
+    assert.throws(bad([{ ...confirmed, id: ' ' }]), /hypotheses\[0\] is missing "id"/);
+    assert.throws(bad([confirmed, confirmed]), /duplicate hypothesis id "H2"/);
+    assert.throws(bad([{ ...confirmed, claim: '' }]), /hypotheses\[0\] is missing "claim"/);
+    assert.throws(bad([{ ...confirmed, status: 'proven' }]), /unknown status "proven" \(expected suspected\/tracing\/confirmed\/ruled-out\)/);
+    assert.throws(bad([{ ...confirmed, rows: [] }]), /needs "rows"/);
+    assert.throws(bad([{ ...confirmed, rows: [['Evidence']] }]), /row 1 must be a \[label, value\] pair/);
+  });
+
+  it('refuses a field that runs to more than one line — it would break the markdown around it', () => {
+    const bad = (h) => () => render('check-in', { hypotheses: [h], resolved_now: ['H2'], next: 'x' });
+    assert.throws(bad({ ...confirmed, claim: 'Coordinate drift\norphans a hook' }), /hypotheses\[0\] claim runs to more than one line — split it across rows, or leave the detail in the investigation file/);
+    assert.throws(bad({ ...confirmed, rows: [['Evidence', 'line one\nline two']] }), /hypotheses\[0\] row 1 value runs to more than one line/);
+    assert.throws(bad({ ...confirmed, rows: [['Ev\nidence', 'x']] }), /hypotheses\[0\] row 1 label runs to more than one line/);
+    assert.throws(
+      () => render('check-in', { hypotheses: [confirmed], resolved_now: ['H2'], next: 'Trace the reaper\nthen the doctor' }),
+      /"next" runs to more than one line/,
+    );
+    assert.throws(
+      () => render('plan', { hypotheses: [confirmed], trace_lines: ['daemon/reaper.go\nhooks/key.go'], depth: 'check-ins', depth_reasoning: 'x' }),
+      /trace_lines\[0\] runs to more than one line/,
+    );
+  });
+
+  it('carries any ledger shape — free row labels, however many a hypothesis needs', () => {
+    const out = render('check-in', {
+      hypotheses: [
+        { id: 'A', claim: 'One line of basis is enough', status: 'ruled-out', rows: [['Ruled out by', 'The sampled runs disagree with it.']] },
+        {
+          id: 'B',
+          claim: 'This one earned six rows',
+          status: 'confirmed',
+          rows: [['Evidence', 'a'], ['Measured', 'b'], ['Reproduced', 'c'], ['Blast radius', 'd'], ['Why it hid', 'e'], ['Owner', 'f']],
+        },
+      ],
+      resolved_now: ['A', 'B'],
+      next: 'x',
+    });
+    assert.ok(out.includes('**A — One line of basis is enough** — *ruled-out*'));
+    assert.ok(out.includes('- **Ruled out by**: The sampled runs disagree with it.'));
+    assert.ok(out.includes('- **Why it hid**: e'), 'a label the surface has never seen renders like any other');
+    assert.ok(out.includes('(2 tracked, 1 confirmed, 1 ruled out, 0 open)'));
+  });
+
+  it('validates each variant against what it must carry', () => {
+    assert.throws(() => render('check-in', { hypotheses: [confirmed], resolved_now: [], next: 'x' }), /"resolved_now" must be a non-empty array/);
+    assert.throws(() => render('check-in', { hypotheses: [confirmed], resolved_now: ['H9'], next: 'x' }), /"resolved_now" names "H9", which is not on the board/);
+    assert.throws(
+      () => render('check-in', { hypotheses: [tracing], resolved_now: ['H3'], next: 'x' }),
+      /"H3" is named in "resolved_now" but its status is "tracing" — a resolved hypothesis is confirmed or ruled-out/,
+    );
+    assert.throws(() => render('check-in', { hypotheses: [confirmed], resolved_now: ['H2'] }), /"next" must be a non-empty string/);
+    assert.throws(() => render('plan', { hypotheses: [confirmed], trace_lines: [], depth: 'check-ins', depth_reasoning: 'x' }), /"trace_lines" must be a non-empty array/);
+    assert.throws(() => render('plan', { hypotheses: [confirmed], trace_lines: ['t'] }), /"depth_reasoning" must be a non-empty string/);
+    assert.throws(() => render('plan', { hypotheses: [confirmed], trace_lines: ['t'], depth: 'deep', depth_reasoning: 'x' }), /"depth" must be one of straight-through\/check-ins/);
+    assert.throws(() => render('resume', { hypotheses: [confirmed], depth: 'check-ins' }), /"remaining" must be a non-empty string/);
+    assert.throws(() => render('pivot', { hypotheses: [confirmed], trace_lines: ['t'] }), /"changed" must be a non-empty string/);
+  });
+});
+
 describe('render finding', () => {
   let dir;
   const base = {
@@ -2074,7 +2231,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
