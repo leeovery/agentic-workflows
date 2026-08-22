@@ -1484,6 +1484,88 @@ describe('render project-skills / linters', () => {
   });
 });
 
+describe('render fix-direction', () => {
+  let dir;
+  const dot = 'hooks.investigation.checkout-crash';
+  const rows = [['Changes', 'The constructor takes an optional address.'], ['Risk', 'A caller relying on the throw would start succeeding.']];
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { investigation: { items: { 'checkout-crash': { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  const render = (payload) => renderSurface(dir, 'fix-direction', { dotpath: dot, file: writePayload(dir, 'fd.json', payload) });
+
+  it('a lone option is unlettered and uncounted', () => {
+    const out = render({ options: [{ name: 'Make the address optional', rows }] });
+    assert.ok(out.includes('=== DISPLAY: fix direction (emit verbatim as markdown) ==='));
+    assert.ok(out.includes('**Fix direction — Checkout Crash**\n'));
+    assert.ok(!out.includes('approaches)'), 'one approach is not a comparison');
+    assert.ok(out.includes('**Make the address optional**\n'), 'no letter where there is nothing to compare against');
+    assert.ok(out.includes('- **Changes**: The constructor takes an optional address.'));
+    assert.ok(out.includes('=== MENU: fix direction gate'));
+    assert.ok(out.includes('**`◆ What are your thoughts?`**'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Agree with this direction/.test(out));
+    assert.ok(unwrap(out).includes('**Provide feedback** → Tell me your thoughts: discuss, challenge, or suggest alternatives'));
+  });
+
+  it('several options letter themselves, count themselves, and carry the mark', () => {
+    const out = render({
+      options: [
+        { name: 'Make the address optional', recommended: true, rows },
+        { name: 'Guard at the call site', rows },
+        { name: 'Backfill the address', rows },
+      ],
+      recommendation: 'A — it fixes the assumption rather than working around it.',
+      open_question: 'Whether the empty-string case is the same bug.',
+    });
+    assert.ok(out.includes('**Fix direction — Checkout Crash** (3 approaches)'));
+    assert.ok(out.includes('**A — Make the address optional** — *recommended*'));
+    assert.ok(out.includes('**B — Guard at the call site**\n'));
+    assert.ok(out.includes('**C — Backfill the address**\n'));
+    assert.ok(out.includes('**Recommendation**: A — it fixes the assumption rather than working around it.'));
+    assert.ok(out.includes('**Open question**: Whether the empty-string case is the same bug.'));
+  });
+
+  it('a recommendation must say which and why, and only where there is a comparison', () => {
+    assert.throws(
+      () => render({ options: [{ name: 'a', rows }, { name: 'b', recommended: true, rows }] }),
+      /a recommended option needs "recommendation" — the deciding factor, not just the mark/,
+    );
+    assert.throws(
+      () => render({ options: [{ name: 'a', rows }, { name: 'b', rows }], recommendation: 'b is better' }),
+      /"recommendation" was given but no option is marked "recommended"/,
+    );
+    assert.throws(
+      () => render({ options: [{ name: 'a', recommended: true, rows }], recommendation: 'x' }),
+      /a lone option cannot be "recommended" — there is nothing to recommend it over/,
+    );
+    assert.throws(
+      () => render({ options: [{ name: 'a', recommended: true, rows }, { name: 'b', recommended: true, rows }], recommendation: 'x' }),
+      /only one option can be "recommended"/,
+    );
+  });
+
+  it('validates the options, their rows, and the address', () => {
+    assert.throws(() => renderSurface(dir, 'fix-direction', { dotpath: dot }), /--file <payload\.json> is required/);
+    assert.throws(() => render({ options: [] }), /"options" must be a non-empty array .* one obvious fix is a valid outcome, none is not/);
+    assert.throws(() => render({ options: [{ rows }] }), /options\[0\] is missing "name"/);
+    assert.throws(() => render({ options: [{ name: 'a', rows: [] }] }), /options\[0\] needs "rows"/);
+    assert.throws(() => render({ options: [{ name: 'a', rows: [['Changes']] }] }), /options\[0\] row 1 must be a \[label, value\] pair/);
+    assert.throws(() => render({ options: [{ name: 'a\nb', rows }] }), /options\[0\] name runs to more than one line/);
+    assert.throws(() => render({ options: [{ name: 'a', rows: [['Changes', 'one\ntwo']] }] }), /options\[0\] row 1 value runs to more than one line/);
+    assert.throws(
+      () => render({ options: Array.from({ length: 9 }, (_, i) => ({ name: `o${i}`, rows })) }),
+      /9 options is past comparing — this surface letters at most 8/,
+    );
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { specification: { items: { 'checkout-crash': { status: 'in-progress' } } } } });
+    assert.throws(
+      () => renderSurface(dir, 'fix-direction', { dotpath: 'hooks.specification.checkout-crash', file: writePayload(dir, 'fd2.json', { options: [{ name: 'a', rows }] }) }),
+      /address must be <work_unit>\.investigation\.<topic>, got phase "specification"/,
+    );
+  });
+});
+
 describe('render finding', () => {
   let dir;
   const base = {
@@ -2386,7 +2468,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 

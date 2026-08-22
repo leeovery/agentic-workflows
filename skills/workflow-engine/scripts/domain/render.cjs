@@ -614,16 +614,16 @@ const HYPOTHESIS_VARIANTS = ['plan', 'resume', 'check-in', 'pivot'];
 const HYPOTHESIS_STATUSES = ['suspected', 'tracing', 'confirmed', 'ruled-out'];
 const CHECKPOINT_DEPTHS = ['straight-through', 'check-ins'];
 
-// Every ledger field lands inside a markdown construct that lives on one
-// line — a bold head, a `- **Label**: value` bullet — so an embedded newline
-// would break the construct around it and put a bare fragment on the page.
-// A hypothesis with more to say takes more rows; an artefact too big for a
-// row (a trace, a diff) stays in the investigation file, which the board
-// cites rather than reproduces.
-/** @param {string} v @param {string} field @returns {string} */
-function oneLine(v, field) {
+// A field that lands inside a markdown construct living on one line — a bold
+// head, a `- **Label**: value` bullet — cannot carry a newline: it would
+// break the construct around it and put a bare fragment on the page. Shared
+// by the investigation's row-shaped surfaces, which all take more rows rather
+// than longer ones; an artefact too big for a row (a trace, a diff) stays in
+// the investigation file, which the display cites rather than reproduces.
+/** @param {string} surface @param {string} v @param {string} field @returns {string} */
+function oneLine(surface, v, field) {
   if (/[\r\n]/.test(v)) {
-    throw new Error(`render hypothesis-board: ${field} runs to more than one line — split it across rows, or leave the detail in the investigation file`);
+    throw new Error(`render ${surface}: ${field} runs to more than one line — split it across rows, or leave the detail in the investigation file`);
   }
   return v;
 }
@@ -641,10 +641,10 @@ function hypothesisLedger(v) {
   v.forEach((h, i) => {
     if (!h || typeof h !== 'object') throw new Error(`render hypothesis-board: hypotheses[${i}] must be an object`);
     if (!isFilled(h.id)) throw new Error(`render hypothesis-board: hypotheses[${i}] is missing "id"`);
-    oneLine(h.id, `hypotheses[${i}] id`);
+    oneLine('hypothesis-board', h.id, `hypotheses[${i}] id`);
     if (ids.includes(h.id)) throw new Error(`render hypothesis-board: duplicate hypothesis id "${h.id}" — an id is the ledger's stable reference and is never reused`);
     if (!isFilled(h.claim)) throw new Error(`render hypothesis-board: hypotheses[${i}] is missing "claim"`);
-    oneLine(h.claim, `hypotheses[${i}] claim`);
+    oneLine('hypothesis-board', h.claim, `hypotheses[${i}] claim`);
     if (!HYPOTHESIS_STATUSES.includes(h.status)) {
       throw new Error(`render hypothesis-board: hypotheses[${i}] carries unknown status "${h.status}" (expected ${HYPOTHESIS_STATUSES.join('/')})`);
     }
@@ -655,8 +655,8 @@ function hypothesisLedger(v) {
       if (!Array.isArray(r) || r.length !== 2 || !isFilled(r[0]) || !isFilled(r[1])) {
         throw new Error(`render hypothesis-board: hypotheses[${i}] row ${j + 1} must be a [label, value] pair of non-empty strings`);
       }
-      oneLine(r[0], `hypotheses[${i}] row ${j + 1} label`);
-      oneLine(r[1], `hypotheses[${i}] row ${j + 1} value`);
+      oneLine('hypothesis-board', r[0], `hypotheses[${i}] row ${j + 1} label`);
+      oneLine('hypothesis-board', r[1], `hypotheses[${i}] row ${j + 1} value`);
     });
     ids.push(h.id);
   });
@@ -686,7 +686,7 @@ function traceLines(v) {
   if (lines.length === 0 || lines.some((l) => !isFilled(l))) {
     throw new Error('render hypothesis-board: "trace_lines" must be a non-empty array of non-empty strings');
   }
-  lines.forEach((l, i) => oneLine(l, `trace_lines[${i}]`));
+  lines.forEach((l, i) => oneLine('hypothesis-board', l, `trace_lines[${i}]`));
   return ['**Trace lines**', ...lines.map((l) => `- ${l}`)].join('\n');
 }
 
@@ -723,11 +723,11 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
       throw new Error('render hypothesis-board: "changed" must be a non-empty string — a pivot names the finding that invalidated the plan');
     }
     const body = [pivot ? `**Plan pivot — ${name}**` : `**Investigation plan — ${name}**`, ''];
-    if (pivot) body.push(`**What changed**: ${oneLine(p.changed, '"changed"')}`, '', '**Proposed direction**', '');
+    if (pivot) body.push(`**What changed**: ${oneLine('hypothesis-board', p.changed, '"changed"')}`, '', '**Proposed direction**', '');
     body.push(ledger.join('\n\n'), '', traceLines(p.trace_lines));
     if (!pivot) {
       if (!isFilled(p.depth_reasoning)) throw new Error('render hypothesis-board: "depth_reasoning" must be a non-empty string');
-      body.push('', `**Depth**: ${checkpointDepth(p)} — ${oneLine(p.depth_reasoning, '"depth_reasoning"')}`);
+      body.push('', `**Depth**: ${checkpointDepth(p)} — ${oneLine('hypothesis-board', p.depth_reasoning, '"depth_reasoning"')}`);
     }
     return [
       section(pivot ? 'DISPLAY: plan pivot' : 'DISPLAY: investigation plan', 'emit verbatim as markdown', body.join('\n')),
@@ -753,7 +753,7 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
       ledger.join('\n\n'),
       '',
       `**Depth**: ${checkpointDepth(p)}`,
-      `**Remaining**: ${oneLine(p.remaining, '"remaining"')}`,
+      `**Remaining**: ${oneLine('hypothesis-board', p.remaining, '"remaining"')}`,
     ];
     return [
       section('DISPLAY: resumed plan', 'emit verbatim as markdown', body.join('\n')),
@@ -782,7 +782,7 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
     '',
     ledger.join('\n\n'),
     '',
-    `**Next**: ${oneLine(p.next, '"next"')}`,
+    `**Next**: ${oneLine('hypothesis-board', p.next, '"next"')}`,
   ];
   return [
     section('DISPLAY: hypothesis board', 'emit verbatim as markdown', body.join('\n')),
@@ -790,6 +790,100 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
       cmdOption('y', 'yes', 'Continue with the next trace line'),
       promptOption('Steer', 'Tell me what to look at instead, or what this changes'),
     ], { question: 'Continue as planned?' })),
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// fix-direction — the candidate approaches, presented for the user to steer.
+// The shape is the surface's so a reader can compare: every option carries
+// the same rows, and what varies with the material — whether options are
+// lettered at all, the count in the header — is derived, not decided. A
+// recommendation must carry its reasoning: naming a favourite without saying
+// why is the move this phase exists to prevent. Where the exploration is
+// genuinely unresolved, the open question is a field rather than a paragraph
+// someone remembers to add.
+// ---------------------------------------------------------------------------
+
+// One option per letter. A fix exploration that reaches the end of this has
+// stopped being a comparison and needs the discussion, not more rows.
+const OPTION_LETTERS = 'ABCDEFGH';
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function fixDirection(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render fix-direction: --file <payload.json> is required');
+  const { phase, topic } = resolveAddress(cwd, dotpath, 'fix-direction');
+  if (phase !== 'investigation') {
+    throw new Error(`render fix-direction: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'fix-direction');
+  if (!Array.isArray(p.options) || p.options.length === 0) {
+    throw new Error('render fix-direction: "options" must be a non-empty array of {name, rows} — one obvious fix is a valid outcome, none is not');
+  }
+  if (p.options.length > OPTION_LETTERS.length) {
+    throw new Error(`render fix-direction: ${p.options.length} options is past comparing — this surface letters at most ${OPTION_LETTERS.length}`);
+  }
+  p.options.forEach((o, i) => {
+    if (!o || typeof o !== 'object') throw new Error(`render fix-direction: options[${i}] must be an object`);
+    if (!isFilled(o.name)) throw new Error(`render fix-direction: options[${i}] is missing "name"`);
+    oneLine('fix-direction', o.name, `options[${i}] name`);
+    if (o.recommended !== undefined && typeof o.recommended !== 'boolean') {
+      throw new Error(`render fix-direction: options[${i}] "recommended" must be true or false`);
+    }
+    if (!Array.isArray(o.rows) || o.rows.length === 0) {
+      throw new Error(`render fix-direction: options[${i}] needs "rows" — a non-empty array of [label, value] pairs`);
+    }
+    o.rows.forEach((/** @type {unknown} */ r, /** @type {number} */ j) => {
+      if (!Array.isArray(r) || r.length !== 2 || !isFilled(r[0]) || !isFilled(r[1])) {
+        throw new Error(`render fix-direction: options[${i}] row ${j + 1} must be a [label, value] pair of non-empty strings`);
+      }
+      oneLine('fix-direction', r[0], `options[${i}] row ${j + 1} label`);
+      oneLine('fix-direction', r[1], `options[${i}] row ${j + 1} value`);
+    });
+  });
+
+  const many = p.options.length > 1;
+  const picked = p.options.filter((/** @type {any} */ o) => o.recommended);
+  if (picked.length > 1) {
+    throw new Error('render fix-direction: only one option can be "recommended" — a recommendation that names two is a comparison, and belongs in the rows');
+  }
+  if (picked.length && !many) {
+    throw new Error('render fix-direction: a lone option cannot be "recommended" — there is nothing to recommend it over');
+  }
+  // The tail marks which; this line says why. One without the other is
+  // either a favourite with no reasoning or reasoning with no subject.
+  if (picked.length && !isFilled(p.recommendation)) {
+    throw new Error('render fix-direction: a recommended option needs "recommendation" — the deciding factor, not just the mark');
+  }
+  if (!picked.length && p.recommendation !== undefined) {
+    throw new Error('render fix-direction: "recommendation" was given but no option is marked "recommended"');
+  }
+  if (p.recommendation !== undefined) oneLine('fix-direction', p.recommendation, '"recommendation"');
+  if (p.open_question !== undefined) {
+    if (!isFilled(p.open_question)) throw new Error('render fix-direction: "open_question" must be a non-empty string when present');
+    oneLine('fix-direction', p.open_question, '"open_question"');
+  }
+
+  const name = titlecase(topic);
+  const body = [many ? `**Fix direction — ${name}** (${p.options.length} approaches)` : `**Fix direction — ${name}**`, ''];
+  p.options.forEach((/** @type {any} */ o, /** @type {number} */ i) => {
+    const id = many ? `${OPTION_LETTERS[i]} — ` : '';
+    body.push(`**${id}${o.name}**${o.recommended ? ' — *recommended*' : ''}`);
+    for (const [label, value] of o.rows) body.push(`- **${label}**: ${value}`);
+    body.push('');
+  });
+  if (p.recommendation !== undefined) body.push(`**Recommendation**: ${p.recommendation}`);
+  if (p.open_question !== undefined) body.push(`**Open question**: ${p.open_question}`);
+
+  return [
+    section('DISPLAY: fix direction', 'emit verbatim as markdown', body.join('\n').replace(/\n+$/, '')),
+    section('MENU: fix direction gate', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('y', 'yes', 'Agree with this direction'),
+      promptOption('Provide feedback', 'Tell me your thoughts: discuss, challenge, or suggest alternatives'),
+    ], { question: 'What are your thoughts?' })),
   ].join('\n');
 }
 
@@ -2989,6 +3083,7 @@ const SURFACES = {
   'convergence-diagnostic': convergenceDiagnostic,
   'carry-note-gate': carryNoteGate,
   'hypothesis-board': hypothesisBoard,
+  'fix-direction': fixDirection,
   'validation-gate': validationGate,
   'validation-report': validationReport,
   'project-skills': projectSkills,
