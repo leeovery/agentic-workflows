@@ -38,15 +38,14 @@ Render the opener matching what the caller told us.
 
 The seeds share one type (the working set only carries items of one kind). Name that type, pluralised with a count when there are several, and give one combined sketch across them.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 I've read your {bug | idea | quick-fix — pluralised with a count when several, e.g. "3 ideas"}. Here's the shape I'm picking up:
 
-  {one-line sketch — a single combined picture across the item(s)}
+{one-line sketch — a single combined picture across the item(s)}
 
-{Targeted opening question that pulls on the shape.} If you have any
-related files or notes, share the path(s) and I'll read them too.
+{Targeted opening question that pulls on the shape.} If you have any related files or notes, share the path(s) and I'll read them too.
 ```
 
 **STOP.** Wait for user response.
@@ -55,12 +54,10 @@ related files or notes, share the path(s) and I'll read them too.
 
 #### If `work_type` pre-seed is `epic`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Tell me about the epic. I'll ask open questions to pull on it before
-we synthesise topics. If you have notes or research files, share the
-path(s) and I'll read them in.
+Tell me about the epic. I'll ask open questions to pull on it before we synthesise topics. If you have notes or research files, share the path(s) and I'll read them in.
 ```
 
 **STOP.** Wait for user response.
@@ -69,11 +66,10 @@ path(s) and I'll read them in.
 
 #### If `work_type` pre-seed is `feature`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Tell me about the feature. If you have notes or files for it, share
-the path(s) and I'll read them in.
+Tell me about the feature. If you have notes or files for it, share the path(s) and I'll read them in.
 ```
 
 **STOP.** Wait for user response.
@@ -82,11 +78,10 @@ the path(s) and I'll read them in.
 
 #### If `work_type` pre-seed is `bugfix`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-What's broken? If you have logs, error reports, or related files,
-share the path(s) and I'll read them in.
+What's broken? If you have logs, error reports, or related files, share the path(s) and I'll read them in.
 ```
 
 **STOP.** Wait for user response.
@@ -95,11 +90,10 @@ share the path(s) and I'll read them in.
 
 #### If `work_type` pre-seed is `quick-fix`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-What's the change? If there's a file or note that frames it, share
-the path and I'll read it in.
+What's the change? If there's a file or note that frames it, share the path and I'll read it in.
 ```
 
 **STOP.** Wait for user response.
@@ -108,12 +102,10 @@ the path and I'll read it in.
 
 #### If `work_type` pre-seed is `cross-cutting`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Tell me about the cross-cutting concern — the pattern or policy you're
-defining. If you have notes or reference docs, share the path(s) and
-I'll read them in.
+Tell me about the cross-cutting concern — the pattern or policy you're defining. If you have notes or reference docs, share the path(s) and I'll read them in.
 ```
 
 **STOP.** Wait for user response.
@@ -124,12 +116,10 @@ I'll read them in.
 
 No pre-seed (`s/start`). Open fully and fold the "we'll figure out the shape together" framing into the question itself.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Tell me what's on your mind. Describe it the way it sits in your head —
-I'll ask open questions and we'll figure out the shape together. If you
-have notes or files, share the path(s) and I'll read them in.
+Tell me what's on your mind. Describe it the way it sits in your head — I'll ask open questions and we'll figure out the shape together. If you have notes or files, share the path(s) and I'll read them in.
 ```
 
 **STOP.** Wait for user response.

@@ -681,7 +681,7 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 
 ### Rendering Instructions for Ask Blocks
 
-When a step asks the user a question, wrap it in a rendering instruction and code block — don't use bare `Ask:` labels:
+When a step asks the user a question, wrap it in a rendering instruction — never a bare `Ask:` label. **The fence is for asks whose structure carries meaning**: a question with enumerated prompts beneath it, where the list is part of what is being asked. A conversational opening — Claude speaking a paragraph to the user — is emitted as markdown instead, one authored line per paragraph, so the renderer reflows it at any width. A fence would hand-wrap prose at a column the author had to guess.
 
 ```
 > *Output the next fenced block as a code block:*
