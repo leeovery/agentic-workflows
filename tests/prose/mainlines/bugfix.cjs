@@ -106,8 +106,14 @@ function investigationFile() {
     '',
     '### Hypotheses',
     '',
-    '- The payment step assumes a shipping address is always present.',
-    '- Tax calculation may be the first consumer of the missing address.',
+    '**Checkpoint depth:** check-ins',
+    '',
+    '- **H1: The payment step assumes a shipping address is always present.** [confirmed]',
+    '  The tax context is built before the payment intent and reads the',
+    '  address unconditionally.',
+    '- **H2: Tax calculation is the first consumer of the missing address.** [confirmed]',
+    '  The trace aborts inside tax-context construction, before any',
+    '  payment code runs.',
     '',
     '### Code Trace',
     '',
@@ -164,6 +170,40 @@ function investigationFile() {
 }
 
 /**
+ * Investigation open mid-trace: symptoms gathered, the plan agreed at
+ * `check-ins` depth, one hypothesis resolved and one still being traced.
+ * The state a session resuming an interrupted analysis opens on.
+ */
+function investigateMidTrace(h) {
+  h.write(`.workflows/${WU}/investigation/${WU}.md`, investigationFile()
+    .replace(
+      [
+        '- **H1: The payment step assumes a shipping address is always present.** [confirmed]',
+        '  The tax context is built before the payment intent and reads the',
+        '  address unconditionally.',
+        '- **H2: Tax calculation is the first consumer of the missing address.** [confirmed]',
+        '  The trace aborts inside tax-context construction, before any',
+        '  payment code runs.',
+      ].join('\n'),
+      [
+        '- **H1: The payment form drops the address before submitting.** [ruled-out]',
+        '  The submitted payload carries every field the form holds; the',
+        '  order simply has no shipping address to carry.',
+        '- **H2: Tax calculation is the first consumer of the missing address.** [tracing]',
+        '  The payment step builds a tax context before creating the',
+        '  payment intent — reading that construction next.',
+      ].join('\n'),
+    )
+    .replace(/### Code Trace\n\n[\s\S]*?\n\n### Root Cause/, '### Code Trace\n\n(in progress)\n\n### Root Cause')
+    .replace('### Root Cause\n\nThe tax context treats the shipping address as mandatory. Digital-only\norders legitimately have none, so the assumption is wrong rather than\nthe data being wrong.', '### Root Cause\n\n(pending)')
+    .replace('### Contributing Factors\n\nDigital-only baskets were introduced after the tax context was written.', '### Contributing Factors\n\n(pending)')
+    .replace("### Why It Wasn't Caught\n\nNo test covers a basket with no shippable line items.", "### Why It Wasn't Caught\n\n(pending)")
+    .replace('### Blast Radius\n\nAny flow building a tax context from an address-less order.', '### Blast Radius\n\n(pending)'));
+  h.engine('topic', 'start', WU, 'investigation', WU);
+  h.engine('commit', WU, '-m', `investigation(${WU}): investigation plan`);
+}
+
+/**
  * Investigation open with the root cause documented — the state the
  * process reaches just before its root-cause validation step.
  */
@@ -197,4 +237,4 @@ function concludeInvestigation(h) {
   h.engine('topic', 'complete', WU, 'investigation', WU);
 }
 
-module.exports = { WU, init, create, investigateToRootCause, concludeInvestigation };
+module.exports = { WU, init, create, investigateMidTrace, investigateToRootCause, concludeInvestigation };

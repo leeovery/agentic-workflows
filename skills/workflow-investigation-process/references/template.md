@@ -62,8 +62,8 @@ Use this structure for investigation documents.
 
 **Checkpoint depth:** {straight-through | check-ins}
 
-{Live ledger — statuses evolve through the analysis:}
-- **{hypothesis}** [{suspected | tracing | confirmed | ruled-out}]
+{Live ledger — ids are permanent, statuses evolve through the analysis:}
+- **{H1}: {hypothesis}** [{suspected | tracing | confirmed | ruled-out}]
   {basis, then evidence as it accumulates}
 
 ### Code Trace

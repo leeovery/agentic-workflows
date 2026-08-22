@@ -1,0 +1,47 @@
+{
+  "origin": "a hand-drawn hypothesis board shipped to a narrow pane and broke — every board is engine-rendered now, and this is the cheapest path that reaches one",
+  "entry": "workflow-investigation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-investigation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-investigation-entry/references/validate-phase.md",
+    "skills/workflow-investigation-entry/references/invoke-skill.md",
+    "skills/workflow-investigation-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-investigation-process/references/investigation-plan.md"
+  ],
+  "answers": [
+    "c — pick the analysis up where it left off"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "render phase-note crash-fix.investigation.crash-fix --verb Resuming",
+      "render resume-gate crash-fix.investigation.crash-fix",
+      "render hypothesis-board crash-fix.investigation.crash-fix",
+      "--variant resume"
+    ],
+    "calls_in_order": [
+      "manifest get crash-fix.investigation.crash-fix status",
+      "render resume-gate crash-fix.investigation.crash-fix",
+      "write:.workflows/.cache/crash-fix/investigation/crash-fix/board.json",
+      "render hypothesis-board crash-fix.investigation.crash-fix"
+    ],
+    "calls_exclude": [
+      "topic start crash-fix investigation crash-fix",
+      "topic complete",
+      "topic reopen",
+      "--variant plan",
+      "--variant check-in"
+    ]
+  }
+}

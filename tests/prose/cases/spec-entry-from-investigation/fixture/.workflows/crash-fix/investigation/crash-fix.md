@@ -33,8 +33,14 @@ Digital-only orders cannot complete checkout.
 
 ### Hypotheses
 
-- The payment step assumes a shipping address is always present.
-- Tax calculation may be the first consumer of the missing address.
+**Checkpoint depth:** check-ins
+
+- **H1: The payment step assumes a shipping address is always present.** [confirmed]
+  The tax context is built before the payment intent and reads the
+  address unconditionally.
+- **H2: Tax calculation is the first consumer of the missing address.** [confirmed]
+  The trace aborts inside tax-context construction, before any
+  payment code runs.
 
 ### Code Trace
 

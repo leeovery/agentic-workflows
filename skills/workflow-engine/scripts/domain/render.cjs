@@ -598,6 +598,183 @@ function carryNoteGate(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
+// hypothesis-board — the investigation's hypothesis ledger, in the four
+// presentations the analysis needs. One renderer for one object: judgment
+// supplies the claims and the evidence beneath them, while the counts, the
+// order of the parts, and every gate belong to this surface — so the board
+// reads the same however long the analysis runs, and at any width.
+//   plan      — the proposed ledger, its trace lines and checkpoint depth
+//   resume    — the same ledger re-rendered from an earlier session
+//   check-in  — a resolution moment: what just resolved, then the whole board
+//   pivot     — a finding invalidated the plan: what changed, then the
+//               ledger proposed in its place
+// ---------------------------------------------------------------------------
+
+const HYPOTHESIS_VARIANTS = ['plan', 'resume', 'check-in', 'pivot'];
+const HYPOTHESIS_STATUSES = ['suspected', 'tracing', 'confirmed', 'ruled-out'];
+const CHECKPOINT_DEPTHS = ['straight-through', 'check-ins'];
+
+/**
+ * Validate the ledger and answer its ids in payload order.
+ * @param {unknown} v @returns {string[]}
+ */
+function hypothesisLedger(v) {
+  if (!Array.isArray(v) || v.length === 0) {
+    throw new Error('render hypothesis-board: "hypotheses" must be a non-empty array of {id, claim, status, rows}');
+  }
+  /** @type {string[]} */
+  const ids = [];
+  v.forEach((h, i) => {
+    if (!h || typeof h !== 'object') throw new Error(`render hypothesis-board: hypotheses[${i}] must be an object`);
+    if (!isFilled(h.id)) throw new Error(`render hypothesis-board: hypotheses[${i}] is missing "id"`);
+    if (ids.includes(h.id)) throw new Error(`render hypothesis-board: duplicate hypothesis id "${h.id}" — an id is the ledger's stable reference and is never reused`);
+    if (!isFilled(h.claim)) throw new Error(`render hypothesis-board: hypotheses[${i}] is missing "claim"`);
+    if (!HYPOTHESIS_STATUSES.includes(h.status)) {
+      throw new Error(`render hypothesis-board: hypotheses[${i}] carries unknown status "${h.status}" (expected ${HYPOTHESIS_STATUSES.join('/')})`);
+    }
+    if (!Array.isArray(h.rows) || h.rows.length === 0) {
+      throw new Error(`render hypothesis-board: hypotheses[${i}] needs "rows" — a non-empty array of [label, value] pairs`);
+    }
+    h.rows.forEach((/** @type {unknown} */ r, /** @type {number} */ j) => {
+      if (!Array.isArray(r) || r.length !== 2 || !isFilled(r[0]) || !isFilled(r[1])) {
+        throw new Error(`render hypothesis-board: hypotheses[${i}] row ${j + 1} must be a [label, value] pair of non-empty strings`);
+      }
+    });
+    ids.push(h.id);
+  });
+  return ids;
+}
+
+/** One ledger entry: the claim under its id, status as the metadata tail, evidence beneath. @param {any} h @returns {string} */
+function hypothesisEntry(h) {
+  return [`**${h.id} — ${h.claim}** — *${h.status}*`, ...h.rows.map((/** @type {string[]} */ r) => `- **${r[0]}**: ${r[1]}`)].join('\n');
+}
+
+/** `(N tracked, N confirmed, N ruled out, N open)` — zero-count middles drop out, the open count never does. @param {any[]} hs @returns {string} */
+function hypothesisCounts(hs) {
+  const of = (/** @type {string} */ s) => hs.filter((h) => h.status === s).length;
+  const parts = [`${hs.length} tracked`];
+  const confirmed = of('confirmed');
+  const ruledOut = of('ruled-out');
+  if (confirmed) parts.push(`${confirmed} confirmed`);
+  if (ruledOut) parts.push(`${ruledOut} ruled out`);
+  parts.push(`${of('suspected') + of('tracing')} open`);
+  return `(${parts.join(', ')})`;
+}
+
+/** The `**Trace lines**` block. @param {unknown} v @returns {string} */
+function traceLines(v) {
+  const lines = stringLines(v, 'hypothesis-board', 'trace_lines');
+  if (lines.length === 0 || lines.some((l) => !isFilled(l))) {
+    throw new Error('render hypothesis-board: "trace_lines" must be a non-empty array of non-empty strings');
+  }
+  return ['**Trace lines**', ...lines.map((l) => `- ${l}`)].join('\n');
+}
+
+/** @param {any} p @returns {string} */
+function checkpointDepth(p) {
+  if (!CHECKPOINT_DEPTHS.includes(p.depth)) {
+    throw new Error(`render hypothesis-board: "depth" must be one of ${CHECKPOINT_DEPTHS.join('/')}`);
+  }
+  return p.depth;
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, variant?: string}} args
+ * @returns {string}
+ */
+function hypothesisBoard(cwd, { dotpath, file, variant }) {
+  if (variant === undefined || !HYPOTHESIS_VARIANTS.includes(variant)) {
+    throw new Error(`render hypothesis-board: --variant must be one of ${HYPOTHESIS_VARIANTS.join('/')}`);
+  }
+  if (!file) throw new Error('render hypothesis-board: --file <payload.json> is required');
+  const { phase, topic } = resolveAddress(cwd, dotpath, 'hypothesis-board');
+  if (phase !== 'investigation') {
+    throw new Error(`render hypothesis-board: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'hypothesis-board');
+  const ids = hypothesisLedger(p.hypotheses);
+  const name = titlecase(topic);
+  const ledger = p.hypotheses.map(hypothesisEntry);
+
+  if (variant === 'plan' || variant === 'pivot') {
+    const pivot = variant === 'pivot';
+    if (pivot && !isFilled(p.changed)) {
+      throw new Error('render hypothesis-board: "changed" must be a non-empty string — a pivot names the finding that invalidated the plan');
+    }
+    const body = [pivot ? `**Plan pivot — ${name}**` : `**Investigation plan — ${name}**`, ''];
+    if (pivot) body.push(`**What changed**: ${p.changed}`, '', '**Proposed direction**', '');
+    body.push(ledger.join('\n\n'), '', traceLines(p.trace_lines));
+    if (!pivot) {
+      if (!isFilled(p.depth_reasoning)) throw new Error('render hypothesis-board: "depth_reasoning" must be a non-empty string');
+      body.push('', `**Depth**: ${checkpointDepth(p)} — ${p.depth_reasoning}`);
+    }
+    return [
+      section(pivot ? 'DISPLAY: plan pivot' : 'DISPLAY: investigation plan', 'emit verbatim as markdown', body.join('\n')),
+      section(pivot ? 'MENU: pivot gate' : 'MENU: plan gate', STOP_FOR_RESPONSE, pivot
+        ? menu('', [
+          cmdOption('y', 'yes', 'Proceed as proposed'),
+          promptOption('Adjust', 'Tell me what to change'),
+        ], { question: 'Proceed on the new direction?' })
+        : menu('', [
+          cmdOption('y', 'yes', 'Proceed with the analysis as planned'),
+          promptOption('Adjust', 'Tell me what to change: hypotheses, trace lines, or depth'),
+        ], { question: 'Does this plan look right?' })),
+    ].join('\n');
+  }
+
+  if (variant === 'resume') {
+    if (!isFilled(p.remaining)) {
+      throw new Error('render hypothesis-board: "remaining" must be a non-empty string — name the open hypotheses and trace lines, or say all are resolved');
+    }
+    const body = [
+      `**Investigation plan — ${name} · resumed** ${hypothesisCounts(p.hypotheses)}`,
+      '',
+      ledger.join('\n\n'),
+      '',
+      `**Depth**: ${checkpointDepth(p)}`,
+      `**Remaining**: ${p.remaining}`,
+    ];
+    return [
+      section('DISPLAY: resumed plan', 'emit verbatim as markdown', body.join('\n')),
+      section('MENU: resumed plan gate', STOP_FOR_RESPONSE, menu('', [
+        cmdOption('y', 'yes', 'Continue as agreed'),
+        promptOption('Revise', 'Tell me what to change: hypotheses, trace lines, or depth'),
+      ], { question: 'Picking up where we left off — still good?' })),
+    ].join('\n');
+  }
+
+  if (!Array.isArray(p.resolved_now) || p.resolved_now.length === 0) {
+    throw new Error('render hypothesis-board: "resolved_now" must be a non-empty array of hypothesis ids — a check-in is a resolution moment');
+  }
+  for (const id of p.resolved_now) {
+    if (!ids.includes(id)) throw new Error(`render hypothesis-board: "resolved_now" names "${id}", which is not on the board`);
+  }
+  const open = p.hypotheses.filter((/** @type {any} */ h) => p.resolved_now.includes(h.id) && (h.status === 'suspected' || h.status === 'tracing'));
+  if (open.length) {
+    throw new Error(`render hypothesis-board: "${open[0].id}" is named in "resolved_now" but its status is "${open[0].status}" — a resolved hypothesis is confirmed or ruled-out`);
+  }
+  if (!isFilled(p.next)) throw new Error('render hypothesis-board: "next" must be a non-empty string');
+  const body = [
+    `**Hypothesis board — ${name}** ${hypothesisCounts(p.hypotheses)}`,
+    '',
+    `Resolved this check-in: ${p.resolved_now.join(', ')}`,
+    '',
+    ledger.join('\n\n'),
+    '',
+    `**Next**: ${p.next}`,
+  ];
+  return [
+    section('DISPLAY: hypothesis board', 'emit verbatim as markdown', body.join('\n')),
+    section('MENU: check-in gate', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('y', 'yes', 'Continue with the next trace line'),
+      promptOption('Steer', 'Tell me what to look at instead, or what this changes'),
+    ], { question: 'Continue as planned?' })),
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // incoherence-gate — the Resolve Source Incoherence raises (spec construction
 // and the review findings walk). Three variants; the stops here override the
 // calling flow's auto mode by design, so no --gate flag exists.
@@ -2550,6 +2727,7 @@ const SURFACES = {
   'spec-completion-gate': specCompletionGate,
   'convergence-diagnostic': convergenceDiagnostic,
   'carry-note-gate': carryNoteGate,
+  'hypothesis-board': hypothesisBoard,
   'triage-announce': triageAnnounce,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,
