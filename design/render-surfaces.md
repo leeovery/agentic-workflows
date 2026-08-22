@@ -401,3 +401,21 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   a presentation decided rather than transcribed, and `opener-pattern`'s
   conversational sketch, where the question is whether an ask block should
   be fenced at all — CONVENTIONS says yes, and the register says no.
+
+- 2026-08-22 — `fix-direction` (7d), the worst site in the corpus. Its
+  fence said "format naturally based on what there is to present", so the
+  comparison a reviewer relies on — same fields per option, the
+  recommendation marked — was whatever the session felt like, hand-wrapped
+  at a guessed width. No transcript on the machine holds a rendered one,
+  which is the indictment: there was no "before" to point at. The surface
+  takes `{options: [{name, recommended?, rows}], recommendation?,
+  open_question?}` and derives what varied: letters and the header count
+  appear only where options are compared. Two refusals encode the phase's
+  own rule — a marked option without its deciding factor, and a factor
+  with nothing marked. `open_question` gives the prose's "unclear" branch
+  a field instead of a paragraph someone remembers. The cache draft and
+  the payload collapse into one file, so what is discussed and what is
+  displayed cannot diverge. Design shown to Lee as a rendering before
+  building, on the principle he stated the same day: LLMs emit verbatim
+  reliably and construct from instructions unreliably, so the instruction
+  to construct is itself the defect.

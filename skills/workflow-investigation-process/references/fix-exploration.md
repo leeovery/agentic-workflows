@@ -10,13 +10,7 @@ With the root cause signed off, explore how to fix it — collaboratively. Optio
 
 From the confirmed root cause and blast radius, work out the candidate approaches. For each: what it changes, trade-offs and risks, and which blast-radius surfaces it covers. One obvious fix is a valid outcome — don't manufacture alternatives. A recommendation is welcome; a decision is not.
 
-Ensure the cache directory exists:
-
-```bash
-mkdir -p .workflows/.cache/{work_unit}/investigation/{topic}
-```
-
-Write the draft to `.workflows/.cache/{work_unit}/investigation/{topic}/fix-options.md` (overwrite any prior draft — it is working scratch, not a record): the options, trade-offs, and any recommendation as the body — pure markdown, no frontmatter.
+The draft is the payload the next section renders — one file, so what is discussed and what is displayed can never diverge. Its shape is in **B. Present & Discuss**; write it there and overwrite any prior draft, which is working scratch rather than a record.
 
 → Proceed to **B. Present & Discuss**.
 
@@ -24,30 +18,20 @@ Write the draft to `.workflows/.cache/{work_unit}/investigation/{topic}/fix-opti
 
 ## B. Present & Discuss
 
-Present what the exploration surfaced. Let the findings guide the shape — there's no required number of approaches:
+Present what the exploration surfaced. The findings decide how much there is, never how it is laid out — the display gives every option the same rows so the user can compare them, letters them only when there is more than one, and counts them itself.
 
-- **One obvious fix?** Present it clearly with trade-offs and any risks.
-- **Multiple viable approaches?** Present each with trade-offs so the user can compare, and name the recommendation as a recommendation.
-- **Unclear?** Say so — this is a discussion, not a presentation.
+- **One obvious fix?** One option. Don't manufacture alternatives to fill a comparison.
+- **Multiple viable approaches?** One option each, and mark the recommendation — its deciding factor rides in `recommendation`.
+- **Unclear?** Say so in `open_question` rather than presenting false confidence — this is a discussion, not a presentation.
 
-> *Output the next fenced block as a code block:*
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/fix-direction.json` with the Write tool — one row per thing the option needs the user to weigh, labelled for what it carries (`Changes`, `Trade-off`, `Risk`, `Covers` are the ones the exploration asks for) and one line apiece:
 
-```
-Fix Direction: {work_unit}
+`{"options": [{"name": "{approach}", "recommended": true, "rows": [["{label}", "{value}"]]}], "recommendation": "{deciding factor}", "open_question": "{what is still unresolved}"}`
 
-{fix direction content — format naturally based on what there is
-to present. A single approach doesn't need numbered alternatives;
-multiple approaches benefit from comparison structure.}
-```
+`recommended` and `recommendation` travel together and only where options are compared; omit `open_question` when nothing is open. Then fetch the display, emitting each section verbatim at its marked instruction:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ What are your thoughts?`**
-
-**`y/yes`**            → Agree with this direction
-**Provide feedback** → Tell me your thoughts: discuss, challenge, or suggest alternatives
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render fix-direction {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/fix-direction.json
 ```
 
 **STOP.** Wait for user response.
@@ -72,7 +56,7 @@ Engage collaboratively. Stay bounded — focus on:
 
 Do not go into implementation detail — that belongs in the specification.
 
-Update the cache draft as the option space shifts — new options, killed options, changed trade-offs — so a crash never loses the discussion.
+Rewrite the payload as the option space shifts — new options, killed options, changed trade-offs — so a crash never loses the discussion and the next render shows where it actually stands.
 
 → Return to **B. Present & Discuss**.
 
