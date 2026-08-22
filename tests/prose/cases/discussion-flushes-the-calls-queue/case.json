@@ -41,19 +41,22 @@
       "render finding-batch pay.discussion.pay",
       "calls-batch.json",
       "discussion-map add pay pay",
-      "discussion-map set pay pay"
+      "discussion-map set pay pay",
+      "agent dispatch pay discussion pay --kind review"
     ],
     "calls_in_order": [
       "manifest get pay.discussion.pay status",
       "render finding-batch pay.discussion.pay"
     ],
     "calls_exclude": [
-      "agent dispatch",
       "agent ack",
       "agent surface",
       "agent incorporate",
       "topic complete",
       "knowledge.cjs index"
     ]
+  },
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   }
 }
