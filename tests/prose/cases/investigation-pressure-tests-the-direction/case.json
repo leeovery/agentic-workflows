@@ -1,0 +1,69 @@
+{
+  "origin": "the fix validation used to be offered — the user agreed a direction, then answered a second gate asking whether to check it. Agreement now commissions the pass, so this walks the tail from a signed-off root cause to the verdict and pins that no second gate stands between them",
+  "entry": "workflow-investigation-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-investigation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-investigation-entry/references/validate-phase.md",
+    "skills/workflow-investigation-entry/references/invoke-skill.md",
+    "skills/workflow-investigation-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/product-lens.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-investigation-process/references/investigation-plan.md",
+    "skills/workflow-investigation-process/references/analysis-patterns.md",
+    "skills/workflow-investigation-process/references/analysis-checkpoints.md",
+    "skills/workflow-investigation-process/references/root-cause-validation.md",
+    "skills/workflow-investigation-process/references/findings-signoff.md",
+    "skills/workflow-investigation-process/references/fix-exploration.md",
+    "skills/workflow-investigation-process/references/fix-validation.md",
+    "skills/workflow-investigation-process/references/conclude-investigation.md"
+  ],
+  "answers": [
+    "c — pick the investigation up where it left off",
+    "y — the plan and the ledger still stand",
+    "s — skip the root cause validation",
+    "y — the findings match my understanding",
+    "y — agree with the recommended direction"
+  ],
+  "stubs": {
+    "fix-validation-clean": "when the prose dispatches the fix validation agent via the Task tool — write the report to the path the dispatch returned and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate crash-fix.investigation.crash-fix",
+      "render hypothesis-board crash-fix.investigation.crash-fix",
+      "render validation-gate crash-fix.investigation.crash-fix --variant root-cause",
+      "render fix-direction crash-fix.investigation.crash-fix",
+      "agent dispatch crash-fix investigation crash-fix --kind fix-validation",
+      "agent incorporate crash-fix investigation crash-fix",
+      "render validation-report crash-fix.investigation.crash-fix",
+      "--variant fix"
+    ],
+    "calls_in_order": [
+      "render resume-gate crash-fix.investigation.crash-fix",
+      "render validation-gate crash-fix.investigation.crash-fix --variant root-cause",
+      "write:.workflows/.cache/crash-fix/investigation/crash-fix/fix-direction.json",
+      "render fix-direction crash-fix.investigation.crash-fix",
+      "agent dispatch crash-fix investigation crash-fix --kind fix-validation",
+      "write:.workflows/.cache/crash-fix/investigation/crash-fix/validation.json",
+      "render validation-report crash-fix.investigation.crash-fix"
+    ],
+    "calls_exclude": [
+      "render validation-gate crash-fix.investigation.crash-fix --variant fix",
+      "--kind root-cause-validation",
+      "topic complete",
+      "topic reopen",
+      "topic start crash-fix investigation crash-fix"
+    ]
+  }
+}
