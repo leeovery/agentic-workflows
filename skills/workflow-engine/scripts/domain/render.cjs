@@ -801,7 +801,8 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
 // recommendation must carry its reasoning: naming a favourite without saying
 // why is the move this phase exists to prevent. Where the exploration is
 // genuinely unresolved, the open question is a field rather than a paragraph
-// someone remembers to add.
+// someone remembers to add. Agreement carries the pressure test with it —
+// there is no direction worth agreeing to and not proving.
 // ---------------------------------------------------------------------------
 
 // One option per letter. A fix exploration that reaches the end of this has
@@ -881,20 +882,22 @@ function fixDirection(cwd, { dotpath, file }) {
   return [
     section('DISPLAY: fix direction', 'emit verbatim as markdown', body.join('\n').replace(/\n+$/, '')),
     section('MENU: fix direction gate', STOP_FOR_RESPONSE, menu('', [
-      cmdOption('y', 'yes', 'Agree with this direction'),
+      cmdOption('y', 'yes', 'Agree with this direction and pressure-test it'),
       promptOption('Provide feedback', 'Tell me your thoughts: discuss, challenge, or suggest alternatives'),
     ], { question: 'What are your thoughts?' })),
   ].join('\n');
 }
-
 // ---------------------------------------------------------------------------
 // validation-report — the investigation's two independent-agent passes, which
 // differ only in what they hunt: root-cause validation looks for gaps in the
-// diagnosis, fix validation for risks in the agreed direction. One surface,
-// because a divergence between them would be drift rather than design. The
-// agent's own STATUS travels verbatim in the payload and is checked against
-// the findings, so a verdict can never disagree with the list beneath it.
-// A clean pass renders the verdict alone — nothing to decide, so no menu.
+// diagnosis, fix validation for risks in the direction. One surface, because
+// a divergence between them would be drift rather than design. The agent's
+// own STATUS travels verbatim in the payload and is checked against the
+// findings, so a verdict can never disagree with the list beneath it. Both
+// verdicts carry the same readout — what was checked, what it concluded,
+// where the full analysis sits — because a bare pass is an assertion rather
+// than a result. Only the offer differs: the root cause validation is the
+// one the user chooses, so it is the only variant `validation-gate` serves.
 // ---------------------------------------------------------------------------
 
 const VALIDATION_CONFIDENCE = ['high', 'medium', 'low'];
@@ -903,46 +906,49 @@ const VALIDATION_VARIANTS = {
     label: 'Root cause validation',
     found: 'gaps_found',
     noun: 'gap',
-    clean: 'validated ({confidence} confidence). No gaps found.',
+    clean: 'validated, no gaps found',
     question: 'How should these gaps be handled?',
     address: 'Work through them and fold the answers into the investigation',
-    offer: 'Root cause documented. Run validation?',
-    run: 'Run root cause validation',
-    decline: 'Skip straight to findings sign-off',
+    gate: {
+      offer: 'Root cause documented. Run validation?',
+      run: 'Run root cause validation',
+      decline: 'Skip straight to findings sign-off',
+    },
   },
   fix: {
     label: 'Fix validation',
     found: 'risks_found',
     noun: 'risk',
-    clean: 'direction confirmed ({confidence} confidence). No unaddressed risks.',
+    clean: 'confirmed, no unaddressed risks',
     question: 'How should these risks be handled?',
     address: 'Work through them and fold the outcome into the fix direction',
-    offer: 'Fix direction agreed. Run fix validation?',
-    run: 'Run fix validation',
-    decline: 'Skip to wrap-up',
+    // The user agreed to one option out of a lettered comparison, so the
+    // verdict names which one it confirms rather than leaving them to recall.
+    requiresDirection: true,
   },
 };
 
 /**
- * The offer that opens each validation — payload-less: the ask is the same
- * every time, and what it is offering comes from the variant.
+ * The offer that opens the root cause validation — payload-less: the ask is
+ * the same every time, and what it is offering comes from the variant.
  * @param {string} cwd
  * @param {{dotpath: string, variant?: string}} args
  * @returns {string}
  */
 function validationGate(cwd, { dotpath, variant }) {
   const v = VALIDATION_VARIANTS[/** @type {keyof typeof VALIDATION_VARIANTS} */ (variant)];
-  if (!v) {
-    throw new Error(`render validation-gate: --variant must be one of ${Object.keys(VALIDATION_VARIANTS).join('/')}`);
+  const gate = v && /** @type {{gate?: {offer: string, run: string, decline: string}}} */ (v).gate;
+  if (!gate) {
+    throw new Error('render validation-gate: --variant must be root-cause — the fix direction is always pressure-tested, so nothing offers it');
   }
   const { phase } = resolveAddress(cwd, dotpath, 'validation-gate');
   if (phase !== 'investigation') {
     throw new Error(`render validation-gate: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
   }
   return section(`MENU: ${variant} validation offer`, STOP_FOR_RESPONSE, menu('', [
-    cmdOption('y', 'yes', v.run),
-    cmdOption('s', 'skip', v.decline),
-  ], { question: v.offer }));
+    cmdOption('y', 'yes', gate.run),
+    cmdOption('s', 'skip', gate.decline),
+  ], { question: gate.offer }));
 }
 
 /**
@@ -967,10 +973,48 @@ function validationReport(cwd, { dotpath, file, variant }) {
   if (p.status !== 'validated' && p.status !== v.found) {
     throw new Error(`render validation-report: "status" must be "validated" or "${v.found}" for the ${variant} variant, got "${p.status}"`);
   }
+  const named = /** @type {{requiresDirection?: boolean}} */ (v).requiresDirection === true;
+  if (named) {
+    if (!isFilled(p.direction)) {
+      throw new Error('render validation-report: "direction" must name the agreed approach — a verdict that does not say what it confirms is not one');
+    }
+    oneLine('validation-report', p.direction, '"direction"');
+  } else if (p.direction !== undefined) {
+    throw new Error(`render validation-report: "direction" belongs to the fix variant — ${variant} validation has no chosen approach to name`);
+  }
+  if (!Array.isArray(p.checks) || p.checks.length === 0) {
+    throw new Error('render validation-report: "checks" must be a non-empty array of [label, outcome] pairs — the verdict says what was examined');
+  }
+  p.checks.forEach((/** @type {unknown} */ c, /** @type {number} */ i) => {
+    if (!Array.isArray(c) || c.length !== 2 || !isFilled(c[0]) || !isFilled(c[1])) {
+      throw new Error(`render validation-report: checks[${i}] must be a [label, outcome] pair of non-empty strings`);
+    }
+    oneLine('validation-report', c[0], `checks[${i}] label`);
+    oneLine('validation-report', c[1], `checks[${i}] outcome`);
+  });
+  if (!isFilled(p.summary)) {
+    throw new Error('render validation-report: "summary" must be a non-empty string — the agent\'s own one-sentence assessment');
+  }
+  oneLine('validation-report', p.summary, '"summary"');
+  if (!isFilled(p.analysis_path)) {
+    throw new Error('render validation-report: "analysis_path" must be a non-empty string — the full analysis stays in cache and the display points at it');
+  }
   const items = p.items === undefined ? [] : stringLines(p.items, 'validation-report', 'items');
   items.forEach((it, i) => {
     if (!isFilled(it)) throw new Error(`render validation-report: items[${i}] must be a non-empty string`);
   });
+
+  const head = [v.label, ...(named ? [`"${p.direction}"`] : []), `${p.confidence} confidence`].join(' · ');
+  // The checks and the summary close every verdict, clean or not — findings
+  // first where there are any, then the scope they were found within.
+  const tail = [
+    '',
+    p.checks.map((/** @type {[string, string]} */ [label, outcome]) => `- **${label}**: ${outcome}`).join('\n'),
+    '',
+    p.summary,
+    '',
+    `*Full analysis: \`${p.analysis_path}\`*`,
+  ];
 
   if (p.status === 'validated') {
     if (items.length) {
@@ -979,22 +1023,19 @@ function validationReport(cwd, { dotpath, file, variant }) {
     return section(
       `DISPLAY: ${variant} validation verdict`,
       CONTINUE_MARKDOWN_INSTRUCTION,
-      `**${v.label}** — ${v.clean.replace('{confidence}', p.confidence)}`,
+      [`**${head}** — ${v.clean}`, ...tail].join('\n'),
     );
   }
 
   if (!items.length) {
     throw new Error(`render validation-report: "status" is "${v.found}" but no ${v.noun}s are listed — the verdict and the findings must agree`);
   }
-  if (!isFilled(p.analysis_path)) {
-    throw new Error('render validation-report: "analysis_path" must be a non-empty string — the full analysis stays in cache and the display points at it');
-  }
   const body = worklist({
-    heading: { label: `${v.label} · ${p.confidence} confidence`, noun: v.noun },
+    heading: { label: head, noun: v.noun },
     items: items.map((title) => ({ title })),
   });
   return [
-    section(`DISPLAY: ${variant} validation findings`, 'emit verbatim as markdown', `${body}\n\n*Full analysis: \`${p.analysis_path}\`*`),
+    section(`DISPLAY: ${variant} validation findings`, 'emit verbatim as markdown', [body, ...tail].join('\n')),
     section(`MENU: ${variant} validation gate`, STOP_FOR_RESPONSE, menu('', [
       cmdOption('a', 'address', v.address),
       cmdOption('d', 'dismiss', 'Note them as considered-and-dismissed and proceed'),

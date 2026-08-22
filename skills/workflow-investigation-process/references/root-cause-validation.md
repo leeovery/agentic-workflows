@@ -79,9 +79,16 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_u
 
 Read the report at the row's content file.
 
-Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/validation.json` with the Write tool — the agent's own `STATUS` and `CONFIDENCE` verbatim, and on `gaps_found` the key gaps as one line each, stating what could be wrong in behaviour terms with code refs as anchors rather than the lead. Do not dump the full output; the analysis path carries the reader there.
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/validation.json` with the Write tool:
 
-`{"status": "{STATUS:[validated|gaps_found]}", "confidence": "{CONFIDENCE:[high|medium|low]}", "items": ["{gap}"], "analysis_path": "{the row's content file path}"}`
+- `status` and `confidence` — the agent's own, verbatim
+- `checks` — one `[label, outcome]` pair per section the agent worked through (symptom coverage, code trace, alternative root causes, blast radius), the outcome stated in a few words, never the detail beneath it
+- `summary` — the agent's `SUMMARY` line
+- `items` — on `gaps_found` only, the key gaps as one line each, stating what could be wrong in behaviour terms with code refs as anchors rather than the lead
+
+Do not dump the full output; the analysis path carries the reader there.
+
+`{"status": "{STATUS:[validated|gaps_found]}", "confidence": "{CONFIDENCE:[high|medium|low]}", "checks": [["{label}", "{outcome}"]], "summary": "{SUMMARY}", "items": ["{gap}"], "analysis_path": "{the row's content file path}"}`
 
 Fetch the report, emitting each section verbatim at its marked instruction:
 

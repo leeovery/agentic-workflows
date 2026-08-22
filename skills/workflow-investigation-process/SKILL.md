@@ -319,7 +319,7 @@ Load **[fix-exploration.md](references/fix-exploration.md)** and follow its inst
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Offering an independent pressure-test of the agreed fix direction before wrapping up.
+> An independent agent now pressure-tests the agreed direction — confirming it resolves the root cause and hunting for side effects before the investigation concludes.
 ```
 
 Load **[fix-validation.md](references/fix-validation.md)** and follow its instructions as written.
