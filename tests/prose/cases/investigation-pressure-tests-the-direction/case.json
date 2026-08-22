@@ -32,7 +32,7 @@
     "y — the plan and the ledger still stand",
     "s — skip the root cause validation",
     "y — the findings match my understanding",
-    "y — agree with the recommended direction"
+    "y — agree with the direction"
   ],
   "stubs": {
     "fix-validation-clean": "when the prose dispatches the fix validation agent via the Task tool — write the report to the path the dispatch returned and return the status block as the stub describes"
