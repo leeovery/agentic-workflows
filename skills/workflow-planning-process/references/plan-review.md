@@ -144,12 +144,10 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Fixes applied this cycle may have shifted dependencies, introduced gaps,
-or affected other tasks. A follow-up round reviews the corrected plan
-with fresh context — 2-3 cycles typically surface anything cascading.
+> Fixes applied this cycle may have shifted dependencies, introduced gaps, or affected other tasks. A follow-up round reviews the corrected plan with fresh context — 2-3 cycles typically surface anything cascading.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -176,12 +174,10 @@ with fresh context — 2-3 cycles typically surface anything cascading.
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Fixes applied this cycle may have shifted dependencies, introduced gaps,
-or affected other tasks. A follow-up round reviews the corrected plan
-with fresh context — 2-3 cycles typically surface anything cascading.
+> Fixes applied this cycle may have shifted dependencies, introduced gaps, or affected other tasks. A follow-up round reviews the corrected plan with fresh context — 2-3 cycles typically surface anything cascading.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

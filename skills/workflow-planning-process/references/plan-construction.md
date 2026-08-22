@@ -24,12 +24,10 @@ Navigation stays within plan construction. It cannot skip past the end of this s
 
 → Load **[define-phases.md](define-phases.md)** and follow its instructions as written.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-I'll now work through each phase — presenting existing work for review
-and designing or authoring anything still pending. You'll approve at
-every stage.
+I'll now work through each phase — presenting existing work for review and designing or authoring anything still pending. You'll approve at every stage.
 ```
 
 → On return, proceed to **B. Process Current Phase**.

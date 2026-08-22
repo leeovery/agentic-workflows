@@ -133,11 +133,10 @@ Previously extracted (for reference):
 
 **If single discussion (no menu to return to):**
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Understood. Continue working on discussions, or re-run this
-command when ready.
+Understood. Continue working on discussions, or re-run this command when ready.
 ```
 
 **STOP.** Do not proceed — terminal condition.

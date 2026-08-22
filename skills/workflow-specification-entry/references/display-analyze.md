@@ -69,11 +69,10 @@ rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
 
 #### If `no`
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Understood. Continue working on discussions, or re-run this
-command when ready.
+Understood. Continue working on discussions, or re-run this command when ready.
 ```
 
 **STOP.** Do not proceed — terminal condition.

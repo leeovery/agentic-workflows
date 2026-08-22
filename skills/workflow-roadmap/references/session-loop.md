@@ -16,12 +16,10 @@ If `.workflows/.baseline/overview.md` exists, read it in full — silent ambient
 
 The conversation is already live and its record persisted at Step 2 — don't re-open with a cold prompt. Render a brief transition that moves from "what is this" into laying the product out:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-This is product territory — we'll lay the whole thing out, then
-pull the first slice into delivery when you're ready. Nothing we
-say here commits you to building anything.
+This is product territory — we'll lay the whole thing out, then pull the first slice into delivery when you're ready. Nothing we say here commits you to building anything.
 
 Where do you want to dig in?
 ```
@@ -36,15 +34,15 @@ Clear `genesis_continuation` — the transition is spent; any later pass through
 
 The log at `.workflows/.roadmap/sessions/session-{session_number}.md` is the working state — read it in full. Then brief across the record before re-opening: read the most recent prior session log in full too (the `SESSIONS` table from the home snapshot lists them; older sessions contribute their `## Conclusion` line only), and synthesise a short catch-up — the threads being circled, what the user was leaning toward, what was left open.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Where we'd got to:
 
-  {2–4 lines from the recent session(s): the threads circled, what the user was leaning toward, what was still open}
+{2–4 lines from the recent session(s): the threads circled, what the user was leaning toward, what was still open}
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Where do you want to take it from here?
@@ -58,14 +56,10 @@ Where do you want to take it from here?
 
 A fresh session over the map just rendered at Step 3. Brief across the record first when prior sessions exist (most recent log in full, older Conclusions one line each — as the resume branch does), skipping silently when none do. Then open:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-The map's above. You can open a new thread — something the product
-needs that we haven't shaped — or name changes to what's there:
-move, rename, remove, re-order horizons, groom an inbox idea on.
-Both in one go is fine. Say "show roadmap" anytime to pull it back
-up.
+The map's above. You can open a new thread — something the product needs that we haven't shaped — or name changes to what's there: move, rename, remove, re-order horizons, groom an inbox idea on. Both in one go is fine. Say "show roadmap" anytime to pull it back up.
 
 What's on your mind?
 ```

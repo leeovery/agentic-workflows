@@ -10,11 +10,10 @@ This step uses the `workflow-planning-dependency-grapher` agent (`../../../agent
 
 ## A. Analyze
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-All tasks are authored. Now I'll analyze internal dependencies and
-priorities across the full plan.
+All tasks are authored. Now I'll analyze internal dependencies and priorities across the full plan.
 ```
 
 Read the `format`, the plan's `external_id`, and the `task_map` from the manifest:
