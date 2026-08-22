@@ -10,12 +10,10 @@ This step uses the `workflow-planning-task-designer` agent (`../../../agents/wor
 
 ## A. Design Task List
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Taking Phase {N}: {Phase Name} and breaking it into tasks. I'll delegate
-this to a specialist agent that will read the full specification and
-propose a task list.
+Taking Phase {N}: {Phase Name} and breaking it into tasks. I'll delegate this to a specialist agent that will read the full specification and propose a task list.
 ```
 
 ### Invoke the Agent

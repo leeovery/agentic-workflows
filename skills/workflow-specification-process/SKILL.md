@@ -26,11 +26,10 @@ Follows discussion (or investigation for bugfix). Transform prior-phase source m
 
 **If source material seems incomplete or unclear:**
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-I have the source material, but {concern}. Should I proceed as-is, or is there
-additional material I should review?
+I have the source material, but {concern}. Should I proceed as-is, or is there additional material I should review?
 ```
 
 **STOP.** Wait for user response.
