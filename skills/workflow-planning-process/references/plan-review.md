@@ -215,7 +215,7 @@ Read `manifest get {work_unit}.planning.{topic} tracking`. If any entry is `in-p
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})"
    ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Plan review complete — {N} cycle(s), all tracking files finalised.
