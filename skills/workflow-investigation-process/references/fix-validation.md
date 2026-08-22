@@ -4,35 +4,9 @@
 
 ---
 
-An independent agent pressure-tests the agreed fix direction — does it actually resolve the root cause, and what might it break. This step is optional — the user chooses whether to run it.
+An independent agent pressure-tests the agreed fix direction — does it actually resolve the root cause, and what might it break. Every agreed direction takes this pass: agreeing to a direction is what commissions it.
 
-## A. Offer Validation
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> An independent agent can pressure-test the agreed direction — confirming it resolves the root cause and hunting for side effects before the investigation concludes.
-```
-
-Fetch the offer, emitting the section verbatim at its marked instruction:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render validation-gate {work_unit}.investigation.{topic} --variant fix
-```
-
-**STOP.** Wait for user response.
-
-#### If `skip`
-
-→ Return to caller.
-
-#### If `yes`
-
-→ Proceed to **B. Dispatch**.
-
----
-
-## B. Dispatch
+## A. Dispatch
 
 Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal):
 
@@ -64,11 +38,11 @@ RISKS_COUNT: {N}
 SUMMARY: {1 sentence}
 ```
 
-→ Proceed to **C. Process Results**.
+→ Proceed to **B. Process Results**.
 
 ---
 
-## C. Process Results
+## B. Process Results
 
 The agent ran in the foreground, so its report has landed. Promote and read it, then close the row — the verdict is consumed inline, never surfaced finding-by-finding:
 
@@ -79,9 +53,17 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_u
 
 Read the report at the row's content file.
 
-Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/validation.json` with the Write tool — the agent's own `STATUS` and `CONFIDENCE` verbatim, and on `risks_found` the key risks as one line each, stating what could break in behaviour terms with code refs as anchors rather than the lead. Do not dump the full output; the analysis path carries the reader there.
+Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/validation.json` with the Write tool:
 
-`{"status": "{STATUS:[validated|risks_found]}", "confidence": "{CONFIDENCE:[high|medium|low]}", "items": ["{risk}"], "analysis_path": "{the row's content file path}"}`
+- `status` and `confidence` — the agent's own, verbatim
+- `direction` — the Chosen Approach's name from the investigation file's Fix Direction section, so the verdict says which option it confirms
+- `checks` — one `[label, outcome]` pair per section the agent worked through (root cause coverage, blast radius, side effects, assumptions, testing), the outcome stated in a few words, never the detail beneath it
+- `summary` — the agent's `SUMMARY` line
+- `items` — on `risks_found` only, the key risks as one line each, stating what could break in behaviour terms with code refs as anchors rather than the lead
+
+Do not dump the full output; the analysis path carries the reader there.
+
+`{"status": "{STATUS:[validated|risks_found]}", "confidence": "{CONFIDENCE:[high|medium|low]}", "direction": "{chosen approach}", "checks": [["{label}", "{outcome}"]], "summary": "{SUMMARY}", "items": ["{risk}"], "analysis_path": "{the row's content file path}"}`
 
 Fetch the report, emitting each section verbatim at its marked instruction:
 
