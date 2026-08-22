@@ -11,8 +11,8 @@ The prose should have taken this path:
    addresses the knowledge base once as a contextual query (empty store
    — the session proceeds silently), and enters the session step
 4. the session loop's checks run: the triage check no-ops on an empty
-   queue, and the agent check finds nothing — no agent was ever
-   dispatched. A session just opened with no thread underway is a
+   queue, and the agent check finds nothing — no agent has been
+   dispatched yet. A session just opened with no thread underway is a
    natural break, so the non-empty calls queue flushes: the flush
    section routes on the queue file, finds two items and no pulled
    calls, and builds the screen
@@ -31,6 +31,12 @@ The prose should have taken this path:
 7. the flush re-enters, finds `items` and `pulled` both empty, deletes
    the queue file, confirms in one line, and the session resumes — no
    further screen, no conclusion gate
+8. the dispatch check rides those commits as the session loop
+   prescribes, and on this topic every condition holds — the calls
+   queue is now drained, no review has ever run, so the first review
+   is free — so a background review dispatches and is announced in one
+   line. The walk does not wait on it: nothing is scanned, read, or
+   surfaced from it before the turn ends
 
 Presentation claims — deliberate display claims; the flush's shape is
 the behaviour under test:
@@ -48,8 +54,10 @@ the behaviour under test:
 
 Further claims:
 
-- no agent verbs run beyond the scan: no dispatch, no ack, no surface,
-  no incorporate — the queue is not the agent store
+- the calls queue and the agent store stay separate: the flush itself
+  reads and writes neither agent rows nor findings, and the only agent
+  verb the walk runs is the dispatch its commits arm — no ack, no
+  surface, no incorporate, since nothing has come back yet
 - each documented call lands as a new section whose Decision block
   opens with the derivation marker naming its determinant; no finding
   id appears anywhere (these calls came from the conversation, not a
@@ -61,6 +69,7 @@ Further claims:
 EXPECTED WORLD — the fixture plus: the Discussion Map carries two new
 subtopics, both `decided`; the discussion file carries a new section
 per call, each Decision opening with the **Settled by derivation**
-marker; each call is committed on its own; and
+marker; each call is committed on its own;
 `.workflows/.cache/pay/discussion/pay/calls-queue.json` no longer
-exists.
+exists; and the agent store holds one `review` row in flight with the
+stub's report on disk.
