@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.5] - 2026-08-22
+
+🔧 Changed
+- Fix direction validation now always runs after agreement instead of being an optional offer — the pressure-test is automatic, not opt-in.
+- Validation verdicts (root cause and fix) now show what was checked, a summary, and the analysis path on every result, not just when issues are found.
+- Root cause validation dropped the `fix` variant on `validation-gate`, since fix validation is no longer separately offered.
+- Prose instructions across many skills switched from "code block" to "markdown" rendering, so multi-line guidance renders without stray leading indentation.
+
 ## [0.7.4] - 2026-08-22
 
 ✨ Added
