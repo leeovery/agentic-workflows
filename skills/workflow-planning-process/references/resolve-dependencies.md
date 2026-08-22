@@ -4,11 +4,10 @@
 
 ---
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-All phases and tasks are written. Now I'll check for external
-dependencies — things this plan needs from other topics or systems.
+All phases and tasks are written. Now I'll check for external dependencies — things this plan needs from other topics or systems.
 ```
 
 Handle external dependencies — things this plan needs from other topics or systems.
@@ -172,7 +171,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit
 
 #### If no changes were made (no deps to write, no reverse resolutions)
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 No external dependencies for this topic. No reverse resolutions needed.

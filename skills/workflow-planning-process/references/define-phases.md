@@ -14,7 +14,7 @@ Read the planning file at `.workflows/{work_unit}/planning/{topic}/planning.md`.
 
 #### If phases exist
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Phase structure already exists. I'll present it for your review.
@@ -24,12 +24,10 @@ Phase structure already exists. I'll present it for your review.
 
 #### If no phases exist
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-I'll delegate phase design to a specialist agent. It will read the full
-specification and propose a phase structure — how we break this into
-independently testable stages.
+I'll delegate phase design to a specialist agent. It will read the full specification and propose a phase structure — how we break this into independently testable stages.
 ```
 
 Read `work_type` from the manifest:

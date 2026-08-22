@@ -24,15 +24,14 @@ Bounded regardless of how many sessions exist:
 
 Synthesise the recent-in-full logs into a short briefing that resumes the conversation — the threads being circled, what the user was leaning toward, what was left open. When the most recent log is an in-progress resume, note the edits already applied this session. Surface the *thinking*; don't restate the map.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Where we'd got to:
 
-  {2–4 lines from the recent session(s): the threads circled, what the user was leaning toward, what was still open}
+{2–4 lines from the recent session(s): the threads circled, what the user was leaning toward, what was still open}
 
-  {older sessions, if any: one line each from their Conclusion,
-  under an "Earlier:" lead — only when it aids orientation}
+{older sessions, if any: one line each from their Conclusion, under an "Earlier:" lead — only when it aids orientation}
 ```
 
 The caller renders its own opener prompt and STOP after this briefing.

@@ -18,11 +18,10 @@ If `.workflows/.baseline/overview.md` exists, read it in full — silent ambient
 
 The slice was fenced at the pull and its record backfilled into `session-{session_number}.md` — the conversation continues, narrower. Name the fenced slice in one conversational sentence (the pulled items, by name), then render the transition:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Topics come later — they fall out once we've deepened the slice;
-the pulled items are the rough shapes.
+Topics come later — they fall out once we've deepened the slice; the pulled items are the rough shapes.
 
 Anything to reshape before we go deeper — or shall we dig in?
 ```
@@ -35,12 +34,10 @@ Anything to reshape before we go deeper — or shall we dig in?
 
 The macro shaping at Step 4 already explored the work enough to confirm it's an epic and surfaced the first topic seeds; the confirm-trigger backfilled that into `session-{session_number}.md`. Don't re-open with a cold prompt — the conversation is already live. Render a brief transition that moves from "what is this" into exploring the whole:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-That's an epic — work unit created. We've started sketching the shape;
-now let's get into it properly. Topics come later — they fall out once
-we've thought the whole thing through.
+That's an epic — work unit created. We've started sketching the shape; now let's get into it properly. Topics come later — they fall out once we've thought the whole thing through.
 
 What do you want to dig into first?
 ```
@@ -57,7 +54,7 @@ Brief across the prior sessions, then ask where to pick up:
 
 → Load **[continuity-load.md](continuity-load.md)** and follow its instructions as written.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
 Where do you want to take it from here?
@@ -83,14 +80,10 @@ With the map rendered, read the prior sessions to resume the conversation:
 
 Then frame the opener:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-You can open a fresh thread — a new area of the work you want
-to sketch out — and we'll explore it the same way we did first
-time, then synthesise topics at the end. Or you can name changes
-to existing items: remove, rename, re-route, edit summary,
-edit description, mark handled. Both in one go is fine.
+You can open a fresh thread — a new area of the work you want to sketch out — and we'll explore it the same way we did first time, then synthesise topics at the end. Or you can name changes to existing items: remove, rename, re-route, edit summary, edit description, mark handled. Both in one go is fine.
 
 Say "show map" anytime to pull the map back up.
 
@@ -105,16 +98,14 @@ What's on your mind for this map?
 
 Fresh first-session with seed material. Read each file listed under `seeds[]` then `imports[]` (paths are relative to `.workflows/{work_unit}/`) — the seed is the primary launchpad, imports are supporting. Use this content to launch the conversation: reflect what's there, ask exploratory questions about it. Don't dump it back at the user verbatim — synthesise.
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Read your {seed | import(s) | seed and import(s)}. Here's the shape
-I'm picking up:
+Read your {seed | import(s) | seed and import(s)}. Here's the shape I'm picking up:
 
-  {one-line summary of what the seed/import material describes}
+{one-line summary of what the seed/import material describes}
 
-Before we name topics, let's pull on a few things — {one or two
-exploratory questions drawn from the seed material}.
+Before we name topics, let's pull on a few things — {one or two exploratory questions drawn from the seed material}.
 ```
 
 **STOP.** Wait for user response.
@@ -125,14 +116,12 @@ exploratory questions drawn from the seed material}.
 
 Fresh first-session, no map, no imports. The work-unit description has been read silently — don't narrate or summarise it back. Open with this prompt:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-Tell me about what you want to build. Don't worry about
-structure — describe it the way it sits in your head right now.
+Tell me about what you want to build. Don't worry about structure — describe it the way it sits in your head right now.
 
-I'll ask some open questions to pull on the idea before we
-synthesise topics.
+I'll ask some open questions to pull on the idea before we synthesise topics.
 ```
 
 **STOP.** Wait for user response.
