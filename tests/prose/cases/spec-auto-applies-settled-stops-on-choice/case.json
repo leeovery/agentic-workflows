@@ -46,7 +46,7 @@
       "render finding pay.specification.pay",
       "finding_gate_mode auto",
       "tracking.review-input-tracking-c1 complete",
-      "manifest set pay.specification.pay review_cycle=2",
+      "manifest set pay.specification.pay review_cycle 2",
       "topic complete pay specification pay"
     ],
     "calls_exclude": [
@@ -64,7 +64,7 @@
       "render finding pay.specification.pay",
       "render finding pay.specification.pay",
       "tracking.review-input-tracking-c1 complete",
-      "manifest set pay.specification.pay review_cycle=2",
+      "manifest set pay.specification.pay review_cycle 2",
       "topic complete pay specification pay"
     ]
   }
