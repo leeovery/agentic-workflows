@@ -93,7 +93,7 @@ Then update the tracking file — Resolution `Routed`, a note naming what landed
 
 ### Present Finding
 
-An applied finding invalidates a later finding's Current where both touch the same ground — build the diff from the live document, never from the tracking file's stale copy.
+An applied finding moves the ground a later finding stands on. Re-derive **both sides** of a later finding's diff from the live document — what lands is the finding's change applied to the document as it stands, never the tracking file's stale copy, which would silently revert the earlier landing.
 
 Before presenting, check the finding's proposed content against the one-home rule (**[specification-format.md](specification-format.md)**): where it restates a fact that already has a home in the specification, revise it to reference the home and update the tracking file. The same bar governs anything adjusted here: additive for missing ground, removal or in-place correction for wrong ground — never a correction note beside the old text, never a mention of review, cycles, or process. The document reads as authored fresh and correct.
 
@@ -119,7 +119,7 @@ The response carries the finding presentation plus the surface for its move and 
 
 #### If the response carried `DISPLAY: finding auto-approved`
 
-1. Log the Proposed Text to the specification verbatim — a finding with a Current field replaces that content, never appends
+1. Log the finding's change to the specification exactly as the re-derived diff states it — a finding with a Current field replaces that content, never appends
 2. Update the tracking file: set resolution to "Approved"
 3. Commit
 4. Emit the `DISPLAY: finding auto-approved` section now, per its marker.
@@ -178,7 +178,7 @@ Work the point through in conversation. Where it settles on an option, land it a
 
 Work the point through in conversation — a challenge, an adjustment, or a decline all start here.
 
-- **The exchange revises the content**: update the tracking file with the revised content, rewrite the payload to match, and re-render the finding.
+- **The exchange revises the content**: update the tracking file with the revised content — **B** re-presents the finding from the updated file, once.
 - **The exchange ends in agreement to apply**: land it as the `yes` branch does.
 - **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it exists only here, as the outcome of this exchange.
 
@@ -186,7 +186,7 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
 
 #### If `yes`
 
-1. Log the Proposed Text to the specification verbatim — a finding with a Current field replaces that content, never appends
+1. Log the finding's change to the specification exactly as the presented diff states it — a finding with a Current field replaces that content, never appends
 2. Update the tracking file: set resolution to "Approved", add any discussion notes
 3. Commit — ensures progress survives context refresh
 

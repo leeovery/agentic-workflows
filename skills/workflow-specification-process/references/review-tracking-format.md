@@ -33,17 +33,17 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 **Problem**:
 [What is wrong, in the terms the reader cares about — the product, the end result. Not the analysis that found it.]
 
-**Evidence**:
-[Claims Verification only — the claim verbatim, the command, and its output. Omit for Input Review and Gap Analysis.]
-
 **Proposal**:
 [Move `settled` only — the call and what determined it, in a sentence or two. Omit for `choice` and `route`.]
 
 **Options**:
 [Move `choice` only — one line per option, "(recommended)" on at most one. Omit for `settled` and `route`.]
 
+**Evidence**:
+[Claims Verification only — the claim verbatim, the command, and its output; for a Source defect, which source document and section carries the claim. Omit for Input Review and Gap Analysis.]
+
 **Current**:
-[For findings that modify existing content (Enhancement, Duplication, Contradiction) — the existing specification content that will be modified; a Contradiction quotes the readings that collide. Omit for New topic, Gap/Ambiguity, Source defect, and Unsourced decision findings.]
+[For findings that modify existing content (Enhancement, Duplication, Contradiction) — the existing specification content that will be modified. A Contradiction's Current holds only the passage being corrected; the colliding reading is named in the Problem with its section. Omit for New topic, Gap/Ambiguity, Source defect, and Unsourced decision findings.]
 
 **Proposed Text**:
 [The exact wording that lands in the specification — Move `settled` only. Move `route` leaves it blank permanently: the fix belongs to the source record]

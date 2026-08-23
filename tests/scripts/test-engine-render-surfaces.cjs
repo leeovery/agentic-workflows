@@ -1796,6 +1796,8 @@ describe('render finding', () => {
       [{ ...settled, diff: { current: [], proposed: ['x'] }, content: { label: 'X', lines: ['y'] } }, /pass "diff" or "content", not both/],
       [{ ...settled, diff: { current: [], proposed: [] } }, /"diff" must carry at least one/],
       [{ ...settled, content: { label: 'X', lines: [] } }, /"content.lines" must be non-empty/],
+      [{ ...settled, content: { lines: ['x'] } }, /"content.label" must be a non-empty string/],
+      [{ ...settled, content: { label: 'X', lines: 'not an array' } }, /"content.lines" must be an array of strings/],
       [{ ...base, move: 'choice', options: [{ summary: 'only one' }] }, /a "choice" finding must carry at least 2 "options"/],
       [{ ...base, move: 'choice', options: [{ summary: 'a' }, { notASummary: true }] }, /options\[1\]\.summary must be a non-empty string/],
       [{ ...base, move: 'choice', options: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] }, /at most one option may be recommended/],
@@ -1882,6 +1884,7 @@ describe('render proposed-task', () => {
   it('incoherence-gate conflict: payload-driven display then the menu, recommended side first, byte-exact', () => {
     const file = writePayload(dir, 'ig.json', {
       doc: 'synonym-handling',
+      lane: 'review',
       title: 'Expansion freshness rests on a stream that will not be built',
       context: 'The two decisions cannot both be implemented.',
       quotes: [
@@ -1919,6 +1922,7 @@ describe('render proposed-task', () => {
 
   it('incoherence-gate gap-route: the raise plus its acknowledgement gate, byte-exact; held-doc keeps its menu', () => {
     const file = writePayload(dir, 'ig2.json', {
+      lane: 'review',
       doc: 'synonym-handling',
       title: 'Ranking interaction is undecided',
       context: 'Neither source decides how expanded matches rank.',
@@ -1946,7 +1950,7 @@ describe('render proposed-task', () => {
       "**Comment** → Tell me what you're thinking before it moves",
       '',
     ].join('\n'));
-    const docOnly = writePayload(dir, 'ig2b.json', { doc: 'synonym-handling' });
+    const docOnly = writePayload(dir, 'ig2b.json', { doc: 'synonym-handling', lane: 'review' });
     const held = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: docOnly, variant: 'held-doc' });
     assert.ok(held.includes('MENU: incoherence held doc'));
     assert.ok(held.includes('**`◆ How do you want to continue?`**'));
@@ -1972,18 +1976,59 @@ describe('render proposed-task', () => {
     assert.throws(() => renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.discussion.beta' }), /no live specification sources "beta"/);
   });
 
+  it('the incoherence stops announce over their own lane\'s auto — and stay silent over the other lane\'s', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: {
+      status: 'in-progress', finding_gate_mode: 'auto', construction_gate_mode: 'gated',
+    } } } } });
+    const cited = [{ doc: 'd', section: 's', quote: 'q' }];
+    const conflict = writePayload(dir, 'al1.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
+    const out = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.specification.portal', file: conflict, variant: 'conflict' });
+    assert.ok(unwrap(out).includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'));
+    // The same stop called from the construction lane is not overriding anything.
+    const conflictC = writePayload(dir, 'al2.json', { doc: 'x', lane: 'construction', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
+    const outC = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.specification.portal', file: conflictC, variant: 'conflict' });
+    assert.ok(!outC.includes('Auto is on'), 'a construction-lane stop does not announce the findings walk\'s auto');
+    const gap = writePayload(dir, 'al3.json', { doc: 'x', lane: 'review', title: 't', context: 'c' });
+    assert.ok(unwrap(renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.specification.portal', file: gap, variant: 'gap-route' })).includes('Auto is on — stopping anyway'));
+    const held = writePayload(dir, 'al4.json', { doc: 'x', lane: 'review' });
+    assert.ok(unwrap(renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.specification.portal', file: held, variant: 'held-doc' })).includes('Auto is on — stopping anyway'));
+  });
+
+  it('resurface-gate announces over construction auto only — it is construction-lane machinery', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: {
+      status: 'in-progress', finding_gate_mode: 'auto', construction_gate_mode: 'gated',
+    } } } } });
+    const payload = { section: 'S', diff: { current: ['old'], proposed: ['new'] } };
+    const quiet = renderSurface(dir, 'resurface-gate', { dotpath: 'pay.specification.portal', file: writePayload(dir, 'rs1.json', payload) });
+    assert.ok(!quiet.includes('Auto is on'), 'findings auto is not resurface-gate\'s lane');
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: {
+      status: 'in-progress', finding_gate_mode: 'gated', construction_gate_mode: 'auto',
+    } } } } });
+    const loud = renderSurface(dir, 'resurface-gate', { dotpath: 'pay.specification.portal', file: writePayload(dir, 'rs2.json', payload) });
+    assert.ok(unwrap(loud).includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'));
+  });
+
+  it('a lane the vocabulary does not hold is refused; an absent lane renders silent', () => {
+    const cited = [{ doc: 'd', section: 's', quote: 'q' }];
+    const badLane = writePayload(dir, 'al5.json', { doc: 'x', lane: 'planning', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: badLane, variant: 'conflict' }),
+      /"lane" must be "construction" or "review"/);
+    const noLane = writePayload(dir, 'al6.json', { doc: 'x', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
+    assert.ok(!renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noLane, variant: 'conflict' }).includes('Auto is on'));
+  });
+
   it('incoherence-gate validates loudly: variant, doc, sides floor, single recommended', () => {
-    const file = writePayload(dir, 'ig3.json', { doc: 'x', title: 't', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
+    const file = writePayload(dir, 'ig3.json', { doc: 'x', lane: 'review', title: 't', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file }), /--variant must be/);
-    const noDoc = writePayload(dir, 'ig4.json', { title: 't', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
+    const noDoc = writePayload(dir, 'ig4.json', { lane: 'review', title: 't', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noDoc, variant: 'conflict' }), /"doc" must be a non-empty string/);
-    const oneSide = writePayload(dir, 'ig5.json', { doc: 'x', title: 't', context: 'c', sides: [{ summary: 'a' }] });
+    const oneSide = writePayload(dir, 'ig5.json', { doc: 'x', lane: 'review', title: 't', context: 'c', sides: [{ summary: 'a' }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: oneSide, variant: 'conflict' }), /at least 2 entries/);
-    const twoRec = writePayload(dir, 'ig6.json', { doc: 'x', title: 't', context: 'c', sides: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] });
+    const twoRec = writePayload(dir, 'ig6.json', { doc: 'x', lane: 'review', title: 't', context: 'c', sides: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: twoRec, variant: 'conflict' }), /at most one side/);
-    const noTitle = writePayload(dir, 'ig7.json', { doc: 'x', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
+    const noTitle = writePayload(dir, 'ig7.json', { doc: 'x', lane: 'review', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noTitle, variant: 'gap-route' }), /"title" must be a non-empty string/);
-    const badQuote = writePayload(dir, 'ig8.json', { doc: 'x', title: 't', context: 'c', quotes: [{ doc: 'a', section: 's' }] });
+    const badQuote = writePayload(dir, 'ig8.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: [{ doc: 'a', section: 's' }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: badQuote, variant: 'gap-route' }), /quotes\[0\] must carry doc, section, and quote/);
   });
 
