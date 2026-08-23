@@ -19,7 +19,7 @@ F. Topic complete → loop back to A or exit
 
 ## A. Exhaustive Extraction
 
-Every topic's content must be derivable from its sources. When source material disagrees — with itself, with another source, or with the codebase or toolchain it describes — or is too unclear to extract without assumption, never silently pick a side and never patch the mismatch in the spec alone: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** and follow its instructions as written, in the moment it surfaces; on return, continue where extraction left off. Tension notes held from session setup are raised the same way when the topic that touches them arrives.
+Every topic's content must be derivable from its sources. When source material disagrees — with itself, with another source, or with the codebase or toolchain it describes — or is too unclear to extract without assumption, never silently pick a side and never patch the mismatch in the spec alone: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with lane = `construction` and follow its instructions as written, in the moment it surfaces; on return, continue where extraction left off. Tension notes held from session setup are raised the same way when the topic that touches them arrives.
 
 → Load **[exhaustive-extraction.md](exhaustive-extraction.md)** and follow its instructions as written.
 
@@ -71,7 +71,7 @@ List the pending ones (`node .claude/skills/workflow-engine/scripts/engine.cjs m
 
 1. Find its slice hint — the `{ref-topic} — {slice hint}` entry in the handoff's `Consult references` block, or, if the handoff is no longer in context (e.g. after a resume), the `**Consult**` line for it in `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md`.
 2. Open the named sibling discussion and read **only** the decisions the slice hint points to — plus its `## Spec hand-offs` section if the discussion happens to have one. Do not extract it wholesale.
-3. Apply the correction to the affected spec content, or cite the sibling decision where the spec defers to it — cite, don't restate. Corrections to already-logged content go through **Context Resurfacing** above. A consult correction that contradicts a source's *decided* ground is never applied silently — load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** and follow its instructions as written. If the correction targets a topic not yet constructed, leave the reference `pending` and revisit it on that topic's cycle.
+3. Apply the correction to the affected spec content, or cite the sibling decision where the spec defers to it — cite, don't restate. Corrections to already-logged content go through **Context Resurfacing** above. A consult correction that contradicts a source's *decided* ground is never applied silently — load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with lane = `construction` and follow its instructions as written. If the correction targets a topic not yet constructed, leave the reference `pending` and revisit it on that topic's cycle.
 4. Once applied or cited, record what was reconciled (which slice, what changed) in the spec's **Working Notes** section and mark the reference addressed:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} consult_references.{ref}.status addressed
@@ -87,7 +87,7 @@ Already-`addressed` references are skipped on later topic cycles.
 
 Check the draft against the one-home rule (**[specification-format.md](specification-format.md)**): a fact already stated in the specification is referenced at its home, never restated. If the new topic should own the fact, move it — edits to already-logged content go through **Context Resurfacing**.
 
-Source disagreement or a measured mismatch first noticed here — while forcing two sources into one draft — routes exactly as it does during extraction: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** and follow its instructions as written; its stops override `auto`. Never let the auto branch below absorb an unresolved conflict.
+Source disagreement or a measured mismatch first noticed here — while forcing two sources into one draft — routes exactly as it does during extraction: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with lane = `construction` and follow its instructions as written; its stops override `auto`. Never let the auto branch below absorb an unresolved conflict.
 
 Present your understanding to the user **in the format it would appear in the specification** (shown in both modes):
 

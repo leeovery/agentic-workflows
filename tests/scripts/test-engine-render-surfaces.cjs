@@ -2008,13 +2008,14 @@ describe('render proposed-task', () => {
     assert.ok(unwrap(loud).includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'));
   });
 
-  it('a lane the vocabulary does not hold is refused; an absent lane renders silent', () => {
+  it('a payload without a legal lane is refused by name', () => {
     const cited = [{ doc: 'd', section: 's', quote: 'q' }];
     const badLane = writePayload(dir, 'al5.json', { doc: 'x', lane: 'planning', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: badLane, variant: 'conflict' }),
       /"lane" must be "construction" or "review"/);
     const noLane = writePayload(dir, 'al6.json', { doc: 'x', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
-    assert.ok(!renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noLane, variant: 'conflict' }).includes('Auto is on'));
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noLane, variant: 'conflict' }),
+      /"lane" must be "construction" or "review"/);
   });
 
   it('a conflict must quote the documents it collides — composed sides are refused', () => {
