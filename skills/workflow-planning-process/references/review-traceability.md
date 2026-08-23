@@ -99,10 +99,10 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 [Move `choice` — one line per option, "(recommended)" on at most one. Omit for `settled`.]
 
 **Current**:
-[The existing content as it appears in the plan — omit for add-task/add-phase]
+[Move `settled` only — the existing content as it appears in the plan. Omit for add-task/add-phase, and always for `choice`: a choice carries no fix content.]
 
 **Proposed Text**:
-[The replacement/new content in full plan format — omit for remove-task/remove-phase. Older tracking files name this field **Proposed** — read both as the same field.]
+[Move `settled` only — the replacement/new content in full plan format. Omit for remove-task/remove-phase, and always for `choice`: a choice carries no fix content. Older tracking files name this field **Proposed** — read both as the same field.]
 
 **Resolution**: Pending
 **Notes**:
