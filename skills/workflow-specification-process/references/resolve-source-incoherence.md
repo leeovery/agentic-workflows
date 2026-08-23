@@ -24,7 +24,7 @@ Tell the user in one line what was measured and what it corrects — no gate; th
 
 **Otherwise** — the corrected value undermines a conclusion, decision, or insight built on the claim:
 
-**This stop overrides `auto`.** Put the measurement to the user in conversation — what the document asserts, what the command measured, which conclusion leans on it — and take a stance on whether the conclusion survives. No engine surface: this is an exchange, not a gate.
+**This stop overrides `auto`.** Where the manifest holds `auto`, open with the announcement verbatim — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you. Then put the measurement to the user in conversation — what the document asserts, what the command measured, which conclusion leans on it — and take a stance on whether the conclusion survives. No engine surface: this is an exchange, not a gate.
 
 **STOP.** Wait for user response.
 
@@ -74,7 +74,7 @@ An exchange showing nothing can stand without work the sources never did — nei
 
 #### If a brief exchange settles it and no sides are documented
 
-The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. An **Unsourced decision** lands here whenever a brief exchange can settle it: the specification decided something its sources never did, and the question is what the sources should have said. **This stop overrides `auto`.** Put the question to the user in conversation — what the topic needs, where the sources stop short, what the answer unlocks — and take a stance. No engine surface: this is an exchange, not a gate.
+The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. An **Unsourced decision** lands here whenever a brief exchange can settle it: the specification decided something its sources never did, and the question is what the sources should have said. **This stop overrides `auto`.** Where the manifest holds `auto`, open with the announcement verbatim — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you. Then put the question to the user in conversation — what the topic needs, where the sources stop short, what the answer unlocks — and take a stance. No engine surface: this is an exchange, not a gate.
 
 **STOP.** Wait for user response.
 
