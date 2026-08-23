@@ -58,9 +58,10 @@ distinct defects surfaced in one sitting.
   exchange settles it **and the sources document the sides**"*. An
   unsourced decision means no source decides it, so no source
   documents the sides; Claude constructed them. The branch was taken
-  because none of the four fits an absence: nothing to measure, no
-  supersession to derive, no documented sides. The only branch that
-  genuinely applied was the gap exit, which pauses the spec entirely.
+  because the classify step never learns which category routed a
+  finding into it — an unsourced decision means no source decides the
+  point, which excludes that branch outright, but the classifier gets
+  only the material and inferred it wrong.
 
 **Provenance.** The gap carve-out is collateral from #957
 (`b08ef4f9`, 2026-08-20), whose subject was routing source-indicting
@@ -172,10 +173,11 @@ natural-break deferral. One finding at a time, as now.
    move. The bulk of the programme, and separable because layer 1
    classifies what arrives without one.
 
-3. **The missing branch** — `resolve-source-incoherence.md` gains
-   "settle it with the user now, where no source frames the sides":
-   the case an unsourced decision actually is. Today it can only stall
-   the spec or fake a conflict.
+3. **The misroute** — the review caller names the finding's
+   `category`, the documented-sides branch states what excludes it,
+   and the engine closes the path: `--variant conflict` requires
+   `quotes`, so sides you would compose yourself cannot render as a
+   collision.
 
 Prose cases alongside: a settled finding riding `auto`, a choice
 stopping over `auto`, an unsourced decision taking the new branch.
@@ -219,6 +221,19 @@ Simulation re-pin where call sequences move.
   answers specification and planning only.
 
 ## Log
+
+- 2026-08-23 — Layers 2 and 3 built. The agents' register change was
+  the larger half: every one of them wrote a Details field in the
+  voice of the analysis, and the gate had nothing else to lead with,
+  which is why it reached for artifact source. Layer 3 corrected this
+  log's own diagnosis — the conversational branch was never missing;
+  `resolve-source-incoherence.md` has had it all along. The defect was
+  that classify never learns which category routed a finding into it,
+  so an unsourced decision could be read as a documented collision.
+  The engine now refuses a conflict that quotes nothing, which makes
+  the misroute unreachable rather than merely discouraged. The prose
+  case for that scenario already asserted no incoherence-gate is
+  rendered; the corpus held the expectation and no surface enforced it.
 
 - 2026-08-23 — Layer 1 built: the gate, the tracking format, both
   loops. The stack shape changed as it landed — the surface and its
