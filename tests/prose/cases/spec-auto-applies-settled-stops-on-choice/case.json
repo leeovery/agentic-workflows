@@ -31,9 +31,9 @@
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-shared/references/reconcile-advisory.md"
   ],
-  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. At the first finding — the missing 30-day refund window — they see the discussion already decided it and say so: they choose auto, because they do not want to be stopped again for things the record has already settled. When the second refund detail lands without asking them, that is what they wanted. The third finding is different and they treat it differently: nothing decided how long a failed webhook keeps retrying, and both ways cost something real. They reject the recommendation — three attempts is too few for a bank having a bad morning, and they would rather hold state for a day than lose orders — and pick the 24-hour reconciliation option instead. At the re-loop prompt they proceed to completion; another cycle is not owed. At sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. At the first finding — the missing 30-day refund window — they see the discussion already decided it and say so: they choose auto, because they do not want to be stopped again for things the record has already settled. When the second refund detail lands without asking them, that is what they wanted. The third finding is different and they treat it differently: nothing decided how long a failed webhook keeps retrying, and both ways cost something real. They reject the recommendation — three attempts is too few for a bank having a bad morning, and they would rather hold state for a day than lose orders — and pick the 24-hour reconciliation option instead. With auto set, the follow-up review cycle runs without asking them and comes back clean, and the session moves to completion on its own; at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
   "stubs": {
-    "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool — each returns the content below and writes no file",
+    "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool (any cycle), and when it dispatches the input review agent for review cycle 2 or later — each returns the content below and writes no file",
     "spec-input-settled-and-choice": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
   },
   "invariants": {
@@ -42,13 +42,15 @@
       "render resume-gate pay.specification.pay",
       "manifest set pay.specification.pay review_cycle=1",
       "tracking.review-input-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
       "render finding pay.specification.pay",
       "finding_gate_mode auto",
       "tracking.review-input-tracking-c1 complete",
-      "render spec-review-gate pay.specification.pay --variant reloop",
+      "manifest set pay.specification.pay review_cycle=2",
       "topic complete pay specification pay"
     ],
     "calls_exclude": [
+      "render spec-review-gate pay.specification.pay --variant reloop",
       "render incoherence-gate",
       "topic reopen",
       "topic triage",
@@ -59,7 +61,10 @@
       "tracking.review-input-tracking-c1 in-progress",
       "render finding pay.specification.pay",
       "finding_gate_mode auto",
+      "render finding pay.specification.pay",
+      "render finding pay.specification.pay",
       "tracking.review-input-tracking-c1 complete",
+      "manifest set pay.specification.pay review_cycle=2",
       "topic complete pay specification pay"
     ]
   }

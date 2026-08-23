@@ -62,12 +62,11 @@ The discussion decides partial refunds are supported, down to a single
 line item. I would state that alongside the window.
 
 **Current**:
-- Refunds are issued against the original payment intent, within 30
-  days of capture.
+- Refunds are issued against the original payment intent.
 
 **Proposed Text**:
-- Refunds are issued against the original payment intent, within 30
-  days of capture, in full or per line item.
+- Refunds are issued against the original payment intent, in full or
+  per line item.
 
 **Resolution**: Pending
 **Notes**:
@@ -88,10 +87,8 @@ customer whose bank is slow either gets their order or gets told the
 payment failed, and the record does not decide which.
 
 **Options**:
-Give up after three delivery attempts and mark the payment unconfirmed
-— fastest feedback, and a slow bank loses the order (recommended)
-Keep accepting delivery for 24 hours and reconcile late confirmations —
-no lost orders, and the checkout holds unresolved state for a day
+- Give up after three delivery attempts and mark the payment unconfirmed — fastest feedback, and a slow bank loses the order (recommended)
+- Keep accepting delivery for 24 hours and reconcile late confirmations — no lost orders, and the checkout holds unresolved state for a day
 
 **Resolution**: Pending
 **Notes**:
