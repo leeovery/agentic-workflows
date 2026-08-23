@@ -57,12 +57,6 @@ Is everything in the plan actually from the specification? This is the anti-hall
 
 ---
 
-## Tracking File
-
-After completing the analysis, create a tracking file at `.workflows/{work_unit}/planning/{topic}/review-traceability-tracking-c{N}.md` (where N is the current review cycle).
-
-Tracking files are **never deleted** — pure markdown, no frontmatter; previous cycles' files persist as review history. The orchestrator records each file's gate state in the manifest (`tracking.{file stem}`: `in-progress` at dispatch, `complete` when all findings are processed).
-
 ## The Move
 
 Every finding names the **move** it owes the reader — what they have to do about it. The move, never the Type, decides how the finding is presented.
@@ -74,6 +68,12 @@ Every finding names the **move** it owes the reader — what they have to do abo
 A fix you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. Classification only ever moves toward the reader.
 
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the plan's own wording read back at them.
+
+## Tracking File
+
+After completing the analysis, create a tracking file at `.workflows/{work_unit}/planning/{topic}/review-traceability-tracking-c{N}.md` (where N is the current review cycle).
+
+Tracking files are **never deleted** — pure markdown, no frontmatter; previous cycles' files persist as review history. The orchestrator records each file's gate state in the manifest (`tracking.{file stem}`: `in-progress` at dispatch, `complete` when all findings are processed).
 
 **Format**:
 ```markdown
@@ -101,8 +101,8 @@ The **Problem** is what is wrong in the terms the reader cares about — the pro
 **Current**:
 [The existing content as it appears in the plan — omit for add-task/add-phase]
 
-**Proposed**:
-[The replacement/new content in full plan format — omit for remove-task/remove-phase]
+**Proposed Text**:
+[The replacement/new content in full plan format — omit for remove-task/remove-phase. Older tracking files name this field **Proposed** — read both as the same field.]
 
 **Resolution**: Pending
 **Notes**:
