@@ -222,6 +222,30 @@ Simulation re-pin where call sequences move.
 
 ## Log
 
+- 2026-08-23 — Second review pass, scoped to the fix delta: four
+  finders over the fix commits alone, 19 verified findings, all
+  landed. Four rulings closed it: the auto-override announcement keys
+  on the calling lane's own gate mode — the two gates are independent
+  opt-ins, and a stop never claims to override an auto set for the
+  other one (the incoherence flow gains a {lane} parameter its two
+  callers set; resurface-gate reads construction's mode; held-doc
+  joins the announcing family); re-derivation covers **both sides** of
+  a later finding's diff — what lands is the finding's change applied
+  to the live document, closing the silent-revert path where a second
+  auto-mode finding's stale Proposed Text overwrote the first's
+  landing; planning keeps whole tasks and phases behind v/view — its
+  content path carries nothing short, so spec's visible-diff rule has
+  no planning case; and a Contradiction's Current holds only the
+  passage being corrected, the colliding reading named in the Problem
+  with its section. The recurring residue: the Proposed Text rename
+  had reached only the omit-site in the planning agents (the
+  write-sites still said Proposed), the invoke files still promised
+  full fix content on every finding, and the new case pinned a cycle
+  increment in a form the prose never writes — the second time this
+  stack's own fixes reproduced the defect class they were fixing,
+  which is why the scoped second pass was worth its cost.
+
+
 - 2026-08-23 — Review pass ruled, with data. Eight finders over the
   stack; the fixes landed into the owning PRs. Four decisions from the
   walk-through: a finding talked through and left as-is lands as
