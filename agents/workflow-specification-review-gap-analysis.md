@@ -62,8 +62,8 @@ No source material — this phase looks inward only.
    - Implicit assumptions that aren't stated
    - Open-decision markers — "Decision required", "TBD", "to be decided", or any marker parking an unmade decision in the artifact. A specification decides nothing and defers nothing; flag every marker as Critical, category **Unsourced decision** — the marker itself is the evidence that no validated decision stands behind the text, no source comparison needed. The orchestrator routes these back toward the source record — never propose spec text for them
 
-   **Contradictions**
-   - Requirements that conflict with each other — category **Contradiction**: the document supports two incompatible readings; quote both
+   **Contradictions** — category **Contradiction**: the document supports two incompatible readings
+   - Requirements that conflict with each other
    - Behaviors defined differently in different sections
    - Constraints that make other requirements impossible
 
@@ -147,7 +147,7 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-track
 {Move `choice` — one line per option, "(recommended)" on at most one. Omit for `settled` and `route`.}
 
 **Current**:
-{For findings that modify existing content (Enhancement, Duplication, Contradiction) — copy the existing specification content that will be modified; a Contradiction quotes the readings that collide. This enables diff presentation to the user. Omit for New topic, Gap/Ambiguity, and Unsourced decision findings.}
+{For findings that modify existing content (Enhancement, Duplication, Contradiction) — copy the existing specification content that will be modified. A Contradiction's Current holds only the passage being corrected; name the colliding reading in the Problem with its section. This enables diff presentation to the user. Omit for New topic, Gap/Ambiguity, and Unsourced decision findings.}
 
 **Proposed Text**:
 {The exact wording that lands in the specification — Move `settled` only. Leave blank permanently for Unsourced decision: the fix belongs to the source record}

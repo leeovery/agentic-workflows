@@ -34,6 +34,6 @@ FINDINGS_COUNT: {N}
 ```
 
 - `clean`: plan is a faithful, complete translation of the specification. No findings to process.
-- `findings`: tracking file contains findings with full fix content for the orchestrator to present to the user.
+- `findings`: tracking file contains findings, each carrying its move — a `settled` finding with full fix content, a `choice` with options and no fix.
 
 → Return to caller.
