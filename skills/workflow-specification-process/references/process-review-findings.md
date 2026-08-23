@@ -36,8 +36,8 @@ Write the summary payload to `.workflows/.cache/{work_unit}/specification/{topic
 {"review_label": "{review_type}", "items": [{"title": "…", "tag": "…", "summary": "{1-2 line summary of the Problem}", "status": "…"}]}
 ```
 
-- `tag` — the Category's token: `enhancement` (Enhancement to existing topic), `new-topic` (New topic), `gap` (Gap/Ambiguity), `duplication` (Duplication), `source-defect` (Source defect), `unsourced-decision` (Unsourced decision). The tracking file keeps the full phrase.
-- `status` — the finding's Resolution: `Approved`, `Adjusted`, or `Routed` → `approved`; `Pending` or unset → `pending`.
+- `tag` — the Category's token: `enhancement` (Enhancement to existing topic), `new-topic` (New topic), `gap` (Gap/Ambiguity), `contradiction` (Contradiction), `duplication` (Duplication), `source-defect` (Source defect), `unsourced-decision` (Unsourced decision). The tracking file keeps the full phrase.
+- `status` — the finding's Resolution: `Approved`, `Adjusted`, or `Routed` → `approved`; `Declined` (older files write `Skipped` — read it as `Declined`) → `skipped`; `Pending` or unset → `pending`.
 
 Render and emit the section verbatim at its marked instruction:
 
@@ -51,7 +51,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, or `Routed` was settled in an earlier sitting; never re-present or re-apply it.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Approved`, `Adjusted`, `Declined`, or `Routed` (or legacy `Skipped`, read as `Declined`) was settled in an earlier sitting; never re-present or re-apply it.
 
 **If no unresolved finding remains** — every row already settled, whether this sitting or an earlier one:
 
@@ -93,6 +93,8 @@ Then update the tracking file — Resolution `Routed`, a note naming what landed
 
 ### Present Finding
 
+An applied finding invalidates a later finding's Current where both touch the same ground — build the diff from the live document, never from the tracking file's stale copy.
+
 Before presenting, check the finding's proposed content against the one-home rule (**[specification-format.md](specification-format.md)**): where it restates a fact that already has a home in the specification, revise it to reference the home and update the tracking file. The same bar governs anything adjusted here: additive for missing ground, removal or in-place correction for wrong ground — never a correction note beside the old text, never a mention of review, cycles, or process. The document reads as authored fresh and correct.
 
 Write the finding payload to `.workflows/.cache/{work_unit}/specification/{topic}/finding-current.json` with the Write tool, from the tracking file:
@@ -100,12 +102,12 @@ Write the finding payload to `.workflows/.cache/{work_unit}/specification/{topic
 - `n`, `total`, `title` — the finding's position and titlecased brief title.
 - `meta` — `[label, value]` pairs: Source / Category / Affects, plus Priority for Gap Analysis findings.
 - `move` — the finding's Move, as **B** settled it: `settled` or `choice`.
+- `category` — the Category's token (`enhancement`, `new-topic`, `gap`, `contradiction`, `duplication`). The source-lane tokens refuse at the surface — a backstop should **B** misclassify a route.
 - `problem` — the Problem field, or the finding's substance restated in the terms the user cares about: the product, the end result. Never the analysis that found it, and never the specification's own wording read aloud.
 - `proposal` — `settled` only: the Proposal field, or the call and what determined it, in a sentence or two.
 - `options` — `choice` only: `[{"summary": "…", "recommended": true}, …]` from the Options field, at most one recommended. Where the finding names no options, they are yours to frame — one line each, and take a stance.
-- If a Current field is present: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side (Proposed Text as the proposed lines).
-- Otherwise, where Proposed Text carries a whole section: `content` — `{"label": "Proposed Addition", "lines": […]}`. It is held for `v/view`, never rendered at the gate.
-- `apply_label`: `"Apply to the specification verbatim"` · `applied_label`: `"approved. Applied to specification."` · `feedback_hint`: `"Adjust before approving"`
+- `diff` and `content` — `settled` only; a `choice` proposes nothing and carries neither. Where a Current field is present: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side (Proposed Text as the proposed lines). Where there is no Current and the Proposed Text is short — a sentence to a handful of lines — `diff` with `"current": []`, so the wording is visible at the gate. A whole proposed section: `content` — `{"label": "Proposed Text", "lines": […]}`, held for `v/view`, never rendered at the gate.
+- `apply_label`: `"Apply to the specification verbatim"` · `applied_label`: `"approved. Applied to specification."`
 
 Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
 
@@ -166,15 +168,19 @@ Finding {N} of {total}: {brief_title:(titlecase)} — {chosen option, one clause
 
 → Proceed to **C. After All Findings Processed**.
 
-#### If comment
+#### If comment (the choice menu's prompt option)
 
-Work the point through in conversation. Where it settles, land the outcome as the numbered-pick branch does — the specification write, the tracking file, the commit — and continue. Where the exchange shows the answer belongs to a source document rather than to this specification, treat the finding as `route` and load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** as **Route Source-Lane Findings** prescribes.
+Work the point through in conversation. Where it settles on an option, land it as the numbered-pick branch does — the specification write, the tracking file, the commit — and continue. Where it concludes the finding should not land at all, set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Where the exchange shows the answer belongs to a source document rather than to this specification, treat the finding as `route` and load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** as **Route Source-Lane Findings** prescribes.
 
 → Return to **B. Process One Item at a Time**.
 
-#### If the user provides feedback
+#### If discuss (the settled gate's prompt option)
 
-Incorporate feedback and update the tracking file with the revised content. Rewrite the payload to match and re-render the finding.
+Work the point through in conversation — a challenge, an adjustment, or a decline all start here.
+
+- **The exchange revises the content**: update the tracking file with the revised content, rewrite the payload to match, and re-render the finding.
+- **The exchange ends in agreement to apply**: land it as the `yes` branch does.
+- **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it exists only here, as the outcome of this exchange.
 
 → Return to **B. Process One Item at a Time**.
 

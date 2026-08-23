@@ -37,7 +37,7 @@ Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 ```
 
 - `tag` — one short term: the Severity for an integrity finding; for a traceability finding, the Type's token — `missing` (Missing from plan), `hallucinated` (Hallucinated content), `incomplete` (Incomplete coverage). The tracking file keeps the full phrase.
-- `status` — the finding's Resolution: `Fixed` → `approved`; `Pending` or unset → `pending`.
+- `status` — the finding's Resolution: `Fixed` → `approved`; `Declined` (older files write `Skipped` — read it as `Declined`) → `skipped`; `Pending` or unset → `pending`.
 
 Render and emit the section verbatim at its marked instruction:
 
@@ -51,13 +51,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Fixed` was settled in an earlier sitting; never re-present or re-apply it.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Fixed` or `Declined` (or legacy `Skipped`, read as `Declined`) was settled in an earlier sitting; never re-present or re-apply it.
 
-Read each finding's **Move** before presenting it — it decides the shape. Where the finding names none, classify it and record it in the tracking file: exactly one defensible answer in the specification or the record → `settled`; real options between which only the user can pick → `choice`.
+**If no unresolved finding remains** — every row already settled, whether this sitting or an earlier one:
+
+→ Proceed to **C. After All Findings Processed**.
+
+Read the next unresolved finding's **Move** before presenting it — it decides the shape. Where the finding names none, classify it and record it in the tracking file: exactly one defensible answer in the specification or the record → `settled`; real options between which only the user can pick → `choice`.
 
 Then confirm that move against the live session. A `settled` finding whose stated derivation no longer holds, or whose fix you cannot yourself stand behind, is a `choice`: update the Move, replace its fix with options, and present it that way. Reclassification only ever moves toward the user; a `choice` is never demoted to `settled` to save a stop.
 
 ### Present Finding
+
+An applied finding invalidates a later finding's Current where both touch the same ground — build the diff from the live plan content, never from the tracking file's stale copy.
 
 Write the finding payload to `.workflows/.cache/{work_unit}/planning/{topic}/finding-current.json` with the Write tool, from the tracking file:
 
@@ -67,8 +73,7 @@ Write the finding payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 - `problem` — what is wrong, in the terms the user cares about: what the plan would build wrong, or fail to build. Never the analysis that found it.
 - `proposal` — `settled` only: the fix and what determined it.
 - `options` — `choice` only: `[{"summary": "…", "recommended": true}, …]`, at most one recommended. Where the finding names no options, they are yours to frame — one line each, and take a stance.
-- For Change Type `update-task`, `add-to-task`, or `remove-from-task`: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side.
-- For Change Type `add-task`, `add-phase`, `remove-task`, or `remove-phase`: `content` — `{"label": "Proposed", "lines": […]}` with the full content as written by the review agent. It is held for `v/view`, never rendered at the gate.
+- `diff` and `content` — `settled` only; a `choice` proposes nothing and carries neither. Change Type `update-task`, `add-to-task`, or `remove-from-task`: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side. Change Type `add-task` or `add-phase`: `content` — `{"label": "Proposed Text", "lines": […]}` with the full content as written by the review agent. Change Type `remove-task` or `remove-phase`: `content` — `{"label": "Current", "lines": […]}` with the content being removed. Either `content` is held for `v/view`, never rendered at the gate.
 - `apply_label`: `"Apply to the plan verbatim"` · `applied_label`: `"approved. Applied to plan."`
 
 Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
@@ -77,7 +82,7 @@ Render, then emit each returned section verbatim at its marked instruction — t
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json
 ```
 
-The response carries the finding presentation plus the surface for the current gate mode.
+The response carries the finding presentation plus the surface for its move and the current gate mode.
 
 #### If the response carried `DISPLAY: finding auto-approved`
 
@@ -136,21 +141,25 @@ The numbered options render recommended-first, so the number the user typed inde
 
 → Proceed to **C. After All Findings Processed**.
 
-#### If comment
+#### If comment (the choice menu's prompt option)
 
-Work the point through in conversation. Where it settles, land the outcome as the numbered-pick branch does — the plan write, the `task_map` upkeep, the tracking file, the commit — and continue.
+Work the point through in conversation. Where it settles on an option, land it as the numbered-pick branch does — the plan write, the `task_map` upkeep, the tracking file, the commit — and continue. Where it concludes the finding should not land at all, set Resolution `Declined` with the reason in Notes, announce it in a line, and commit.
 
 → Return to **B. Process One Item at a Time**.
 
-#### If the user provides feedback
+#### If discuss (the settled gate's prompt option)
 
-Incorporate feedback and update the tracking file with the revised content. Rewrite the payload to match and re-render the finding.
+Work the point through in conversation — a challenge, an adjustment, or a decline all start here.
+
+- **The exchange revises the content**: update the tracking file with the revised content, rewrite the payload to match, and re-render the finding.
+- **The exchange ends in agreement to apply**: land it as the `yes` branch does.
+- **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it exists only here, as the outcome of this exchange.
 
 → Return to **B. Process One Item at a Time**.
 
 #### If `yes`
 
-1. Apply the fix to the plan — use the **Proposed** content exactly as shown, using the output format adapter to determine how it's written. Do not modify content between approval and writing.
+1. Apply the fix to the plan — use the **Proposed Text** content exactly as shown (older tracking files name the field **Proposed** — read both as the same field), using the output format adapter to determine how it's written. Do not modify content between approval and writing.
 2. Keep `task_map` current in ONE call for the whole finding (same commands as the auto flow above).
 3. Update the tracking file: set resolution to "Fixed", add any discussion notes.
 4. Commit the tracking file and any plan changes — ensures progress survives context refresh.
@@ -179,7 +188,7 @@ Incorporate feedback and update the tracking file with the revised content. Rewr
 4. Commit
 5. Process each remaining finding from **B** — the mode change removes the approval stops for settled fixes, never the per-finding pass: a `choice` still stops, and every finding is still rendered
 
-→ Proceed to **C. After All Findings Processed**.
+→ Return to **B. Process One Item at a Time**.
 
 ---
 
