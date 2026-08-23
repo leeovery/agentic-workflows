@@ -1213,10 +1213,10 @@ function incoherenceGate(cwd, args) {
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'incoherence-gate');
   const p = readJsonPayload(cwd, file, 'incoherence-gate');
   if (!isFilled(p.doc)) throw new Error('render incoherence-gate: "doc" must be a non-empty string');
-  if (p.lane !== undefined && !Object.hasOwn(LANE_GATE_FIELDS, p.lane)) {
+  if (!Object.hasOwn(LANE_GATE_FIELDS, p.lane)) {
     throw new Error('render incoherence-gate: "lane" must be "construction" or "review" — the announcement keys on the calling flow\'s own gate mode');
   }
-  const overAuto = p.lane !== undefined && laneHoldsAuto(itemOf(manifest, phase, topic) || {}, p.lane);
+  const overAuto = laneHoldsAuto(itemOf(manifest, phase, topic) || {}, p.lane);
 
   if (variant === 'conflict' || variant === 'gap-route') {
     if (!isFilled(p.title)) throw new Error('render incoherence-gate: "title" must be a non-empty string');
