@@ -25,13 +25,16 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 ### 1. [Brief Title]
 
 **Source**: [Where this came from — file/section reference, "Specification analysis" for Gap Analysis, or "Tree measurement — `{command}`" for Claims Verification]
-**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Duplication | Source defect | Unsourced decision
+**Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Contradiction | Duplication | Source defect | Unsourced decision
 **Move**: settled | choice | route
 **Priority**: [Gap Analysis only — Critical | Important | Minor. Omit for Claims Verification and Input Review.]
 **Affects**: [Which section(s) of the specification]
 
 **Problem**:
 [What is wrong, in the terms the reader cares about — the product, the end result. Not the analysis that found it.]
+
+**Evidence**:
+[Claims Verification only — the claim verbatim, the command, and its output. Omit for Input Review and Gap Analysis.]
 
 **Proposal**:
 [Move `settled` only — the call and what determined it, in a sentence or two. Omit for `choice` and `route`.]
@@ -40,12 +43,12 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 [Move `choice` only — one line per option, "(recommended)" on at most one. Omit for `settled` and `route`.]
 
 **Current**:
-[For findings that modify existing content (Enhancement, Duplication) — the existing specification content that will be modified. Omit for New topic, Gap/Ambiguity, Source defect, and Unsourced decision findings.]
+[For findings that modify existing content (Enhancement, Duplication, Contradiction) — the existing specification content that will be modified; a Contradiction quotes the readings that collide. Omit for New topic, Gap/Ambiguity, Source defect, and Unsourced decision findings.]
 
 **Proposed Text**:
-[The exact wording that lands in the specification — leave blank until the move is settled. Move `route` leaves it blank permanently: the fix belongs to the source record]
+[The exact wording that lands in the specification — Move `settled` only. Move `route` leaves it blank permanently: the fix belongs to the source record]
 
-**Resolution**: Pending | Approved | Adjusted | Routed
+**Resolution**: Pending | Approved | Adjusted | Declined | Routed
 **Notes**: [Any discussion notes or adjustments made]
 
 ---
@@ -54,7 +57,9 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 ...
 ```
 
-Some tracking files name the **Proposed Text** field **Proposed Change** or **Proposed Addition** — read all three as the same field.
+Some tracking files name the **Proposed Text** field **Proposed Change** or **Proposed Addition** — read all three as the same field. Older files write a `Skipped` resolution — read it as `Declined`.
+
+`Declined` records a finding discussed with the user and left as-is, with the reason in Notes. It is never offered as a menu row: it exists only as the outcome of the gate's Discuss exchange — a decline without a stated reason is a skip whatever it is called.
 
 ## The Move
 

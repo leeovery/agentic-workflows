@@ -1640,7 +1640,7 @@ describe('render finding', () => {
     assert.strictEqual(out.match(/\*\*Finding 1 of 2: Missing Outcome field\*\*/g).length, 1, 'the heading renders exactly once');
     assert.ok(/\*\*`y\/yes`\*\* +→ Apply to the plan verbatim/.test(out));
     assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining settled findings automatically/.test(unwrap(out)));
-    assert.ok(/\*\*Provide feedback\*\* +→ Tell me what to change before approving/.test(out));
+    assert.ok(/\*\*Discuss\*\* +→ Challenge it, adjust it, or decline it/.test(unwrap(out)));
   });
 
   it('never offers skip — a found problem is settled, chosen, or routed, never waved past', () => {
@@ -1673,6 +1673,27 @@ describe('render finding', () => {
     assert.ok(out.includes('MENU: finding gate'));
     assert.ok(!/`v\/view`/.test(out), 'the view row is spent');
     assert.ok(/\*\*`y\/yes`\*\* +→ Apply to the specification verbatim/.test(out));
+    assert.ok(/\*\*Discuss\*\*/.test(out), 'the view menu is the gate menu minus the view row');
+  });
+
+  it('--view full validates the wording it shows — malformed content refuses in the surface vocabulary', () => {
+    const noLabel = writePayload(dir, 'v1.json', { ...settled, content: { lines: ['x'] } });
+    assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file: noLabel, view: 'full' }),
+      /"content.label" must be a non-empty string/);
+    const noLines = writePayload(dir, 'v2.json', { ...settled, content: { label: 'L' } });
+    assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file: noLines, view: 'full' }),
+      /"content.lines" must be an array of strings/);
+    const emptyLines = writePayload(dir, 'v3.json', { ...settled, content: { label: 'L', lines: [] } });
+    assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file: emptyLines, view: 'full' }),
+      /"content.lines" must be non-empty/);
+  });
+
+  it('--view full over an auto address offers no a/auto row — the mode is already set', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
+    const file = writePayload(dir, 'va.json', { ...settled, content: { label: 'L', lines: ['x'] } });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file, view: 'full' });
+    assert.ok(out.includes('MENU: finding gate'));
+    assert.ok(!/`a\/auto`/.test(out));
   });
 
   it('--view full is refused where there is no wording to show, and on a choice', () => {
@@ -1722,12 +1743,32 @@ describe('render finding', () => {
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
     assert.ok(out.includes('=== MENU: finding choice'), 'auto never decides what only the user can');
     assert.ok(!out.includes('finding auto-approved'));
+    assert.ok(unwrap(out).includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'),
+      'a stop over auto announces itself in the engine\'s one voice');
     assert.ok(/\*\*`◆ Which way\?`\*\*/.test(out));
     assert.ok(/\*\*`1`\*\* +→ Bound retries at four, then dead-letter \(recommended\)/.test(out), 'the recommendation sorts first');
     assert.ok(/\*\*`2`\*\* +→ Hold the queue slot and keep retrying/.test(out));
     assert.ok(/\*\*Comment\*\* +→ Tell me what you're thinking/.test(out));
     assert.ok(!/`a\/auto`/.test(out), 'a choice never offers the auto opt-in');
     assert.ok(!/skip/i.test(out));
+  });
+
+  it('a gated choice carries no auto-override line — there is nothing being overridden', () => {
+    const file = writePayload(dir, 'cg.json', {
+      ...base,
+      move: 'choice',
+      options: [{ summary: 'a' }, { summary: 'b', recommended: true }],
+    });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
+    assert.ok(out.includes('MENU: finding choice'));
+    assert.ok(!out.includes('Auto is on'));
+  });
+
+  it('contradiction is a legal category token — cosmetic, deciding nothing', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
+    const file = writePayload(dir, 'ct.json', { ...settled, category: 'contradiction' });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
+    assert.ok(out.includes('finding auto-approved'), 'the move rides auto whatever the category reads');
   });
 
   it('the category no longer picks the shape — a gap rides auto when the record settles it', () => {
