@@ -1191,8 +1191,13 @@ const INCOHERENCE_STOP = 'emit verbatim as markdown, then STOP for the user\'s r
 // the announcement is engine-rendered so it cannot vary with the session.
 const AUTO_OVERRIDE_LINE = "**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.";
 
-/** Whether the address's item has any auto opt-in a stop is overriding. @param {any} item */
-const overridesAuto = (item) => item.finding_gate_mode === 'auto' || item.construction_gate_mode === 'auto';
+// The two gates are independent opt-ins: construction's chunk approvals and
+// the findings walk. A stop announces only against its own flow's mode — an
+// auto set for the other gate is not being overridden.
+const LANE_GATE_FIELDS = { construction: 'construction_gate_mode', review: 'finding_gate_mode' };
+
+/** Whether the named lane's gate mode holds auto at this item. @param {any} item @param {string} lane */
+const laneHoldsAuto = (item, lane) => item[LANE_GATE_FIELDS[lane]] === 'auto';
 
 /**
  * @param {string} cwd
@@ -1206,9 +1211,12 @@ function incoherenceGate(cwd, args) {
   }
   if (!file) throw new Error('render incoherence-gate: --file <payload.json> is required');
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'incoherence-gate');
-  const overAuto = overridesAuto(itemOf(manifest, phase, topic) || {});
   const p = readJsonPayload(cwd, file, 'incoherence-gate');
   if (!isFilled(p.doc)) throw new Error('render incoherence-gate: "doc" must be a non-empty string');
+  if (p.lane !== undefined && !Object.hasOwn(LANE_GATE_FIELDS, p.lane)) {
+    throw new Error('render incoherence-gate: "lane" must be "construction" or "review" — the announcement keys on the calling flow\'s own gate mode');
+  }
+  const overAuto = p.lane !== undefined && laneHoldsAuto(itemOf(manifest, phase, topic) || {}, p.lane);
 
   if (variant === 'conflict' || variant === 'gap-route') {
     if (!isFilled(p.title)) throw new Error('render incoherence-gate: "title" must be a non-empty string');
@@ -1264,7 +1272,7 @@ function incoherenceGate(cwd, args) {
     ].join('\n');
   }
   return section('MENU: incoherence held doc', INCOHERENCE_STOP, menu(
-    `"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,
+    `${overAuto ? `${AUTO_OVERRIDE_LINE}\n\n` : ''}"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,
     [
       cmdOption('n', 'next', 'Queue the resolution and carry on here'),
       cmdOption('s', 'stop', 'Stop here; re-enter after that session lands it'),
@@ -1333,7 +1341,7 @@ function resurfaceGate(cwd, args) {
   if (!isFilled(p.section)) throw new Error('render resurface-gate: "section" must be a non-empty string');
 
   const parts = [];
-  const rsOverAuto = overridesAuto(itemOf(rsManifest, rsPhase, rsTopic) || {});
+  const rsOverAuto = laneHoldsAuto(itemOf(rsManifest, rsPhase, rsTopic) || {}, 'construction');
   const menuOptions = [cmdOption('y', 'yes', 'Apply changes to specification')];
 
   if (view === 'full') {
@@ -2104,7 +2112,7 @@ function findingSettled(p, head, item, view) {
     if ((p.diff.current || []).length + (p.diff.proposed || []).length === 0) {
       throw new Error('render finding: "diff" must carry at least one current/proposed line');
     }
-    parts.push(section('DISPLAY: diff', 'emit verbatim as a diff code block (\`\`\`diff fence)', body.join('\n')));
+    parts.push(section('DISPLAY: diff', 'emit verbatim as a diff code block (```diff fence)', body.join('\n')));
   }
   // Whole-section content is validated above and never rendered here — source
   // read aloud is what buried the report; it waits for `v/view`, where it

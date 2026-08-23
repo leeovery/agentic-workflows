@@ -61,9 +61,11 @@ Read the next unresolved finding's **Move** before presenting it — it decides 
 
 Then confirm that move against the live session. A `settled` finding whose stated derivation no longer holds, or whose fix you cannot yourself stand behind, is a `choice`: update the Move, replace its fix with options, and present it that way. Reclassification only ever moves toward the user; a `choice` is never demoted to `settled` to save a stop.
 
+→ Proceed to **Present Finding**.
+
 ### Present Finding
 
-An applied finding invalidates a later finding's Current where both touch the same ground — build the diff from the live plan content, never from the tracking file's stale copy.
+An applied finding moves the ground a later finding stands on. Re-derive **both sides** of a later finding's diff from the live plan content — what lands is the finding's change applied to the plan as it stands, never the tracking file's stale copy, which would silently revert the earlier landing.
 
 Write the finding payload to `.workflows/.cache/{work_unit}/planning/{topic}/finding-current.json` with the Write tool, from the tracking file:
 
@@ -86,7 +88,7 @@ The response carries the finding presentation plus the surface for its move and 
 
 #### If the response carried `DISPLAY: finding auto-approved`
 
-1. Apply the fix to the plan (use **Proposed** content exactly as in tracking file)
+1. Apply the fix to the plan — the finding's change re-derived against the live plan content, from the **Proposed Text** field (older tracking files name it **Proposed** — read both as the same field); for `remove-task`/`remove-phase` the fix is removing the **Current** content
 2. Keep `task_map` current in ONE call for the whole finding — for `add-task`/`add-phase`, batch every new mapping as field pairs in a single `set`; for `remove-task`/`remove-phase` (or a mixed change), write the finding's ops — `{"op": "delete", "path": "{work_unit}.planning.{topic}", "field": "task_map.{internal_id}"}` per removal, `{"op": "set", …}` per addition — to `.workflows/.cache/{work_unit}/planning/{topic}/task-map-ops.json` with the Write tool and apply once:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id}={external_id} task_map.{internal_id_2}={external_id_2}
@@ -151,7 +153,7 @@ Work the point through in conversation. Where it settles on an option, land it a
 
 Work the point through in conversation — a challenge, an adjustment, or a decline all start here.
 
-- **The exchange revises the content**: update the tracking file with the revised content, rewrite the payload to match, and re-render the finding.
+- **The exchange revises the content**: update the tracking file with the revised content — **B** re-presents the finding from the updated file, once.
 - **The exchange ends in agreement to apply**: land it as the `yes` branch does.
 - **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it exists only here, as the outcome of this exchange.
 
@@ -159,7 +161,7 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
 
 #### If `yes`
 
-1. Apply the fix to the plan — use the **Proposed Text** content exactly as shown (older tracking files name the field **Proposed** — read both as the same field), using the output format adapter to determine how it's written. Do not modify content between approval and writing.
+1. Apply the fix to the plan — the finding's change exactly as presented, from the **Proposed Text** field (older tracking files name it **Proposed** — read both as the same field); for `remove-task`/`remove-phase` the fix is removing the **Current** content. Write through the output format adapter, and do not modify content between approval and writing.
 2. Keep `task_map` current in ONE call for the whole finding (same commands as the auto flow above).
 3. Update the tracking file: set resolution to "Fixed", add any discussion notes.
 4. Commit the tracking file and any plan changes — ensures progress survives context refresh.
