@@ -1502,10 +1502,13 @@ function phaseTree(cwd, args) {
 // planning and specification review flows. Findings live in markdown tracking
 // files, which the model reads (the engine never parses markdown) and hands
 // over as a JSON payload; the gate mode is manifest state at the address.
-// Artefact content is framed by its emission fence (D8): a diff renders as
-// one ```diff-fenced section — colouring keys on the column-0 markers, and
-// space-prefixed context lines place the change — prose content as a plain
-// code block. No drawn borders anywhere.
+// A finding is report-class content: it leads with what is wrong in the
+// terms the user cares about, and the artifact text is the payload of the
+// fix rather than its explanation. A short diff renders in place as one
+// ```diff-fenced section — colouring keys on the column-0 markers, and
+// space-prefixed context lines place the change — while a whole proposed
+// section waits behind `v/view`, which renders it as markdown. Source read
+// aloud is what buries the report. No drawn borders anywhere.
 // ---------------------------------------------------------------------------
 
 /** @param {string} cwd @param {string} file @param {string} surface @returns {any} */
@@ -1931,19 +1934,30 @@ function findingBatch(cwd, { dotpath, file }) {
   ].join('\n');
 }
 
-// The finding payload's category vocabulary. Only the gate-rendered four are
-// legal here — the two source-lane categories (Source defect, Unsourced
-// decision) route via resolve-source-incoherence before any render, so their
-// arrival at this surface is a caller bug and refuses by name.
+// The finding payload's category vocabulary — metadata carried into the
+// presentation, never the thing that picks its shape. The two source-lane
+// categories (Source defect, Unsourced decision) route via
+// resolve-source-incoherence before any render, so their arrival at this
+// surface is a caller bug and refuses by name.
 const FINDING_CATEGORIES = ['enhancement', 'new-topic', 'gap', 'duplication'];
 const ROUTED_CATEGORIES = ['source-defect', 'unsourced-decision'];
 
+// The move owed — what the user has to do about the finding, which is the
+// only question that determines its shape. `settled`: the record admits one
+// defensible answer, so the finding carries the call and what determined it,
+// and `auto` applies it without a stop. `choice`: real options exist and
+// picking is the user's, so the finding proposes nothing and the stop
+// overrides `auto` — the stays-gated rule is that a choice exists, never a
+// category. `route` belongs to resolve-source-incoherence and refuses by name.
+const FINDING_MOVES = ['settled', 'choice'];
+
 /**
  * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
+ * @param {{dotpath: string, file?: string, view?: string}} args
  * @returns {string}
  */
-function finding(cwd, { dotpath, file }) {
+function finding(cwd, { dotpath, file, view }) {
+  if (view !== undefined && view !== 'full') throw new Error('render finding: --view only accepts "full"');
   if (!file) throw new Error('render finding: --file <payload.json> is required');
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'finding');
   const p = readJsonPayload(cwd, file, 'finding');
@@ -1954,8 +1968,15 @@ function finding(cwd, { dotpath, file }) {
   if (!Array.isArray(p.meta) || p.meta.some((m) => !Array.isArray(m) || m.length !== 2 || !isFilled(m[0]) || !(typeof m[1] === 'number' || isFilled(m[1])))) {
     throw new Error('render finding: "meta" must be an array of [label, value] pairs');
   }
-  if (!isFilled(p.details)) throw new Error('render finding: "details" must be a non-empty string');
-  if (p.diff && p.content) throw new Error('render finding: pass "diff" or "content", not both');
+  if (!isFilled(p.problem)) {
+    throw new Error('render finding: "problem" must be a non-empty string — what is wrong, in the terms the user cares about');
+  }
+  if (p.move === 'route') {
+    throw new Error('render finding: a "route" finding goes to resolve-source-incoherence and never renders at the gate');
+  }
+  if (!FINDING_MOVES.includes(p.move)) {
+    throw new Error(`render finding: "move" must be one of ${FINDING_MOVES.join('/')} — the move owed picks the shape, not the category`);
+  }
   if (p.category !== undefined && !FINDING_CATEGORIES.includes(p.category)) {
     if (ROUTED_CATEGORIES.includes(p.category)) {
       throw new Error(`render finding: "${p.category}" findings route via resolve-source-incoherence and never render at the gate`);
@@ -1963,16 +1984,90 @@ function finding(cwd, { dotpath, file }) {
     throw new Error(`render finding: unknown category "${p.category}" (expected ${FINDING_CATEGORIES.join('/')})`);
   }
 
+  const head = [`**Finding ${p.n} of ${p.total}: ${p.title}**`, ''];
+  for (const [label, value] of p.meta) head.push(`- **${label}**: ${value}`);
+  head.push('', p.problem);
+
+  if (p.move === 'choice') {
+    if (view) throw new Error('render finding: --view serves a settled finding\'s wording; a choice proposes none');
+    return findingChoice(p, head);
+  }
+  const items = (((manifest.phases || {})[phase] || {}).items || {})[topic] || {};
+  return findingSettled(p, head, items, view === 'full');
+}
+
+/**
+ * A choice: the options are explained in the body and picked by number. No
+ * proposal, nothing to apply, and no `a/auto` row at any gate mode — `auto`
+ * means "don't pause me for what you can decide", never "decide what you
+ * can't".
+ * @param {any} p @param {string[]} head @returns {string}
+ */
+function findingChoice(p, head) {
+  for (const field of ['proposal', 'diff', 'content']) {
+    if (p[field] !== undefined) {
+      throw new Error(`render finding: a "choice" finding carries no "${field}" — it presents options, never a call already made`);
+    }
+  }
+  if (!Array.isArray(p.options) || p.options.length < 2) {
+    throw new Error('render finding: a "choice" finding must carry at least 2 "options"');
+  }
+  p.options.forEach((/** @type {{summary?: string, recommended?: boolean}} */ o, /** @type {number} */ i) => {
+    if (!o || typeof o !== 'object' || !isFilled(o.summary)) {
+      throw new Error(`render finding: options[${i}].summary must be a non-empty string`);
+    }
+  });
+  if (p.options.filter((/** @type {{recommended?: boolean}} */ o) => o.recommended === true).length > 1) {
+    throw new Error('render finding: at most one option may be recommended');
+  }
+
+  const ordered = [...p.options].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
+  const rows = ordered.map((o, i) => cmdOption(String(i + 1), null, `${o.summary}${o.recommended === true ? ' (recommended)' : ''}`));
+  rows.push(promptOption('Comment', "Tell me what you're thinking; we'll work it through"));
+
+  return [
+    section('DISPLAY: finding', 'emit verbatim as markdown', head.join('\n')),
+    section('MENU: finding choice', STOP_FOR_RESPONSE, menu('', rows, { question: 'Which way?' })),
+  ].join('\n');
+}
+
+/**
+ * A settled call: the body carries what determined it, a short diff renders
+ * in place, and whole proposed content is held behind `v/view` rather than
+ * dumped — the finding is a report, and the artifact text is the payload of
+ * the fix, not its explanation.
+ * @param {any} p @param {string[]} head @param {any} items @param {boolean} view @returns {string}
+ */
+function findingSettled(p, head, items, view) {
+  if (!isFilled(p.proposal)) {
+    throw new Error('render finding: a "settled" finding must carry a "proposal" — the call and what determined it');
+  }
+  if (p.options !== undefined) {
+    throw new Error('render finding: a "settled" finding carries no "options" — a call with options is a choice');
+  }
+  if (p.diff && p.content) throw new Error('render finding: pass "diff" or "content", not both');
+
   const applyLabel = isFilled(p.apply_label) ? p.apply_label : 'Apply verbatim';
   const appliedLabel = isFilled(p.applied_label) ? p.applied_label : 'approved. Applied.';
   const feedbackHint = isFilled(p.feedback_hint) ? p.feedback_hint : 'Tell me what to change before approving';
 
-  const parts = [];
+  // `--view` answers the gate's own v/view row: the wording the user asked
+  // for, and the gate again minus that row. The report is not repeated —
+  // re-rendering it whole is how one finding comes to fill a screen twice.
+  if (view) {
+    if (!p.content) throw new Error('render finding: --view needs "content" — a diff finding shows its change in place');
+    return [
+      section('DISPLAY: finding wording', 'emit verbatim as markdown', [`**${p.content.label}**`, '', ...p.content.lines].join('\n')),
+      section('MENU: finding gate', STOP_FOR_RESPONSE, menu('', [
+        cmdOption('y', 'yes', isFilled(p.apply_label) ? p.apply_label : 'Apply verbatim'),
+        cmdOption('a', 'auto', 'Approve this and all remaining settled findings automatically'),
+        promptOption('Provide feedback', isFilled(p.feedback_hint) ? p.feedback_hint : 'Tell me what to change before approving'),
+      ], { question: 'Apply this?' })),
+    ].join('\n');
+  }
 
-  const head = [`**Finding ${p.n} of ${p.total}: ${p.title}**`, ''];
-  for (const [label, value] of p.meta) head.push(`- **${label}**: ${value}`);
-  head.push('', `**Details**: ${p.details}`);
-  parts.push(section('DISPLAY: finding', 'emit verbatim as markdown', head.join('\n')));
+  head.push('', p.proposal);
+  const parts = [section('DISPLAY: finding', 'emit verbatim as markdown', head.join('\n'))];
 
   if (p.diff) {
     const body = [
@@ -1986,41 +2081,31 @@ function finding(cwd, { dotpath, file }) {
     }
     parts.push(section('DISPLAY: diff', 'emit verbatim as a diff code block (```diff fence)', body.join('\n')));
   } else if (p.content) {
+    // Validated but never rendered here. A whole proposed section is artifact
+    // source, and source read aloud is what buried the report — it waits for
+    // `v/view`, where it renders as markdown rather than as a wall of syntax.
     if (!isFilled(p.content.label)) throw new Error('render finding: "content.label" must be a non-empty string');
-    const lines = stringLines(p.content.lines, 'finding', 'content.lines');
-    if (lines.length === 0) throw new Error('render finding: "content.lines" must be non-empty');
-    parts.push(section('DISPLAY: finding content', 'emit verbatim as a code block', [`${p.content.label}:`, '', ...lines].join('\n')));
+    if (stringLines(p.content.lines, 'finding', 'content.lines').length === 0) {
+      throw new Error('render finding: "content.lines" must be non-empty');
+    }
   }
 
-  const items = (((manifest.phases || {})[phase] || {}).items || {})[topic] || {};
-  // A gap finding is a question, not a correction — auto covers applying
-  // agreed corrections, never answering questions on the user's behalf.
-  const gateMode = items.finding_gate_mode === 'auto' && p.category !== 'gap' ? 'auto' : 'gated';
-
-  if (gateMode === 'auto') {
+  if (items.finding_gate_mode === 'auto') {
     parts.push(section(
       'DISPLAY: finding auto-approved',
       `after applying the fix: ${AUTO_GATE_INSTRUCTION}`,
       `Finding ${p.n} of ${p.total}: ${p.title} — ${appliedLabel}`,
     ));
-  } else {
-    const options = [cmdOption('y', 'yes', applyLabel)];
-    if (p.diff) options.push(cmdOption('v', 'view full', 'Show full Current and Proposed content'));
-    // A gate forced by category over an auto manifest offers no a/auto row —
-    // auto is already set, and this stop exists despite it.
-    if (items.finding_gate_mode !== 'auto') {
-      options.push(cmdOption('a', 'auto', 'Approve this and all remaining findings automatically'));
-    }
-    options.push(
-      cmdOption('s', 'skip', 'Leave as-is, move to next finding'),
-      promptOption('Provide feedback', feedbackHint),
-    );
-    parts.push(section(
-      'MENU: finding gate',
-      'emit verbatim as markdown, then STOP for the user\'s response',
-      menu(`**Finding ${p.n} of ${p.total}: ${p.title}**`, options),
-    ));
+    return parts.join('\n');
   }
+
+  const options = [cmdOption('y', 'yes', applyLabel)];
+  if (p.content) options.push(cmdOption('v', 'view', 'Show the exact wording'));
+  options.push(
+    cmdOption('a', 'auto', 'Approve this and all remaining settled findings automatically'),
+    promptOption('Provide feedback', feedbackHint),
+  );
+  parts.push(section('MENU: finding gate', STOP_FOR_RESPONSE, menu('', options, { question: 'Apply this?' })));
   return parts.join('\n');
 }
 
