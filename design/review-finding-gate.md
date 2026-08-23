@@ -222,6 +222,31 @@ Simulation re-pin where call sequences move.
 
 ## Log
 
+- 2026-08-23 — Review pass ruled, with data. Eight finders over the
+  stack; the fixes landed into the owning PRs. Four decisions from the
+  walk-through: a finding talked through and left as-is lands as
+  **Declined** with its reason in Notes — reachable only from the
+  gate's Discuss exchange, never a menu row, and legacy Skipped rows
+  read as it; short settled additions render as an additions-only diff
+  at the gate, whole sections alone waiting behind v/view; planning's
+  plan-text field renames to Proposed Text, mirroring the spec side;
+  and every stop that fires despite auto opens on one engine-rendered
+  line — 'Auto is on — stopping anyway: this is one of the calls auto
+  never makes for you.' — across the choice gate, both incoherence
+  raises, resurface-gate, and (prose-prescribed, same words) the two
+  conversational incoherence stops. A cosmetic **Contradiction**
+  category joins gap analysis so a self-contradiction stops reading as
+  a gap; it decides nothing.
+
+  The gap-analysis sufficiency bar was considered and declined, on
+  Portal's own record: across 100 gap-analysis tracking files, ~99.6%
+  of resolved findings were approved as proposed (537 approved, 4
+  adjusted, 2 option-picks) and units converge to low single digits by
+  cycle 3 — the volume was a stop problem, not a finding problem, and
+  the move contract already removes the stops. Revisit only if the
+  live choice-classification rate runs far above that historical 0.4%.
+
+
 - 2026-08-23 — Layers 2 and 3 built. The agents' register change was
   the larger half: every one of them wrote a Details field in the
   voice of the analysis, and the gate had nothing else to lead with,
