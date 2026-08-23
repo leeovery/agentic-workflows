@@ -4,7 +4,7 @@
 
 ---
 
-Process findings from a review agent interactively with the user. The agent writes findings — with full fix content — to a tracking file. Read the tracking file and present each finding for approval.
+Process findings from a review agent interactively with the user. The agent writes findings to a tracking file, each carrying the **move** it owes the user: `settled` (the record admits one defensible answer — the finding carries the fix and what determined it) or `choice` (real options exist and picking is the user's — the finding carries the options and proposes none). Read the tracking file and present each finding by its move.
 
 **Review type**: `{review_type:[traceability|integrity]}` — set by the calling context (C or D in plan-review.md).
 
@@ -33,11 +33,11 @@ Read the tracking file at the path returned by the agent (`TRACKING_FILE`).
 Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json` with the Write tool — one item per finding from the tracking file:
 
 ```json
-{"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "…", "summary": "{1-2 line summary from the Details field}", "status": "…"}]}
+{"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "…", "summary": "{1-2 line summary of the Problem}", "status": "…"}]}
 ```
 
 - `tag` — one short term: the Severity for an integrity finding; for a traceability finding, the Type's token — `missing` (Missing from plan), `hallucinated` (Hallucinated content), `incomplete` (Incomplete coverage). The tracking file keeps the full phrase.
-- `status` — the finding's Resolution: `Fixed` → `approved`, `Skipped` → `skipped`, `Pending` or unset → `pending`.
+- `status` — the finding's Resolution: `Fixed` → `approved`; `Pending` or unset → `pending`.
 
 Render and emit the section verbatim at its marked instruction:
 
@@ -51,7 +51,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {
 
 ## B. Process One Item at a Time
 
-Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Fixed` or `Skipped` was settled in an earlier sitting; never re-present or re-apply it. For each finding: present it, show the proposed fix, then route through the gate.
+Work through each unresolved finding **sequentially** — a finding whose Resolution is already `Fixed` was settled in an earlier sitting; never re-present or re-apply it.
+
+Read each finding's **Move** before presenting it — it decides the shape. Where the finding names none, classify it and record it in the tracking file: exactly one defensible answer in the specification or the record → `settled`; real options between which only the user can pick → `choice`.
+
+Then confirm that move against the live session. A `settled` finding whose stated derivation no longer holds, or whose fix you cannot yourself stand behind, is a `choice`: update the Move, replace its fix with options, and present it that way. Reclassification only ever moves toward the user; a `choice` is never demoted to `settled` to save a stop.
 
 ### Present Finding
 
@@ -59,9 +63,12 @@ Write the finding payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 
 - `n`, `total`, `title` — the finding's position and Brief Title.
 - `meta` — `[label, value]` pairs: for traceability, Type / Spec Reference / Plan Reference / Change Type; for integrity, Severity / Plan Reference / Category / Change Type.
-- `details` — the Details field.
+- `move` — the finding's Move, as **B** settled it: `settled` or `choice`.
+- `problem` — what is wrong, in the terms the user cares about: what the plan would build wrong, or fail to build. Never the analysis that found it.
+- `proposal` — `settled` only: the fix and what determined it.
+- `options` — `choice` only: `[{"summary": "…", "recommended": true}, …]`, at most one recommended. Where the finding names no options, they are yours to frame — one line each, and take a stance.
 - For Change Type `update-task`, `add-to-task`, or `remove-from-task`: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side.
-- For Change Type `add-task`, `add-phase`, `remove-task`, or `remove-phase`: `content` — `{"label": "Proposed" | "Current", "lines": […]}` with the full content as written by the review agent.
+- For Change Type `add-task`, `add-phase`, `remove-task`, or `remove-phase`: `content` — `{"label": "Proposed", "lines": […]}` with the full content as written by the review agent. It is held for `v/view`, never rendered at the gate.
 - `apply_label`: `"Apply to the plan verbatim"` · `applied_label`: `"approved. Applied to plan."`
 
 Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
@@ -94,15 +101,46 @@ The response carries the finding presentation plus the surface for the current g
 
 → Proceed to **C. After All Findings Processed**.
 
-#### If the response carried `MENU: finding gate`
+#### If the response carried `MENU: finding gate` or `MENU: finding choice`
 
 **STOP.** Wait for user response.
 
-#### If `view full`
+#### If `view`
 
-Re-present the finding's **Current** and **Proposed** content in full from the tracking file. Then re-emit the `MENU: finding gate` section.
+Re-render with `--view full` and emit both returned sections verbatim at their marked instructions:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json --view full
+```
 
 **STOP.** Wait for user response.
+
+#### If the user picks an option by number
+
+The numbered options render recommended-first, so the number the user typed indexes that order, not the tracking file's.
+
+1. Apply the chosen option to the plan — the fix follows from the choice, so it lands without a second gate — with the `task_map` upkeep of the auto flow above.
+2. Update the tracking file: set resolution to "Fixed", record which option was chosen in Notes.
+3. Commit the tracking file and any plan changes.
+4. > *Output the next fenced block as a code block:*
+
+   ```
+   Finding {N} of {total}: {Brief Title} — {chosen option, one clause}.
+   ```
+
+**If pending findings remain:**
+
+→ Return to **B. Process One Item at a Time**.
+
+**If all findings are processed:**
+
+→ Proceed to **C. After All Findings Processed**.
+
+#### If comment
+
+Work the point through in conversation. Where it settles, land the outcome as the numbered-pick branch does — the plan write, the `task_map` upkeep, the tracking file, the commit — and continue.
+
+→ Return to **B. Process One Item at a Time**.
 
 #### If the user provides feedback
 
@@ -139,25 +177,7 @@ Incorporate feedback and update the tracking file with the revised content. Rewr
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} finding_gate_mode auto
    ```
 4. Commit
-5. Process all remaining findings using the auto-mode flow above
-
-→ Proceed to **C. After All Findings Processed**.
-
-#### If `skip`
-
-1. Update the tracking file: set resolution to "Skipped", note the reason.
-2. Commit the tracking file — ensures progress survives context refresh.
-3. > *Output the next fenced block as a code block:*
-
-   ```
-   Finding {N} of {total}: {Brief Title} — skipped.
-   ```
-
-**If pending findings remain:**
-
-→ Return to **B. Process One Item at a Time**.
-
-**If all findings are processed:**
+5. Process each remaining finding from **B** — the mode change removes the approval stops for settled fixes, never the per-finding pass: a `choice` still stops, and every finding is still rendered
 
 → Proceed to **C. After All Findings Processed**.
 

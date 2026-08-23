@@ -201,7 +201,7 @@ Commands:
   render resume-gate <wu.phase.topic> [--triage N] [--variant plan|review|scoping|session]  (session: bare <wu>)
   render task-list   <wu.planning.topic> --file <payload.json>
   render findings-summary <wu.phase.topic> --file <payload.json>
-  render finding          <wu.phase.topic> --file <payload.json>
+  render finding          <wu.phase.topic> --file <payload.json> [--view full]
   render finding-announce <wu.phase.topic> --file <payload.json>
   render finding-batch    <wu.phase.topic> --file <payload.json>
   render review-presentation <wu.review.topic> --file <payload.json>

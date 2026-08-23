@@ -1605,17 +1605,18 @@ describe('render finding', () => {
   const base = {
     n: 1, total: 2, title: 'Missing Outcome field',
     meta: [['Severity', 'Minor'], ['Change Type', 'add-to-task']],
-    details: 'The canonical template requires Outcome.',
+    problem: 'A task with no Outcome leaves the builder guessing what done looks like.',
   };
+  const settled = { ...base, move: 'settled', proposal: 'The template fixes this — I would add the Outcome line the other tasks carry.' };
   beforeEach(() => {
     dir = setup();
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
   });
   afterEach(() => teardown(dir));
 
-  it('renders meta, the diff as one fenced section, and the gate menu when gated', () => {
+  it('leads with the problem and the call, renders the diff in place, and gates on a question', () => {
     const file = writePayload(dir, 'f.json', {
-      ...base,
+      ...settled,
       diff: { context_above: ['**Solution**: shared adapter.'], current: [], proposed: ['**Outcome**: lands at a live shell.'], context_below: ['**Do**:'] },
       apply_label: 'Apply to the plan verbatim',
     });
@@ -1627,68 +1628,138 @@ describe('render finding', () => {
       '- **Severity**: Minor',
       '- **Change Type**: add-to-task',
       '',
-      '**Details**: The canonical template requires Outcome.',
+      'A task with no Outcome leaves the builder guessing what done looks like.',
+      '',
+      'The template fixes this — I would add the Outcome line the other tasks carry.',
       '',
     ].join('\n')));
     assert.ok(out.includes('=== DISPLAY: diff (emit verbatim as a diff code block (```diff fence)) ===\n **Solution**: shared adapter.\n+**Outcome**: lands at a live shell.\n **Do**:'));
     assert.ok(!/frame|╭|╰/.test(out), 'the fence is the frame — no drawn borders, no frame sections');
     assert.ok(out.includes('=== MENU: finding gate'));
-    assert.ok(/\*\*`v\/view full`\*\* +→ Show full Current and Proposed content/.test(out), 'diff findings offer view full');
+    assert.ok(/\*\*`◆ Apply this\?`\*\*/.test(out), 'the menu opens with a question, never a second copy of the heading');
+    assert.strictEqual(out.match(/\*\*Finding 1 of 2: Missing Outcome field\*\*/g).length, 1, 'the heading renders exactly once');
     assert.ok(/\*\*`y\/yes`\*\* +→ Apply to the plan verbatim/.test(out));
-    assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining findings/.test(out), 'a normal gated finding still offers the auto opt-in');
+    assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining settled findings automatically/.test(unwrap(out)));
     assert.ok(/\*\*Provide feedback\*\* +→ Tell me what to change before approving/.test(out));
+  });
+
+  it('never offers skip — a found problem is settled, chosen, or routed, never waved past', () => {
+    const file = writePayload(dir, 'f.json', { ...settled, content: { label: 'Proposed Addition', lines: ['New spec section body.'] } });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
+    assert.ok(!/skip/i.test(out), 'no skip option at any gate');
+  });
+
+  it('holds whole proposed content behind v/view instead of dumping it as source', () => {
+    const file = writePayload(dir, 'f.json', {
+      ...settled,
+      content: { label: 'Proposed Addition', lines: ['## Delivery', '', '> Retries are bounded at four attempts.'] },
+    });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
+    assert.ok(!out.includes('DISPLAY: finding content'), 'the proposed section is not rendered at the gate');
+    assert.ok(!out.includes('## Delivery'), 'artifact source never reaches the presentation');
+    assert.ok(/\*\*`v\/view`\*\* +→ Show the exact wording/.test(out), 'the wording is reachable, not imposed');
+    assert.ok(!out.includes('view full'), 'view full is gone — there is no full copy to re-show');
+  });
+
+  it('--view full answers the v/view row: the wording and the gate again, the report not repeated', () => {
+    const file = writePayload(dir, 'f.json', {
+      ...settled,
+      content: { label: 'Proposed Addition', lines: ['## Delivery', '', 'Retries are bounded at four attempts.'] },
+      apply_label: 'Apply to the specification verbatim',
+    });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file, view: 'full' });
+    assert.ok(out.startsWith('=== DISPLAY: finding wording (emit verbatim as markdown) ===\n**Proposed Addition**\n\n## Delivery'));
+    assert.ok(!out.includes('DISPLAY: finding ('), 'the report is not re-rendered — one finding never fills a screen twice');
+    assert.ok(out.includes('MENU: finding gate'));
+    assert.ok(!/`v\/view`/.test(out), 'the view row is spent');
+    assert.ok(/\*\*`y\/yes`\*\* +→ Apply to the specification verbatim/.test(out));
+  });
+
+  it('--view full is refused where there is no wording to show, and on a choice', () => {
+    const diffFile = writePayload(dir, 'd.json', { ...settled, diff: { current: [], proposed: ['x'] } });
+    assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file: diffFile, view: 'full' }),
+      /--view needs "content" — a diff finding shows its change in place/);
+    const choiceFile = writePayload(dir, 'c.json', { ...base, move: 'choice', options: [{ summary: 'a' }, { summary: 'b' }] });
+    assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file: choiceFile, view: 'full' }),
+      /--view serves a settled finding's wording; a choice proposes none/);
+    assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file: diffFile, view: 'part' }),
+      /--view only accepts "full"/);
+  });
+
+  it('a diff finding offers no view — the change is already visible in place', () => {
+    const file = writePayload(dir, 'f.json', { ...settled, diff: { current: ['old'], proposed: ['new'] } });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
+    assert.ok(!/`v\/view`/.test(out));
   });
 
   it('wide diff lines pass through untouched — no border, no wrap', () => {
     const long = 'x'.repeat(150);
-    const file = writePayload(dir, 'f.json', { ...base, diff: { current: [], proposed: [long] } });
+    const file = writePayload(dir, 'f.json', { ...settled, diff: { current: [], proposed: [long] } });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
     assert.ok(out.includes(`\n+${long}\n`), 'the fence re-flows in the host; the engine never wraps diff lines');
   });
 
-  it('content variant renders as a code block without view full; auto mode returns the applied line', () => {
+  it('a settled finding rides auto: the report renders, the gate does not', () => {
     writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
     const file = writePayload(dir, 'f.json', {
-      ...base,
+      ...settled,
       content: { label: 'Proposed Addition', lines: ['New spec section body.'] },
       applied_label: 'approved. Added to specification.',
     });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
-    assert.ok(out.includes('=== DISPLAY: finding content (emit verbatim as a code block) ===\nProposed Addition:\n\nNew spec section body.'));
+    assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown) ==='), 'auto drops the stop, never the showing');
     assert.ok(out.includes('=== DISPLAY: finding auto-approved (after applying the fix: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\nFinding 1 of 2: Missing Outcome field — approved. Added to specification.'));
-    assert.ok(!out.includes('MENU: finding gate'));
-    assert.ok(!out.includes('view full'));
+    assert.ok(!out.includes('MENU: finding'));
   });
 
-  it('a gap finding renders its gate even when the manifest holds auto — a question never auto-applies', () => {
+  it('a choice stops over auto, numbers its options recommended-first, and offers no a/auto row', () => {
     writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
-    const file = writePayload(dir, 'f.json', { ...base, category: 'gap' });
+    const file = writePayload(dir, 'f.json', {
+      ...base,
+      move: 'choice',
+      options: [{ summary: 'Hold the queue slot and keep retrying' }, { summary: 'Bound retries at four, then dead-letter', recommended: true }],
+    });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
-    assert.ok(out.includes('MENU: finding gate'));
+    assert.ok(out.includes('=== MENU: finding choice'), 'auto never decides what only the user can');
     assert.ok(!out.includes('finding auto-approved'));
-    assert.ok(!out.includes('a/auto'), 'a gate forced over an auto manifest offers no a/auto row');
+    assert.ok(/\*\*`◆ Which way\?`\*\*/.test(out));
+    assert.ok(/\*\*`1`\*\* +→ Bound retries at four, then dead-letter \(recommended\)/.test(out), 'the recommendation sorts first');
+    assert.ok(/\*\*`2`\*\* +→ Hold the queue slot and keep retrying/.test(out));
+    assert.ok(/\*\*Comment\*\* +→ Tell me what you're thinking/.test(out));
+    assert.ok(!/`a\/auto`/.test(out), 'a choice never offers the auto opt-in');
+    assert.ok(!/skip/i.test(out));
   });
 
-  it('a non-gap category rides auto as before', () => {
+  it('the category no longer picks the shape — a gap rides auto when the record settles it', () => {
     writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
-    const file = writePayload(dir, 'f.json', { ...base, category: 'enhancement' });
+    const file = writePayload(dir, 'f.json', { ...settled, category: 'gap' });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
     assert.ok(out.includes('finding auto-approved'));
-    assert.ok(!out.includes('MENU: finding gate'));
+    assert.ok(!out.includes('MENU: finding'));
   });
 
-  it('validates loudly: shape, exclusivity, and empty diff', () => {
+  it('validates loudly: move, shape, exclusivity, and empty diff', () => {
     const cases = [
-      [{ ...base, n: 0 }, /"n" must be a positive integer/],
-      [{ ...base, total: 0 }, /"total" must be an integer/],
-      [{ ...base, meta: [['x']] }, /"meta" must be an array of \[label, value\] pairs/],
-      [{ ...base, details: ' ' }, /"details" must be a non-empty string/],
-      [{ ...base, category: 'source-defect' }, /"source-defect" findings route via resolve-source-incoherence and never render at the gate/],
-      [{ ...base, category: 'unsourced-decision' }, /"unsourced-decision" findings route via resolve-source-incoherence/],
-      [{ ...base, category: 'severity' }, /unknown category "severity"/],
-      [{ ...base, diff: { current: [], proposed: [] }, content: { label: 'X', lines: ['y'] } }, /pass "diff" or "content", not both/],
-      [{ ...base, diff: { current: [], proposed: [] } }, /"diff" must carry at least one/],
-      [{ ...base, content: { label: 'X', lines: [] } }, /"content.lines" must be non-empty/],
+      [{ ...settled, n: 0 }, /"n" must be a positive integer/],
+      [{ ...settled, total: 0 }, /"total" must be an integer/],
+      [{ ...settled, meta: [['x']] }, /"meta" must be an array of \[label, value\] pairs/],
+      [{ ...settled, problem: ' ' }, /"problem" must be a non-empty string/],
+      [{ ...base, move: 'route' }, /a "route" finding goes to resolve-source-incoherence and never renders at the gate/],
+      [{ ...base }, /"move" must be one of settled\/choice/],
+      [{ ...base, move: 'apply' }, /"move" must be one of settled\/choice/],
+      [{ ...settled, category: 'source-defect' }, /"source-defect" findings route via resolve-source-incoherence and never render at the gate/],
+      [{ ...settled, category: 'unsourced-decision' }, /"unsourced-decision" findings route via resolve-source-incoherence/],
+      [{ ...settled, category: 'severity' }, /unknown category "severity"/],
+      [{ ...base, move: 'settled' }, /a "settled" finding must carry a "proposal"/],
+      [{ ...settled, options: [{ summary: 'a' }, { summary: 'b' }] }, /a "settled" finding carries no "options"/],
+      [{ ...settled, diff: { current: [], proposed: ['x'] }, content: { label: 'X', lines: ['y'] } }, /pass "diff" or "content", not both/],
+      [{ ...settled, diff: { current: [], proposed: [] } }, /"diff" must carry at least one/],
+      [{ ...settled, content: { label: 'X', lines: [] } }, /"content.lines" must be non-empty/],
+      [{ ...base, move: 'choice', options: [{ summary: 'only one' }] }, /a "choice" finding must carry at least 2 "options"/],
+      [{ ...base, move: 'choice', options: [{ summary: 'a' }, { notASummary: true }] }, /options\[1\]\.summary must be a non-empty string/],
+      [{ ...base, move: 'choice', options: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] }, /at most one option may be recommended/],
+      [{ ...base, move: 'choice', proposal: 'already decided', options: [{ summary: 'a' }, { summary: 'b' }] }, /a "choice" finding carries no "proposal"/],
+      [{ ...base, move: 'choice', content: { label: 'X', lines: ['y'] }, options: [{ summary: 'a' }, { summary: 'b' }] }, /a "choice" finding carries no "content"/],
     ];
     cases.forEach(([payload, re], i) => {
       const file = writePayload(dir, `bad-${i}.json`, payload);
@@ -2186,13 +2257,17 @@ describe('review fixes — gap coverage', () => {
   });
   afterEach(() => teardown(dir));
 
-  const base = { n: 1, total: 1, title: 'T', meta: [['Severity', 'Minor']], details: 'D' };
+  const base = {
+    n: 1, total: 1, title: 'T', meta: [['Severity', 'Minor']],
+    move: 'settled', problem: 'P', proposal: 'Q',
+  };
 
-  it('finding content × gated renders the menu WITHOUT view full', () => {
+  it('finding content × gated offers v/view, never view full', () => {
     const file = writePayload(dir, 'f.json', { ...base, content: { label: 'Proposed Addition', lines: ['x'] } });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
     assert.ok(out.includes('MENU: finding gate'));
-    assert.ok(!out.includes('view full'), 'content findings offer no view-full option');
+    assert.ok(!out.includes('view full'), 'there is no full copy to re-show');
+    assert.ok(/`v\/view`/.test(out), 'the wording stays reachable');
   });
 
   it('finding diff × auto renders the diff fence plus the applied line, no menu', () => {
