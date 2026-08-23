@@ -73,7 +73,7 @@ Then confirm that move against the live session. A `settled` finding whose state
 
 A `route` finding — Category **Source defect** or **Unsourced decision** — indicts a source, not the specification. It is never applied or adjusted here, and never rides `auto`. Instead of presenting it:
 
-→ Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with doc = `{the owning source's topic}` (for an unsourced decision, whichever of this specification's **own sources** should own the missing decision — the route never leaves the spec's sources; a spec cites no discussion it doesn't source), taking the finding's Problem as the material to classify.
+→ Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with doc = `{the owning source's topic}` (for an unsourced decision, whichever of this specification's **own sources** should own the missing decision — the route never leaves the spec's sources; a spec cites no discussion it doesn't source), category = `{the finding's Category}`, taking the finding's Problem as the material to classify.
 
 On return, land the outcome by what actually happened there:
 

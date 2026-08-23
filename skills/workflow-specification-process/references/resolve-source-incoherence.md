@@ -4,7 +4,7 @@
 
 ---
 
-Specification makes decisions clear; it never makes them — and classification is yours. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the calling session.
+Specification makes decisions clear; it never makes them — and classification is yours. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the calling session. A caller routing a review finding also names its `category`; construction, which routes material rather than a finding, names none.
 
 Four moves, by effort. A measured falsehood is never a silent derivation — reality corrects the record, and the correction lands in the owning document, never in the spec alone. Anything else the record settles is derived silently — that is the phase doing its job, and it earns no mention. A point a brief exchange settles stops for the user and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. Start at **A. Classify**.
 
@@ -44,7 +44,7 @@ One side is acknowledged supersession — a dated Decision-block entry, or prose
 
 #### If a brief exchange settles it and the sources document the sides
 
-The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. Take a stance — one side carries `recommended`. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
+The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. The sides are quoted from the documents, never composed here: where you would have to write the alternatives yourself, they are not documented and this is not the branch. `category` = `Unsourced decision` excludes it outright — a point no source decides has no documented sides — and so does any material whose collision you cannot cite. Take a stance — one side carries `recommended`. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant conflict
@@ -74,7 +74,7 @@ An exchange showing nothing can stand without work the sources never did — nei
 
 #### If a brief exchange settles it and no sides are documented
 
-The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. **This stop overrides `auto`.** Put the question to the user in conversation — what the topic needs, where the sources stop short, what the answer unlocks — and take a stance. No engine surface: this is an exchange, not a gate.
+The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. An **Unsourced decision** lands here whenever a brief exchange can settle it: the specification decided something its sources never did, and the question is what the sources should have said. **This stop overrides `auto`.** Put the question to the user in conversation — what the topic needs, where the sources stop short, what the answer unlocks — and take a stance. No engine surface: this is an exchange, not a gate.
 
 **STOP.** Wait for user response.
 
