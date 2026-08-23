@@ -154,23 +154,25 @@ natural-break deferral. One finding at a time, as now.
 
 ## The stack
 
-1. **The surface** — `render finding` leads with the report, stops
-   dumping `content`, replaces `view full` with a rendering `v/view`,
-   drops `skip`, and gives the menu a question for its label. A
-   sibling options surface beside `incoherence-gate`'s conflict
-   variant, without the quotes block: these sides are constructed by
-   Claude, not quoted from colliding documents.
+1. **The gate** — `render finding` branches on the move, leads with
+   the report, stops dumping `content`, and gives the menu a question
+   for its label; `skip` and `view full` are gone, and a `--view full`
+   variant answers the new `v/view` row with the wording and the gate
+   alone, never the report a second time. The choice shape lives in
+   the same surface rather than a sibling: the caller passes the move
+   and the surface picks the shape, which is the rule already governing
+   gated-vs-auto here. Its two callers move with it — the tracking
+   format, and both `process-review-findings.md` loops, which classify
+   the move in **B** before the route branch reads it. The loops
+   classify findings that name no move, so a tracking file written
+   before the field still processes.
 
-2. **The contracts** — `review-tracking-format.md` gains the move
-   field and the two report fields; the five review agents (three
-   specification, two planning) learn to write findings as reports and
-   to classify by move. The bulk of the programme.
+2. **The agents** — the five review agents (three specification, two
+   planning) learn to write findings as reports and to classify by
+   move. The bulk of the programme, and separable because layer 1
+   classifies what arrives without one.
 
-3. **The loops** — both `process-review-findings.md` files route on
-   the move, lose their `skip` and `view full` branches, and stop
-   re-rendering whole findings after feedback.
-
-4. **The missing branch** — `resolve-source-incoherence.md` gains
+3. **The missing branch** — `resolve-source-incoherence.md` gains
    "settle it with the user now, where no source frames the sides":
    the case an unsourced decision actually is. Today it can only stall
    the spec or fake a conflict.
@@ -217,6 +219,16 @@ Simulation re-pin where call sequences move.
   answers specification and planning only.
 
 ## Log
+
+- 2026-08-23 — Layer 1 built: the gate, the tracking format, both
+  loops. The stack shape changed as it landed — the surface and its
+  two callers are one payload contract and cannot be split across
+  PRs, while the agents separate cleanly once the loops classify an
+  unlabelled finding themselves. The choice shape stayed inside
+  `render finding` rather than becoming a sibling surface: the caller
+  passes the move, the surface picks the shape, matching the
+  gated-vs-auto rule the file already states. `--view full` follows
+  `resurface-gate`'s precedent.
 
 - 2026-08-23 — Programme opened. Evidence from a live portal
   specification review; four defects traced to one substitution;
