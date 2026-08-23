@@ -186,20 +186,42 @@ There is a second picker in the no-map branch (`:639-666`); both need the
 same treatment.
 
 **B4 — Re-derived, never frozen.** Wholesale renumber of the live set.
-Two automatic triggers plus B5's manual one:
+Two automatic triggers plus B5's manual one, and one home that serves both.
 
-1. **Any live topic lacking an order.** This needs a *new* flag. The
-   existing `needs_sequencing` is derived from discovery-map items alone
-   (`derivations.cjs:317`, fed by `buildDiscoveryMap`) and a spec item
-   moves it not at all. Call the new one `build_order_needs_sequencing`
-   and derive it on `EpicDetail` beside its sibling. Reusing the name
-   would collide exactly as the shared `order` field nearly does.
-2. **On specification completion** — an *event* at the point of
-   completion, not a derived staleness. Declared dependencies sharpen an
-   order that product intuition alone could only approximate. Framing it
-   as an event matters: "a spec completed since the last sequencing" would
-   need a last-sequenced marker, and none exists — `sequenceMap` writes
-   orders and nothing else.
+1. **Any live topic lacking an order** — something arrived by a route that
+   does not assign one (pivot, regroup, gap analysis, reroute).
+2. **A specification completed since the last sequencing.** The order is
+   first assigned at grouping, when only the discussions exist — a read of
+   which topic is foundational, made without the specs. Declared
+   dependencies are exactly the information that sharpens it, so the order
+   is recomputed as they land.
+
+**Both reach the same gate through one flag,
+`build_order_needs_sequencing`**, derived on `EpicDetail` beside its
+sibling. It is true when a live topic has no order **or** when
+`build_order_stale` is set. Spec completion sets `build_order_stale`;
+sequencing clears it.
+
+The flag has to be new. The existing `needs_sequencing` is derived from
+discovery-map items alone (`derivations.cjs:317`, fed by
+`buildDiscoveryMap`) and a spec item moves it not at all — reusing the
+name would collide exactly as the shared `order` field nearly does. And
+the staleness has to be a stored boolean rather than a comparison: "a spec
+completed since the last sequencing" would need a last-sequenced marker,
+and none exists — `sequenceMap` writes orders and nothing else.
+
+**Two hosts, by role.** *Birth* belongs to the grouping analysis, which
+assigns the order in the same `reconcile-ops.json` it already writes — no
+new engine surface, and it covers regrouping for free. *Refresh* belongs
+to a new epic-entry step in `workflow-continue-epic`, mirroring Step 7's
+discovery sequencing exactly: read the flag, run the sequencing reference,
+re-run the gateway so the display sees the new order. Epic entry is the
+self-healing backstop — whatever route left a topic unordered, the next
+visit to the epic repairs it.
+
+Trigger 2 does **not** get its own hook at spec completion. It only needs
+to set the boolean; the epic-entry step does the work. That keeps one
+place that sequences, not two.
 
 **The live set is every spec item except `cancelled`, `superseded` and
 `promoted`.** `completed` items keep their number. This is the one
@@ -525,7 +547,12 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
   not an engine guarantee.
 
 - **`build_order_needs_sequencing`** on `EpicDetail`, derived beside
-  `needs_sequencing` over the live-set predicate in B4.
+  `needs_sequencing` over the live-set predicate in B4 — true when a live
+  topic lacks an order **or** `build_order_stale` is set.
+
+- **`build_order_stale`** — a boolean on the epic, set at specification
+  completion, cleared by sequencing. Deliberately a stored flag rather
+  than a last-sequenced marker (B4).
 
 - **A blocked-plan unblock projection** — the plan-then-dependency picker
   B9 orphans.
@@ -554,13 +581,6 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
 
 ## Open questions
 
-- **Who hosts the re-derivation?** Discovery's sequencing fires from
-  `workflow-continue-epic` Step 7 and the bridge's epic continuation —
-  both at *epic entry*. The build order is born inside
-  `workflow-specification-entry`. Three defensible hosts: a new epic-entry
-  step mirroring discovery, a hook in spec completion, or the grouping
-  flow owning it end to end. Unsettled.
-
 - **What does "the head" mean when the order is a tiebreak?** B3 makes the
   order a tiebreak inside `pickRecommendation`'s existing cascade, and
   that cascade takes the first build-phase start entry *in pipeline
@@ -570,14 +590,15 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
 
 ## Build plan (provisional)
 
-Gated on the two open questions — the host decides where the sequencing
-reference is loaded from, which shapes the first PR.
+Gated on the remaining open question, which shapes step 3.
 
 1. **Engine** — the live-set derivation, `build_order_needs_sequencing`,
    the `build-order sequence` verb, spec-side `previous_order` stash, and
    the `topic cancel` phase-gating bug fix. Simulation extended.
-2. **Prose — birth** — the sequencing reference, wired into grouping and
-   the `single` fast path; the order rides `reconcile-ops.json`.
+2. **Prose — birth and refresh** — the sequencing reference; wired into
+   grouping and the `single` fast path for birth (riding
+   `reconcile-ops.json`), plus a new `workflow-continue-epic` step
+   mirroring Step 7 for refresh.
 3. **Prose — surfaces** — B6's three sorts, B3's tiebreak in both
    pickers, B7's two rewritten gate rows.
 4. **Prose — blocked plans** — B9: row removal, tree cue, key line, and
@@ -605,6 +626,17 @@ reference is loaded from, which shapes the first PR.
   menu (B9), no ceremony (B10). Merged plans, the epic-wide ready queue,
   hard gates, the appraisal agent and a verification pass all rejected.
   Sub-grouping within an epic raised and parked as idea 44.
+
+- 2026-08-23 — Problem 1 settled with Lee: the re-derivation runs in two
+  places by role — grouping assigns at birth (riding `reconcile-ops.json`,
+  covering regroup for free), and a new `workflow-continue-epic` step
+  mirroring Step 7 refreshes on entry, the self-healing backstop for every
+  route that leaves a topic unordered. Trigger 2 (recompute once specs
+  land) kept: the grouping-time order is a read of the discussions alone,
+  and declared dependencies are exactly what sharpens it. It gets no hook
+  of its own — spec completion sets `build_order_stale`, sequencing clears
+  it, and the one epic-entry step does the work. Silent reshuffle accepted
+  as the cost, consistent with B10.
 
 - 2026-08-20 — Two verification passes over the draft, both against the
   tree. **Claims:** five corrections, the substantive one being that §C's
