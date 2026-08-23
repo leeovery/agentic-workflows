@@ -25,16 +25,20 @@ Expected path:
    rendered, applied, and announced in a line, with no stop and no
    menu. This is the behaviour the auto gate exists to give
 8. **Finding 3 (choice — the failed-webhook retry ceiling)** stops
-   anyway, `auto` notwithstanding, because only the user can pick. It
-   is presented as numbered options with the recommendation first and
-   no `a/auto` row. The user picks the 24-hour reconciliation option —
-   the one **not** recommended — and that is what lands in Gateway
-   Integration, with the Resolution set to Approved and a note naming
-   the option chosen
+   anyway, `auto` notwithstanding, because only the user can pick. Its
+   menu opens on the engine's auto-override line — auto is on and the
+   stop is deliberate — then numbered options with the recommendation
+   first and no `a/auto` row. The user picks the 24-hour
+   reconciliation option — the one **not** recommended — and that is
+   what lands in Gateway Integration, with the Resolution set to
+   Approved and a note naming the option chosen
 9. gap analysis runs third and returns clean through its stub; the
-   tracking entry flips to `complete`
-10. the re-loop gate offers another cycle and the user proceeds to
-    completion; sign-off confirms and the topic completes
+   cycle-1 input tracking entry flips to `complete`
+10. with `finding_gate_mode` `auto` and findings surfaced, the review
+    runs a follow-up cycle without stopping — no re-loop gate renders
+    in this world. Cycle 2's three agents all return clean through the
+    stubs, the review proceeds to completion, sign-off confirms, and
+    the topic completes
 
 Also true:
 
@@ -44,8 +48,8 @@ Also true:
 - Gateway Integration carries the 24-hour reconciliation ceiling, never
   the three-attempt one. A walk that landed the recommendation instead
   has rubber-stamped a choice rather than presented it
-- no finding is skipped: every row in the tracking file ends Approved.
-  There is no skip route out of a finding
+- no finding is skipped or declined: every row in the tracking file
+  ends Approved
 - nothing routes to a source: no `incoherence-gate` render, no triage,
   no reopen. All three findings belong to the specification
 - the discussion document is untouched — no finding here indicts it
