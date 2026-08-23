@@ -101,10 +101,10 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-claims-tracking-c{
 {The claim verbatim, the command, and its output. For Source defect: which source document and section carries the claim.}
 
 **Current**:
-{For Enhancement findings only — the existing specification content that will be modified. Omit for Gap/Ambiguity and Source defect findings.}
+{Move `settled` with existing content to correct — the specification content that will be modified. Omit where nothing existing is being replaced, and for `route`.}
 
 **Proposed Text**:
-{The exact replacement wording — Enhancement findings only. Leave blank for Source defect: the fix belongs to the source record.}
+{The exact replacement wording — Move `settled` only. Leave blank for `route`: the fix belongs to the source record.}
 
 **Resolution**: Pending
 **Notes**:
