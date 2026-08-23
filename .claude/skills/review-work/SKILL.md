@@ -135,8 +135,21 @@ Then read the coverage the agents reported back. A dimension that returned
 nothing was **unexamined** as often as it was clean, and this is worth
 saying out loud rather than converting into a clean bill of health.
 
-**Present the bring-to-user findings now, before applying anything** —
-each with its options and your recommendation — and wait for the answers.
+**Present the bring-to-user findings now, before applying anything —
+one at a time, conversationally.** Each finding is its own exchange: the
+problem and enough context to weigh it, why it exists, your
+recommendation with its reasoning, the defensible alternative and why
+you would not take it — then stop and wait. The next finding is not
+presented until the current one is settled; the discussion of one
+routinely reshapes the questions behind it, and answers given against a
+wall of parallel questions are answers to summaries, not to problems.
+
+AskUserQuestion serves the narrow remainder: a small, simple call whose
+options are fully graspable from the question text alone, with nothing
+to discuss. Never use it to batch several decisions into one dialog, and
+never for a finding whose context the user needs explained — that is a
+conversation, not a form.
+
 An answer can change the routing or the shape of the fixes you thought
 were settled: a "restore it" turns a prose correction into a revert, a
 "do it properly" turns a patch into a new layer. Resynthesise the whole
@@ -197,9 +210,12 @@ In the chat reply. Not Bash output, not a design document, and not a PR
 body — PR bodies still earn the full reasoning for the repo's record, but
 the user does not read them, so nothing they must act on can live there.
 
-- **Open questions first**, before anything else, each with the options
-  and your recommendation. This is what the user asked to be brought to
-  them, and it is the only part of the report that needs an answer.
+- **Open questions first**, before anything else — named in one line
+  each, so the user sees the shape of what is owed, then walked as
+  Step 4 prescribes: the first question's full presentation ends the
+  report's turn, and the rest follow one at a time as each settles.
+  This is what the user asked to be brought to them, and it is the only
+  part of the report that needs an answer.
 - **What was fixed** — one line each, and which PR or branch it landed on.
 - **What was examined and what was not** — the dimensions run, and the
   ones the fleet did not reach.
