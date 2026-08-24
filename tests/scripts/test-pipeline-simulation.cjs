@@ -300,6 +300,10 @@ function sessionLog(sim, wu, n = 1) {
 function label(sim, wu, phase, topic) {
   const res = sim.run(['session', 'label', wu, phase, topic]);
   assert.strictEqual(res.labelled, false, `session label is a no-op in the sim (${phase})`);
+  // Boot runs the stranded-label repair on every entry; hermetic here for
+  // the same reason the label is.
+  const repair = sim.run(['session', 'repair']);
+  assert.strictEqual(repair.repaired, false, 'session repair is a no-op in the sim');
 }
 
 function walkDeliveryPhasesToImplementation(sim, wu, topic) {

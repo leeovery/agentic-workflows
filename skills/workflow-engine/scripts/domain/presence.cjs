@@ -19,7 +19,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { processStartTime, processAlive } = require('../kernel/process.cjs');
 const { section, CONTINUE_INSTRUCTION, callout } = require('./projections/surfaces.cjs');
 
 const STALE_AFTER_SECONDS = 900;
@@ -41,27 +41,6 @@ function assertArgs(cwd, workUnit, phase, topic) {
   if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
     throw new Error(`no work unit directory: .workflows/${workUnit}`);
   }
-}
-
-/**
- * The process's kernel-recorded start time — pid + start time is a unique
- * process identity (a recycled pid carries a different start time). Null when
- * the pid is gone or `ps` is unavailable.
- * @param {number} pid @returns {string|null}
- */
-function processStartTime(pid) {
-  try {
-    const out = execFileSync('ps', ['-p', String(pid), '-o', 'lstart='], {
-      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
-    });
-    return out.trim() || null;
-  } catch { return null; }
-}
-
-/** Zero-signal existence probe; EPERM means alive. @param {number} pid */
-function processAlive(pid) {
-  try { process.kill(pid, 0); return true; }
-  catch (err) { return /** @type {NodeJS.ErrnoException} */ (err).code === 'EPERM'; }
 }
 
 /**
