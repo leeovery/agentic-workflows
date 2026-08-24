@@ -30,6 +30,14 @@ const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { computeTopicLifecycle } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 
+// The discovery map's lifecycle is computed from research and discussion
+// items alone (`computeTopicLifecycle`), so only those phases can move a map
+// row in or out of the live set — and only they may touch its execution
+// order. Spec topic names collide with map topic names by construction (an
+// independent discussion becomes a grouping of one), so an ungated write
+// here strips a still-live topic's position.
+const MAP_LIFECYCLE_PHASES = ['research', 'discussion'];
+
 const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
@@ -792,13 +800,15 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
     item.previous_status = item.status;
     item.status = 'cancelled';
 
-    const discovery = manifest.phases && manifest.phases.discovery;
-    const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
-    if (mapItem && typeof mapItem === 'object' && 'order' in mapItem) {
-      // Stash rather than drop — reactivate restores the execution position,
-      // so a cancel/reactivate round-trip never forces a re-sequence.
-      mapItem.previous_order = mapItem.order;
-      delete mapItem.order;
+    if (MAP_LIFECYCLE_PHASES.includes(phase)) {
+      const discovery = manifest.phases && manifest.phases.discovery;
+      const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
+      if (mapItem && typeof mapItem === 'object' && 'order' in mapItem) {
+        // Stash rather than drop — reactivate restores the execution position,
+        // so a cancel/reactivate round-trip never forces a re-sequence.
+        mapItem.previous_order = mapItem.order;
+        delete mapItem.order;
+      }
     }
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
@@ -857,11 +867,13 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
     item.status = previous;
     delete item.previous_status;
 
-    const discovery = manifest.phases && manifest.phases.discovery;
-    const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
-    if (mapItem && typeof mapItem === 'object' && 'previous_order' in mapItem) {
-      mapItem.order = mapItem.previous_order;
-      delete mapItem.previous_order;
+    if (MAP_LIFECYCLE_PHASES.includes(phase)) {
+      const discovery = manifest.phases && manifest.phases.discovery;
+      const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
+      if (mapItem && typeof mapItem === 'object' && 'previous_order' in mapItem) {
+        mapItem.order = mapItem.previous_order;
+        delete mapItem.previous_order;
+      }
     }
 
     saveWorkUnitManifest(cwd, workUnit, manifest);

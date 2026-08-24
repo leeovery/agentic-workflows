@@ -156,6 +156,74 @@ describe('engine topic cancel', () => {
   });
 });
 
+// A spec topic's name collides with a discovery-map topic's name by
+// construction — an independent discussion becomes a grouping of one. The
+// map's lifecycle is computed from research and discussion items alone, so a
+// build-phase cancel must leave the map's execution order untouched.
+function collidingManifest() {
+  return {
+    name: 'payments',
+    work_type: 'epic',
+    status: 'in-progress',
+    phases: {
+      discovery: {
+        items: {
+          'auth-flow': { routing: 'discussion', order: 1, source: 'discovery' },
+          'fee-model': { routing: 'discussion', order: 2, source: 'discovery' },
+        },
+      },
+      discussion: {
+        items: { 'auth-flow': { status: 'completed' }, 'fee-model': { status: 'completed' } },
+      },
+      specification: {
+        items: { 'auth-flow': { status: 'in-progress', sources: { 'auth-flow': { status: 'incorporated' } } } },
+      },
+    },
+  };
+}
+
+describe('build-phase cancel leaves the discovery order alone', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(collidingManifest(), null, 2) + '\n');
+    commitAll(dir, 'init');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('cancelling a specification does not strip the same-named map topic order', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'auth-flow']);
+
+    const map = readManifest(dir, 'payments').phases.discovery.items['auth-flow'];
+    assert.strictEqual(map.order, 1, 'a live map topic keeps its position');
+    assert.strictEqual(map.previous_order, undefined, 'nothing stashed');
+  });
+
+  it('reactivating a specification does not overwrite a re-sequenced map order', () => {
+    // Pre-fix this stashed order 1, the map re-sequenced auth-flow to 2 on the
+    // next entry, and reactivate restored the stale 1 — colliding with
+    // fee-model. The gate makes the whole round-trip inert.
+    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'auth-flow']);
+    engine(dir, ['discovery-map', 'sequence', 'payments', 'auth-flow=2', 'fee-model=1']);
+    engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'auth-flow']);
+
+    const items = readManifest(dir, 'payments').phases.discovery.items;
+    assert.strictEqual(items['auth-flow'].order, 2, 're-sequenced position survives');
+    assert.strictEqual(items['fee-model'].order, 1, 'no collision');
+    assert.strictEqual(items['auth-flow'].previous_order, undefined);
+  });
+
+  it('still stashes and restores for a discussion cancel', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'fee-model']);
+    assert.strictEqual(readManifest(dir, 'payments').phases.discovery.items['fee-model'].previous_order, 2);
+
+    engine(dir, ['topic', 'reactivate', 'payments', 'discussion', 'fee-model']);
+    const back = readManifest(dir, 'payments').phases.discovery.items['fee-model'];
+    assert.strictEqual(back.order, 2);
+    assert.strictEqual(back.previous_order, undefined);
+  });
+});
+
 describe('engine topic reactivate', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
