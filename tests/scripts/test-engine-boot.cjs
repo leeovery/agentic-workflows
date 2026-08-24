@@ -172,6 +172,7 @@ describe('engine boot', () => {
       kb_committed: null,
       warnings: [],
       tmux_labels: 'prompt',
+      label_repaired: false,
       baseline: 'none',
     });
     assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'compact']);

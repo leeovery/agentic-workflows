@@ -2,11 +2,15 @@
 
 //
 // Tests for tmux session labels: `session label` / `session label-config` /
-// `session cleanup`, the config gate and project override, the
-// machine-global stash, phase-hop and cross-project recomposition,
-// user-rename adoption, restore ownership, and the SessionEnd stdin
-// contract. tmux itself is a PATH stub backed by a state file holding the
-// session name; the engine only ever sees the stub.
+// `session repair` / `session cleanup`, the config gate and project
+// override, the machine-global stash, phase-hop and cross-project
+// recomposition, user-rename adoption, id drift across a server restart
+// (chain resolution, drifted restore, boot repair, orphan pruning), owner
+// identity, restore ownership, and the SessionEnd stdin contract. tmux
+// itself is a PATH stub modelling one session, backed by state files
+// holding the session's name and id (a test renumbers the id to simulate a
+// server restart that carried the name across); the engine only ever sees
+// the stub.
 //
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -14,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawnSync, execFileSync } = require('child_process');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
@@ -24,17 +28,30 @@ echo "$@" >> "$TMUX_STUB_LOG"
 if [ "$1" = "-S" ]; then shift 2; fi
 cmd="$1"; shift
 name=$(cat "$TMUX_STUB_STATE")
+id=$(cat "$TMUX_STUB_ID")
+target=""; positional=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -t) target="$2"; shift 2 ;;
+    -p|-F) shift ;;
+    *) positional="$1"; shift ;;
+  esac
+done
+case "$target" in
+  '$'*) [ "$target" != "$id" ] && exit 1 ;;
+esac
 if [ "$cmd" = "display-message" ]; then
-  for a in "$@"; do fmt="$a"; done
-  if [ "$fmt" = '#{session_id}|#{session_name}' ]; then
-    echo "\\$7|$name"
-  elif [ "$fmt" = '#{session_name}' ]; then
+  if [ "$positional" = '#{session_id}|#{session_name}' ]; then
+    echo "$id|$name"
+  elif [ "$positional" = '#{session_name}' ]; then
     echo "$name"
   fi
+elif [ "$cmd" = "list-sessions" ]; then
+  [ -n "$TMUX_STUB_FAIL_LS" ] && exit 1
+  echo "$id|$name"
 elif [ "$cmd" = "rename-session" ]; then
   [ -n "$TMUX_STUB_FAIL_RENAME" ] && exit 1
-  shift 2
-  echo "$1" > "$TMUX_STUB_STATE"
+  echo "$positional" > "$TMUX_STUB_STATE"
 fi
 exit 0
 `;
@@ -49,6 +66,7 @@ function setup() {
   stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tmux-stub-'));
   fs.writeFileSync(path.join(stubDir, 'tmux'), TMUX_STUB, { mode: 0o755 });
   fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc\n');
+  fs.writeFileSync(path.join(stubDir, 'id'), '$7\n');
   fs.writeFileSync(path.join(stubDir, 'log'), '');
   configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-config-'));
 }
@@ -61,17 +79,22 @@ function teardown() {
 
 /**
  * Run the engine with a controlled environment: tmux stub on PATH, config
- * dir pinned, tmux identity present unless `noTmux`.
+ * dir pinned, tmux identity present unless `noTmux`. The suite's own pid
+ * plays the owning Claude process (`claudePid: null` withholds identity —
+ * the pre-identity record shape).
  */
-function engine(args, { noTmux = false, sessionId = 'sess-1', fail = false, failRename = false, expectFail = false, cwd = null, input = undefined } = {}) {
+function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, input = undefined } = {}) {
   const env = { ...process.env };
   delete env.TMUX;
   delete env.TMUX_PANE;
   delete env.TMUX_STUB_FAIL;
   delete env.TMUX_STUB_FAIL_RENAME;
+  delete env.TMUX_STUB_FAIL_LS;
   delete env.CLAUDE_CODE_SESSION_ID;
+  delete env.CLAUDE_PID;
   env.PATH = `${stubDir}:${env.PATH}`;
   env.TMUX_STUB_STATE = path.join(stubDir, 'state');
+  env.TMUX_STUB_ID = path.join(stubDir, 'id');
   env.TMUX_STUB_LOG = path.join(stubDir, 'log');
   env.WORKFLOWS_CONFIG_DIR = configDir;
   if (!noTmux) {
@@ -79,8 +102,10 @@ function engine(args, { noTmux = false, sessionId = 'sess-1', fail = false, fail
     env.TMUX_PANE = '%3';
   }
   if (sessionId) env.CLAUDE_CODE_SESSION_ID = sessionId;
+  if (claudePid) env.CLAUDE_PID = String(claudePid);
   if (fail) env.TMUX_STUB_FAIL = '1';
   if (failRename) env.TMUX_STUB_FAIL_RENAME = '1';
+  if (failLs) env.TMUX_STUB_FAIL_LS = '1';
   const r = spawnSync('node', [ENGINE, ...args], { cwd: cwd || dir, encoding: 'utf8', env, input });
   if (expectFail) {
     assert.strictEqual(r.status, 1, r.stdout + r.stderr);
@@ -94,6 +119,11 @@ function tmuxName() {
   return fs.readFileSync(path.join(stubDir, 'state'), 'utf8').trim();
 }
 
+/** Simulate a tmux server restart: the session keeps its name, renumbered. */
+function setTmuxId(id) {
+  fs.writeFileSync(path.join(stubDir, 'id'), `${id}\n`);
+}
+
 function stashStore() {
   return path.join(configDir, 'state', 'session-labels');
 }
@@ -104,6 +134,25 @@ function stashFile() {
     const files = fs.readdirSync(stashStore()).filter((f) => f.endsWith('.json'));
     return files.length ? path.join(stashStore(), files[0]) : null;
   } catch { return null; }
+}
+
+/** Every stash record, sorted by filename. */
+function stashRecords() {
+  try {
+    return fs.readdirSync(stashStore()).filter((f) => f.endsWith('.json')).sort()
+      .map((f) => JSON.parse(fs.readFileSync(path.join(stashStore(), f), 'utf8')));
+  } catch { return []; }
+}
+
+/** Hand-write a stash record — the shapes a past engine left behind. */
+function writeStash(basename, record) {
+  fs.mkdirSync(stashStore(), { recursive: true });
+  fs.writeFileSync(path.join(stashStore(), `${basename}.json`), JSON.stringify({ socket: '/fake/sock', ...record }) + '\n');
+}
+
+/** The suite process's kernel start time — a live owner identity for hand-written records. */
+function ownStartTime() {
+  return execFileSync('ps', ['-p', String(process.pid), '-o', 'lstart='], { encoding: 'utf8' }).trim();
 }
 
 function optIn() {
@@ -152,6 +201,16 @@ describe('engine session label', () => {
     assert.strictEqual(stash.session_id, 'sess-1');
     assert.strictEqual(stash.tmux_id, '$7');
     assert.strictEqual(stash.socket, '/fake/sock');
+    assert.strictEqual(stash.pid, process.pid, 'owner identity recorded from CLAUDE_PID');
+    assert.strictEqual(stash.pid_start, ownStartTime());
+  });
+
+  it('records a pid-less stash when no CLAUDE_PID reaches the call', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { claudePid: null });
+    const stash = JSON.parse(fs.readFileSync(/** @type {string} */ (stashFile()), 'utf8'));
+    assert.strictEqual(stash.pid, null);
+    assert.strictEqual(stash.pid_start, null);
   });
 
   it('collapses the topic when it equals the work unit', () => {
@@ -192,6 +251,35 @@ describe('engine session label', () => {
     fs.writeFileSync(path.join(stubDir, 'state'), 'my-new-name\n');
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.strictEqual(res.name, 'my-new-name · pay · discussion · alpha');
+  });
+
+  it('recomposes across a server restart — renumbered id, label carried in the name', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    setTmuxId('$9'); // restart: the stash key no longer matches, the labelled name survived
+    const res = engine(['session', 'label', 'pay', 'specification', 'alpha'], { sessionId: 'sess-2' });
+    assert.strictEqual(res.name, 'proj-abc · pay · specification · alpha');
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · specification · alpha');
+    const records = stashRecords();
+    assert.strictEqual(records.length, 1, 'the drifted record is consumed, not left to compound');
+    assert.strictEqual(records[0].tmux_id, '$9');
+    assert.strictEqual(records[0].original, 'proj-abc');
+  });
+
+  it('chains through a polluted record to the true original', () => {
+    // The legacy stranding: a pre-chain engine adopted a stranded label as
+    // the original, so the current record's `original` is itself a label —
+    // whose own record still holds the true name.
+    optIn();
+    writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
+    writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-older' });
+    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    setTmuxId('$9');
+    const res = engine(['session', 'label', 'pay', 'planning', 'alpha']);
+    assert.strictEqual(res.name, 'proj-abc · pay · planning · alpha');
+    const records = stashRecords();
+    assert.strictEqual(records.length, 1, 'both chain links consumed');
+    assert.strictEqual(records[0].original, 'proj-abc');
   });
 
   it('a rename failure leaves an inert stash — the next label does not compound', () => {
@@ -308,13 +396,62 @@ describe('engine session cleanup', () => {
     assert.strictEqual(tmuxName(), 'proj-abc');
   });
 
-  it('leaves another session\'s stash alone', () => {
+  it('leaves another session\'s stash alone while its owner still runs', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     const res = engine(['session', 'cleanup', 'sess-other']);
     assert.strictEqual(res.restored, false);
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
     assert.ok(stashFile());
+  });
+
+  it('sweeps another session\'s stash once its owner is dead', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    const file = /** @type {string} */ (stashFile());
+    const stash = JSON.parse(fs.readFileSync(file, 'utf8'));
+    stash.pid_start = 'a start time no live process carries';
+    fs.writeFileSync(file, JSON.stringify(stash) + '\n');
+    const res = engine(['session', 'cleanup', 'sess-other']);
+    assert.strictEqual(res.restored, true);
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(stashFile(), null);
+  });
+
+  it('restores across a server restart — the label found by name under a renumbered id', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    setTmuxId('$9');
+    const res = engine(['session', 'cleanup', 'sess-1']);
+    assert.strictEqual(res.restored, true);
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(stashFile(), null);
+  });
+
+  it('restores a polluted stash to the chain-resolved true original', () => {
+    optIn();
+    writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
+    writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-1' });
+    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    setTmuxId('$9');
+    const res = engine(['session', 'cleanup', 'sess-1']);
+    assert.strictEqual(res.restored, true);
+    assert.strictEqual(tmuxName(), 'proj-abc', 'never the polluted intermediate');
+    assert.strictEqual(stashFile(), null, 'both links consumed');
+  });
+
+  it('keeps a link a live session\'s name still chains through', () => {
+    optIn();
+    // sess-2 wears the compounded name and still runs; sess-1's link record
+    // holds the only path to the true original — its sweep must not drop it.
+    writeStash('link-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-1' });
+    writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-2', pid: process.pid, pid_start: ownStartTime() });
+    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    setTmuxId('$9');
+    const res = engine(['session', 'cleanup', 'sess-1']);
+    assert.strictEqual(res.restored, false);
+    assert.strictEqual(stashRecords().length, 2, 'the link survives for sess-2\'s recomposition');
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha · pay · research · beta');
   });
 
   it('restores an ownerless stash for whichever session sweeps', () => {
@@ -361,5 +498,95 @@ describe('engine session cleanup', () => {
     const res = engine(['presence', 'cleanup', 'sess-1']);
     assert.deepStrictEqual(res, { ok: true, session_id: 'sess-1', cleared: [] });
     assert.ok(stashFile());
+  });
+});
+
+describe('engine session repair', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  /** A stranded label on the current terminal: dead owner, name still worn. */
+  function strand() {
+    writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
+    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha\n');
+  }
+
+  it('no-ops as disabled — a stranded label included', () => {
+    strand();
+    const res = engine(['session', 'repair']);
+    assert.deepStrictEqual(res, { ok: true, repaired: false });
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+    assert.ok(stashFile(), 'nothing pruned either');
+  });
+
+  it('no-ops outside tmux', () => {
+    optIn();
+    strand();
+    const res = engine(['session', 'repair'], { noTmux: true });
+    assert.deepStrictEqual(res, { ok: true, repaired: false });
+  });
+
+  it('restores a stranded label\'s true original and consumes the record', () => {
+    optIn();
+    strand();
+    const res = engine(['session', 'repair']);
+    assert.deepStrictEqual(res, { ok: true, repaired: true });
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(stashFile(), null);
+  });
+
+  it('repairs a multi-hop compounded name through the chain', () => {
+    optIn();
+    writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
+    writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-older' });
+    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    setTmuxId('$9');
+    const res = engine(['session', 'repair']);
+    assert.deepStrictEqual(res, { ok: true, repaired: true });
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(stashFile(), null, 'both links consumed');
+  });
+
+  it('leaves a label whose owning process still runs', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    const res = engine(['session', 'repair'], { sessionId: 'sess-2' });
+    assert.deepStrictEqual(res, { ok: true, repaired: false });
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+    assert.ok(stashFile());
+  });
+
+  it('prunes a dead-owner orphan no live name needs, and keeps a needed link', () => {
+    optIn();
+    // The orphan: a label for a session this server no longer has, worn by
+    // nothing. The link: dead-owner too, but the live compounded name still
+    // chains through it (its head record's owner runs — repair defers).
+    writeStash('orphan', { tmux_id: '$4', original: 'gone-proj', applied: 'gone-proj · shop · planning', session_id: 'sess-gone' });
+    writeStash('link-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
+    writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-2', pid: process.pid, pid_start: ownStartTime() });
+    fs.writeFileSync(path.join(stubDir, 'state'), 'proj-abc · pay · discussion · alpha · pay · research · beta\n');
+    setTmuxId('$9');
+    const res = engine(['session', 'repair']);
+    assert.deepStrictEqual(res, { ok: true, repaired: false });
+    const records = stashRecords();
+    assert.strictEqual(records.length, 2, 'orphan pruned, live head and its link kept');
+    assert.ok(records.every((r) => r.original !== 'gone-proj'));
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha · pay · research · beta');
+  });
+
+  it('keeps a dead-owner record when the server cannot be listed', () => {
+    optIn();
+    writeStash('orphan', { tmux_id: '$4', original: 'gone-proj', applied: 'gone-proj · shop · planning', session_id: 'sess-gone' });
+    const res = engine(['session', 'repair'], { failLs: true });
+    assert.deepStrictEqual(res, { ok: true, repaired: false });
+    assert.ok(stashFile(), 'an unverifiable name proves nothing — nothing pruned');
+  });
+
+  it('no-ops on any tmux error', () => {
+    optIn();
+    strand();
+    const res = engine(['session', 'repair'], { fail: true });
+    assert.deepStrictEqual(res, { ok: true, repaired: false });
+    assert.ok(stashFile(), 'the record keeps the repair available');
   });
 });

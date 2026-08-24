@@ -30,7 +30,7 @@ const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, scanPresence, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
-const { applySessionLabel, restoreSessionLabel, setLabelConfig } = require('./domain/session-label.cjs');
+const { applySessionLabel, restoreSessionLabel, repairSessionLabels, setLabelConfig } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
@@ -661,13 +661,18 @@ function runSession(argv) {
       respond(setLabelConfig(value === 'true'));
       return;
     }
+    if (command === 'repair') {
+      if (rest.length !== 0) throw new Error('Usage: engine session repair');
+      respond(repairSessionLabels(process.cwd()));
+      return;
+    }
     if (command === 'cleanup') {
       // The SessionEnd hook's target. The stash store is machine-global, so
       // no project root is needed.
       respond(restoreSessionLabel(hookSessionId(rest, 'Usage: engine session cleanup [session-id]')));
       return;
     }
-    throw new Error('Usage: engine session <label|label-config|cleanup> …');
+    throw new Error('Usage: engine session <label|label-config|repair|cleanup> …');
   } catch (err) {
     failJson(err);
   }

@@ -21,7 +21,7 @@ const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
 const { commitScopedLocked, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
-const { labelConfigStatus, configDir } = require('./session-label.cjs');
+const { labelConfigStatus, repairSessionLabels, configDir } = require('./session-label.cjs');
 const { baselineState } = require('./baseline.cjs');
 
 // Resolved against this file so it works wherever the skill tree is installed.
@@ -63,6 +63,7 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
  * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
  * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
+ * @property {boolean} label_repaired a stranded session label (its owner gone) was found on this terminal and the original name put back
  * @property {'none'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means never started (workflow-start's one-time offer)
  * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
  */
@@ -218,7 +219,7 @@ function boot(cwd) {
   }
 
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), baseline: baselineState(cwd).status };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, baseline: baselineState(cwd).status };
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.
