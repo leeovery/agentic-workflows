@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.10] - 2026-08-24
+
+🔧 Changed
+- Specification review findings now inline the substance of a referenced section instead of citing its number — findings read clearly without needing to open the spec.
+
 ## [0.7.9] - 2026-08-24
 
 🔧 Changed
