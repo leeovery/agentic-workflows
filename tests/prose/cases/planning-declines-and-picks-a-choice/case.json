@@ -1,5 +1,5 @@
 {
-  "origin": "the worklist review pass found no case anywhere covering a resumed review over a partially-processed tracking file — the exact path findings-summary's status field and the walk's unresolved-only filter exist to serve",
+  "origin": "The planning loop's choice lane and the Discuss exchange's Declined landing shipped with zero execution coverage — the review pass that built them found the choice lane could not even render under the original payload rules, and nothing walks a finding the user talks through and leaves. This pins both: a settled finding declined with a reason, and a choice answered by picking the option that is not recommended.",
   "entry": "workflow-planning-entry",
   "world": "claims",
   "files": [
@@ -34,13 +34,7 @@
     "skills/workflow-planning-process/references/conclude-plan.md",
     "skills/workflow-shared/references/reconcile-advisory.md"
   ],
-  "answers": [
-    "c — pick the plan up where it left off",
-    "y — the structure still matches",
-    "y — the graph is right",
-    "y — approve the remaining finding's fix",
-    "y — conclude the plan"
-  ],
+  "conduct": "The user is resuming their card-payments plan mid-review; offered the resume choice they pick the plan up where it left off, and they confirm the structure and graph still hold when asked. At finding 1 — order-id telemetry on the capture task — they push back through the gate's Discuss option: support already traces failures through the gateway dashboard by intent id, so the order-id attribute is telemetry nobody would read. They want it declined, and they say so with that reason. At finding 2 they engage with the choice on its merits and pick the option that is NOT recommended — minting a fresh intent per attempt — because their support team lives in the gateway dashboard and one-intent-per-click is how they debug. They approve the follow-up review's clean conclusion and confirm concluding the plan. They never opt into auto, never reopen what they settled, and answer everything else with plain agreement.",
   "stubs": {
     "plan-graph-applied": "when the prose invokes the dependency-grapher agent — apply the graph to the task files as the stub's description states (already-present values reapply unchanged), then return the content below as the agent's summary",
     "plan-review-clean-c2": "each time the prose invokes a planning review agent via the Task tool — both the cycle-2 traceability and integrity reviews return the content below and write no file"
@@ -51,36 +45,28 @@
       "render entry-gate pay.planning.pay",
       "manifest get pay.planning.pay status",
       "render resume-gate pay.planning.pay --variant plan",
-      "render phase-tree pay.planning.pay",
-      "manifest set pay.planning.pay review_cycle 2",
       "render findings-summary pay.planning.pay",
       "render finding pay.planning.pay",
       "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
+      "manifest set pay.planning.pay review_cycle 2",
       "planning(pay): complete plan review",
-      "manifest set pay.planning.pay spec_commit",
       "topic complete pay planning pay",
       "planning(pay): complete plan"
     ],
     "calls_in_order": [
-      "render entry-gate pay.planning.pay",
-      "manifest get pay.planning.pay status",
       "render resume-gate pay.planning.pay --variant plan",
-      "render phase-tree pay.planning.pay",
       "render findings-summary pay.planning.pay",
+      "render finding pay.planning.pay",
       "render finding pay.planning.pay",
       "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
       "manifest set pay.planning.pay review_cycle 2",
-      "planning(pay): complete plan review",
-      "manifest set pay.planning.pay spec_commit",
       "topic complete pay planning pay"
     ],
     "calls_exclude": [
-      "manifest set pay.planning.pay review_cycle 1",
-      "staging.author",
-      "render author-task-gate",
+      "finding_gate_mode auto",
+      "render incoherence-gate",
       "topic reopen",
       "restart planning",
-      "finding_gate_mode auto",
       "workunit create",
       "knowledge.cjs index"
     ]

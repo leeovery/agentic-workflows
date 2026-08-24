@@ -1,0 +1,69 @@
+{
+  "origin": "The Discuss exchange and its Declined landing replaced skip and shipped with zero execution coverage, and the short-settled-addition rule (no Current, one-sentence wording, rendered as an additions-only diff at the gate) was ruled but never walked. This pins both on the gated path: one settled finding approved at the gate, one talked through and declined with a reason.",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. At finding 1 — the missing 30-day refund window — they read the diff and approve it with a plain yes; they never opt into auto. At finding 2 — the rounding rule — they push back through the gate's Discuss option: their gateway's refund API only accepts integer minor units, so a fractional amount cannot reach it and the rule would specify a case the system cannot produce. They want the finding left out, and they say so with that reason. At the re-loop prompt they proceed to completion — one finding landed, one was declined for cause, another cycle is not owed. At sign-off they confirm. Throughout they answer concretely and never reopen what they settled.",
+  "stubs": {
+    "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool — each returns the content below and writes no file",
+    "spec-input-settled-pair": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle=1",
+      "tracking.review-input-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "render finding pay.specification.pay",
+      "tracking.review-input-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
+      "topic complete pay specification pay"
+    ],
+    "calls_in_order": [
+      "tracking.review-input-tracking-c1 in-progress",
+      "render finding pay.specification.pay",
+      "render finding pay.specification.pay",
+      "tracking.review-input-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "topic complete pay specification pay"
+    ],
+    "calls_exclude": [
+      "finding_gate_mode auto",
+      "render incoherence-gate",
+      "topic reopen",
+      "topic triage",
+      "sources stale",
+      "workunit create"
+    ]
+  }
+}
