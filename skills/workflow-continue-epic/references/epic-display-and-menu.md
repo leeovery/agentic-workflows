@@ -49,6 +49,12 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or a comman
 
 → Proceed to **G. Unblock Plan**.
 
+#### If `action` is `resequence_build_order`
+
+The user judges the current order wrong — re-derive it wholesale. Load **[sequence-build-order.md](../../workflow-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
+
+→ On return, return to **A. State Display and Menu**.
+
 #### If `action` is `resume_completed`
 
 → Proceed to **D. Resume Completed**.

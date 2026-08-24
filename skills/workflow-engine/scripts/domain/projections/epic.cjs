@@ -601,6 +601,13 @@ function commandOptions(workUnit, detail, hasMap) {
   if (anyPlanBlocked) {
     opts.push({ key: 'u', word: 'unblock', action: 'unblock_plan', topic: null, route: null, label: 'Unblock a plan — mark a dependency as satisfied externally' });
   }
+  // The build order's manual escape hatch: the automatic triggers fire on a
+  // missing or stale order, never on a wrong one.
+  const anyLiveSpec = (detail.phases.specification || [])
+    .some((i) => !['cancelled', 'superseded', 'promoted'].includes(i.status));
+  if (anyLiveSpec) {
+    opts.push({ key: 'o', word: 'order', action: 'resequence_build_order', topic: null, route: null, label: 'Re-sequence the build order' });
+  }
   return opts;
 }
 

@@ -443,6 +443,7 @@ describe('epic projections: menu', () => {
       '**`a/cancel`**    → Cancel a topic (phase work)',
       '**`u/unblock`**   → Unblock a plan — mark a dependency as satisfied',
       `${NB(14)}externally`,
+      '**`o/order`**     → Re-sequence the build order',
     ].join('\n'));
   });
 
@@ -460,6 +461,7 @@ describe('epic projections: menu', () => {
         ['c', 'resume_completed', null, null],
         ['a', 'cancel_topic', null, null],
         ['u', 'unblock_plan', null, null],
+        ['o', 'resequence_build_order', null, null],
       ]
     );
     assert.strictEqual(keys[0].recommended, true);
