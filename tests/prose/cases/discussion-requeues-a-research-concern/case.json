@@ -1,0 +1,71 @@
+{
+  "origin": "a concern parked on the wrong side of the research/discussion pair had no exit — a session surfacing it could only decide it in the wrong register or leave it blocking conclusion; this walk pins the repair: the raise judges the queued entry owed the other phase-side, the engine-rendered offer gates the move, and one `topic requeue` transaction re-parks it without the concern ever touching this session's map or document",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user returned to settle result caching. When the session opens on the queued concern's agenda they take it — discuss. Offered the move because the tokenizer question is exploration rather than a decision this discussion can make, they agree and take it; told it now waits research-side they carry on without another word about it. They settle result caching decisively — a per-session cache keyed on the normalised query, invalidated when the nightly aggregates refresh; no cross-session cache, no new infrastructure — and when it feels settled they say that covers it and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: another final review is skipped when offered, offers of new threads are declined. They never introduce new material.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.synonym-handling status",
+      "render triage-offer search-relevance.discussion.synonym-handling",
+      "render requeue-offer search-relevance.discussion.synonym-handling",
+      "topic requeue search-relevance discussion research synonym-handling",
+      "discussion-map set search-relevance synonym-handling result-caching decided",
+      "topic complete search-relevance discussion synonym-handling"
+    ],
+    "calls_exclude": [
+      "topic absorb search-relevance",
+      "topic start search-relevance research synonym-handling",
+      "discovery-map add",
+      "topic reopen search-relevance",
+      "--kind perspective",
+      "knowledge.cjs index"
+    ],
+    "calls_in_order": [
+      "render requeue-offer search-relevance.discussion.synonym-handling",
+      "topic requeue search-relevance discussion research synonym-handling",
+      "topic complete search-relevance discussion synonym-handling"
+    ]
+  }
+}

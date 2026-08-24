@@ -730,6 +730,31 @@ describe('pipeline simulation', () => {
     assert.strictEqual(absorbed.remaining, 1, 'the absorb answers the post-deletion count');
     assert.ok(absorbed.committed, 'absorb self-commits');
     assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/${wu}/research/.triage/delta/002-second-parked.md`)), 'queue file deleted');
+    // topic requeue — the wrong-side repair: the raise judges the remaining
+    // concern owed the pair's other phase-side, the offer gate renders over
+    // the live queue, and one transaction moves it — destination parked as a
+    // fresh triaged stub, the emptied source stub removed.
+    sim.write('.workflows/.cache/scratch/requeue-offer.json', JSON.stringify({
+      file: '001-parked-concern.md', title: 'Parked concern', reason: 'it asks delta to decide, not to explore.',
+    }));
+    sim.render(['requeue-offer', `${wu}.research.delta`, '--file', '.workflows/.cache/scratch/requeue-offer.json'], { expect: 'content' });
+    const moved = sim.run(['topic', 'requeue', wu, 'research', 'discussion', 'delta',
+      '--file', '001-parked-concern.md', '-m', `research(${wu}/delta): requeue 001-parked-concern to discussion`]);
+    assert.strictEqual(moved.remaining, 0);
+    assert.strictEqual(moved.created, true);
+    assert.strictEqual(moved.source_item_removed, true, 'the emptied research stub is removed');
+    assert.strictEqual(moved.concern_path, `.workflows/${wu}/discussion/.triage/delta/001-parked-concern.md`);
+    assert.ok(moved.committed, 'requeue self-commits');
+    assert.strictEqual(sim.manifest(wu).phases.research.items.delta, undefined);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'triaged');
+    // …and the mirror move restores the research-side parking for the steps below.
+    const movedBack = sim.run(['topic', 'requeue', wu, 'discussion', 'research', 'delta',
+      '--file', '001-parked-concern.md', '-m', `discussion(${wu}/delta): requeue 001-parked-concern to research`]);
+    assert.strictEqual(movedBack.source_item_removed, true);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta, undefined);
+    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'triaged');
+    assert.deepStrictEqual(sim.run(['topic', 'queue', wu, 'research', 'delta']).files,
+      [`.workflows/${wu}/research/.triage/delta/001-parked-concern.md`]);
     // The raise's display surfaces: the fresh-sitting notice, the offer gate
     // (agenda payload validated against the live queue), and the conclusion
     // blocker — the entry itself is read by the session, never rendered.

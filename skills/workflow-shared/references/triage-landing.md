@@ -27,7 +27,7 @@ After return, the caller reads these from conversation memory:
 
 ## Judging the Landing Phase
 
-The concern's nature decides, never the target: an open question needing exploration → `research`; a correction or decision owed → `discussion`. The target's map `routing` and live state have no vote — a question landing on a discussion-routed topic still lands research-side.
+The concern's nature decides, never the target: an open question needing exploration → `research`; a decision owed → `discussion`; a correction lands in the phase whose document records the material it corrects — `discussion` when the target has recorded nothing yet. The target's map `routing` and live state have no vote — a question landing on a discussion-routed topic still lands research-side.
 
 ## Triage Entry Shape
 
