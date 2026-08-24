@@ -310,6 +310,49 @@ describe('computeBuildOrderNeedsSequencing / buildOrderLive', () => {
   });
 });
 
+
+describe('EpicDetail sorts the build phases by order', () => {
+  it('spec entries sort by their own order; planning and implementation join by name; unordered trail in insertion order', () => {
+    const m = {
+      name: 'portal', work_type: 'epic', status: 'in-progress',
+      phases: {
+        specification: {
+          items: {
+            zeta: { status: 'completed', order: 3 },
+            auth: { status: 'completed', order: 1 },
+            mid: { status: 'completed', order: 2 },
+            stray: { status: 'in-progress' },
+          },
+        },
+        planning: { items: { zeta: { status: 'completed' }, auth: { status: 'in-progress' } } },
+        implementation: { items: { zeta: { status: 'in-progress' }, auth: { status: 'in-progress' } } },
+      },
+    };
+    const d = epicDetail('/nonexistent', m);
+    assert.deepStrictEqual(d.phases.specification.map((e) => e.name), ['auth', 'mid', 'zeta', 'stray']);
+    assert.deepStrictEqual(d.phases.planning.map((e) => e.name), ['auth', 'zeta']);
+    assert.deepStrictEqual(d.phases.implementation.map((e) => e.name), ['auth', 'zeta']);
+  });
+
+  it('next_phase_ready start entries inherit the order', () => {
+    const m = {
+      name: 'portal', work_type: 'epic', status: 'in-progress',
+      phases: {
+        specification: {
+          items: {
+            zeta: { status: 'completed', order: 2 },
+            auth: { status: 'completed', order: 1 },
+          },
+        },
+        planning: { items: { zeta: { status: 'completed' }, auth: { status: 'completed' } } },
+      },
+    };
+    const d = epicDetail('/nonexistent', m);
+    const impls = d.next_phase_ready.filter((n) => n.action === 'start_implementation').map((n) => n.name);
+    assert.deepStrictEqual(impls, ['auth', 'zeta'], 'the recommendation scan meets the lowest order first');
+  });
+});
+
 describe('EpicDetail carries the flag', () => {
   it('the detail exposes build_order_needs_sequencing', () => {
     const m = epicManifest();

@@ -572,6 +572,27 @@ describe('workflow-specification-entry format', () => {
       assert.deepStrictEqual(order, ['proposed-grp', 'wip-spec', 'pending-spec', 'concluded-spec']);
     });
 
+    it('the build order breaks ties within a rank tier; unordered specs trail', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { d1: { status: 'completed' }, d2: { status: 'completed' }, d3: { status: 'completed' } } },
+          specification: {
+            items: {
+              zeta: { status: 'in-progress', order: 2, sources: { d1: { status: 'pending' } } },
+              auth: { status: 'in-progress', order: 1, sources: { d2: { status: 'pending' } } },
+              stray: { status: 'in-progress', sources: { d3: { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/zeta/specification.md', '# Z');
+      createFile(dir, '.workflows/v1/specification/auth/specification.md', '# A');
+      createFile(dir, '.workflows/v1/specification/stray/specification.md', '# S');
+      const r = discover(dir);
+      assert.deepStrictEqual(r.specifications.map(s => s.name), ['auth', 'zeta', 'stray']);
+    });
+
     it('concluded_count counts only completed specs with no pending sources', () => {
       reorderFixture();
       const r = discover(dir);

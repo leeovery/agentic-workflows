@@ -139,4 +139,28 @@ function computeBuildOrderNeedsSequencing(manifest) {
   return sorted.some((o, i) => o !== i + 1);
 }
 
-module.exports = { sequenceBuildOrder, computeBuildOrderNeedsSequencing, buildOrderLive };
+/**
+ * Sort phase items by build order — a stable tiebreak, never a regrouping:
+ * ordered items lead by their number, unordered items keep insertion order
+ * behind them. Planning and implementation items join on the topic name to
+ * the specification item's `order`; specification items read their own.
+ * @template {{name: string, order?: number}} T
+ * @param {T[]} items
+ * @param {object} manifest
+ * @param {string} phase
+ * @returns {T[]}
+ */
+function sortItemsByBuildOrder(items, manifest, phase) {
+  const specOrder = new Map(phaseItems(manifest, 'specification')
+    .filter((s) => Number.isInteger(s.order))
+    .map((s) => [s.name, s.order]));
+  const orderOf = (it) => {
+    const o = phase === 'specification' ? it.order : specOrder.get(it.name);
+    return Number.isInteger(o) ? o : Infinity;
+  };
+  return items.map((it, i) => ({ it, i }))
+    .sort((a, b) => (orderOf(a.it) - orderOf(b.it)) || (a.i - b.i))
+    .map((x) => x.it);
+}
+
+module.exports = { sequenceBuildOrder, computeBuildOrderNeedsSequencing, buildOrderLive, sortItemsByBuildOrder };
