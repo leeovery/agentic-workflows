@@ -117,10 +117,14 @@ function sequenceBuildOrder(cwd, workUnit, orders) {
 }
 
 /**
- * Derive the epic's need for a build-order sequencing pass: true when any
- * live specification topic lacks an order, or when topic completion has
- * flagged the order stale. No specification topics at all → false (there is
- * nothing to order yet — the grouping analysis assigns at birth).
+ * Derive the epic's need for a build-order sequencing pass: true when the
+ * live set's orders are not exactly a contiguous 1..N permutation — a topic
+ * lacking an order, a duplicate, or a hole (a cancel stashes its number;
+ * birth writes ride `manifest apply`, which validates nothing) — or when
+ * topic completion has flagged the order stale. The same invariant the
+ * sequence verb enforces on write, read back. No specification topics at
+ * all → false (there is nothing to order yet — the grouping analysis
+ * assigns at birth).
  * @param {object} manifest
  * @returns {boolean}
  */
@@ -129,7 +133,10 @@ function computeBuildOrderNeedsSequencing(manifest) {
   const live = phaseItems(manifest, 'specification').filter(buildOrderLive);
   if (live.length === 0) return false;
   if (specData.build_order_stale === true) return true;
-  return live.some((item) => !Number.isInteger(item.order));
+  const orders = live.map((item) => item.order);
+  if (orders.some((o) => !Number.isInteger(o))) return true;
+  const sorted = [...orders].sort((a, b) => a - b);
+  return sorted.some((o, i) => o !== i + 1);
 }
 
 module.exports = { sequenceBuildOrder, computeBuildOrderNeedsSequencing, buildOrderLive };

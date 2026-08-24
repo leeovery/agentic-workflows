@@ -172,6 +172,19 @@ describe('engine build-order sequence', () => {
   });
 });
 
+describe('sequence idempotence', () => {
+  let dir;
+  beforeEach(() => { dir = setupGitFixture(); setupEpic(dir); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('re-sequencing the same orders notes nothing to commit', () => {
+    engine(dir, ['build-order', 'sequence', 'portal', 'auth=1', 'billing=2', 'reports=3']);
+    const res = engine(dir, ['build-order', 'sequence', 'portal', 'auth=1', 'billing=2', 'reports=3']);
+    assert.strictEqual(res.committed, null);
+    assert.match(res.note || '', /nothing to commit/);
+  });
+});
+
 describe('build_order_stale — set by spec completion, epic-only', () => {
   let dir;
   beforeEach(() => { dir = setupGitFixture(); setupEpic(dir); });
@@ -237,6 +250,19 @@ describe('spec-side order stash on cancel / restore on reactivate', () => {
     assert.strictEqual(computeBuildOrderNeedsSequencing(m), true, 'flag catches the unordered live topic');
   });
 
+  it('a terminal sibling squatting on the number does not veto the restore', () => {
+    engine(dir, ['topic', 'cancel', 'portal', 'specification', 'auth']);
+    engine(dir, ['topic', 'supersede', 'portal', 'specification', 'reports', '--by', 'billing']);
+    const m0 = readManifest(dir, 'portal');
+    m0.phases.specification.items.reports.order = 1;
+    writeManifest(dir, 'portal', m0);
+    commitAll(dir, 'squat');
+
+    engine(dir, ['topic', 'reactivate', 'portal', 'specification', 'auth']);
+    const items = readManifest(dir, 'portal').phases.specification.items;
+    assert.strictEqual(items.auth.order, 1, 'restored over the terminal squatter');
+  });
+
   it('a discussion cancel cascading into a spec stashes the spec order too', () => {
     // auth spec is in-progress and sources the auth discussion — cascade path.
     const res = engine(dir, ['topic', 'cancel', 'portal', 'discussion', 'auth', '--cascade']);
@@ -284,20 +310,49 @@ describe('computeBuildOrderNeedsSequencing / buildOrderLive', () => {
   });
 });
 
-describe('EpicDetail carries the order and the flag', () => {
-  it('spec entries expose order; the detail exposes build_order_needs_sequencing', () => {
+describe('EpicDetail carries the flag', () => {
+  it('the detail exposes build_order_needs_sequencing', () => {
     const m = epicManifest();
     m.phases.specification.items.auth.order = 2;
     m.phases.specification.items.billing.order = 1;
     m.phases.specification.items.reports.order = 3;
     const d = epicDetail('/nonexistent', m);
-    const spec = Object.fromEntries(d.phases.specification.map((e) => [e.name, e.order]));
-    assert.strictEqual(spec.auth, 2);
-    assert.strictEqual(spec.billing, 1);
-    assert.strictEqual(spec.legacy, undefined, 'terminal entry carries no order');
     assert.strictEqual(d.build_order_needs_sequencing, false);
 
     delete m.phases.specification.items.billing.order;
     assert.strictEqual(epicDetail('/nonexistent', m).build_order_needs_sequencing, true);
+  });
+});
+
+describe('the flag reads the whole invariant back', () => {
+  const base = () => ({
+    phases: { specification: { items: {
+      a: { status: 'in-progress', order: 1 },
+      b: { status: 'completed', order: 2 },
+      c: { status: 'proposed', order: 3 },
+    } } },
+  });
+
+  it('a contiguous 1..N permutation is quiet', () => {
+    assert.strictEqual(computeBuildOrderNeedsSequencing(base()), false);
+  });
+
+  it('a duplicate number flips it', () => {
+    const m = base();
+    m.phases.specification.items.c.order = 2;
+    assert.strictEqual(computeBuildOrderNeedsSequencing(m), true);
+  });
+
+  it('a hole flips it — the state a spec cancel leaves', () => {
+    const m = base();
+    m.phases.specification.items.b.status = 'cancelled';
+    delete m.phases.specification.items.b.order;
+    assert.strictEqual(computeBuildOrderNeedsSequencing(m), true, 'live set {1,3} is not contiguous');
+  });
+
+  it('terminal residue with a stale number never counts', () => {
+    const m = base();
+    m.phases.specification.items.d = { status: 'superseded', order: 2 };
+    assert.strictEqual(computeBuildOrderNeedsSequencing(m), false);
   });
 });

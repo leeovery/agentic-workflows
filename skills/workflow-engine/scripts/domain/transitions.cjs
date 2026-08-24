@@ -1034,9 +1034,13 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
       // reactivate can still produce). A taken number drops the stash and
       // leaves the item unordered; `build_order_needs_sequencing` flips and
       // the next sequencing pass seats it wholesale.
+      // Terminal siblings keep inert numbers (supersede and promote never
+      // stash) — only a LIVE holder of the number blocks the restore.
       const specItems = (manifest.phases.specification && manifest.phases.specification.items) || {};
       const taken = Object.entries(specItems).some(([name, other]) =>
-        name !== topic && other && typeof other === 'object' && other.order === item.previous_order);
+        name !== topic && other && typeof other === 'object'
+        && !TERMINAL_STATUSES.includes(other.status || '')
+        && other.order === item.previous_order);
       if (!taken) item.order = item.previous_order;
       delete item.previous_order;
     }

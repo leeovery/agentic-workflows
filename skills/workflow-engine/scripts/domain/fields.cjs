@@ -234,6 +234,17 @@ function validateSet(segments, value, fieldSegments = segments) {
     return;
   }
 
+  // A phase item's `order` (the build order; the discovery map's sibling) is
+  // a positive integer — a quoted number would land silently through apply
+  // and read as unordered everywhere.
+  if (segments.length === 5 && segments[0] === 'phases' && segments[2] === 'items'
+    && segments[4] === 'order') {
+    if (!Number.isInteger(value) || value < 1) {
+      fail(`Invalid order ${JSON.stringify(value)} — must be a positive integer (unquoted in apply payloads)`);
+    }
+    return;
+  }
+
   // Top-level work_type
   if (segments.length === 1 && segments[0] === 'work_type') {
     validateWorkType(value);

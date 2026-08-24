@@ -447,47 +447,6 @@ function runDiscussionMap(argv) {
 // gates are enforced in the domain op.
 // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// build-order — the spec-side twin of discovery-map sequencing. One verb:
-// `sequence` records the whole live set's order in one transaction and
-// clears `build_order_stale`. Validation (full coverage, contiguous 1..N)
-// lives in the domain op.
-// ---------------------------------------------------------------------------
-
-/** @param {string[]} argv */
-function runBuildOrder(argv) {
-  const [command, ...rest] = argv;
-  const cwd = process.cwd();
-
-  try {
-    if (command !== 'sequence') {
-      throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
-    }
-    const { positional } = parseArgs(rest, []);
-    const [workUnit] = positional;
-    if (!workUnit || positional.length < 2) {
-      throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
-    }
-    /** @type {Record<string, number>} */
-    const orders = {};
-    for (const pair of positional.slice(1)) {
-      const eq = pair.indexOf('=');
-      const name = eq > 0 ? pair.slice(0, eq) : '';
-      const value = eq > 0 ? pair.slice(eq + 1) : '';
-      if (!name || !/^[1-9][0-9]*$/.test(value)) {
-        throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
-      }
-      if (name in orders) {
-        throw new Error(`topic "${name}" assigned twice`);
-      }
-      orders[name] = Number(value);
-    }
-    respond(sequenceBuildOrder(cwd, workUnit, orders));
-  } catch (err) {
-    failJson(err);
-  }
-}
-
 /** @param {string[]} argv */
 function runDiscoveryMap(argv) {
   const [command, ...rest] = argv;
@@ -512,20 +471,8 @@ function runDiscoveryMap(argv) {
       if (!workUnit || positional.length < 2) {
         throw new Error('Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
       }
-      /** @type {Record<string, number>} */
-      const orders = {};
-      for (const pair of positional.slice(1)) {
-        const eq = pair.indexOf('=');
-        const name = eq > 0 ? pair.slice(0, eq) : '';
-        const value = eq > 0 ? pair.slice(eq + 1) : '';
-        if (!name || !/^[1-9][0-9]*$/.test(value)) {
-          throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
-        }
-        if (name in orders) {
-          throw new Error(`topic "${name}" assigned twice`);
-        }
-        orders[name] = parseInt(value, 10);
-      }
+      const orders = parseOrderPairs(positional.slice(1),
+        'Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
       respond(sequenceMap(cwd, workUnit, orders));
     } else if (command === 'add') {
       // Strict positional count: an unquoted payload would spill into
@@ -573,6 +520,60 @@ function runDiscoveryMap(argv) {
     failJson(err);
   }
 }
+
+
+/**
+ * Parse `{topic}={order}` pairs shared by the two sequencing verbs.
+ * @param {string[]} pairs @param {string} usage @returns {Record<string, number>}
+ */
+function parseOrderPairs(pairs, usage) {
+  /** @type {Record<string, number>} */
+  const orders = {};
+  for (const pair of pairs) {
+    const eq = pair.indexOf('=');
+    const name = eq > 0 ? pair.slice(0, eq) : '';
+    const value = eq > 0 ? pair.slice(eq + 1) : '';
+    if (!name || !/^[1-9][0-9]*$/.test(value)) {
+      throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
+    }
+    if (name in orders) {
+      throw new Error(`topic "${name}" assigned twice`);
+    }
+    orders[name] = Number(value);
+  }
+  if (Object.keys(orders).length === 0) throw new Error(usage);
+  return orders;
+}
+
+// ---------------------------------------------------------------------------
+// build-order — the spec-side twin of discovery-map sequencing. One verb:
+// `sequence` records the whole live set's order in one transaction and
+// clears `build_order_stale`. Validation (full coverage, contiguous 1..N)
+// lives in the domain op.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runBuildOrder(argv) {
+  const [command, ...rest] = argv;
+  const cwd = process.cwd();
+
+  try {
+    if (command !== 'sequence') {
+      throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
+    }
+    const { positional } = parseArgs(rest, []);
+    const [workUnit] = positional;
+    if (!workUnit || positional.length < 2) {
+      throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
+    }
+    const orders = parseOrderPairs(positional.slice(1),
+      'Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
+    respond(sequenceBuildOrder(cwd, workUnit, orders));
+  } catch (err) {
+    failJson(err);
+  }
+}
+
 
 // ---------------------------------------------------------------------------
 // discovery-session — the epic discovery-session lifecycle. open installs

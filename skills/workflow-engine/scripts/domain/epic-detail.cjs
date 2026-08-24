@@ -50,7 +50,6 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} [format]                 planning items
  * @property {boolean} [deps_satisfied]        planning items
  * @property {DepBlocking[]} [deps_blocking]   planning items with unmet deps
- * @property {number} [order]                  specification items — the build order position
  * @property {string|number} [current_phase]   implementation items
  * @property {string} [current_task]           implementation items — the task in flight
  * @property {string[]} [completed_phases]     implementation items
@@ -215,9 +214,6 @@ function epicDetail(cwd, manifest) {
       const entry = { name: item.name, status: item.status || 'unknown' };
       if (item.reconcile_needed !== undefined) entry.reconcile_needed = item.reconcile_needed;
 
-      if (phase === 'specification' && Number.isInteger(item.order)) {
-        entry.order = item.order;
-      }
       if (phase === 'specification' && item.sources) {
         const sourcesArr = Array.isArray(item.sources)
           ? item.sources
