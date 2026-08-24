@@ -1480,6 +1480,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       'reconcile_pending: (none)',
       'analysis_caches: research_analysis=absent, gap_analysis=absent',
       'needs_sequencing: true',
+      'build_order_needs_sequencing: false',
       'discovery_map (2):',
       '  - ◐ auth-flow [researching] routing=research summary=present description=present — OAuth vs sessions',
       '  - ○ billing [fresh] routing=discussion summary=absent description=absent',
@@ -1499,10 +1500,43 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       'reconcile_pending: (none)',
       'analysis_caches: research_analysis=absent, gap_analysis=absent',
       'needs_sequencing: false',
+      'build_order_needs_sequencing: false',
       'discovery_map (0):',
       '  (empty)',
       '',
     ].join('\n'));
+  });
+
+  it('build_order_needs_sequencing reads the spec items and the stale flag', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: { auth: { status: 'in-progress', order: 1 }, billing: { status: 'proposed' } } },
+      },
+    });
+    let out = formatScoped('v1', discover(dir, 'v1'));
+    assert.match(out, /build_order_needs_sequencing: true/, 'unordered live topic flips the flag');
+
+    createManifest(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        specification: {
+          build_order_stale: true,
+          items: { auth: { status: 'completed', order: 1 } },
+        },
+      },
+    });
+    out = formatScoped('v2', discover(dir, 'v2'));
+    assert.match(out, /build_order_needs_sequencing: true/, 'the stale flag alone flips it');
+
+    createManifest(dir, 'v3', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: { auth: { status: 'completed', order: 1 }, gone: { status: 'cancelled' } } },
+      },
+    });
+    out = formatScoped('v3', discover(dir, 'v3'));
+    assert.match(out, /build_order_needs_sequencing: false/, 'ordered live set with terminal residue is quiet');
   });
 
   it('rows omit the summary tail when the field is absent', () => {

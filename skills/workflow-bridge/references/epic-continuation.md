@@ -10,7 +10,7 @@ Epic is phase-centric — all artifacts in a phase complete before moving to the
 
 ## A. Run Epic Discovery
 
-The bridge's own discovery provides minimal epic data. Run the workflow-continue-epic discovery scoped to this work unit for the epic state surface (`all_done`, `analysis_caches`, `needs_sequencing`, the discovery map):
+The bridge's own discovery provides minimal epic data. Run the workflow-continue-epic discovery scoped to this work unit for the epic state surface (`all_done`, `analysis_caches`, `needs_sequencing`, `build_order_needs_sequencing`, the discovery map):
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
@@ -24,7 +24,7 @@ Hold the output as **the most recent discovery output** — sections B–D read 
 
 A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the most recent discovery output, then load **[topic-discovery-dispatch.md](../../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
-On return, `new_arrivals` is populated — section E reads it to render the callout above the discovery map.
+On return, `new_arrivals` is populated — section F reads it to render the callout above the discovery map.
 
 → Proceed to **C. Sequence Map**.
 
@@ -36,7 +36,7 @@ A new topic may have arrived without a suggested execution order — from sectio
 
 → Load **[sequence-discovery-map.md](../../workflow-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
 
-On return, re-run discovery so section E sees the new order:
+On return, re-run discovery so the later sections see the new order:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
@@ -44,15 +44,39 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 
 Hold the refreshed output as the most recent discovery output for the remaining sections.
 
-→ On return, proceed to **D. Check All-Done**.
+→ On return, proceed to **D. Sequence Build Order**.
 
 #### Otherwise
 
 The map is already sequenced.
 
-→ Proceed to **D. Check All-Done**.
+→ Proceed to **D. Sequence Build Order**.
 
-## D. Check All-Done
+## D. Sequence Build Order
+
+A completed specification flags the build order stale, and a topic can land without one (a regroup, a pivot). Read `build_order_needs_sequencing` from the most recent discovery output.
+
+#### If `build_order_needs_sequencing` is true
+
+→ Load **[sequence-build-order.md](../../workflow-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
+
+On return, re-run discovery so the later sections see the new order:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
+```
+
+Hold the refreshed output as the most recent discovery output for the remaining sections.
+
+→ On return, proceed to **E. Check All-Done**.
+
+#### Otherwise
+
+The build order is current.
+
+→ Proceed to **E. Check All-Done**.
+
+## E. Check All-Done
 
 The scoped discovery derives `all_done` — true only when at least one non-cancelled review item exists and every non-cancelled one is completed, nothing is in progress or awaiting its next phase, no completed discussion is unaccounted, no item carries a live reconcile flag (`reconcile_pending: (none)` — a flagged item's entry flow must clear it first), and the discovery map has settled (or the epic has none). Read it from the most recent discovery output.
 
@@ -84,13 +108,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 **If user chose `n/no`:**
 
-→ Proceed to **E. Display and Menu**.
+→ Proceed to **F. Display and Menu**.
 
 #### Otherwise
 
-→ Proceed to **E. Display and Menu**.
+→ Proceed to **F. Display and Menu**.
 
-## E. Display and Menu
+## F. Display and Menu
 
 Render and emit the section verbatim:
 
@@ -102,11 +126,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {w
 
 > **CHECKPOINT**: Do not proceed until the above has returned with the user's selection.
 
-→ On return, proceed to **F. Enter Plan Mode**.
+→ On return, proceed to **G. Enter Plan Mode**.
 
 ---
 
-## F. Enter Plan Mode
+## G. Enter Plan Mode
 
 Section E returned the selected entry's `action`, `topic`, and `route` (stored by epic-display-and-menu.md **C. Route Selection**). The stored `route` is the authoritative skill invocation — the plan file carries it verbatim. Never reconstruct an invocation from the phase name; not every selection maps to a `workflow-{phase}-entry` skill. Continue discovery → `/workflow-discovery epic {work_unit}` — the only selection that doesn't route to an entry skill; every other route comes from the stored `route` verbatim.
 

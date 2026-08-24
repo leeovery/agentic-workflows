@@ -167,6 +167,7 @@ function formatScoped(workUnit, result) {
   lines.push(`reconcile_pending: ${reconcilePending(d).join(', ') || '(none)'}`);
   lines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   lines.push(`needs_sequencing: ${d.needs_sequencing}`);
+  lines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
   lines.push(`discovery_map (${d.discovery_map.length}):`);
   if (d.discovery_map.length === 0) {
     lines.push('  (empty)');
@@ -212,6 +213,7 @@ function view(workUnit, newArrivalsJson) {
   dataLines.push(`sessions_in_progress: ${held.map((r) => `${r.phase}/${r.topic} (last active ${engine.presence.fmtAge(r.age_seconds)} ago)`).join(', ') || '(none)'}`);
   dataLines.push(`convergence: ${d.convergence_state || 'none'}`);
   dataLines.push(`needs_sequencing: ${d.needs_sequencing}`);
+  dataLines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
   dataLines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   const phaseNames = Object.keys(d.phases);
   if (phaseNames.length > 0) {
