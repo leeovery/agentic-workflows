@@ -1,0 +1,74 @@
+{
+  "origin": "The planning loop's choice lane and the Discuss exchange's Declined landing shipped with zero execution coverage — the review pass that built them found the choice lane could not even render under the original payload rules, and nothing walks a finding the user talks through and leaves. This pins both: a settled finding declined with a reason, and a choice answered by picking the option that is not recommended.",
+  "entry": "workflow-planning-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-planning-entry/references/validate-spec.md",
+    "skills/workflow-planning-entry/references/validate-phase.md",
+    "skills/workflow-planning-entry/references/invoke-skill.md",
+    "skills/workflow-planning-process/SKILL.md",
+    "skills/workflow-planning-process/references/spec-change-detection.md",
+    "skills/workflow-planning-process/references/session-setup.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/graph.md",
+    "skills/workflow-planning-process/references/planning-principles.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-planning-process/references/verify-source-material.md",
+    "skills/workflow-planning-process/references/plan-construction.md",
+    "skills/workflow-planning-process/references/define-phases.md",
+    "skills/workflow-planning-process/references/analyze-task-graph.md",
+    "skills/workflow-planning-process/references/plan-review.md",
+    "skills/workflow-planning-process/references/invoke-review-traceability.md",
+    "skills/workflow-planning-process/references/invoke-review-integrity.md",
+    "skills/workflow-planning-process/references/process-review-findings.md",
+    "skills/workflow-planning-process/references/review-traceability.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-planning-process/references/conclude-plan.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "conduct": "The user is resuming their card-payments plan mid-review; offered the resume choice they pick the plan up where it left off, and they confirm the structure and graph still hold when asked. At finding 1 — order-id telemetry on the capture task — they push back through the gate's Discuss option: support already traces failures through the gateway dashboard by intent id, so the order-id attribute is telemetry nobody would read. They want it declined, and they say so with that reason. At finding 2 they engage with the choice on its merits and pick the option that is NOT recommended — minting a fresh intent per attempt — because their support team lives in the gateway dashboard and one-intent-per-click is how they debug. They approve the follow-up review's clean conclusion and confirm concluding the plan. They never opt into auto, never reopen what they settled, and answer everything else with plain agreement.",
+  "stubs": {
+    "plan-graph-applied": "when the prose invokes the dependency-grapher agent — apply the graph to the task files as the stub's description states (already-present values reapply unchanged), then return the content below as the agent's summary",
+    "plan-review-clean-c2": "each time the prose invokes a planning review agent via the Task tool — both the cycle-2 traceability and integrity reviews return the content below and write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "render resume-gate pay.planning.pay --variant plan",
+      "render findings-summary pay.planning.pay",
+      "render finding pay.planning.pay",
+      "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
+      "manifest set pay.planning.pay review_cycle 2",
+      "planning(pay): complete plan review",
+      "topic complete pay planning pay",
+      "planning(pay): complete plan"
+    ],
+    "calls_in_order": [
+      "render resume-gate pay.planning.pay --variant plan",
+      "render findings-summary pay.planning.pay",
+      "render finding pay.planning.pay",
+      "render finding pay.planning.pay",
+      "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
+      "manifest set pay.planning.pay review_cycle 2",
+      "topic complete pay planning pay"
+    ],
+    "calls_exclude": [
+      "finding_gate_mode auto",
+      "render incoherence-gate",
+      "topic reopen",
+      "restart planning",
+      "workunit create",
+      "knowledge.cjs index"
+    ]
+  }
+}
