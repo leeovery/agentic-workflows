@@ -1853,10 +1853,10 @@ describe('render proposed-task', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Approve this task?`**',
       '',
-      '**`y/yes`**   → Approve this task',
-      '**`a/auto`**  → Approve this and all remaining tasks automatically',
-      '**`s/skip`**  → Skip this task',
-      '**Comment** → Tell me what to change',
+      '**`y/yes`**     → Approve this task',
+      '**`a/auto`**    → Approve this and all remaining tasks automatically',
+      '**`d/decline`** → Decline this task — it will not be built',
+      '**Comment**   → Tell me what to change',
       '',
     ].join('\n'));
   });

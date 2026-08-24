@@ -377,7 +377,7 @@ function proposedTask(cwd, args) {
       menu('Approve this task?', [
         cmdOption('y', 'yes', 'Approve this task'),
         cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
-        cmdOption('s', 'skip', 'Skip this task'),
+        cmdOption('d', 'decline', 'Decline this task — it will not be built'),
         promptOption('Comment', hint),
       ]),
     ));
