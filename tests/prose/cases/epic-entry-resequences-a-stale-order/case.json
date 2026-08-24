@@ -20,7 +20,6 @@
     "1 — continue the Search Relevance epic"
   ],
   "invariants": {
-    "engine_before_write": true,
     "calls_include": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs",

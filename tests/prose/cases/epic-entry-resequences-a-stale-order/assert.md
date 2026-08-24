@@ -9,8 +9,8 @@ The prose should have taken this path:
 4. sequence-build-order gathers the two live specification topics,
    assigns a contiguous 1..2 (which topic leads is the model's
    judgment), and records it through one `build-order sequence` call
-5. discovery is re-run so the dashboard sees the new order, and the
-   epic menu is presented
+5. the epic menu is presented — its display step runs its own view
+   fetch, so no extra scoped re-run follows the sequencing
 
 Further claims about the end state:
 
