@@ -876,6 +876,19 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'specification', 'unified']);
     sim.run(['manifest', 'set', `${wu}.specification.unified`,
       'sources.alpha.status=pending', 'sources.beta.status=pending']);
+    // Birth rides the reconcile: the grouping's apply carries the order
+    // fields (bare numbers — the field surface refuses a quoted one), and a
+    // later regroup renumbers the whole live set through the same door.
+    const birthOps = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
+      [{ op: 'set', path: `${wu}.specification.unified`, fields: { order: 1 } },
+       { op: 'set', path: `${wu}.specification.alpha`, fields: { order: 2 } }]);
+    sim.run(['manifest', 'apply', wu, '--file', birthOps]);
+    assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.order, 1);
+    const regroupOps = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
+      [{ op: 'set', path: `${wu}.specification.alpha`, fields: { order: 1 } },
+       { op: 'set', path: `${wu}.specification.unified`, fields: { order: 2 } }]);
+    sim.run(['manifest', 'apply', wu, '--file', regroupOps]);
+    assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.order, 1, 'regroup renumbers wholesale');
     sim.run(['topic', 'supersede', wu, 'specification', 'alpha', '--by', 'unified']);
     assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.superseded_by, 'unified');
     sim.run(['manifest', 'set', `${wu}.specification.unified`,

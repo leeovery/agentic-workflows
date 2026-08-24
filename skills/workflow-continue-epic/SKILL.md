@@ -48,7 +48,7 @@ Parse the discovery output to understand:
 - one line per closed epic — `{name} (last phase: {phase})`
 - `completed_count` / `cancelled_count` — the header counts
 
-The per-epic state surface (`all_done`, `reconcile_pending`, `analysis_caches`, `needs_sequencing`, the discovery map) is the scoped dump Step 4 runs after validation; display and routing come from the `view` snapshot at Step 9.
+The per-epic state surface (`all_done`, `reconcile_pending`, `analysis_caches`, `needs_sequencing`, `build_order_needs_sequencing`, the discovery map) is the scoped dump Step 4 runs after validation; display and routing come from the `view` snapshot at Step 9.
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 
@@ -199,12 +199,6 @@ Read `build_order_needs_sequencing` from the most recent discovery output.
 ```
 
 Load **[sequence-build-order.md](../workflow-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
-
-On return, re-run discovery so the display sees the new order:
-
-```bash
-node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
-```
 
 → On return, proceed to **Step 9**.
 

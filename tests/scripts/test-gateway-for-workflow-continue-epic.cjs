@@ -1787,6 +1787,18 @@ describe('workflow-continue-epic CLI dispatch', () => {
     return spawnSync('node', [GATEWAY, ...args], { cwd: dir, encoding: 'utf8' });
   }
 
+  it('the view snapshot carries the build-order flag line', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    const out = run(['view', 'v1']).stdout;
+    assert.ok(out.includes('build_order_needs_sequencing: true'), out.split('===')[1] || out);
+  });
+
   it('bare call still renders the index byte-identically', () => {
     epicFixture();
     const res = run([]);

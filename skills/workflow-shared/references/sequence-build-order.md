@@ -4,9 +4,9 @@
 
 ---
 
-Assign the build order across an epic's live specification topics — Claude's read of which topic to specify, plan, and implement first. The order is soft: it sorts and selects recommendations within a phase, but never gates. It is re-derived wholesale — a full renumber of every live topic — whenever a topic lands without an order or a completed specification flags the order stale.
+Assign the build order across an epic's live specification topics — Claude's read of which topic to specify, plan, and implement first. The order is soft: it sorts and selects recommendations within a phase, but never blocks. It is re-derived wholesale — a full renumber of every live topic — whenever a topic lands without an order, a completed specification flags the order stale, or the user asks for a re-derive.
 
-Manifest-driven, so it runs identically from either caller. The caller fires it only when its discovery output reports `build_order_needs_sequencing: true`, and re-runs discovery afterward so the render picks up the new order.
+Manifest-driven, so it runs identically from every caller.
 
 ## Parameters
 
@@ -40,7 +40,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 The live set is every topic whose status is not `cancelled`, `superseded`, or `promoted` — completed topics stay and keep a number. For grouped topics, the `sources` entries name the member discussions; read a discussion document or a completed specification where the grouping alone leaves a topic's ground unclear.
 
-Ignore the discovery map's order entirely — it ranks what to *explore* first, assigned from one-line sketches before any discussion concluded; the build order ranks what must physically exist first, read from the concluded record. Inheriting it anchors the judgment to stale ground.
+Ignore the discovery map's order entirely — it ranks what to *explore* first, assigned from one-line sketches before any discussion concluded; the build order ranks what must physically exist first, read from the concluded record.
 
 → Proceed to **C. Assign and Write Order**.
 

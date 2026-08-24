@@ -150,7 +150,7 @@ function reconcilePending(d) {
   return out;
 }
 
-// The scoped state dump for one epic — the reasoning surface Steps 5–7 and
+// The scoped state dump for one epic — the reasoning surface Steps 5–8 and
 // the bridge's epic continuation read: the all-done flag, analysis-cache
 // statuses, the sequencing flag, and the discovery-map rows (tier, lifecycle,
 // routing, field presence, current summary text).
@@ -184,7 +184,7 @@ function formatScoped(workUnit, result) {
   return lines.join('\n') + '\n';
 }
 
-// One snapshot for Step 8: reasoning DATA (flags + the ACTIONS table), the
+// One snapshot for Step 9: reasoning DATA (flags + the ACTIONS table), the
 // rendered dashboard + key (DISPLAY), and the menu (MENU).
 function view(workUnit, newArrivalsJson) {
   const result = discover(process.cwd(), workUnit);
