@@ -10,6 +10,8 @@ Two-part review dispatched to sub-agents. Traceability runs first — its approv
 
 ## A. Cycle Initialization
 
+Before opening a cycle, read `manifest get {work_unit}.planning.{topic} tracking` — an `in-progress` entry is a prior cycle's tracking file whose findings were never fully processed — and list the `review-*-tracking-c*.md` files beside the plan: a tracking file on disk with no manifest entry is a crash orphan (the session died before recording it) — record it `in-progress`. Work each one now per **[process-review-findings.md](process-review-findings.md)** for that file, traceability before integrity — the order the review runs; never open a fresh cycle over live findings.
+
 Check the `review_cycle` field in the manifest:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} review_cycle

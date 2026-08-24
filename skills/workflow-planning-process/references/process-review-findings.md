@@ -6,7 +6,7 @@
 
 Process findings from a review agent interactively with the user. The agent writes findings to a tracking file, each carrying the **move** it owes the user: `settled` (the record admits one defensible answer — the finding carries the fix and what determined it) or `choice` (real options exist and picking is the user's — the finding carries the options and proposes none). Read the tracking file and present each finding by its move.
 
-**Review type**: `{review_type:[traceability|integrity]}` — set by the calling context (C or D in plan-review.md).
+**Review type**: `{review_type:[traceability|integrity]}` — set by the calling context (C or D in plan-review.md); a caller that names a tracking file rather than a phase derives it, and the file's path, from the tracking stem (`review-traceability-…` → traceability, `review-integrity-…` → integrity). Such a caller enters with the file in hand — read it and proceed to **A. Summary**; the `STATUS` branches below serve the agent-return callers.
 
 **Commits in this file**: applying a finding writes through the format adapter; commit with `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "<message>" --plan {topic}` — it stages the work unit and the plan's declared storage.
 
