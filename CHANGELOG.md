@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.6] - 2026-08-24
+
+🔧 Changed
+- Review findings across planning and specification now name a "move" — settled findings apply automatically with a stated rationale, genuine choices always stop for your pick, and any finding can be discussed, adjusted, or declined instead of silently skipped.
+- Declining a finding now records a reason through conversation instead of a bare one-key skip.
+- Whole proposed content is now hidden behind a "view" option instead of dumped inline, while short diffs render directly in the finding.
+- Auto-approval mode now announces explicitly when it's overridden for a call that still requires your input.
+- Gap-analysis findings gain a dedicated "Contradiction" category for passages that support two incompatible readings.
+- Interrupted review cycles now recover orphaned tracking files left behind by a crash, not just ones already recorded in the manifest.
+- Source-incoherence resolutions now sweep every restatement of a corrected claim across a document, not just the first occurrence.
+
 ## [0.7.5] - 2026-08-22
 
 🔧 Changed
