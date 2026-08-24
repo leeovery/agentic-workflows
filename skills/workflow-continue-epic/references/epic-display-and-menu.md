@@ -28,7 +28,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} 
 
 The output is one snapshot in four demarcated sections:
 
-- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(blocked: …)` / `(in session: …)` markers. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(in session: …)` markers. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
 - **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
@@ -51,7 +51,9 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or a comman
 
 #### If `action` is `resequence_build_order`
 
-The user judges the current order wrong — re-derive it wholesale. Load **[sequence-build-order.md](../../workflow-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
+The user judges the current order wrong — re-derive it wholesale.
+
+→ Load **[sequence-build-order.md](../../workflow-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
 
 → On return, return to **A. State Display and Menu**.
 
@@ -173,18 +175,10 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 
 #### If user chose a numbered topic
 
-Store the selected entry's `phase` and `topic`. Confirm with the user:
+Store the selected entry's `phase` and `topic`. Fetch and emit the confirm's `MENU: cancel gate` section:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Cancelling **{topic:(titlecase)}** in {phase} will mark it as cancelled — it can be reactivated later.
-
-**`◆ Cancel it?`**
-
-**`y/yes`** → Confirm cancellation
-**`n/no`**  → Return to menu
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render cancel-gate {work_unit}.{phase}.{topic}
 ```
 
 **STOP.** Wait for user response.
@@ -195,7 +189,7 @@ Cancelling **{topic:(titlecase)}** in {phase} will mark it as cancelled — it c
 
 **If user chose `yes`:**
 
-Run the cancel transaction — one command stashes the current status, marks the item cancelled, drops the topic's discovery-map order, removes its knowledge-base chunks, and commits:
+Run the cancel transaction — one command stashes the current status, marks the item cancelled, stashes the topic's execution order (a research/discussion cancel stashes the discovery map's, a specification cancel the build order's), removes its knowledge-base chunks, and commits:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
@@ -243,7 +237,7 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 
 #### If user chose a numbered topic
 
-Store the selected entry's `phase` and `topic`. Run the reactivate transaction — one command restores the stashed status, removes `previous_status`, re-indexes the artifact into the knowledge base when the restored status is `completed` in an indexed phase (research / discussion / investigation / specification), and commits:
+Store the selected entry's `phase` and `topic`. Run the reactivate transaction — one command restores the stashed status and execution order (a build-order number returns only while no live topic holds it — otherwise the next sequencing pass seats the topic), removes `previous_status`, re-indexes the artifact into the knowledge base when the restored status is `completed` in an indexed phase (research / discussion / investigation / specification), and commits:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {phase} {topic}

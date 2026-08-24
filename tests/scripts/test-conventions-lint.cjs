@@ -660,7 +660,6 @@ function checkInertLoadChrome(files) {
 // the ratchet working, not a reason to adjust it.
 /** @type {Record<string, number>} */
 const RATCHET_PINS = {
-  'skills/workflow-continue-epic/references/epic-display-and-menu.md': 1,
   'skills/workflow-continue-epic/references/summary-backfill.md': 3,
   'skills/workflow-discovery/references/confirm-trigger.md': 1,
   'skills/workflow-discovery/references/continuity-load.md': 1,

@@ -813,6 +813,7 @@ No other verbs — never `→ Go to`, `→ Jump to`, `→ Skip to`, `→ Continu
 | `→ Proceed to **Step N**.` | Next step in the backbone |
 | `→ Proceed to **B. Section Name**.` | Next lettered section in a reference file |
 | `→ On return, proceed to **Step N**.` | Footer after a Load directive — applies when the loaded reference returns (see Load Directive Format) |
+| `→ On return, return to **A. Section Name**.` | The same footer with a backward target — the loaded reference completes, then flow re-enters an earlier section |
 
 
 #### Backward (within a file)

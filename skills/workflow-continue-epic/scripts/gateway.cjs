@@ -237,7 +237,6 @@ function view(workUnit, newArrivalsJson) {
   for (const k of menu.keys) {
     let line = `  ${k.key}  ${k.action}  ${k.topic || '—'}  → ${k.route || '(internal)'}`;
     if (k.recommended) line += '  (recommended)';
-    if (k.blocked) line += `  (blocked: ${(k.deps_blocking || []).map(b => b.topic + (b.internal_id ? ':' + b.internal_id : '') + ' — ' + b.reason).join('; ')})`;
     if (k.in_session) line += `  (in session: last active ${engine.presence.fmtAge(k.session_age || 0)} ago)`;
     dataLines.push(line);
   }
@@ -274,7 +273,7 @@ function inSessionGate(workUnit, key) {
   return engine.project.epicInSessionGate(entry);
 }
 
-// One selection sub-view (sections D–F): the keys table as DATA, the view's
+// One selection sub-view (sections D–G): the keys table as DATA, the view's
 // heading as TITLE, the grouped list as DISPLAY, the pick menu as MENU.
 /** @param {string} workUnit @param {(name: string, detail: object) => {keys: object[], title: string, display: string, rendered: string}} projection */
 function subView(workUnit, projection) {

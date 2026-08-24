@@ -353,7 +353,7 @@ describe('epic projections: key', () => {
       },
     });
     assert.strictEqual(epicKey(d), 'Key:\n' + STATUS
-      + '\n\n  Cue:\n    blocked — implementation waits on another plan; the \u2691 list\n              names the dependency, u/unblock is the override'
+      + '\n\n  Cue:\n    blocked (planning) — implementation waits on another plan; the\n              \u2691 list names the dependency, u/unblock is the override'
       + '\n\n' + BLOCKING);
   });
 
@@ -425,7 +425,7 @@ describe('epic projections: menu', () => {
     };
   }
 
-  it('orders the recommendation first, filters gated starts, flags blocked entries', () => {
+  it('orders the recommendation first, filters gated starts, and carries no row for a blocked start', () => {
     const menu = epicMenu('quiz-competition-v1', settledDetail());
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
@@ -441,13 +441,13 @@ describe('epic projections: menu', () => {
       '**`i/discovery`** → Continue discovery',
       '**`c/completed`** → Resume a completed topic',
       '**`a/cancel`**    → Cancel a topic (phase work)',
-      '**`u/unblock`**   → Unblock a plan — mark a dependency as satisfied',
-      `${NB(14)}externally`,
+      '**`u/unblock`**   → Unblock a plan — *mark a dependency as satisfied*',
+      `${NB(14)}*externally*`,
       '**`o/order`**     → Re-sequence the build order',
     ].join('\n'));
   });
 
-  it('keys carry actions, topics, routes, and the recommended/blocked flags', () => {
+  it('keys carry actions, topics, and routes; a blocked start never surfaces', () => {
     const { keys } = epicMenu('quiz-competition-v1', settledDetail());
     assert.deepStrictEqual(
       keys.map((k) => [k.key, k.action, k.topic, k.route]),
@@ -870,7 +870,8 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(view.title, 'Blocked Plans');
     assert.strictEqual(view.display, [
       'Planning',
-      '  ├─ 1. Reporting — blocked by core-features:core-2-3 (task not yet completed)',
+      '  ├─ 1. Reporting — blocked by core-features:core-2-3 (task',
+      '        not yet completed)',
       '  └─ 2. Reporting — blocked by auth (dependency unresolved)',
       '',
     ].join('\n'));
@@ -883,6 +884,80 @@ describe('epic projections: selection sub-views', () => {
       ]
     );
     assert.ok(/Which dependency has been satisfied\?/.test(view.rendered), view.rendered);
+  });
+
+  it('a dep-blocked planning row carries the blocked cue; a clean one does not; a cancelled one never does', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { blocked: { status: 'completed' }, clean: { status: 'completed' } } },
+        planning: {
+          items: {
+            blocked: { status: 'completed', external_dependencies: { upstream: { description: 'd', state: 'unresolved' } } },
+            clean: { status: 'completed' },
+            dead: { status: 'cancelled', previous_status: 'completed', external_dependencies: { upstream: { description: 'd', state: 'unresolved' } } },
+          },
+        },
+      },
+    });
+    const out = epicDashboard('v1', d);
+    assert.match(out, /Blocked    \[completed · blocked\]/);
+    assert.match(out, /Clean      \[completed\]/);
+    assert.match(out, /Dead       \[cancelled\]/);
+    // The terminal item carries no deps at all — no ⚑ row, no unblock offer.
+    assert.ok(!out.includes('Dead\n  └─ Blocked'), out);
+    const menu = epicMenu('v1', d);
+    const unblock = menu.keys.find((k) => k.action === 'unblock_plan');
+    assert.ok(unblock, 'unblock option present for the live blocked plan');
+    const { epicUnblockMenu: unblockMenu } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
+    const rows = unblockMenu(d).keys.filter((k) => k.action === 'unblock');
+    assert.deepStrictEqual(rows.map((r) => r.topic), ['blocked'], 'the cancelled plan takes no row');
+  });
+
+  it('two different blocked plans list in build order', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: {
+          zeta: { status: 'completed', order: 1 }, alpha: { status: 'completed', order: 2 },
+        } },
+        planning: {
+          items: {
+            alpha: { status: 'completed', external_dependencies: { up: { description: 'd', state: 'unresolved' } } },
+            zeta: { status: 'completed', external_dependencies: { up: { description: 'd', state: 'unresolved' } } },
+          },
+        },
+      },
+    });
+    const { epicUnblockMenu: unblockMenu } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
+    const rows = unblockMenu(d).keys.filter((k) => k.action === 'unblock');
+    assert.deepStrictEqual(rows.map((r) => r.topic), ['zeta', 'alpha']);
+  });
+
+  it('o/order withdraws when no live spec topic exists', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: { gone: { status: 'cancelled', previous_status: 'in-progress' } } },
+        discussion: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    const { keys } = epicMenu('v1', d);
+    assert.ok(!keys.some((k) => k.action === 'resequence_build_order'), 'no live spec — no re-sequence');
+  });
+
+  it('both blocked kinds render two qualified legend lines', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { src: { status: 'in-progress' } } },
+        specification: { items: { spec: { status: 'completed', sources: { src: { status: 'stale' } } } } },
+        planning: { items: { spec: { status: 'completed', external_dependencies: { up: { description: 'd', state: 'unresolved' } } } } },
+      },
+    });
+    const key = epicKey(d);
+    assert.ok(key.includes('blocked (specification) —'), key);
+    assert.ok(key.includes('blocked (planning) —'), key);
   });
 
   it('unblock-menu: empty state when no plan is blocked', () => {

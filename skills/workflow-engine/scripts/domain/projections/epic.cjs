@@ -15,6 +15,7 @@ const { WORK_TYPE_PIPELINES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge } = require('../presence.cjs');
+const { buildOrderLive } = require('../build-order.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
@@ -38,9 +39,7 @@ const { fmtAge } = require('../presence.cjs');
  * @property {string|null} route      skill invocation, or null for internal flows
  * @property {string} label
  * @property {boolean} [recommended]
- * @property {boolean} [blocked]
  * @property {boolean} [input_moved]   the entry's item (or its source item) carries a live reconcile flag
- * @property {DepBlocking[]} [deps_blocking]
  * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
  * @property {number} [session_age]    that session's last-active age in seconds
  */
@@ -396,12 +395,12 @@ const CUE_RECONCILE =
   + '                  completed; the item\'s entry flow reconciles it';
 
 const CUE_BLOCKED =
-  '    blocked — a source discussion is back in-progress; re-conclude\n'
-  + '              it and the item returns to the menu';
+  '    blocked (specification) — a source discussion is back in-progress;\n'
+  + '              re-conclude it and the item returns to the menu';
 
 const CUE_PLAN_BLOCKED =
-  '    blocked — implementation waits on another plan; the ⚑ list\n'
-  + '              names the dependency, u/unblock is the override';
+  '    blocked (planning) — implementation waits on another plan; the\n'
+  + '              ⚑ list names the dependency, u/unblock is the override';
 
 /**
  * Section B — the Key block, showing only categories present in the display
@@ -599,12 +598,11 @@ function commandOptions(workUnit, detail, hasMap) {
   const anyPlanBlocked = (detail.phases.planning || [])
     .some((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
   if (anyPlanBlocked) {
-    opts.push({ key: 'u', word: 'unblock', action: 'unblock_plan', topic: null, route: null, label: 'Unblock a plan — mark a dependency as satisfied externally' });
+    opts.push({ key: 'u', word: 'unblock', action: 'unblock_plan', topic: null, route: null, label: 'Unblock a plan — *mark a dependency as satisfied externally*' });
   }
   // The build order's manual escape hatch: the automatic triggers fire on a
   // missing or stale order, never on a wrong one.
-  const anyLiveSpec = (detail.phases.specification || [])
-    .some((i) => !['cancelled', 'superseded', 'promoted'].includes(i.status));
+  const anyLiveSpec = (detail.phases.specification || []).some((i) => buildOrderLive(i));
   if (anyLiveSpec) {
     opts.push({ key: 'o', word: 'order', action: 'resequence_build_order', topic: null, route: null, label: 'Re-sequence the build order' });
   }
@@ -645,7 +643,7 @@ function pickRecommendation(detail, numbered, options, hasMap) {
     // An input-moved entry is never the recommendation: recommending a start
     // that propagates known-stale input contradicts its own cue — the
     // reconcile (via the flagged item's entry flow) comes first.
-    const build = numbered.find((e) => e.action.startsWith('start_') && !e.blocked && !e.input_moved
+    const build = numbered.find((e) => e.action.startsWith('start_') && !e.input_moved
       && BUILD_PHASES.includes(ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (e.action)]));
     if (build) return build;
     // With a flagged completed item and nothing else to start, the reconcile
@@ -680,7 +678,7 @@ function pickRecommendation(detail, numbered, options, hasMap) {
   if (specs.length > 0 && specs.every((i) => i.status === 'completed') && planEntry) return planEntry;
 
   const plans = liveItems(detail, 'planning');
-  const implEntry = numbered.find((e) => e.action === 'start_implementation' && !e.blocked && !e.input_moved);
+  const implEntry = numbered.find((e) => e.action === 'start_implementation' && !e.input_moved);
   if (plans.length > 0 && plans.every((i) => i.status === 'completed') && implEntry) return implEntry;
 
   const impls = liveItems(detail, 'implementation');
@@ -866,7 +864,13 @@ function selectionSubView(title, empty, question, action, rows) {
       phase = r.phase;
     }
     const lastInGroup = i === rows.length - 1 || rows[i + 1].phase !== r.phase;
-    displayLines.push(`  ${lastInGroup ? '└─' : '├─'} ${key}. ${r.row}`);
+    // Rows wrap at the display width like every other engine tree —
+    // continuations align under the row text, and the rail never carries on
+    // (a sub-view row has no children beneath it).
+    const glyph = lastInGroup ? '└─' : '├─';
+    displayLines.push(...wrapWithPrefix(`${key}. ${r.row}`, {
+      width: TREE_WIDTH, prefix: `  ${glyph} `, hang: `${key}. `.length,
+    }).map((line, li) => (li === 0 ? line : line.replace(`  ${glyph} `, '     '))));
   });
   keys.push(backKey());
 
@@ -935,32 +939,6 @@ function epicCancelMenu(detail) {
 }
 
 /**
- * Section G — the blocked-plans list and pick menu, one row per blocking
- * dependency (a plan with two blockers gets two rows). The `topic` slot
- * carries the plan, the `dep` field the dependency topic to mark satisfied.
- * No routes — the flow runs the manifest write.
- * @param {EpicDetail} detail
- * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
- */
-function epicUnblockMenu(detail) {
-  /** @type {(SubViewRow & {dep?: string})[]} */
-  const rows = [];
-  for (const item of detail.phases.planning || []) {
-    for (const dep of item.deps_blocking || []) {
-      rows.push({
-        phase: 'planning',
-        topic: item.name,
-        dep: dep.topic,
-        row: `${title({ label: titlecase(item.name) })} — blocked by ${depRef(dep)} (${dep.reason})`,
-        label: `Unblock "${titlecase(item.name)}" — *mark ${depRef(dep)} satisfied externally*`,
-        route: null,
-      });
-    }
-  }
-  return selectionSubView('Blocked Plans', 'No blocked plans.', 'Which dependency has been satisfied?', 'unblock', rows);
-}
-
-/**
  * Section F — the Cancelled Topics list and pick menu, each row carrying the
  * stashed `previous_status`. No routes — the flow runs the reactivate
  * transaction.
@@ -979,6 +957,32 @@ function epicReactivateMenu(detail) {
     };
   });
   return selectionSubView('Cancelled Topics', 'No cancelled topics.', 'Which topic would you like to reactivate?', 'reactivate', rows);
+}
+
+/**
+ * Section G — the blocked-plans list and pick menu, one row per blocking
+ * dependency (a plan with two blockers gets two rows). The `topic` slot
+ * carries the plan, the `dep` field the dependency topic to mark satisfied.
+ * No routes — the flow runs the manifest write.
+ * @param {EpicDetail} detail
+ * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
+ */
+function epicUnblockMenu(detail) {
+  /** @type {SubViewRow[]} */
+  const rows = [];
+  for (const item of detail.phases.planning || []) {
+    for (const dep of item.deps_blocking || []) {
+      rows.push({
+        phase: 'planning',
+        topic: item.name,
+        dep: dep.topic,
+        row: `${title({ label: titlecase(item.name) })} — blocked by ${depRef(dep)} (${dep.reason})`,
+        label: `Unblock "${titlecase(item.name)}" — *mark ${depRef(dep)} satisfied externally*`,
+        route: null,
+      });
+    }
+  }
+  return selectionSubView('Blocked Plans', 'No blocked plans.', 'Which dependency has been satisfied?', 'unblock', rows);
 }
 
 module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicUnblockMenu, SOFT_GATE_ACTIONS };

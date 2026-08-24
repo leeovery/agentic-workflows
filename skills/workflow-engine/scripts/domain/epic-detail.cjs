@@ -242,12 +242,16 @@ function epicDetail(cwd, manifest) {
         }
       }
 
-      // Enrich planning items with format and dependency data
+      // Enrich planning items with format and dependency data. Terminal
+      // items get no dep computation — a cancelled plan must never carry
+      // the blocked cue, surface in the ⚑ list, or take an unblock write.
       if (phase === 'planning') {
         if (item.format) entry.format = item.format;
-        const { deps_satisfied, deps_blocking } = resolveDeps(manifest, item);
-        entry.deps_satisfied = deps_satisfied;
-        if (deps_blocking.length > 0) entry.deps_blocking = deps_blocking;
+        if (!TERMINAL_STATUSES.includes(item.status || '')) {
+          const { deps_satisfied, deps_blocking } = resolveDeps(manifest, item);
+          entry.deps_satisfied = deps_satisfied;
+          if (deps_blocking.length > 0) entry.deps_blocking = deps_blocking;
+        }
       }
 
       // Enrich implementation items with progress data

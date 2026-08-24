@@ -279,6 +279,7 @@ engine render phase-tree <wu>.planning.<topic> --file <payload> [--approve]     
 engine render phase-completed <wu> --phase <phase> [--paths]      # one-line phase-completed display; --paths appends the derived spec/plan artifact paths (scoping's conclusion)
 engine render early-completion-gate <wu>                          # bridge gate: proceed to review / complete without review
 engine render revisit-gate <wu> --prev <phase> --next <phase>     # bridge gate: proceed to next / revisit an earlier phase
+engine render cancel-gate <wu>.<phase>.<topic>   # epic menu's bare cancel confirm — statement + y/n; the cascade case renders cancel-cascade-gate instead
 engine render epic-all-done-gate <wu>                             # bridge gate: mark epic completed / return to menu
 engine render epic-soft-gate <wu> --action <action> [--topic <topic>]   # epic menu's advisory phase gate — empty on pass; planning/implementation rows read the build order, discovery-side rows count; an unknown action refuses; an unknown or unordered topic passes silently
 engine render phase-note <wu>.<phase>.<topic> --verb <Word> [--noun <word>]   # entry one-liner: "{Word} {noun|phase}: {Topic}"

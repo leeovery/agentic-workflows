@@ -1787,6 +1787,18 @@ describe('workflow-continue-epic CLI dispatch', () => {
     return spawnSync('node', [GATEWAY, ...args], { cwd: dir, encoding: 'utf8' });
   }
 
+  it('unblock-menu emits the dep column in DATA byte-exactly', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        planning: { items: { tmpl: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'resolved', internal_id: 'auth-1-4' } } } } },
+      },
+    });
+    const out = run(['unblock-menu', 'v1']).stdout;
+    assert.ok(out.includes('  1  unblock  tmpl  planning  → (internal)  (dep: auth)'), out.split('===')[1] || out);
+  });
+
   it('the view snapshot carries the build-order flag line', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
