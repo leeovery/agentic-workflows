@@ -32,6 +32,8 @@ Do not fire for quick lookups, single searches, or questions that inform the nex
 
 Deep-dive findings are all walked — no batch lanes. Raises render under the heading `Needs Investigation`.
 
+Most deep-dive findings are knowledge, not asks — research surfaces material and holds decisions for discussion — so a raise here usually closes by saying nothing needs a call from the user and offering the pause. A finding that converges on a design call records the options and the lean as material for the discussion phase rather than asking the user to settle it now; the raise's genuine question is reserved for what only the user holds — their expectations, their environment, their intent for the product.
+
 ## A. Offer Deep Dive
 
 #### If user-initiated
