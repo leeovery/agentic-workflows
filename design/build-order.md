@@ -149,8 +149,14 @@ Two corrections to how this reads at first glance:
 - **Grouping is not the only birth site.** A one-discussion epic takes the
   `single` fast path (`projections/specification.cjs:228-230`) and creates
   its spec item through `confirm-create.md`, never running the grouping
-  analysis. That path must assign order `1`. The same hole swallows a
-  pivoted feature — see Open items.
+  analysis — and its item is born inside the *process* skill's `topic
+  start`, several steps past the entry skill's routing, so no entry-side
+  prose can order it at creation. Settled at the review (2026-08-24): the
+  path stays unwired and B4's flag seats the item at the next epic entry —
+  the same healing pivot takes. On a one-topic epic nothing can misorder
+  in the interim. (The `unify` reconcile, a third birth site the build
+  surfaced, IS wired — it rides `unify-ops.json` exactly as grouping rides
+  `reconcile-ops.json`.)
 
 **B2 — One order, three phases, joined by name.** A single `order` field
 on the specification item. Planning and implementation items share the
@@ -283,8 +289,13 @@ Three surfaces, not one:
 - The epic menu's numbered entries.
 
 The sub-view pickers — `epicCompletedMenu`, `epicCancelMenu`,
-`epicReactivateMenu` (`domain/projections/epic.cjs:873-930`) — stay
-pipeline-ordered. They are lifecycle management, not "what next".
+`epicReactivateMenu` — keep their phase grouping in pipeline order, and
+within each phase inherit the build order from the detail-level sort
+(settled at the review, 2026-08-24: the sort lives in `epicDetail`, which
+is what made B3 free, so the pickers read pre-sorted arrays; within-phase
+insertion order was never a promise, and matching the dashboard helps find
+the row). They gain no ordinals and no ceremony — lifecycle management,
+not "what next".
 
 **B7 — Two soft gates are rewritten in terms of the order — condition as
 well as message.** Counting is the weakest thing the engine can say with
@@ -662,6 +673,28 @@ All design questions settled; the stack shape below is the proposal.
   menu (B9), no ceremony (B10). Merged plans, the epic-wide ready queue,
   hard gates, the appraisal agent and a verification pass all rejected.
   Sub-grouping within an epic raised and parked as idea 44.
+
+- 2026-08-24 — The stack built (#1001 → #1005 → #1008 → #1009 → #1010,
+  stack #1006) and the standing review pass run over it: eight finder
+  dimensions, every finding verified against the tree, ~35 fixes folded
+  into the owning PRs. Nine rulings taken with Lee, now reflected above:
+  idea 21 closed; the single path stays flag-healed (B1 amended) while
+  the review-surfaced `unify` birth site is wired; the `→ On return,
+  return to` footer variant sanctioned in CONVENTIONS and the `o/order`
+  walk queued rather than authored; the soft gate fails closed on an
+  unknown action via a single exported vocabulary; the sub-view pickers'
+  inherited sort accepted (B6 amended); `build_order_needs_sequencing`
+  widened to read the whole contiguous-permutation invariant back
+  (covering cancel holes and malformed births); the gate message drops
+  its ordinals and the unread `PhaseEntry.order` exposure is deleted; the
+  Cue legend qualifies its two blocked lines by phase; and the bare
+  cancel confirm migrated to `render cancel-gate` under the adopt rule.
+  Alongside: the grouping reconcile now clears `build_order_stale` (a
+  regroup is a sequencing — its judgment no longer re-derived at the next
+  entry), `order` writes are typed at the field surface, terminal
+  planning items carry no dependency state, and a pre-existing prose case
+  that the new entry step had silently invalidated pre-sequences its
+  fixture.
 
 - 2026-08-24 — The `topic cancel` order-stripping bug pulled out of this
   stack and fixed on its own PR (#996, off main): the stash and the restore
