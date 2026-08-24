@@ -185,6 +185,27 @@ new top-level rule. It orders the candidates the cascade already permits.
 There is a second picker in the no-map branch (`:639-666`); both need the
 same treatment.
 
+**Phase outranks order.** The cascade walks `BUILD_PHASES` in pipeline
+order, so a startable specification still beats a startable plan, which
+still beats a startable implementation. The order decides *which* topic
+within the winning phase, never which phase wins. Given topic A (order 1,
+ready to implement), B (order 5, ready to plan) and C (order 7, ready to
+spec), the recommendation stays C.
+
+The alternative — order as the primary key across the whole board — was
+rejected for contradicting a gate this programme keeps. B7 warns when you
+work a topic while lower-ordered ones are unstarted; a recommendation
+pushing depth-first would propose a move and then question it. Phase-first
+also matches the stated preference: work each phase through, and depart
+from it deliberately when the epic is large enough to warrant it.
+
+This costs visibility. On a large epic the recommendation points at
+specification work for a long time and the order does nothing at the top
+of the menu until the spec phase drains. The order earns its keep in the
+sorting (B6) and the gates (B7), not in the `(recommended)` marker — and
+working out of order is never obstructed: nothing is ahead of topic 1, so
+implementing it early trips no gate at all.
+
 **B4 — Re-derived, never frozen.** Wholesale renumber of the live set.
 Two automatic triggers plus B5's manual one, and one home that serves both.
 
@@ -427,6 +448,25 @@ random one.
   makes no claim the spec must agree with, so nothing has to sweep it and
   nothing has to write back.
 
+- **Deriving the build order from the discovery map's order.** The join
+  exists — a spec item's `sources` are discussion names, and those are
+  discovery-map items carrying `order` — so a spec topic could inherit
+  `min()` or `mean()` of its members' positions. Rejected on three counts.
+  The two orders answer different questions: discovery ranks what to
+  *explore* first (riskiest, most foundational to understand), the build
+  order ranks what must physically exist first, and those come apart
+  routinely. The prior is **staler than the evidence in hand** — discovery
+  order is assigned at the harvest when topics are one-line sketches,
+  while the grouping analysis reads discussions that have concluded. And
+  the collapse makes it arbitrary: a grouping of discussions ordered 1 and
+  9 has no principled position relative to one ordered 2. Offering it even
+  as a soft prior risks anchoring the judgment into "the discovery order,
+  reshuffled" — which would look like it works while doing nothing.
+
+  Note the discovery order carries no user authority to inherit in any
+  case: `sequence-discovery-map.md` has no STOP and no gate — Claude
+  assigns it and it is written silently.
+
 - **A verification pass over the order.** Rejected per B8.
 
 ## Relationship to idea 21
@@ -579,18 +619,9 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
   `node tests/prose/run.cjs select --diff main` at the end of each PR in
   the stack.
 
-## Open questions
+## Build plan
 
-- **What does "the head" mean when the order is a tiebreak?** B3 makes the
-  order a tiebreak inside `pickRecommendation`'s existing cascade, and
-  that cascade takes the first build-phase start entry *in pipeline
-  order*. So on an epic past its first spec, "order-1's next action"
-  (which might be implementation) and "the earliest phase's lowest-ordered
-  topic" (specification) give different answers. Unsettled.
-
-## Build plan (provisional)
-
-Gated on the remaining open question, which shapes step 3.
+All design questions settled; the stack shape below is the proposal.
 
 1. **Engine** — the live-set derivation, `build_order_needs_sequencing`,
    the `build-order sequence` verb, spec-side `previous_order` stash, and
@@ -626,6 +657,23 @@ Gated on the remaining open question, which shapes step 3.
   menu (B9), no ceremony (B10). Merged plans, the epic-wide ready queue,
   hard gates, the appraisal agent and a verification pass all rejected.
   Sub-grouping within an epic raised and parked as idea 44.
+
+- 2026-08-24 — Problems 2 and 3 settled with Lee. **Recommendation:**
+  phase outranks order — the order picks the topic within the winning
+  phase, never the phase. Order-as-primary-key rejected for contradicting
+  B7, which warns about working ahead of unstarted lower-ordered topics; a
+  depth-first recommendation would propose a move and then question it.
+  Accepted cost: on a large epic the `(recommended)` marker points at
+  specification for a long time and the order shows only in the sorting
+  and the gates. **Inheriting the discovery order** raised and rejected —
+  the two orders answer different questions (explore-first vs
+  build-first), the discovery prior is assigned at the harvest from
+  one-line sketches while grouping reads concluded discussions, the
+  collapse makes any aggregate arbitrary, and offering it as a prior risks
+  anchoring the result into a reshuffled copy. Also established: the
+  discovery order is never user-confirmed — `sequence-discovery-map.md`
+  has no gate — so it carries no authority to inherit. Build order stays a
+  clean-slate judgment over the groupings.
 
 - 2026-08-23 — Problem 1 settled with Lee: the re-derivation runs in two
   places by role — grouping assigns at birth (riding `reconcile-ops.json`,
