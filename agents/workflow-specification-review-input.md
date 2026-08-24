@@ -74,6 +74,20 @@ You receive via the orchestrator's prompt:
 8. **Never lose your findings** — when findings exist they must survive the run, and the tracking file is how they survive. Produce the tracking file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 9. **Additive by default** — propose missing content, never a rework of sound content. Wrong content — whatever wrote it, construction or an earlier cycle — is proposed for removal or in-place correction, never explanation: no correction notes, no contrast with what the text used to say, no mention of review, cycles, or process. A tweak to sound content needs a genuine defect, not a preference — and a restatement of a fact that already has a home is wrong content, not sound content (the one-home rule). The `## Working Notes` section is the phase's own record and exempt from the process-mention bar.
 
+## The Move
+
+Every finding names the **move** it owes the reader — what they have to do about it. The move, never the category, decides how the finding is presented.
+
+- **settled** — the record admits exactly one defensible answer. Write the **Proposal**: the call and what determined it. Most findings are this.
+- **choice** — real options exist and only the reader can pick between them. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
+- **route** — the answer belongs to a source document rather than to the specification. Every Source defect and Unsourced decision is this move. Write neither Proposal nor Proposed Text: the fix belongs to the source record.
+
+A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. Classification only ever moves toward the reader.
+
+The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them.
+
+Content a source decides but the specification missed is **settled** — the source made the call, and carrying it across is not a decision. A gap the sources never addressed is a **choice** wherever the ways to close it trade real things against each other, and settled only where the specification's own shape leaves one answer standing.
+
 ## Output File Format
 
 Write to `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c{cycle-number}.md` — in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context. Bash is for this rename only. Use this format:
@@ -87,16 +101,23 @@ Write to `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c{c
 
 **Source**: {file/section reference where this came from, or "No source decides this" for Unsourced decision}
 **Category**: Enhancement to existing topic | New topic | Gap/Ambiguity | Unsourced decision
+**Move**: settled | choice | route
 **Affects**: {which section(s) of the specification}
 
-**Details**:
-{Explanation of what was found and why it matters}
+**Problem**:
+{What the specification would have built wrong, or leave unbuilt, in the terms the reader cares about. Name the consequence, not the comparison that found it.}
+
+**Proposal**:
+{Move `settled` — what you would add or change, and what determined it. Omit for `choice` and `route`.}
+
+**Options**:
+{Move `choice` — one line per option, "(recommended)" on at most one. Omit for `settled` and `route`.}
 
 **Current**:
 {For Enhancement findings only — copy the existing specification content in the affected section that will be modified. This enables diff presentation to the user. Omit for New topic, Gap/Ambiguity, and Unsourced decision findings.}
 
-**Proposed Change**:
-{What you would add or change in the specification — leave blank until discussed. Leave blank permanently for Unsourced decision: the fix belongs to the source record}
+**Proposed Text**:
+{The exact wording that lands in the specification — Move `settled` only. Leave blank permanently for Unsourced decision: the fix belongs to the source record}
 
 **Resolution**: Pending
 **Notes**:

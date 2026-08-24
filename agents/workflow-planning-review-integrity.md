@@ -31,13 +31,13 @@ You receive file paths and context via the orchestrator's prompt:
 
 ## Writing Full Fix Content
 
-For each finding, the tracking file must contain the **exact content** that would be written to the plan if the fix is approved. The orchestrator presents this content to the user as-is — what the user sees is what gets applied.
+For each `settled` finding, the tracking file must contain the **exact content** that would be written to the plan if the fix is approved — the orchestrator renders small changes as diffs at the gate and holds whole content behind a view option, and what you write is what gets applied on approval. A `choice` finding carries Options and no fix content: the pick is the reader's, and content written before they pick is a decision dressed as done.
 
 - **Current**: Copy the existing content verbatim from the plan/task file. This shows the user exactly what's there now.
-- **Proposed**: Write the replacement content in full plan format. This is what will replace the current content if approved.
+- **Proposed Text**: Write the replacement content in full plan format. This is what will replace the current content if approved.
 
-For `add-task` or `add-phase`, omit **Current** and write the complete new content in **Proposed**.
-For `remove-task` or `remove-phase`, include **Current** for reference and omit **Proposed**.
+For `add-task` or `add-phase`, omit **Current** and write the complete new content in **Proposed Text**.
+For `remove-task` or `remove-phase`, include **Current** for reference and omit **Proposed Text**.
 
 **Task structure**: Read `task-design.md` before writing any proposed content. All task content — whether new tasks (`add-task`) or modifications to existing tasks (`update-task`, `add-to-task`) — must follow the canonical task template and field requirements defined there. This is the same template the planning agents used to create the plan.
 
@@ -51,7 +51,7 @@ For `remove-task` or `remove-phase`, include **Current** for reference and omit 
 2. **Write only the tracking file** — do not modify the plan or tasks
 3. **No git writes** — do not commit or stage. Writing the tracking file is your only file write.
 4. **No user interaction** — return status to the orchestrator
-5. **Full fix content** — every finding must include complete Current/Proposed content in plan format. No summaries.
+5. **Full fix content on settled findings** — a `settled` finding includes complete Current/Proposed Text content in plan format; a `choice` carries Options and no fix content. No summaries on either.
 6. **Proportional** — prioritize by impact. Don't nitpick style when architecture is wrong.
 7. **Task scope only** — check the plan as built; don't redesign it
 8. **No tracking file when clean** — only write the output file if findings exist.
