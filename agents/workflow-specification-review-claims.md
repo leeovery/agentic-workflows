@@ -68,7 +68,7 @@ Every finding names the **move** it owes the reader — what they have to do abo
 
 A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. Classification only ever moves toward the reader.
 
-The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them.
+The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them. The reader has not read the specification and won't: **Affects** is the one home for section numbers, and a bare section reference never carries weight in Problem, Proposal, or Options — state the substance the section holds, so the finding reads whole on its own.
 
 A measured falsehood is almost always **settled**: reality decided it. An unreproducible claim is settled too — restate it measurably, source it, or remove it, whichever the specification's own shape makes obvious. Reach for **choice** only where those three genuinely diverge and the pick changes what gets built.
 

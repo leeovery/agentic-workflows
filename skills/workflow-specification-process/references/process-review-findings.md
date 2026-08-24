@@ -109,6 +109,8 @@ Write the finding payload to `.workflows/.cache/{work_unit}/specification/{topic
 - `diff` and `content` — `settled` only; a `choice` proposes nothing and carries neither. Where a Current field is present: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side (Proposed Text as the proposed lines). Where there is no Current and the Proposed Text is short — a sentence to a handful of lines — `diff` with `"current": []`, so the wording is visible at the gate. A whole proposed section: `content` — `{"label": "Proposed Text", "lines": […]}`, held for `v/view`, never rendered at the gate.
 - `apply_label`: `"Apply to the specification verbatim"` · `applied_label`: `"approved. Applied to specification."`
 
+The user decides from the presentation alone — they have not read the specification. Where the tracking file's Problem, Proposal, or Options lean on a section reference, replace it with the substance that section holds; the `meta` Affects row is the one place a section number belongs.
+
 Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
 
 ```bash
