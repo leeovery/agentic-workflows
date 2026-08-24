@@ -297,14 +297,56 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
 }
 
 /**
- * Park a rerouted concern on a topic: create the phase item as `triaged` when
- * absent — a parked concern must never read as started work — leave a
- * `triaged` or `in-progress` item untouched, and set a `completed` item back
- * to `in-progress` (a landed concern reopens the conversation; no
+ * Apply the parking semantics to a phase item receiving a concern: create it
+ * as `triaged` when absent — a parked concern must never read as started
+ * work — heal a status-less item to `triaged`, leave a `triaged` or
+ * `in-progress` item untouched, and set a `completed` item back to
+ * `in-progress` (a landed concern reopens the conversation; no
  * knowledge-base action — re-completion re-indexes over the same identity).
- * Terminal states refuse with the same messages start uses. Legal only in
- * phases whose schema vocabulary contains `triaged`. No git commit — the
- * calling flow commits the artefact append alongside.
+ * Terminal states refuse with the same messages start uses. Mutates `items`;
+ * the caller saves when `dirty`.
+ * @param {Record<string, any>} items the phase's items container
+ * @param {string} phase
+ * @param {string} topic
+ * @returns {{status: string, created: boolean, status_before: string|null, reopened?: boolean, dirty: boolean}}
+ */
+function parkConcernItem(items, phase, topic) {
+  const existing = items[topic];
+  if (!existing || typeof existing !== 'object') {
+    items[topic] = { status: 'triaged' };
+    return { status: 'triaged', created: true, status_before: null, dirty: true };
+  }
+  const before = existing.status ?? null;
+  if (before === 'cancelled') {
+    throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+  }
+  if (before === 'superseded') {
+    const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
+    throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
+  }
+  if (before === 'promoted') {
+    const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
+    throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+  }
+  if (before === 'completed') {
+    existing.status = 'in-progress';
+    return { status: 'in-progress', created: false, status_before: before, reopened: true, dirty: true };
+  }
+  if (before === null) {
+    // A status-less item (partial field writes) has never been started —
+    // heal it to triaged, the same way start heals it to in-progress.
+    existing.status = 'triaged';
+    return { status: 'triaged', created: false, status_before: null, dirty: true };
+  }
+  return { status: before, created: false, status_before: before, dirty: false };
+}
+
+/**
+ * Park a rerouted concern on a topic (parking semantics per
+ * `parkConcernItem`). Legal only in phases whose schema vocabulary contains
+ * `triaged`. No git commit in the bare form — the calling flow commits the
+ * artefact append alongside; the delivery form (`--concern`) installs the
+ * concern file and commits action-scoped.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -347,39 +389,11 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
     const ph = ensureContainer(phases, phase, `phases.${phase}`);
     const items = ensureContainer(ph, 'items', `phases.${phase}.items`);
 
+    const park = parkConcernItem(items, phase, topic);
+    let dirty = park.dirty;
     /** @type {TopicTriageResult} */
-    let base;
-    let dirty = true;
-    const existing = items[topic];
-    if (!existing || typeof existing !== 'object') {
-      items[topic] = { status: 'triaged' };
-      base = { topic, phase, status: 'triaged', created: true, status_before: null };
-    } else {
-      const before = existing.status ?? null;
-      if (before === 'cancelled') {
-        throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
-      }
-      if (before === 'superseded') {
-        const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
-        throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
-      }
-      if (before === 'promoted') {
-        const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
-        throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
-      }
-      if (before === 'completed') {
-        existing.status = 'in-progress';
-        base = { topic, phase, status: 'in-progress', created: false, status_before: before, reopened: true };
-      } else if (before === null) {
-        // A status-less item (partial field writes) has never been started —
-        // heal it to triaged, the same way start heals it to in-progress.
-        existing.status = 'triaged';
-        base = { topic, phase, status: 'triaged', created: false, status_before: null };
-      } else {
-        base = { topic, phase, status: before, created: false, status_before: before };
-        dirty = false;
-      }
-    }
+    const base = { topic, phase, status: park.status, created: park.created, status_before: park.status_before };
+    if (park.reopened) base.reopened = true;
 
     if (delivering || base.reopened === true) {
       // A landing reopens the ground the downstream phase stands on — flag it
@@ -528,6 +542,131 @@ function absorbConcern(cwd, workUnit, phase, topic, { file, message }) {
   noteCommitOutcome(result, outcome);
   if (outcome.failed) {
     result.note = `commit pending — the concern is absorbed; retry with: engine commit ${workUnit} --topic ${phase}/${topic} -m "<message>"`;
+  }
+  return result;
+}
+
+/**
+ * @typedef {object} TopicRequeueResult
+ * @property {string} topic
+ * @property {string} from_phase
+ * @property {string} to_phase
+ * @property {string} moved  the queue-file basename moved out of the source queue
+ * @property {string} concern_path  the installed destination queue file, project-relative
+ * @property {number} remaining  source-queue files left after the move
+ * @property {string|null} status  the destination item's status after the call
+ * @property {boolean} created     true when the destination item was created as `triaged`
+ * @property {string|null} status_before  the destination item's status before the call (null when created)
+ * @property {boolean} [reopened]  set when a completed destination item was reopened to receive the concern
+ * @property {boolean} [source_item_removed]  the source item was a parked stub this move emptied, and was removed
+ * @property {boolean} [reconcile_flagged]  the move flagged completed downstream item(s) for reconciliation
+ * @property {string[]} [sources_staled]  spec items whose source row for this topic flipped `incorporated` → `stale`
+ * @property {string|null} [committed]  short commit sha, or null
+ * @property {string} [note]       set when committed is null
+ * @property {string[]} [warnings] the tail commit's failure detail
+ */
+
+/**
+ * Move one queued concern to the same topic's other phase-side — the repair
+ * for a concern parked on the wrong side of the research/discussion pair.
+ * One transaction: the destination item takes the parking semantics a triage
+ * landing applies (`parkConcernItem` plus the downstream staleness hop), the
+ * queue file is renumbered into the destination queue, a `triaged` source
+ * item the move leaves with an empty queue is removed (it existed only to
+ * park concerns), and the move commits action-scoped under the caller's
+ * message. The response answers `remaining` for the source queue so the
+ * caller routes loop-or-exit with no follow-up read.
+ * @param {string} cwd @param {string} workUnit @param {string} fromPhase
+ * @param {string} toPhase @param {string} topic
+ * @param {{file: string, message: string}} opts
+ * @returns {TopicRequeueResult}
+ */
+function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, message }) {
+  const pair = ['research', 'discussion'];
+  if (!pair.includes(fromPhase) || !pair.includes(toPhase) || fromPhase === toPhase) {
+    throw new Error(`topic requeue moves a concern to the same topic's other phase-side — research↔discussion, got "${fromPhase}" → "${toPhase}"`);
+  }
+  const queue = queueStatus(cwd, workUnit, fromPhase, topic);
+  if (file !== path.basename(file) || !file.endsWith('.md')) {
+    throw new Error(`topic requeue: --file must be a queue-file name, not a path (got "${file}")`);
+  }
+  const sourceRel = `.workflows/${workUnit}/${fromPhase}/.triage/${topic}/${file}`;
+  if (!queue.files.includes(sourceRel)) {
+    throw new Error(`topic requeue: "${file}" is not in the ${topic} ${fromPhase} triage queue`);
+  }
+  const slug = file.replace(/^\d{3}-/, '').replace(/\.md$/, '');
+
+  /** @type {TopicRequeueResult} */
+  const result = withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const phases = ensureContainer(manifest, 'phases', 'phases');
+    const ph = ensureContainer(phases, toPhase, `phases.${toPhase}`);
+    const items = ensureContainer(ph, 'items', `phases.${toPhase}.items`);
+
+    const park = parkConcernItem(items, toPhase, topic);
+    let dirty = park.dirty;
+    /** @type {TopicRequeueResult} */
+    const base = {
+      topic,
+      from_phase: fromPhase,
+      to_phase: toPhase,
+      moved: file,
+      concern_path: '',
+      remaining: queue.count - 1,
+      status: park.status,
+      created: park.created,
+      status_before: park.status_before,
+    };
+    if (park.reopened) base.reopened = true;
+
+    // The move is a delivery to the destination — the same staleness hop a
+    // triage landing makes there.
+    const fd = flagDownstream(manifest, manifest.work_type, toPhase, topic);
+    if (fd.flagged.length > 0) {
+      base.reconcile_flagged = true;
+      dirty = true;
+    }
+    if (fd.staled.length > 0) {
+      base.sources_staled = fd.staled;
+      dirty = true;
+    }
+
+    if (base.remaining === 0) {
+      const srcPh = phases[fromPhase];
+      const srcItems = srcPh && typeof srcPh === 'object' ? srcPh.items : undefined;
+      const src = srcItems && typeof srcItems === 'object' ? srcItems[topic] : undefined;
+      if (src && typeof src === 'object' && src.status === 'triaged') {
+        delete srcItems[topic];
+        base.source_item_removed = true;
+        dirty = true;
+      }
+    }
+
+    const destDirRel = `.workflows/${workUnit}/${toPhase}/.triage/${topic}`;
+    const destDirAbs = path.join(cwd, destDirRel);
+    fs.mkdirSync(destDirAbs, { recursive: true });
+    const n = String(nextConcernNumber(destDirAbs)).padStart(3, '0');
+    const destRel = `${destDirRel}/${n}-${slug}.md`;
+    fs.renameSync(path.join(cwd, sourceRel), path.join(cwd, destRel));
+    base.concern_path = destRel;
+
+    if (dirty) saveWorkUnitManifest(cwd, workUnit, manifest);
+    return base;
+  });
+
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitTailPathspec(
+    cwd,
+    [`.workflows/${workUnit}/manifest.json`, sourceRel, result.concern_path],
+    message,
+    warnings,
+  );
+  result.committed = outcome.committed;
+  result.warnings = warnings;
+  noteCommitOutcome(result, outcome);
+  if (outcome.failed) {
+    result.note = `commit pending — the concern is moved; retry with: engine commit ${workUnit} --topic ${toPhase}/${topic} -m "<message>"`;
   }
   return result;
 }
@@ -894,4 +1033,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows };
+module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows };

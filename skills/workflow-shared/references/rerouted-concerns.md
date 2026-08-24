@@ -4,7 +4,7 @@
 
 ---
 
-Surfaces the current topic's triage queue — concerns rerouted here from other topics, one engine-numbered file each, shape pinned in [triage-landing.md](triage-landing.md) — one at a time, through conversation. A concern leaves the queue only after it has been raised with its full context, worked with the user, folded into the topic's content as the record of that discussion, and absorbed under its own commit. An empty queue is a no-op. The conclusion gate backstops the whole protocol: the topic cannot conclude while its queue holds entries, so nothing is lost however freely the user moves.
+Surfaces the current topic's triage queue — concerns rerouted here from other topics, one engine-numbered file each, shape pinned in [triage-landing.md](triage-landing.md) — one at a time, through conversation. A concern leaves the queue only after it has been raised with its full context, worked with the user, folded into the topic's content as the record of that discussion, and absorbed under its own commit — or moved to the topic's other phase-side when its ask turns out to be owed there. An empty queue is a no-op. The conclusion gate backstops the whole protocol: the topic cannot conclude while its queue holds entries, so nothing is lost however freely the user moves.
 
 ## Parameters
 
@@ -110,6 +110,24 @@ No opt-in. The check re-offers at a later break; the conclusion gate holds regar
 
 Take the lowest-numbered concern still queued — or whichever the user asks for. Read its queue file — `.workflows/{work_unit}/{phase}/.triage/{topic}/{NNN-slug}.md` — with the Read tool. The entry is your brief, never the user's display: it reaches the conversation only through your breakdown, and the raw entry is shown only when the user asks.
 
+**If the entry's ask is owed the topic's other phase-side** — `phase` is `research` or `discussion`, and the ask calls for what the pair's other phase does: a decision owed, or a correction to material the other side's document records, while this session explores; an open question needing exploration while this session decides — offer the move before any breakdown, once per concern (a declined or refused offer never re-renders). Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/requeue-offer.json` with the Write tool — `{"file": "{NNN-slug}.md", "title": "…", "reason": "…"}`, the reason one sentence naming why the ask belongs the other side — then render:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render requeue-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/requeue-offer.json
+```
+
+Emit its `MENU: requeue offer` section verbatim as markdown (not a code block).
+
+**STOP.** Wait for user response.
+
+**If `move`:**
+
+→ Proceed to **F. Move to the Other Phase**.
+
+**If `discuss`:**
+
+The ask is worked here after all. Continue with the raise below.
+
 **If `phase` is `discussion`, arm the Discussion Map before presenting** — the map tells the truth while the concern is live, and routing a correction needs the body just read. Read the subtopic states:
 
 ```bash
@@ -209,6 +227,40 @@ Emit the clear line and nothing else — no recap of the walk:
 
 ```
 Triage queue clear — every rerouted concern is folded in.
+```
+
+The session continues wherever the map and conversation point: parked tangents, open threads, or conclusion if everything is settled.
+
+→ Return to caller.
+
+## F. Move to the Other Phase
+
+Set `other_phase` to the pair's other phase (`research` ↔ `discussion`). One engine transaction owns the move: it renumbers the file into the other phase's queue, parks or reopens that side's item exactly as a triage landing would, and commits action-scoped:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic requeue {work_unit} {phase} {other_phase} {topic} --file {NNN-slug}.md -m "{phase}({work_unit}/{topic}): requeue {NNN-slug} to {other_phase}"
+```
+
+#### If the response is `ok: false`
+
+Surface the engine's error verbatim — it names the recovery path. The concern is still queued here; raise it as normal, the offer spent.
+
+→ Return to **C. Raise One Concern**.
+
+#### If `remaining` is non-zero
+
+Announce the move in one line — the concern now waits in this topic's `{other_phase}` queue, raised when that phase runs; when the response carries `reconcile_flagged` or `sources_staled`, say which downstream work the move flagged. Then re-enter the check now, in this same turn — the move is the next raise's natural break, and the standing opt-in routes it straight to the next raise.
+
+→ Return to **A. Check**.
+
+#### If `remaining` is `0`
+
+Announce the move in the same one line, then emit the clear line and nothing else:
+
+> *Output the next fenced block as a code block:*
+
+```
+Triage queue clear — nothing further queued for this topic.
 ```
 
 The session continues wherever the map and conversation point: parked tangents, open threads, or conclusion if everything is settled.

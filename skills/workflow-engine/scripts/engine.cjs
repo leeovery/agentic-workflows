@@ -23,7 +23,7 @@ const { commitScopedWithKb, commitPathspecScoped, KB_DIR } = require('./domain/c
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
-const { startTopic, triageTopic, queueStatus, absorbConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
@@ -145,6 +145,7 @@ Commands:
   topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]
   topic queue <work-unit> <phase> <topic>
   topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>
+  topic requeue <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
   presence scan <work-unit>
@@ -219,6 +220,7 @@ Commands:
   render triage-announce  <wu.phase.topic>
   render triage-offer     <wu.phase.topic> --file <payload.json>
   render triage-block     <wu.phase.topic>
+  render requeue-offer    <wu.phase.topic> --file <payload.json>
   render reroute-offer    <wu.phase.topic> --file <payload.json>
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
@@ -735,6 +737,23 @@ function runTopic(argv) {
       respond(absorbConcern(process.cwd(), workUnit, phase, topic, { file, message }));
       return;
     }
+    if (command === 'requeue') {
+      /** @type {string[]} */ const pos = [];
+      /** @type {string|undefined} */ let file;
+      /** @type {string|undefined} */ let message;
+      for (let i = 0; i < rest.length; i++) {
+        const a = rest[i];
+        if (a === '--file') file = rest[++i];
+        else if (a === '-m' || a === '--message') message = rest[++i];
+        else pos.push(a);
+      }
+      const [workUnit, fromPhase, toPhase, topic] = pos;
+      if (!workUnit || !fromPhase || !toPhase || !topic || pos.length !== 4 || !file || !message) {
+        throw new Error('Usage: engine topic requeue <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>');
+      }
+      respond(requeueConcern(process.cwd(), workUnit, fromPhase, toPhase, topic, { file, message }));
+      return;
+    }
     if (command === 'triage') {
       /** @type {string[]} */ const pos = [];
       /** @type {string|undefined} */ let concern;
@@ -765,7 +784,7 @@ function runTopic(argv) {
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate|queue|absorb|requeue> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;

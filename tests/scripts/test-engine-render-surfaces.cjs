@@ -980,6 +980,37 @@ describe('render triage surfaces', () => {
     assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /item 1 is missing "from_phase"/);
   });
 
+  it('requeue-offer renders the statement, the diamond question naming the other phase, and the move/discuss menu', () => {
+    writeQueue('measurement', { '001-a-decision-owed.md': 'x' });
+    const file = writePayload(dir, 'rq.json', {
+      file: '001-a-decision-owed.md', title: 'A decision owed', reason: 'it asks this topic to decide, not to find out.',
+    });
+    const out = renderSurface(dir, 'requeue-offer', { dotpath: 'wu.discussion.measurement', file });
+    assert.ok(out.startsWith("=== MENU: requeue offer (emit verbatim as markdown, then STOP for the user's response) ==="), out);
+    assert.ok(out.includes('**A decision owed** — it asks this topic to decide, not to find out.'), out);
+    assert.ok(out.includes('**`◆ Move it to research?`**'), out);
+    assert.ok(/\*\*`m\/move`\*\* +→ Move it to this topic's research queue/.test(out), out);
+    assert.ok(/\*\*`d\/discuss`\*\* +→ Work it here now/.test(out), out);
+
+    const rdir = path.join(dir, '.workflows', 'wu', 'research', '.triage', 'measurement');
+    fs.mkdirSync(rdir, { recursive: true });
+    fs.writeFileSync(path.join(rdir, '001-a-decision-owed.md'), 'x');
+    const rout = renderSurface(dir, 'requeue-offer', { dotpath: 'wu.research.measurement', file });
+    assert.ok(rout.includes('**`◆ Move it to discussion?`**'), rout);
+    assert.ok(rout.includes("Move it to this topic's discussion queue"), rout);
+  });
+
+  it('requeue-offer refuses a missing payload field, a file the queue lacks, and a phase outside the pair', () => {
+    writeQueue('measurement', { '001-a.md': 'x' });
+    assert.throws(() => renderSurface(dir, 'requeue-offer', { dotpath: 'wu.discussion.measurement' }), /--file <payload\.json> is required/);
+    const missing = writePayload(dir, 'missing.json', { file: '001-a.md', title: 'T' });
+    assert.throws(() => renderSurface(dir, 'requeue-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /"reason" must be a non-empty string/);
+    const ghost = writePayload(dir, 'ghost.json', { file: '009-ghost.md', title: 'T', reason: 'r' });
+    assert.throws(() => renderSurface(dir, 'requeue-offer', { dotpath: 'wu.discussion.measurement', file: ghost }), /is not in the measurement discussion triage queue/);
+    const ok = writePayload(dir, 'ok.json', { file: '001-a.md', title: 'T', reason: 'r' });
+    assert.throws(() => renderSurface(dir, 'requeue-offer', { dotpath: 'wu.investigation.measurement', file: ok }), /research\/discussion pair only/);
+  });
+
   it('triage-block derives the count and the phase word, refusing an empty queue', () => {
     assert.throws(() => renderSurface(dir, 'triage-block', { dotpath: 'wu.discussion.measurement' }), /queue is empty — nothing blocks conclusion/);
     writeQueue('measurement', { '001-a.md': 'x' });
@@ -2678,7 +2709,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 

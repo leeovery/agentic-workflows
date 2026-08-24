@@ -2259,6 +2259,42 @@ function triageBlock(cwd, { dotpath }) {
   ].join('\n');
 }
 
+// requeue-offer — the wrong-side gate over one queued concern: the raise
+// found the entry owed the topic's other phase-side, and the move is the
+// user's call. The reason line is judgment content and arrives in the
+// payload; the destination is the pair's other phase, computed, never asked
+// for.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function requeueOffer(cwd, { dotpath, file }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'requeue-offer');
+  if (phase !== 'research' && phase !== 'discussion') {
+    throw new Error(`render requeue-offer: a concern moves within the research/discussion pair only — got "${phase}"`);
+  }
+  if (!file) throw new Error('render requeue-offer: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'requeue-offer');
+  for (const field of ['file', 'title', 'reason']) {
+    if (!isFilled(p[field])) throw new Error(`render requeue-offer: "${field}" must be a non-empty string`);
+  }
+  const { files } = triageQueue(cwd, workUnit, phase, topic);
+  if (!files.includes(p.file)) {
+    throw new Error(`render requeue-offer: "${p.file}" is not in the ${topic} ${phase} triage queue`);
+  }
+  const other = phase === 'research' ? 'discussion' : 'research';
+  return section(
+    'MENU: requeue offer',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`**${p.title}** — ${p.reason}`, [
+      cmdOption('m', 'move', `Move it to this topic's ${other} queue — raised when ${other} runs`),
+      cmdOption('d', 'discuss', 'Work it here now'),
+    ], { question: `Move it to ${other}?` }),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Bridge continuation surfaces — work-unit-level: pipeline completion
 // displays and the continuation gates the bridge presents between phases.
@@ -3247,6 +3283,7 @@ const SURFACES = {
   'triage-announce': triageAnnounce,
   'triage-offer': triageOffer,
   'triage-block': triageBlock,
+  'requeue-offer': requeueOffer,
   'reroute-offer': rerouteOffer,
   'reroute-candidates': rerouteCandidates,
   'off-topic-offer': offTopicOffer,

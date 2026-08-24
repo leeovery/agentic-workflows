@@ -341,7 +341,7 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|cancel\|reactivate>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|cancel\|reactivate\|queue\|absorb\|requeue>/);
   });
 
   it('flips a triaged stub to in-progress — the one exit from triaged', () => {
@@ -607,6 +607,140 @@ describe('engine topic triage', () => {
     assert.match(err.error, /Invalid status "triaged" for phase "planning"/);
     // Nothing created on the refused path.
     assert.strictEqual(readManifest(dir, 'payments').phases.planning, undefined);
+  });
+});
+
+describe('engine topic requeue', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** Land one concern in a topic's queue via the delivery form. */
+  function land(phase, topic, slug) {
+    writeFile(dir, '.workflows/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody of ${slug}.\n`);
+    return engine(dir, ['topic', 'triage', 'payments', phase, topic,
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', `land ${slug}`]);
+  }
+
+  it('moves the concern to the other phase-side: dest item parked, file renumbered, stub removed, action-scoped commit', () => {
+    land('research', 'edge-cases', 'a-decision-owed');
+    writeFile(dir, '.workflows/payments/research/auth-flow.md', 'dirty peer\n');
+
+    const res = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
+      '--file', '001-a-decision-owed.md', '-m', 'research(payments/edge-cases): requeue 001-a-decision-owed to discussion']);
+
+    assert.strictEqual(res.from_phase, 'research');
+    assert.strictEqual(res.to_phase, 'discussion');
+    assert.strictEqual(res.moved, '001-a-decision-owed.md');
+    assert.strictEqual(res.concern_path, '.workflows/payments/discussion/.triage/edge-cases/001-a-decision-owed.md');
+    assert.strictEqual(res.remaining, 0);
+    assert.strictEqual(res.status, 'triaged');
+    assert.strictEqual(res.created, true);
+    assert.strictEqual(res.source_item_removed, true);
+    assert.match(res.committed, /^[0-9a-f]+$/);
+
+    const m = readManifest(dir, 'payments');
+    assert.strictEqual(m.phases.research.items['edge-cases'], undefined, 'the emptied parked stub is removed');
+    assert.deepStrictEqual(m.phases.discussion.items['edge-cases'], { status: 'triaged' });
+    assert.match(fs.readFileSync(path.join(dir, res.concern_path), 'utf8'), /Body of a-decision-owed/);
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/research/.triage/edge-cases/001-a-decision-owed.md')), 'source file gone');
+    const show = git(dir, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+    assert.deepStrictEqual(show, [
+      '.workflows/payments/discussion/.triage/edge-cases/001-a-decision-owed.md',
+      '.workflows/payments/manifest.json',
+      '.workflows/payments/research/.triage/edge-cases/001-a-decision-owed.md',
+    ], 'commit confined to the two queue paths + manifest');
+    assert.match(git(dir, ['status', '--porcelain', '-uall']), /research\/auth-flow\.md/, 'peer dirt untouched');
+    assert.strictEqual(lastMessage(dir), 'research(payments/edge-cases): requeue 001-a-decision-owed to discussion');
+  });
+
+  it('renumbers into the destination queue behind existing entries', () => {
+    land('discussion', 'edge-cases', 'already-queued');
+    land('research', 'edge-cases', 'a-decision-owed');
+
+    const res = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
+      '--file', '001-a-decision-owed.md', '-m', 'm']);
+
+    assert.strictEqual(res.concern_path, '.workflows/payments/discussion/.triage/edge-cases/002-a-decision-owed.md');
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.workflows/payments/discussion/.triage/edge-cases')).sort(),
+      ['001-already-queued.md', '002-a-decision-owed.md']);
+  });
+
+  it('leaves an in-progress source item alone, and a still-populated triaged source stub in place', () => {
+    land('research', 'auth-flow', 'a-decision-owed');
+    const live = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'auth-flow',
+      '--file', '001-a-decision-owed.md', '-m', 'm']);
+    assert.strictEqual(live.source_item_removed, undefined);
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['auth-flow'].status, 'in-progress');
+
+    land('research', 'edge-cases', 'first');
+    land('research', 'edge-cases', 'second');
+    const partial = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
+      '--file', '001-first.md', '-m', 'm']);
+    assert.strictEqual(partial.remaining, 1);
+    assert.strictEqual(partial.source_item_removed, undefined);
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['edge-cases'].status, 'triaged', 'a stub with entries left keeps parking them');
+  });
+
+  it('a completed destination reopens and hops — the same staleness a triage delivery lands', () => {
+    const m = epicManifest();
+    m.phases.specification = { items: {
+      unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' } } },
+    } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    land('research', 'session-model', 'a-decision-owed');
+
+    const res = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'session-model',
+      '--file', '001-a-decision-owed.md', '-m', 'm']);
+
+    assert.strictEqual(res.reopened, true);
+    assert.strictEqual(res.status, 'in-progress');
+    assert.strictEqual(res.reconcile_flagged, true);
+    assert.deepStrictEqual(res.sources_staled, ['unified']);
+    const items = readManifest(dir, 'payments').phases.specification.items;
+    assert.strictEqual(items.unified.reconcile_needed, 'discussion');
+    assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
+  });
+
+  it('moves discussion-side concerns to research too', () => {
+    land('discussion', 'refund-policy', 'an-open-question');
+
+    const res = engine(dir, ['topic', 'requeue', 'payments', 'discussion', 'research', 'refund-policy',
+      '--file', '001-an-open-question.md', '-m', 'm']);
+
+    assert.strictEqual(res.to_phase, 'research');
+    assert.strictEqual(res.concern_path, '.workflows/payments/research/.triage/refund-policy/001-an-open-question.md');
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['refund-policy'].status, 'triaged');
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].status, 'in-progress', 'source discussion untouched');
+  });
+
+  it('refuses anything outside the research↔discussion pair, a path for --file, and a file not in the queue — nothing written', () => {
+    land('research', 'edge-cases', 'a-decision-owed');
+
+    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'research', 'edge-cases',
+      '--file', '001-a-decision-owed.md', '-m', 'm']).error, /other phase-side/);
+    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'investigation', 'edge-cases',
+      '--file', '001-a-decision-owed.md', '-m', 'm']).error, /other phase-side/);
+    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'planning', 'discussion', 'edge-cases',
+      '--file', '001-a-decision-owed.md', '-m', 'm']).error, /other phase-side/);
+    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
+      '--file', 'sub/001-a-decision-owed.md', '-m', 'm']).error, /queue-file name, not a path/);
+    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
+      '--file', '009-ghost.md', '-m', 'm']).error, /not in the edge-cases research triage queue/);
+    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
+      '--file', '001-a-decision-owed.md']).error, /Usage/);
+
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/.triage/edge-cases/001-a-decision-owed.md')), 'queue untouched on every refusal');
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], undefined, 'no destination item conjured');
+  });
+
+  it('a terminal destination refuses before the file moves', () => {
+    land('research', 'session-model', 'a-decision-owed');
+    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'session-model']);
+
+    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'session-model',
+      '--file', '001-a-decision-owed.md', '-m', 'm']).error, /is cancelled — reactivate it instead/);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/.triage/session-model/001-a-decision-owed.md')), 'concern still queued at the source');
   });
 });
 
