@@ -531,9 +531,12 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
   after cancelling only the *specification* item, `needs_sequencing` flips
   true, and the still-live topic sorts last until the whole map renumbers
   on next entry. It is reachable from the cancel menu. That is a
-  pre-existing bug this programme forces into the open:
-  the stash must be gated on the cancelled phase, and a separate
-  spec-side stash added. Both belong in the pipeline simulation.
+  pre-existing bug this programme forced into the open. **Fixed
+  independently on PR #996** — both the stash and the restore are now
+  gated on the map's lifecycle phases (`research`, `discussion`), with
+  covering tests that fail without the gate. What remains for this
+  programme is only the *spec-side* stash: the build order needs its own
+  cancel/reactivate round-trip, which does not exist yet.
 
 - **Pivot leaves a spec item that can never be ordered.**
   `pivotWorkUnit` (`workunit-lifecycle.cjs:245-295`) flips a feature to an
@@ -623,9 +626,11 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
 
 All design questions settled; the stack shape below is the proposal.
 
-1. **Engine** — the live-set derivation, `build_order_needs_sequencing`,
-   the `build-order sequence` verb, spec-side `previous_order` stash, and
-   the `topic cancel` phase-gating bug fix. Simulation extended.
+1. **Engine** — the live-set derivation,
+   `build_order_needs_sequencing`, `build_order_stale`, the `build-order
+   sequence` verb, and the spec-side `previous_order` stash. Simulation
+   extended. (The `topic cancel` phase-gating bug this surfaced is already
+   fixed on PR #996, off main and independent of this stack.)
 2. **Prose — birth and refresh** — the sequencing reference; wired into
    grouping and the `single` fast path for birth (riding
    `reconcile-ops.json`), plus a new `workflow-continue-epic` step
@@ -657,6 +662,15 @@ All design questions settled; the stack shape below is the proposal.
   menu (B9), no ceremony (B10). Merged plans, the epic-wide ready queue,
   hard gates, the appraisal agent and a verification pass all rejected.
   Sub-grouping within an epic raised and parked as idea 44.
+
+- 2026-08-24 — The `topic cancel` order-stripping bug pulled out of this
+  stack and fixed on its own PR (#996, off main): the stash and the restore
+  are gated on the map's lifecycle phases. Reproduced first, then covered
+  by tests that fail without the gate. A second-order effect surfaced while
+  fixing — after a cancel triggered a wholesale re-sequence, reactivating
+  wrote the stale stashed order back over the fresh one, so two topics
+  could hold the same number. Both directions now inert for build phases.
+  This programme keeps only the spec-side stash, which is new work.
 
 - 2026-08-24 — Problems 2 and 3 settled with Lee. **Recommendation:**
   phase outranks order — the order picks the topic within the winning
