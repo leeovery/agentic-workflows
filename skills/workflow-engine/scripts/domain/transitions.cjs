@@ -75,7 +75,7 @@ function assertLegalWrite(phase, status) {
 /**
  * The phase item for `topic`, or a loud error.
  * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string, superseded_by?: string, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
+ * @returns {{status?: string, previous_status?: string, superseded_by?: string, order?: number, previous_order?: number, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
  */
 function phaseItem(manifest, phase, topic) {
   assertLegalWrite(phase, 'cancelled');
@@ -711,6 +711,15 @@ function completeTopic(cwd, workUnit, phase, topic) {
     }
     item.status = 'completed';
 
+    // A completed specification declares real dependencies — exactly the
+    // information that sharpens a build order first assigned at grouping.
+    // Flag rather than resequence: the epic-entry sequencing step does the
+    // work, so there is one place that sequences. Cleared by
+    // `build-order sequence`.
+    if (phase === 'specification' && manifest.work_type === 'epic') {
+      manifest.phases.specification.build_order_stale = true;
+    }
+
     saveWorkUnitManifest(cwd, workUnit, manifest);
   });
 
@@ -932,12 +941,24 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
         }
         spec.previous_status = spec.status;
         spec.status = 'cancelled';
+        if ('order' in spec) {
+          spec.previous_order = spec.order;
+          delete spec.order;
+        }
         cascaded.push(name);
       }
     }
 
     item.previous_status = item.status;
     item.status = 'cancelled';
+
+    // The build order lives on specification items the way the map's order
+    // lives on discovery items — a cancelled spec leaves the live set, so
+    // its number is stashed for the reactivate round-trip, never dropped.
+    if (phase === 'specification' && 'order' in item) {
+      item.previous_order = item.order;
+      delete item.order;
+    }
 
     if (MAP_LIFECYCLE_PHASES.includes(phase)) {
       const discovery = manifest.phases && manifest.phases.discovery;
@@ -1005,6 +1026,20 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
     assertLegalWrite(phase, previous);
     item.status = previous;
     delete item.previous_status;
+
+    if (phase === 'specification' && 'previous_order' in item) {
+      // Restore only when the stashed number is still free — the live set
+      // renumbers contiguously while an item is cancelled, so a blind
+      // restore can seat two topics on one number (the collision the map's
+      // reactivate can still produce). A taken number drops the stash and
+      // leaves the item unordered; `build_order_needs_sequencing` flips and
+      // the next sequencing pass seats it wholesale.
+      const specItems = (manifest.phases.specification && manifest.phases.specification.items) || {};
+      const taken = Object.entries(specItems).some(([name, other]) =>
+        name !== topic && other && typeof other === 'object' && other.order === item.previous_order);
+      if (!taken) item.order = item.previous_order;
+      delete item.previous_order;
+    }
 
     if (MAP_LIFECYCLE_PHASES.includes(phase)) {
       const discovery = manifest.phases && manifest.phases.discovery;

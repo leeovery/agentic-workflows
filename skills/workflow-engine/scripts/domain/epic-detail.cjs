@@ -18,6 +18,7 @@ const {
   computeAnalysisCacheStatus,
   buildDiscoveryMap,
 } = require('./derivations.cjs');
+const { computeBuildOrderNeedsSequencing } = require('./build-order.cjs');
 
 // Every phase the epic detail iterates and the epic dashboard / thin dump
 // surface — discovery (the map, not a pipeline phase) first, then the epic
@@ -49,6 +50,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} [format]                 planning items
  * @property {boolean} [deps_satisfied]        planning items
  * @property {DepBlocking[]} [deps_blocking]   planning items with unmet deps
+ * @property {number} [order]                  specification items — the build order position
  * @property {string|number} [current_phase]   implementation items
  * @property {string} [current_task]           implementation items — the task in flight
  * @property {string[]} [completed_phases]     implementation items
@@ -124,6 +126,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} active_session  in-progress discovery session number, or null
  * @property {string|null} convergence_state  `in-progress` | `settled` | null (no map)
  * @property {boolean} needs_sequencing
+ * @property {boolean} build_order_needs_sequencing  a live spec topic lacks an order, or completion flagged it stale
  * @property {MapSummary|null} map_summary
  * @property {number} imports_count
  * @property {number} seeds_count
@@ -212,6 +215,9 @@ function epicDetail(cwd, manifest) {
       const entry = { name: item.name, status: item.status || 'unknown' };
       if (item.reconcile_needed !== undefined) entry.reconcile_needed = item.reconcile_needed;
 
+      if (phase === 'specification' && Number.isInteger(item.order)) {
+        entry.order = item.order;
+      }
       if (phase === 'specification' && item.sources) {
         const sourcesArr = Array.isArray(item.sources)
           ? item.sources
@@ -387,6 +393,7 @@ function epicDetail(cwd, manifest) {
       ? manifest.phases.discovery.active_session : null,
     convergence_state: convergenceState,
     needs_sequencing: builtMap.needs_sequencing,
+    build_order_needs_sequencing: computeBuildOrderNeedsSequencing(manifest),
     map_summary: mapSummary,
     imports_count: importsCount,
     seeds_count: seedsCount,
