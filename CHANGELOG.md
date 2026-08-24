@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.8] - 2026-08-24
+
+🔧 Changed
+- Session labels now survive a tmux server restart — the original terminal name resolves correctly instead of compounding into repeated suffixes.
+- Boot now runs a stranded-label repair pass, restoring a terminal's true original name when its session label was left behind by a session that never cleaned up.
+- Research and deep-dive findings that converge on a design call now record the options as material for discussion instead of asking the user to settle it during research.
+- Background-agent raises now always close by stating what response (if any) is expected — a question, an invitation to push back, or an explicit "nothing to decide" — rather than trailing off after stating a position.
+
 ## [0.7.7] - 2026-08-24
 
 🔧 Changed
