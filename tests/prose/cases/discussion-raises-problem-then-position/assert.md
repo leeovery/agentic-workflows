@@ -44,8 +44,9 @@ Presentation claims — the opener shape is the behaviour under test:
 - the raise ends awaiting the user — at most one question, no menu,
   no bundled follow-ups — and its last beat says where the ball sits:
   a genuine question, or an explicit invitation to push back on the
-  stated lean naming what a different reading would have to move;
-  never a dead stop after the position, never a stock closer
+  stated lean pointing at the reason the raise already gave; the beat
+  draws only on what the raise already said, never on held-back
+  depth; never a dead stop after the position, never a stock closer
 - no outcome is documented in the raise's turn: nothing is written to
   the discussion file and no direction is recorded as chosen
 
