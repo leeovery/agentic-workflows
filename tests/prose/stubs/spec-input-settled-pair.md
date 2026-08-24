@@ -59,9 +59,11 @@ currency unit, and nothing says which way it rounds — two builders
 would refund two different amounts for the same line.
 
 **Proposal**:
-Nothing turns on the direction, so convention settles it: round to the
-nearest smallest currency unit, half away from zero. I would state it
-in one line under Refunds.
+The gateway settles amounts to the nearest smallest currency unit,
+half away from zero, on its own statements — matching it is the only
+answer that reconciles a refund with the settlement it reverses.
+Nothing turns on inventing a different rule, so I would state the
+gateway's in one line under Refunds.
 
 **Proposed Text**:
 - Partial refund amounts round to the nearest smallest currency unit, half away from zero.

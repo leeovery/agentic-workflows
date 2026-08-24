@@ -13,7 +13,7 @@ The prose should have taken this path:
 5. the graph step delegates to the grapher — stubbed, reapplying the
    existing edges unchanged — and the approval commits through the
    scoped plan commit
-6. review cycle initialisation opens on the orphan sweep: it reads the
+6. review cycle initialisation opens on the live-findings sweep: it reads the
    tracking subtree, finds cycle 1's traceability entry still
    in-progress, and routes into the findings walk for that tracking
    file BEFORE any cycle number moves — a fresh cycle never opens over
@@ -31,11 +31,11 @@ The prose should have taken this path:
    engine, the cycle gate passes, and the traceability then integrity
    reviews are dispatched sequentially — both stubbed clean, no
    tracking file written; re-verification passes with every tracking
-   entry complete; the review completes and commits; the compliance self-check refreshes
-    the session's instructions; the conclusion gate is put to the user
-    and, on their yes, the spec baseline is re-stamped from the current
-    commit, the plan completes through the engine, and the final commit
-    lands
+   entry complete, and the review completes and commits
+10. the compliance self-check refreshes the session's instructions;
+    the conclusion gate is put to the user and, on their yes, the spec
+    baseline is re-stamped from the current commit, the plan completes
+    through the engine, and the final commit lands
 11. the walk stops at the pipeline continuation — the bridge is never
     invoked
 
