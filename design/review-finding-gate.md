@@ -222,6 +222,37 @@ Simulation re-pin where call sequences move.
 
 ## Log
 
+- 2026-08-24 — The walks ran, and layers 5–7 came out of them. Eleven
+  intersecting cases plus the new coverage pair: fourteen PASS, one
+  narration-only FLAKY, and two genuine FAILs, both reproduced from
+  fresh worlds and both prose defects the walks alone could see. The
+  landing sweep (#994): a measured correction landed in a discussion's
+  Journey and Decision while the disproven claim survived in Key
+  Insights — §C now demands the every-restatement sweep, doc-type
+  blind, covering superseded positions as well as disproven
+  measurements, with the Trigger ban scoped back to the caller so the
+  discussion template's own review-finding form stays sanctioned. The
+  coverage cases (#995): the Discuss/Declined exchange and the
+  planning choice lane, the two paths that shipped unwalked — and the
+  planning case's first run caught the second FAIL: plan-review opened
+  a fresh cycle over an in-progress tracking file, settling the
+  orphaned findings only at the completion checkpoint. The fix (#998)
+  mirrors spec-review's §A sweep into planning, and the close-out pass
+  hardened both mirrors with the crash-orphan clause (both phases
+  record in-progress after the agent writes, so a file with no
+  manifest row is a real window) and the run-order rule. The stack
+  reordered so the cases sit above the fix they depend on — GitHub's
+  stack state wedged the original #997 mid-reorder and auto-marked it
+  merged; #998 is the same branch reopened. Every fix re-walked PASS.
+
+  Banked residue, deliberately not taken here: the every-restatement
+  sweep is owed to the discussion and research document reviews and to
+  correcting-historical-artifacts, which carry the same
+  repair-citing-prose move without it; planning's graph-approval and
+  conclude gates are still prose-authored menus; the two pre-994
+  incoherence cases pass on assertions narrower than the new sweep.
+
+
 - 2026-08-23 — Second review pass, scoped to the fix delta: four
   finders over the fix commits alone, 19 verified findings, all
   landed. Four rulings closed it: the auto-override announcement keys
