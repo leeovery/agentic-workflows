@@ -162,9 +162,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 → Return to **F. Approve Each Task**.
 
-**If `skip`:**
+**If `decline`:**
 
-Record the skip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} skipped`.
+Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} skipped`.
 
 → Return to **F. Approve Each Task**.
 

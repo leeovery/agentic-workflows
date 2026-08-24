@@ -80,7 +80,7 @@ A crash between the synthesizer's write and the init — initialise the cycle no
 
 #### If the latest cycle's remediation phase is in the plan and none of its tasks are in `completed_tasks`
 
-The session died between **F**'s plan write and **G**'s re-open (task ids land in `completed_tasks` when the re-opened implementation runs them, skips included). Re-enter **F** — the task writer is idempotent and completes any partial `task_map`, and its commit picks up whatever the crash left unstaged.
+The session died between **F**'s plan write and **G**'s re-open (task ids land in `completed_tasks` when the re-opened implementation runs them, declines included). Re-enter **F** — the task writer is idempotent and completes any partial `task_map`, and its commit picks up whatever the crash left unstaged.
 
 → Proceed to **F. Create Tasks in Plan**.
 
@@ -170,9 +170,9 @@ Record both in one write: `node .claude/skills/workflow-engine/scripts/engine.cj
 
 → Return to **D. Process Task**.
 
-**If `skip`:**
+**If `decline`:**
 
-Record the skip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} skipped`.
+Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} skipped`.
 
 → Return to **D. Process Task**.
 
@@ -190,7 +190,7 @@ Revise the task content in the staging file based on the user's feedback.
 
 → Proceed to **F. Create Tasks in Plan**.
 
-#### If all tasks were skipped
+#### If all tasks were declined
 
 Mark the review completed:
 
@@ -201,7 +201,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit
 Commit the cycle's decisions (the scoped commit covers the manifest):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — tasks skipped"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — tasks declined"
 ```
 
 **Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.

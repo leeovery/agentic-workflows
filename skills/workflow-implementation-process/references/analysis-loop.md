@@ -266,9 +266,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 → Return to **F. Process Task**.
 
-**If `skip`:**
+**If `decline`:**
 
-Record the skip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} skipped`.
+Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} skipped`.
 
 → Return to **F. Process Task**.
 
@@ -286,12 +286,12 @@ Revise the task content in the staging file based on the user's feedback.
 
 → Proceed to **H. Create Tasks in Plan**.
 
-#### If all tasks were skipped
+#### If all tasks were declined
 
 Commit the cycle's decisions (the scoped commit covers the manifest):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — tasks skipped"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — tasks declined"
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 8**.
