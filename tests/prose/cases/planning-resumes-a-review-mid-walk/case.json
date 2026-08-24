@@ -66,10 +66,10 @@
       "manifest get pay.planning.pay status",
       "render resume-gate pay.planning.pay --variant plan",
       "render phase-tree pay.planning.pay",
-      "manifest set pay.planning.pay review_cycle 2",
       "render findings-summary pay.planning.pay",
       "render finding pay.planning.pay",
       "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
+      "manifest set pay.planning.pay review_cycle 2",
       "planning(pay): complete plan review",
       "manifest set pay.planning.pay spec_commit",
       "topic complete pay planning pay"
