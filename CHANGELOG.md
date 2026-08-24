@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.7] - 2026-08-24
+
+🔧 Changed
+- The task-approval gate's skip option is now "decline" — declining a task marks it as work that won't be built, wording that matches what the keystroke actually does.
+
+🐛 Fixed
+- Cancelling or reactivating a specification topic no longer strips a same-named discussion or research topic's position on the discovery map.
+
 ## [0.7.6] - 2026-08-24
 
 🔧 Changed
