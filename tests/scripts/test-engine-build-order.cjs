@@ -353,6 +353,26 @@ describe('EpicDetail sorts the build phases by order', () => {
   });
 });
 
+describe('the sort join ignores terminal residue', () => {
+  it('a superseded spec keeping a stale number cannot seat a live plan', () => {
+    const m = {
+      name: 'portal', work_type: 'epic', status: 'in-progress',
+      phases: {
+        specification: {
+          items: {
+            auth: { status: 'completed', order: 1 },
+            legacy: { status: 'superseded', order: 1 },
+          },
+        },
+        planning: { items: { legacy: { status: 'completed' }, auth: { status: 'completed' } } },
+      },
+    };
+    const d = epicDetail('/nonexistent', m);
+    assert.deepStrictEqual(d.phases.planning.map((e) => e.name), ['auth', 'legacy'],
+      'the live spec order wins; the terminal twin trails unordered');
+  });
+});
+
 describe('EpicDetail carries the flag', () => {
   it('the detail exposes build_order_needs_sequencing', () => {
     const m = epicManifest();

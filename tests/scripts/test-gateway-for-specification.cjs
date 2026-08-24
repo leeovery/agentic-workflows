@@ -593,6 +593,25 @@ describe('workflow-specification-entry format', () => {
       assert.deepStrictEqual(r.specifications.map(s => s.name), ['auth', 'zeta', 'stray']);
     });
 
+    it('two unordered specs in one tier keep insertion order — no NaN comparator', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { d1: { status: 'completed' }, d2: { status: 'completed' } } },
+          specification: {
+            items: {
+              zeta: { status: 'in-progress', sources: { d1: { status: 'pending' } } },
+              alpha: { status: 'in-progress', sources: { d2: { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/zeta/specification.md', '# Z');
+      createFile(dir, '.workflows/v1/specification/alpha/specification.md', '# A');
+      const r = discover(dir);
+      assert.deepStrictEqual(r.specifications.map(s => s.name), ['zeta', 'alpha']);
+    });
+
     it('concluded_count counts only completed specs with no pending sources', () => {
       reorderFixture();
       const r = discover(dir);

@@ -2418,6 +2418,8 @@ function epicAllDoneGate(cwd, { dotpath }) {
 // Advisory always: the menu offers proceed-anyway, never a refusal.
 // ---------------------------------------------------------------------------
 
+const { SOFT_GATE_ACTIONS } = require('./projections/epic.cjs');
+
 const SOFT_GATE_DISCUSSION_ACTIONS = ['start_discussion', 'start_discussion_after_research', 'continue_discussion', 'new_discussion'];
 
 /** @param {object[]} items @returns {{inProgress: number, total: number}} */
@@ -2435,7 +2437,10 @@ function softGateCounts(items) {
 function buildOrderAhead(manifest, topic, donePhase) {
   const specs = phaseItems(manifest, 'specification').filter(buildOrderLive);
   const selected = specs.find((i) => i.name === topic);
-  if (!selected || !Number.isInteger(selected.order)) return [];
+  if (!selected) {
+    throw new Error(`render epic-soft-gate: no live specification item "${topic}"`);
+  }
+  if (!Number.isInteger(selected.order)) return [];
   const done = new Set(phaseItems(manifest, donePhase)
     .filter((i) => i.status === 'completed')
     .map((i) => i.name));
@@ -2447,7 +2452,9 @@ function buildOrderAhead(manifest, topic, donePhase) {
 
 /** @param {{name: string, order: number}[]} ahead @returns {string} */
 function aheadPhrase(ahead) {
-  return ahead.map((a) => `"${titlecase(a.name)}" (topic ${a.order})`).join(' and ');
+  const names = ahead.map((a) => `"${titlecase(a.name)}"`);
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
 /**
@@ -2458,6 +2465,9 @@ function aheadPhrase(ahead) {
 function epicSoftGate(cwd, { dotpath, action, topic }) {
   const { manifest } = resolveWorkUnit(cwd, dotpath, 'epic-soft-gate');
   if (!isFilled(action)) throw new Error('render epic-soft-gate: --action is required');
+  if (!SOFT_GATE_ACTIONS.includes(/** @type {string} */ (action))) {
+    throw new Error(`render epic-soft-gate: unknown --action "${action}" (menu actions: ${SOFT_GATE_ACTIONS.join(', ')})`);
+  }
 
   let message = null;
   let advisory = 'The system will re-analyse if you revisit later — proceeding now is safe, but may require rework.';

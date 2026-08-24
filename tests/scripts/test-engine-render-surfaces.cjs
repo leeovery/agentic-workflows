@@ -66,15 +66,44 @@ describe('epic-soft-gate', () => {
     orderedEpic();
     const out = renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'billing' });
     assert.match(out, /MENU: epic soft gate/);
-    assert.match(unwrap(out), /You're about to plan "Billing" — "Auth" \(topic 1\) and "Reports" \(topic 2\) are ahead of it in the build order and unplanned\./);
+    assert.match(unwrap(out), /You're about to plan "Billing" — "Auth" and "Reports" are ahead of it in the build order and unplanned\./);
     assert.match(out, /Proceed anyway\?/);
     assert.match(out, /The build order is advisory/);
   });
 
-  it('a single ahead topic reads singular', () => {
+  it('a single ahead topic reads singular; three read as a comma list', () => {
     orderedEpic();
-    const out = renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'reports' });
-    assert.match(unwrap(out), /"Auth" \(topic 1\) is ahead of it in the build order and unplanned\./);
+    const one = renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'reports' });
+    assert.match(unwrap(one), /"Auth" is ahead of it in the build order and unplanned\./);
+
+    writeManifest(dir, 'wide', {
+      phases: {
+        specification: {
+          items: {
+            a: { status: 'completed', order: 1 },
+            b: { status: 'completed', order: 2 },
+            c: { status: 'completed', order: 3 },
+            d: { status: 'completed', order: 4 },
+          },
+        },
+      },
+    });
+    const three = renderSurface(dir, 'epic-soft-gate', { dotpath: 'wide', action: 'continue_planning', topic: 'd' });
+    assert.match(unwrap(three), /"A", "B" and "C" are ahead of it in the build order and unplanned\./);
+  });
+
+  it('continue_implementation reads the implementation phase; its --topic throw fires', () => {
+    orderedEpic();
+    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'continue_implementation', topic: 'billing' }), /unbuilt/);
+    assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'continue_implementation' }), /--topic is required/);
+  });
+
+  it('an unknown action or an unknown topic refuses by name', () => {
+    orderedEpic();
+    assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planing', topic: 'billing' }),
+      /unknown --action "start_planing"/);
+    assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'no-such' }),
+      /no live specification item "no-such"/);
   });
 
   it('empty when nothing sits ahead, when ahead topics are planned, and when the selection has no order', () => {

@@ -240,7 +240,7 @@ Commands:
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
   render epic-all-done-gate <wu>
-  render epic-soft-gate <work-unit> --action <action> [--topic <topic>]
+  render epic-soft-gate <wu> --action <action> [--topic <topic>]
   render task-brief        <wu.implementation.topic> --file <payload.json>
   render task-result       <wu.implementation.topic> --file <payload.json> --result approved|needs-changes|blocked|failed
   render task-gate         <wu.implementation.topic>

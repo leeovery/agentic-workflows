@@ -96,6 +96,15 @@ const ACTION_PHASE = {
   continue_review: 'review',
 };
 
+// Every action the epic menu can hand the soft gate: the phase actions plus
+// the command options the selection flow routes through it. One home — the
+// gate refuses anything outside it, so a rename here can never silently
+// stop a gate firing.
+const SOFT_GATE_ACTIONS = [
+  ...Object.keys(ACTION_PHASE),
+  'analyze_discussions', 'new_discussion', 'new_research', 'continue_discovery',
+];
+
 const START_GATE = {
   start_specification: 'can_start_specification',
   start_planning: 'can_start_planning',
@@ -929,4 +938,4 @@ function epicReactivateMenu(detail) {
   return selectionSubView('Cancelled Topics', 'No cancelled topics.', 'Which topic would you like to reactivate?', 'reactivate', rows);
 }
 
-module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu };
+module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, SOFT_GATE_ACTIONS };

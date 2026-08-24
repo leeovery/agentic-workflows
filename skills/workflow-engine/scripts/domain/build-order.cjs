@@ -152,7 +152,7 @@ function computeBuildOrderNeedsSequencing(manifest) {
  */
 function sortItemsByBuildOrder(items, manifest, phase) {
   const specOrder = new Map(phaseItems(manifest, 'specification')
-    .filter((s) => Number.isInteger(s.order))
+    .filter((s) => buildOrderLive(s) && Number.isInteger(s.order))
     .map((s) => [s.name, s.order]));
   const orderOf = (it) => {
     const o = phase === 'specification' ? it.order : specOrder.get(it.name);

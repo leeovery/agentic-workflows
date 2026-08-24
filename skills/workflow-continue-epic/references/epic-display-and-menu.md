@@ -130,7 +130,7 @@ Tell the user in one line: {N} discussion(s) are still in-progress — the group
 **Soft gate check** — before routing, the engine checks whether the selection conflicts with a phase-completion recommendation or the build order. Advisory, not blocking. Fetch the gate for the selected entry — `--topic` carries the entry's topic and is omitted for the topic-less command options:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render epic-soft-gate {work_unit} --action {action} --topic {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render epic-soft-gate {work_unit} --action {action} [--topic {topic}]
 ```
 
 **If the output is empty:**

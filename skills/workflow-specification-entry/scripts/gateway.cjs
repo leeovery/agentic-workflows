@@ -136,7 +136,8 @@ function discover(cwd, workUnit) {
   // ties within each tier; unordered specs keep insertion order behind the
   // ordered ones, so the menu reads work-first, then build-first.
   const orderOf = (spec) => (Number.isInteger(spec.order) ? spec.order : Infinity);
-  specifications.sort((a, b) => (specSortRank(a) - specSortRank(b)) || (orderOf(a) - orderOf(b)));
+  specifications.sort((a, b) => (specSortRank(a) - specSortRank(b))
+    || (orderOf(a) === orderOf(b) ? 0 : orderOf(a) - orderOf(b)));
 
   // Concluded = completed with every source extracted. Drives the
   // "Manage completed specifications" submenu gate.
