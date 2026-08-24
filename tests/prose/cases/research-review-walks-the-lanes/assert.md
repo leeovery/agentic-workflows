@@ -42,6 +42,9 @@ under test:
   declared heading — padded as a sub-step marker
 - the raise's move offers investigation; no deep-dive is dispatched
   without the user's say
+- the raise ends with the ball explicitly in the user's court — the
+  offered move — and asks the user to settle no design call: research
+  surfaces material and holds decisions for discussion
 
 Further claims:
 
