@@ -4,7 +4,7 @@
 
 ---
 
-Specification makes decisions clear; it never makes them — and classification is yours. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the calling session.
+Specification makes decisions clear; it never makes them — and classification is yours. `{lane}` is the calling flow's lane — `construction` from spec construction, `review` from the findings walk — set by the caller's Load directive; its gate mode field (`construction_gate_mode` / `finding_gate_mode`) is the one every auto check here reads. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the calling session. A caller routing a review finding also names its `category`; construction, which routes material rather than a finding, names none.
 
 Four moves, by effort. A measured falsehood is never a silent derivation — reality corrects the record, and the correction lands in the owning document, never in the spec alone. Anything else the record settles is derived silently — that is the phase doing its job, and it earns no mention. A point a brief exchange settles stops for the user and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. Start at **A. Classify**.
 
@@ -24,7 +24,7 @@ Tell the user in one line what was measured and what it corrects — no gate; th
 
 **Otherwise** — the corrected value undermines a conclusion, decision, or insight built on the claim:
 
-**This stop overrides `auto`.** Put the measurement to the user in conversation — what the document asserts, what the command measured, which conclusion leans on it — and take a stance on whether the conclusion survives. No engine surface: this is an exchange, not a gate.
+**This stop overrides `auto`.** Where `{lane}`'s gate mode holds `auto` — re-read it if it is not current in context (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} {construction_gate_mode|finding_gate_mode}`) — open with the announcement verbatim — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you. Then put the measurement to the user in conversation — what the document asserts, what the command measured, which conclusion leans on it — and take a stance on whether the conclusion survives. No engine surface: this is an exchange, not a gate.
 
 **STOP.** Wait for user response.
 
@@ -44,7 +44,7 @@ One side is acknowledged supersession — a dated Decision-block entry, or prose
 
 #### If a brief exchange settles it and the sources document the sides
 
-The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. Take a stance — one side carries `recommended`. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
+The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. The sides are quoted from the documents, never composed here: where you would have to write the alternatives yourself, they are not documented and this is not the branch. `category` = `Unsourced decision` excludes it outright — a point no source decides has no documented sides — and so does any material whose collision you cannot cite. Take a stance — one side carries `recommended`. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "lane": "{lane}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant conflict
@@ -74,7 +74,7 @@ An exchange showing nothing can stand without work the sources never did — nei
 
 #### If a brief exchange settles it and no sides are documented
 
-The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. **This stop overrides `auto`.** Put the question to the user in conversation — what the topic needs, where the sources stop short, what the answer unlocks — and take a stance. No engine surface: this is an exchange, not a gate.
+The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. An **Unsourced decision** lands here whenever a brief exchange can settle it: the specification decided something its sources never did, and the question is what the sources should have said. **This stop overrides `auto`.** Where `{lane}`'s gate mode holds `auto` — re-read it if it is not current in context (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} {construction_gate_mode|finding_gate_mode}`) — open with the announcement verbatim — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you. Then put the question to the user in conversation — what the topic needs, where the sources stop short, what the answer unlocks — and take a stance. No engine surface: this is an exchange, not a gate.
 
 **STOP.** Wait for user response.
 
@@ -108,7 +108,7 @@ The specification collapsed while this session held it. Tell the user what happe
 
 #### Otherwise
 
-Raise the gap and its acknowledgement gate — a confirm, not a choice: the gap must be filled, and the gate exists so the stop is seen before anything moves. Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{the owning source's topic}", "title": "{what is missing, one line}", "context": "{what the topic needs and why no source decides it}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim, where sources frame the adjacent ground}"}, …], "stakes": "{what cannot be written until this is decided}"}` (`quotes` and `stakes` where they exist) — and fetch the gate, emitting each section verbatim at its marked instruction:
+Raise the gap and its acknowledgement gate — a confirm, not a choice: the gap must be filled, and the gate exists so the stop is seen before anything moves. Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{the owning source's topic}", "lane": "{lane}", "title": "{what is missing, one line}", "context": "{what the topic needs and why no source decides it}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim, where sources frame the adjacent ground}"}, …], "stakes": "{what cannot be written until this is decided}"}` (`quotes` and `stakes` where they exist) — and fetch the gate, emitting each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant gap-route
@@ -160,7 +160,7 @@ The resolution is written into the owning source document in that phase's own id
 
 1. **Check presence**: `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}` — read the `sessions` rows only; the response's deferral section is scoped to the analysis dispatch and is not emitted here.
 
-   **If a row matches `{doc}`'s phase and topic with `held` and `live` both true** — a live session owns that document. Do not edit. Write `{"doc": "{doc}"}` to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool and fetch the gate, emitting its section verbatim at its marked instruction:
+   **If a row matches `{doc}`'s phase and topic with `held` and `live` both true** — a live session owns that document. Do not edit. Write `{"doc": "{doc}", "lane": "{lane}"}` to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool and fetch the gate, emitting its section verbatim at its marked instruction:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc

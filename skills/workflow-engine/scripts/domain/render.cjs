@@ -1213,10 +1213,10 @@ function incoherenceGate(cwd, args) {
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'incoherence-gate');
   const p = readJsonPayload(cwd, file, 'incoherence-gate');
   if (!isFilled(p.doc)) throw new Error('render incoherence-gate: "doc" must be a non-empty string');
-  if (p.lane !== undefined && !Object.hasOwn(LANE_GATE_FIELDS, p.lane)) {
+  if (!Object.hasOwn(LANE_GATE_FIELDS, p.lane)) {
     throw new Error('render incoherence-gate: "lane" must be "construction" or "review" — the announcement keys on the calling flow\'s own gate mode');
   }
-  const overAuto = p.lane !== undefined && laneHoldsAuto(itemOf(manifest, phase, topic) || {}, p.lane);
+  const overAuto = laneHoldsAuto(itemOf(manifest, phase, topic) || {}, p.lane);
 
   if (variant === 'conflict' || variant === 'gap-route') {
     if (!isFilled(p.title)) throw new Error('render incoherence-gate: "title" must be a non-empty string');
@@ -1240,6 +1240,14 @@ function incoherenceGate(cwd, args) {
     if (p.stakes) body.push('', p.stakes);
 
     if (variant === 'conflict') {
+      // A conflict is documents colliding, and the sides are quoted from
+      // them — never composed here. Without a quote there is nothing to
+      // collide, and the shape would dress a point no source decides as a
+      // choice the record already framed. That belongs in the
+      // no-sides-documented branch, as a question.
+      if (!Array.isArray(p.quotes) || p.quotes.length === 0) {
+        throw new Error('render incoherence-gate: a conflict must quote the sides it collides — sides you would compose yourself are not documented, and belong in a conversation, not this gate');
+      }
       if (!Array.isArray(p.sides) || p.sides.length < 2) {
         throw new Error('render incoherence-gate: "sides" must carry at least 2 entries');
       }
