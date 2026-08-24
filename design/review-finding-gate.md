@@ -209,16 +209,28 @@ Simulation re-pin where call sequences move.
 
 ## Open decisions
 
-- **`analysis-loop.md:269`'s skip is out of scope and stays.** It
-  declines *work to build* — scope and appetite, legitimately the
-  user's — where the finding gate's skip dismissed a defect in a
-  document Claude is authoring. Same word, different job. It wants a
-  rename (`d/decline`) so it stops reading as ignoring a problem;
-  separate pass, different skill, different state.
+None. The two the programme carried closed after the stack landed:
 
-- **Whether investigation review wants the same treatment.** The
-  lanes programme left it open alongside specification; this one
-  answers specification and planning only.
+- **The proposed-task gate's skip renamed to `d/decline`** (#1000).
+  The option survives on the ruling that kept it — it declines *work
+  to build*, scope and appetite, legitimately a keystroke — and the
+  word now says so. One engine option across the gate's four callers;
+  the stored staging value stays `skipped`, the shared vocabulary
+  `Declined` already displays through. The cycle-level skip-analysis
+  and the commit-scope file exclusion keep their word: genuine skips.
+
+- **Investigation review: no treatment owed, by audit.** The question
+  was inherited from the lanes programme, which left both
+  investigation and specification unaudited; this programme audited
+  specification and planning and carried investigation forward rather
+  than silently claiming it. The audit (2026-08-24): investigation has
+  no gate modes, no auto, no tracking files, no per-finding approval
+  loop, and no skip — its finding-shaped output is the hypothesis
+  board, the validation reports, and one sign-off stop, and that
+  presentation layer was rebuilt in the bugfix-display-surfaces stack.
+  The move contract governs per-finding gates under an auto mode;
+  investigation correctly has none, and inventing one would add
+  ceremony to the phase the collaboration cone wants conversational.
 
 ## Log
 
