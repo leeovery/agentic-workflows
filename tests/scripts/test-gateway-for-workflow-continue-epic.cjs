@@ -1769,7 +1769,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   const path = require('path');
   const { spawnSync } = require('child_process');
   const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
-  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu) {work_unit}\n';
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|unblock-menu) {work_unit}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -1883,7 +1883,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('each sub-view verb errors without its work unit instead of rendering the first epic', () => {
     epicFixture();
-    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu']) {
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'unblock-menu']) {
       const res = run([verb]);
       assert.strictEqual(res.status, 1, verb);
       assert.strictEqual(res.stdout, '', verb);
@@ -1893,7 +1893,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('each sub-view verb errors on excess positionals', () => {
     epicFixture();
-    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu']) {
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'unblock-menu']) {
       const res = run([verb, 'v1', 'extra']);
       assert.strictEqual(res.status, 1, verb);
       assert.strictEqual(res.stdout, '', verb);

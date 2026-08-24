@@ -51,6 +51,7 @@ const GATEWAYS = {
 };
 const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
 const SPEC_GATEWAY = require(path.join(ROOT, 'skills/workflow-specification-entry/scripts/gateway.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
 
 // Spec-entry detail for one work unit — the spec boundary's derived view.
@@ -916,6 +917,29 @@ describe('pipeline simulation', () => {
     // The soft gate is engine-rendered and empty when nothing sits ahead —
     // unified is the whole live set, so planning it raises no concern.
     sim.render(['epic-soft-gate', wu, '--action', 'start_planning', '--topic', 'unified'], { expect: 'empty' });
+
+    // A dep-blocked plan loses its implementation row; the u/unblock option
+    // and the unblock-menu sub-view are the escape hatch, and marking the
+    // dependency satisfied externally restores the row.
+    sim.run(['topic', 'start', wu, 'planning', 'unified']);
+    sim.run(['topic', 'complete', wu, 'planning', 'unified']);
+    sim.run(['manifest', 'set', `${wu}.planning.unified`,
+      'external_dependencies.alpha.description=Needs alpha shipped',
+      'external_dependencies.alpha.state=unresolved']);
+    const epicDetailNow = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail;
+    const menuNow = () => require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs')).project.epicMenu(wu, epicDetailNow());
+    let keys = menuNow().keys;
+    assert.ok(!keys.some((k) => k.action === 'start_implementation' && k.topic === 'unified'),
+      'a dep-blocked implementation start carries no menu row');
+    assert.ok(keys.some((k) => k.action === 'unblock_plan'), 'the unblock option surfaces');
+    const unblockView = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs')).project.epicUnblockMenu(epicDetailNow());
+    assert.deepStrictEqual(unblockView.keys.map((k) => [k.key, k.action, k.topic, k.dep ?? null])[0],
+      ['1', 'unblock', 'unified', 'alpha']);
+    sim.run(['manifest', 'set', `${wu}.planning.unified`, 'external_dependencies.alpha.state', 'satisfied_externally']);
+    keys = menuNow().keys;
+    assert.ok(keys.some((k) => k.action === 'start_implementation' && k.topic === 'unified'),
+      'a satisfied dependency restores the implementation row');
+    assert.ok(!keys.some((k) => k.action === 'unblock_plan'), 'the unblock option withdraws');
 
     // Supersession is terminal: the absorbed spec cannot restart or complete.
     sim.refuses(['topic', 'start', wu, 'specification', 'alpha'], /superseded/);

@@ -152,9 +152,10 @@ function displayOrder(phase, items) {
 /** Build the tree nodes for one build/flat phase — a completed item with a live reconcile flag carries the `· input moved` cue. @param {string} phase @param {PhaseEntry[]} items */
 function phaseNodes(phase, items) {
   return displayOrder(phase, items).map((item) => {
+    const depBlocked = Array.isArray(item.deps_blocking) && item.deps_blocking.length > 0;
     const tagText = item.status === 'completed' && item.reconcile_needed !== undefined
       ? 'completed · input moved'
-      : (item.blocked_by !== undefined ? `${item.status} · blocked` : item.status);
+      : (item.blocked_by !== undefined || depBlocked ? `${item.status} · blocked` : item.status);
     const head = title({ label: titlecase(item.name) });
     // The plan format rides inside the tag rather than after it: anything
     // appended past the tag column would break the alignment for every row.
@@ -398,6 +399,10 @@ const CUE_BLOCKED =
   '    blocked — a source discussion is back in-progress; re-conclude\n'
   + '              it and the item returns to the menu';
 
+const CUE_PLAN_BLOCKED =
+  '    blocked — implementation waits on another plan; the ⚑ list\n'
+  + '              names the dependency, u/unblock is the override';
+
 /**
  * Section B — the Key block, showing only categories present in the display
  * whose vocabulary the rows don't spell out themselves: phase-item status
@@ -427,6 +432,7 @@ function epicKey(detail) {
   const cueLines = [];
   if (anyFlagged) cueLines.push(CUE_RECONCILE);
   if (specBlockedAny) cueLines.push(CUE_BLOCKED);
+  if (anyBlocked) cueLines.push(CUE_PLAN_BLOCKED);
   if (cueLines.length > 0) blocks.push('  Cue:\n' + cueLines.join('\n'));
   if (anyBlocked) blocks.push(KEY_BLOCKING);
   if (blocks.length === 0) return '';
@@ -480,9 +486,6 @@ function startVerbLabel(n, srcFlagged) {
   const t = titlecase(n.name);
   const cue = srcFlagged ? ' · input moved' : '';
   if (n.action === 'start_implementation') {
-    if (n.blocked) {
-      return `Start implementation of "${t}" — blocked by ${(n.deps_blocking || []).map(depRef).join(', ')}${cue}`;
-    }
     return `Start implementation of "${t}" — *${n.label}*${cue}`;
   }
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (n.action)];
@@ -520,6 +523,10 @@ function startEntries(workUnit, detail, phase) {
     const srcPhase = EPIC_PIPELINE[EPIC_PIPELINE.indexOf(phase) - 1];
     const srcItem = srcPhase ? (detail.phases[srcPhase] || []).find((i) => i.name === n.name) : undefined;
     const srcFlagged = srcItem !== undefined && srcItem.reconcile_needed !== undefined;
+    // A dep-blocked implementation start is not actionable — no menu row;
+    // the ⚑ plans-not-ready block and the tree cue carry its blocked state,
+    // and the u/unblock command option is the escape hatch.
+    if (n.blocked) continue;
     /** @type {MenuKey} */
     const entry = {
       key: '',
@@ -529,10 +536,6 @@ function startEntries(workUnit, detail, phase) {
       label: startVerbLabel(n, srcFlagged),
       ...(srcFlagged ? { input_moved: true } : {}),
     };
-    if (n.blocked) {
-      entry.blocked = true;
-      entry.deps_blocking = n.deps_blocking;
-    }
     out.push(entry);
   }
   return out;
@@ -592,6 +595,11 @@ function commandOptions(workUnit, detail, hasMap) {
   }
   if (detail.cancelled.length > 0) {
     opts.push({ key: 'e', word: 'reactivate', action: 'reactivate_topic', topic: null, route: null, label: 'Reactivate a cancelled topic' });
+  }
+  const anyPlanBlocked = (detail.phases.planning || [])
+    .some((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
+  if (anyPlanBlocked) {
+    opts.push({ key: 'u', word: 'unblock', action: 'unblock_plan', topic: null, route: null, label: 'Unblock a plan — mark a dependency as satisfied externally' });
   }
   return opts;
 }
@@ -805,6 +813,7 @@ function epicInSessionGate(entry) {
  * @property {string|null} phase
  * @property {string|null} route      skill invocation, or null when the flow continues internally
  * @property {string} label
+ * @property {string} [dep]           unblock rows — the dependency topic to mark satisfied
  */
 
 /**
@@ -814,6 +823,7 @@ function epicInSessionGate(entry) {
  * @property {string} row     display line (unindented; the branch glyph and `{key}. ` are prefixed)
  * @property {string} label   pick-menu option label
  * @property {string|null} route
+ * @property {string} [dep]   unblock rows — the dependency topic to mark satisfied
  */
 
 /** The back option every sub-view menu closes with. @returns {SubViewKey} */
@@ -842,7 +852,7 @@ function selectionSubView(title, empty, question, action, rows) {
   let phase = null;
   rows.forEach((r, i) => {
     const key = String(i + 1);
-    keys.push({ key, action, topic: r.topic, phase: r.phase, route: r.route, label: r.label });
+    keys.push({ key, action, topic: r.topic, phase: r.phase, route: r.route, label: r.label, ...(r.dep ? { dep: r.dep } : {}) });
     if (r.phase !== phase) {
       if (displayLines.length) displayLines.push('');
       displayLines.push(titlecase(r.phase));
@@ -918,6 +928,32 @@ function epicCancelMenu(detail) {
 }
 
 /**
+ * Section G — the blocked-plans list and pick menu, one row per blocking
+ * dependency (a plan with two blockers gets two rows). The `topic` slot
+ * carries the plan, the `dep` field the dependency topic to mark satisfied.
+ * No routes — the flow runs the manifest write.
+ * @param {EpicDetail} detail
+ * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
+ */
+function epicUnblockMenu(detail) {
+  /** @type {(SubViewRow & {dep?: string})[]} */
+  const rows = [];
+  for (const item of detail.phases.planning || []) {
+    for (const dep of item.deps_blocking || []) {
+      rows.push({
+        phase: 'planning',
+        topic: item.name,
+        dep: dep.topic,
+        row: `${title({ label: titlecase(item.name) })} — blocked by ${depRef(dep)} (${dep.reason})`,
+        label: `Unblock "${titlecase(item.name)}" — *mark ${depRef(dep)} satisfied externally*`,
+        route: null,
+      });
+    }
+  }
+  return selectionSubView('Blocked Plans', 'No blocked plans.', 'Which dependency has been satisfied?', 'unblock', rows);
+}
+
+/**
  * Section F — the Cancelled Topics list and pick menu, each row carrying the
  * stashed `previous_status`. No routes — the flow runs the reactivate
  * transaction.
@@ -938,4 +974,4 @@ function epicReactivateMenu(detail) {
   return selectionSubView('Cancelled Topics', 'No cancelled topics.', 'Which topic would you like to reactivate?', 'reactivate', rows);
 }
 
-module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, SOFT_GATE_ACTIONS };
+module.exports = { epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicUnblockMenu, SOFT_GATE_ACTIONS };

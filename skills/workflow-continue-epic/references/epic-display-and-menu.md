@@ -45,47 +45,9 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 
 Match the user's input to its `ACTIONS` entry by `key` — a number, or a command option's letter / long form. Every decision below reads the entry's `action` value, never its label text.
 
-#### If the selected entry carries a `(blocked: …)` marker
+#### If `action` is `unblock_plan`
 
-The item is shown for visibility but not selectable. Explain what blocks it, using the marker's `{dep}:{task} — {reason}` detail:
-
-> *Output the next fenced block as a code block:*
-
-```
-"{topic:(titlecase)}" cannot start implementation yet.
-
-Blocking dependencies:
-  • {dep_topic}:{internal_id} — {reason}
-  • {dep_topic} — {reason}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Unblock a dependency?`**
-
-**`u/unblock`** → Mark a dependency as satisfied externally
-**`b/back`**    → Return to menu
-```
-
-**STOP.** Wait for user response.
-
-**If user chose `unblock`:**
-
-Ask which dependency to mark as satisfied. Update via `engine manifest`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state satisfied_externally
-```
-
-Commit the change.
-
-→ Return to **A. State Display and Menu**.
-
-**If user chose `back`:**
-
-→ Return to **A. State Display and Menu**.
+→ Proceed to **G. Unblock Plan**.
 
 #### If `action` is `resume_completed`
 
@@ -119,7 +81,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 Continue with the **Hard gate check** below.
 
-**Hard gate check** — specification reads the settled record; this refusal comes before the soft gate. Read `phase_counts` from DATA. (Blocked specs never reach here — the menu carries no row for them; the display tree shows their `blocked` cue.)
+**Hard gate check** — specification reads the settled record; this refusal comes before the soft gate. Read `phase_counts` from DATA. (Blocked items never reach here — a blocked spec or a dep-blocked plan carries no menu row; the display tree shows the `blocked` cue and the ⚑ list carries the detail.)
 
 **If `action` is `analyze_discussions` and `phase_counts` shows discussion items in-progress and no specification items exist:**
 
@@ -286,5 +248,35 @@ Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried)
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb reactivate [--warn]
 ```
+
+→ Return to **A. State Display and Menu**.
+
+---
+
+## G. Unblock Plan
+
+A dep-blocked plan carries no implementation row — this is its escape hatch. Render the blocked-plans list and pick menu:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs unblock-menu {work_unit}
+```
+
+Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+
+**STOP.** Wait for user response.
+
+#### If user chose `back`
+
+→ Return to **A. State Display and Menu**.
+
+#### If user chose a numbered dependency
+
+Store the selected entry's `topic` (the plan) and its `(dep: …)` value (the dependency to mark). Record the user's call — the dependency is satisfied outside the workflow:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep}.state satisfied_externally
+```
+
+Commit: `impl({work_unit}): mark {dep} dependency as satisfied externally`
 
 → Return to **A. State Display and Menu**.

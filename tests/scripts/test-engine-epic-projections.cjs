@@ -8,7 +8,7 @@ const { execFileSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { discover } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
 const {
-  epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu,
+  epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicUnblockMenu,
 } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
 const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
 
@@ -352,7 +352,9 @@ describe('epic projections: key', () => {
         planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
       },
     });
-    assert.strictEqual(epicKey(d), 'Key:\n' + STATUS + '\n\n' + BLOCKING);
+    assert.strictEqual(epicKey(d), 'Key:\n' + STATUS
+      + '\n\n  Cue:\n    blocked — implementation waits on another plan; the \u2691 list\n              names the dependency, u/unblock is the override'
+      + '\n\n' + BLOCKING);
   });
 
   it('no-map branch shows the Status block', () => {
@@ -432,8 +434,6 @@ describe('epic projections: menu', () => {
       '**`1`**           → Start specification for "Billing Grouping" —',
       `${NB(14)}*grouping ready* (recommended)`,
       '**`2`**           → Continue "Auth Spec" — *specification [in-progress]*',
-      '**`3`**           → Start implementation of "Reporting" — blocked by',
-      `${NB(14)}core-features:core-2-3`,
       '**`s/spec`**      → Analyze / regroup discussions — *2 discussion(s) not*',
       `${NB(14)}*yet grouped*`,
       '**`d/discuss`**   → Start a discussion on a new topic',
@@ -441,6 +441,8 @@ describe('epic projections: menu', () => {
       '**`i/discovery`** → Continue discovery',
       '**`c/completed`** → Resume a completed topic',
       '**`a/cancel`**    → Cancel a topic (phase work)',
+      '**`u/unblock`**   → Unblock a plan — mark a dependency as satisfied',
+      `${NB(14)}externally`,
     ].join('\n'));
   });
 
@@ -451,18 +453,19 @@ describe('epic projections: menu', () => {
       [
         ['1', 'start_specification', 'billing-grouping', '/workflow-specification-entry epic quiz-competition-v1 billing-grouping'],
         ['2', 'continue_specification', 'auth-spec', '/workflow-specification-entry epic quiz-competition-v1 auth-spec'],
-        ['3', 'start_implementation', 'reporting', '/workflow-implementation-entry epic quiz-competition-v1 reporting'],
         ['s', 'analyze_discussions', null, '/workflow-specification-entry epic quiz-competition-v1'],
         ['d', 'new_discussion', null, '/workflow-discussion-entry epic quiz-competition-v1'],
         ['r', 'new_research', null, '/workflow-research-entry epic quiz-competition-v1'],
         ['i', 'continue_discovery', null, '/workflow-discovery epic quiz-competition-v1'],
         ['c', 'resume_completed', null, null],
         ['a', 'cancel_topic', null, null],
+        ['u', 'unblock_plan', null, null],
       ]
     );
     assert.strictEqual(keys[0].recommended, true);
-    assert.strictEqual(keys[2].blocked, true);
-    assert.deepStrictEqual(keys[2].deps_blocking, [{ topic: 'core-features', internal_id: 'core-2-3', reason: 'task not yet completed' }]);
+    // A dep-blocked implementation start carries no menu row — the ⚑ block
+    // and the u/unblock option carry the state instead.
+    assert.ok(!keys.some((k) => k.action === 'start_implementation'), 'blocked start never surfaces');
     assert.ok(!keys.some((k) => k.action === 'start_planning'), 'gated start_planning never surfaces');
   });
 
@@ -841,6 +844,52 @@ describe('epic projections: selection sub-views', () => {
     assert.ok(view.display.includes('  ├─ 1. Parked Topic [triaged]'), view.display);
     assert.ok(view.display.includes('  └─ 2. Menu Admin [in-progress]'), view.display);
     assert.ok(/\*\*`1`\*\* +→ Cancel "Parked Topic" — \*research \[triaged\]\*/.test(view.rendered), view.rendered);
+  });
+
+  it('unblock-menu: one row per blocking dependency, dep carried on the key', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        planning: {
+          items: {
+            reporting: {
+              status: 'completed',
+              external_dependencies: {
+                'core-features': { description: 'd', state: 'resolved', internal_id: 'core-2-3' },
+                'auth': { description: 'd', state: 'unresolved' },
+              },
+            },
+            clean: { status: 'completed' },
+          },
+        },
+      },
+    });
+    const view = epicUnblockMenu(d);
+    assert.strictEqual(view.title, 'Blocked Plans');
+    assert.strictEqual(view.display, [
+      'Planning',
+      '  ├─ 1. Reporting — blocked by core-features:core-2-3 (task not yet completed)',
+      '  └─ 2. Reporting — blocked by auth (dependency unresolved)',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(
+      view.keys.map((k) => [k.key, k.action, k.topic, k.dep ?? null]),
+      [
+        ['1', 'unblock', 'reporting', 'core-features'],
+        ['2', 'unblock', 'reporting', 'auth'],
+        ['b', 'back', null, null],
+      ]
+    );
+    assert.ok(/Which dependency has been satisfied\?/.test(view.rendered), view.rendered);
+  });
+
+  it('unblock-menu: empty state when no plan is blocked', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: { planning: { items: { clean: { status: 'completed' } } } },
+    });
+    const view = epicUnblockMenu(d);
+    assert.strictEqual(view.display, 'No blocked plans.\n');
   });
 
   it('reactivate-menu: numbered rows with (was: previous_status)', () => {
