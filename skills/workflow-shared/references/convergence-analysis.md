@@ -72,7 +72,7 @@ For each cycle, extract:
 - Each finding's title
 - Which stream it came from (traceability or integrity — by tracking file)
 - Plan Reference field (which plan area is affected)
-- Resolution (Fixed/Skipped)
+- Resolution (Fixed/Declined — legacy files write Skipped, read it as Declined)
 
 → Proceed to **B. Classify Findings**.
 
@@ -90,7 +90,7 @@ For each cycle, extract:
 - Which stream it came from (claims, input review, or gap analysis — by tracking file)
 - Affects field (which specification section)
 - Category
-- Resolution (Approved/Adjusted/Skipped/Routed)
+- Resolution (Approved/Adjusted/Declined/Routed — legacy files write Skipped, read it as Declined)
 
 Also read the document-growth pair — the construction baseline (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_baseline_words`) and the live count as `live_words` (`wc -w < .workflows/{work_unit}/specification/{topic}/specification.md`). An absent baseline skips the growth line and its note.
 

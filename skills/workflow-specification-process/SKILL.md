@@ -190,7 +190,7 @@ Load **[dependencies.md](references/dependencies.md)** and follow its instructio
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reviewing the specification. Agents will measure its claims against the codebase and analyse it against source material for gaps and inconsistencies. You'll approve or dismiss each finding.
+> Reviewing the specification. Agents will measure its claims against the codebase and analyse it against source material for gaps and inconsistencies. Settled findings carry their fix; genuine choices stop for your call, and any finding can be talked through — adjusted, challenged, or declined.
 ```
 
 Load **[spec-review.md](references/spec-review.md)** and follow its instructions as written.
