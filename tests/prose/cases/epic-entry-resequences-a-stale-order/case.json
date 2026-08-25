@@ -1,0 +1,45 @@
+{
+  "origin": "build-order programme (design/build-order.md B4) — a completed specification sets build_order_stale and the next epic entry re-derives the order; nothing exercised the refresh step",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-shared/references/sequence-build-order.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+  ],
+  "answers": [
+    "1 — continue the Search Relevance epic"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "build-order sequence search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "build-order sequence search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_exclude": [
+      "discovery-map sequence",
+      "topic start",
+      "topic complete",
+      "topic cancel",
+      "manifest set",
+      "workunit create"
+    ]
+  }
+}

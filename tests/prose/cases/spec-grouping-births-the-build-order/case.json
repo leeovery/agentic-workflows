@@ -1,0 +1,33 @@
+{
+  "origin": "build-order programme (design/build-order.md B1) — the grouping analysis assigns the build order in the same reconcile it persists the groupings with; nothing exercised the birth path",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-entry/references/check-prerequisites.md",
+    "skills/workflow-specification-entry/references/route-scenario.md",
+    "skills/workflow-specification-entry/references/analysis-flow.md",
+    "skills/workflow-specification-entry/references/display-groupings.md"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest apply search-relevance"
+    ],
+    "calls_exclude": [
+      "build-order sequence",
+      "discovery-map sequence",
+      "topic start",
+      "topic complete",
+      "topic cancel"
+    ]
+  }
+}
