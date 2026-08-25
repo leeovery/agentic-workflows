@@ -334,3 +334,36 @@ engine's fresh-file-per-concern delivery already supports it.
   (`test-engine-discovery-map.cjs`, `test-engine-discovery-projections.cjs`,
   `test-render.cjs`, `test-conventions-lint.cjs`).
 - Goldens regenerated for relabelled renders.
+
+## Implementation record — 2026-08-25/26
+
+Landed as stack #1017 off main (the design PR stays standalone):
+#1015 deletions → #1016 route-in-the-moment → #1018 shared off-topic →
+#1019 spawn → #1020 vocabulary. Decisions made at implementation time:
+
+- **Spawn source is `spawn:{parent}`**, adopted by the deep-dive path
+  too — its `research-split:` value never moved content either, so the
+  old name lied about the mechanism everywhere it was still written.
+  Historical values (`research-split:`, `research-analysis:`) keep
+  rendering (provenance is prefix-generic at the renderer) and are
+  walked by the extended provenance read.
+- **Crash-resume kept without the defer verb**: a gate interrupted
+  mid-walk leaves `pending` candidates, and the stage-or-reuse branch
+  re-presents them next boot — idempotent resume, not a defer feature.
+- **Non-epic off-topic paths stay split**: the engine's off-topic-offer
+  comment records the research variant deliberately carrying no roadmap
+  route; equalising it was out of scope and remains a conscious
+  asymmetry.
+- **Dead-end vocabulary**: user-facing term is *dead end* (close /
+  reopen); `handled` survives as the stored field, the engine verb
+  names, and DATA-section machine vocabulary. Map breakdowns count
+  `dead-ended`. The conclude gate's row is `--dead-end` on the new
+  `render research-conclude-gate` surface — the flag is the session's
+  judgment, never derived engine-side; choosing it marks the map item
+  and concludes normally (completed, indexed, kept as record).
+- **Migration 057** mirrors 056: manifest fields, staging key
+  (container dropped when empty), both `.state` files, KB chunks.
+- Prose walks deliberately not run pre-merge — per convention they run
+  after merge and release, with fast fixes to follow. `select --diff
+  main` flags ~85 cases, inflated by every fixture world now running
+  migration 057.
