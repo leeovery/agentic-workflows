@@ -13,7 +13,8 @@
     "skills/workflow-continue-epic/references/validate-selection.md",
     "skills/workflow-shared/references/topic-discovery-dispatch.md",
     "skills/workflow-shared/references/sequence-discovery-map.md",
-    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-shared/references/ask-or-decide.md"
   ],
   "conduct": "The user returns to abandon the synonym-handling topic \u2014 it is no longer worth pursuing. They navigate the start menu into the epic, pick the cancel option, and select synonym-handling. They confirm the cancellation. When told a live specification (expansion) is built from it and asked whether to cancel them together, they confirm that too \u2014 losing the started spec is exactly what abandoning the ground means, and they note they could reactivate later. They would object to being asked to cancel the specification as a separate manual step, and to any hand-composed warning that does not come from the engine. After the receipt they are done.",
   "invariants": {
