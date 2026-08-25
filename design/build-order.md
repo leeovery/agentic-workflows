@@ -174,7 +174,7 @@ skeletons exist to prevent. The existing design already made this call
 twice, in the same table, and it holds.
 
 **The order feeds the existing recommendation; it does not replace it.**
-`pickRecommendation` (`domain/projections/epic.cjs:601-667`) is already a
+`pickRecommendation` (`domain/projections/epic.cjs:623-689`) is already a
 first-match-wins cascade, and three of its existing rules outrank anything
 this programme adds:
 
@@ -183,8 +183,9 @@ this programme adds:
   a discovery entry and never reaches the build phases at all (`:611-618`)
   — so a freshly-rerouted or gap-analysis topic suspends build-order
   recommendation entirely, by design.
-- `!e.blocked` and `!e.input_moved` are hard filters. A topic carrying
-  `reconcile_needed` is not recommended however low its order.
+- `!e.input_moved` is a hard filter (the blocked twin retired with the
+  menu row itself — B9). A topic carrying `reconcile_needed` is not
+  recommended however low its order.
 
 The order is therefore a **tiebreak inside the existing cascade**, not a
 new top-level rule. It orders the candidates the cascade already permits.
@@ -225,9 +226,12 @@ Two automatic triggers plus B5's manual one, and one home that serves both.
 
 **Both reach the same gate through one flag,
 `build_order_needs_sequencing`**, derived on `EpicDetail` beside its
-sibling. It is true when a live topic has no order **or** when
-`build_order_stale` is set. Spec completion sets `build_order_stale`;
-sequencing clears it.
+sibling. It is true when the live set's orders are not exactly a
+contiguous 1..N permutation — a topic without an order, a duplicate, or
+a hole (a cancel's stash, a malformed birth write) — **or** when
+`build_order_stale` is set; the verb's write invariant, read back
+(settled at the review, 2026-08-24). Spec completion sets
+`build_order_stale`; sequencing clears it.
 
 The flag has to be new. The existing `needs_sequencing` is derived from
 discovery-map items alone (`derivations.cjs:317`, fed by
@@ -275,7 +279,7 @@ one surface would leave them contradicting each other.
 This follows the precedent exactly: `compareMapRows` sorts lifecycle tier
 first and uses `order` to break ties inside a tier. So the specification
 tree keeps `displayOrder`'s proposed-first split
-(`domain/projections/epic.cjs:138-141`) and orders *within* each half.
+(`domain/projections/epic.cjs:146-152`) and orders *within* each half.
 Nothing that is grouped today becomes ungrouped.
 
 Three surfaces, not one:
@@ -312,8 +316,8 @@ complete and topics 2–3 unplanned fires nothing while the user plans topic
 
 | Action | New condition | New message |
 |---|---|---|
-| `start_planning` · `continue_planning` | a lower-ordered live topic has no completed plan | "You're about to plan topic 5 — topics 2 and 3 are ahead of it in the build order and unplanned." |
-| `start_implementation` · `continue_implementation` | a lower-ordered live topic has no completed implementation | "You're about to implement topic 5 — topic 3 is ahead of it in the build order and unbuilt." |
+| `start_planning` · `continue_planning` | a lower-ordered live topic has no completed plan | "You're about to plan \"Billing\" — \"Auth\" and \"Reports\" are ahead of it in the build order and unplanned." |
+| `start_implementation` · `continue_implementation` | a lower-ordered live topic has no completed implementation | "You're about to implement \"Billing\" — \"Auth\" is ahead of it in the build order and unbuilt." |
 
 The table's other two rows (`start_discussion*`, `start_specification`)
 keep the counting idiom deliberately. Their condition is upstream *phase
@@ -337,10 +341,10 @@ inconsistent with both existing precedents:
   mechanisms, and the code says it outright in both. A blocked *continue*
   entry is filtered: *"A blocked spec is not actionable — no menu row; the
   display tree carries its blocked state"*
-  (`domain/projections/epic.cjs:487`). A blocked *proposed grouping* never
+  (`domain/projections/epic.cjs:498`). A blocked *proposed grouping* never
   becomes a start entry: *"A blocked grouping is not actionable: it stays
   out of the menu and shows its blocked state on the display tree
-  instead"* (`domain/epic-detail.cjs:313`).
+  instead"* (`domain/epic-detail.cjs:327`).
 - **In-session topic** — struck through, still selectable, behind a
   confirm gate. Presence is awareness, not exclusion; the held session
   might be dead. Noted only to be dismissed: presence covers `research`
@@ -356,7 +360,7 @@ on a tree cue that plans do not have:
 
 - The tree renders `· blocked` off `item.blocked_by`
   (`domain/projections/epic.cjs:146-148`), and `blocked_by` is set only on
-  specification entries (`domain/epic-detail.cjs:306-309`). A dep-blocked
+  specification entries (`domain/epic-detail.cjs:321`). A dep-blocked
   planning item's tree row shows a bare status.
 - The key's blocked legend fires on `specBlockedAny` (`:415, :420`) and
   its text — *"a source discussion is back in-progress; re-conclude it and
@@ -601,8 +605,8 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
   not an engine guarantee.
 
 - **`build_order_needs_sequencing`** on `EpicDetail`, derived beside
-  `needs_sequencing` over the live-set predicate in B4 — true when a live
-  topic lacks an order **or** `build_order_stale` is set.
+  `needs_sequencing` — true when the live set's orders are not a
+  contiguous 1..N permutation, or `build_order_stale` is set (B4).
 
 - **`build_order_stale`** — a boolean on the epic, set at specification
   completion, cleared by sequencing. Deliberately a stored flag rather
@@ -629,7 +633,9 @@ Build only if a frozen plan with idle tasks is actually hit in practice.
   expectations. Re-pin deliberately.
 
 - **Prose cases** — at minimum the re-sequence action, the regroup-then-
-  renumber path, and a blocked plan no longer appearing in the menu. Run
+  renumber path, and a blocked plan no longer appearing in the menu
+  (the first two queued in the coverage campaign at the review; the
+  third delivered as `epic-menu-unblocks-a-dep-blocked-plan`). Run
   `node tests/prose/run.cjs select --diff main` at the end of each PR in
   the stack.
 
@@ -673,6 +679,25 @@ All design questions settled; the stack shape below is the proposal.
   menu (B9), no ceremony (B10). Merged plans, the epic-wide ready queue,
   hard gates, the appraisal agent and a verification pass all rejected.
   Sub-grouping within an epic raised and parked as idea 44.
+
+- 2026-08-25 — A second review pass over the fix commits themselves
+  (four finders, fresh angles). Its headline: the first pass's own
+  topic-throw in the soft gate dead-ended a legitimate menu row — a plan
+  outlives its spec through a direct cancel, a unify supersede, or a
+  promote — reverted to the silent pass, with only the unknown-action
+  refusal kept. Alongside: the unify branch now clears
+  `build_order_stale` like its regroup twin; the spec tree trails
+  terminal residue like every other consumer; `manifest push` refuses
+  `order`; the Cue legend re-aligned; the unblock tail reverted to the
+  plain action register; the o/order branch earned its chrome; the
+  CONVENTIONS footer variant moved to the Backward table with the bare
+  form stated as remaining valid; the user docs caught up
+  (lifecycle-operations' forward-navigation paragraph described the
+  retired predicate); and this branch's own stale idea-21 row deleted so
+  the merge cannot resurrect it. B4's body and the engine sketch now
+  state the widened predicate the log had claimed; B7's table drops its
+  ordinals. Prose-case debt recorded: regroup-then-renumber and the
+  o/order walk are both queued in the coverage campaign, not authored.
 
 - 2026-08-24 — The stack built (#1001 → #1005 → #1008 → #1009 → #1010,
   stack #1006) and the standing review pass run over it: eight finder
