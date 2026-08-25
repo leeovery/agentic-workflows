@@ -375,6 +375,11 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     return p;
   }
 
+  it('order refuses the push route — a scalar never becomes an array', () => {
+    const err = runFails(dir, ['push', 'payments.specification.anchor', 'order', '3']);
+    assert.match(err.error, /order is a scalar — use `manifest set`/);
+  });
+
   it('order is guarded: a quoted or non-positive value refuses, an integer lands', () => {
     const bad = runFails(dir, ['apply', 'payments', '--file', payload([
       { op: 'set', path: 'payments.specification.anchor', fields: { order: '1' } },

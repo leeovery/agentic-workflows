@@ -471,8 +471,7 @@ function runDiscoveryMap(argv) {
       if (!workUnit || positional.length < 2) {
         throw new Error('Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
       }
-      const orders = parseOrderPairs(positional.slice(1),
-        'Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
+      const orders = parseOrderPairs(positional.slice(1));
       respond(sequenceMap(cwd, workUnit, orders));
     } else if (command === 'add') {
       // Strict positional count: an unquoted payload would spill into
@@ -523,10 +522,11 @@ function runDiscoveryMap(argv) {
 
 
 /**
- * Parse `{topic}={order}` pairs shared by the two sequencing verbs.
- * @param {string[]} pairs @param {string} usage @returns {Record<string, number>}
+ * Parse `{topic}={order}` pairs shared by the two sequencing verbs. Callers
+ * guard for at least one pair before calling.
+ * @param {string[]} pairs @returns {Record<string, number>}
  */
-function parseOrderPairs(pairs, usage) {
+function parseOrderPairs(pairs) {
   /** @type {Record<string, number>} */
   const orders = {};
   for (const pair of pairs) {
@@ -541,7 +541,6 @@ function parseOrderPairs(pairs, usage) {
     }
     orders[name] = Number(value);
   }
-  if (Object.keys(orders).length === 0) throw new Error(usage);
   return orders;
 }
 
@@ -566,8 +565,7 @@ function runBuildOrder(argv) {
     if (!workUnit || positional.length < 2) {
       throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
     }
-    const orders = parseOrderPairs(positional.slice(1),
-      'Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
+    const orders = parseOrderPairs(positional.slice(1));
     respond(sequenceBuildOrder(cwd, workUnit, orders));
   } catch (err) {
     failJson(err);
