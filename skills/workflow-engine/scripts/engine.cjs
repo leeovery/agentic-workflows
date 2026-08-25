@@ -225,6 +225,7 @@ Commands:
   render requeue-offer    <wu.phase.topic> --file <payload.json>
   render reroute-offer    <wu.phase.topic> --file <payload.json>
   render spawn-offer      <wu.research.topic> --file <payload.json>
+  render research-conclude-gate <wu.research.topic> [--dead-end]
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
@@ -1358,7 +1359,7 @@ function runCommit(argv) {
 /** @param {string[]} argv */
 function runRender(argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -1373,6 +1374,7 @@ function runRender(argv) {
       if (flags.has('pipeline')) args.pipeline = '1';
       if (flags.has('donow')) args.donow = '1';
       if (flags.has('recommendations')) args.recommendations = '1';
+      if (flags.has('dead-end')) args['dead-end'] = '1';
       respondSections(renderSurface(process.cwd(), command, args));
     } catch (err) {
       failJson(err);

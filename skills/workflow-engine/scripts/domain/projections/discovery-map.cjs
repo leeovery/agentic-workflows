@@ -52,7 +52,7 @@ const BREAKDOWN = /** @type {const} */ ([
   ['in_flight', 'in flight'],
   ['ready', 'ready'],
   ['fresh', 'fresh'],
-  ['handled', 'handled'],
+  ['handled', 'dead-ended'],
   ['cancelled', 'cancelled'],
 ]);
 

@@ -202,7 +202,7 @@ function mapStatusSuffix(detail) {
   if (s.in_flight) parts.push(`${s.in_flight} in flight`);
   if (s.ready) parts.push(`${s.ready} ready`);
   if (s.fresh) parts.push(`${s.fresh} fresh`);
-  if (s.handled) parts.push(`${s.handled} handled`);
+  if (s.handled) parts.push(`${s.handled} dead-ended`);
   if (s.cancelled) parts.push(`${s.cancelled} cancelled`);
   return parts.length ? ' · ' + parts.join(' · ') : '';
 }

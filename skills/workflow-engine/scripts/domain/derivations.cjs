@@ -335,9 +335,9 @@ function computeTopicLifecycle(manifest, topicName) {
     && !TERMINAL_STATUSES.includes(/** @type {string} */ (it.status));
   const reconcile_pending = flagLive(research) || flagLive(discussion);
 
-  // Stored marker wins over name-matching: a research topic that fanned out
-  // into differently-named discussions is terminal, with no next action. Read
-  // only the item's own field — never inspect siblings or provenance.
+  // Stored marker wins over name-matching: a dead-ended topic is terminal,
+  // with no next action. Read only the item's own field — never inspect
+  // siblings or provenance.
   if (discovery && discovery.handled === true) {
     return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, triage_parked, reconcile_pending };
   }

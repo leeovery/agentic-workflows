@@ -30,8 +30,8 @@ const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 // Why each non-fresh lifecycle blocks a destructive op — mirrors the
 // conversational rejection phrasing in map-operations.md. Derived from the
 // actual research state, same honesty rule as the render-time tags: superseded
-// research is named as such, never as completed, and a handled topic claims a
-// fan-out only when research completed or was superseded.
+// research is named as such, never as completed, and a handled topic claims
+// its research as kept record only when it completed or was superseded.
 /** @param {string} lifecycle @param {string|null} researchState */
 function lifecyclePhrase(lifecycle, researchState) {
   switch (lifecycle) {
@@ -44,8 +44,8 @@ function lifecyclePhrase(lifecycle, researchState) {
     case 'decided': return 'discussion has concluded';
     case 'handled':
       return researchState === 'completed' || researchState === 'superseded'
-        ? 'it has fanned out into discussions and stays on the map as historical anchor'
-        : 'it is marked handled and stays on the map as historical anchor';
+        ? 'it is closed as a dead end — its research stays on the map as record'
+        : 'it is closed as a dead end and stays on the map as record';
     default: return 'it has phase work in cancelled state and stays on the map as historical record'; // cancelled
   }
 }
@@ -138,7 +138,7 @@ function assertFresh(manifest, name, verbPhrase) {
     );
   }
   const recovery = lifecycle === 'handled'
-    ? 'unhandle it to make it actionable again'
+    ? 'reopen it to make it actionable again'
     : 'cancel from the epic menu instead';
   throw new Error(`"${name}" can't be ${verbPhrase} — ${lifecyclePhrase(lifecycle, research_state)}; ${recovery}`);
 }
@@ -552,10 +552,10 @@ function handleItem(cwd, workUnit, name) {
     const item = mapItem(manifest, name);
     const { lifecycle } = computeTopicLifecycle(manifest, name);
     if (lifecycle === 'handled') {
-      throw new Error(`"${name}" can't be marked handled — it's already marked handled`);
+      throw new Error(`"${name}" can't be closed as a dead end — it's already closed`);
     }
     if (lifecycle === 'cancelled') {
-      throw new Error(`"${name}" can't be marked handled — it's cancelled; reactivate the phase work from the epic menu first`);
+      throw new Error(`"${name}" can't be closed as a dead end — it's cancelled; reactivate the phase work from the epic menu first`);
     }
     item.handled = true;
 
@@ -579,7 +579,7 @@ function unhandleItem(cwd, workUnit, name) {
     const item = mapItem(manifest, name);
     const { lifecycle } = computeTopicLifecycle(manifest, name);
     if (lifecycle !== 'handled') {
-      throw new Error(`"${name}" can't be unhandled — it isn't marked handled, so there's nothing to unhandle`);
+      throw new Error(`"${name}" can't be reopened — it isn't closed as a dead end, so there's nothing to reopen`);
     }
     delete item.handled;
 

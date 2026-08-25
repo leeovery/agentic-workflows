@@ -32,19 +32,29 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 → Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-> *Output the next fenced block as markdown (not a code block):*
+Judge the dead-end question before rendering: pass `--dead-end` **only** when the session's own conclusion is that this topic gives the product nothing to carry forward under its own name — the thread didn't pan out, or its useful facts serve only other topics, where provenance and the knowledge base already deliver them. In the common case — the research surfaced material this topic's discussion will ratify — the flag is omitted and the row never appears.
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render research-conclude-gate {work_unit}.research.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ This topic looks ready to conclude.`**
 
-**`c/conclude`** → Mark this topic as complete, ready for discussion
-**`k/keep`**     → Keep digging, there's more to understand
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
 #### If `conclude`
+
+→ Load **[conclude-research.md](conclude-research.md)** and follow its instructions as written.
+
+#### If `dead-end`
+
+Mark the map item first — no commit; the conclusion's own commit carries the manifest change:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map handle {work_unit} {topic}
+```
+
+Then conclude — the research completes and indexes as normal; the file stays on the map and in the knowledge base as record and seed material:
 
 → Load **[conclude-research.md](conclude-research.md)** and follow its instructions as written.
 

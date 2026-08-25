@@ -33,8 +33,8 @@ Then read the user's most recent message. Extract one or more operations. Recogn
 | *"remove X"*, *"drop X"*, *"delete X"*                     | Remove            | name                   |
 | *"rename X to Y"*                                          | Rename            | old name, new name     |
 | *"change routing of X to discussion"*                      | Change routing    | name, new routing      |
-| *"mark X handled"*, *"X has fanned out"*                   | Mark handled      | name                   |
-| *"unhandle X"*, *"un-handle X"*                            | Unhandle          | name                   |
+| *"close X as a dead end"*, *"X is a dead end"*, *"mark X handled"* | Close as dead end | name                   |
+| *"reopen X"*, *"unhandle X"*                               | Reopen dead end   | name                   |
 
 If the message is ambiguous (e.g. *"fix X"*, *"that one looks wrong"*), ask one clarifying question before proceeding. No STOP gate is needed for clarification — it's part of conversational flow, not a manifest write.
 
@@ -42,7 +42,7 @@ If the message is ambiguous (e.g. *"fix X"*, *"that one looks wrong"*), ask one 
 
 - **Additive group** — a contiguous run of Edit summary operations *or* a contiguous run of Edit description operations. Each group batches into one STOP gate, one commit, one session-log entry.
 - **Destructive group** — a single Remove, Rename, or Change routing operation. Each is its own group of one with its own STOP gate and commit.
-- **Marker group** — a single Mark handled or Unhandle operation. Non-destructive (it sets or clears a display/convergence marker only), but still its own group of one with its own STOP gate and commit.
+- **Marker group** — a single Close as dead end or Reopen operation. Non-destructive (it sets or clears a display/convergence marker only), but still its own group of one with its own STOP gate and commit.
 
 Walk the groups in user order. For mixed batches, each destructive op is its own group; contiguous additive ops in between batch.
 
@@ -52,15 +52,15 @@ Walk the groups in user order. For mixed batches, each destructive op is its own
 
 Apply per-operation validation gates **before** any STOP gate. If validation fails for an operation, surface the rejection with a clear next-step pointer (don't just say "blocked") and remove the operation from its group. Continue with the rest.
 
-**Lifecycle gates** — for destructive (Remove, Rename, Change routing) and marker (Mark handled, Unhandle) operations, look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
+**Lifecycle gates** — for destructive (Remove, Rename, Change routing) and marker (Close as dead end, Reopen) operations, look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
 
 | Operation       | Allowed lifecycles | Disallowed                                                                  |
 | --------------- | ------------------ | --------------------------------------------------------------------------- |
 | Remove          | `fresh`            | `researching`, `discussing`, `ready_for_discussion`, `decided`, `handled`, `cancelled` |
 | Rename          | `fresh`            | all others                                                                  |
 | Change routing  | `fresh`            | all others (routing is implicit once a phase item exists)                   |
-| Mark handled    | any except `handled`, `cancelled` | `handled`, `cancelled`                                       |
-| Unhandle        | `handled`          | all others                                                                  |
+| Close as dead end | any except `handled`, `cancelled` | `handled`, `cancelled`                                     |
+| Reopen dead end | `handled`          | all others                                                                  |
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
 
@@ -68,7 +68,7 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 
 `fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including a `triaged` stub of parked rerouted concerns (dump cue `triage=waiting`). Surface the engine's refusal as the rejection.
 
-Mark handled is non-destructive — it sets a display/convergence marker, primary use being a research topic that has fanned out into differently-named discussions. It's allowed from any actionable lifecycle; only an already-`handled` or `cancelled` topic is rejected. Unhandle is its inverse — allowed on `handled` only, clearing the marker.
+Close as dead end is non-destructive — it sets a display/convergence marker (`handled` in the manifest), for a topic with nothing to carry forward under its own name. It's allowed from any actionable lifecycle; only an already-closed or `cancelled` topic is rejected. Reopen is its inverse — allowed on `handled` only, clearing the marker.
 
 The engine enforces these same gates — `engine discovery-map` refuses an illegal op with an error naming the blocking lifecycle, so this pre-validation and the write path can never disagree. The rejection displays below stay this file's job, rendered from the pre-check here or from an engine error.
 
@@ -87,24 +87,24 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 - `discussing` — `discussion is in flight on it`
 - `ready_for_discussion` — `research has completed and discussion is queued` (superseded research: `its research was superseded and discussion is queued`)
 - `decided` — `discussion has concluded`
-- `handled` — `it has fanned out into discussions and stays on the map as historical anchor` (only when research completed or was superseded; otherwise `it is marked handled and stays on the map as historical anchor`)
+- `handled` — `it is closed as a dead end — its research stays on the map as record` (only when research completed or was superseded; otherwise `it is closed as a dead end and stays on the map as record`)
 - `cancelled` — `it has phase work in cancelled state and stays on the map as historical record`
 
-`{recovery_pointer}`: for a `handled` target, `Say "unhandle {topic}" to make it actionable again.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead.`
+`{recovery_pointer}`: for a `handled` target, `Say "reopen {topic}" to make it actionable again.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead.`
 
-**Marker-op rejection** — for a Mark handled op on an already-`handled` or `cancelled` topic, or an Unhandle op on a non-`handled` topic, render in a code block:
+**Marker-op rejection** — for a Close as dead end op on an already-closed or `cancelled` topic, or a Reopen op on a non-`handled` topic, render in a code block:
 
 > *Output the next fenced block as a code block:*
 
 ```
-"{topic}" can't be {marked handled|unhandled} — {marker_phrase}.
+"{topic}" can't be {closed as a dead end|reopened} — {marker_phrase}.
 ```
 
 `{marker_phrase}` examples:
 
-- Mark handled on `handled` — `it's already marked handled`
-- Mark handled on `cancelled` — `it's cancelled; reactivate the phase work from the epic menu first`
-- Unhandle on a non-`handled` lifecycle — `it isn't marked handled, so there's nothing to unhandle`
+- Close as dead end on `handled` — `it's already closed as a dead end`
+- Close as dead end on `cancelled` — `it's cancelled; reactivate the phase work from the epic menu first`
+- Reopen on a non-`handled` lifecycle — `it isn't closed as a dead end, so there's nothing to reopen`
 
 **Name validation** — for each Rename operation, validate the proposed name via the shared reference:
 
@@ -142,13 +142,13 @@ Walk the validated operation groups in user order. For the next pending group:
 
 → Proceed to **H. Edit Description**.
 
-#### If the group is a Mark handled operation
+#### If the group is a Close as dead end operation
 
-→ Proceed to **I. Mark Handled**.
+→ Proceed to **I. Close as Dead End**.
 
-#### If the group is an Unhandle operation
+#### If the group is a Reopen operation
 
-→ Proceed to **J. Unhandle**.
+→ Proceed to **J. Reopen**.
 
 #### Otherwise (no groups remain)
 
@@ -424,26 +424,26 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 
 → Return to **C. Apply** for the next group.
 
-## I. Mark Handled
+## I. Close as Dead End
 
 Render the proposal:
 
 > *Output the next fenced block as a code block:*
 
 ```
-Mark "{name}" handled.
+Close "{name}" as a dead end.
 
-  It stays on the map as a historical anchor, but stops
-  prompting for a next action and no longer counts against
-  convergence. Use this when its research has fanned out into
-  other discussions. Reversible with "unhandle {name}".
+  It stays on the map and in the knowledge base as record and
+  seed material, but stops prompting for a next action and no
+  longer counts against convergence — nothing to carry forward
+  under its own name. Reversible with "reopen {name}".
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-**`◆ Confirm mark handled?`**
+**`◆ Confirm close as dead end?`**
 
 **`y/yes`**
 **`n/no`**
@@ -466,27 +466,27 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map handle {wor
 Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
 
 ```markdown
-- Marked handled: {name} — {short reason}
+- Closed as dead end: {name} — {short reason}
 ```
 
 Per-item commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): mark {name} handled"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): close {name} as dead end"
 ```
 
 → Return to **C. Apply** for the next group.
 
-## J. Unhandle
+## J. Reopen
 
 Render the proposal:
 
 > *Output the next fenced block as a code block:*
 
 ```
-Unhandle "{name}".
+Reopen "{name}".
 
-  Clears the handled marker. The topic returns to its
+  Clears the dead-end marker. The topic returns to its
   name-matched lifecycle and counts against convergence again.
 ```
 
@@ -494,7 +494,7 @@ Unhandle "{name}".
 
 ```
 · · · · · · · · · · · ·
-**`◆ Confirm unhandle?`**
+**`◆ Confirm reopen?`**
 
 **`y/yes`**
 **`n/no`**
@@ -517,13 +517,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map unhandle {w
 Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
 
 ```markdown
-- Unhandled: {name} — {short reason}
+- Reopened: {name} — {short reason}
 ```
 
 Per-item commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): unhandle {name}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): reopen {name}"
 ```
 
 → Return to **C. Apply** for the next group.

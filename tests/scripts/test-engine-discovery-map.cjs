@@ -547,8 +547,8 @@ describe('engine CLI: discovery-map operations', () => {
       'ready-topic': /research has completed and discussion is queued.*cancel from the epic menu instead/,
       'discussing-topic': /discussion is in flight on it.*cancel from the epic menu instead/,
       'decided-topic': /discussion has concluded.*cancel from the epic menu instead/,
-      // handled-topic has no research item — no fan-out to claim.
-      'handled-topic': /it is marked handled and stays on the map as historical anchor.*unhandle it to make it actionable again/,
+      // handled-topic has no research item — no kept record to claim.
+      'handled-topic': /it is closed as a dead end and stays on the map as record.*reopen it to make it actionable again/,
       'cancelled-topic': /phase work in cancelled state.*cancel from the epic menu instead/,
       // triaged-topic derives fresh, but its parked stub is real content —
       // the refusal names the triage, not the historical anchor.
@@ -608,13 +608,13 @@ describe('engine CLI: discovery-map operations', () => {
       assert.ok(!/research has completed/.test(err.error), 'superseded research must not read as completed');
     });
 
-    it('a handled topic with completed research keeps the fan-out phrasing', () => {
+    it('a handled topic with completed research keeps the kept-record phrasing', () => {
       const m = readManifest(dir);
       m.phases.research.items['handled-topic'] = { status: 'completed' };
       fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
 
       const err = runFail(dir, ['rename', 'payments', 'handled-topic', 'anything-else']);
-      assert.match(err.error, /it has fanned out into discussions and stays on the map as historical anchor/);
+      assert.match(err.error, /it is closed as a dead end — its research stays on the map as record/);
     });
   });
 
@@ -629,7 +629,7 @@ describe('engine CLI: discovery-map operations', () => {
 
     it('refuses an already-handled item', () => {
       const err = runFail(dir, ['handle', 'payments', 'handled-topic']);
-      assert.match(err.error, /"handled-topic" can't be marked handled — it's already marked handled/);
+      assert.match(err.error, /"handled-topic" can't be closed as a dead end — it's already closed/);
     });
 
     it('refuses a cancelled item, pointing at phase-work reactivation', () => {
@@ -654,7 +654,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('refuses any non-handled item', () => {
       for (const topic of ['fresh-topic', 'researching-topic', 'decided-topic', 'cancelled-topic']) {
         const err = runFail(dir, ['unhandle', 'payments', topic]);
-        assert.match(err.error, /isn't marked handled, so there's nothing to unhandle/, topic);
+        assert.match(err.error, /isn't closed as a dead end, so there's nothing to reopen/, topic);
       }
     });
   });

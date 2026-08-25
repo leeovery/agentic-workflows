@@ -342,6 +342,8 @@ Cancelling **Auth Flow** in discussion will mark it as cancelled — it can be r
 
 Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. Statement-headed *route* menus (several destinations, no yes to answer — the off-topic reroute family, resume continue/restart gates) keep their statement: a question is the rule for consent gates, not for every menu. The same statement/question split serves any menu whose opening needs both guidance and an ask — a conversational instruction line, a blank line, then the glyphed question (the working-set menu's shape).
 
+**Options state their consequences.** A label says what choosing it does — a terse clause, weight scaled to the effect; a terminal or hard-to-reverse consequence is always named plainly, never softened into a display preference.
+
 **Option types** — menus contain two kinds of option:
 
 - **Command option** (explicit): A discrete input the user types verbatim. Key and word share one code span: **`y/yes`**, **`s/single`**, **`a/auto`** — the user may type either side. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`a/approve`** and **`b/abort`**). The conditional branch uses the command value (e.g., `#### If \`yes\``); inline references to a key elsewhere in prose use the same merged span (`` `b/back` ``).
