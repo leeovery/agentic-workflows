@@ -256,9 +256,22 @@ not code to migrate.
 Every gate this pass touches states its consequence in the menu copy —
 what happens on each option, in words a non-author understands. Plus
 one line in CONVENTIONS.md gate-authoring guidance so it binds future
-gates. The fan-out offer is the cautionary tale: "keep on the map but
-stop prompting to discuss it" read as a display preference and was
-actually terminal.
+gates (confirmed in scope 2026-08-25): terse by preference — context
+adds weight only where the consequence is heavy; repetitive boilerplate
+is its own failure. The fan-out offer is the cautionary tale: "keep on
+the map but stop prompting to discuss it" read as a display preference
+and was actually terminal.
+
+### 9. One ask per file, enforced at authoring
+
+Triage's own rule — independently-judgeable asks are separate concern
+files — exists but isn't enforced where concerns are authored, and a
+six-ask bundle in the wild caused a design decision to be settled
+research-side because it travelled with a research question. Add the
+enforcement beat to the concern-authoring surfaces this pass already
+rewrites (the shared off-topic reference, the route lane delivery):
+before landing, split multi-ask material into separate concerns — the
+engine's fresh-file-per-concern delivery already supports it.
 
 ## What deliberately does not change
 
