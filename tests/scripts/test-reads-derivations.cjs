@@ -822,82 +822,46 @@ describe('reads + derivations', () => {
   describe('computeAnalysisCacheStatus', () => {
     const { createManifest } = require('./discovery-test-utils.cjs');
 
-    it('research-analysis: returns absent when no research files and no cache', () => {
-      createManifest(dir, 'alpha', { phases: {} });
-      const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
-      assert.strictEqual(r.status, 'absent');
-      assert.strictEqual(r.generated, null);
-      assert.deepStrictEqual(r.files, []);
-    });
-
-    it('research-analysis: returns absent when files exist but no completed research item', () => {
+    it('gap-analysis: returns absent when a research file exists but no completed research item', () => {
       createManifest(dir, 'alpha', {
         phases: { research: { items: { 'topic-a': { status: 'in-progress' } } } },
       });
       createFile(dir, '.workflows/alpha/research/topic-a.md', 'content');
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
       // Completed-only input: no completed items → absent (analysis won't fire)
       assert.strictEqual(r.status, 'absent');
     });
 
-    it('research-analysis: returns stale when completed research items exist but no cache', () => {
+    it('gap-analysis: returns stale when completed research items exist but no cache', () => {
       createManifest(dir, 'alpha', {
         phases: { research: { items: { 'topic-a': { status: 'completed' } } } },
       });
       createFile(dir, '.workflows/alpha/research/topic-a.md', 'content');
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
       assert.strictEqual(r.status, 'stale');
     });
 
-    it('research-analysis: returns valid when checksum matches', () => {
-      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-a');
-      const checksum = filesChecksum([path.join(dir, '.workflows/alpha/research/topic-a.md')]);
+    it('gap-analysis: returns stale when a cached input file changes', () => {
+      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-original');
       createManifest(dir, 'alpha', {
         phases: {
-          research: {
-            items: { 'topic-a': { status: 'completed' } },
-            analysis_cache: { checksum, generated: '2026-05-01', files: ['topic-a.md'] },
-          },
+          research: { items: { 'topic-a': { status: 'completed' } } },
+          discovery: { gap_analysis_cache: { checksum: 'stale-hash', generated: '2026-05-01', input_files: ['topic-a.md'] } },
         },
       });
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
-      assert.strictEqual(r.status, 'valid');
-      assert.strictEqual(r.generated, '2026-05-01');
-      assert.deepStrictEqual(r.files, ['topic-a.md']);
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'stale');
     });
 
-    it('research-analysis: returns valid regardless of manifest insertion order (write-side sorts; read-side must too)', () => {
-      // Insert items in non-alphabetical order. The analysis writes its
-      // cache checksum over a SORTED file list (research-analysis.md
-      // Section E). The read side in computeAnalysisCacheStatus must
-      // sort identically — otherwise the cache always reports stale on
-      // every workflow-continue-epic, firing analyses + KB re-indexes for no
-      // reason.
-      createFile(dir, '.workflows/alpha/research/zebra.md', 'z');
-      createFile(dir, '.workflows/alpha/research/auth.md', 'a');
-      const checksum = filesChecksum([
-        path.join(dir, '.workflows/alpha/research/auth.md'),
-        path.join(dir, '.workflows/alpha/research/zebra.md'),
-      ]);  // sorted order matches analyses' write side
-      createManifest(dir, 'alpha', {
-        phases: {
-          research: {
-            // Non-alphabetical insertion order:
-            items: { zebra: { status: 'completed' }, auth: { status: 'completed' } },
-            analysis_cache: { checksum, generated: '2026-05-01', files: ['auth.md', 'zebra.md'] },
-          },
-        },
-      });
-      const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
-      assert.strictEqual(r.status, 'valid', 'cache should be valid — read side must sort to match write side');
-    });
-
-    it('gap-analysis: returns valid regardless of manifest insertion order', () => {
+    it('gap-analysis: returns valid regardless of manifest insertion order (write-side sorts; read-side must too)', () => {
+      // Insert items in non-alphabetical order. The analysis writes its cache
+      // checksum over a SORTED file list. The read side in
+      // computeAnalysisCacheStatus must sort identically — otherwise the cache
+      // always reports stale on every workflow-continue-epic, firing the
+      // analysis + KB re-indexes for no reason.
       createFile(dir, '.workflows/alpha/research/zebra.md', 'rz');
       createFile(dir, '.workflows/alpha/research/auth.md', 'ra');
       createFile(dir, '.workflows/alpha/discussion/billing.md', 'db');
@@ -919,43 +883,19 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.status, 'valid', 'gap-analysis cache should be valid — read side must sort');
     });
 
-    it('research-analysis: returns stale when files changed', () => {
-      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-original');
-      createManifest(dir, 'alpha', {
-        phases: {
-          research: {
-            items: { 'topic-a': { status: 'completed' } },
-            analysis_cache: { checksum: 'stale-hash', generated: '2026-05-01', files: ['topic-a.md'] },
-          },
-        },
-      });
-      const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
-      assert.strictEqual(r.status, 'stale');
-    });
-
-    it('research-analysis: returns absent when cache exists but no completed items remain', () => {
-      // No completed items on disk → analysis precondition fails → absent
-      createManifest(dir, 'alpha', {
-        phases: { research: { analysis_cache: { checksum: 'old', generated: '2026-05-01', files: ['gone.md'] } } },
-      });
-      const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
-      assert.strictEqual(r.status, 'absent');
-      assert.deepStrictEqual(r.files, ['gone.md']);
-    });
-
     it('gap-analysis: returns absent when no completed material and no cache', () => {
       createManifest(dir, 'alpha', { phases: {} });
       const m = loadManifest(dir, 'alpha');
       const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
       assert.strictEqual(r.status, 'absent');
+      assert.strictEqual(r.generated, null);
+      assert.deepStrictEqual(r.files, []);
     });
 
     it('gap-analysis: returns absent when cache exists but no completed items remain', () => {
-      // Symmetry with research-analysis: cache.files preserved on the absent
-      // return so observability isn't lost, even though the precondition gate
-      // means no analysis will fire.
+      // cache.input_files preserved on the absent return so observability
+      // isn't lost, even though the precondition gate means no analysis will
+      // fire.
       createManifest(dir, 'alpha', {
         phases: {
           discovery: { gap_analysis_cache: { checksum: 'old', generated: '2026-05-02', input_files: ['gone.md'] } },
@@ -1028,7 +968,7 @@ describe('reads + derivations', () => {
     });
 
     it('returns absent for null manifest', () => {
-      const r = computeAnalysisCacheStatus(null, path.join(dir, '.workflows'), 'research-analysis');
+      const r = computeAnalysisCacheStatus(null, path.join(dir, '.workflows'), 'gap-analysis');
       assert.strictEqual(r.status, 'absent');
     });
   });

@@ -46,7 +46,6 @@ function discover(cwd, workUnit) {
   const nextSessionNumber = engine.session.nextSessionNumber(path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions'));
   const workflowsDir = path.join(cwd, '.workflows');
   const analysisCaches = {
-    research_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'research-analysis'),
     gap_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'gap-analysis'),
   };
   return {
@@ -137,7 +136,7 @@ function format(result) {
 
   const caches = result.analysis_caches || {};
   const cacheStatus = (kind) => ((caches[kind] || { status: 'absent' }).status);
-  lines.push(`analysis_caches: research_analysis=${cacheStatus('research_analysis')}, gap_analysis=${cacheStatus('gap_analysis')}`);
+  lines.push(`analysis_caches: gap_analysis=${cacheStatus('gap_analysis')}`);
 
   lines.push(`next_session_number: ${String(result.next_session_number).padStart(3, '0')}`);
 

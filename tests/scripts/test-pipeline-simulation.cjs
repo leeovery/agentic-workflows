@@ -1077,12 +1077,22 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'delete', `${wu}.review.unified`, 'staging']);
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.unified`, 'staging']).trim(), 'false');
     sim.refuses(['manifest', 'delete', `${wu}.review.unified`, 'staging'], /not found/);
+    // The discovery-gap-analysis approval gate: candidates staged under the
+    // analysis' own subtree, decided one at a time, an approved candidate
+    // landing on the map with the analysis' provenance, and the subtree
+    // cleared when the analysis closes.
     sim.run(['manifest', 'set', `${wu}.discovery`,
-      'analysis_staging.research-analysis.gate_mode=gated',
-      'analysis_staging.research-analysis.candidates.gamma-prime.status=pending',
-      'analysis_staging.research-analysis.candidates.gamma-prime.fanout_offer=pending']);
-    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.research-analysis.candidates.gamma-prime.status', 'approved']);
-    sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.research-analysis']);
+      'analysis_staging.discovery-gap-analysis.gate_mode=gated',
+      'analysis_staging.discovery-gap-analysis.candidates.epsilon.status=pending',
+      'analysis_staging.discovery-gap-analysis.candidates.zeta.status=pending']);
+    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.epsilon.status', 'approved']);
+    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'skipped']);
+    sim.refuses(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'later'],
+      /Invalid candidate status/);
+    sim.run(['discovery-map', 'add', wu, 'epsilon', 'discussion', '--summary', 'Epsilon summary', '--source', 'gap-analysis']);
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.epsilon.source, 'gap-analysis');
+    sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']);
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']).trim(), 'false');
 
     // Bridge continuation surfaces render at every state.
     sim.render(['phase-completed', wu, '--phase', 'specification'], { expect: 'content' });

@@ -1367,7 +1367,7 @@ function setupFeatureFixture() {
   writeFile(dir, '.workflows/auth-flow/discussion/auth-flow.md', '# Discussion\n');
   writeFile(dir, '.workflows/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(dir, '.workflows/auth-flow/seeds/seed.md', '# Seed\n');
-  writeFile(dir, '.workflows/auth-flow/.state/research-analysis.md', '# Analysis\n');
+  writeFile(dir, '.workflows/auth-flow/.state/discovery-gap-analysis.md', '# Analysis\n');
   // Present but never indexed for a feature — discovery's session leg is
   // epic-only.
   writeFile(dir, '.workflows/auth-flow/discovery/sessions/session-001.md', '# Session 001\n');

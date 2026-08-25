@@ -66,7 +66,7 @@ describe('epic projections: dashboard (map branch)', () => {
     '  · seeded from the inbox',
     '  · 1 import',
     '',
-    '  ⚑ 1 new topic(s) added to the map from research-analysis.',
+    '  ⚑ 1 new topic(s) added to the map from gap-analysis.',
     '',
     'RESEARCH & DISCUSSION (2 topics · 1 ready · 1 fresh)',
     '  ├─ → Kitchen Hardware',
@@ -101,14 +101,14 @@ describe('epic projections: dashboard (map branch)', () => {
 
   it('renders the map-branch dashboard byte-for-byte (callouts, stages, trees)', () => {
     const out = epicDashboard('quiz-competition-v1', mapDetail(), {
-      newArrivals: { research_analysis: ['menu-admin'], gap_analysis: [] },
+      newArrivals: { gap_analysis: ['menu-admin'] },
     });
     assert.strictEqual(out, EXPECTED_DASHBOARD);
   });
 
   it('keeps every body line within TREE_WIDTH and the │ gutter unbroken', () => {
     const out = epicDashboard('quiz-competition-v1', mapDetail(), {
-      newArrivals: { research_analysis: ['menu-admin'], gap_analysis: [] },
+      newArrivals: { gap_analysis: ['menu-admin'] },
     });
     const lines = out.split('\n');
     const start = lines.findIndex((l) => l.startsWith('  ├─ → Kitchen Hardware'));
@@ -413,7 +413,6 @@ describe('epic projections: menu', () => {
       imports_count: 0,
       seeds_count: 0,
       analysis_caches: {
-        research_analysis: { status: 'absent', generated: null, files: [] },
         gap_analysis: { status: 'absent', generated: null, files: [] },
       },
       gating: {

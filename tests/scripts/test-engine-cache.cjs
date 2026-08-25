@@ -66,79 +66,47 @@ function engineFails(dir, args) {
   return parsed;
 }
 
-describe('engine cache stamp: research-analysis', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); seedEpic(dir); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('stamps completed research files only — the read side judges the stamp valid', () => {
-    assert.strictEqual(readStatus(dir, 'research-analysis').status, 'stale');
-
-    const res = engine(dir, ['cache', 'stamp', 'payments', 'research-analysis']);
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.kind, 'research-analysis');
-    assert.strictEqual(res.files, 2);
-    assert.match(res.checksum, /^[0-9a-f]{32}$/);
-
-    const cache = readManifest(dir).phases.research.analysis_cache;
-    assert.strictEqual(cache.checksum, res.checksum);
-    assert.deepStrictEqual(cache.files, ['kitchen-hardware.md', 'menu-admin.md']);
-    assert.ok(!Number.isNaN(Date.parse(cache.generated)), `generated is a timestamp: ${cache.generated}`);
-
-    assert.strictEqual(readStatus(dir, 'research-analysis').status, 'valid');
-    // The other kinds' caches are untouched (both live under phases.discovery).
-    assert.strictEqual(readManifest(dir).phases.discovery, undefined);
-  });
-
-  it('a changed input makes the stamp stale; restamping makes it valid again', () => {
-    engine(dir, ['cache', 'stamp', 'payments', 'research-analysis']);
-    createFile(dir, '.workflows/payments/research/menu-admin.md', '# Menu Admin — revised\n');
-    assert.strictEqual(readStatus(dir, 'research-analysis').status, 'stale');
-
-    engine(dir, ['cache', 'stamp', 'payments', 'research-analysis']);
-    assert.strictEqual(readStatus(dir, 'research-analysis').status, 'valid');
-  });
-
-  it('a completed item whose file is missing on disk is excluded, matching the read side', () => {
-    fs.rmSync(path.join(dir, '.workflows/payments/research/menu-admin.md'));
-    const res = engine(dir, ['cache', 'stamp', 'payments', 'research-analysis']);
-    assert.strictEqual(res.files, 1);
-    assert.deepStrictEqual(readManifest(dir).phases.research.analysis_cache.files, ['kitchen-hardware.md']);
-    assert.strictEqual(readStatus(dir, 'research-analysis').status, 'valid');
-  });
-
-  it('indexes the .state cache file in the same call — a failed index is a warning, never a block', () => {
-    // No .state/research-analysis.md on disk — the index attempt always
-    // fails (deterministically, whatever the machine's KB configuration),
-    // lands as a warning naming the cache file, and never blocks the stamp.
-    const res = engine(dir, ['cache', 'stamp', 'payments', 'research-analysis']);
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /knowledge index \(\.state\/research-analysis\.md\) failed/);
-    assert.strictEqual(readStatus(dir, 'research-analysis').status, 'valid');
-  });
-});
-
 describe('engine cache stamp: gap-analysis', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); seedEpic(dir); });
   afterEach(() => { cleanupFixture(dir); });
 
   it('stamps completed research + discussion files under phases.discovery — read side judges valid', () => {
+    assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'stale');
+
     const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
+    assert.strictEqual(res.ok, true);
     assert.strictEqual(res.kind, 'gap-analysis');
     assert.strictEqual(res.files, 3);
+    assert.match(res.checksum, /^[0-9a-f]{32}$/);
 
     const cache = readManifest(dir).phases.discovery.gap_analysis_cache;
     assert.strictEqual(cache.checksum, res.checksum);
     // Names follow the shared collection's sorted path order.
     assert.deepStrictEqual(cache.input_files, ['auth-flow.md', 'kitchen-hardware.md', 'menu-admin.md']);
-    assert.ok(!Number.isNaN(Date.parse(cache.generated)));
+    assert.ok(!Number.isNaN(Date.parse(cache.generated)), `generated is a timestamp: ${cache.generated}`);
 
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
-    // The research-analysis cache is untouched.
+    // The stamp writes its own manifest home only — no other phase is touched.
     assert.strictEqual(readManifest(dir).phases.research.analysis_cache, undefined);
+  });
+
+  it('a changed input makes the stamp stale; restamping makes it valid again', () => {
+    engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
+    createFile(dir, '.workflows/payments/research/menu-admin.md', '# Menu Admin — revised\n');
+    assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'stale');
+
+    engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
+    assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
+  });
+
+  it('a completed item whose file is missing on disk is excluded, matching the read side', () => {
+    fs.rmSync(path.join(dir, '.workflows/payments/research/menu-admin.md'));
+    const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
+    assert.strictEqual(res.files, 2);
+    assert.deepStrictEqual(readManifest(dir).phases.discovery.gap_analysis_cache.input_files,
+      ['auth-flow.md', 'kitchen-hardware.md']);
+    assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
   });
 
   it('a discussion conclusion after the stamp makes it stale', () => {
@@ -157,11 +125,15 @@ describe('engine cache stamp: gap-analysis', () => {
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
   });
 
-  it('indexes discovery-gap-analysis.md in the same call — warning names the gap-analysis cache file', () => {
-    // The cache file is absent, so the index attempt fails deterministically.
+  it('indexes discovery-gap-analysis.md in the same call — a failed index is a warning, never a block', () => {
+    // The cache file is absent, so the index attempt fails deterministically
+    // (whatever the machine's KB configuration), lands as a warning naming the
+    // cache file, and never blocks the stamp.
     const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
+    assert.strictEqual(res.ok, true);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index \(\.state\/discovery-gap-analysis\.md\) failed/);
+    assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
   });
 });
 
@@ -173,6 +145,8 @@ describe('engine cache stamp: validation', () => {
   it('rejects unknown kinds, missing args, and missing work units — loud and specific', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     assert.match(engineFails(dir, ['cache', 'stamp', 'payments', 'nonsense']).error, /unknown cache kind "nonsense"/);
+    // research-analysis is gone — gap-analysis is the only boot-time analysis.
+    assert.match(engineFails(dir, ['cache', 'stamp', 'payments', 'research-analysis']).error, /unknown cache kind "research-analysis"/);
     // Prototype property names must not slip past the kind table.
     assert.match(engineFails(dir, ['cache', 'stamp', 'payments', 'toString']).error, /unknown cache kind "toString"/);
     assert.match(engineFails(dir, ['cache', 'stamp', 'payments']).error, /Usage: engine cache stamp/);
@@ -186,9 +160,6 @@ describe('engine cache stamp: validation', () => {
       phases: { research: { items: { topic: { status: 'in-progress' } } } },
     });
     const before = fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8');
-    assert.match(
-      engineFails(dir, ['cache', 'stamp', 'payments', 'research-analysis']).error,
-      /nothing to stamp: no completed research files/);
     assert.match(
       engineFails(dir, ['cache', 'stamp', 'payments', 'gap-analysis']).error,
       /nothing to stamp: no completed research or discussion files/);

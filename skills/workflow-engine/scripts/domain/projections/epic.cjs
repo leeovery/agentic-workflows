@@ -26,7 +26,6 @@ const { buildOrderLive } = require('../build-order.cjs');
 
 /**
  * @typedef {object} NewArrivals
- * @property {string[]} [research_analysis]   topic names added by research-analysis this boot-up
  * @property {string[]} [gap_analysis]        topic names added by gap-analysis this boot-up
  */
 
@@ -214,11 +213,11 @@ function stageMaterial(detail) {
   return materialBlock({ seeds: detail.seeds_count, imports: showImports ? detail.imports_count : 0 });
 }
 
-/** Arrival callouts above the map header — what the analyses added this boot-up. @param {NewArrivals} newArrivals */
+/** Arrival callouts above the map header — what the analysis added this boot-up. @param {NewArrivals} newArrivals */
 function arrivalCallouts(newArrivals) {
   const lines = [];
-  for (const [field, label] of [['research_analysis', 'research-analysis'], ['gap_analysis', 'gap-analysis']]) {
-    const names = newArrivals[/** @type {'research_analysis'|'gap_analysis'} */ (field)];
+  for (const [field, label] of [['gap_analysis', 'gap-analysis']]) {
+    const names = newArrivals[/** @type {'gap_analysis'} */ (field)];
     if (Array.isArray(names) && names.length > 0) {
       lines.push(`  ⚑ ${names.length} new topic(s) added to the map from ${label}.`);
     }

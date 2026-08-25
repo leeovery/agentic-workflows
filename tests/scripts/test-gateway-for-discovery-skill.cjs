@@ -448,37 +448,24 @@ describe('workflow-discovery discovery', () => {
     it('returns absent statuses when no research and no discussion files exist', () => {
       createManifest(dir, 'payments', { work_type: 'epic' });
       const r = discover(dir, 'payments');
-      assert.strictEqual(r.analysis_caches.research_analysis.status, 'absent');
       assert.strictEqual(r.analysis_caches.gap_analysis.status, 'absent');
     });
 
-    it('returns stale for research-analysis when completed items exist but no cache', () => {
-      createManifest(dir, 'payments', {
-        work_type: 'epic',
-        phases: { research: { items: { 'topic-a': { status: 'completed' } } } },
-      });
-      createFile(dir, '.workflows/payments/research/topic-a.md', 'content');
-      const r = discover(dir, 'payments');
-      assert.strictEqual(r.analysis_caches.research_analysis.status, 'stale');
-    });
-
-    it('returns valid for research-analysis when checksum matches', () => {
-      createFile(dir, '.workflows/payments/research/topic-a.md', 'content-x');
+    it('returns valid for gap-analysis when checksum matches', () => {
+      createFile(dir, '.workflows/payments/discussion/topic-a.md', 'content-x');
       const crypto = require('crypto');
-      const buf = fs.readFileSync(path.join(dir, '.workflows/payments/research/topic-a.md'));
+      const buf = fs.readFileSync(path.join(dir, '.workflows/payments/discussion/topic-a.md'));
       const checksum = crypto.createHash('md5').update(buf).digest('hex');
       createManifest(dir, 'payments', {
         work_type: 'epic',
         phases: {
-          research: {
-            items: { 'topic-a': { status: 'completed' } },
-            analysis_cache: { checksum, generated: '2026-05-01', files: ['topic-a.md'] },
-          },
+          discussion: { items: { 'topic-a': { status: 'completed' } } },
+          discovery: { gap_analysis_cache: { checksum, generated: '2026-05-01', input_files: ['topic-a.md'] } },
         },
       });
       const r = discover(dir, 'payments');
-      assert.strictEqual(r.analysis_caches.research_analysis.status, 'valid');
-      assert.strictEqual(r.analysis_caches.research_analysis.generated, '2026-05-01');
+      assert.strictEqual(r.analysis_caches.gap_analysis.status, 'valid');
+      assert.strictEqual(r.analysis_caches.gap_analysis.generated, '2026-05-01');
     });
 
     it('returns stale for gap-analysis when completed discussions exist but no cache', () => {
@@ -491,10 +478,10 @@ describe('workflow-discovery discovery', () => {
       assert.strictEqual(r.analysis_caches.gap_analysis.status, 'stale');
     });
 
-    it('format() renders analysis_caches statuses on one line', () => {
+    it('format() renders the analysis_caches status on one line', () => {
       createManifest(dir, 'payments', { work_type: 'epic' });
       const out = format(discover(dir, 'payments'));
-      assert.match(out, /analysis_caches: research_analysis=absent, gap_analysis=absent/);
+      assert.match(out, /analysis_caches: gap_analysis=absent/);
     });
   });
 
@@ -850,7 +837,7 @@ describe('workflow-discovery format', () => {
       '  (none)',
       'session_logs (0):',
       '  (none)',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: gap_analysis=absent',
       'next_session_number: 001',
       '',
     ].join('\n'));
@@ -889,7 +876,7 @@ describe('workflow-discovery format', () => {
       'session_logs (2):',
       '  - 001 .workflows/payments/discovery/sessions/session-001.md',
       '  - 002 .workflows/payments/discovery/sessions/session-002.md',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: gap_analysis=absent',
       'next_session_number: 003',
       '',
     ].join('\n'));

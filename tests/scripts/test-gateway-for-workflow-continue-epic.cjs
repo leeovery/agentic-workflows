@@ -289,9 +289,7 @@ describe('workflow-continue-epic discovery', () => {
       const r = discover(dir);
       const d = r.epics[0].detail;
       assert.ok(d.analysis_caches);
-      assert.ok(d.analysis_caches.research_analysis);
       assert.ok(d.analysis_caches.gap_analysis);
-      assert.strictEqual(d.analysis_caches.research_analysis.status, 'absent');
       assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
     });
 
@@ -1478,7 +1476,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       '=== EPIC: v1 ===',
       'all_done: false',
       'reconcile_pending: (none)',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: gap_analysis=absent',
       'needs_sequencing: true',
       'build_order_needs_sequencing: false',
       'discovery_map (2):',
@@ -1498,7 +1496,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       '=== EPIC: v1 ===',
       'all_done: false',
       'reconcile_pending: (none)',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: gap_analysis=absent',
       'needs_sequencing: false',
       'build_order_needs_sequencing: false',
       'discovery_map (0):',
@@ -1835,7 +1833,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('view {work_unit} still answers the sectioned snapshot, with and without new arrivals', () => {
     epicFixture();
-    for (const args of [['view', 'v1'], ['view', 'v1', '{"research_analysis":[],"gap_analysis":[]}']]) {
+    for (const args of [['view', 'v1'], ['view', 'v1', '{"gap_analysis":[]}']]) {
       const res = run(args);
       assert.strictEqual(res.status, 0, res.stderr);
       assert.ok(res.stdout.includes('=== DATA'));
