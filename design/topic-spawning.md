@@ -102,6 +102,13 @@ one is sharpened.
    under this model the parent file remains the content holder;
    removing its chunks would starve every consumer.
 
+The user-declared "this is really two topics" case resolves as moves 2
+and 3 composed: spawn the children (content stays), the parent runs to
+its own conclusion like any topic, and when everything forward-moving
+turns out to live in the children, the dead-end offer's second arm —
+facts serving only other topics — covers its exit. No dedicated
+decomposition mechanism exists or is needed.
+
 States that died under scrutiny, kept here so they stay dead:
 
 - **"Carried by its children"** — only reachable when content
@@ -204,11 +211,14 @@ replacement in convergence routing:
 The supersede-after-split transaction from earlier drafts is withdrawn
 — nothing empties, so nothing closes.
 
-Design detail: the spawn's `source` value. Options: reuse
-`research-split:{parent}` for continuity, or an honest new name (e.g.
-`spawn:{parent}`) with the old value kept render-valid for existing
-maps. Decide at implementation; either way the provenance walk (§7)
-must recognise it.
+Design detail: the spawn's `source` value. The deep-dive path already
+stamps `research-split:{parent}` on topics it spawns **without moving
+content** — so that value's name has been lying about its mechanism
+for a while. Options: reuse it for continuity, or an honest new name
+(e.g. `spawn:{parent}`) adopted by the deep-dive path too, with the
+old value kept render-valid for existing maps. Decide at
+implementation; either way the provenance walk (§7) must recognise
+whichever value(s) spawn topics carry.
 
 ### 6. `handled` — kept, one job, plain words
 
@@ -286,6 +296,13 @@ actually terminal.
   records the decline and the gate clears its spent state; even
   abandoned, the next boot counts zero pending candidates and clears.
   The migration sweeps strays elsewhere.
+- The mainline holds: a concluded research file is fully ready to seed
+  its own discussion — `initialize-discussion.md` §B reads it in full,
+  and the conclude gates (background review agent, document review
+  reconciling session against file, measured-claims re-run) guarantee
+  the file is a complete record before `completed` is ever set. The
+  no-residue rule strengthens this: no dangling threads can survive
+  conclusion.
 
 ## Banked
 
