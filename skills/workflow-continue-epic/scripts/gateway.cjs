@@ -6,12 +6,13 @@
 // engine answers the skill's flow needs and sections the output.
 //
 //   gateway.cjs               → thin index dump, all active epics (head insert)
-//   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 5–7, bridge)
+//   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 5–8, bridge)
 //   gateway.cjs view {work_unit} [new_arrivals_json]
-//                               → DATA + DISPLAY + MENU snapshot (Step 8)
+//                               → DATA + DISPLAY + MENU snapshot (Step 9)
 //   gateway.cjs completed-menu {work_unit}   → Resume Completed sub-view (D)
 //   gateway.cjs cancel-menu {work_unit}      → Cancel Topic sub-view (E)
 //   gateway.cjs reactivate-menu {work_unit}  → Reactivate Topic sub-view (F)
+//   gateway.cjs unblock-menu {work_unit}     → Unblock Plan sub-view (G)
 //
 // Those calls are the whole legal surface: a verb without its work unit, an
 // unknown verb, or excess arguments is a usage error (stderr, exit 1) — never
@@ -236,7 +237,6 @@ function view(workUnit, newArrivalsJson) {
   for (const k of menu.keys) {
     let line = `  ${k.key}  ${k.action}  ${k.topic || '—'}  → ${k.route || '(internal)'}`;
     if (k.recommended) line += '  (recommended)';
-    if (k.blocked) line += `  (blocked: ${(k.deps_blocking || []).map(b => b.topic + (b.internal_id ? ':' + b.internal_id : '') + ' — ' + b.reason).join('; ')})`;
     if (k.in_session) line += `  (in session: last active ${engine.presence.fmtAge(k.session_age || 0)} ago)`;
     dataLines.push(line);
   }
@@ -273,7 +273,7 @@ function inSessionGate(workUnit, key) {
   return engine.project.epicInSessionGate(entry);
 }
 
-// One selection sub-view (sections D–F): the keys table as DATA, the view's
+// One selection sub-view (sections D–G): the keys table as DATA, the view's
 // heading as TITLE, the grouped list as DISPLAY, the pick menu as MENU.
 /** @param {string} workUnit @param {(name: string, detail: object) => {keys: object[], title: string, display: string, rendered: string}} projection */
 function subView(workUnit, projection) {
@@ -288,7 +288,9 @@ function subView(workUnit, projection) {
   const dataLines = [`work_unit: ${e.name}`];
   dataLines.push('ACTIONS (key  action  topic  phase  → route):');
   for (const k of view.keys) {
-    dataLines.push(`  ${k.key}  ${k.action}  ${k.topic || '—'}  ${k.phase || '—'}  → ${k.route || '(internal)'}`);
+    let line = `  ${k.key}  ${k.action}  ${k.topic || '—'}  ${k.phase || '—'}  → ${k.route || '(internal)'}`;
+    if (k.dep) line += `  (dep: ${k.dep})`;
+    dataLines.push(line);
   }
 
   return [
@@ -299,7 +301,7 @@ function subView(workUnit, projection) {
   ].join('\n');
 }
 
-const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu) {work_unit}';
+const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|unblock-menu) {work_unit}';
 
 /** Reject the call: usage to stderr, exit 1. @param {string} message @returns {string} */
 function usageError(message) {
@@ -326,6 +328,7 @@ if (require.main === module) {
     'completed-menu': subViewHandler('completed-menu', (name, d) => engine.project.epicCompletedMenu(name, d)),
     'cancel-menu': subViewHandler('cancel-menu', (name, d) => engine.project.epicCancelMenu(d)),
     'reactivate-menu': subViewHandler('reactivate-menu', (name, d) => engine.project.epicReactivateMenu(d)),
+    'unblock-menu': subViewHandler('unblock-menu', (name, d) => engine.project.epicUnblockMenu(d)),
     'in-session-gate': (workUnit, key, ...rest) => (!workUnit || !key || rest.length > 0
       ? usageError('in-session-gate takes a work unit and a menu key')
       : inSessionGate(workUnit, key)),

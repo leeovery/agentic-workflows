@@ -1769,7 +1769,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   const path = require('path');
   const { spawnSync } = require('child_process');
   const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
-  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu) {work_unit}\n';
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|unblock-menu) {work_unit}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -1786,6 +1786,18 @@ describe('workflow-continue-epic CLI dispatch', () => {
   function run(args) {
     return spawnSync('node', [GATEWAY, ...args], { cwd: dir, encoding: 'utf8' });
   }
+
+  it('unblock-menu emits the dep column in DATA byte-exactly', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        planning: { items: { tmpl: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'resolved', internal_id: 'auth-1-4' } } } } },
+      },
+    });
+    const out = run(['unblock-menu', 'v1']).stdout;
+    assert.ok(out.includes('  1  unblock  tmpl  planning  → (internal)  (dep: auth)'), out.split('===')[1] || out);
+  });
 
   it('the view snapshot carries the build-order flag line', () => {
     createManifest(dir, 'v1', {
@@ -1883,7 +1895,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('each sub-view verb errors without its work unit instead of rendering the first epic', () => {
     epicFixture();
-    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu']) {
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'unblock-menu']) {
       const res = run([verb]);
       assert.strictEqual(res.status, 1, verb);
       assert.strictEqual(res.stdout, '', verb);
@@ -1893,7 +1905,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('each sub-view verb errors on excess positionals', () => {
     epicFixture();
-    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu']) {
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'unblock-menu']) {
       const res = run([verb, 'v1', 'extra']);
       assert.strictEqual(res.status, 1, verb);
       assert.strictEqual(res.stdout, '', verb);

@@ -20,12 +20,14 @@
     "calls_include": [
       "engine.cjs boot",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "render cancel-gate search-relevance.discussion.synonym-handling",
       "topic cancel search-relevance discussion synonym-handling",
       "render cancel-cascade-gate search-relevance.discussion.synonym-handling",
       "topic cancel search-relevance discussion synonym-handling --cascade",
       "render topic-receipt search-relevance.discussion.synonym-handling --verb cancel"
     ],
     "calls_in_order": [
+      "render cancel-gate search-relevance.discussion.synonym-handling",
       "topic cancel search-relevance discussion synonym-handling",
       "render cancel-cascade-gate search-relevance.discussion.synonym-handling",
       "topic cancel search-relevance discussion synonym-handling --cascade"

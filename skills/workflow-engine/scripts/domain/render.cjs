@@ -2394,6 +2394,26 @@ function revisitGate(cwd, { dotpath, prev, next }) {
 }
 
 /**
+ * The epic menu's bare topic-cancel confirm — the statement stays context,
+ * the short question takes the glyph. The cascade case (a live spec sources
+ * the topic) renders through cancel-cascade-gate instead.
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function cancelGate(cwd, { dotpath }) {
+  const { phase, topic } = resolveAddress(cwd, dotpath, 'cancel-gate');
+  return section(
+    'MENU: cancel gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`Cancelling **${titlecase(topic)}** in ${phase} will mark it as cancelled — it can be reactivated later.`, [
+      cmdOption('y', 'yes', 'Confirm cancellation'),
+      cmdOption('n', 'no', 'Return to menu'),
+    ], { question: 'Cancel it?' }),
+  );
+}
+
+/**
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
@@ -3407,6 +3427,7 @@ const SURFACES = {
   'entry-gate': entryGate,
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,
+  'cancel-gate': cancelGate,
   'epic-all-done-gate': epicAllDoneGate,
   'epic-soft-gate': epicSoftGate,
   'task-brief': taskBrief,

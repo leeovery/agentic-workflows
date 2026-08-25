@@ -28,7 +28,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} 
 
 The output is one snapshot in four demarcated sections:
 
-- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(blocked: …)` / `(in session: …)` markers. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(in session: …)` markers. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
 - **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
@@ -45,47 +45,27 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 
 Match the user's input to its `ACTIONS` entry by `key` — a number, or a command option's letter / long form. Every decision below reads the entry's `action` value, never its label text.
 
-#### If the selected entry carries a `(blocked: …)` marker
+#### If `action` is `unblock_plan`
 
-The item is shown for visibility but not selectable. Explain what blocks it, using the marker's `{dep}:{task} — {reason}` detail:
+→ Proceed to **G. Unblock Plan**.
 
-> *Output the next fenced block as a code block:*
+#### If `action` is `resequence_build_order`
+
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-"{topic:(titlecase)}" cannot start implementation yet.
-
-Blocking dependencies:
-  • {dep_topic}:{internal_id} — {reason}
-  • {dep_topic} — {reason}
+**`□ Sequence Build Order`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-· · · · · · · · · · · ·
-**`◆ Unblock a dependency?`**
-
-**`u/unblock`** → Mark a dependency as satisfied externally
-**`b/back`**    → Return to menu
+> Re-deriving the build order across the specification topics.
 ```
 
-**STOP.** Wait for user response.
+→ Load **[sequence-build-order.md](../../workflow-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
 
-**If user chose `unblock`:**
-
-Ask which dependency to mark as satisfied. Update via `engine manifest`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state satisfied_externally
-```
-
-Commit the change.
-
-→ Return to **A. State Display and Menu**.
-
-**If user chose `back`:**
-
-→ Return to **A. State Display and Menu**.
+→ On return, return to **A. State Display and Menu**.
 
 #### If `action` is `resume_completed`
 
@@ -119,7 +99,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 Continue with the **Hard gate check** below.
 
-**Hard gate check** — specification reads the settled record; this refusal comes before the soft gate. Read `phase_counts` from DATA. (Blocked specs never reach here — the menu carries no row for them; the display tree shows their `blocked` cue.)
+**Hard gate check** — specification reads the settled record; this refusal comes before the soft gate. Read `phase_counts` from DATA. (Blocked items never reach here — a blocked spec or a dep-blocked plan carries no menu row; the display tree shows the `blocked` cue and the ⚑ list carries the detail.)
 
 **If `action` is `analyze_discussions` and `phase_counts` shows discussion items in-progress and no specification items exist:**
 
@@ -205,18 +185,10 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 
 #### If user chose a numbered topic
 
-Store the selected entry's `phase` and `topic`. Confirm with the user:
+Store the selected entry's `phase` and `topic`. Fetch and emit the confirm's `MENU: cancel gate` section:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Cancelling **{topic:(titlecase)}** in {phase} will mark it as cancelled — it can be reactivated later.
-
-**`◆ Cancel it?`**
-
-**`y/yes`** → Confirm cancellation
-**`n/no`**  → Return to menu
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render cancel-gate {work_unit}.{phase}.{topic}
 ```
 
 **STOP.** Wait for user response.
@@ -227,7 +199,7 @@ Cancelling **{topic:(titlecase)}** in {phase} will mark it as cancelled — it c
 
 **If user chose `yes`:**
 
-Run the cancel transaction — one command stashes the current status, marks the item cancelled, drops the topic's discovery-map order, removes its knowledge-base chunks, and commits:
+Run the cancel transaction — one command stashes the current status, marks the item cancelled, stashes the topic's execution order (a research/discussion cancel stashes the discovery map's, a specification cancel the build order's), removes its knowledge-base chunks, and commits:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
@@ -275,7 +247,7 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 
 #### If user chose a numbered topic
 
-Store the selected entry's `phase` and `topic`. Run the reactivate transaction — one command restores the stashed status, removes `previous_status`, re-indexes the artifact into the knowledge base when the restored status is `completed` in an indexed phase (research / discussion / investigation / specification), and commits:
+Store the selected entry's `phase` and `topic`. Run the reactivate transaction — one command restores the stashed status and execution order (a build-order number returns only while no live topic holds it — otherwise the next sequencing pass seats the topic), removes `previous_status`, re-indexes the artifact into the knowledge base when the restored status is `completed` in an indexed phase (research / discussion / investigation / specification), and commits:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {phase} {topic}
@@ -286,5 +258,35 @@ Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried)
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb reactivate [--warn]
 ```
+
+→ Return to **A. State Display and Menu**.
+
+---
+
+## G. Unblock Plan
+
+A dep-blocked plan carries no implementation row — this is its escape hatch. Render the blocked-plans list and pick menu:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs unblock-menu {work_unit}
+```
+
+Emit the TITLE section (markdown), then the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
+
+**STOP.** Wait for user response.
+
+#### If user chose `back`
+
+→ Return to **A. State Display and Menu**.
+
+#### If user chose a numbered dependency
+
+Store the selected entry's `topic` (the plan) and its `(dep: …)` value (the dependency to mark). Record the user's call — the dependency is satisfied outside the workflow:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep}.state satisfied_externally
+```
+
+Commit: `impl({work_unit}): mark {dep} dependency as satisfied externally`
 
 → Return to **A. State Display and Menu**.
