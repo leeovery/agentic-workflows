@@ -1766,7 +1766,7 @@ function rerouteOffer(cwd, { dotpath, file }) {
     "emit verbatim as markdown, then STOP for the user's response",
     menu(label, [
       cmdOption('r', 'reroute', 'Send it to the topic it belongs to; it picks it up later'),
-      cmdOption('k', 'keep', 'Keep it here as a subtopic'),
+      cmdOption('k', 'keep', 'Keep it here as part of this topic'),
     ]),
   );
 }
