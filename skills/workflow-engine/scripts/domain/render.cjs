@@ -2437,10 +2437,11 @@ function softGateCounts(items) {
 function buildOrderAhead(manifest, topic, donePhase) {
   const specs = phaseItems(manifest, 'specification').filter(buildOrderLive);
   const selected = specs.find((i) => i.name === topic);
-  if (!selected) {
-    throw new Error(`render epic-soft-gate: no live specification item "${topic}"`);
-  }
-  if (!Number.isInteger(selected.order)) return [];
+  // A topic outside the live ordered set passes silently: a legacy epic's
+  // unordered items, and a plan legitimately outliving its spec (the spec
+  // cancelled, superseded, or promoted while its plan runs). The gate is
+  // advisory — only a typo'd --action refuses.
+  if (!selected || !Number.isInteger(selected.order)) return [];
   const done = new Set(phaseItems(manifest, donePhase)
     .filter((i) => i.status === 'completed')
     .map((i) => i.name));

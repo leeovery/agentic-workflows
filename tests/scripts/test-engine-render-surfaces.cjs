@@ -98,12 +98,20 @@ describe('epic-soft-gate', () => {
     assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'continue_implementation' }), /--topic is required/);
   });
 
-  it('an unknown action or an unknown topic refuses by name', () => {
+  it('an unknown action refuses by name; a terminal or absent topic passes silently', () => {
     orderedEpic();
     assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planing', topic: 'billing' }),
       /unknown --action "start_planing"/);
-    assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'no-such' }),
-      /no live specification item "no-such"/);
+    // A plan can legitimately outlive its spec (cancelled/superseded/promoted)
+    // — the advisory gate must pass, never crash a routine menu selection.
+    writeManifest(dir, 'outlived', {
+      phases: {
+        specification: { items: { auth: { status: 'cancelled', previous_status: 'completed', previous_order: 1 } } },
+        planning: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'outlived', action: 'continue_planning', topic: 'auth' }), '');
+    assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'no-such' }), '');
   });
 
   it('empty when nothing sits ahead, when ahead topics are planned, and when the selection has no order', () => {

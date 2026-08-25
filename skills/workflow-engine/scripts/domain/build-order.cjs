@@ -14,7 +14,7 @@
 // scoped git commit) and clears `phases.specification.build_order_stale` —
 // the flag topic completion sets so declared dependencies can sharpen an
 // order first assigned at grouping. The order is advisory everywhere: it
-// sorts and recommends, it never gates. All errors throw loud and specific,
+// sorts and recommends, it never blocks. All errors throw loud and specific,
 // before anything is written. Every load→mutate→save runs under the work
 // unit's manifest lock.
 // ---------------------------------------------------------------------------
@@ -155,7 +155,11 @@ function sortItemsByBuildOrder(items, manifest, phase) {
     .filter((s) => buildOrderLive(s) && Number.isInteger(s.order))
     .map((s) => [s.name, s.order]));
   const orderOf = (it) => {
-    const o = phase === 'specification' ? it.order : specOrder.get(it.name);
+    // Terminal items trail everywhere: a superseded spec's inert number must
+    // not seat it among the live rows any more than it may seat a live plan.
+    const o = phase === 'specification'
+      ? (buildOrderLive(it) ? it.order : undefined)
+      : specOrder.get(it.name);
     return Number.isInteger(o) ? o : Infinity;
   };
   return items.map((it, i) => ({ it, i }))

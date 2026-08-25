@@ -593,7 +593,7 @@ describe('workflow-specification-entry format', () => {
       assert.deepStrictEqual(r.specifications.map(s => s.name), ['auth', 'zeta', 'stray']);
     });
 
-    it('two unordered specs in one tier keep insertion order — no NaN comparator', () => {
+    it('two unordered specs in one tier keep insertion order via an explicit tie', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
