@@ -54,7 +54,7 @@ The map is already sequenced.
 
 ## D. Sequence Build Order
 
-A completed specification flags the build order stale, and a topic can land without one (a regroup, a pivot). Read `build_order_needs_sequencing` from the most recent discovery output.
+A completed specification flags the build order stale, and the live numbering can break — a topic without an order (a regroup, a pivot), a duplicate, or a hole left by a cancel. Read `build_order_needs_sequencing` from the most recent discovery output.
 
 #### If `build_order_needs_sequencing` is true
 

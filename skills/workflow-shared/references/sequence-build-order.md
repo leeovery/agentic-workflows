@@ -4,7 +4,7 @@
 
 ---
 
-Assign the build order across an epic's live specification topics — Claude's read of which topic to specify, plan, and implement first. The order is soft: it sorts and selects recommendations within a phase, but never blocks. It is re-derived wholesale — a full renumber of every live topic — whenever a topic lands without an order, a completed specification flags the order stale, or the user asks for a re-derive.
+Assign the build order across an epic's live specification topics — Claude's read of which topic to specify, plan, and implement first. The order is soft: it sorts and selects recommendations within a phase, but never blocks. It is re-derived wholesale — a full renumber of every live topic — whenever the live numbering is broken (a topic without an order, a duplicate, or a hole left by a cancel), a completed specification flags the order stale, or the user asks for a re-derive.
 
 Manifest-driven, so it runs identically from every caller.
 

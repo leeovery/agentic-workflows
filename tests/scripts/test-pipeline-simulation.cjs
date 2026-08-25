@@ -879,11 +879,18 @@ describe('pipeline simulation', () => {
     // Birth rides the reconcile: the grouping's apply carries the order
     // fields (bare numbers — the field surface refuses a quoted one), and a
     // later regroup renumbers the whole live set through the same door.
+    // The reconcile carries the conditional stale delete the prose collects:
+    // a spec completed above, so `manifest exists` answers true and the
+    // apply clears the flag alongside the birth orders.
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.specification`, 'build_order_stale']), 'true');
     const birthOps = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.unified`, fields: { order: 1 } },
-       { op: 'set', path: `${wu}.specification.alpha`, fields: { order: 2 } }]);
+       { op: 'set', path: `${wu}.specification.alpha`, fields: { order: 2 } },
+       { op: 'delete', path: `${wu}.specification`, field: 'build_order_stale' }]);
     sim.run(['manifest', 'apply', wu, '--file', birthOps]);
     assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.order, 1);
+    assert.strictEqual(sim.manifest(wu).phases.specification.build_order_stale, undefined,
+      'the reconcile is the sequencing — its apply clears the flag');
     const regroupOps = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.alpha`, fields: { order: 1 } },
        { op: 'set', path: `${wu}.specification.unified`, fields: { order: 2 } }]);
