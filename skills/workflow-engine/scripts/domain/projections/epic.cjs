@@ -391,16 +391,19 @@ const KEY_BLOCKING =
   + '    blocked by {plan}        — dependency unresolved';
 
 const CUE_RECONCILE =
-  '    input moved — an upstream artifact was revised since this item\n'
-  + '                  completed; the item\'s entry flow reconciles it';
+  '    input moved             — an upstream artifact was revised since\n'
+  + '                              this item completed; the item\'s entry\n'
+  + '                              flow reconciles it';
 
 const CUE_BLOCKED =
-  '    blocked (specification) — a source discussion is back in-progress;\n'
-  + '              re-conclude it and the item returns to the menu';
+  '    blocked (specification) — a source discussion is back\n'
+  + '                              in-progress; re-conclude it and the\n'
+  + '                              item returns to the menu';
 
 const CUE_PLAN_BLOCKED =
-  '    blocked (planning) — implementation waits on another plan; the\n'
-  + '              ⚑ list names the dependency, u/unblock is the override';
+  '    blocked (planning)      — implementation waits on another plan;\n'
+  + '                              the ⚑ list names the dependency,\n'
+  + '                              u/unblock is the override';
 
 /**
  * Section B — the Key block, showing only categories present in the display
@@ -598,7 +601,7 @@ function commandOptions(workUnit, detail, hasMap) {
   const anyPlanBlocked = (detail.phases.planning || [])
     .some((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
   if (anyPlanBlocked) {
-    opts.push({ key: 'u', word: 'unblock', action: 'unblock_plan', topic: null, route: null, label: 'Unblock a plan — *mark a dependency as satisfied externally*' });
+    opts.push({ key: 'u', word: 'unblock', action: 'unblock_plan', topic: null, route: null, label: 'Unblock a plan — mark a dependency as satisfied externally' });
   }
   // The build order's manual escape hatch: the automatic triggers fire on a
   // missing or stale order, never on a wrong one.
@@ -864,9 +867,9 @@ function selectionSubView(title, empty, question, action, rows) {
       phase = r.phase;
     }
     const lastInGroup = i === rows.length - 1 || rows[i + 1].phase !== r.phase;
-    // Rows wrap at the display width like every other engine tree —
-    // continuations align under the row text, and the rail never carries on
-    // (a sub-view row has no children beneath it).
+    // Sub-views are plain list rows (CONVENTIONS: selection sub-views use
+    // the [term] form, not trees) — the branch glyphs are visual grouping,
+    // so wrapped continuations align under the row text with no rail.
     const glyph = lastInGroup ? '└─' : '├─';
     displayLines.push(...wrapWithPrefix(`${key}. ${r.row}`, {
       width: TREE_WIDTH, prefix: `  ${glyph} `, hang: `${key}. `.length,

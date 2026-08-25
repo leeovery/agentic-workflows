@@ -239,7 +239,7 @@ Commands:
   render entry-gate        <wu.phase.topic> [--own]  (planning|implementation|review|specification)
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
-  render cancel-gate <wu>.<phase>.<topic>
+  render cancel-gate <wu.phase.topic>
   render epic-all-done-gate <wu>
   render epic-soft-gate <wu> --action <action> [--topic <topic>]
   render task-brief        <wu.implementation.topic> --file <payload.json>

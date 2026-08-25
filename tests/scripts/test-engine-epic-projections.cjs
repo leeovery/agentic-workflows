@@ -159,7 +159,7 @@ describe('epic projections: dashboard (map branch)', () => {
     const out = epicDashboard('v1', d);
     assert.match(out, /Menu Admin\s+\[completed · input moved\]/, out);
     const key = epicKey(d);
-    assert.ok(key.includes('input moved — an upstream artifact was revised'), key);
+    assert.ok(key.includes('input moved             — an upstream artifact was revised'), key);
     const { keys } = epicMenu('v1', d);
     const start = keys.find((k) => k.action === 'start_planning');
     assert.ok(start, 'start_planning entry present');
@@ -180,7 +180,7 @@ describe('epic projections: dashboard (map branch)', () => {
     const out = epicDashboard('v1', d);
     assert.match(out, /✓ Fees\s+↳ Decided · input moved/, out);
     const key = epicKey(d);
-    assert.ok(key.includes('input moved — an upstream artifact was revised'), key);
+    assert.ok(key.includes('input moved             — an upstream artifact was revised'), key);
   });
 
   it('the completed-topics picker carries the input-moved cue on flagged rows', () => {
@@ -353,7 +353,7 @@ describe('epic projections: key', () => {
       },
     });
     assert.strictEqual(epicKey(d), 'Key:\n' + STATUS
-      + '\n\n  Cue:\n    blocked (planning) — implementation waits on another plan; the\n              \u2691 list names the dependency, u/unblock is the override'
+      + '\n\n  Cue:\n    blocked (planning)      — implementation waits on another plan;\n                              the \u2691 list names the dependency,\n                              u/unblock is the override'
       + '\n\n' + BLOCKING);
   });
 
@@ -441,8 +441,8 @@ describe('epic projections: menu', () => {
       '**`i/discovery`** → Continue discovery',
       '**`c/completed`** → Resume a completed topic',
       '**`a/cancel`**    → Cancel a topic (phase work)',
-      '**`u/unblock`**   → Unblock a plan — *mark a dependency as satisfied*',
-      `${NB(14)}*externally*`,
+      '**`u/unblock`**   → Unblock a plan — mark a dependency as satisfied',
+      `${NB(14)}externally`,
       '**`o/order`**     → Re-sequence the build order',
     ].join('\n'));
   });
@@ -957,7 +957,7 @@ describe('epic projections: selection sub-views', () => {
     });
     const key = epicKey(d);
     assert.ok(key.includes('blocked (specification) —'), key);
-    assert.ok(key.includes('blocked (planning) —'), key);
+    assert.ok(key.includes('blocked (planning)      —'), key);
   });
 
   it('unblock-menu: empty state when no plan is blocked', () => {

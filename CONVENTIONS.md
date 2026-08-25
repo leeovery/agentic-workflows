@@ -753,7 +753,7 @@ Load **[name.md](references/name.md)** and follow its instructions as written.
 Rules:
 - No arrow (`→`) before the Load line — it's the step's content, not a routing instruction
 - Bold the markdown link: `**[name.md](path)**`
-- `→ On return, proceed to` is the footer after a Load directive, separated by a blank line — the loaded reference runs to completion (its STOP gates and loops included) before the proceed applies. A bare `→ Proceed to` here reads as the immediate next action and overshoots the reference
+- `→ On return, proceed to` is the footer after a Load directive, separated by a blank line — the loaded reference runs to completion (its STOP gates and loops included) before the proceed applies. A bare `→ Proceed to` here reads as the immediate next action and overshoots the reference. A backward target takes `→ On return, return to **A. Section Name**.`
 - When a `**STOP.**` gate or a bold conditional sits between the Load directive and the routing line, the routing is keyed to the user's response or the branch, not the return — those use the bare `→ Proceed to`
 - The final step has no routing footer (it's terminal)
 - A footer governs only the reference's bare `→ Return to caller.` exits — never the branches the reference routes itself (see Navigation & Return Patterns → backbone escape). Where every exit routes to a named step, no branch is left for a footer to serve and naming one would name a step that never runs: the footer instead defers, `→ On return, proceed as the reference directed.` A step is never left with no footer at all — silence reads as the end of the step, and the next heading gets treated as the fall-through
@@ -813,7 +813,6 @@ No other verbs — never `→ Go to`, `→ Jump to`, `→ Skip to`, `→ Continu
 | `→ Proceed to **Step N**.` | Next step in the backbone |
 | `→ Proceed to **B. Section Name**.` | Next lettered section in a reference file |
 | `→ On return, proceed to **Step N**.` | Footer after a Load directive — applies when the loaded reference returns (see Load Directive Format) |
-| `→ On return, return to **A. Section Name**.` | The same footer with a backward target — the loaded reference completes, then flow re-enters an earlier section |
 
 
 #### Backward (within a file)
@@ -821,6 +820,7 @@ No other verbs — never `→ Go to`, `→ Jump to`, `→ Skip to`, `→ Continu
 | Instruction | Context |
 |---|---|
 | `→ Return to **A. Section Name**.` | Earlier lettered section in the same reference file |
+| `→ On return, return to **A. Section Name**.` | Footer after a Load directive with a backward target — the loaded reference completes, then flow re-enters an earlier section. The bare `→ Return to` after a Load remains valid; the footer form makes the after-the-reference timing explicit |
 
 Internal routing (both forward and backward) uses bold text, never links.
 

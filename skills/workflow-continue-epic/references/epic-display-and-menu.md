@@ -51,7 +51,17 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or a comman
 
 #### If `action` is `resequence_build_order`
 
-The user judges the current order wrong — re-derive it wholesale.
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Sequence Build Order`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Re-deriving the build order across the specification topics.
+```
 
 → Load **[sequence-build-order.md](../../workflow-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
 
