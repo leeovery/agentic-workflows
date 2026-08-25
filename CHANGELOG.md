@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.12] - 2026-08-25
+
+✨ Added
+- Epics now carry a build order — a suggested sequence for specifying, planning, and implementing topics, assigned automatically when discussions are grouped and re-derived as work progresses.
+- The epic menu gets a re-sequence option (`o/order`) to manually redo the build order at any time.
+- A blocked implementation plan now has a dedicated unblock menu — pick the plan and dependency to mark as satisfied externally.
+
+🔧 Changed
+- The epic dashboard, specification menu, and epic menu entries now sort by build order within each phase, so the queue reads work-first, then build-first.
+- Soft gates when planning or implementing out of turn now name the specific topics that are ahead and still unplanned or unbuilt, instead of a generic in-progress count.
+- A dependency-blocked implementation plan no longer shows as a selectable-but-refusing menu row — it's removed from the menu, with a tree cue and key-line explanation in its place.
+- Cancelling or reactivating a specification topic now correctly stashes and restores its own build-order position, separate from the discovery map's order.
+
+🐛 Fixed
+- Cancelling a specification topic no longer strips the discovery map's execution order from the same-named topic.
+
 ## [0.7.11] - 2026-08-24
 
 ✨ Added
