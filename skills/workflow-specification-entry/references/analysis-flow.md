@@ -116,9 +116,15 @@ Work through these steps in order:
 
 7. **Upsert proposed.** For each surviving target name, collect `set` ops — `status: proposed` plus one `sources.{discussion}.status: pending` per grouping member — and, for an existing-proposed item being regenerated, a `delete` op per source no longer in the grouping (pruning is allowed only on proposed items, never anchors). A **rename** of a proposed grouping is just delete-old (step 5) plus upsert-new — lossless, since a proposed item holds no file or extraction.
 
-8. **Apply the reconcile.** Write the collected ops, in the order gathered (augments, stale deletes, upserts, prunes), to `.workflows/.cache/{work_unit}/specification/reconcile-ops.json` with the Write tool:
+8. **Assign the build order.** The analysis just read every grouping holistically — the same read decides which topic to build first. Over the whole live set (every anchor whose status is not `cancelled`/`superseded`/`promoted`, plus every surviving target), assign contiguous integers `1..N` weighing what must physically exist before what: foundational scaffolding first, a topic whose deliverable other groupings assume ahead of the topics that assume it. Ignore the discovery map's `order` — it ranks what to explore, assigned before any discussion concluded. Collect one `set` field per topic — a bare number, never quoted:
+   - `{work_unit}.specification.{name}` → `order: {N}` (fold into the topic's existing op where one is already collected; a topic with no op yet — an anchor whose sources are unchanged — gets its own `set` op)
+
+   Check whether a completed specification has flagged the order stale (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.specification build_order_stale`). When `true`, collect one more op — this reconcile is the sequencing, so the flag clears with it:
+   - `{work_unit}.specification` → delete `build_order_stale`
+
+9. **Apply the reconcile.** Write the collected ops, in the order gathered (augments, stale deletes, upserts, prunes, order sets, the flag delete), to `.workflows/.cache/{work_unit}/specification/reconcile-ops.json` with the Write tool:
    ```json
-   [{"op": "set", "path": "{work_unit}.specification.{name}", "fields": {"status": "proposed", "sources.{discussion}.status": "pending"}},
+   [{"op": "set", "path": "{work_unit}.specification.{name}", "fields": {"status": "proposed", "sources.{discussion}.status": "pending", "order": 2}},
     {"op": "delete", "path": "{work_unit}.specification", "field": "items.{name}"}]
    ```
    Persist the whole reconcile in one atomic call — a failing op means the manifest is untouched, never half-reconciled:

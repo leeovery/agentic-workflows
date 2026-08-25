@@ -48,7 +48,7 @@ Parse the discovery output to understand:
 - one line per closed epic — `{name} (last phase: {phase})`
 - `completed_count` / `cancelled_count` — the header counts
 
-The per-epic state surface (`all_done`, `reconcile_pending`, `analysis_caches`, `needs_sequencing`, the discovery map) is the scoped dump Step 4 runs after validation; display and routing come from the `view` snapshot at Step 8.
+The per-epic state surface (`all_done`, `reconcile_pending`, `analysis_caches`, `needs_sequencing`, `build_order_needs_sequencing`, the discovery map) is the scoped dump Step 4 runs after validation; display and routing come from the `view` snapshot at Step 9.
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 
@@ -138,7 +138,7 @@ backfill-checks is terminal when recovery work landed — it commits and stops, 
 
 Read `analysis_caches` from the most recent discovery output. Load **[topic-discovery-dispatch.md](../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
-On return, `new_arrivals` is populated for Step 8 to render the callout.
+On return, `new_arrivals` is populated for Step 9 to render the callout.
 
 → On return, proceed to **Step 7**.
 
@@ -170,6 +170,8 @@ On return, re-run discovery so the display sees the new order:
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
+Hold the refreshed output as the most recent discovery output.
+
 → On return, proceed to **Step 8**.
 
 #### Otherwise
@@ -178,7 +180,35 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 
 ---
 
-## Step 8: Display State and Menu
+## Step 8: Sequence Build Order
+
+Read `build_order_needs_sequencing` from the most recent discovery output.
+
+#### If `build_order_needs_sequencing` is true
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Sequence Build Order`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Assigning the build order across the specification topics.
+```
+
+Load **[sequence-build-order.md](../workflow-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
+
+→ On return, proceed to **Step 9**.
+
+#### Otherwise
+
+→ Proceed to **Step 9**.
+
+---
+
+## Step 9: Display State and Menu
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -194,11 +224,11 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 
 Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}`.
 
-→ On return, proceed to **Step 9**.
+→ On return, proceed to **Step 10**.
 
 ---
 
-## Step 9: Route Selection
+## Step 10: Route Selection
 
 Invoke the `route` stored for the user's selection — the selected `ACTIONS` entry's route from epic-display-and-menu.md (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`). Selections with route `(internal)` resolve inside that reference and never reach this step.
 

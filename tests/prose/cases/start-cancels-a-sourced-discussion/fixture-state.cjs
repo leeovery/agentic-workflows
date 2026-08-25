@@ -24,6 +24,9 @@ module.exports = {
       'sources.synonym-handling.status=pending');
     h.write(`.workflows/${WU}/specification/expansion/specification.md`,
       '# Specification — Expansion\n\n(started, nothing extracted)\n');
+    // The lone live spec topic carries its order, so the entry's build-order
+    // sequencing step stays silent — this walk is about the cancel cascade.
+    h.engine('build-order', 'sequence', WU, 'expansion=1');
     h.engine('commit', WU, '-m', `spec(${WU}): start expansion specification`);
   },
 };

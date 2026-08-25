@@ -50,10 +50,11 @@ The item's source discussions reopened — it cannot be entered until they re-co
 
 Reconcile the manifest to a single proposed grouping immediately, so it never lags the cache. The target proposed set is `{unified}`:
 1. Collect a `delete` op for every existing proposed item (reconcile step 5 — none survive into the target set). If an **anchor** is keyed `unified` (a non-proposed spec already using the name), do NOT proceed — surface it as a naming conflict to the user (reconcile step 6's invariant: an anchor is never overwritten by a proposed item).
-2. Collect the `unified` upsert — `status: proposed` plus one `sources.{discussion}.status: pending` per completed discussion (reconcile step 7). Write the ops to `.workflows/.cache/{work_unit}/specification/unify-ops.json` with the Write tool, then persist deletes and upsert in one atomic call:
+2. Collect the `unified` upsert — `status: proposed` plus one `sources.{discussion}.status: pending` per completed discussion (reconcile step 7).
+3. Assign the build order over the surviving live set — `unified` plus every anchor whose status is not `cancelled`/`superseded`/`promoted` — as contiguous integers `1..N` (reconcile step 8; the deleted proposed items' numbers die with them, so the set renumbers whole). Collect one `order: {N}` field per topic — a bare number, never quoted — folding `unified`'s into its upsert and giving each anchor its own `set` op. Check whether a completed specification has flagged the order stale (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.specification build_order_stale`); when `true`, collect `{work_unit}.specification` → delete `build_order_stale` — this reconcile is the sequencing, so the flag clears with it. Write the ops to `.workflows/.cache/{work_unit}/specification/unify-ops.json` with the Write tool, then persist deletes, upsert, and orders in one atomic call:
    ```json
    [{"op": "delete", "path": "{work_unit}.specification", "field": "items.{name}"},
-    {"op": "set", "path": "{work_unit}.specification.unified", "fields": {"status": "proposed", "sources.{discussion}.status": "pending"}}]
+    {"op": "set", "path": "{work_unit}.specification.unified", "fields": {"status": "proposed", "sources.{discussion}.status": "pending", "order": 1}}]
    ```
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/specification/unify-ops.json

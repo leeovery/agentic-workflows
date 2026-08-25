@@ -150,7 +150,7 @@ function reconcilePending(d) {
   return out;
 }
 
-// The scoped state dump for one epic — the reasoning surface Steps 5–7 and
+// The scoped state dump for one epic — the reasoning surface Steps 5–8 and
 // the bridge's epic continuation read: the all-done flag, analysis-cache
 // statuses, the sequencing flag, and the discovery-map rows (tier, lifecycle,
 // routing, field presence, current summary text).
@@ -167,6 +167,7 @@ function formatScoped(workUnit, result) {
   lines.push(`reconcile_pending: ${reconcilePending(d).join(', ') || '(none)'}`);
   lines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   lines.push(`needs_sequencing: ${d.needs_sequencing}`);
+  lines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
   lines.push(`discovery_map (${d.discovery_map.length}):`);
   if (d.discovery_map.length === 0) {
     lines.push('  (empty)');
@@ -183,7 +184,7 @@ function formatScoped(workUnit, result) {
   return lines.join('\n') + '\n';
 }
 
-// One snapshot for Step 8: reasoning DATA (flags + the ACTIONS table), the
+// One snapshot for Step 9: reasoning DATA (flags + the ACTIONS table), the
 // rendered dashboard + key (DISPLAY), and the menu (MENU).
 function view(workUnit, newArrivalsJson) {
   const result = discover(process.cwd(), workUnit);
@@ -212,6 +213,7 @@ function view(workUnit, newArrivalsJson) {
   dataLines.push(`sessions_in_progress: ${held.map((r) => `${r.phase}/${r.topic} (last active ${engine.presence.fmtAge(r.age_seconds)} ago)`).join(', ') || '(none)'}`);
   dataLines.push(`convergence: ${d.convergence_state || 'none'}`);
   dataLines.push(`needs_sequencing: ${d.needs_sequencing}`);
+  dataLines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
   dataLines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   const phaseNames = Object.keys(d.phases);
   if (phaseNames.length > 0) {
