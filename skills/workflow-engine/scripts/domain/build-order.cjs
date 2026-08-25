@@ -14,7 +14,7 @@
 // scoped git commit) and clears `phases.specification.build_order_stale` —
 // the flag topic completion sets so declared dependencies can sharpen an
 // order first assigned at grouping. The order is advisory everywhere: it
-// sorts and recommends, it never gates. All errors throw loud and specific,
+// sorts and recommends, it never blocks. All errors throw loud and specific,
 // before anything is written. Every load→mutate→save runs under the work
 // unit's manifest lock.
 // ---------------------------------------------------------------------------
@@ -139,4 +139,32 @@ function computeBuildOrderNeedsSequencing(manifest) {
   return sorted.some((o, i) => o !== i + 1);
 }
 
-module.exports = { sequenceBuildOrder, computeBuildOrderNeedsSequencing, buildOrderLive };
+/**
+ * Sort phase items by build order — a stable tiebreak, never a regrouping:
+ * ordered items lead by their number, unordered items keep insertion order
+ * behind them. Planning and implementation items join on the topic name to
+ * the specification item's `order`; specification items read their own.
+ * @template {{name: string, order?: number}} T
+ * @param {T[]} items
+ * @param {object} manifest
+ * @param {string} phase
+ * @returns {T[]}
+ */
+function sortItemsByBuildOrder(items, manifest, phase) {
+  const specOrder = new Map(phaseItems(manifest, 'specification')
+    .filter((s) => buildOrderLive(s) && Number.isInteger(s.order))
+    .map((s) => [s.name, s.order]));
+  const orderOf = (it) => {
+    // Terminal items trail everywhere: a superseded spec's inert number must
+    // not seat it among the live rows any more than it may seat a live plan.
+    const o = phase === 'specification'
+      ? (buildOrderLive(it) ? it.order : undefined)
+      : specOrder.get(it.name);
+    return Number.isInteger(o) ? o : Infinity;
+  };
+  return items.map((it, i) => ({ it, i }))
+    .sort((a, b) => (orderOf(a.it) - orderOf(b.it)) || (a.i - b.i))
+    .map((x) => x.it);
+}
+
+module.exports = { sequenceBuildOrder, computeBuildOrderNeedsSequencing, buildOrderLive, sortItemsByBuildOrder };

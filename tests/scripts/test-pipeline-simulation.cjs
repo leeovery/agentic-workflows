@@ -913,6 +913,9 @@ describe('pipeline simulation', () => {
     const specData = sim.manifest(wu).phases.specification;
     assert.strictEqual(specData.items.unified.order, 1);
     assert.strictEqual(specData.build_order_stale, undefined, 'sequencing clears the stale flag');
+    // The soft gate is engine-rendered and empty when nothing sits ahead —
+    // unified is the whole live set, so planning it raises no concern.
+    sim.render(['epic-soft-gate', wu, '--action', 'start_planning', '--topic', 'unified'], { expect: 'empty' });
 
     // Supersession is terminal: the absorbed spec cannot restart or complete.
     sim.refuses(['topic', 'start', wu, 'specification', 'alpha'], /superseded/);

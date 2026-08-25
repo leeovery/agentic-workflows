@@ -102,6 +102,7 @@ function discover(cwd, workUnit) {
         name: item.name, work_unit: m.name, status,
         work_type: m.work_type,
       };
+      if (Number.isInteger(item.order)) spec.order = item.order;
 
       if (item.superseded_by) spec.superseded_by = item.superseded_by;
 
@@ -131,9 +132,12 @@ function discover(cwd, workUnit) {
     }
   }
 
-  // Actionable specs first, concluded specs last. Stable within each tier
-  // (insertion order preserved), so the menu reads work-first.
-  specifications.sort((a, b) => specSortRank(a) - specSortRank(b));
+  // Actionable specs first, concluded specs last. The build order breaks
+  // ties within each tier; unordered specs keep insertion order behind the
+  // ordered ones, so the menu reads work-first, then build-first.
+  const orderOf = (spec) => (Number.isInteger(spec.order) ? spec.order : Infinity);
+  specifications.sort((a, b) => (specSortRank(a) - specSortRank(b))
+    || (orderOf(a) === orderOf(b) ? 0 : orderOf(a) - orderOf(b)));
 
   // Concluded = completed with every source extracted. Drives the
   // "Manage completed specifications" submenu gate.

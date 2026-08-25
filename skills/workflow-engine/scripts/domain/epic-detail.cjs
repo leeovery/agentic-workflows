@@ -18,7 +18,7 @@ const {
   computeAnalysisCacheStatus,
   buildDiscoveryMap,
 } = require('./derivations.cjs');
-const { computeBuildOrderNeedsSequencing } = require('./build-order.cjs');
+const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
 
 // Every phase the epic detail iterates and the epic dashboard / thin dump
 // surface — discovery (the map, not a pipeline phase) first, then the epic
@@ -203,10 +203,17 @@ function epicDetail(cwd, manifest) {
   /** @type {NextPhaseEntry[]} */
   const nextPhaseReady = [];
 
+  const BUILD_ORDER_PHASES = ['specification', 'planning', 'implementation'];
   for (const phase of EPIC_DETAIL_PHASES) {
     if (phase === 'discovery') continue;
-    const items = phaseItems(manifest, phase);
+    let items = phaseItems(manifest, phase);
     if (items.length === 0) continue;
+    // The build order sorts the three build phases everywhere the detail
+    // feeds — dashboard trees, menu entries, recommendation scans — as a
+    // stable tiebreak within whatever grouping a surface applies on top.
+    if (BUILD_ORDER_PHASES.includes(phase)) {
+      items = sortItemsByBuildOrder(items, manifest, phase);
+    }
 
     const phaseEntries = [];
     for (const item of items) {
@@ -285,9 +292,9 @@ function epicDetail(cwd, manifest) {
     }
   }
 
-  const specItems = phaseItems(manifest, 'specification');
-  const planItems = phaseItems(manifest, 'planning');
-  const implItems = phaseItems(manifest, 'implementation');
+  const specItems = sortItemsByBuildOrder(phaseItems(manifest, 'specification'), manifest, 'specification');
+  const planItems = sortItemsByBuildOrder(phaseItems(manifest, 'planning'), manifest, 'planning');
+  const implItems = sortItemsByBuildOrder(phaseItems(manifest, 'implementation'), manifest, 'implementation');
 
   // A spec item (proposed included) whose source discussion is back
   // in-progress is blocked from entry until it re-concludes — the epic menu

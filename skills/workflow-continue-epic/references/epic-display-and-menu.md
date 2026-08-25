@@ -127,33 +127,21 @@ Tell the user in one line: {N} discussion(s) are still in-progress — the group
 
 → Return to **A. State Display and Menu**.
 
-**Soft gate check** — before routing, check whether the selection conflicts with a phase-completion recommendation. Advisory, not blocking. Read the counts from `phase_counts` in DATA.
+**Soft gate check** — before routing, the engine checks whether the selection conflicts with a phase-completion recommendation or the build order. Advisory, not blocking. Fetch the gate for the selected entry — `--topic` carries the entry's topic and is omitted for the topic-less command options:
 
-| Selected `action` | Condition | Gate message |
-|-------------------|-----------|--------------|
-| `start_discussion` · `start_discussion_after_research` · `continue_discussion` · `new_discussion` | research items exist with some in-progress | "{N} of {M} research topics still in-progress. Topic analysis works best with all research available." |
-| `start_specification` | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Later conclusions may reshape this grouping." |
-| `start_planning` · `continue_planning` | specification items exist with some in-progress or proposed | "{N} of {M} specifications not yet completed. Completing all specifications first helps identify cross-cutting dependencies." |
-| `start_implementation` · `continue_implementation` | planning items exist with some in-progress | "{N} of {M} plans still in-progress. Task dependencies across plans may be missed." |
-
-**If a soft gate condition matches:**
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-{Gate message}
-
-The system will re-analyse if you revisit later — proceeding
-now is safe, but may require rework.
-
-**`◆ Proceed anyway?`**
-
-**`y/yes`**  → Proceed anyway
-**`b/back`** → Return to menu
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render epic-soft-gate {work_unit} --action {action} [--topic {topic}]
 ```
 
-Gate messages are self-contained first lines. Compose the count prefix into the message (e.g., "3 of 5 research topics still in-progress. Topic analysis works best with all research available.").
+**If the output is empty:**
+
+The selection raises no concern.
+
+→ Proceed to **C. Route Selection**.
+
+**If a `MENU: epic soft gate` section is returned:**
+
+Emit the section verbatim.
 
 **STOP.** Wait for user response.
 
@@ -162,10 +150,6 @@ Gate messages are self-contained first lines. Compose the count prefix into the 
 → Return to **A. State Display and Menu**.
 
 **If user chose `yes`:**
-
-→ Proceed to **C. Route Selection**.
-
-**If no soft gate condition matches:**
 
 → Proceed to **C. Route Selection**.
 

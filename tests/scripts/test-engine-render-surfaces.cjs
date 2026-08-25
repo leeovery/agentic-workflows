@@ -40,6 +40,124 @@ function writePayload(dir, rel, obj) {
   return rel;
 }
 
+describe('epic-soft-gate', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  function orderedEpic() {
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: { alpha: { status: 'in-progress' }, beta: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'in-progress' }, billing: { status: 'completed' } } },
+        specification: {
+          items: {
+            auth: { status: 'completed', order: 1 },
+            reports: { status: 'completed', order: 2 },
+            billing: { status: 'completed', order: 3 },
+          },
+        },
+        planning: { items: { billing: { status: 'completed' } } },
+      },
+    });
+  }
+
+  it('planning row names the lower-ordered unplanned topics', () => {
+    orderedEpic();
+    const out = renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'billing' });
+    assert.match(out, /MENU: epic soft gate/);
+    assert.match(unwrap(out), /You're about to plan "Billing" — "Auth" and "Reports" are ahead of it in the build order and unplanned\./);
+    assert.match(out, /Proceed anyway\?/);
+    assert.match(out, /The build order is advisory/);
+  });
+
+  it('a single ahead topic reads singular; three read as a comma list', () => {
+    orderedEpic();
+    const one = renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'reports' });
+    assert.match(unwrap(one), /"Auth" is ahead of it in the build order and unplanned\./);
+
+    writeManifest(dir, 'wide', {
+      phases: {
+        specification: {
+          items: {
+            a: { status: 'completed', order: 1 },
+            b: { status: 'completed', order: 2 },
+            c: { status: 'completed', order: 3 },
+            d: { status: 'completed', order: 4 },
+          },
+        },
+      },
+    });
+    const three = renderSurface(dir, 'epic-soft-gate', { dotpath: 'wide', action: 'continue_planning', topic: 'd' });
+    assert.match(unwrap(three), /"A", "B" and "C" are ahead of it in the build order and unplanned\./);
+  });
+
+  it('continue_implementation reads the implementation phase; its --topic throw fires', () => {
+    orderedEpic();
+    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'continue_implementation', topic: 'billing' }), /unbuilt/);
+    assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'continue_implementation' }), /--topic is required/);
+  });
+
+  it('an unknown action refuses by name; a terminal or absent topic passes silently', () => {
+    orderedEpic();
+    assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planing', topic: 'billing' }),
+      /unknown --action "start_planing"/);
+    // A plan can legitimately outlive its spec (cancelled/superseded/promoted)
+    // — the advisory gate must pass, never crash a routine menu selection.
+    writeManifest(dir, 'outlived', {
+      phases: {
+        specification: { items: { auth: { status: 'cancelled', previous_status: 'completed', previous_order: 1 } } },
+        planning: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'outlived', action: 'continue_planning', topic: 'auth' }), '');
+    assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'no-such' }), '');
+  });
+
+  it('empty when nothing sits ahead, when ahead topics are planned, and when the selection has no order', () => {
+    orderedEpic();
+    assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'auth' }), '');
+    // billing (order 3) is the only implementation candidate; auth and
+    // reports are unbuilt → gate fires for implementation…
+    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_implementation', topic: 'billing' }), /unbuilt/);
+    // …but an unordered selection is silent (legacy epic, not yet sequenced).
+    writeManifest(dir, 'legacy', {
+      phases: { specification: { items: { a: { status: 'completed' }, b: { status: 'completed' } } } },
+    });
+    assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'legacy', action: 'start_planning', topic: 'a' }), '');
+  });
+
+  it('terminal topics never count as ahead', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        specification: {
+          items: {
+            auth: { status: 'cancelled', order: 1 },
+            billing: { status: 'completed', order: 2 },
+          },
+        },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'billing' }), '');
+  });
+
+  it('discussion and specification rows keep the counting idiom', () => {
+    orderedEpic();
+    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'new_discussion' }),
+      /1 of 2 research topics still in-progress/);
+    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_specification' }),
+      /1 of 2 discussions still in-progress/);
+    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'new_discussion' }),
+      /re-analyse if you revisit later/);
+  });
+
+  it('requires --action always and --topic for the order rows', () => {
+    orderedEpic();
+    assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay' }), /--action is required/);
+    assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning' }), /--topic is required/);
+  });
+});
+
 describe('surfaces primitives', () => {
   it('menu opens on the rule, glyphs a short label, and never closes the frame', () => {
     assert.strictEqual(
@@ -2709,7 +2827,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 

@@ -12,7 +12,8 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase, WORKLIST_GLYPH } = require('./conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { buildOrderLive } = require('./build-order.cjs');
 const { worklist } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
@@ -34,7 +35,7 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { computeNextPhase } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -2410,6 +2411,112 @@ function epicAllDoneGate(cwd, { dotpath }) {
 }
 
 // ---------------------------------------------------------------------------
+// epic-soft-gate — the epic menu's advisory phase gates, one surface for the
+// whole table. Empty when the selection raises no concern. The discovery-side
+// rows count unfinished upstream items; the planning and implementation rows
+// read the build order and name the topics sitting ahead of the selection.
+// Advisory always: the menu offers proceed-anyway, never a refusal.
+// ---------------------------------------------------------------------------
+
+const { SOFT_GATE_ACTIONS } = require('./projections/epic.cjs');
+
+const SOFT_GATE_DISCUSSION_ACTIONS = ['start_discussion', 'start_discussion_after_research', 'continue_discussion', 'new_discussion'];
+
+/** @param {object[]} items @returns {{inProgress: number, total: number}} */
+function softGateCounts(items) {
+  const live = items.filter((i) => i.status !== 'cancelled');
+  return { inProgress: live.filter((i) => i.status === 'in-progress').length, total: live.length };
+}
+
+/**
+ * Topics ahead of the selection in the build order that lack a completed
+ * item in the named phase. Empty when the selection carries no order.
+ * @param {object} manifest @param {string} topic @param {string} donePhase
+ * @returns {{name: string, order: number}[]}
+ */
+function buildOrderAhead(manifest, topic, donePhase) {
+  const specs = phaseItems(manifest, 'specification').filter(buildOrderLive);
+  const selected = specs.find((i) => i.name === topic);
+  // A topic outside the live ordered set passes silently: a legacy epic's
+  // unordered items, and a plan legitimately outliving its spec (the spec
+  // cancelled, superseded, or promoted while its plan runs). The gate is
+  // advisory — only a typo'd --action refuses.
+  if (!selected || !Number.isInteger(selected.order)) return [];
+  const done = new Set(phaseItems(manifest, donePhase)
+    .filter((i) => i.status === 'completed')
+    .map((i) => i.name));
+  return specs
+    .filter((i) => Number.isInteger(i.order) && i.order < selected.order && i.name !== topic && !done.has(i.name))
+    .sort((a, b) => a.order - b.order)
+    .map((i) => ({ name: i.name, order: /** @type {number} */ (i.order) }));
+}
+
+/** @param {{name: string, order: number}[]} ahead @returns {string} */
+function aheadPhrase(ahead) {
+  const names = ahead.map((a) => `"${titlecase(a.name)}"`);
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, action?: string, topic?: string}} args
+ * @returns {string} one MENU section, or '' when the selection passes
+ */
+function epicSoftGate(cwd, { dotpath, action, topic }) {
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'epic-soft-gate');
+  if (!isFilled(action)) throw new Error('render epic-soft-gate: --action is required');
+  if (!SOFT_GATE_ACTIONS.includes(/** @type {string} */ (action))) {
+    throw new Error(`render epic-soft-gate: unknown --action "${action}" (menu actions: ${SOFT_GATE_ACTIONS.join(', ')})`);
+  }
+
+  let message = null;
+  let advisory = 'The system will re-analyse if you revisit later — proceeding now is safe, but may require rework.';
+
+  if (SOFT_GATE_DISCUSSION_ACTIONS.includes(action)) {
+    const c = softGateCounts(phaseItems(manifest, 'research'));
+    if (c.total > 0 && c.inProgress > 0) {
+      message = `${c.inProgress} of ${c.total} research topics still in-progress. Topic analysis works best with all research available.`;
+    }
+  } else if (action === 'start_specification') {
+    const c = softGateCounts(phaseItems(manifest, 'discussion'));
+    if (c.total > 0 && c.inProgress > 0) {
+      message = `${c.inProgress} of ${c.total} discussions still in-progress. Later conclusions may reshape this grouping.`;
+    }
+  } else if (action === 'start_planning' || action === 'continue_planning') {
+    if (!isFilled(topic)) throw new Error(`render epic-soft-gate: --topic is required for ${action}`);
+    const ahead = buildOrderAhead(manifest, topic, 'planning');
+    if (ahead.length > 0) {
+      message = `You're about to plan "${titlecase(topic)}" — ${aheadPhrase(ahead)} ${ahead.length === 1 ? 'is' : 'are'} ahead of it in the build order and unplanned.`;
+      advisory = 'The build order is advisory — proceeding now is safe; the gate only names what sits ahead.';
+    }
+  } else if (action === 'start_implementation' || action === 'continue_implementation') {
+    if (!isFilled(topic)) throw new Error(`render epic-soft-gate: --topic is required for ${action}`);
+    const ahead = buildOrderAhead(manifest, topic, 'implementation');
+    if (ahead.length > 0) {
+      message = `You're about to implement "${titlecase(topic)}" — ${aheadPhrase(ahead)} ${ahead.length === 1 ? 'is' : 'are'} ahead of it in the build order and unbuilt.`;
+      advisory = 'The build order is advisory — proceeding now is safe; the gate only names what sits ahead.';
+    }
+  }
+
+  if (!message) return '';
+  return section(
+    'MENU: epic soft gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menuFrame([
+      message,
+      '',
+      advisory,
+      '',
+      `**\`${MENU_GLYPH} Proceed anyway?\`**`,
+      '',
+      cmdOption('y', 'yes', 'Proceed anyway'),
+      cmdOption('b', 'back', 'Return to menu'),
+    ], { glyphLabel: false }),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // phase-note — the entry skills' one-line status notes (Resuming / Starting /
 // Reopening …). Address-backed; the verb is the caller's word, the noun
 // defaults to the phase segment (planning overrides with "plan").
@@ -3301,6 +3408,7 @@ const SURFACES = {
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,
   'epic-all-done-gate': epicAllDoneGate,
+  'epic-soft-gate': epicSoftGate,
   'task-brief': taskBrief,
   'task-result': taskResult,
   'task-gate': taskGate,
