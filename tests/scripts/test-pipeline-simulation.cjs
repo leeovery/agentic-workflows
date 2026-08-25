@@ -884,6 +884,16 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `spec(${wu}): unified`]);
     sim.run(['topic', 'complete', wu, 'specification', 'unified']);
 
+    // A completed epic specification flags the build order stale; the
+    // sequence verb writes the whole live set (superseded alpha is terminal —
+    // refused by name, owed no number) and clears the flag.
+    assert.strictEqual(sim.manifest(wu).phases.specification.build_order_stale, true);
+    sim.refuses(['build-order', 'sequence', wu, 'unified=1', 'alpha=2'], /terminal topics carry no build order/);
+    sim.run(['build-order', 'sequence', wu, 'unified=1']);
+    const specData = sim.manifest(wu).phases.specification;
+    assert.strictEqual(specData.items.unified.order, 1);
+    assert.strictEqual(specData.build_order_stale, undefined, 'sequencing clears the stale flag');
+
     // Supersession is terminal: the absorbed spec cannot restart or complete.
     sim.refuses(['topic', 'start', wu, 'specification', 'alpha'], /superseded/);
     sim.refuses(['topic', 'complete', wu, 'specification', 'alpha'], /superseded/);

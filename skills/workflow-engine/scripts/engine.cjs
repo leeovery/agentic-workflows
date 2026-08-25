@@ -23,6 +23,7 @@ const { commitScopedWithKb, commitPathspecScoped, KB_DIR } = require('./domain/c
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
+const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
@@ -128,6 +129,7 @@ Commands:
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discussion-map set <work-unit> <topic> <subtopic>=<state> [<subtopic>=<state> …]
+  build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map add <work-unit> <name> <research|discussion>
                 (--summary <text> [--description <text>] | --backfill)
@@ -469,20 +471,7 @@ function runDiscoveryMap(argv) {
       if (!workUnit || positional.length < 2) {
         throw new Error('Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
       }
-      /** @type {Record<string, number>} */
-      const orders = {};
-      for (const pair of positional.slice(1)) {
-        const eq = pair.indexOf('=');
-        const name = eq > 0 ? pair.slice(0, eq) : '';
-        const value = eq > 0 ? pair.slice(eq + 1) : '';
-        if (!name || !/^[1-9][0-9]*$/.test(value)) {
-          throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
-        }
-        if (name in orders) {
-          throw new Error(`topic "${name}" assigned twice`);
-        }
-        orders[name] = parseInt(value, 10);
-      }
+      const orders = parseOrderPairs(positional.slice(1));
       respond(sequenceMap(cwd, workUnit, orders));
     } else if (command === 'add') {
       // Strict positional count: an unquoted payload would spill into
@@ -530,6 +519,59 @@ function runDiscoveryMap(argv) {
     failJson(err);
   }
 }
+
+
+/**
+ * Parse `{topic}={order}` pairs shared by the two sequencing verbs. Callers
+ * guard for at least one pair before calling.
+ * @param {string[]} pairs @returns {Record<string, number>}
+ */
+function parseOrderPairs(pairs) {
+  /** @type {Record<string, number>} */
+  const orders = {};
+  for (const pair of pairs) {
+    const eq = pair.indexOf('=');
+    const name = eq > 0 ? pair.slice(0, eq) : '';
+    const value = eq > 0 ? pair.slice(eq + 1) : '';
+    if (!name || !/^[1-9][0-9]*$/.test(value)) {
+      throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
+    }
+    if (name in orders) {
+      throw new Error(`topic "${name}" assigned twice`);
+    }
+    orders[name] = Number(value);
+  }
+  return orders;
+}
+
+// ---------------------------------------------------------------------------
+// build-order — the spec-side twin of discovery-map sequencing. One verb:
+// `sequence` records the whole live set's order in one transaction and
+// clears `build_order_stale`. Validation (full coverage, contiguous 1..N)
+// lives in the domain op.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runBuildOrder(argv) {
+  const [command, ...rest] = argv;
+  const cwd = process.cwd();
+
+  try {
+    if (command !== 'sequence') {
+      throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
+    }
+    const { positional } = parseArgs(rest, []);
+    const [workUnit] = positional;
+    if (!workUnit || positional.length < 2) {
+      throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
+    }
+    const orders = parseOrderPairs(positional.slice(1));
+    respond(sequenceBuildOrder(cwd, workUnit, orders));
+  } catch (err) {
+    failJson(err);
+  }
+}
+
 
 // ---------------------------------------------------------------------------
 // discovery-session — the epic discovery-session lifecycle. open installs
@@ -1379,6 +1421,9 @@ function runCli(argv) {
       break;
     case 'discovery-map':
       runDiscoveryMap(rest);
+      break;
+    case 'build-order':
+      runBuildOrder(rest);
       break;
     case 'discovery-session':
       runDiscoverySession(rest);

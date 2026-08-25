@@ -12,12 +12,13 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const {
   phaseItems,
   computeAnalysisCacheStatus,
   buildDiscoveryMap,
 } = require('./derivations.cjs');
+const { computeBuildOrderNeedsSequencing } = require('./build-order.cjs');
 
 // Every phase the epic detail iterates and the epic dashboard / thin dump
 // surface — discovery (the map, not a pipeline phase) first, then the epic
@@ -124,6 +125,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} active_session  in-progress discovery session number, or null
  * @property {string|null} convergence_state  `in-progress` | `settled` | null (no map)
  * @property {boolean} needs_sequencing
+ * @property {boolean} build_order_needs_sequencing  the live set's orders are not a contiguous 1..N permutation (missing, duplicate, or hole), or completion flagged them stale
  * @property {MapSummary|null} map_summary
  * @property {number} imports_count
  * @property {number} seeds_count
@@ -294,7 +296,7 @@ function epicDetail(cwd, manifest) {
   /** @type {{name: string, by: string[]}[]} */
   const specBlocked = [];
   for (const s of specItems) {
-    if (s.status === 'cancelled' || s.status === 'superseded' || s.status === 'promoted') continue;
+    if (TERMINAL_STATUSES.includes(s.status || '')) continue;
     const srcs = Array.isArray(s.sources)
       ? s.sources
       : Object.entries(s.sources || {}).map(([topic, data]) => ({ topic, ...(typeof data === 'object' ? data : {}) }));
@@ -387,6 +389,7 @@ function epicDetail(cwd, manifest) {
       ? manifest.phases.discovery.active_session : null,
     convergence_state: convergenceState,
     needs_sequencing: builtMap.needs_sequencing,
+    build_order_needs_sequencing: computeBuildOrderNeedsSequencing(manifest),
     map_summary: mapSummary,
     imports_count: importsCount,
     seeds_count: seedsCount,

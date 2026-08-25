@@ -375,6 +375,27 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     return p;
   }
 
+  it('order refuses the push route — a scalar never becomes an array', () => {
+    const err = runFails(dir, ['push', 'payments.specification.anchor', 'order', '3']);
+    assert.match(err.error, /order is a scalar — use `manifest set`/);
+  });
+
+  it('order is guarded: a quoted or non-positive value refuses, an integer lands', () => {
+    const bad = runFails(dir, ['apply', 'payments', '--file', payload([
+      { op: 'set', path: 'payments.specification.anchor', fields: { order: '1' } },
+    ])]);
+    assert.match(bad.error, /Invalid order "1" — must be a positive integer/);
+    const zero = runFails(dir, ['apply', 'payments', '--file', payload([
+      { op: 'set', path: 'payments.specification.anchor', fields: { order: 0 } },
+    ])]);
+    assert.match(zero.error, /Invalid order 0/);
+    const res = runJson(dir, ['apply', 'payments', '--file', payload([
+      { op: 'set', path: 'payments.specification.anchor', fields: { order: 2 } },
+    ])]);
+    assert.strictEqual(res.applied, 1);
+    assert.strictEqual(readWorkUnit(dir, 'payments').phases.specification.items.anchor.order, 2);
+  });
+
   it('applies mixed set and delete ops across dotpaths in one call', () => {
     const file = payload([
       { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved', 'external_dependencies.billing.internal_id': 'billing-1-2' } },
