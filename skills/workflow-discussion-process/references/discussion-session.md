@@ -134,7 +134,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 #### If `work_type` is `epic`
 
-→ Load **[off-topic-epic.md](off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, concern = `{the concern, with its discussed context}`.
+→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, concern = `{the concern, with its discussed context}`.
 
 → On return, proceed as the reference directed.
 

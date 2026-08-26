@@ -778,7 +778,7 @@ describe('render reroute-offer', () => {
       '',
       '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
       `${NB(12)}later`,
-      '**`k/keep`**    → Keep it here as a subtopic',
+      '**`k/keep`**    → Keep it here as part of this topic',
       '',
     ].join('\n'));
   });
