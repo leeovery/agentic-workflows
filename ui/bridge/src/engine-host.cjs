@@ -39,6 +39,29 @@ const methods = Object.assign(Object.create(null), {
   // the spine can run it against historical manifests read from git blobs.
   epicDetailFor: ({ manifest }) => engine.detail.epicDetail(projectRoot, manifest),
   schema: () => engine.schema,
+
+  // Width-pinned engine renders for the SPA's EngineEmbed (N2: state renders
+  // come from the engine — these are the engine's own projections, verbatim).
+  renderStartOverview: () => engine.project.startOverview(engine.detail.startDetail(projectRoot)),
+  renderWorkUnitStatus: ({ type, name }) => {
+    const det = engine.detail.workUnitDetail(projectRoot, type, name);
+    const key = { feature: 'features', bugfix: 'bugfixes', 'quick-fix': 'quick_fixes', 'cross-cutting': 'cross_cutting' }[type];
+    const unit = (det[key] || []).find((u) => u.name === name);
+    if (!unit) throw new Error(`work unit not found: ${name}`);
+    return engine.project.workUnitStatus(type, unit);
+  },
+  renderEpicDashboard: ({ name }) => {
+    const manifest = engine.reads.loadManifest(projectRoot, name);
+    if (!manifest) throw new Error(`manifest not found: ${name}`);
+    return engine.project.epicDashboard(name, engine.detail.epicDetail(projectRoot, manifest));
+  },
+  // Topic lifecycles for an epic's thread previews — the engine's own
+  // derivation, never re-derived bridge-side.
+  discoveryMap: ({ name }) => {
+    const manifest = engine.reads.loadManifest(projectRoot, name);
+    if (!manifest) throw new Error(`manifest not found: ${name}`);
+    return engine.derivations.buildDiscoveryMap(manifest);
+  },
 });
 
 const rl = readline.createInterface({ input: process.stdin, terminal: false });

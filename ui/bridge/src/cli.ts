@@ -124,10 +124,23 @@ async function runLive(projectRoot: string): Promise<void> {
   let epoch: string | null = null;
   let watcher: Watcher | null = null;
 
+  // The engine adapter is created up front so the read-only API can still
+  // serve engine-sourced state (details, renders) — reads only, no watcher.
+  const engine = enginePath && hs.mode !== 'read-only' ? new EngineAdapter(projectRoot, enginePath, WIDTH) : undefined;
+  const knowledgePath = enginePath
+    ? path.resolve(enginePath, '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs')
+    : null;
+
   const server = new BridgeServer({
     port: Number(arg('port') ?? config.port),
     store,
     db,
+    api: {
+      projectRoot,
+      engine: engine ?? null,
+      store,
+      knowledgePath: knowledgePath && fs.existsSync(knowledgePath) ? knowledgePath : null,
+    },
     health: (): HealthState => ({
       ok: true,
       mode: 'live',
@@ -154,8 +167,6 @@ async function runLive(projectRoot: string): Promise<void> {
     logger.warn('read-only mode — no event stream', { reasons: hs.bannerReasons });
     return;
   }
-
-  const engine = enginePath ? new EngineAdapter(projectRoot, enginePath, WIDTH) : undefined;
 
   if (hs.mode === 'live-only') {
     logger.warn('live-only mode — durable spine unavailable', { reasons: hs.bannerReasons });

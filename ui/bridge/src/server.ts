@@ -3,11 +3,16 @@
 // token/cost counters, and the event stream over SSE. Named surfaces later
 // phases extend.
 import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { logger, onLog, recentLogs } from './log.js';
 import type { EventStore, StoredEvent } from './store.js';
 import type { RawEvent } from './derive.js';
 import type { Handshake } from './version.js';
 import type { Db } from './db.js';
+import { handleApi, serveStatic, type ApiDeps } from './api.js';
+
+const APP_DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'app', 'dist');
 
 export type HealthState = {
   ok: boolean;
@@ -36,6 +41,8 @@ export class BridgeServer {
       store: EventStore | null;
       db: Db | null;
       onReplayStep?: () => void;
+      api?: ApiDeps;
+      distDir?: string;
     },
   ) {
     this.server = http.createServer((req, res) => this.route(req, res));
@@ -64,6 +71,14 @@ export class BridgeServer {
 
   private route(req: http.IncomingMessage, res: http.ServerResponse): void {
     const url = new URL(req.url ?? '/', 'http://localhost');
+    if (this.opts.api && url.pathname.startsWith('/api/')) {
+      handleApi(url, req, res, this.opts.api).catch((err) => {
+        logger.error('api route failed', { path: url.pathname, error: String(err) });
+        if (!res.headersSent) res.writeHead(500, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'internal' }));
+      });
+      return;
+    }
     switch (url.pathname) {
       case '/health': {
         const h = { ...this.opts.health(), startedAt: this.startedAt };
@@ -134,15 +149,23 @@ export class BridgeServer {
         res.writeHead(204).end();
         return;
       }
-      case '/':
       case '/debug': {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         res.end(DEBUG_CONSOLE_HTML);
         return;
       }
-      default:
+      default: {
+        // The SPA (app/dist) when built; the debug console as the root
+        // fallback until then.
+        if (serveStatic(url, res, this.opts.distDir ?? APP_DIST)) return;
+        if (url.pathname === '/') {
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+          res.end(DEBUG_CONSOLE_HTML);
+          return;
+        }
         res.writeHead(404, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ error: 'not found' }));
+      }
     }
   }
 

@@ -284,7 +284,7 @@ export class Watcher extends EventEmitter {
   }
 }
 
-function scanAgentRows(cacheRoot: string): {
+export function scanAgentRows(cacheRoot: string): {
   key: string;
   id: string;
   agentType: string;

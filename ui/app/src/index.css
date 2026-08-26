@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-200 font-sans antialiased;
+  }
+}
+
+@layer components {
+  /* The engine's voice: verbatim, terminal-framed, never restyled beyond the frame. */
+  .engine-embed {
+    @apply font-mono text-[13px] leading-relaxed whitespace-pre overflow-x-auto
+      rounded-md border border-stone-300 dark:border-stone-700
+      bg-stone-100 dark:bg-stone-900 text-stone-800 dark:text-stone-300
+      px-4 py-3;
+  }
+  .rail-link {
+    @apply flex items-center gap-2 rounded px-2 py-1.5 text-sm text-stone-600 dark:text-stone-400
+      hover:bg-stone-200/60 dark:hover:bg-stone-800/60;
+  }
+  .rail-link-active {
+    @apply bg-stone-200 dark:bg-stone-800 text-nav dark:text-nav font-medium;
+  }
+  .region-label {
+    @apply text-[11px] font-sans font-semibold tracking-[0.14em] text-stone-400 dark:text-stone-500 uppercase;
+  }
+  .banner-degraded {
+    @apply border-l-4 border-warn bg-amber-50 dark:bg-amber-950/30 text-sm px-4 py-2.5
+      text-stone-800 dark:text-stone-200 font-sans;
+  }
+}
+
+/* The firmness gradient (README value surface 4): the reader feels the record
+   hardening — research casual, discussion a working session, spec formal. */
+.firmness-research {
+  --firmness-border: theme(colors.stone.300);
+  font-family: theme(fontFamily.serif);
+}
+.firmness-discussion {
+  --firmness-border: theme(colors.stone.400);
+  font-family: theme(fontFamily.serif);
+}
+.firmness-specification {
+  --firmness-border: theme(colors.stone.500);
+  font-family: theme(fontFamily.serif);
+}
+
+/* Reading typography for the Read lens. */
+.read-lens {
+  @apply text-[15.5px] leading-7;
+}
+.read-lens h1, .read-lens h2, .read-lens h3, .read-lens h4 {
+  @apply font-sans font-semibold text-stone-900 dark:text-stone-100 scroll-mt-16;
+}
+.read-lens h1 { @apply text-2xl mt-2 mb-4; }
+.read-lens h2 { @apply text-xl mt-8 mb-3 border-b border-stone-200 dark:border-stone-800 pb-1; }
+.read-lens h3 { @apply text-base mt-6 mb-2; }
+.read-lens p { @apply my-3; }
+.read-lens ul, .read-lens ol { @apply my-3 pl-6; }
+.read-lens ul { @apply list-disc; }
+.read-lens ol { @apply list-decimal; }
+.read-lens li { @apply my-1; }
+.read-lens blockquote { @apply border-l-2 border-stone-300 dark:border-stone-700 pl-4 my-3 text-stone-600 dark:text-stone-400; }
+.read-lens code { @apply font-mono text-[13px] bg-stone-100 dark:bg-stone-900 rounded px-1 py-0.5; }
+.read-lens pre { @apply my-4 rounded-md overflow-x-auto; }
+.read-lens pre code { @apply bg-transparent p-0; }
+.read-lens pre.shiki { @apply p-4 text-[13px]; }
+.read-lens table { @apply my-4 w-full text-sm border-collapse; }
+.read-lens th, .read-lens td { @apply border border-stone-200 dark:border-stone-800 px-2.5 py-1.5 text-left align-top; }
+.read-lens th { @apply font-sans font-semibold bg-stone-100 dark:bg-stone-900; }
+.read-lens hr { @apply my-6 border-stone-200 dark:border-stone-800; }
+.read-lens a { @apply text-nav underline underline-offset-2; }
+
+/* Motion: state changes settle, they never perform. */
+* {
+  transition: none;
+}
+.settle {
+  transition: background-color 240ms ease-out, border-color 240ms ease-out;
+}
