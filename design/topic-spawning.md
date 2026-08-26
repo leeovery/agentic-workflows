@@ -389,3 +389,30 @@ report is purged at close); `spawn:{parent}` leaves the vocabulary,
 never having shipped. §5's spawn design and the spawn-related test
 footprint entries are superseded by this amendment; the model section's
 move 2 collapses into move 1.
+
+## Amendment — 2026-08-26: two rejections for a raised finding
+
+The deflection contradiction the review pass surfaced (three "note it
+in Open Questions / Open Threads" instructions vs the no-residue rule)
+resolves into two rejection modes, uniform across research and
+discussion, neither writing a word into the artifact:
+
+- **Not now** — a no scoped to the present. Nothing is recorded; the
+  finding is dropped from the walk. If the gap stays real, a future
+  review or the gap analysis re-finds and re-raises it organically; if
+  it fills, it never returns. Zero machinery — non-suppression is the
+  resurfacing.
+- **Dismiss** — a no with prejudice. The finding's ground joins a
+  per-topic **dismissed-grounds list** on the manifest (engine-owned,
+  surviving sessions), injected into every future review dispatch as
+  do-not-report grounds — the findings sibling of the discovery map's
+  dismissed list and the candidate gate's skip, one "dismissed" family
+  meaning the user has ruled it out. Recoverable on request, like its
+  siblings.
+
+The three note-it instructions rewrite to these exits;
+`background-agent-surfacing`'s walked-lane outcomes name them. An
+out-of-remit finding still routes regardless of interest — rejection
+never keeps somebody else's question here. Discussion's `deferred`
+subtopic state is untouched: that records a conscious decision about
+ground engaged with, not a rejection of a finding.
