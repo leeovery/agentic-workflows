@@ -31,15 +31,11 @@ After return, the caller reads these from conversation memory:
 
 The rejection is already rendered by topic-name-validation.md. Offer the choice:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render topic-collision-gate
 ```
-· · · · · · · · · · · ·
-**`◆ How would you like to proceed?`**
 
-**`c/cancel`**     → Abandon creating this topic
-**Pick another** → Tell me a different name
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

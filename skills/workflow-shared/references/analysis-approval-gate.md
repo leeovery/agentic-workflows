@@ -65,41 +65,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 #### Otherwise
 
-Render the candidate:
+Write the candidate payload to `.workflows/.cache/{work_unit}/discovery/candidate.json` with the Write tool (`{"name": "…", "routing": "…", "summary": "…"}` — the block's stored fields), then render it:
 
-> *Output the next fenced block as a code block:*
-
-```
-{name:(titlecase)} [{routing}]
-  {summary}
-  surfaced by gap analysis
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render candidate-gate {work_unit} --file .workflows/.cache/{work_unit}/discovery/candidate.json
 ```
 
-Read `gate_mode` from the manifest's `analysis_staging.discovery-gap-analysis` subtree (held from the **A** read; re-read if stale).
+Emit the response's sections verbatim per their markers. The surface reads `gate_mode` from the `analysis_staging.discovery-gap-analysis` subtree and branches for you — an `auto` mode answers with the approval line, a `gated` mode with the menu.
 
-#### If `gate_mode` is `auto`
-
-> *Output the next fenced block as a code block:*
-
-```
-{name:(titlecase)} — approved [auto].
-```
+#### If the response carried the approval line
 
 → Proceed to **C. Write Approved Candidate**.
 
-#### If `gate_mode` is `gated`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Add this topic to the map?`**
-
-**`y/yes`**   → Approve — the topic joins the map and its phase can start from the epic menu
-**`a/auto`**  → Approve this and all remaining candidates automatically
-**`s/skip`**  → Skip and dismiss — the analysis never re-proposes this name
-**Comment** → Tell me what to change (routing, summary, or description)
-```
+#### If the response carried the menu
 
 **STOP.** Wait for user response.
 

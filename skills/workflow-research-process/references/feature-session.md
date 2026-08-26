@@ -44,15 +44,11 @@ Before concluding, check for in-flight agents — run `node .claude/skills/workf
 
 #### If agents are still running
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render in-flight-agents-gate {work_unit}.research.{topic} --count {N}
 ```
-· · · · · · · · · · · ·
-**`◆ There are still {N} background agents working.`**
 
-**`w/wait`**    → Wait for results before concluding
-**`p/proceed`** → Conclude now (results will persist in cache for reference)
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

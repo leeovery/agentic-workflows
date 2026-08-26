@@ -251,6 +251,18 @@ function cmdOption(key, word, label) {
 }
 
 /**
+ * Bare command option — key and word, no arrow and no label. The shape a
+ * yes/no gate takes (CONVENTIONS.md: Yes/no prompt): the question above the
+ * options already says what yes means, so a label would only repeat it.
+ * Carries no arrow, so the enclosing frame passes it through unaligned.
+ * @param {string} key @param {string} word
+ * @returns {string}
+ */
+function bareOption(key, word) {
+  return `**\`${key}/${word}\`**`;
+}
+
+/**
  * Prompt option line — the user responds naturally; the description directs
  * their response. Plain bold rather than a code span, because there is no
  * literal input to type.
@@ -317,5 +329,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, subDetail, treeList };
 

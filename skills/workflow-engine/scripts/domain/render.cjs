@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase, WORKLIST_GLYPH } = require('./conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
@@ -35,10 +35,12 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
+const { wrap } = require('../kernel/render.cjs');
+const { displayWidth } = require('../kernel/terminal.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
 // overview surfaces accept, validated here so the error names the surface
@@ -1797,6 +1799,72 @@ function researchConcludeGate(cwd, args) {
   );
 }
 
+/**
+ * Pin a research address, refusing any other phase by name.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{workUnit: string, phase: string, topic: string, manifest: object}}
+ */
+function resolveResearch(cwd, dotpath, surface) {
+  const resolved = resolveAddress(cwd, dotpath, surface);
+  if (resolved.phase !== 'research') {
+    throw new Error(`render ${surface}: address must be <work_unit>.research.<topic>, got phase "${resolved.phase}"`);
+  }
+  return resolved;
+}
+
+// deep-dive-offer — the orchestrator's dispatch offer over a thread it judged
+// worth investigating independently. The thread description is the judgment
+// content; the two-line opening and the y/n pair are fixed. The label runs to
+// two lines, so it reads as context above the options rather than taking the
+// decision glyph.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function deepDiveOffer(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render deep-dive-offer: --file <payload.json> is required');
+  resolveResearch(cwd, dotpath, 'deep-dive-offer');
+  const p = readJsonPayload(cwd, file, 'deep-dive-offer');
+  if (!isFilled(p.thread)) {
+    throw new Error('render deep-dive-offer: "thread" must be a non-empty string — the thread description as it opens the offer');
+  }
+  return section('MENU: deep dive offer', STOP_FOR_RESPONSE, menu(
+    `${p.thread} looks like it could use a deep dive.\nWant me to spin up a background investigation while we keep going?`,
+    [
+      cmdOption('y', 'yes', 'Dispatch a deep-dive agent'),
+      cmdOption('n', 'no', "Skip, we'll cover it in conversation"),
+    ],
+  ));
+}
+
+// in-flight-agents-gate — the wait-or-conclude gate a research session takes
+// when background agents are still running at conclusion. Served to the epic
+// and feature sessions alike: the shape is one gate, and the count is the
+// session's own (this session's dispatches, an earlier session's dead rows
+// already closed), so it rides as a scalar flag rather than being re-derived.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, count?: string}} args
+ * @returns {string}
+ */
+function inFlightAgentsGate(cwd, { dotpath, count }) {
+  resolveResearch(cwd, dotpath, 'in-flight-agents-gate');
+  const n = Number(count);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`render in-flight-agents-gate: --count must be a positive integer, got "${count}"`);
+  }
+  return section('MENU: in-flight agents gate', STOP_FOR_RESPONSE, menu(
+    `There are still ${n} background agents working.`,
+    [
+      cmdOption('w', 'wait', 'Wait for results before concluding'),
+      cmdOption('p', 'proceed', 'Conclude now (results will persist in cache for reference)'),
+    ],
+  ));
+}
+
 // off-topic-offer — the single-topic counterpart of reroute-offer: with no
 // sibling topic to route the concern to, it is logged, pivoted into an epic,
 // or noted in place. The pivot row exists only for a feature — the one type
@@ -1868,6 +1936,268 @@ function rerouteCandidates(cwd, { dotpath, file }) {
     "emit verbatim as markdown, then STOP for the user's response",
     menu(`Where should "${p.concern}" land?`, options, { prompt }),
   );
+}
+
+// ---------------------------------------------------------------------------
+// The discovery-map gates. A map edit, a staged candidate, a name collision
+// and a closed reroute target each stop the same way: the proposal above,
+// the confirm beneath. Judgment supplies the names and values; the bodies,
+// the questions and the option sets are fixed here, so a gate reads the same
+// whichever flow raised it and at any width.
+// ---------------------------------------------------------------------------
+
+// A bare yes/no pair — no labels, because the question above them already
+// says what yes means (CONVENTIONS.md: Yes/no prompt).
+const YES_NO = [bareOption('y', 'yes'), bareOption('n', 'no')];
+
+/**
+ * The indented explanation beneath a proposal's headline: each paragraph
+ * wrapped at the display width, two columns in. A hand-picked column drifts
+ * with the pane; a measured one cannot.
+ * @param {string[]} paragraphs @returns {string[]}
+ */
+function indentedBody(paragraphs) {
+  const budget = displayWidth() - 2;
+  return paragraphs.flatMap((p) => wrap(p, budget).map((line) => `  ${line}`));
+}
+
+/**
+ * One `•` row at the callout indent, continuations aligned under the text.
+ * @param {string} text @returns {string[]}
+ */
+function bulletRow(text) {
+  return wrap(text, displayWidth() - 4).map((s, i) => (i === 0 ? `  • ${s}` : `    ${s}`));
+}
+
+// The map-operation family: op → the confirm question its gate asks. The
+// batch ops (a run of summary or description edits confirmed together) ask
+// once for the whole batch; every other op is its own group of one.
+const MAP_OP_QUESTIONS = {
+  'edit-summary': 'Apply?',
+  'edit-description': 'Apply?',
+  remove: 'Confirm removal?',
+  rename: 'Confirm rename?',
+  reroute: 'Confirm routing change?',
+  close: 'Confirm close as dead end?',
+  reopen: 'Confirm reopen?',
+};
+
+/** @param {object} p @param {string} field @returns {string} */
+function mapOpName(p, field) {
+  if (!isFilled(p[field])) throw new Error(`render map-op-gate: "${field}" must be a non-empty string`);
+  return p[field];
+}
+
+/**
+ * The batch rows of an edit op: `[{name, <field>}]`, at least one.
+ * @param {object} p @param {string} field @returns {{name: string, value: string}[]}
+ */
+function mapOpRows(p, field) {
+  if (!Array.isArray(p.items) || p.items.length === 0) {
+    throw new Error(`render map-op-gate: "items" must be a non-empty array of {name, ${field}}`);
+  }
+  return p.items.map((row, i) => {
+    for (const key of ['name', field]) {
+      if (!row || !isFilled(row[key])) {
+        throw new Error(`render map-op-gate: item ${i + 1} is missing "${key}" (each item needs name and ${field})`);
+      }
+    }
+    return { name: row.name, value: row[field] };
+  });
+}
+
+/** @param {string} value @param {string} field @returns {string} */
+function mapOpRouting(value, field) {
+  if (!['research', 'discussion'].includes(value)) {
+    throw new Error(`render map-op-gate: "${field}" must be "research" or "discussion", got "${value}"`);
+  }
+  return value;
+}
+
+/**
+ * The proposal body for one map operation.
+ * @param {string} op @param {object} p @returns {string[]}
+ */
+function mapOpBody(op, p) {
+  if (op === 'edit-summary' || op === 'edit-description') {
+    const field = op === 'edit-summary' ? 'summary' : 'description';
+    const noun = op === 'edit-summary' ? 'summary(ies)' : 'description(s)';
+    const rows = mapOpRows(p, field);
+    return [
+      `Updating ${rows.length} ${noun}:`,
+      '',
+      ...rows.flatMap((r) => bulletRow(`${r.name}: "${r.value}"`)),
+    ];
+  }
+  if (op === 'remove') {
+    return [
+      `Remove "${mapOpName(p, 'name')}" from the map.`,
+      '',
+      ...indentedBody([
+        'Lifecycle: fresh — no work has started on this topic.',
+        "The name will be added to the dismissed list so the analysis won't auto-re-propose it.",
+      ]),
+    ];
+  }
+  if (op === 'rename') {
+    return [
+      `Rename "${mapOpName(p, 'name')}" → "${mapOpName(p, 'new_name')}".`,
+      '',
+      ...indentedBody([
+        'Lifecycle: fresh — no work has started, no files exist under this name. Manifest mutation only.',
+      ]),
+    ];
+  }
+  if (op === 'reroute') {
+    const name = mapOpName(p, 'name');
+    const from = mapOpRouting(p.from, 'from');
+    const to = mapOpRouting(p.to, 'to');
+    if (from === to) throw new Error('render map-op-gate: "from" and "to" name the same routing — nothing to confirm');
+    return [
+      `Change routing of "${name}": ${from} → ${to}.`,
+      '',
+      ...indentedBody(['Lifecycle: fresh — no phase work yet, so the routing hint is mutable.']),
+    ];
+  }
+  if (op === 'close') {
+    const name = mapOpName(p, 'name');
+    return [
+      `Close "${name}" as a dead end.`,
+      '',
+      ...indentedBody([
+        'It stays on the map and in the knowledge base as record and seed material, but stops '
+        + 'prompting for a next action and no longer counts against convergence — nothing to carry '
+        + `forward under its own name. Reversible with "reopen ${name}".`,
+      ]),
+    ];
+  }
+  return [
+    `Reopen "${mapOpName(p, 'name')}".`,
+    '',
+    ...indentedBody([
+      'Clears the dead-end marker. The topic returns to its name-matched lifecycle and counts against convergence again.',
+    ]),
+  ];
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, op?: string, file?: string}} args
+ * @returns {string}
+ */
+function mapOpGate(cwd, { dotpath, op, file }) {
+  if (!isFilled(op) || !Object.hasOwn(MAP_OP_QUESTIONS, op)) {
+    throw new Error(`render map-op-gate: --op must be one of ${Object.keys(MAP_OP_QUESTIONS).join(', ')}, got "${op}"`);
+  }
+  if (!file) throw new Error('render map-op-gate: --file <payload.json> is required');
+  resolveWorkUnit(cwd, dotpath, 'map-op-gate');
+  const p = readJsonPayload(cwd, file, 'map-op-gate');
+  return [
+    section('DISPLAY: map operation', 'emit verbatim as a code block, directly above the menu', mapOpBody(op, p).join('\n')),
+    section('MENU: map operation gate', STOP_FOR_RESPONSE, menu('', YES_NO, { question: MAP_OP_QUESTIONS[op] })),
+  ].join('\n');
+}
+
+// candidate-gate — the analysis approval gate's per-candidate stop. The
+// candidate's own fields are judgment content staged by the analysis; the
+// gate mode is manifest state at the staging subtree, so the branch renders
+// inside the surface: the caller never chooses between gated and auto
+// output. A candidate the manifest does not mark `pending` never renders —
+// a stale payload refuses rather than gating something already decided.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function candidateGate(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render candidate-gate: --file <payload.json> is required');
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'candidate-gate');
+  const staging = ((((manifest.phases || {}).discovery || {}).analysis_staging) || {})['discovery-gap-analysis'];
+  if (!staging || typeof staging !== 'object') {
+    throw new Error(`render candidate-gate: no staged gap-analysis candidates for "${workUnit}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'candidate-gate');
+  if (!isFilled(p.name)) throw new Error('render candidate-gate: "name" must be a non-empty string');
+  if (!['research', 'discussion'].includes(p.routing)) {
+    throw new Error(`render candidate-gate: "routing" must be "research" or "discussion", got "${p.routing}"`);
+  }
+  if (!isFilled(p.summary)) throw new Error('render candidate-gate: "summary" must be a non-empty string');
+  const row = (staging.candidates || {})[p.name];
+  if (!row || typeof row !== 'object' || row.status !== 'pending') {
+    throw new Error(`render candidate-gate: "${p.name}" is not a pending candidate — a stale payload never renders`);
+  }
+  const mode = staging.gate_mode;
+  if (mode !== 'gated' && mode !== 'auto') {
+    throw new Error(`render candidate-gate: gate_mode must be "gated" or "auto", got "${mode}"`);
+  }
+  const name = titlecase(p.name);
+  const display = section('DISPLAY: candidate', 'emit verbatim as a code block', [
+    `${name} [${p.routing}]`,
+    ...indentedBody([p.summary, 'surfaced by gap analysis']),
+  ].join('\n'));
+  if (mode === 'auto') {
+    return [display, section(
+      'DISPLAY: candidate approved',
+      `after recording the approval: ${AUTO_GATE_INSTRUCTION}`,
+      `${name} — approved [auto].`,
+    )].join('\n');
+  }
+  return [display, section('MENU: candidate gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', 'Approve — the topic joins the map and its phase can start from the epic menu'),
+    cmdOption('a', 'auto', 'Approve this and all remaining candidates automatically'),
+    cmdOption('s', 'skip', 'Skip and dismiss — the analysis never re-proposes this name'),
+    promptOption('Comment', 'Tell me what to change (routing, summary, or description)'),
+  ], { question: 'Add this topic to the map?' }))].join('\n');
+}
+
+// topic-collision-gate — the shared topic-creation core's exit after a
+// proposed name collided with an active map item. Static: the rejection
+// itself was rendered by the validation, and this gate only asks what to do
+// about it.
+
+/** @param {string} _cwd @param {object} _args @returns {string} */
+function topicCollisionGate(_cwd, _args) {
+  return section('MENU: topic collision gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('c', 'cancel', 'Abandon creating this topic'),
+    promptOption('Pick another', 'Tell me a different name'),
+  ], { question: 'How would you like to proceed?' }));
+}
+
+// triage-closed-target — the reroute's stop over a target no future session
+// will surface. The address names the target and the surface derives its
+// lifecycle with the same join every other map consumer uses, so the two
+// closed states cannot drift apart in the wording. A statement-headed route
+// menu: three destinations, no yes to answer, so the statement stays
+// context rather than flickering into a glyphed label as the name shortens.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function triageClosedTarget(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'triage-closed-target');
+  if (phase !== 'discovery') {
+    throw new Error(`render triage-closed-target: address must be <work_unit>.discovery.<target>, got phase "${phase}"`);
+  }
+  const items = (((manifest.phases || {}).discovery || {}).items) || {};
+  if (!items[topic]) {
+    throw new Error(`render triage-closed-target: no discovery item "${topic}" on the map`);
+  }
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  if (lifecycle !== 'handled' && lifecycle !== 'cancelled') {
+    throw new Error(`render triage-closed-target: "${topic}" is "${lifecycle}", not closed — the gate serves handled and cancelled targets`);
+  }
+  const closed = lifecycle === 'handled' ? 'closed as a dead end' : 'cancelled';
+  const reopen = lifecycle === 'handled' ? 'Reopen it' : 'Reactivate it';
+  return section('MENU: closed target gate', STOP_FOR_RESPONSE, menuFrame([
+    `"${topic}" is ${closed}, so it won't pick up rerouted concerns.`,
+    '',
+    cmdOption('o', 'open', `${reopen} and land the concern there`),
+    cmdOption('e', 'elsewhere', 'Pick a different target'),
+    cmdOption('d', 'drop', 'Drop the reroute; the concern stays with the current topic'),
+  ], { glyphLabel: false }));
 }
 
 // finding-announce — the surfacing protocol's opt-in gate: a background
@@ -3439,8 +3769,14 @@ const SURFACES = {
   'requeue-offer': requeueOffer,
   'reroute-offer': rerouteOffer,
   'research-conclude-gate': researchConcludeGate,
+  'deep-dive-offer': deepDiveOffer,
+  'in-flight-agents-gate': inFlightAgentsGate,
   'reroute-candidates': rerouteCandidates,
   'off-topic-offer': offTopicOffer,
+  'map-op-gate': mapOpGate,
+  'candidate-gate': candidateGate,
+  'topic-collision-gate': topicCollisionGate,
+  'triage-closed-target': triageClosedTarget,
   'proposed-task': proposedTask,
   'incoherence-gate': incoherenceGate,
   'cancel-cascade-gate': cancelCascadeGate,

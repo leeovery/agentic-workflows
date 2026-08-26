@@ -156,27 +156,13 @@ Walk the validated operation groups in user order. For the next pending group:
 
 ## D. Edit Summary
 
-Render the proposal once for the whole batch:
+One gate covers the whole batch. Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"items": [{"name": "…", "summary": "…"}]}` — one entry per edit in user order, each carrying the new summary verbatim), then render it:
 
-> *Output the next fenced block as a code block:*
-
-```
-Updating {N} summary(ies):
-
-  • {name_1}: "{new summary}"
-  • {name_2}: "{new summary}"
-  ...
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op edit-summary --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Apply?`**
-
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -211,27 +197,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 
 ## E. Remove
 
-Render the proposal:
+Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…"}`), then render the gate:
 
-> *Output the next fenced block as a code block:*
-
-```
-Remove "{name}" from the map.
-
-  Lifecycle: fresh — no work has started on this topic.
-  The name will be added to the dismissed list so the analysis
-  won't auto-re-propose it.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op remove --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Confirm removal?`**
-
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -265,26 +237,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 
 ## F. Rename
 
-Render the proposal:
+Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "{old}", "new_name": "{new}"}`), then render the gate:
 
-> *Output the next fenced block as a code block:*
-
-```
-Rename "{old}" → "{new}".
-
-  Lifecycle: fresh — no work has started, no files exist
-  under this name. Manifest mutation only.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op rename --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Confirm rename?`**
-
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -320,26 +279,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 
 ## G. Change Routing
 
-Render the proposal:
+Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…", "from": "{old routing}", "to": "{new routing}"}`), then render the gate:
 
-> *Output the next fenced block as a code block:*
-
-```
-Change routing of "{name}": {old routing} → {new routing}.
-
-  Lifecycle: fresh — no phase work yet, so the routing
-  hint is mutable.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op reroute --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Confirm routing change?`**
-
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -371,27 +317,15 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 
 ## H. Edit Description
 
-Render the proposal once for the whole batch. Description may span paragraphs — show a truncated preview (about 140 characters with `…`) in the proposal block so the STOP gate stays readable; the full description is written verbatim on confirm.
+One gate covers the whole batch. Description may span paragraphs — carry a truncated preview (about 140 characters with `…`) in the payload so the STOP gate stays readable; the full description is written verbatim on confirm.
 
-> *Output the next fenced block as a code block:*
+Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"items": [{"name": "…", "description": "…"}]}` — one entry per edit in user order, each carrying the truncated preview), then render it:
 
-```
-Updating {N} description(s):
-
-  • {name_1}: "{truncated description}"
-  • {name_2}: "{truncated description}"
-  ...
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op edit-description --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Apply?`**
-
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -426,28 +360,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 
 ## I. Close as Dead End
 
-Render the proposal:
+Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…"}`), then render the gate:
 
-> *Output the next fenced block as a code block:*
-
-```
-Close "{name}" as a dead end.
-
-  It stays on the map and in the knowledge base as record and
-  seed material, but stops prompting for a next action and no
-  longer counts against convergence — nothing to carry forward
-  under its own name. Reversible with "reopen {name}".
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op close --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Confirm close as dead end?`**
-
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -479,26 +398,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 
 ## J. Reopen
 
-Render the proposal:
+Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…"}`), then render the gate:
 
-> *Output the next fenced block as a code block:*
-
-```
-Reopen "{name}".
-
-  Clears the dead-end marker. The topic returns to its
-  name-matched lifecycle and counts against convergence again.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op reopen --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Confirm reopen?`**
-
-**`y/yes`**
-**`n/no`**
-```
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
