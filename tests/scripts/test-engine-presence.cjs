@@ -101,12 +101,53 @@ describe('engine presence', () => {
     assert.strictEqual(engine(dir, ['presence', 'clear', 'pay', 'discussion', 'alpha']).res.cleared, true);
   });
 
+  it('covers every phase a session sits in — discovery excepted', () => {
+    for (const phase of ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
+      assert.strictEqual(engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']).res.beat, true, `${phase} beats`);
+    }
+    const scan = engine(dir, ['presence', 'scan', 'pay']).res;
+    assert.strictEqual(scan.sessions.length, 8, 'every phase reports a row');
+    assert.strictEqual(scan.live, 8);
+    // Discovery is engine-serialised by `discovery-session open` — no heartbeat.
+    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is research\|discussion\|/);
+  });
+
   it('refuses illegal phases, unknown work units, and malformed calls', () => {
-    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'planning', 'x']).error, /research\|discussion only/);
+    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'grooming', 'x']).error, /got "grooming"/);
     assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discussion', '../../escapee']).error, /invalid topic name/);
     assert.match(engineFails(dir, ['presence', 'scan', 'ghost']).error, /no work unit directory/);
     assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discussion']).error, /Usage/);
+    assert.match(engineFails(dir, ['presence', 'scan', 'pay', 'extra']).error, /Usage/);
     assert.match(engineFails(dir, ['presence', 'bogus']).error, /Usage/);
+  });
+
+  it('the work-unit-less scan walks the whole cache root, naming each row\'s work unit', () => {
+    fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
+    engine(dir, ['presence', 'beat', 'ship', 'implementation', 'beta']);
+
+    const { res, sections } = engine(dir, ['presence', 'scan']);
+    assert.strictEqual(res.scope, 'project');
+    assert.strictEqual(res.stale_after_seconds, 900);
+    assert.strictEqual(res.live, 2);
+    assert.strictEqual(res.held, 2);
+    assert.deepStrictEqual(
+      res.sessions.map((r) => `${r.work_unit}/${r.phase}/${r.topic}`).sort(),
+      ['pay/discussion/alpha', 'ship/implementation/beta'],
+    );
+    assert.ok(res.sessions.every((r) => 'held' in r && 'live' in r && 'age_seconds' in r && 'session_id' in r), 'the row shape is the scan\'s');
+    assert.strictEqual(sections, '', 'the deferral section belongs to the work-unit scan');
+    assert.strictEqual(engine(dir, ['presence', 'scan', 'pay']).res.work_unit, 'pay', 'the per-work-unit form is unchanged');
+  });
+
+  it('the project scan answers empty on a project that has never cached anything', () => {
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-bare-'));
+    fs.mkdirSync(path.join(bare, '.workflows'), { recursive: true });
+    const res = engine(bare, ['presence', 'scan']).res;
+    assert.deepStrictEqual(res.sessions, []);
+    assert.strictEqual(res.live, 0);
+    assert.strictEqual(res.held, 0);
+    cleanup(bare);
   });
 
   it('beat records the owning session identity; scan reports it held', () => {

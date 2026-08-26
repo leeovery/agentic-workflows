@@ -30,7 +30,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
-const { beatPresence, clearPresence, scanPresence, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, beatQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, setLabelConfig } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -150,7 +150,7 @@ Commands:
   topic requeue <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
-  presence scan <work-unit>
+  presence scan [work-unit]
   presence cleanup [session-id]
   session label <work-unit> <phase> <topic>
   session label-config <true|false>
@@ -671,7 +671,14 @@ function runPresence(argv) {
     }
     if (command === 'scan') {
       const [workUnit] = rest;
-      if (!workUnit || rest.length !== 1) throw new Error('Usage: engine presence scan <work-unit>');
+      if (rest.length > 1) throw new Error('Usage: engine presence scan [work-unit]');
+      // Work-unit-less: the project-wide read the code gate takes. The
+      // deferral section is the analysis dispatch's, which always scans one
+      // work unit — a project scan renders nothing.
+      if (!workUnit) {
+        respond(scanProject(process.cwd()));
+        return;
+      }
       const res = scanPresence(process.cwd(), workUnit);
       respond(res);
       respondSections(deferralSection(res));
