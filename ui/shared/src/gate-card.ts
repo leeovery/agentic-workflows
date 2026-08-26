@@ -81,9 +81,9 @@ export const NEVER_AUTO_SURFACES = [
   'MENU: incoherence held doc',
   'MENU: resurface gate',
   'MENU: finding choice', // the choice-move finding surface
-  // Spec sign-off's surface name and the consult/three-strike surfaces are
-  // prose-rendered today (no render.cjs section) — named by the Phase 2
-  // sweep; until then the suspicion heuristic carries them (typed confirm).
+  'MENU: spec signoff gate', // spec 1 §3 — verified at render.cjs (Phase 2 sweep)
+  // The consult/three-strike surfaces are prose-rendered today (no render.cjs
+  // section) — the suspicion heuristic carries them (typed confirm).
 ] as const;
 
 export const NEVER_AUTO_LABEL_PATTERNS: readonly RegExp[] = [

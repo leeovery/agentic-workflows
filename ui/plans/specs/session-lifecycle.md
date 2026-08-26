@@ -33,21 +33,28 @@ query({
     permissionMode: 'default',
     allowedTools: ALLOWLIST,       // generated — see below
     env: {
-      WORKFLOWS_DISPLAY_WIDTH: '65',
-      CLAUDE_PID: String(process.pid),        // [spike] presence keys held/live on it
-      CLAUDE_CODE_SESSION_ID: bridgeSessionId, // [spike] must match what SessionEnd hooks see
-      BRIDGE_ID: bridge_id,
+      WORKFLOWS_DISPLAY_WIDTH: '65',   // SPIKED: propagates ✓
+      BRIDGE_ID: bridge_id,            // SPIKED: propagates ✓
+      // CLAUDE_PID / CLAUDE_CODE_SESSION_ID are NOT set — spiked: the
+      // harness overrides both with its own values (see presence, below).
     },
-    settingSources: ['project'],   // [spike]
+    settingSources: ['project'],   // spiked: accepted without error; skill loading verified at the e2e
   }
 })
 ```
 
-**Presence [spike], sharpened:** assert the presence record carries pid/start/session-id
-*and* that hook-side cleanup matches the same session id the record holds (the harness's
-hook stdin id may differ from an env override — if so, the bridge stops setting
-`CLAUDE_CODE_SESSION_ID` and instead sweeps via `presence cleanup <session-id>` itself
-on teardown, with the id read back from the presence record).
+**Presence — spike resolved (2026-08-27, SDK 0.3.246):** the harness strips env
+overrides of `CLAUDE_PID`/`CLAUDE_CODE_SESSION_ID`; the presence record carries the
+**CLI process's own** `{pid, pid_start, session_id}` (observed directly). The spec's
+named compensation therefore applies: the bridge never sets those variables, learns a
+session's presence identity by **reading the record back**, and sweeps
+`presence cleanup <session-id>` itself on teardown with the read-back id. Held/live
+verification works naturally while the session runs (the CLI process is the live pid);
+after exit the record goes harmlessly dead-pid. Two further spike results: **resume
+does not mint a new sdk session id** in this SDK version (gate identity stays keyed to
+`bridgeSessionId` regardless — the guarantee is ours, not the SDK's), and **a
+disallowed tool is denied inline** (an `is_error` tool result; the session continues —
+no hang), which is the mechanism the prompt-fallout rule detects.
 
 **Allowlist — generated, not remembered.** Built mechanically at bridge start by
 sweeping `skills/*/SKILL.md` frontmatter `allowed-tools` across the installed product

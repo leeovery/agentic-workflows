@@ -1,0 +1,2 @@
+The engine showed a menu, and I'd summarise your choices as: you can continue (press c),
+or ask me anything about the changes. Just let me know what you'd like to do!

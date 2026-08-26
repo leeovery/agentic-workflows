@@ -77,11 +77,17 @@ it: re-parsing a recorded journal yields byte-identical ids.
 
 ## Ask eligibility (shared with spec 2)
 
-A `MENU:`/gate section is an **ask candidate only if its header instruction says STOP**.
-The engine renders auto-mode gates with an explicit *"do not stop; continue"* instruction
-(`AUTO_GATE_INSTRUCTION`) — task approval, capture log, fix apply and task results all
-sail past their own menus under auto. Those sections are context, never cards; building a
-card from one (and injecting its key later) was the phantom-gate bug this rule kills.
+**Measured rule (Phase 2 sweep, 2026-08-27, superseding the STOP-affirmative
+wording):** a `MENU` section in a Bash tool result is an **ask candidate unless its
+instruction carries the auto bypass** — the engine's own doctrine ("two facts, never
+blurred") puts *"do not stop; continue"* (`AUTO_GATE_INSTRUCTION`) on exactly the gates
+a session sails past (task approval, capture log, fix apply, task results under auto);
+every other MENU instruction — *"then STOP for the user's response"* on render gates,
+plain *"emit verbatim as markdown"* on the gateway's navigation menus and the finding
+announce — is a genuine session stop. Building a card from an auto-bypassed section
+(and injecting its key later) was the phantom-gate bug this rule kills. Only `Bash`
+tool results are scanned — a Read result quoting section markup in documentation is
+never a gate source.
 
 ## The surface→type mapping (single source, same mechanism as never-auto)
 
