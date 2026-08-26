@@ -30,5 +30,15 @@ from the observation that discussion subtopics (`pending` →
 `decided`/`deferred`) already give the partition boundaries a split
 would use.
 
-Append lessons from the topic-spawning implementation here as they
-land. Keep or delete at the end of that work.
+Lessons from the topic-spawning implementation (2026-08-26): the spawn
+mechanism itself was removed before release — the review pass ruled
+**triage everywhere**: whether the target exists is irrelevant, and
+knowledge moves one way, as a rich concern into the target's triage
+queue, with `reroute:{origin}` provenance carrying the parent
+read-in-full at the target's discussion. If a discussion-side split is
+ever built, that ruling narrows it further: no content partition and no
+spawn analogue — the shape would be rerouting the divergent subtopics'
+asks into sibling topics via the same queue, letting the grouping
+analysis place the results. That is close to what exists already, which
+strengthens the case for deleting this idea once one real epic has
+exercised the grouping over a disjoint discussion.
