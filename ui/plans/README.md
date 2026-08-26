@@ -113,6 +113,13 @@ sufficiency review found Phases 0 and 2 unbuildable without them). All five now 
 [fixture format](specs/fixture-format.md) ·
 [needs-you ordering + attention policy](specs/needs-you-ordering.md).
 
+A sixth document, [components and layouts](specs/components-layouts.md), is the design
+contract phases 1–6 build against — the app frame, the six screens (lobby, queue,
+channel, thread, artifact viewer, digest), the component catalog, and the visual
+language (provenance typography: mono = engine truth, serif = conversation, sans = the
+bridge's chrome; gold reserved for gates). Not a Phase 0 entry criterion, but a Phase 1
+one.
+
 1. **Gate-card schema + lifecycle** — fields, stable gate identity, state machine
    (open → answered → resolved / resolved-externally / stale), the kind taxonomy
    (structured / pass-through / batch screen / STOP), and the enumerated never-auto surface

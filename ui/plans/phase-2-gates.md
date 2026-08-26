@@ -10,7 +10,10 @@ for the conversational phases.
 gate reconstruction, and the security boundary are real work the first estimate hid).
 
 **Entry criterion:** `specs/session-lifecycle.md` and `specs/gate-card-schema.md` agreed
-(the sufficiency review found this phase unbuildable without them).
+(the sufficiency review found this phase unbuildable without them). Screens and
+components per `specs/components-layouts.md`: S2 (queue), S4 (thread), the lobby's
+session hosting, and the `GateCard`, `QueueRow`, `TopicThread`, `PresenceStrip`,
+`SessionHealthBadge`, and `TombstoneCard` components.
 
 ## Deliverables
 

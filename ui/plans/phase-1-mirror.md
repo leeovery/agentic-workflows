@@ -7,6 +7,10 @@ workflow state" constraint to be real from the start.
 
 **Duration:** 1–2 weeks.
 
+**Entry criterion:** `specs/components-layouts.md` — this phase builds the app frame,
+S1 (lobby, read-only), S3 (channel, read-only), S5's Read lens, and the `EngineEmbed`,
+`SpineItem`, and `BridgeBanner` components as that spec defines them.
+
 ## Deliverables
 
 1. **Project lobby (read-only)** — the project-level home: work units joined from
