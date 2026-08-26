@@ -640,3 +640,45 @@ describe('storage_paths is guarded at write time — set and apply', () => {
     assert.strictEqual(item.sources.beta.status, 'pending');
   });
 });
+
+// The findings walk's dismissal exit: a free-text ground pushed onto the
+// phase item, read back by every later review dispatch, pulled off on
+// request. Untyped, so no guard stands between the walk and the write —
+// this pins that the plain push/pull/get route carries it at topic level.
+describe('dismissed_grounds — the per-topic do-not-report list', () => {
+  let dir;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dismissed-grounds-'));
+    writeWorkUnit(dir, 'overhaul', 'epic', {
+      phases: { research: { items: { alpha: { status: 'in-progress' } } } },
+    });
+  });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+
+  const cost = 'Cost modelling for the vendor tier';
+  const region = 'Multi-region failover';
+
+  it('pushes at topic level, reads back, and pulls off on request', () => {
+    assert.strictEqual(runOk(dir, ['get', 'overhaul.research.alpha', 'dismissed_grounds']), '',
+      'absent until the first dismissal — the dispatch treats empty output as none');
+
+    assert.deepStrictEqual(runJson(dir, ['push', 'overhaul.research.alpha', 'dismissed_grounds', cost]),
+      { ok: true, path: 'overhaul.research.alpha', field: 'dismissed_grounds', pushed: cost, length: 1 });
+    runJson(dir, ['push', 'overhaul.research.alpha', 'dismissed_grounds', region]);
+    assert.deepStrictEqual(readWorkUnit(dir, 'overhaul').phases.research.items.alpha.dismissed_grounds,
+      [cost, region]);
+
+    assert.deepStrictEqual(runJson(dir, ['pull', 'overhaul.research.alpha', 'dismissed_grounds', region]),
+      { ok: true, path: 'overhaul.research.alpha', field: 'dismissed_grounds', removed: true, length: 1 });
+    assert.strictEqual(runOk(dir, ['get', 'overhaul.research.alpha', 'dismissed_grounds']),
+      JSON.stringify([cost], null, 2) + '\n');
+  });
+
+  it('is per-topic — a sibling topic keeps its own list', () => {
+    runJson(dir, ['set', 'overhaul.research.beta', 'status', 'in-progress']);
+    runJson(dir, ['push', 'overhaul.research.alpha', 'dismissed_grounds', cost]);
+    const items = readWorkUnit(dir, 'overhaul').phases.research.items;
+    assert.deepStrictEqual(items.alpha.dismissed_grounds, [cost]);
+    assert.strictEqual(items.beta.dismissed_grounds, undefined);
+  });
+});

@@ -16,6 +16,7 @@ You receive via the orchestrator's prompt:
 1. **Research brief** — what to investigate and why (enough context to work independently)
 2. **Research file path** — the current research document for background context
 3. **Output file path** — where to write your findings. Nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
+4. **Dismissed grounds** — grounds the user has ruled out; may be absent.
 
 ## Your Process
 
@@ -43,9 +44,10 @@ Choose based on the brief:
 3. **Cite sources** — when reporting facts from web research, include URLs. The orchestrator and user need to verify and explore further.
 4. **Stay scoped** — investigate the brief you were given. If you discover adjacent threads worth exploring, mention them in open questions — don't chase them yourself.
 5. **One file only** — write only to your output file path (including its transient `.txt` form). Do not create additional files.
-6. **Substance over volume** — a focused, well-organised report beats a sprawling dump. Include what matters, skip what doesn't.
-7. **Assign stable IDs to discrete findings** — split "Key Findings" into discrete items, each with a stable ID (`F1`, `F2`, `F3`, …) that appears as the body section heading (`### {ID}: {label}`) — the orchestrator reads the ids from those headings. The orchestrator uses these IDs to surface findings to the user one at a time without dumping the full report. Aim for 3-7 discrete findings per deep dive; fewer if the investigation is narrow, more if it genuinely surfaced distinct facts. Never renumber, never reuse IDs.
-8. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
+6. **Never report on dismissed ground** — a ground on the dismissed list is the user's standing ruling that this territory is not to be raised again. Judge coverage by substance, not string match: a finding whose ground the list covers, however differently worded or framed, is dropped entirely.
+7. **Substance over volume** — a focused, well-organised report beats a sprawling dump. Include what matters, skip what doesn't.
+8. **Assign stable IDs to discrete findings** — split "Key Findings" into discrete items, each with a stable ID (`F1`, `F2`, `F3`, …) that appears as the body section heading (`### {ID}: {label}`) — the orchestrator reads the ids from those headings. The orchestrator uses these IDs to surface findings to the user one at a time without dumping the full report. Aim for 3-7 discrete findings per deep dive; fewer if the investigation is narrow, more if it genuinely surfaced distinct facts. Never renumber, never reuse IDs.
+9. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 

@@ -154,6 +154,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit
 
 **Otherwise:**
 
+Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} dismissed_grounds
+```
+
 **Agent path**: `../../../agents/workflow-research-review.md`
 
 Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
@@ -163,6 +169,7 @@ The review agent receives:
 1. **Research file path(s)** — `.workflows/{work_unit}/research/{topic}.md` (for epic, include all research files in `.workflows/{work_unit}/research/` relevant to the current topic)
 2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
 3. **Maturity indication** — one line judging where the session stands. At conclusion this is `largely concluded` unless the session genuinely stopped early.
+4. **Dismissed grounds** — the list read above, verbatim. Omit this input entirely when the list is empty.
 
 When the agent returns:
 
