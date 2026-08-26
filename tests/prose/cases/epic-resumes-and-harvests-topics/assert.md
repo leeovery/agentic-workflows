@@ -7,8 +7,8 @@ The prose should have taken this path:
 2. the epic continuation re-reads state through its own gateway and
    validates the name, then runs the scoped read for the state surface
 3. the legacy detect script runs and finds nothing to recover; with
-   both analysis caches absent nothing dispatches, and with nothing to
-   sequence no sequencing pass runs
+   the gap-analysis cache absent nothing dispatches, and with nothing
+   to sequence no sequencing pass runs
 4. the dashboard renders with its no-work-started flag and the menu;
    the scripted choice resumes the in-progress discovery session by
    its stored route into the discovery skill
