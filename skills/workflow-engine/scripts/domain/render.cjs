@@ -1771,6 +1771,34 @@ function rerouteOffer(cwd, { dotpath, file }) {
   );
 }
 
+// spawn-offer — the consent gate for spawning a grown research thread into
+// its own map topic. Content never moves: the material stays in the parent's
+// research file, and the new topic feeds from it by provenance. The thread
+// and the proposed name are judgment content; the consequence statement and
+// the options are fixed.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function spawnOffer(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render spawn-offer: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'spawn-offer');
+  const p = readJsonPayload(cwd, file, 'spawn-offer');
+  if (!isFilled(p.thread)) throw new Error('render spawn-offer: "thread" must be a non-empty string');
+  if (!isFilled(p.name)) throw new Error('render spawn-offer: "name" must be a non-empty string');
+  const label = `**${p.thread}** has grown into its own topic.\nSpawning **${p.name}** adds it to the map as a topic of its own — the material stays in this research file, and the new topic reads it through its provenance when its discussion starts.`;
+  return section(
+    'MENU: spawn offer',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(label, [
+      cmdOption('y', 'yes', `Spawn it — ${p.name} joins the map`),
+      cmdOption('n', 'no', 'Keep it as a thread of this topic'),
+    ], { question: 'Spawn it as a topic?' }),
+  );
+}
+
 // off-topic-offer — the single-topic counterpart of reroute-offer: with no
 // sibling topic to route the concern to, it is logged, pivoted into an epic,
 // or noted in place. The pivot row exists only for a feature — the one type
@@ -3412,6 +3440,7 @@ const SURFACES = {
   'triage-block': triageBlock,
   'requeue-offer': requeueOffer,
   'reroute-offer': rerouteOffer,
+  'spawn-offer': spawnOffer,
   'reroute-candidates': rerouteCandidates,
   'off-topic-offer': offTopicOffer,
   'proposed-task': proposedTask,

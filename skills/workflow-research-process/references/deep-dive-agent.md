@@ -126,7 +126,7 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 1. Derive a one-line `summary` and a paragraph or two of `description` from the deep-dive findings.
 
-2. → Load **[create-discovery-topic.md](../../workflow-shared/references/create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{thread}`, phase = `research`, routing = `research`, source = `research-split:{topic}`, summary = `{summary}`, description = `{description}`.
+2. → Load **[create-discovery-topic.md](../../workflow-shared/references/create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{thread}`, phase = `research`, routing = `research`, source = `spawn:{topic}`, summary = `{summary}`, description = `{description}`.
 
 3. **If `result` is `cancelled`:** the promotion was dropped — the findings stay in the cache file. Otherwise create the research file at `.workflows/{work_unit}/research/{created_topic}.md` and synthesise the deep-dive findings into it (don't copy the cache file verbatim — organise for the research document context), then commit:
    ```bash

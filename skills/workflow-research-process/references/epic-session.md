@@ -40,13 +40,13 @@ When a concern reads as off-topic, hold it with the full context discussed about
 
 When you notice convergence signals (from the research guidelines), flag it and route to the appropriate action:
 
-#### If sustained off-topic content has accumulated over multiple exchanges in this session
+#### If a thread has grown into its own topic
 
-The current file is drifting — multiple exchanges have been adding material that doesn't belong under this topic's name. This is the trigger to split, not a clean thematic separation alone.
+Either the session's written material keeps deepening ground that deserves a map topic of its own — sustained accumulation over multiple exchanges, not a clean thematic separation alone — or the user names a thread and asks for it to become a topic.
 
-→ Load **[topic-splitting.md](topic-splitting.md)** and follow its instructions as written.
+→ Load **[topic-spawning.md](topic-spawning.md)** and follow its instructions as written.
 
-→ Return to **B. Session Loop**.
+→ On return, return to **B. Session Loop**.
 
 #### If the current topic is converging (tradeoffs clear, approaching decision territory) or the user indicates they're done
 
