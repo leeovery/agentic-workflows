@@ -416,3 +416,43 @@ out-of-remit finding still routes regardless of interest — rejection
 never keeps somebody else's question here. Discussion's `deferred`
 subtopic state is untouched: that records a conscious decision about
 ground engaged with, not a rejection of a finding.
+
+## Amendment — 2026-08-26: second-pass rulings
+
+The focused second review (four finders over layers 6–9) settled five
+calls:
+
+1. **The grown-thread entry** gets an entry-reason parameter on the
+   shared off-topic reroute (`reason = off-topic` default /
+   `grown-thread`): the grown entry skips the current-topic arm (its
+   target is new-or-sibling by construction) and the offer renders an
+   honest variant — the thread grew here, rerouting creates the topic,
+   the material stays and feeds it by queue entry and provenance. One
+   reference, one mechanism; the reroute offer also now states topic
+   creation whenever the target is new, restoring the consequence the
+   deleted spawn-offer carried.
+2. **Rejection is a legitimate close at the final review** — the
+   no-residue preludes widen to five arms (explored, corrected, routed,
+   roadmap-parked, or rejected by the user; the review advises,
+   conclusion is the user's call). Prelude-only: the protocol already
+   behaved this way.
+3. **Synthesis joins the dismissed family** — the perspective/synthesis
+   dispatch reads `dismissed_grounds` and the synthesis agent carries
+   the do-not-report rule; a ruling binds every raising surface.
+4. **Dismissed grounds travel through absorption** — they join
+   `reconcile_needed` in the absorb allowlist: a standing user ruling
+   is durable cross-session state, not session bookkeeping.
+5. **The third in-flight-agents gate adopts now** — the surface's pin
+   widens to research-or-discussion and `closing-gates.md`'s prose twin
+   migrates, rather than shipping one gate in two registers behind a
+   pin that foreclosed the adoption.
+
+Notable fixes riding the same layer: apostrophe-safe quoting on the
+dismiss push (a single-quoted free-prose value silently lost the
+ruling), the missing phase pin on the conclude gate, the auto-approval
+line's emission owner, the dead-end arm's response check (already-
+closed proceeds — the resume path), `create-discovery-topic` narrowed
+to its one caller per the no-dead-code ruling, and the migration-043
+note: legacy umbrella rows read "dead end" — display-only, with the
+closed-target gate's reopen offer the one live surface, now carrying
+its consequence in the label.
