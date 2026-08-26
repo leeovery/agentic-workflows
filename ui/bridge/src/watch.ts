@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
-import { deriveEvents, type RawEvent } from './derive.js';
+import { deriveEvents, eventId, type RawEvent } from './derive.js';
 import {
   git,
   lsWorkflowsTree,
@@ -16,7 +16,7 @@ import {
   snapshotTree,
   type Snapshot,
 } from './snapshot.js';
-import { listSpineCommits, attachDerived, computeEpoch } from './spine.js';
+import { listSpineCommits, attachDerived, commitScope } from './spine.js';
 import type { EngineAdapter } from './engine.js';
 import { logger } from './log.js';
 
@@ -49,6 +49,9 @@ export class Watcher extends EventEmitter {
     private epoch: string,
     seed: { tree: Record<string, string>; snap: Snapshot; head: string | null },
     private engine?: EngineAdapter,
+    // live-only mode (shallow/grafted clone): no durable layer exists — HEAD
+    // movement only re-baselines the live layer, never emits durable events.
+    private liveOnly = false,
   ) {
     super();
     this.lastCommitTree = seed.tree;
@@ -91,6 +94,11 @@ export class Watcher extends EventEmitter {
 
   private async liveDiff(): Promise<void> {
     if (this.closed) return;
+    // If HEAD moved since the last poll, defer to pollHead: diffing the live
+    // tree across an unprocessed branch switch would read as a mass
+    // disappearance — no workunit.removed burst on a branch switch applies to
+    // the live layer too (spec 3). pollHead re-baselines the live layer.
+    if (this.headSha() !== this.lastHead) return;
     const snap = snapshotTree(this.projectRoot);
     if (this.engine) await attachDerived(snap, this.engine);
     const ctx = {
@@ -120,6 +128,12 @@ export class Watcher extends EventEmitter {
 
     const prevHead = this.lastHead;
     this.lastHead = head;
+
+    if (this.liveOnly) {
+      // No durable layer: any HEAD movement just refreshes the live baseline.
+      this.lastLiveSnap = snapshotTree(this.projectRoot);
+      return;
+    }
 
     let fastForward = false;
     if (prevHead) {
@@ -162,18 +176,14 @@ export class Watcher extends EventEmitter {
       if (this.engine) await attachDerived(snap, this.engine);
       const ctx = { project: this.project, epoch: this.epoch, ts: c.ts, disc: c.sha };
       const events = deriveEvents(this.lastCommitSnap, snap, ctx);
-      const scope = new Set<string>();
-      for (const p of new Set([...Object.keys(this.lastCommitTree), ...Object.keys(tree)])) {
-        if (this.lastCommitTree[p] !== tree[p] && !p.split('/')[0]!.startsWith('.')) scope.add(p.split('/')[0]!);
-      }
       events.push({
-        id: crypto.createHash('sha256').update(`commit.landed\n//\n${c.sha}`).digest('hex').slice(0, 16),
+        id: eventId('commit.landed', {}, c.sha),
         epoch: this.epoch,
         ts: c.ts,
         project: this.project,
         type: 'commit.landed',
         address: {},
-        payload: { sha: c.sha, subject: c.subject, scope: [...scope].sort() },
+        payload: { sha: c.sha, subject: c.subject, scope: commitScope(this.lastCommitTree, tree) },
       });
       this.lastCommitTree = tree;
       this.lastCommitSnap = snap;

@@ -41,8 +41,13 @@ pnpm --filter @workflow-ui/bridge exec tsx src/cli.ts convert \
 - **Width pin**: every engine invocation pins `WORKFLOWS_DISPLAY_WIDTH=65` —
   renders are terminal-width-sensitive; unpinned output encodes whatever width
   was detected.
-- **Config schema**: `shared/src/config.ts` (projects, width pin, notification
-  settings incl. quiet hours, port, daily budget warning).
+- **Config file**: `~/.config/workflow-bridge/config.json` (override with
+  `--config <path>`), schema in `shared/src/config.ts` — projects, width pin,
+  notification settings (quiet hours, escalation, roll-up, stuck/grace), port,
+  daily budget warning. Argv flags override per run.
+- **Bridge state**: UI-native SQLite lives OUT of tree at
+  `~/.cache/workflow-bridge/<project>-<hash>/` (override with
+  `--state-dir`) — the bridge never writes into `.workflows/`.
 - **Debug console**: `http://127.0.0.1:4870/debug` — health/banner, event
   stream (live vs durable), structured logs, cost counters. `/health`,
   `/events` (SSE, `?since=<seq>`), `/costs`, `/logs` are the named surfaces

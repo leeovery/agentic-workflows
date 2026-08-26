@@ -121,6 +121,15 @@ export class BridgeServer {
           res.writeHead(this.opts.onReplayStep ? 405 : 404).end();
           return;
         }
+        // Cross-origin defence for a localhost daemon: a browser request from
+        // any web page carries an Origin header — reject unless it names this
+        // bridge itself. curl/fetch-from-scripts send no Origin and pass.
+        const origin = req.headers.origin;
+        if (origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) {
+          res.writeHead(403, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: 'cross-origin state change refused' }));
+          return;
+        }
         this.opts.onReplayStep();
         res.writeHead(204).end();
         return;
@@ -166,7 +175,15 @@ const DEBUG_CONSOLE_HTML = `<!doctype html>
   async function refresh() {
     const h = await (await fetch('/health')).json();
     document.getElementById('health').textContent = JSON.stringify(h, null, 2);
-    document.getElementById('banner').innerHTML = (h.bannerReasons || []).map(r => '<div class="banner">' + r + '</div>').join('');
+    // bannerReasons carries repo-derived text (e.g. a git tag) — untrusted;
+    // never innerHTML it.
+    const banner = document.getElementById('banner');
+    banner.replaceChildren(...(h.bannerReasons || []).map(r => {
+      const div = document.createElement('div');
+      div.className = 'banner';
+      div.textContent = r;
+      return div;
+    }));
     const c = await (await fetch('/costs')).json();
     document.getElementById('costs').textContent = JSON.stringify(c, null, 2);
   }

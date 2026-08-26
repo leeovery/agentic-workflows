@@ -74,10 +74,16 @@ export type GateCard = z.infer<typeof GateCard>;
 // Replaced by an upstream STAYS_GATED_SURFACES export when/if it lands (UPSTREAM.md #3).
 // Surface names provisional until the Phase 2 sweep verifies them against render.cjs.
 export const NEVER_AUTO_SURFACES = [
+  // Verified against render.cjs (the AUTO_OVERRIDE_LINE call sites) at Phase 0;
+  // re-verified and extended by the Phase 2 sweep.
   'MENU: incoherence conflict',
   'MENU: incoherence gap',
   'MENU: incoherence held doc',
   'MENU: resurface gate',
+  'MENU: finding choice', // the choice-move finding surface
+  // Spec sign-off's surface name and the consult/three-strike surfaces are
+  // prose-rendered today (no render.cjs section) — named by the Phase 2
+  // sweep; until then the suspicion heuristic carries them (typed confirm).
 ] as const;
 
 export const NEVER_AUTO_LABEL_PATTERNS: readonly RegExp[] = [
@@ -95,4 +101,8 @@ export const SURFACE_GATE_TYPES: Record<string, string> = {
   'MENU: task approval': 'task-loop',
   'MENU: fix direction': 'task-loop',
   'MENU: incoherence conflict': 'conflict',
+  'MENU: incoherence gap': 'conflict',
+  'MENU: finding choice': 'finding',
+  // consult/three-strike surfaces → 'consult' once the Phase 2 sweep names
+  // them (prose-rendered today, no engine section name to key on).
 };

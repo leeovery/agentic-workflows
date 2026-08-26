@@ -174,6 +174,63 @@ Fourteen findings, all accepted (one narrowed); the spec was revised in place:
 The review's survived list confirmed the state machines match specs 1–2 exactly, the
 gold reservation has no leaks, and the commits-exiled spine holds in letter and spirit.
 
+## Round 6: Phase 0 implementation review (2026-08-26)
+
+Three parallel reviewers ran against the Phase 0 build after its done-means passed:
+**plan/spec fidelity**, **intent baseline**, and **code quality + security posture**.
+Every finding was verified against the code before acceptance. Dispositions:
+
+**Defects (all fixed, with tests where the path was uncovered):**
+
+| # | Finding | Fix |
+|---|---|---|
+| P0-1 | Default bridge state dir sat inside `.workflows/.cache/` — a write to `.workflows/` (out of scope), leakable into fixture overlays via `snapshotWorld` | Out-of-tree default (`~/.cache/workflow-bridge/{slug-hash}`); overlay capture excludes any legacy `.bridge-state`; smoke test asserts `.workflows/` untouched |
+| P0-2 | Boot-time epoch mismatch marked every `artifact_read_ref` history-rewritten unconditionally (live path did the real reachability check) | One shared `gitReachable` used by both epoch-change paths |
+| P0-3 | Live-layer diff could race the HEAD poll on a branch switch and emit the removal burst spec 3 forbids | `liveDiff` defers whenever HEAD has moved; `pollHead`/rebaseline re-baseline the live layer |
+| P0-4 | Live-only (shallow-clone) mode seeded the commit-space baseline with a tree-space snapshot and never wrote `project_meta`, breaking durable persistence after restart | Live-only watcher mode: no durable emission at all — HEAD movement re-baselines the live layer (the durable layer genuinely doesn't exist there) |
+| P0-5 | Debug console rendered `bannerReasons` (repo-derived text incl. git tags) via `innerHTML` — reflected XSS from a hostile repo | `textContent`/`createElement` |
+| P0-6 | Recording the fixture surfaced four replay/watcher defects (final-boundary semantics, mixed hash spaces, `head: null` seeds, chokidar ready-gap) | Fixed pre-round in the fixture commit, with tests |
+
+**Gaps (closed):** config schema was decorative — now loaded from
+`~/.config/workflow-bridge/config.json` with argv overrides (width pin and port flow
+from it); graft/partial-clone detection added beside shallow (README no longer
+overclaims); `cli.ts` had zero test coverage — smoke test boots the CLI on a
+pending-migration repo and asserts the read-only contract end-to-end;
+`answers.json` was empty and `assertAnswer` coverage synthetic-only — offline answers
+are now **derived from the recorded turns by the harness** (`deriveAnswers`,
+`regen-answers.ts`); engine host calls gained a timeout (a wedged target-project
+derivation can no longer stall the bridge); cross-origin POSTs to mutating routes
+refused (localhost-daemon CSRF).
+
+**Nits (fixed):** `MENU: finding choice` added to the never-auto enumeration
+(verified against `render.cjs`'s `AUTO_OVERRIDE_LINE` call sites — the consult and
+spec-sign-off surfaces are prose-rendered today and stay with the Phase 2 sweep);
+`gate.opened` payload is the card itself, not a `{card}` wrapper; `commit.landed`
+id/scope construction single-sourced (`eventId` + exported `commitScope`); dead
+adapter read methods removed; engine-host method table given a null prototype;
+`restoreWorld` refuses absolute/`..` overlay entries (spec 4 path safety);
+`T_stuck`/`T_grace` pinned in the notification config.
+
+**Spec amendments this round** (deviations resolved into the specs, per the rules of
+engagement): spec 1's turn definition clarified — a turn is a *human input*;
+tool-result submissions ride user-role API messages but are not turns. EVENTS.md's
+identity preamble now states the `artifact.updated` content-keyed exception the table
+always carried.
+
+**Accepted as-is:** the `workunit.removed` successor inference stays a documented
+best-effort heuristic (EVENTS.md prescribes no algorithm); replay `assertAnswer`
+still no-ops on a missing key (the derived answers file makes absence an authored
+choice, not an accident).
+
+**Survived attack (reviewers' clean lists):** the two-layer seq discipline, the
+occurrence-unique id rules and epoch behaviour, every EVENTS.md table row's
+derivation, G7/G8 (in-process `lib.cjs`, width pinning), spec-blocked/dep-blocked
+sourced exclusively from the engine's own derivations, no UPSTREAM verb assumed, the
+provisional (unfrozen) schema labelling, commits exiled from the spine set, the
+SQLite surface incl. the S7 tables and human sentinel, parameterized SQL throughout,
+no shell-string command construction, localhost-only binding, CI running exactly the
+declared lanes.
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in

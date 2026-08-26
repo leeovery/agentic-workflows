@@ -136,6 +136,22 @@ export function convertTranscript(
 }
 
 /**
+ * Derive offline-mode answers.json from the recorded user turns — the
+ * harness's job, so the file is generated, never hand-edited. Keys are
+ * `turn:N` (the Phase 0 stopgap the Phase 2 re-parse replaces with gate ids).
+ */
+export function deriveAnswers(journal: JournalLine[]): Record<string, { answer: string; matchMode: 'exact' }> {
+  const answers: Record<string, { answer: string; matchMode: 'exact' }> = {};
+  let turn = 0;
+  for (const rec of journal) {
+    if (rec.record !== 'user') continue;
+    turn += 1;
+    if (turn >= 2) answers[`turn:${turn}`] = { answer: String(rec.text ?? ''), matchMode: 'exact' };
+  }
+  return answers;
+}
+
+/**
  * Snapshot a world (spec 4): committed history as a git bundle + an overlay
  * tar of dirty tracked files and .workflows/.cache — a bundle alone cannot
  * represent mid-session state.
@@ -153,9 +169,17 @@ export function snapshotWorld(projectRoot: string, worldDir: string): void {
     .filter(Boolean)
     .map((l) => l.slice(3))
     .filter((p) => p && fs.existsSync(path.join(projectRoot, p)) && fs.statSync(path.join(projectRoot, p)).isFile());
+  // The cache overlay carries ONLY product state — never bridge files. A
+  // legacy bridge state dir under the cache (pre-fix default) is excluded so
+  // UI-native databases can never leak into a committed fixture.
   const cacheDir = path.join(projectRoot, '.workflows', '.cache');
   const paths = [...dirty];
-  if (fs.existsSync(cacheDir)) paths.push('.workflows/.cache');
+  if (fs.existsSync(cacheDir)) {
+    for (const entry of fs.readdirSync(cacheDir)) {
+      if (entry === '.bridge-state') continue;
+      paths.push(path.posix.join('.workflows/.cache', entry));
+    }
+  }
   if (paths.length === 0) {
     // An empty overlay is still a valid overlay — restore just untars nothing.
     execFileSync('tar', ['-cf', path.join(worldDir, 'overlay.tar'), '-T', '/dev/null'], { cwd: projectRoot });
@@ -170,6 +194,16 @@ export function restoreWorld(worldDir: string, destDir: string): string {
   execFileSync('git', ['clone', '--quiet', path.join(worldDir, 'repo.bundle'), destDir], { stdio: 'ignore' });
   const overlay = path.join(worldDir, 'overlay.tar');
   if (fs.existsSync(overlay)) {
+    // Path safety (spec 4): a replay must never be able to write outside its
+    // tmpdir. Refuse any overlay entry that is absolute or traverses upward.
+    const entries = execFileSync('tar', ['-tf', overlay], { encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean);
+    for (const e of entries) {
+      if (path.isAbsolute(e) || e.split('/').includes('..')) {
+        throw new Error(`unsafe overlay entry refused: ${e}`);
+      }
+    }
     execFileSync('tar', ['-xf', overlay], { cwd: destDir });
   }
   return destDir;

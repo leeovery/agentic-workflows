@@ -112,7 +112,7 @@ export function computeEpoch(root: string | null, tip: string | null, events: Ra
     .slice(0, 32);
 }
 
-function commitScope(prevTree: Record<string, string>, tree: Record<string, string>): string[] {
+export function commitScope(prevTree: Record<string, string>, tree: Record<string, string>): string[] {
   const touched = new Set<string>();
   const all = new Set([...Object.keys(prevTree), ...Object.keys(tree)]);
   for (const p of all) {

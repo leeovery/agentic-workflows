@@ -2,9 +2,11 @@
 // events from a real repo; `bridge --replay <fixture>` streams a converted
 // stage; `bridge convert ...` builds fixture v0 from a terminal-driven session.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { DomainEvent } from '@workflow-ui/shared';
+import { BridgeConfig, DomainEvent } from '@workflow-ui/shared';
 import { discoverEngine, EngineAdapter } from './engine.js';
 import { handshake, type Handshake } from './version.js';
 import { buildSpine } from './spine.js';
@@ -13,9 +15,29 @@ import { openDb, type Db } from './db.js';
 import { EventStore } from './store.js';
 import { BridgeServer, type HealthState } from './server.js';
 import { Replayer } from './replay.js';
-import { convertTranscript, snapshotWorld } from './convert.js';
+import { convertTranscript, deriveAnswers, snapshotWorld } from './convert.js';
 import { logger } from './log.js';
 import type { RawEvent } from './derive.js';
+
+function defaultStateDir(projectRoot: string): string {
+  const slug = path.basename(projectRoot).replace(/[^a-zA-Z0-9-]/g, '_');
+  const hash = crypto.createHash('sha256').update(projectRoot).digest('hex').slice(0, 8);
+  return path.join(os.homedir(), '.cache', 'workflow-bridge', `${slug}-${hash}`);
+}
+
+// Reachability check shared by BOTH epoch-change paths (boot-time mismatch
+// and live non-fast-forward): a read ref is marked history-rewritten only
+// when its sha is actually gone (EVENTS.md).
+function gitReachable(dir: string): (sha: string) => boolean {
+  return (sha) => {
+    try {
+      execFileSync('git', ['-C', dir, 'cat-file', '-e', sha], { stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+}
 
 function gitHead(dir: string): string | null {
   try {
@@ -33,7 +55,33 @@ function flag(name: string): boolean {
   return process.argv.includes(`--${name}`);
 }
 
-const WIDTH = 65; // every engine invocation pins WORKFLOWS_DISPLAY_WIDTH
+// Config file (phase-0 §5): ~/.config/workflow-bridge/config.json, overridden
+// per-flag by argv. Defaults come from the shared schema.
+function loadConfig(): BridgeConfig {
+  const configPath = arg('config') ?? path.join(os.homedir(), '.config', 'workflow-bridge', 'config.json');
+  let raw: unknown = {};
+  try {
+    raw = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  } catch {
+    // Absent or unreadable → pure defaults; a malformed file must not boot a
+    // silently different bridge.
+    if (fs.existsSync(configPath)) {
+      console.error(`config file unparseable, refusing to guess: ${configPath}`);
+      process.exit(2);
+    }
+  }
+  const parsed = BridgeConfig.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`config file invalid: ${JSON.stringify(parsed.error.issues.slice(0, 3))}`);
+    process.exit(2);
+  }
+  return parsed.data;
+}
+
+const config = loadConfig();
+// Every engine invocation pins WORKFLOWS_DISPLAY_WIDTH (renders are
+// terminal-width-sensitive).
+const WIDTH = config.displayWidth;
 
 function validateOut(events: (RawEvent & { seq?: number })[]): void {
   // shared/ schemas validate every event both modes emit (done-means).
@@ -48,7 +96,10 @@ function validateOut(events: (RawEvent & { seq?: number })[]): void {
 async function runLive(projectRoot: string): Promise<void> {
   projectRoot = path.resolve(projectRoot);
   const project = path.basename(projectRoot);
-  const stateDir = arg('state-dir') ?? path.join(projectRoot, '.workflows', '.cache', '.bridge-state');
+  // Bridge state is UI-native and lives OUT of tree — any write to
+  // .workflows/ is out of scope for the bridge (phase-0 §out-of-scope), and
+  // the engine's cache housekeeping must never meet bridge files.
+  const stateDir = arg('state-dir') ?? defaultStateDir(projectRoot);
   const enginePath = arg('engine') ?? discoverEngine(projectRoot);
 
   let hs: Handshake;
@@ -74,7 +125,7 @@ async function runLive(projectRoot: string): Promise<void> {
   let watcher: Watcher | null = null;
 
   const server = new BridgeServer({
-    port: Number(arg('port') ?? '4870'),
+    port: Number(arg('port') ?? config.port),
     store,
     db,
     health: (): HealthState => ({
@@ -117,7 +168,7 @@ async function runLive(projectRoot: string): Promise<void> {
         stored: prior.epoch,
         computed: spine.epoch,
       });
-      store.onEpochChange(spine.epoch, spine.tip, () => false);
+      store.onEpochChange(spine.epoch, spine.tip, gitReachable(projectRoot));
     } else if (!prior) {
       store.setMeta(spine.epoch, spine.tip);
     }
@@ -136,9 +187,17 @@ async function runLive(projectRoot: string): Promise<void> {
   }
 
   if (!watcher) {
-    // live-only: watch from the current tree with no durable layer.
+    // live-only (shallow/grafted/partial clone): no durable layer exists —
+    // the watcher only emits live diffs, and HEAD movement re-baselines.
     const { snapshotTree } = await import('./snapshot.js');
-    watcher = new Watcher(projectRoot, project, 'live-only', { tree: {}, snap: snapshotTree(projectRoot), head: gitHead(projectRoot) }, engine);
+    watcher = new Watcher(
+      projectRoot,
+      project,
+      'live-only',
+      { tree: {}, snap: snapshotTree(projectRoot), head: gitHead(projectRoot) },
+      engine,
+      true,
+    );
   }
 
   watcher.on('durable', (events: RawEvent[]) => {
@@ -154,14 +213,7 @@ async function runLive(projectRoot: string): Promise<void> {
     // Authoritative rebuild: recompute the spine, swap the epoch, re-baseline.
     const spine = await buildSpine(projectRoot, project, engine);
     epoch = spine.epoch;
-    store.onEpochChange(spine.epoch, spine.tip, (sha) => {
-      try {
-        execFileSync('git', ['-C', projectRoot, 'cat-file', '-e', sha], { stdio: 'ignore' });
-        return true;
-      } catch {
-        return false;
-      }
-    });
+    store.onEpochChange(spine.epoch, spine.tip, gitReachable(projectRoot));
     const stored = store.append(spine.events);
     watcher!.setEpoch(spine.epoch);
     server.control({ control: 'epoch-changed', epoch: spine.epoch, reason });
@@ -205,7 +257,7 @@ async function runReplay(fixtureDir: string): Promise<void> {
   }
 
   const server = new BridgeServer({
-    port: Number(arg('port') ?? '4870'),
+    port: Number(arg('port') ?? config.port),
     store,
     db: null,
     onReplayStep: () => replayer.step(),
@@ -279,9 +331,10 @@ function runConvert(): void {
     moments: [], // gateId↔world pairing arrives with Phase 2's ask markers
   };
   fs.writeFileSync(path.join(out, 'meta.json'), JSON.stringify(meta, null, 2) + '\n');
-  if (!fs.existsSync(path.join(out, 'answers.json'))) {
-    fs.writeFileSync(path.join(out, 'answers.json'), '{}\n');
-  }
+  fs.writeFileSync(
+    path.join(out, 'answers.json'),
+    JSON.stringify(deriveAnswers(journal as Parameters<typeof deriveAnswers>[0]), null, 2) + '\n',
+  );
   console.log(`fixture written: ${out} (${journal.length} journal records)`);
 }
 

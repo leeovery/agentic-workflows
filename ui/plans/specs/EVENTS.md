@@ -26,7 +26,10 @@ type DomainEvent = {
 **Durable layer — commit-derived only.** Every durable event's `discriminant` **includes
 the introducing commit sha**, making recurring transitions occurrence-unique: a topic
 completed, reopened, and completed again yields two distinct `phase.completed` ids
-(different shas). The durable stream is what `spine(repo)` reproduces, what sequence
+(different shas). One deliberate exception: `artifact.updated` is content-keyed
+(`path.hash`, per the table) — an artifact reverting byte-identically across commits
+dedupes to one event, since the event answers "what does the file say now", not "what
+happened" (REVIEW.md round 6). The durable stream is what `spine(repo)` reproduces, what sequence
 numbers order, and what cursors track.
 
 **Live layer — ephemeral, re-derivable, never persisted.** Between commits the watcher's

@@ -18,6 +18,10 @@ export const NotificationConfig = z.object({
     .default({ start: '22:00', end: '08:00' }),
   escalationMinutes: z.number().int().positive().default(15),
   rollupMinutes: z.number().int().positive().default(10),
+  // Spec 5: T_stuck (owner-unresponsive) and T_grace (navigation grace) —
+  // consumed from Phase 6, pinned here with the rest of the attention knobs.
+  stuckHours: z.number().int().positive().default(24),
+  graceMinutes: z.number().int().positive().default(5),
 });
 
 export const BridgeConfig = z.object({

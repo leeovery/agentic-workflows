@@ -64,23 +64,29 @@ export class EngineAdapter {
     return this.child;
   }
 
-  call<T = unknown>(method: string, args: Record<string, unknown> = {}): Promise<T> {
+  call<T = unknown>(method: string, args: Record<string, unknown> = {}, timeoutMs = 10_000): Promise<T> {
     const child = this.ensureChild();
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
-      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
+      // A wedged engine derivation (target-project code the bridge doesn't
+      // control) must never stall the watcher loop — time the call out and
+      // let the caller degrade (attachDerived already catches).
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`engine call ${method} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+      this.pending.set(id, {
+        resolve: (v) => {
+          clearTimeout(timer);
+          (resolve as (v: unknown) => void)(v);
+        },
+        reject: (e) => {
+          clearTimeout(timer);
+          reject(e);
+        },
+      });
       child.stdin!.write(JSON.stringify({ id, method, args }) + '\n');
     });
-  }
-
-  // Direct manifest reads — the bridge reads manifest.json files itself
-  // (phase-0 §2); the child is for derivations that must run engine code.
-  readProjectManifest(): Record<string, unknown> | null {
-    return readJson(path.join(this.projectRoot, '.workflows', 'manifest.json'));
-  }
-
-  readUnitManifest(name: string): Record<string, unknown> | null {
-    return readJson(path.join(this.projectRoot, '.workflows', name, 'manifest.json'));
   }
 
   async epicDetailFor(manifest: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -94,13 +100,5 @@ export class EngineAdapter {
   stop(): void {
     this.child?.kill();
     this.child = null;
-  }
-}
-
-function readJson(p: string): Record<string, unknown> | null {
-  try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
-  } catch {
-    return null;
   }
 }

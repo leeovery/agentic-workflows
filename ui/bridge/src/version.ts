@@ -84,17 +84,29 @@ export function pendingMigrations(projectRoot: string, enginePath: string): { pe
   return { pending, logFound };
 }
 
+/**
+ * Shallow, grafted, or partial clones break manifest@C-parent at the history
+ * boundary (EVENTS.md) — all three degrade to live-only mode.
+ */
 export function isShallow(projectRoot: string): boolean {
-  try {
-    return (
-      execFileSync('git', ['-C', projectRoot, 'rev-parse', '--is-shallow-repository'], {
+  const git = (args: string[]): string => {
+    try {
+      return execFileSync('git', ['-C', projectRoot, ...args], {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim() === 'true'
-    );
-  } catch {
-    return false;
-  }
+      }).trim();
+    } catch {
+      return '';
+    }
+  };
+  if (git(['rev-parse', '--is-shallow-repository']) === 'true') return true;
+  // Grafted history: legacy grafts file or replace refs.
+  const gitDir = git(['rev-parse', '--git-dir']);
+  if (gitDir && fs.existsSync(path.join(path.resolve(projectRoot, gitDir), 'info', 'grafts'))) return true;
+  if (git(['replace', '--format=%(refname)', '-l']) !== '') return true;
+  // Partial clone: a promisor filter on any remote.
+  if (git(['config', '--get-regexp', String.raw`remote\..*\.partialclonefilter`]) !== '') return true;
+  return false;
 }
 
 export function handshake(projectRoot: string, enginePath: string): Handshake {

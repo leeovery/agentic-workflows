@@ -24,7 +24,9 @@ try {
   process.exit(1);
 }
 
-const methods = {
+// Null prototype: a method name like "hasOwnProperty" must resolve to
+// undefined, never an inherited Object.prototype member.
+const methods = Object.assign(Object.create(null), {
   ping: () => ({ pong: true }),
   loadAllManifests: () => engine.reads.loadAllManifests(projectRoot),
   loadActiveManifests: () => engine.reads.loadActiveManifests(projectRoot),
@@ -37,7 +39,7 @@ const methods = {
   // the spine can run it against historical manifests read from git blobs.
   epicDetailFor: ({ manifest }) => engine.detail.epicDetail(projectRoot, manifest),
   schema: () => engine.schema,
-};
+});
 
 const rl = readline.createInterface({ input: process.stdin, terminal: false });
 rl.on('line', (line) => {

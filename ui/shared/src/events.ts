@@ -87,7 +87,10 @@ export const InboxChanged = event(
   z.object({ counts: z.record(z.number().int().nonnegative()) }),
 );
 export const RoadmapChanged = event('roadmap.changed', z.object({ items: z.number().int().nonnegative() }));
-export const GateOpened = event('gate.opened', z.object({ card: z.unknown() }));
+// gate.opened's payload IS the card object (EVENTS.md table: "card /
+// {gateId, via}") — typed loosely here to avoid a cycle with gate-card.ts;
+// the session manager validates it as GateCard before emitting (Phase 2).
+export const GateOpened = event('gate.opened', z.record(z.unknown()));
 export const GateAnswered = event('gate.answered', z.object({ gateId: z.string(), via: z.string() }));
 export const GateResolved = event('gate.resolved', z.object({ gateId: z.string(), via: z.string() }));
 export const SessionStarted = event(

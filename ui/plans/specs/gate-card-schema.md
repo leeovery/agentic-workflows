@@ -50,7 +50,9 @@ type GateOption = {
   per-session event tee the bridge persists — UI-native state; this is also the "tail"
   answer-while-dead reads, since SDK resume does not re-stream history). Turn numbering
   is *not* an identity input — "turn" is defined (once, for all specs) as the count of
-  user-role messages since session birth, and is bookkeeping only.
+  **human inputs** since session birth (tool-result submissions ride user-role API
+  messages but are not user turns — the Phase 0 converter surfaced the ambiguity, and
+  this is the resolved reading; REVIEW.md round 6), and is bookkeeping only.
 - **`normalizedBody`** — operationally: take the section body (lines after the
   `=== NAME (instruction) ===` header, up to the next `=== ` or end — sections have no
   closing delimiter) or, for grammar-parsed menus, the contiguous option-row block plus
