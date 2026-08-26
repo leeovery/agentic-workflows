@@ -189,7 +189,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
         if (!clashes(`${suffixed}-${i}`)) return `${suffixed}-${i}`;
       }
     };
-    /** @type {{from: string, target: string, status: string}[]} */
+    /** @type {{from: string, target: string, status: string, dismissed_grounds?: string[]}[]} */
     const researchPlan = [];
     for (const [name, item] of Object.entries(featureResearch)) {
       const src = `.workflows/${feature}/research/${name}.md`;
@@ -202,7 +202,12 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       }
       const target = researchTarget(name);
       takenResearch.add(target);
-      researchPlan.push({ from: name, target, status });
+      researchPlan.push({
+        from: name,
+        target,
+        status,
+        ...(item.dismissed_grounds !== undefined ? { dismissed_grounds: item.dismissed_grounds } : {}),
+      });
     }
 
     const importPlan = planTrackedMoves(cwd, feature, into, 'imports', Array.isArray(featureManifest.imports) ? featureManifest.imports : []);
@@ -243,16 +248,23 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // A live reconcile flag travels with the topic: research and discussion
     // move together, so "research moved beneath this discussion" stays true
     // in the epic — the map row cues it and the discussion's next entry
-    // clears it, same as any epic topic.
+    // clears it, same as any epic topic. The topic's dismissed grounds travel
+    // too: they are the user's standing do-not-report calls on this material,
+    // and the material is what moved — dropping them re-raises findings the
+    // user already turned down.
     ensureContainer(discussion, 'items', 'phases.discussion.items')[topic] = {
       status: discussionItem.status,
       ...(discussionItem.reconcile_needed !== undefined ? { reconcile_needed: discussionItem.reconcile_needed } : {}),
+      ...(discussionItem.dismissed_grounds !== undefined ? { dismissed_grounds: discussionItem.dismissed_grounds } : {}),
     };
     if (researchPlan.length > 0) {
       const research = ensureContainer(epicPhases, 'research', 'phases.research');
       const researchItems = ensureContainer(research, 'items', 'phases.research.items');
       for (const move of researchPlan) {
-        researchItems[move.target] = { status: move.status };
+        researchItems[move.target] = {
+          status: move.status,
+          ...(move.dismissed_grounds !== undefined ? { dismissed_grounds: move.dismissed_grounds } : {}),
+        };
       }
     }
     for (const move of importPlan) {

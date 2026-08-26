@@ -115,6 +115,12 @@ Then close out the consumed perspective rows — synthesis has read them; they a
 node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} discussion {topic} {perspective_id}
 ```
 
+Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
+```
+
 **Agent path**: `../../../agents/workflow-discussion-synthesis.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
@@ -124,6 +130,7 @@ The synthesis agent receives:
 1. **Perspective file paths** — paths to all perspective files in this set
 2. **Decision topic** — the decision being explored
 3. **Output file path** — the `file` from the dispatch response. The agent writes its completed landscape there — pure markdown with one `### {ID}: {label}` section per tension (`T1`, `T2`, …), never frontmatter.
+4. **Dismissed grounds** — the list read above, verbatim. Omit this input entirely when the list is empty.
 
 The synthesis agent also compares the Restatement sections from each perspective. If lenses diverge meaningfully on what the decision IS — different scope, different question, or one lens answering an unasked question — synthesis records a **Framing alignment** tension as `T1` so it surfaces first. This is the Problem Restate Gate's payoff: wrong-question failures get caught before the user acts on a tradeoff landscape.
 

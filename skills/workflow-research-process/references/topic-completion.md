@@ -54,9 +54,17 @@ Mark the map item first — no commit; the conclusion's own commit carries the m
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map handle {work_unit} {topic}
 ```
 
-Then conclude — the research completes and indexes as normal; the file stays on the map and in the knowledge base as record and seed material:
+Concluding leaves the research completed and indexed as normal; the file stays on the map and in the knowledge base as record and seed material. Route on the response:
+
+**If the write succeeded, or `ok: false` reports the topic already closed** (a resumed conclusion, or a peer session's close — the marker is set either way):
 
 → Load **[conclude-research.md](conclude-research.md)** with closure = `dead-end`.
+
+**If `ok: false` for any other reason:**
+
+The marker never landed, so nothing concludes over it. Surface the engine's error verbatim.
+
+→ Return to caller.
 
 #### If `keep`
 

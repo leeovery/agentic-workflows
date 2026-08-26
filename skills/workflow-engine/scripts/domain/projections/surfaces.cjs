@@ -297,6 +297,29 @@ function callout(text, { width = displayWidth() } = {}) {
 }
 
 /**
+ * The indented explanation beneath a proposal's headline: each paragraph
+ * wrapped at the display width, two columns in. A hand-picked column drifts
+ * with the pane; a measured one cannot.
+ * @param {string[]} paragraphs
+ * @param {{width?: number}} [opts]
+ * @returns {string[]}
+ */
+function indentedBody(paragraphs, { width = displayWidth() } = {}) {
+  const budget = width - 2;
+  return paragraphs.flatMap((p) => wrap(p, budget).map((line) => `  ${line}`));
+}
+
+/**
+ * One `•` row at the callout indent, continuations aligned under the text.
+ * @param {string} text
+ * @param {{width?: number}} [opts]
+ * @returns {string[]}
+ */
+function bulletRow(text, { width = displayWidth() } = {}) {
+  return wrap(text, width - 4).map((s, i) => (i === 0 ? `  • ${s}` : `    ${s}`));
+}
+
+/**
  * Glyphed sub-detail (`· `) within a numbered item: quiet marker on the
  * first line, continuations aligned under the text — never column zero.
  * @param {string} text
@@ -329,5 +352,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
 

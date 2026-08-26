@@ -92,4 +92,4 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 **Offering deep dives during presentation**: If the user engages with a raised finding and it's substantial enough for independent investigation, offer to dispatch a deep-dive agent for it. Follow the deep-dive agent instructions for the offer and dispatch.
 
-**Findings the user rejects**: nothing lands in the research file either way — the surfacing protocol's **Rejecting a raise** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
+**Findings the user rejects**: nothing lands in the research file either way — **Rejecting a raise** in **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.

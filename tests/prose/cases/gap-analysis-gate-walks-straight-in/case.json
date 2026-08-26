@@ -31,6 +31,7 @@
       "workflow-continue-epic/scripts/gateway.cjs search-relevance",
       "presence scan search-relevance",
       "manifest get search-relevance.discovery analysis_staging.discovery-gap-analysis",
+      "render candidate-gate search-relevance --file",
       "discovery-map add search-relevance signal-freshness-contract discussion --source gap-analysis",
       "manifest push search-relevance.discovery dismissed search-analytics-dashboard",
       "manifest delete search-relevance.discovery analysis_staging.discovery-gap-analysis",

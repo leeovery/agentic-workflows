@@ -74,7 +74,7 @@ The landing phase is already judged and confirmed — `{landing_phase}` decides,
 
 ## B. New Target
 
-Create the target via the shared topic-creation core, routed at the judged landing phase. No `phase` is passed — the phase item is created as `triaged` in **C**, never started:
+Create the target via the shared topic-creation core, routed at the judged landing phase. The core writes the map item alone — the phase item is created as `triaged` in **C**, never started:
 
 → Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `{landing_phase}`, source = `reroute:{origin}`.
 

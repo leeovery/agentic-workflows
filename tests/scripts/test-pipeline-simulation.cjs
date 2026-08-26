@@ -888,6 +888,10 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.delta.handled, true);
     assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'completed',
       'the dead-end marker leaves the research record alone');
+    // A reroute aimed at the closed topic stops at the gate — the surface
+    // derives the closure from the same join the marker wrote.
+    assert.match(sim.render(['triage-closed-target', `${wu}.discovery.delta`], { expect: 'content' }),
+      /"delta" is closed as a dead end, so it won't pick up rerouted concerns\./);
     sim.refuses(['discovery-map', 'handle', wu, 'delta'],
       /"delta" can't be closed as a dead end — it's already closed/);
     const reopenedMap = sim.run(['discovery-map', 'unhandle', wu, 'delta']);
@@ -1114,6 +1118,15 @@ describe('pipeline simulation', () => {
       'analysis_staging.discovery-gap-analysis.gate_mode=gated',
       'analysis_staging.discovery-gap-analysis.candidates.epsilon.status=pending',
       'analysis_staging.discovery-gap-analysis.candidates.zeta.status=pending']);
+    // The gate itself renders from the staged subtree — gated mode answers
+    // with the menu, and a candidate the manifest no longer marks pending
+    // never renders at all.
+    sim.write('.workflows/.cache/scratch/candidate.json', JSON.stringify({
+      name: 'epsilon', routing: 'discussion', summary: 'Epsilon summary',
+    }));
+    assert.match(
+      sim.render(['candidate-gate', wu, '--file', '.workflows/.cache/scratch/candidate.json'], { expect: 'content' }),
+      /Add this topic to the map\?/, 'the gated candidate stops for a decision');
     sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.epsilon.status', 'approved']);
     sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'skipped']);
     sim.refuses(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'later'],
@@ -1448,12 +1461,18 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', feat, 'discussion', feat]);
     sim.write(`.workflows/${feat}/discussion/${feat}.md`, '# Discussion — Stray\n');
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`]);
+    // A standing do-not-report call on this topic's material.
+    sim.run(['manifest', 'push', `${feat}.discussion.${feat}`, 'dismissed_grounds',
+      'the migration path is settled and out of scope']);
 
     sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows', feat)), 'feature directory removed');
     const m = sim.manifest(epic);
     assert.ok(m.phases.discovery.items['stray-topic'], 'absorbed topic lands on the map');
     assert.strictEqual(m.phases.discussion.items['stray-topic'].status, 'in-progress');
+    assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].dismissed_grounds,
+      ['the migration path is settled and out of scope'],
+      'dismissed grounds follow the material — the absorbed topic never re-raises what was turned down');
     assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'discussion', 'stray-topic.md')),
       'discussion file moved into the epic');
     assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic'], { expect: 'content' }),

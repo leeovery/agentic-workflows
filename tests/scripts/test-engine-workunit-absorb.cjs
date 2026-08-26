@@ -306,6 +306,23 @@ describe('engine workunit absorb — happy path', () => {
     assert.strictEqual(m.phases.discussion.items.auth.status, feature.phases.discussion.items['auth-flow'].status);
   });
 
+  it('dismissed grounds travel with the material — discussion and research alike', () => {
+    const feature = featureManifest();
+    feature.phases.discussion.items['auth-flow'].dismissed_grounds = ['token rotation is out of scope'];
+    feature.phases.research.items.exploration.dismissed_grounds = ['vendor pricing was already ruled out'];
+    fix = setupFixture({ feature });
+    engine(fix, ABSORB);
+
+    const m = readManifest(fix, 'payments');
+    assert.deepStrictEqual(m.phases.discussion.items.auth.dismissed_grounds, ['token rotation is out of scope']);
+    // The research topic collided with the epic's own `exploration`, so it
+    // landed renamed — the grounds follow the material, not the name.
+    assert.deepStrictEqual(m.phases.research.items['exploration-auth-flow'].dismissed_grounds,
+      ['vendor pricing was already ruled out']);
+    assert.strictEqual(m.phases.research.items['edge-cases'].dismissed_grounds, undefined,
+      'a topic with no dismissals gains no empty field');
+  });
+
   it('KB failures are warnings, never blocks — the absorb still lands and commits', () => {
     fix = setupFixture();
     const res = engine(fix, ABSORB, { STUB_KNOWLEDGE_EXIT: '1' });

@@ -4,7 +4,7 @@
 
 ---
 
-Idempotently ensures a `phases.discovery.items.{topic}` entry exists for the given topic on the given work unit. If the work unit is not an epic, returns immediately — only epics have a discovery map. Otherwise: if the item already exists, this reference is a no-op; if not, it creates the item with `source: direct-start` and the caller-supplied `routing` (a matching `dismissed[]` entry is cleared — user-explicit spawns bypass dismissal).
+Idempotently ensures a `phases.discovery.items.{topic}` entry exists for the given topic on the given work unit. If the work unit is not an epic, returns immediately — only epics have a discovery map. Otherwise: if the item already exists, this reference is a no-op; if not, it creates the item with `source: direct-start` and the caller-supplied `routing` (a matching `dismissed[]` entry is cleared — user-explicit creations bypass dismissal).
 
 The reference assumes `topic` is already kebab-case — callers normalise before invoking. Callers may pass `summary` and `description` when they have material to derive from (e.g. the user's opening response to "what topic"); when omitted, the item is created with routing + source only and the user can backfill via a later discovery session.
 
@@ -49,7 +49,7 @@ The topic is already on the map. Nothing to do — fall through to the caller's 
 
 ## C. Create Discovery Item
 
-Create the item with its routing and `source: direct-start` — `--force-dismissed` clears any matching dismissed entry (user-explicit spawns bypass dismissal):
+Create the item with its routing and `source: direct-start` — `--force-dismissed` clears any matching dismissed entry (user-explicit creations bypass dismissal):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {topic} {routing} --source direct-start --summary "{summary}" --description "{description}" --force-dismissed

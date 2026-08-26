@@ -759,9 +759,19 @@ describe('render research-conclude-gate', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
-    writeManifest(dir, 'pay', { phases: { research: { items: { checkout: { status: 'in-progress' } } } } });
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: { checkout: { status: 'in-progress' } } },
+        discussion: { items: { checkout: { status: 'in-progress' } } },
+      },
+    });
   });
   afterEach(() => teardown(dir));
+
+  it('pins the research address — the gate concludes research and nothing else', () => {
+    assert.throws(() => renderSurface(dir, 'research-conclude-gate', { dotpath: 'pay.discussion.checkout' }),
+      /render research-conclude-gate: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
+  });
 
   it('renders conclude/keep without the flag — no dead-end row', () => {
     const out = renderSurface(dir, 'research-conclude-gate', { dotpath: 'pay.research.checkout' });
@@ -815,12 +825,63 @@ describe('render reroute-offer', () => {
     assert.ok(!out.includes('ground, landing'), 'no destination line without a resolved home');
   });
 
-  it('validates loudly — concern required, target and phase together, phase constrained', () => {
+  it('a new target adds the creation line byte-exactly — the two existing lines are untouched', () => {
+    const file = writePayload(dir, 'n.json', {
+      concern: 'Whether the pipeline can expose click windows',
+      target: 'behavioural-ranking',
+      landing_phase: 'research',
+      new_target: true,
+    });
+    const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
+    assert.strictEqual(out, [
+      "=== MENU: reroute offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**Whether the pipeline can expose click windows** belongs to a different topic, not this one.',
+      "It reads as **behavioural-ranking**'s ground, landing research-side — append a phase to override (e.g. `r discussion`).",
+      "**behavioural-ranking** isn't on the map yet — rerouting creates it.",
+      '',
+      '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
+      `${NB(12)}later`,
+      '**`k/keep`**    → Keep it here as part of this topic',
+      '',
+    ].join('\n'));
+  });
+
+  it('a grown thread reframes both lines byte-exactly — creation, not relocation', () => {
+    const file = writePayload(dir, 'g.json', {
+      concern: 'Whether the pipeline can expose click windows',
+      target: 'behavioural-ranking',
+      landing_phase: 'research',
+      grown: true,
+    });
+    const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
+    assert.strictEqual(out, [
+      "=== MENU: reroute offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**Whether the pipeline can expose click windows** has grown into its own topic here.',
+      'Rerouting creates **behavioural-ranking** on the map, landing research-side — the material stays in this file and feeds the new topic through the queue entry and the provenance read at its discussion. Append a phase to override (e.g. `r discussion`).',
+      '',
+      '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
+      `${NB(12)}later`,
+      '**`k/keep`**    → Keep it here as part of this topic',
+      '',
+    ].join('\n'));
+    assert.ok(!out.includes('belongs to a different topic'), 'a grown thread never reads as relocation');
+    assert.ok(!out.includes("isn't on the map yet"), 'the creation line is folded into the grown wording');
+  });
+
+  it('validates loudly — concern required, target and phase together, phase constrained, flags need a name', () => {
     const bad = (name, obj) => renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
     assert.throws(() => bad('c.json', { target: 't', landing_phase: 'research' }), /"concern" must be a non-empty string/);
     assert.throws(() => bad('t.json', { concern: 'x', target: 't' }), /come together/);
     assert.throws(() => bad('p.json', { concern: 'x', landing_phase: 'research' }), /come together/);
     assert.throws(() => bad('l.json', { concern: 'x', target: 't', landing_phase: 'planning' }), /"landing_phase" must be "research" or "discussion"/);
+    assert.throws(() => bad('g1.json', { concern: 'x', grown: true }),
+      /"grown" needs "target" and "landing_phase" — a thread that grew into its own topic carries the name it grew into/);
+    assert.throws(() => bad('n1.json', { concern: 'x', new_target: true }),
+      /"new_target" needs "target" — there is no new topic without a name/);
+    assert.throws(() => bad('ft.json', { concern: 'x', target: 't', landing_phase: 'research', grown: 'yes' }), /"grown" must be true or false/);
+    assert.throws(() => bad('fn.json', { concern: 'x', target: 't', landing_phase: 'research', new_target: 1 }), /"new_target" must be true or false/);
     assert.throws(() => renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout' }), /--file <payload\.json> is required/);
   });
 });
@@ -855,6 +916,34 @@ describe('render reroute-candidates', () => {
       "It reads as an open question — I'd land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).",
       '',
     ].join('\n'));
+  });
+
+  it('a candidate wears the map\'s own words, never the raw manifest token', () => {
+    const file = writePayload(dir, 'l.json', {
+      concern: 'x', landing_phase: 'research',
+      candidates: [
+        { name: 'behavioural-ranking', lifecycle: 'handled' },
+        { name: 'relevance-measurement', lifecycle: 'ready_for_discussion' },
+        { name: 'signal-freshness', lifecycle: 'ready_for_discussion', research_state: 'superseded' },
+        { name: 'query-parsing', lifecycle: 'fresh', routing: 'discussion' },
+      ],
+    });
+    const out = renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file });
+    assert.match(out, /→ behavioural-ranking \[dead end\]/);
+    assert.match(out, /→ relevance-measurement \[research complete · ready for/);
+    assert.match(out, /→ signal-freshness \[research superseded · ready for/);
+    assert.match(out, /→ query-parsing \[fresh · routed to discussion\]/);
+    assert.ok(!out.includes('[handled]'), 'the raw token never reaches the reader');
+    assert.ok(!out.includes('[ready_for_discussion]'), 'the raw token never reaches the reader');
+  });
+
+  it('refuses a lifecycle outside the map vocabulary — a mislabel is worse than an echo', () => {
+    const file = writePayload(dir, 'u.json', {
+      concern: 'x', landing_phase: 'research',
+      candidates: [{ name: 'a', lifecycle: 'in-progress' }],
+    });
+    assert.throws(() => renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file }),
+      /candidate 1 carries unknown lifecycle "in-progress" \(expected ready_for_discussion\/researching\/discussing\/decided\/fresh\/handled\/cancelled\)/);
   });
 
   it('the discussion recommendation flips the wording and the override example', () => {
@@ -3501,7 +3590,17 @@ describe('render map-op-gate', () => {
   beforeEach(() => {
     dir = setup();
     writeManifest(dir, 'pay', {
-      phases: { discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } } },
+      phases: {
+        discovery: {
+          items: {
+            'auth-flow': { routing: 'discussion', source: 'discovery' },
+            'legacy-bits': { routing: 'research', source: 'discovery' },
+            'dead-end': { routing: 'research', source: 'discovery', handled: true },
+            'in-flight': { routing: 'discussion', source: 'discovery' },
+          },
+        },
+        discussion: { items: { 'in-flight': { status: 'in-progress' } } },
+      },
     });
   });
   afterEach(() => teardown(dir));
@@ -3569,8 +3668,8 @@ describe('render map-op-gate', () => {
     assert.match(close, /Reversible with "reopen auth-flow"\./);
     assert.match(close, /`◆ Confirm close as dead end\?`/);
 
-    const reopen = render('reopen', { name: 'auth-flow' });
-    assert.match(reopen, /Reopen "auth-flow"\./);
+    const reopen = render('reopen', { name: 'dead-end' });
+    assert.match(reopen, /Reopen "dead-end"\./);
     assert.match(reopen, /Clears the dead-end marker\./);
     assert.match(reopen, /`◆ Confirm reopen\?`/);
 
@@ -3584,12 +3683,50 @@ describe('render map-op-gate', () => {
     assert.throws(() => renderSurface(dir, 'map-op-gate', { dotpath: 'pay', op: 'remove' }), /--file <payload\.json> is required/);
     assert.throws(() => renderSurface(dir, 'map-op-gate', { dotpath: 'pay.discovery.auth-flow', op: 'remove', file: writePayload(dir, 'a.json', { name: 'x' }) }), /address must be a bare <work_unit>/);
     assert.throws(() => render('remove', {}), /"name" must be a non-empty string/);
-    assert.throws(() => render('rename', { name: 'a' }), /"new_name" must be a non-empty string/);
+    assert.throws(() => render('rename', { name: 'auth-flow' }), /"new_name" must be a non-empty string/);
     assert.throws(() => render('edit-summary', { items: [] }), /"items" must be a non-empty array of \{name, summary\}/);
     assert.throws(() => render('edit-summary', { items: [{ name: 'a' }] }), /item 1 is missing "summary"/);
     assert.throws(() => render('edit-description', { items: [{ description: 'd' }] }), /item 1 is missing "name"/);
-    assert.throws(() => render('reroute', { name: 'a', from: 'planning', to: 'discussion' }), /"from" must be "research" or "discussion"/);
-    assert.throws(() => render('reroute', { name: 'a', from: 'research', to: 'research' }), /name the same routing/);
+    assert.throws(() => render('reroute', { name: 'auth-flow', from: 'planning', to: 'discussion' }), /"from" must be "research" or "discussion"/);
+    assert.throws(() => render('reroute', { name: 'auth-flow', from: 'research', to: 'research' }), /name the same routing/);
+  });
+
+  it('refuses a name the map does not hold — every op, batch rows included', () => {
+    for (const op of ['remove', 'close', 'reopen']) {
+      assert.throws(() => render('' + op, { name: 'ghost' }, `${op}-ghost.json`), /render map-op-gate: no discovery item "ghost" on the map/);
+    }
+    assert.throws(() => render('rename', { name: 'ghost', new_name: 'spectre' }, 'rn.json'), /no discovery item "ghost" on the map/);
+    assert.throws(() => render('reroute', { name: 'ghost', from: 'research', to: 'discussion' }, 'rr.json'), /no discovery item "ghost" on the map/);
+    assert.throws(() => render('edit-summary', { items: [{ name: 'auth-flow', summary: 'a' }, { name: 'ghost', summary: 'b' }] }, 'es.json'),
+      /no discovery item "ghost" on the map/);
+    assert.throws(() => render('edit-description', { items: [{ name: 'ghost', description: 'd' }] }, 'ed.json'),
+      /no discovery item "ghost" on the map/);
+  });
+
+  it('refuses an op its lifecycle forbids — the same table the write path enforces', () => {
+    assert.throws(() => render('remove', { name: 'in-flight' }, 'r1.json'),
+      /render map-op-gate: "in-flight" can't be removed — it's "discussing", not fresh/);
+    assert.throws(() => render('rename', { name: 'in-flight', new_name: 'x' }, 'r2.json'),
+      /"in-flight" can't be renamed — it's "discussing", not fresh/);
+    assert.throws(() => render('reroute', { name: 'in-flight', from: 'research', to: 'discussion' }, 'r3.json'),
+      /"in-flight" can't be re-routed — it's "discussing", not fresh/);
+    assert.throws(() => render('close', { name: 'dead-end' }, 'r4.json'),
+      /"dead-end" can't be closed as a dead end — it's already closed/);
+    assert.throws(() => render('reopen', { name: 'auth-flow' }, 'r5.json'),
+      /"auth-flow" can't be reopened — it's "fresh", not closed as a dead end/);
+  });
+
+  it('a cancelled topic refuses the close, and an edit rides any lifecycle', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } },
+        discussion: { items: { 'auth-flow': { status: 'cancelled' } } },
+      },
+    });
+    assert.throws(() => render('close', { name: 'auth-flow' }, 'c1.json'),
+      /"auth-flow" can't be closed as a dead end — it's cancelled; reactivate the phase work from the epic menu first/);
+    assert.match(render('edit-summary', { items: [{ name: 'auth-flow', summary: 'Still editable' }] }, 'c2.json'),
+      /Updating 1 summary\(ies\):/);
   });
 });
 
@@ -3717,7 +3854,9 @@ describe('render triage-closed-target', () => {
       DOTS,
       '"auth-flow" is closed as a dead end, so it won\'t pick up rerouted concerns.',
       '',
-      '**`o/open`**      → Reopen it and land the concern there',
+      '**`o/open`**      → Reopen it and land the concern there — it returns',
+      `${NB(14)}to its name-matched lifecycle and counts as open`,
+      `${NB(14)}again`,
       '**`e/elsewhere`** → Pick a different target',
       '**`d/drop`**      → Drop the reroute; the concern stays with the',
       `${NB(14)}current topic`,
@@ -3728,7 +3867,9 @@ describe('render triage-closed-target', () => {
   it('a cancelled target flips both words the lifecycle owns', () => {
     const out = renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.legacy-bits' });
     assert.match(out, /"legacy-bits" is cancelled, so it won't pick up rerouted concerns\./);
-    assert.match(out, /\*\*`o\/open`\*\*\s+→ Reactivate it and land the concern there/);
+    assert.match(out, /\*\*`o\/open`\*\*\s+→ Reactivate it and land the concern there — its/);
+    assert.match(out, /phase work returns to its previous status and\n/);
+    assert.match(out, /counts as open again/);
   });
 
   it('refuses a live target, an unknown name, and a non-discovery address', () => {
@@ -3754,13 +3895,14 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('deep-dive-offer renders the two-line offer byte-exactly — context, never a glyphed label', () => {
+  it('deep-dive-offer renders the statement then the ask byte-exactly — the question takes the glyph', () => {
     const file = writePayload(dir, 'd.json', { thread: "The competitor's ranking pipeline" });
     assert.strictEqual(renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout', file }), [
       "=== MENU: deep dive offer (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
       "The competitor's ranking pipeline looks like it could use a deep dive.",
-      'Want me to spin up a background investigation while we keep going?',
+      '',
+      '**`◆ Want me to spin up a background investigation while we keep going?`**',
       '',
       '**`y/yes`** → Dispatch a deep-dive agent',
       "**`n/no`**  → Skip, we'll cover it in conversation",
@@ -3768,11 +3910,11 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
     ].join('\n'));
   });
 
-  it('in-flight-agents-gate renders the wait/proceed pair byte-exactly — one gate, both sessions', () => {
+  it('in-flight-agents-gate renders the wait/proceed pair byte-exactly — statement context, no glyph', () => {
     assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '2' }), [
       "=== MENU: in-flight agents gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      '**`◆ There are still 2 background agents working.`**',
+      'There are still 2 background agents working.',
       '',
       '**`w/wait`**    → Wait for results before concluding',
       '**`p/proceed`** → Conclude now (results will persist in cache for',
@@ -3781,15 +3923,34 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
     ].join('\n'));
   });
 
-  it('both pin the research address and validate their own input', () => {
+  it('a lone agent takes the singular — the count never reads "1 agents"', () => {
+    assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '1' }), [
+      "=== MENU: in-flight agents gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'There is still 1 background agent working.',
+      '',
+      '**`w/wait`**    → Wait for results before concluding',
+      '**`p/proceed`** → Conclude now (results will persist in cache for',
+      `${NB(12)}reference)`,
+      '',
+    ].join('\n'));
+  });
+
+  it('the in-flight gate serves discussion too — both phases dispatch and both conclude', () => {
+    const out = renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '2' });
+    assert.match(out, /There are still 2 background agents working\./);
+    assert.match(out, /\*\*`w\/wait`\*\*/);
+  });
+
+  it('both validate their own input; the deep dive stays research-only, the gate stays on the pair', () => {
     const file = writePayload(dir, 'd.json', { thread: 'x' });
     assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.discussion.checkout', file }),
       /render deep-dive-offer: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
     assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout' }), /--file <payload\.json> is required/);
     assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout', file: writePayload(dir, 'e.json', {}) }),
       /"thread" must be a non-empty string/);
-    assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '2' }),
-      /render in-flight-agents-gate: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.planning.checkout', count: '2' }),
+      /render in-flight-agents-gate: address must be <work_unit>\.research\|discussion\.<topic>, got phase "planning"/);
     assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout' }),
       /--count must be a positive integer, got "undefined"/);
     assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '0' }),

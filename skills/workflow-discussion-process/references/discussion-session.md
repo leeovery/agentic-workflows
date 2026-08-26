@@ -55,6 +55,8 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and perspective agent instructions loaded above. If conditions are met, dispatch before continuing. If not, proceed.
 6. **Repeat** — Continue with the next subtopic or follow where the conversation leads.
 
+**A request to see or revisit what's been ruled out** — *"what have I ruled out?"* — reads the topic's dismissed grounds back (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds`); an entry the user wants back in play comes off with `manifest pull` on the same field, and later reviews stop carrying it.
+
 ---
 
 ## C. Subtopic Lifecycle
@@ -134,7 +136,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 #### If `work_type` is `epic`
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, concern = `{the concern, with its discussed context}`.
+→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, concern = `{the concern, with its discussed context}`, reason = `off-topic`.
 
 → On return, proceed as the reference directed.
 

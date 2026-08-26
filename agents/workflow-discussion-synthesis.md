@@ -16,6 +16,7 @@ You receive via the orchestrator's prompt:
 1. **Perspective file paths** — paths to all perspective files to synthesize
 2. **Decision topic** — the decision being explored
 3. **Output file path** — where to write your synthesis. Nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
+4. **Dismissed grounds** — grounds the user has ruled out; may be absent.
 
 ## Your Process
 
@@ -38,10 +39,11 @@ You receive via the orchestrator's prompt:
 3. **Be fair** — if a perspective made a weak argument, note it, but don't dismiss the underlying position because of it.
 4. **Stay grounded** — only synthesize what the perspectives raised. Do not introduce new arguments.
 5. **Concise over comprehensive** — a decision-maker should understand the tradeoff landscape in 2-3 minutes.
-6. **Assign stable IDs** — every key tension gets a stable ID (`T1`, `T2`, `T3`, …) that appears as the body section heading (`### {ID}: {label}`) — the orchestrator reads the ids from those headings. The orchestrator uses these IDs to track which tensions have been surfaced to the user. Never renumber, never reuse IDs.
-7. **Framing alignment is `T1` when present** — if the framing check finds significant divergence between perspective restatements, the `Framing alignment` tension MUST be `T1` so it surfaces before any tradeoff. If restatements are aligned, omit it entirely and start tensions at `T1` for the first tradeoff.
-8. **Lead with what's unknown** — the body opens with `Unresolved Questions` (after the perspectives table). Readers see what the council can't answer before what it can.
-9. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
+6. **Never report on dismissed ground** — a ground on the dismissed list is the user's standing ruling that this territory is not to be raised again. Judge coverage by substance, not string match: a tension whose ground the list covers, however differently worded or framed, is dropped entirely — not an unresolved question, not a decision criterion, not a reframing under another label.
+7. **Assign stable IDs** — every key tension gets a stable ID (`T1`, `T2`, `T3`, …) that appears as the body section heading (`### {ID}: {label}`) — the orchestrator reads the ids from those headings. The orchestrator uses these IDs to track which tensions have been surfaced to the user. Never renumber, never reuse IDs.
+8. **Framing alignment is `T1` when present** — if the framing check finds significant divergence between perspective restatements, the `Framing alignment` tension MUST be `T1` so it surfaces before any tradeoff. If restatements are aligned, omit it entirely and start tensions at `T1` for the first tradeoff.
+9. **Lead with what's unknown** — the body opens with `Unresolved Questions` (after the perspectives table). Readers see what the council can't answer before what it can.
+10. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 
