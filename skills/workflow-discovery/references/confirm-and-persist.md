@@ -42,7 +42,7 @@ Notes:
 
 - Each entry's `name` becomes the manifest dict key (the `{topic}` path segment).
 - `routing` is the value confirmed by the user at the synthesis gate.
-- Batch entries always land with `source: discovery`, marking topics the user surfaced during discovery — distinct from items added later with other provenance (e.g. `research-analysis`, `gap-analysis`).
+- Batch entries always land with `source: discovery`, marking topics the user surfaced during discovery — distinct from items added later with other provenance (e.g. `gap-analysis`, `reroute:{origin}`).
 - The response's `map_total` is `{T}` for the Conclusion line in **C**, and `added` lists every persisted topic — no re-read needed.
 - `brief_path` records where the topic's brief lives; the brief file itself was written at harvest by [brief-synthesis.md](brief-synthesis.md).
 

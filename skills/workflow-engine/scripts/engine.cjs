@@ -190,7 +190,7 @@ Commands:
   roadmap horizon merge <from> --into <to>
   roadmap horizon split <name> --new <name> --items <a,b,…> [--position <n>]
   roadmap horizon remove <name>
-  cache stamp <work-unit> (research-analysis|gap-analysis)
+  cache stamp <work-unit> gap-analysis
   agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>] [--final]
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
@@ -1087,7 +1087,7 @@ function runCache(argv) {
   const [command, workUnit, kind] = argv;
   try {
     if (command !== 'stamp' || !workUnit || !kind) {
-      throw new Error('Usage: engine cache stamp <work-unit> <research-analysis|gap-analysis>');
+      throw new Error('Usage: engine cache stamp <work-unit> gap-analysis');
     }
     respond(stampAnalysisCache(process.cwd(), workUnit, kind));
   } catch (err) {

@@ -1,6 +1,6 @@
 # Routing Decision
 
-*Shared reference. Loaded by `research-analysis.md` and `discovery-gap-analysis.md`.*
+*Shared reference. Loaded by `discovery-gap-analysis.md`.*
 
 ---
 
@@ -30,7 +30,5 @@ Route to **`research`** when:
 ## Default lean
 
 When uncertain, prefer **`research`**. It's the lower-cost-to-reverse direction — research can conclude and route forward to discussion at any time; forcing discussion too early just sends the topic back for more research and burns user time.
-
-This default especially applies to candidates extracted from a completed research file (research-analysis) — the file's existence implies the material is at research stage, and an extracted candidate should usually stay at research stage unless it visibly meets the discussion criteria above.
 
 → Return to caller.

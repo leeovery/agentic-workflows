@@ -511,15 +511,12 @@ describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
     assert.match(runFails(dir, ['set', 'pay.implementation.pay', 'staging.c2.tasks.1', 'yes']).error, /Invalid staging task status/);
   });
 
-  it('candidate gate state takes only its vocabularies', () => {
-    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.research-analysis.gate_mode=gated',
-      'analysis_staging.research-analysis.candidates.auth.status=pending',
-      'analysis_staging.research-analysis.candidates.auth.fanout_offer=pending']);
-    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.research-analysis.candidates.auth.status', 'resolved']);
-    assert.match(runFails(dir, ['set', 'pay.discovery', 'analysis_staging.research-analysis.candidates.auth.status', 'maybe']).error,
+  it('candidate gate state takes only its vocabulary', () => {
+    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode=gated',
+      'analysis_staging.discovery-gap-analysis.candidates.auth.status=pending']);
+    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.discovery-gap-analysis.candidates.auth.status', 'resolved']);
+    assert.match(runFails(dir, ['set', 'pay.discovery', 'analysis_staging.discovery-gap-analysis.candidates.auth.status', 'maybe']).error,
       /Invalid candidate status/);
-    assert.match(runFails(dir, ['set', 'pay.discovery', 'analysis_staging.research-analysis.candidates.auth.fanout_offer', 'no']).error,
-      /Invalid fanout_offer/);
   });
 
   it('tracking flips take only in-progress|complete', () => {
@@ -531,7 +528,7 @@ describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
 
   it('the non-canonical spellings of guarded locations are refused, not silently unvalidated', () => {
     // work-unit level via a phases.-prefixed field
-    assert.match(runFails(dir, ['set', 'pay', 'phases.discovery.analysis_staging.research-analysis.candidates.auth.status', 'bogus']).error,
+    assert.match(runFails(dir, ['set', 'pay', 'phases.discovery.analysis_staging.discovery-gap-analysis.candidates.auth.status', 'bogus']).error,
       /"phases" is the phase tree itself/);
     // phase level via an items.-prefixed field — leaf and wholesale container alike
     assert.match(runFails(dir, ['set', 'pay.review', 'items.pay.staging.c1.tasks.1', 'bogus']).error,
@@ -544,7 +541,7 @@ describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
   });
 
   it('push cannot seed a guarded container as an array', () => {
-    for (const field of ['staging', 'staging.c1.tasks', 'tracking.some-stem', 'analysis_staging.research-analysis']) {
+    for (const field of ['staging', 'staging.c1.tasks', 'tracking.some-stem', 'analysis_staging.discovery-gap-analysis']) {
       assert.match(runFails(dir, ['push', 'pay.review.pay', field, 'x']).error, /guarded state container/);
     }
     assert.strictEqual(readWorkUnit(dir, 'pay').phases.review.items.pay.staging, undefined, 'nothing persisted');

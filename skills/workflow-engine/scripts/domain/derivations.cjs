@@ -222,11 +222,10 @@ function lastCompletedPhase(manifest, pipeline) {
 
 /**
  * The sorted set of existing completed input files for one analysis kind —
- * completed research files for `research-analysis`, completed research plus
- * completed discussion files for `gap-analysis`. The one collection both
- * cache sides use: the read (computeAnalysisCacheStatus) and the write
- * (engine cache stamp) checksum the same list, so they can never drift.
- * Returns absolute paths, sorted.
+ * completed research plus completed discussion files for `gap-analysis`. The
+ * one collection both cache sides use: the read (computeAnalysisCacheStatus)
+ * and the write (engine cache stamp) checksum the same list, so they can never
+ * drift. Returns absolute paths, sorted.
  */
 function collectAnalysisInputs(manifest, workflowsDir, kind) {
   if (!manifest || !manifest.name) return [];
@@ -236,9 +235,6 @@ function collectAnalysisInputs(manifest, workflowsDir, kind) {
     .map(it => path.join(wuDir, phase, `${it.name}.md`))
     .filter(p => fileExists(p));
 
-  if (kind === 'research-analysis') {
-    return completedFiles('research').sort();
-  }
   if (kind === 'gap-analysis') {
     return [...completedFiles('research'), ...completedFiles('discussion')].sort();
   }
@@ -250,12 +246,6 @@ function collectAnalysisInputs(manifest, workflowsDir, kind) {
 // specific reason strings. The body is otherwise one path for every kind —
 // the same read the write side checksums (collectAnalysisInputs).
 const ANALYSIS_KINDS = {
-  'research-analysis': {
-    cacheOf: (manifest) => ((manifest.phases || {}).research || {}).analysis_cache,
-    filesField: 'files',
-    reasonNoInputs: 'no completed research files',
-    reasonStale: 'completed research has changed since cache was generated',
-  },
   'gap-analysis': {
     cacheOf: (manifest) => ((manifest.phases || {}).discovery || {}).gap_analysis_cache,
     filesField: 'input_files',

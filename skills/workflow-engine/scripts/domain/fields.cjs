@@ -284,9 +284,6 @@ function validateSet(segments, value, fieldSegments = segments) {
       if (leaf === 'status' && (typeof value !== 'string' || !['pending', 'approved', 'skipped', 'resolved'].includes(value))) {
         fail(`Invalid candidate status ${JSON.stringify(value)}. Must be one of: pending, approved, skipped, resolved`);
       }
-      if (leaf === 'fanout_offer' && (typeof value !== 'string' || !['pending', 'marked', 'declined'].includes(value))) {
-        fail(`Invalid fanout_offer ${JSON.stringify(value)}. Must be one of: pending, marked, declined`);
-      }
       return;
     }
 

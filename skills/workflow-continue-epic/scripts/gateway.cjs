@@ -166,7 +166,7 @@ function formatScoped(workUnit, result) {
   const d = e.detail;
   lines.push(`all_done: ${computeAllDone(d)}`);
   lines.push(`reconcile_pending: ${reconcilePending(d).join(', ') || '(none)'}`);
-  lines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
+  lines.push(`analysis_caches: gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   lines.push(`needs_sequencing: ${d.needs_sequencing}`);
   lines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
   lines.push(`discovery_map (${d.discovery_map.length}):`);
@@ -215,7 +215,7 @@ function view(workUnit, newArrivalsJson) {
   dataLines.push(`convergence: ${d.convergence_state || 'none'}`);
   dataLines.push(`needs_sequencing: ${d.needs_sequencing}`);
   dataLines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
-  dataLines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
+  dataLines.push(`analysis_caches: gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   const phaseNames = Object.keys(d.phases);
   if (phaseNames.length > 0) {
     dataLines.push('phase_counts:');
