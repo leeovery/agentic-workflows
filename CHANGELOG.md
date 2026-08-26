@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.13] - 2026-08-26
+
+✨ Added
+- Research topics can now close as a dead end when a thread doesn't pan out — the topic stays on the map as record instead of waiting on an unneeded discussion.
+- Review agents can flag concerns that belong to no existing topic — the routing creates a new topic instead of dropping the finding.
+- Discussion, research, and deep-dive findings can be dismissed for good with a one-line reason — dismissed findings stop resurfacing in future reviews.
+- Discovery map items can be closed and reopened as dead ends via plain-language commands ("close X as a dead end" / "reopen X").
+- Options in confirmation menus now state their consequences plainly instead of leaving them implied.
+
+🔧 Changed
+- The separate research-analysis pass is retired — completed research now feeds its topics directly, and gap analysis is the sole boot-time analysis.
+- "Marked handled" topics are now called "closed as dead end" throughout — clearer wording for the same non-destructive map marker.
+- Off-topic concerns in epic research and discussion sessions now share one reroute flow instead of two separate implementations, and threads that grow into their own topic route through the same triage queue rather than a dedicated file-splitting flow.
+- Deep-dive findings promoted into their own topic now land in that topic's triage queue instead of creating a research file directly, so the target topic's own session works them in context.
+- Rejecting a raised finding no longer writes an "Open Threads" note into the document — a soft no just drops it, and only an explicit dismissal is remembered.
+- Analysis candidate approval, deep-dive offers, in-flight-agent waits, and several discovery-map confirmation prompts now render through the shared engine rather than ad hoc prose, keeping their wording and layout consistent.
+- The "defer" option on analysis candidate review is removed — candidates are reviewed to completion each time they're presented.
+
 ## [0.7.12] - 2026-08-25
 
 ✨ Added
