@@ -26,14 +26,19 @@ export function durableRows(snap: Snapshot, projectRoot: string): DurableRow[] {
     const phases = unit.manifest?.phases ?? {};
     for (const [phase, data] of Object.entries<any>(phases)) {
       for (const [topic, item] of Object.entries<any>(data?.items ?? {})) {
-        if (item?.reconcile_needed !== undefined) {
+        const reconcileFlagged = item?.reconcile_needed !== undefined;
+        if (reconcileFlagged) {
           rows.push({
             kind: 'reconcile',
             address: { workUnit: name, topic, phase },
             detail: `input moved — ${item.reconcile_needed}`,
           });
         }
-        // Stale source rows on spec items (either storage shape).
+        // Stale source rows on spec items (either storage shape). One
+        // staleness hop sets BOTH reconcile_needed and the stale source rows
+        // in the same transition — one fact, one row: an item already
+        // carrying the reconcile flag doesn't count its stale sources again.
+        if (reconcileFlagged) continue;
         const sources = item?.sources;
         const entries = Array.isArray(sources)
           ? sources.map((s: any) => [s?.topic ?? s?.name, s] as const)

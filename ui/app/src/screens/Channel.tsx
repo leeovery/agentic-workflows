@@ -47,8 +47,10 @@ export function Channel() {
             >
               <span className="font-sans text-sm font-medium">{t.name}</span>
               <span className="font-mono text-xs text-stone-500">
+                {/* The header already states the unit's status — never print
+                    the same fact twice on one screen (intent 5). */}
                 {t.phase ? `${t.phase} · ` : ''}
-                {t.lifecycle}
+                {t.lifecycle !== data.status ? t.lifecycle : ''}
               </span>
               <span className="ml-auto text-xs font-sans text-stone-400">
                 {t.cues?.reconcilePending && <span className="text-warn mr-2">⚑ input moved</span>}

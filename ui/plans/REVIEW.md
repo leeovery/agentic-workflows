@@ -231,6 +231,46 @@ SQLite surface incl. the S7 tables and human sentinel, parameterized SQL through
 no shell-string command construction, localhost-only binding, CI running exactly the
 declared lanes.
 
+## Round 7: Phase 1 implementation review (2026-08-27)
+
+Three parallel reviewers against the mirror (plan/spec fidelity, intent baseline,
+quality + security) after its done-means passed. Dispositions:
+
+**Defects (fixed, each with a pinning test):**
+
+| # | Finding | Fix |
+|---|---|---|
+| P1-1 | Every epic channel 500'd — the bridge assumed `buildDiscoveryMap` returns an array; it returns `{map, summary, needs_sequencing}` (both fidelity and intent reviewers, independently; the untyped `as any[]` cast hid it) | Read `.map`; epic materialised into the API test world |
+| P1-2 | Percent-encoded traversal in the `wu` route segment (`%2e%2e%2f` survives URL parsing, decoded after routing) reached `channelView`'s manifest read, the artifact walker, and the engine host — arbitrary manifest/markdown read | `validUnitName` gate after decode, both routes; vector tests |
+| P1-3 | A committed `.md` symlink served its target — arbitrary file read on the host through the SPA's own links | realpath containment in `artifactView`; the walker skips symlinks; symlink test |
+| P1-4 | Lobby roadmap/baseline re-derived bridge-side from the raw manifest while the engine's own `roadmapState`/`baselineState` sat unused in the same payload — the plan's named "re-implementing displays by accident" risk, plus two answers for one fact | Engine values only; horizons render as rows with engine totals |
+| P1-5 | `durableRows` double-counted one staleness hop (reconcile flag + the same item's stale sources are one fact) | Reconcile suppresses that item's stale-source rows; dedup test |
+
+**Gaps (closed):** the firmness gradient was inert (identical serif classes, an
+unconsumed variable) — now visible chrome: research airy and unruled, discussion
+lightly ruled, specification firmly ruled with tighter leading, pinned by an
+artifact-screen test; `SpineItem` gained its fourth catalog variant (the gold
+gate ref — renderer complete, producers arrive with Phase 2); `warn` moved off
+the gold hue (an amber warn would teach readers gold means "degraded" before
+gold means gate) and the degraded banner sits on neutral ground; mermaid's
+`securityLevel: 'strict'` pinned with a load-bearing comment; the single-topic
+channel no longer prints the unit status twice; `attachDerived` parallelised.
+
+**Accepted as-is / noted:** the S1 START-row annotation tension (the spec's
+P2/P6 tag vs the plan's explicit P1 list — code follows the plan, the more
+specific document); per-request `epicDetail` derivation is uncached (fine at
+P1 scale; revisit if Phase 2's churn makes lobby refetch hot); `pending`
+source rows count as durable waiting until Phase 2's queue spec refines them.
+
+**Survived attack:** zero writes anywhere (API 405s non-GET; no fs writes in
+the app or API path), no UPSTREAM assumption, commits exiled to the drawer in
+every rendering, SSE debounced (no firehose), the motion rule (no spinners,
+`transition: none` global), provenance typography consistent, steel blue on
+navigation only, badges single-derivation (rail = lobby counts = the future
+queue's rows), threads never expand inline, S5 rail replaces the context panel,
+`serveStatic` traversal-safe, all `execFileSync` array-form, CI runs the app
+lane.
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in

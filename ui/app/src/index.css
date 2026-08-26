@@ -33,24 +33,47 @@
     @apply text-[11px] font-sans font-semibold tracking-[0.14em] text-stone-400 dark:text-stone-500 uppercase;
   }
   .banner-degraded {
-    @apply border-l-4 border-warn bg-amber-50 dark:bg-amber-950/30 text-sm px-4 py-2.5
+    /* Neutral ground + the warn family's border — never amber/gold, which is
+       reserved for gates. */
+    @apply border-l-4 border-warn bg-stone-100 dark:bg-stone-900 text-sm px-4 py-2.5
       text-stone-800 dark:text-stone-200 font-sans;
   }
 }
 
-/* The firmness gradient (README value surface 4): the reader feels the record
-   hardening — research casual, discussion a working session, spec formal. */
-.firmness-research {
-  --firmness-border: theme(colors.stone.300);
+/* The firmness gradient (README value surface 4): visible chrome — the reader
+   feels the record hardening. Research reads casual (no rule, airy leading),
+   discussion is a working session (a light rule), specification is formal (a
+   firm rule, tighter leading, lifted headings). */
+.firmness-research,
+.firmness-discussion,
+.firmness-specification {
   font-family: theme(fontFamily.serif);
+  border-left: 3px solid var(--firmness-border, transparent);
+  padding-left: 1.5rem;
+}
+.firmness-research {
+  --firmness-border: transparent;
+  border-left-style: none;
+  padding-left: 0;
+  line-height: 1.85;
 }
 .firmness-discussion {
-  --firmness-border: theme(colors.stone.400);
-  font-family: theme(fontFamily.serif);
+  --firmness-border: theme(colors.stone.300);
+}
+.dark .firmness-discussion {
+  --firmness-border: theme(colors.stone.700);
 }
 .firmness-specification {
   --firmness-border: theme(colors.stone.500);
-  font-family: theme(fontFamily.serif);
+  line-height: 1.6;
+}
+.dark .firmness-specification {
+  --firmness-border: theme(colors.stone.500);
+}
+.firmness-specification h2 {
+  letter-spacing: 0.01em;
+  text-transform: none;
+  border-bottom-width: 2px;
 }
 
 /* Reading typography for the Read lens. */

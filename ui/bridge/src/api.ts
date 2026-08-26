@@ -28,6 +28,14 @@ function send(res: http.ServerResponse, status: number, body: Json): void {
   res.end(JSON.stringify(body));
 }
 
+// The wu route segment is decoded AFTER the URL parser ran, so a
+// percent-encoded slash or dot-segment survives to here — validate the
+// decoded name before it touches any path or engine call. A work-unit name
+// is a single path segment, nothing more.
+function validUnitName(wu: string): boolean {
+  return wu.length > 0 && !/[/\\\0]/.test(wu) && wu !== '.' && wu !== '..' && !wu.startsWith('.');
+}
+
 /** The knowledge-gate state — the product's own check verb, read-only. */
 function knowledgeState(projectRoot: string, knowledgePath: string | null): { state: string } {
   if (!knowledgePath) return { state: 'unknown' };
@@ -70,12 +78,22 @@ export async function handleApi(
     }
     const channel = url.pathname.match(/^\/api\/channel\/([^/]+)$/);
     if (channel) {
-      await channelView(res, deps, decodeURIComponent(channel[1]!));
+      const wu = decodeURIComponent(channel[1]!);
+      if (!validUnitName(wu)) {
+        send(res, 400, { error: 'work unit name refused' });
+        return true;
+      }
+      await channelView(res, deps, wu);
       return true;
     }
     const artifact = url.pathname.match(/^\/api\/artifact\/([^/]+)$/);
     if (artifact) {
-      artifactView(res, deps, decodeURIComponent(artifact[1]!), url.searchParams.get('path') ?? '');
+      const wu = decodeURIComponent(artifact[1]!);
+      if (!validUnitName(wu)) {
+        send(res, 400, { error: 'work unit name refused' });
+        return true;
+      }
+      artifactView(res, deps, wu, url.searchParams.get('path') ?? '');
       return true;
     }
     send(res, 404, { error: 'unknown api route' });
@@ -100,9 +118,10 @@ async function lobby(res: http.ServerResponse, deps: ApiDeps): Promise<void> {
   if (engine) await attachDerived(snap, engine);
   const rows = durableRows(snap, projectRoot);
 
-  const registry = snap.registry ?? {};
-  const roadmap = (registry as any).roadmap ?? null;
-  const baseline = (registry as any).baseline ?? null;
+  // Roadmap and baseline come from the engine's own startDetail derivations
+  // (roadmapState / baselineState) — never re-derived from the raw manifest.
+  const roadmap = (detail as any)?.roadmap ?? null;
+  const baseline = (detail as any)?.baseline ?? null;
 
   send(res, 200, {
     empty: false,
@@ -110,11 +129,8 @@ async function lobby(res: http.ServerResponse, deps: ApiDeps): Promise<void> {
     overviewRender: overview,
     knowledge: knowledgeState(projectRoot, deps.knowledgePath),
     durable: { counts: durableCounts(rows), rows },
-    roadmap: roadmap
-      ? {
-          horizons: roadmap.horizons ?? [],
-          itemCount: Object.keys(roadmap.items ?? {}).length,
-        }
+    roadmap: roadmap?.exists
+      ? { horizons: roadmap.horizons ?? [], totals: roadmap.totals ?? {}, itemCount: roadmap.totals?.items ?? 0 }
       : null,
     baseline: baseline ? { status: baseline.status ?? 'none' } : null,
   });
@@ -149,8 +165,12 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
   // single-topic types get the unit's own thread.
   let threads: unknown[] = [];
   if (workType === 'epic' && engine) {
-    const map = (await engine.call('discoveryMap', { name: wu }).catch(() => [])) as any[];
-    threads = map.map((t) => ({
+    // buildDiscoveryMap answers { map, summary, needs_sequencing } — the
+    // rows live under .map (the round-7 epic-500 fix, now pinned by test).
+    const result = (await engine.call('discoveryMap', { name: wu }).catch(() => null)) as {
+      map?: any[];
+    } | null;
+    threads = (result?.map ?? []).map((t) => ({
       name: t.name,
       lifecycle: t.lifecycle,
       phase: t.current_phase ?? null,
@@ -199,6 +219,9 @@ function listUnitArtifacts(projectRoot: string, wu: string): { path: string; pha
     }
     for (const e of entries) {
       if (e.name.startsWith('.')) continue;
+      // A hostile repo can commit symlinks (mode 120000) — never follow one,
+      // in either direction: a linked "artifact" would serve its target.
+      if (e.isSymbolicLink()) continue;
       const r = rel ? `${rel}/${e.name}` : e.name;
       if (e.isDirectory()) walk(r);
       else if (e.name.endsWith('.md')) out.push({ path: r, phase: r.split('/')[0] ?? '' });
@@ -209,7 +232,9 @@ function listUnitArtifacts(projectRoot: string, wu: string): { path: string; pha
 }
 
 function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: string): void {
-  // Path safety: the artifact must resolve inside the unit's own directory.
+  // Path safety: the artifact must resolve inside the unit's own directory —
+  // lexically AND after resolving symlinks (a hostile repo can commit a .md
+  // symlink pointing anywhere on the host).
   const base = path.resolve(deps.projectRoot, '.workflows', wu);
   const full = path.resolve(base, rel);
   if (!full.startsWith(base + path.sep) || !full.endsWith('.md')) {
@@ -218,7 +243,13 @@ function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: 
   }
   let content: string;
   try {
-    content = fs.readFileSync(full, 'utf8');
+    const realBase = fs.realpathSync(base);
+    const realFull = fs.realpathSync(full);
+    if (!realFull.startsWith(realBase + path.sep)) {
+      send(res, 400, { error: 'artifact path refused' });
+      return;
+    }
+    content = fs.readFileSync(realFull, 'utf8');
   } catch {
     send(res, 404, { error: 'artifact not found' });
     return;

@@ -106,13 +106,18 @@ export function Lobby() {
           </div>
           {lobby.roadmap && (
             <div>
-              Roadmap: <span className="font-mono">{lobby.roadmap.itemCount}</span> item(s)
-              {lobby.roadmap.horizons.length > 0 && (
-                <span className="text-stone-400">
-                  {' '}
-                  across {lobby.roadmap.horizons.map((h: any) => h.name ?? h).join(' · ')}
-                </span>
-              )}
+              <div>
+                Roadmap: <span className="font-mono">{lobby.roadmap.itemCount}</span> item(s)
+                {typeof lobby.roadmap.totals?.waiting === 'number' && (
+                  <span className="text-stone-400"> · {lobby.roadmap.totals.waiting} waiting</span>
+                )}
+              </div>
+              {/* Horizons as rows (deliverable 1: "roadmap horizons (rows only)"). */}
+              {lobby.roadmap.horizons.map((h: any) => (
+                <div key={h.name ?? String(h)} className="pl-4 text-stone-500">
+                  {h.name ?? String(h)}
+                </div>
+              ))}
             </div>
           )}
           <div>

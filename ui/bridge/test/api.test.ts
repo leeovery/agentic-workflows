@@ -107,4 +107,53 @@ describe('read-only API', () => {
     const post = await fetch(`http://127.0.0.1:${PORT}/api/lobby`, { method: 'POST' });
     expect(post.status).toBe(405);
   });
+
+  it('epic channel answers with engine-lifecycle threads (the round-7 500 regression)', async () => {
+    // Materialise an epic in the (disposable) world — lifecycles then come
+    // from the engine's own buildDiscoveryMap.
+    fs.mkdirSync(path.join(world, '.workflows', 'payments'), { recursive: true });
+    fs.writeFileSync(
+      path.join(world, '.workflows', 'payments', 'manifest.json'),
+      JSON.stringify({
+        name: 'payments',
+        work_type: 'epic',
+        status: 'in-progress',
+        phases: {
+          discovery: { items: { 'billing-model': { source: 'discovery', routing: 'discussion' } } },
+          discussion: { items: { 'billing-model': { status: 'in-progress' } } },
+        },
+      }),
+    );
+    const { status, body } = await get('/api/channel/payments');
+    expect(status).toBe(200);
+    expect(body.workType).toBe('epic');
+    expect(body.threads).toHaveLength(1);
+    expect(body.threads[0].name).toBe('billing-model');
+    expect(typeof body.threads[0].lifecycle).toBe('string');
+    expect(body.threads[0].lifecycle.length).toBeGreaterThan(0);
+  });
+
+  it('refuses a percent-encoded traversal in the work-unit segment (both routes)', async () => {
+    const channel = await get('/api/channel/%2e%2e%2f%2e%2e%2fsrc');
+    expect(channel.status).toBe(400);
+    const artifact = await get('/api/artifact/%2e%2e%2f%2e%2e%2fsrc?path=x.md');
+    expect(artifact.status).toBe(400);
+    const dotName = await get('/api/channel/..');
+    expect([400, 404]).toContain(dotName.status);
+  });
+
+  it('never serves a symlinked artifact and never lists one', async () => {
+    const secret = path.join(tmp, 'secret.md');
+    fs.writeFileSync(secret, 'outside the repo');
+    const link = path.join(world, '.workflows', 'rate-limiting', 'discussion', 'leak.md');
+    fs.symlinkSync(secret, link);
+    try {
+      const res = await get('/api/artifact/rate-limiting?path=discussion/leak.md');
+      expect([400, 404]).toContain(res.status);
+      const chan = await get('/api/channel/rate-limiting');
+      expect(chan.body.artifacts.some((a: any) => a.path.includes('leak'))).toBe(false);
+    } finally {
+      fs.unlinkSync(link);
+    }
+  });
 });

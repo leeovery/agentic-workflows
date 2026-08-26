@@ -31,6 +31,22 @@ describe('SpineItem', () => {
     expect(b.textContent).toContain('epic1/x');
   });
 
+  it('renders the gate-ref variant in the reserved gold', () => {
+    const { container } = render(
+      <SpineItem
+        event={{
+          ...base,
+          type: 'gate.opened',
+          payload: { card: { question: 'Which fits — per-host or global?' } },
+        }}
+      />,
+    );
+    const el = container.querySelector('[data-variant="gate-ref"]');
+    expect(el).toBeTruthy();
+    expect(el!.innerHTML).toContain('text-gate');
+    expect(el!.textContent).toContain('per-host or global');
+  });
+
   it('renders NOTHING for inadmissible types — never invents a variant', () => {
     const { container } = render(
       <SpineItem event={{ ...base, type: 'commit.landed', payload: { sha: 'x', subject: 's', scope: [] } }} />,

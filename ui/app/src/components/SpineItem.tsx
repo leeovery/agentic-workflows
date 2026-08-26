@@ -18,6 +18,21 @@ function when(ts: string): string {
 export function SpineItem({ event }: { event: SpineEvent }) {
   const base = 'flex items-baseline gap-3 py-2 border-b border-stone-200/70 dark:border-stone-800/70';
   switch (event.type) {
+    case 'gate.opened': {
+      // The gate ref — gold, the reserved accent. A one-line reference that
+      // navigates (never a card on the spine); live producers arrive with
+      // Phase 2's session manager.
+      const card = (event.payload.card ?? event.payload) as Record<string, any>;
+      return (
+        <div className={base} data-variant="gate-ref">
+          <span className="font-mono text-gate text-sm">◆</span>
+          <span className="font-sans text-sm text-gate">
+            {card.question ?? 'a gate is open'}
+          </span>
+          <time className="ml-auto text-xs text-stone-400 font-sans">{when(event.ts)}</time>
+        </div>
+      );
+    }
     case 'phase.completed':
       return (
         <div className={base} data-variant="phase-completion">

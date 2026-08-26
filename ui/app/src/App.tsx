@@ -9,15 +9,29 @@ import { Channel } from './screens/Channel';
 import { Artifact } from './screens/Artifact';
 import { Palette } from './Palette';
 
+// Storage and matchMedia can be absent or throwing (privacy modes, test
+// environments) — the theme must still resolve.
+function safeStorage(op: () => string | null): string | null {
+  try {
+    return op();
+  } catch {
+    return null;
+  }
+}
+
 function useTheme(): [boolean, () => void] {
-  const [dark, setDark] = useState(
-    () =>
-      localStorage.getItem('theme') === 'dark' ||
-      (localStorage.getItem('theme') === null && window.matchMedia('(prefers-color-scheme: dark)').matches),
-  );
+  const [dark, setDark] = useState(() => {
+    const stored = safeStorage(() => localStorage.getItem('theme'));
+    if (stored) return stored === 'dark';
+    try {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return false;
+    }
+  });
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('theme', dark ? 'dark' : 'light');
+    safeStorage(() => (localStorage.setItem('theme', dark ? 'dark' : 'light'), null));
   }, [dark]);
   return [dark, () => setDark((d) => !d)];
 }

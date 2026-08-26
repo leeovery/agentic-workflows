@@ -22,7 +22,7 @@ export type LobbyData =
       overviewRender: string | null;
       knowledge: { state: 'ready' | 'not-ready' | 'unknown' };
       durable: { counts: Record<string, number>; rows: any[] };
-      roadmap: { horizons: any[]; itemCount: number } | null;
+      roadmap: { horizons: any[]; totals: Record<string, number>; itemCount: number } | null;
       baseline: { status: string } | null;
     };
 

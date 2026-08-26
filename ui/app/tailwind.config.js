@@ -18,9 +18,11 @@ export default {
         gate: { DEFAULT: '#b48a1e', dim: '#8a6a17' },
         // The bridge's own navigation family.
         nav: { DEFAULT: '#4878a8', dim: '#36618c' },
-        // Muted semantic status.
+        // Muted semantic status. `warn` deliberately sits away from the gold
+        // hue — an amber warn would train readers that gold means "degraded"
+        // before Phase 2 gives gold its real meaning (round-7 finding).
         ok: '#4d7c58',
-        warn: '#a1772e',
+        warn: '#9a5b40',
         blocked: '#a35252',
       },
       maxWidth: {

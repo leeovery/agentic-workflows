@@ -9,7 +9,10 @@ import mermaid from 'mermaid';
 let mermaidReady = false;
 function ensureMermaid(dark: boolean): void {
   if (mermaidReady) return;
-  mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral' });
+  // securityLevel 'strict' is load-bearing: diagram source is repo-derived
+  // (untrusted) and the rendered SVG lands via innerHTML — strict escapes
+  // labels and disables click callbacks. Never relax it.
+  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'neutral' });
   mermaidReady = true;
 }
 

@@ -29,22 +29,24 @@ export function listSpineCommits(projectRoot: string): SpineCommit[] {
 
 /** Attach engine-derived views (spec-blocked / dep-blocked) to epic units. */
 export async function attachDerived(snap: Snapshot, engine: EngineAdapter): Promise<void> {
-  for (const unit of Object.values(snap.units)) {
-    if (unit.manifest?.work_type !== 'epic') continue;
-    try {
-      const detail = (await engine.epicDetailFor(unit.manifest)) as any;
-      const specBlocked = (detail?.spec_blocked ?? []).map((r: any) => ({ name: r.name, by: r.by ?? [] }));
-      const depBlocked = (detail?.phases?.planning ?? [])
-        .filter((i: any) => Array.isArray(i.deps_blocking) && i.deps_blocking.length > 0)
-        .map((i: any) => ({
-          name: i.name,
-          holders: i.deps_blocking.map((d: any) => d.topic ?? String(d)),
-        }));
-      unit.derived = { specBlocked, depBlocked };
-    } catch {
-      // An engine derivation failure degrades to no derived events for this
-      // unit — never a bridge-side re-derivation (EVENTS.md).
-    }
+  const epics = Object.values(snap.units).filter((u) => u.manifest?.work_type === 'epic');
+  await Promise.all(epics.map((unit) => attachOne(unit, engine)));
+}
+
+async function attachOne(unit: Snapshot['units'][string], engine: EngineAdapter): Promise<void> {
+  try {
+    const detail = (await engine.epicDetailFor(unit.manifest)) as any;
+    const specBlocked = (detail?.spec_blocked ?? []).map((r: any) => ({ name: r.name, by: r.by ?? [] }));
+    const depBlocked = (detail?.phases?.planning ?? [])
+      .filter((i: any) => Array.isArray(i.deps_blocking) && i.deps_blocking.length > 0)
+      .map((i: any) => ({
+        name: i.name,
+        holders: i.deps_blocking.map((d: any) => d.topic ?? String(d)),
+      }));
+    unit.derived = { specBlocked, depBlocked };
+  } catch {
+    // An engine derivation failure degrades to no derived events for this
+    // unit — never a bridge-side re-derivation (EVENTS.md).
   }
 }
 
