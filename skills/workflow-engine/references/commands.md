@@ -6,7 +6,7 @@
 
 The CLI door: `node .claude/skills/workflow-engine/scripts/engine.cjs <command> [args]`. Skill prose prescribes these calls at exact points; this catalogue exists for understanding a command's full contract.
 
-**Response contract (every mutation/transaction):** one decision-ready JSON line on stdout — `{"ok": true, …}` with derived state riding so no follow-up read is needed. Failures: `{"ok": false, "error": "…"}` on stderr, exit 1. Knowledge-base side effects are warn-don't-block — failures land in `warnings`, never abort. Commands that commit report `committed` (short sha, or `null` plus a note on a clean tree); commands documented as commit-free rely on the calling flow's commit cadence. Every engine-made commit also stages `.workflows/.knowledge` when it exists.
+**Response contract (every mutation/transaction):** one decision-ready JSON line on stdout — `{"ok": true, …}` with derived state riding so no follow-up read is needed. Failures: `{"ok": false, "error": "…"}` on stderr, exit 1. Knowledge-base side effects are warn-don't-block — failures land in `warnings`, never abort. Commands that commit report `committed` (short sha, or `null` plus a note on a clean scope); commands documented as commit-free rely on the calling flow's commit cadence. Every engine-made commit is confined to the paths its action wrote, and a commit whose action touched the knowledge store carries `.workflows/.knowledge` with it.
 
 ## Grammar
 
@@ -148,12 +148,32 @@ engine topic reactivate <work-unit> <phase> <topic>
 engine sources stale <work-unit> <discussion> [--except <spec-topic>]
 ```
 
-**`presence`** — the per-topic session heartbeat, cache-resident (`.workflows/.cache/{wu}/{phase}/{topic}/presence`, gitignored). Awareness, never mutual exclusion. `beat` refreshes it — session loops beat at their per-turn check — writing the owning session's identity (`CLAUDE_PID` + its process start time + `CLAUDE_CODE_SESSION_ID`); the mtime is the activity signal. `clear` drops it — the concludes' orderly exit. `scan` reads every heartbeat in the work unit with two verdicts per row: `held` — the owning process still runs (pid + start time verified, so a dead or recycled pid reads unheld instantly; an identity-less record falls back to mtime aging), however long it has idled — and `live` — held *and* beaten within `stale_after_seconds` (900). Response `{"live": N, "held": N, "stale_after_seconds": 900, "sessions": [{phase, topic, age_seconds, held, live, session_id}…]}`, plus a `DISPLAY: presence deferral` section after the JSON line when anything is live — emitted verbatim at the same call, at the analysis-dispatch deferral. `cleanup` sweeps every heartbeat the named session owns across all work units — the SessionEnd hook target on research and discussion, covering the exits that keep the process alive (/clear, logout); the session id comes from the argument or the hook's stdin JSON, and it never errors on missing state. Consumers: the epic view marks held topics (menu strike-through, recommendation skip, in-session confirm gate); the topic-discovery dispatch defers a stale-cache analysis while a peer session is live; the conclude sweep leaves a held row's dirt alone and commits a dead session's leavings action-scoped; the spec-side resolution flow checks the target discussion before editing its document in place.
+**`presence`** — the per-topic session heartbeat, cache-resident (`.workflows/.cache/{wu}/{phase}/{topic}/presence`, gitignored). Awareness, never mutual exclusion. Every phase a session sits in carries one — research, discussion, investigation, scoping, specification, planning, implementation, review — except discovery, which `discovery-session open` already serialises to one session per epic.
+
+**Beats are mechanical, and no prose ever issues one.** The engine stamps the heartbeat as a side effect of the verbs a session already runs, and only where the verb is structurally self-referential — the session acting on its own topic. A beat writes *this* process's identity, so a beat from a verb acting on another topic would manufacture a false hold there.
+
+| Verb | Beat |
+|---|---|
+| `commit --topic {phase}/{topic}` | beats — the session-cadence commit, so "last active" means "time since the last real write" |
+| `commit --topic … --kb` | **clears** — the terminal conclusion commit; a beat here would re-stamp the topic after it concluded and it would read held forever |
+| `commit --topic … --sweep` | suppressed — the conclude sweep commits a dead session's leavings; a sweeper stamping the topic it just cleaned would resurrect the hold |
+| `commit --paths … --for {wu} {phase}/{topic}` | beats the named code topic |
+| `topic queue` | beats — the session loops' findings check polls it every turn, so a turn with no writes still registers |
+| `topic start` · `topic complete` · `topic absorb` | beat — opening, closing, and folding a concern into the session's own topic |
+| `manifest set <wu>.<phase>.<topic>` | beats — every state transition on the session's own topic (a discovery-addressed write no-ops, like any phase outside the set) |
+| `agent dispatch` · `scan` · `ack` · `announce` · `surface` · `incorporate` | beat — the session's own background agents |
+| `topic triage` | never — delivery acts on the **target** topic from the origin's session |
+| `topic requeue` · `cancel` · `reactivate` · `supersede` · `reopen` · `sources stale` · `manifest apply` | never — analysis and navigation actors reaching across topics |
+| every other read, render, and projection verb | never |
+
+A beat is best-effort: it never throws, never changes a verb's response, and no-ops on a phase outside the set or a work unit with no directory.
+
+`beat` and `clear` remain as explicit verbs for tests and repair. `scan` reads every heartbeat with two verdicts per row: `held` — the owning process still runs (pid + start time verified, so a dead or recycled pid reads unheld instantly; an identity-less record falls back to mtime aging), however long it has idled — and `live` — held *and* beaten within `stale_after_seconds` (900). With a work unit: `{"work_unit": "…", "live": N, "held": N, "stale_after_seconds": 900, "sessions": [{phase, topic, age_seconds, held, live, session_id}…]}`, plus a `DISPLAY: presence deferral` section after the JSON line when anything is live — emitted verbatim at the same call, at the analysis-dispatch deferral. Without one, it walks the whole cache root for the code gate's project-wide read: the same totals and row shape with `work_unit` on each row and `"scope": "project"` in place of `work_unit`, and no deferral section (the deferral is the dispatch's, and the dispatch always names a work unit). `cleanup` sweeps every heartbeat the named session owns across all work units — the SessionEnd hook target on the session skills, covering the exits that keep the process alive (/clear, logout); the session id comes from the argument or the hook's stdin JSON, and it never errors on missing state. Consumers: the epic view marks held topics (menu strike-through, recommendation skip, in-session confirm gate); the topic-discovery dispatch defers a stale-cache analysis while a peer session is live; the conclude sweep leaves a held row's dirt alone and commits a dead session's leavings action-scoped; the spec-side resolution flow checks the target discussion before editing its document in place.
 
 ```bash
-engine presence beat <work-unit> <phase> <topic>    # research|discussion only
+engine presence beat <work-unit> <phase> <topic>    # every phase but discovery
 engine presence clear <work-unit> <phase> <topic>
-engine presence scan <work-unit>
+engine presence scan [work-unit]                    # work-unit-less: the whole project
 engine presence cleanup [session-id]                # SessionEnd hook target; reads stdin JSON when no argument
 ```
 
@@ -225,16 +245,23 @@ engine roadmap horizon remove <name>               # empty horizons only
 engine cache stamp <work-unit> gap-analysis
 ```
 
-**`commit`** — the scoped commit helper: `git add -- .workflows/{wu}` (`.workflows/.inbox` with `--inbox`, or the whole `.workflows` tree with `--workflows` — migrations touch many work units plus `.workflows/.state`) plus commit. Every engine-made commit — this helper and every transaction — also stages `.workflows/.knowledge` when it exists (exists-guarded, `domain/commit.cjs`): transactions dirty the store as a side effect of their knowledge sync, and that dirt belongs with the write that produced it. A clean tree is fine: `{"ok": true, "committed": null, "note": "nothing to commit"}`, exit 0. `--plan <topic>` widens the scope with the plan's declared storage: it stages `.workflows/manifest.json` and every `storage_paths` entry recorded on the planning item at plan init (the format's authoring doc declares them; entries are validated relative-only and skipped when neither on disk nor tracked, while deleted-but-tracked paths still stage their deletions). A planning item without `storage_paths` (pre-upgrade plan) fails loudly with the one-line repair. Code never rides a `--plan` commit — implementation's code commits stay with the session and raw git.
+**`commit`** — the scoped commit helper. **Every engine commit is confined to a pathspec** — this helper and every transaction tail alike: `git add -- <paths>` then `git commit -m … -- <paths>`, which builds a temporary index from HEAD plus the worktree content of those paths. Nothing outside the declared scope can ride, so a concurrent session's dirty or staged files (and the user's own staged code) are ignored and left exactly as they were. Pathspecs matching neither disk nor index are dropped before the add — a scope naming a path its action never created is normal. A clean scope is fine: `{"ok": true, "committed": null, "note": "nothing to commit"}`, exit 0.
 
-`--topic <phase>/<topic>` is the action-scoped form for concurrent sessions: `git commit -- <paths>` confined to the topic's artifact (`{phase}/{topic}.md` for research/discussion/investigation, `{phase}/{topic}/` for specification/planning/implementation/review) plus the topic's triage-queue directory (research/discussion) plus the work-unit manifest, exists-guarded like `--plan`. Another session's dirty or staged files never ride the commit and are left exactly as they were. The KB dir does not ride by default; `--kb` adds it for the moments whose own action dirtied the store — a conclusion commit right after `topic complete`'s knowledge index. Mutually exclusive with `--plan`.
+The scope by form: `.workflows/{wu}` bare, `.workflows/.inbox` with `--inbox`, `.workflows/.roadmap` plus the project manifest with `--roadmap` (the product session's cadence commit — the roadmap node lives on the project manifest), the whole `.workflows` tree with `--workflows` (migrations touch many work units plus `.workflows/.state`). The work-unit forms also stage `.workflows/.knowledge` when it exists (exists-guarded, `domain/commit.cjs`) — a transaction dirties the store as a side effect of its knowledge sync, and that dirt belongs with the write that produced it. Transactions that never touch the store take the rider-less door: sweeping up store dirt an action did not create is the theft the confinement removes.
+
+`--plan <topic>` widens the work-unit scope with the plan's declared storage: `.workflows/manifest.json` and every `storage_paths` entry recorded on the planning item at plan init (the format's authoring doc declares them; entries are validated relative-only, while deleted-but-tracked paths still commit their deletions). A planning item without `storage_paths` (pre-upgrade plan) fails loudly with the one-line repair. Code never rides a `--plan` commit — code has its own form below.
+
+`--topic <phase>/<topic>` is the session-cadence form: the topic's artifact (`{phase}/{topic}.md` for research/discussion/investigation, `{phase}/{topic}/` for specification/planning/implementation/review) plus the topic's triage-queue directory (research/discussion) plus the work-unit manifest. The KB dir does not ride by default; `--kb` adds it for the moments whose own action dirtied the store — a conclusion commit right after `topic complete`'s knowledge index. `--sweep` marks the conclude sweep's commit of a dead session's leavings. Both riders carry presence semantics — see the beat table under `presence`. Mutually exclusive with `--plan` and `--discovery`.
+
+`--discovery` is the discovery session's cadence form: `discovery/sessions/`, `discovery/briefs/`, and the work-unit manifest (the map lives there). Discovery runs beside live research and discussion sessions on the same work unit, so it slices its own paths and never theirs.
+
+`--paths <file> …` is the code commit — the one scope no layout derives (code has none), so the session declares it and the engine checks it: every path must resolve inside the project, be literal (a pattern is refused — it would commit whatever it matched), be on disk or tracked, and never live under `.workflows/`, whose artifacts have derived scopes of their own. Required `--for <work-unit> <implementation|review>/<topic>` names the code topic, which the commit beats. The response adds `left_dirty` — every tracked modification and untracked file still outside `.workflows` — so the session can close the loop on a path it forgot to name. `.workflows` dirt is excluded on purpose: document sessions run concurrently with the code session by design, and their dirt is theirs.
 
 Every engine commit runs under a process-wide commit lock (`.git/workflows-commit.lock` — in the `.git` dir so it can never be staged; same stale-break discipline as the manifest lock), and index-mutating git operations retry briefly through `index.lock` contention before surfacing git's error. Transaction-tail commits degrade rather than abort: the state write has landed, so a git failure leaves the verb `ok` with `"note": "commit pending — state saved; retry with engine commit"` and the git error appended to `warnings`.
 
-`--roadmap` is the product session's cadence commit: the roadmap dir (`.workflows/.roadmap` — sessions, imports) plus the project manifest (the roadmap node lives there), exists-guarded like `--plan`'s pathspecs. Another session's work-unit dirt never rides.
-
 ```bash
-engine commit <work-unit> -m "<message>" [--plan <topic> | --topic <phase>/<topic> [--kb]]
+engine commit <work-unit> -m "<message>" [--plan <topic> | --discovery | --topic <phase>/<topic> [--kb] [--sweep]]
+engine commit --paths <file> … -m "<message>" --for <work-unit> <implementation|review>/<topic>
 engine commit --inbox -m "<message>"
 engine commit --roadmap -m "<message>"
 engine commit --workflows -m "<message>"
