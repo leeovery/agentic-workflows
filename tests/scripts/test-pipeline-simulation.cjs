@@ -869,6 +869,25 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `research(${wu}): delta`]);
     sim.run(['topic', 'complete', wu, 'research', 'delta']);
 
+    // Dead end: the conclude gate's second arm marks the map item, and the
+    // research still completes and indexes as normal. The marker is the whole
+    // move — the record is untouched — and it is reversible both ways.
+    const deadEnd = sim.run(['discovery-map', 'handle', wu, 'delta']);
+    assert.strictEqual(deadEnd.handled, true);
+    assert.strictEqual(deadEnd.lifecycle, 'handled');
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.delta.handled, true);
+    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'completed',
+      'the dead-end marker leaves the research record alone');
+    sim.refuses(['discovery-map', 'handle', wu, 'delta'],
+      /"delta" can't be closed as a dead end — it's already closed/);
+    const reopenedMap = sim.run(['discovery-map', 'unhandle', wu, 'delta']);
+    assert.strictEqual(reopenedMap.handled, false);
+    assert.strictEqual(reopenedMap.lifecycle, 'ready_for_discussion',
+      'reopening returns the topic to its name-matched lifecycle');
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.delta.handled, undefined);
+    sim.refuses(['discovery-map', 'unhandle', wu, 'delta'],
+      /"delta" can't be reopened — it isn't closed as a dead end, so there's nothing to reopen/);
+
     // Grouping: alpha and beta unify into one spec; sources gate, then the
     // per-topic spec items are superseded by the unified one.
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);

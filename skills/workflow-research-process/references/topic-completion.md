@@ -32,10 +32,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 → Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-Judge the dead-end question before rendering: pass `--dead-end` **only** when the session's own conclusion is that this topic gives the product nothing to carry forward under its own name — the thread didn't pan out, or its useful facts serve only other topics, where provenance and the knowledge base already deliver them. In the common case — the research surfaced material this topic's discussion will ratify — the flag is omitted and the row never appears.
+Judge the dead-end question before rendering: pass `--dead-end` **only** when `work_type` is `epic` and the session's own conclusion is that this topic gives the product nothing to carry forward under its own name — the thread didn't pan out, or its useful facts serve only other topics, where provenance and the knowledge base already deliver them. In the common case — the research surfaced material this topic's discussion will ratify — the flag is omitted and the row never appears.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render research-conclude-gate {work_unit}.research.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render research-conclude-gate {work_unit}.research.{topic} [--dead-end]
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -44,7 +44,7 @@ Emit the call's MENU section verbatim per its marker.
 
 #### If `conclude`
 
-→ Load **[conclude-research.md](conclude-research.md)** and follow its instructions as written.
+→ Load **[conclude-research.md](conclude-research.md)** with closure = `discussion`.
 
 #### If `dead-end`
 
@@ -56,7 +56,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map handle {wor
 
 Then conclude — the research completes and indexes as normal; the file stays on the map and in the knowledge base as record and seed material:
 
-→ Load **[conclude-research.md](conclude-research.md)** and follow its instructions as written.
+→ Load **[conclude-research.md](conclude-research.md)** with closure = `dead-end`.
 
 #### If `keep`
 

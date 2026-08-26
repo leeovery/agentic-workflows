@@ -1,0 +1,9 @@
+[
+  {
+    "name": "vector-search-migration",
+    "routing": "research",
+    "summary": "Whether retrieval should move off the lexical index onto embeddings.",
+    "description": "The recall complaints could be answered by replacing lexical retrieval with an embedding index rather than by tuning what exists. Nobody knows what that costs to run at this catalogue size, or who would keep the embeddings current.",
+    "brief_path": "discovery/briefs/vector-search-migration.md"
+  }
+]

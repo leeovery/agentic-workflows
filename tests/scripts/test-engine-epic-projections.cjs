@@ -478,14 +478,14 @@ describe('epic projections: menu', () => {
           items: {
             ready: { routing: 'research', source: 'discovery', order: 1 },
             decided: { routing: 'discussion', source: 'discovery', order: 2 },
-            umbrella: { routing: 'research', source: 'discovery', handled: true },
+            'dead-lead': { routing: 'research', source: 'discovery', handled: true },
             dropped: { routing: 'research', source: 'discovery' },
           },
         },
         research: {
           items: {
             ready: { status: 'completed' },
-            umbrella: { status: 'completed' },
+            'dead-lead': { status: 'completed' },
             dropped: { status: 'cancelled' },
           },
         },
@@ -506,7 +506,7 @@ describe('epic projections: menu', () => {
     assert.strictEqual(numbered[0].recommended, true);
     assert.ok(/\*\*`1`\*\* +→ Start discussion for "Ready" — \*research completed\*\n\u00a0+\(recommended\)/.test(rendered));
     assert.ok(/\*\*`e\/reactivate`\*\* +→ Reactivate a cancelled topic/.test(rendered), 'cancelled items exist');
-    assert.ok(!rendered.includes('Umbrella'), 'handled row has no menu entry');
+    assert.ok(!rendered.includes('Dead Lead'), 'handled row has no menu entry');
     assert.ok(!rendered.includes('Dropped'), 'cancelled row has no menu entry');
   });
 

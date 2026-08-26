@@ -558,7 +558,7 @@ describe('phase chunking configs', () => {
       fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
     );
     const src = [
-      '# research-analysis',
+      '# discovery-gap-analysis',
       '',
       '## Topics',
       '',
@@ -587,7 +587,7 @@ describe('phase chunking configs', () => {
       fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
     );
     const src = [
-      '# research-analysis',
+      '# discovery-gap-analysis',
       '',
       '## Topics',
       '',

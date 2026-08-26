@@ -547,7 +547,7 @@ describe('engine CLI: discovery-map operations', () => {
       'ready-topic': /research has completed and discussion is queued.*cancel from the epic menu instead/,
       'discussing-topic': /discussion is in flight on it.*cancel from the epic menu instead/,
       'decided-topic': /discussion has concluded.*cancel from the epic menu instead/,
-      // handled-topic has no research item — no kept record to claim.
+      // One phrase for handled, whatever the topic's research state.
       'handled-topic': /it is closed as a dead end and stays on the map as record.*reopen it to make it actionable again/,
       'cancelled-topic': /phase work in cancelled state.*cancel from the epic menu instead/,
       // triaged-topic derives fresh, but its parked stub is real content —
@@ -608,13 +608,13 @@ describe('engine CLI: discovery-map operations', () => {
       assert.ok(!/research has completed/.test(err.error), 'superseded research must not read as completed');
     });
 
-    it('a handled topic with completed research keeps the kept-record phrasing', () => {
+    it('a handled topic reads the same phrase whatever its research state', () => {
       const m = readManifest(dir);
       m.phases.research.items['handled-topic'] = { status: 'completed' };
       fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
 
       const err = runFail(dir, ['rename', 'payments', 'handled-topic', 'anything-else']);
-      assert.match(err.error, /it is closed as a dead end — its research stays on the map as record/);
+      assert.match(err.error, /it is closed as a dead end and stays on the map as record/);
     });
   });
 

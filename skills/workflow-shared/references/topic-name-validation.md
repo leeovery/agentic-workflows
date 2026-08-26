@@ -39,7 +39,7 @@ Re-derive a kebab-case form for `proposed_name` — lowercase, split on spaces/u
 
 ## B. Read Map and Dismissed List
 
-Re-run discovery to pick up state changes since the caller's last invocation (writes earlier in the session, prior splits in the same batch):
+Re-run discovery to pick up state changes since the caller's last invocation (writes earlier in the session, prior creations in the same batch):
 
 ```bash
 node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
@@ -76,7 +76,7 @@ Set `result = "collision-active"` and render the rejection:
 
 Check whether `proposed_name` matches any entry in `dismissed` (case-sensitive).
 
-A dismissed-list match is **not** a rejection. User-explicit spawns (split, reroute, discovery session add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by analyses. The creating flow's `discovery-map add --force-dismissed` clears the entry at write time.
+A dismissed-list match is **not** a rejection. User-explicit creations (reroute, discovery session add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by the gap analysis. The creating flow's `discovery-map add --force-dismissed` clears the entry at write time.
 
 #### If a match exists
 
