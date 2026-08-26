@@ -17,6 +17,14 @@ import { convertTranscript, snapshotWorld } from './convert.js';
 import { logger } from './log.js';
 import type { RawEvent } from './derive.js';
 
+function gitHead(dir: string): string | null {
+  try {
+    return execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return null;
+  }
+}
+
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
@@ -130,7 +138,7 @@ async function runLive(projectRoot: string): Promise<void> {
   if (!watcher) {
     // live-only: watch from the current tree with no durable layer.
     const { snapshotTree } = await import('./snapshot.js');
-    watcher = new Watcher(projectRoot, project, 'live-only', { tree: {}, snap: snapshotTree(projectRoot), head: null }, engine);
+    watcher = new Watcher(projectRoot, project, 'live-only', { tree: {}, snap: snapshotTree(projectRoot), head: gitHead(projectRoot) }, engine);
   }
 
   watcher.on('durable', (events: RawEvent[]) => {
@@ -193,7 +201,7 @@ async function runReplay(fixtureDir: string): Promise<void> {
     epoch = spine.epoch;
     store.setMeta(spine.epoch, spine.tip);
     store.append(spine.events);
-    watcher = new Watcher(worldDir, project, spine.epoch, { tree: spine.lastTree, snap: spine.lastSnapshot, head: null }, engine);
+    watcher = new Watcher(worldDir, project, spine.epoch, { tree: spine.lastTree, snap: spine.lastSnapshot, head: gitHead(worldDir) }, engine);
   }
 
   const server = new BridgeServer({

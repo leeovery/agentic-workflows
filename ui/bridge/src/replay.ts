@@ -59,18 +59,18 @@ export class Replayer extends EventEmitter {
     return this.worldDir;
   }
 
-  private lastUserIdx(): number {
-    for (let i = this.records.length - 1; i >= 0; i--) {
-      if (this.records[i].record === 'user') return i;
-    }
-    return -1;
+  /** A recording that ends awaiting input carries a non-completed result. */
+  private endsMidFlight(): boolean {
+    const result = this.records.find((r) => r.record === 'result');
+    return !result || result.outcome !== 'completed';
   }
 
   status(): ReplayStatus {
     return {
       state: this.state,
       fixture: path.basename(this.fixtureDir),
-      atTurn: this.turn,
+      // While paused, the AWAITED turn (matches the 'paused' event payload).
+      atTurn: this.state === 'paused' ? this.turn + 1 : this.turn,
       recordsStreamed: this.idx,
       worldDir: this.worldDir,
     };
@@ -78,19 +78,11 @@ export class Replayer extends EventEmitter {
 
   async run(): Promise<void> {
     const pace = this.opts.paceMs ?? 30;
-    const finalUser = this.lastUserIdx();
     while (this.idx < this.records.length) {
       const rec = this.records[this.idx];
-      // A user-turn boundary is the point where a human ANSWER came — the
+      // A user-turn boundary is a point where a human ANSWER came — the
       // first user record is the entry prompt and starts the stream instead.
       if (rec.record === 'user' && this.turn > 0) {
-        // A user-turn boundary: the point where a human input came.
-        if (this.idx === finalUser) {
-          this.state = 'paused';
-          this.emit('paused', { atTurn: this.turn + 1, final: true });
-          logger.info('replay paused at final recorded user-turn boundary', { turn: this.turn + 1 });
-          return; // stays paused; Phase 2 adopt continues from here
-        }
         if (this.opts.offline) {
           // Scripted answer with match assertion (spec 4 offline mode).
           this.assertAnswer(rec);
@@ -108,6 +100,16 @@ export class Replayer extends EventEmitter {
       this.emit('record', rec);
       this.idx += 1;
       if (pace > 0) await new Promise((r) => setTimeout(r, pace));
+    }
+    // A mid-flight recording ends on an assistant-side tail awaiting input —
+    // THAT is the final recorded user-turn boundary: the replay stays paused
+    // there (Phase 2 adopt continues from it). A recording of a session that
+    // ran to completion ends instead.
+    if (this.endsMidFlight()) {
+      this.state = 'paused';
+      this.emit('paused', { atTurn: this.turn + 1, final: true });
+      logger.info('replay paused at final recorded user-turn boundary', { turn: this.turn + 1 });
+      return;
     }
     this.state = 'ended';
     this.emit('ended');

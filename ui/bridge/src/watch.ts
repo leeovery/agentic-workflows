@@ -53,9 +53,15 @@ export class Watcher extends EventEmitter {
     super();
     this.lastCommitTree = seed.tree;
     this.lastCommitSnap = seed.snap;
-    this.lastLiveSnap = seed.snap;
+    // The live baseline must be a TREE snapshot: commit snapshots hash
+    // artifacts by git blob sha, tree snapshots by sha256 — the two never
+    // compare. Dirt present at boot becomes baseline (the live layer is
+    // reproduced approximately across restarts, per spec 3).
+    this.lastLiveSnap = snapshotTree(projectRoot);
     this.lastHead = seed.head;
   }
+
+  private readyPromise: Promise<void> | null = null;
 
   start(): void {
     const wf = path.join(this.projectRoot, '.workflows');
@@ -65,6 +71,10 @@ export class Watcher extends EventEmitter {
       awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 },
     });
     this.fsWatcher.on('all', () => this.scheduleLiveDiff());
+    this.readyPromise = new Promise((resolve) => this.fsWatcher!.once('ready', () => resolve()));
+    // A change landing in the construct-to-ready gap is invisible to
+    // chokidar — sweep once at readiness so it surfaces as a live diff.
+    this.readyPromise.then(() => this.scheduleLiveDiff());
     this.headTimer = setInterval(() => this.pollHead().catch((e) => logger.error('head poll failed', { error: String(e) })), HEAD_POLL_MS);
     this.presenceTimer = setInterval(() => this.pollLiveState().catch(() => {}), PRESENCE_POLL_MS);
     logger.info('watcher started', { project: this.project });
@@ -168,9 +178,9 @@ export class Watcher extends EventEmitter {
       this.lastCommitTree = tree;
       this.lastCommitSnap = snap;
       this.emit('durable', events);
-      // Superseding: reset the live baseline to the committed state so live
-      // remnants don't re-emit.
-      this.lastLiveSnap = snap;
+      // Superseding: reset the live baseline to the post-commit tree so live
+      // remnants don't re-emit (tree snapshot — hash spaces never mix).
+      this.lastLiveSnap = snapshotTree(this.projectRoot);
     }
   }
 
@@ -195,6 +205,10 @@ export class Watcher extends EventEmitter {
 
   setEpoch(epoch: string): void {
     this.epoch = epoch;
+  }
+
+  ready(): Promise<void> {
+    return this.readyPromise ?? Promise.resolve();
   }
 
   /** Presence + agent-store polling — live-layer only, by nature. */

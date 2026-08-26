@@ -126,7 +126,12 @@ export function convertTranscript(
   if (sawAnythingThisTurn && turn > 0) {
     journal.push({ record: 'turn-end', turn });
   }
-  journal.push({ record: 'result', outcome: 'completed' });
+  // A recording whose last conversational record is assistant-side ended
+  // awaiting input — a mid-flight capture, not a completed session. Replay
+  // keys its final paused state off this outcome.
+  const lastConvo = [...journal].reverse().find((r) => r.record === 'user' || r.record === 'assistant' || r.record === 'tool-result' || r.record === 'tool-use');
+  const midFlight = lastConvo !== undefined && lastConvo.record !== 'user';
+  journal.push({ record: 'result', outcome: midFlight ? 'interrupted' : 'completed' });
   return journal;
 }
 
@@ -136,6 +141,7 @@ export function convertTranscript(
  * represent mid-session state.
  */
 export function snapshotWorld(projectRoot: string, worldDir: string): void {
+  worldDir = path.resolve(worldDir); // git -C resolves relative paths against projectRoot
   fs.mkdirSync(worldDir, { recursive: true });
   execFileSync('git', ['-C', projectRoot, 'bundle', 'create', path.join(worldDir, 'repo.bundle'), '--all'], {
     stdio: 'ignore',

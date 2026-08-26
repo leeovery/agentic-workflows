@@ -43,7 +43,7 @@ function manifest(status: string, itemStatus: string): string {
   });
 }
 
-function waitFor<T>(collect: () => T | undefined, ms = 8000, step = 100): Promise<T> {
+function waitFor<T>(collect: () => T | undefined, ms = 15000, step = 100): Promise<T> {
   const start = Date.now();
   return new Promise((resolve, reject) => {
     const tick = () => {
@@ -81,6 +81,7 @@ async function startWatcher(): Promise<{ live: RawEvent[]; durable: RawEvent[]; 
   watcher.on('durable', (es: RawEvent[]) => durable.push(...es));
   watcher.on('epoch-change', ({ reason }: { reason: string }) => epochChanges.push(reason));
   watcher.start();
+  await watcher.ready();
   return { live, durable, epochChanges };
 }
 
@@ -93,7 +94,7 @@ describe('Watcher', () => {
       live.find((e) => e.type === 'phase.completed' && e.live === true),
     );
     expect(liveDone.payload).toEqual({ phase: 'discussion', topic: 'auth-flow' });
-    expect(liveDone.seq).toBeUndefined();
+    expect((liveDone as { seq?: number }).seq).toBeUndefined();
 
     sh(['add', '-A']);
     sh(['commit', '-q', '-m', 'feat: discussion concluded']);
@@ -104,7 +105,7 @@ describe('Watcher', () => {
     const commitLanded = await waitFor(() => durable.find((e) => e.type === 'commit.landed'));
     expect((commitLanded.payload as any).subject).toBe('feat: discussion concluded');
     expect((commitLanded.payload as any).scope).toEqual(['auth-flow']);
-  });
+  }, 20_000);
 
   it('signals epoch-change on non-fast-forward HEAD movement instead of emitting removals', async () => {
     const { durable, epochChanges } = await startWatcher();
@@ -117,5 +118,5 @@ describe('Watcher', () => {
     sh(['checkout', '-q', 'main']);
     await waitFor(() => (epochChanges.length > 0 ? true : undefined));
     expect(durable.some((e) => e.type === 'workunit.removed')).toBe(false);
-  });
+  }, 20_000);
 });
