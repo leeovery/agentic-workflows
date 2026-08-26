@@ -32,7 +32,7 @@ The brief just read is the carrier — nothing more to read here.
 
 ## B. Check for Research
 
-Completed research reaches a topic two ways: under the topic's own name, and through provenance — a spawned or rerouted topic carries its parent in its discovery item's `source` (`spawn:{parent}`, `reroute:{origin}`, or the historical `research-analysis:{parent}` / `research-split:{parent}`), naming the topic whose research contributed it.
+Completed research reaches a topic two ways: under the topic's own name, and through provenance — a rerouted topic carries its origin in its discovery item's `source` (`reroute:{origin}`, or the historical `research-analysis:{parent}` / `research-split:{parent}`), naming the topic whose research contributed it.
 
 Read the topic's own research status:
 

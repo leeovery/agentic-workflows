@@ -23,7 +23,7 @@ The exploration phase, entered from discovery — explore feasibility (technical
 
 - **Topic** (required) - What to research/explore
 - **Output path** (required) - Research file path from the handoff
-- **Work type** (required) - `epic`, `feature`, or `cross-cutting`. Determines session behaviour — only epic sessions offer topic spawning on convergence; feature and cross-cutting use the single-topic session
+- **Work type** (required) - `epic`, `feature`, or `cross-cutting`. Determines session behaviour — epic sessions carry topic awareness and reroute a grown thread to its own topic; feature and cross-cutting use the single-topic session
 - **Context** (optional) - Prior research, constraints, starting direction
 
 ---

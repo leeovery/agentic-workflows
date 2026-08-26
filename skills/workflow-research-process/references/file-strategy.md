@@ -8,6 +8,6 @@ Research file: `.workflows/{work_unit}/research/{topic}.md`
 
 One topic, one file. The session is focused on the topic the caller provided.
 
-For epics, threads that grow into distinct topics get spawned via the topic-spawning flow — each spawn creates its own discovery item, while the material stays in this file and feeds the new topic by provenance. See **[topic-spawning.md](topic-spawning.md)**.
+For epics, a thread that grows into a distinct topic is rerouted through that topic's triage queue — it lands on the map with `reroute:{origin}` provenance, and its material reaches the new topic through the queue entry and the provenance read at its discussion.
 
 → Return to caller.
