@@ -60,6 +60,12 @@ export function convertTranscript(
     },
   ];
 
+  // A subagent transcript marks EVERY record as a sidechain; a main-session
+  // transcript marks only nested agents' records. Skip sidechains only when
+  // the file itself is a main-session transcript.
+  const convo = lines.filter((l) => l.type === 'user' || l.type === 'assistant');
+  const isSubagentTranscript = convo.length > 0 && convo.every((l) => l.isSidechain === true);
+
   // Turn = count of user-role messages since session birth (spec 1 — defined
   // once, for all specs). Tool results arrive as user-role records but are
   // NOT user turns; a real user input is text content without tool_result.
@@ -68,7 +74,7 @@ export function convertTranscript(
   const toolNames = new Map<string, string>();
 
   for (const rec of lines) {
-    if (rec.isSidechain) continue;
+    if (rec.isSidechain && !isSubagentTranscript) continue;
     const ts = rec.timestamp;
     if (rec.type === 'assistant' && rec.message) {
       const msg = rec.message;

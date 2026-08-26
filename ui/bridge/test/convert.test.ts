@@ -82,12 +82,23 @@ describe('convertTranscript', () => {
     expect(before.turn).toBe(1);
   });
 
-  it('skips sidechain records', () => {
+  it('skips sidechain records in a main-session transcript', () => {
     const p = writeSession([
       { type: 'user', message: { role: 'user', content: 'main' } },
       { type: 'assistant', isSidechain: true, message: { role: 'assistant', content: [{ type: 'text', text: 'sub' }] } },
     ]);
     const journal = convertTranscript(p, { bridgeSessionId: 'bs1', width: 65, entryPrompt: 'x' });
     expect(journal.some((r: any) => r.text === 'sub')).toBe(false);
+  });
+
+  it('keeps records in a subagent transcript (every record marked sidechain)', () => {
+    const p = writeSession([
+      { type: 'user', isSidechain: true, message: { role: 'user', content: 'payload' } },
+      { type: 'assistant', isSidechain: true, message: { role: 'assistant', content: [{ type: 'text', text: 'walking' }] } },
+      { type: 'user', isSidechain: true, message: { role: 'user', content: 'answer: c' } },
+    ]);
+    const journal = convertTranscript(p, { bridgeSessionId: 'bs1', width: 65, entryPrompt: 'x' });
+    expect(journal.some((r: any) => r.text === 'walking')).toBe(true);
+    expect(journal.filter((r: any) => r.record === 'user')).toHaveLength(2);
   });
 });

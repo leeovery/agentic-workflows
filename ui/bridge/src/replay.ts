@@ -81,7 +81,9 @@ export class Replayer extends EventEmitter {
     const finalUser = this.lastUserIdx();
     while (this.idx < this.records.length) {
       const rec = this.records[this.idx];
-      if (rec.record === 'user' && this.idx > 0) {
+      // A user-turn boundary is the point where a human ANSWER came — the
+      // first user record is the entry prompt and starts the stream instead.
+      if (rec.record === 'user' && this.turn > 0) {
         // A user-turn boundary: the point where a human input came.
         if (this.idx === finalUser) {
           this.state = 'paused';
@@ -94,8 +96,11 @@ export class Replayer extends EventEmitter {
           this.assertAnswer(rec);
         } else {
           this.state = 'paused';
+          // Register the waiter before announcing the pause — a listener may
+          // call step() synchronously from the 'paused' handler.
+          const stepped = new Promise<void>((resolve) => this.once('step', resolve));
           this.emit('paused', { atTurn: this.turn + 1, final: false });
-          await new Promise<void>((resolve) => this.once('step', resolve));
+          await stepped;
           this.state = 'streaming';
         }
       }
