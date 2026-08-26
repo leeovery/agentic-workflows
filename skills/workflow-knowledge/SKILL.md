@@ -27,7 +27,7 @@ A local semantic-search index over every completed research, discussion, investi
 - `baseline` (low — the project baseline: brownfield assessment docs at `.workflows/.baseline/{topic}.md`, project-level rather than per-work-unit. Chunks carry the reserved pseudo-identity `baseline` for both work unit and work type. Observed and user-stated context about the pre-existing codebase — it informs, but is never a settled call a phase may lean on silently)
 - `roadmap` (low — the product-road session logs at `.workflows/.roadmap/sessions/session-NNN.md`: the running record of product-altitude conversation, graded like discovery logs; topic = session. Project-level — chunks carry the reserved pseudo-identity `roadmap` for both work unit and work type. Roadmap imports land at `.workflows/.roadmap/imports/{name}.md` under the same identity with phase `imports`)
 
-**What is NOT indexed**: planning, implementation, review. These phases describe execution, not knowledge. Searching them would surface task IDs and code fragments, not insight. Operational `.state/` files (migrations, environment-setup) are also excluded — only the two analysis cache filenames are accepted from `.state/`.
+**What is NOT indexed**: planning, implementation, review. These phases describe execution, not knowledge. Searching them would surface task IDs and code fragments, not insight. Operational `.state/` files (migrations, environment-setup) are also excluded — only the gap-analysis cache filename is accepted from `.state/`.
 
 ---
 

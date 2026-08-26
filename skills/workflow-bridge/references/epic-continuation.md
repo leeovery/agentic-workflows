@@ -30,7 +30,7 @@ On return, `new_arrivals` is populated — section F reads it to render the call
 
 ## C. Sequence Map
 
-A new topic may have arrived without a suggested execution order — from section B's analyses, or from a prior edit. Read `needs_sequencing` from the most recent discovery output (section B re-runs discovery when its analyses add topics, so it may be newer than A's).
+A new topic may have arrived without a suggested execution order — from section B's gap analysis, or from a prior edit. Read `needs_sequencing` from the most recent discovery output (section B re-runs discovery when the analysis adds topics, so it may be newer than A's).
 
 #### If `needs_sequencing` is true
 

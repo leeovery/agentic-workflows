@@ -30,8 +30,7 @@ const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 // Why each non-fresh lifecycle blocks a destructive op — mirrors the
 // conversational rejection phrasing in map-operations.md. Derived from the
 // actual research state, same honesty rule as the render-time tags: superseded
-// research is named as such, never as completed, and a handled topic claims
-// its research as kept record only when it completed or was superseded.
+// research is named as such, never as completed.
 /** @param {string} lifecycle @param {string|null} researchState */
 function lifecyclePhrase(lifecycle, researchState) {
   switch (lifecycle) {
@@ -42,10 +41,7 @@ function lifecyclePhrase(lifecycle, researchState) {
         ? 'its research was superseded and discussion is queued'
         : 'research has completed and discussion is queued';
     case 'decided': return 'discussion has concluded';
-    case 'handled':
-      return researchState === 'completed' || researchState === 'superseded'
-        ? 'it is closed as a dead end — its research stays on the map as record'
-        : 'it is closed as a dead end and stays on the map as record';
+    case 'handled': return 'it is closed as a dead end and stays on the map as record';
     default: return 'it has phase work in cancelled state and stays on the map as historical record'; // cancelled
   }
 }
@@ -195,7 +191,7 @@ function sequenceMap(cwd, workUnit, orders) {
  * artifacts already exist (absorb, pivot); it is mutually exclusive with
  * passing either field. Refuses an active duplicate, and a dismissed name
  * unless `forceDismissed` carries the user's confirmed re-add decision (the
- * entry is then pulled off the dismissed list so analyses treat the topic as
+ * entry is then pulled off the dismissed list so the analysis treats the topic as
  * live again). No git commit — the calling session's commit cadence picks the
  * change up.
  * @param {string} cwd project root
@@ -371,7 +367,7 @@ function editItem(cwd, workUnit, name, { summary, description } = {}) {
 
 /**
  * Hard-delete a fresh map item and push its name onto the dismissed list so
- * analyses won't auto-re-propose it. Fresh-only — anything further along
+ * the analysis won't auto-re-propose it. Fresh-only — anything further along
  * stays on the map (as work-in-flight or historical anchor). No git commit
  * for the map write itself; a roadmap join naming the topic is reverted (the
  * un-pull for a never-started topic) and that project-manifest write stages

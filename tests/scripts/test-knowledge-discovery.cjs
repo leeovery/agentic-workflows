@@ -77,7 +77,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec\n');
   writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth\n');
   writeFile(path.join(wf, 'payments', 'seeds', 'original-idea.md'), '# Idea\n');
-  writeFile(path.join(wf, 'payments', '.state', 'research-analysis.md'), '# RA\n');
+  writeFile(path.join(wf, 'payments', '.state', 'research-analysis.md'), '# retired cache — not indexable\n');
   writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
   writeFile(path.join(wf, 'payments', '.state', 'environment-setup.md'), '# not indexable\n');
   writeFile(path.join(wf, 'payments', '.state', 'coherence-analysis.md'), '# legacy cache — not indexable\n');
@@ -156,7 +156,6 @@ const EXPECTED = [
   { workUnit: 'login-timeout', phase: 'investigation', topic: 'login-timeout', file: '.workflows/login-timeout/investigation/login-timeout.md' },
   { workUnit: 'login-timeout', phase: 'seeds', topic: 'bug-report', file: '.workflows/login-timeout/seeds/bug-report.md' },
   { workUnit: 'payments', phase: 'analysis', topic: 'gap-analysis', file: '.workflows/payments/.state/discovery-gap-analysis.md' },
-  { workUnit: 'payments', phase: 'analysis', topic: 'research-analysis', file: '.workflows/payments/.state/research-analysis.md' },
   { workUnit: 'payments', phase: 'discovery', topic: 'session-001', file: '.workflows/payments/discovery/sessions/session-001.md' },
   { workUnit: 'payments', phase: 'discovery', topic: 'session-002', file: '.workflows/payments/discovery/sessions/session-002.md' },
   { workUnit: 'payments', phase: 'discussion', topic: 'ledger', file: '.workflows/payments/discussion/ledger.md' },
@@ -204,6 +203,11 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
 
   it('discovers exactly the expected identity + target set', () => {
     assert.deepStrictEqual(normalise(discoverArtifacts()), EXPECTED);
+  });
+
+  it('leaves the retired research-analysis cache undiscovered', () => {
+    const files = normalise(discoverArtifacts()).map((it) => it.file);
+    assert.ok(!files.includes('.workflows/payments/.state/research-analysis.md'));
   });
 
   it('accepts a pre-fetched manifest list and yields the identical set', () => {

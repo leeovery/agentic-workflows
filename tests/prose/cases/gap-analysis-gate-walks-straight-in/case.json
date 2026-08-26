@@ -1,0 +1,60 @@
+{
+  "origin": "topic-spawning (design/topic-spawning.md §2) deleted the approval gate's review/defer lead-in, leaving one line of count and then candidate 1. Nothing covered the gate at all — not the straight-in walk, not the approve/skip pair, not the staging clear. This also pins the crash-resume the deletion kept: a gate interrupted mid-walk re-presents its pending candidates without re-running the analysis. The analysis's own reading and staging is deliberately out of scope here — the fixture enters on the reuse branch, so what a fresh pass would surface is asserted nowhere and belongs to a case of its own",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-shared/references/topic-discovery.md",
+    "skills/workflow-shared/references/analysis-approval-gate.md",
+    "skills/workflow-shared/references/discovery-gap-analysis.md",
+    "skills/workflow-shared/references/sequence-discovery-map.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+  ],
+  "answers": [
+    "1 — continue the Search Relevance epic",
+    "y — yes, add it to the map",
+    "s — skip, we're not doing merchandiser reporting in this epic"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "presence scan search-relevance",
+      "manifest get search-relevance.discovery analysis_staging.discovery-gap-analysis",
+      "discovery-map add search-relevance signal-freshness-contract discussion --source gap-analysis",
+      "manifest push search-relevance.discovery dismissed search-analytics-dashboard",
+      "manifest delete search-relevance.discovery analysis_staging.discovery-gap-analysis",
+      "cache stamp search-relevance gap-analysis",
+      "discovery-map sequence search-relevance"
+    ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "manifest get search-relevance.discovery analysis_staging.discovery-gap-analysis",
+      "discovery-map add search-relevance signal-freshness-contract discussion --source gap-analysis",
+      "manifest push search-relevance.discovery dismissed search-analytics-dashboard",
+      "manifest delete search-relevance.discovery analysis_staging.discovery-gap-analysis",
+      "cache stamp search-relevance gap-analysis",
+      "discovery-map sequence search-relevance"
+    ],
+    "calls_exclude": [
+      "analysis_staging.research-analysis",
+      "analysis_staging.discovery-gap-analysis.gate_mode=gated",
+      "discovery-map add search-relevance search-analytics-dashboard",
+      "discovery-map remove",
+      "topic start",
+      "topic complete",
+      "agent dispatch",
+      "knowledge.cjs query"
+    ]
+  }
+}

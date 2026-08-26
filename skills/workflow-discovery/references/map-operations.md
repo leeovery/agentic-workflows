@@ -34,7 +34,7 @@ Then read the user's most recent message. Extract one or more operations. Recogn
 | *"rename X to Y"*                                          | Rename            | old name, new name     |
 | *"change routing of X to discussion"*                      | Change routing    | name, new routing      |
 | *"close X as a dead end"*, *"X is a dead end"*, *"mark X handled"* | Close as dead end | name                   |
-| *"reopen X"*, *"unhandle X"*                               | Reopen dead end   | name                   |
+| *"reopen X"*, *"unhandle X"*                               | Reopen            | name                   |
 
 If the message is ambiguous (e.g. *"fix X"*, *"that one looks wrong"*), ask one clarifying question before proceeding. No STOP gate is needed for clarification — it's part of conversational flow, not a manifest write.
 
@@ -60,7 +60,7 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 | Rename          | `fresh`            | all others                                                                  |
 | Change routing  | `fresh`            | all others (routing is implicit once a phase item exists)                   |
 | Close as dead end | any except `handled`, `cancelled` | `handled`, `cancelled`                                     |
-| Reopen dead end | `handled`          | all others                                                                  |
+| Reopen          | `handled`          | all others                                                                  |
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
 
@@ -87,7 +87,7 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 - `discussing` — `discussion is in flight on it`
 - `ready_for_discussion` — `research has completed and discussion is queued` (superseded research: `its research was superseded and discussion is queued`)
 - `decided` — `discussion has concluded`
-- `handled` — `it is closed as a dead end — its research stays on the map as record` (only when research completed or was superseded; otherwise `it is closed as a dead end and stays on the map as record`)
+- `handled` — `it is closed as a dead end and stays on the map as record`
 - `cancelled` — `it has phase work in cancelled state and stays on the map as historical record`
 
 `{recovery_pointer}`: for a `handled` target, `Say "reopen {topic}" to make it actionable again.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead.`
@@ -102,7 +102,7 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 
 `{marker_phrase}` examples:
 
-- Close as dead end on `handled` — `it's already closed as a dead end`
+- Close as dead end on `handled` — `it's already closed`
 - Close as dead end on `cancelled` — `it's cancelled; reactivate the phase work from the epic menu first`
 - Reopen on a non-`handled` lifecycle — `it isn't closed as a dead end, so there's nothing to reopen`
 
@@ -219,7 +219,7 @@ Render the proposal:
 Remove "{name}" from the map.
 
   Lifecycle: fresh — no work has started on this topic.
-  The name will be added to the dismissed list so analyses
+  The name will be added to the dismissed list so the analysis
   won't auto-re-propose it.
 ```
 
