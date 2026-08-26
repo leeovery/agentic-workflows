@@ -670,7 +670,7 @@ const RATCHET_PINS = {
   'skills/workflow-discovery/references/show-dismissed.md': 1,
   'skills/workflow-discussion-entry/references/gather-context-continue.md': 1,
   'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
-  'skills/workflow-discussion-process/references/closing-gates.md': 2,
+  'skills/workflow-discussion-process/references/closing-gates.md': 1,
   'skills/workflow-discussion-process/references/perspective-agents.md': 2,
   'skills/workflow-implementation-entry/references/check-dependencies.md': 4,
   'skills/workflow-implementation-process/SKILL.md': 1,

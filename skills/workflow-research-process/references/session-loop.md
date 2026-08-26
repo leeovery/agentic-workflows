@@ -36,6 +36,8 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
 7. **Continue** — Follow the conversation where it leads. If a tangent is promising, pursue it. If a thread is exhausted, move on. If earlier threads gain new context from what was just discussed, circle back.
 
+**A request to see or revisit what's been ruled out** — *"what have I ruled out?"* — reads the topic's dismissed grounds back (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} dismissed_grounds`); an entry the user wants back in play comes off with `manifest pull` on the same field, and later reviews stop carrying it.
+
 ## Navigating the Conversation
 
 Guidance on when to go deeper vs move on, when to challenge vs accept, when to synthesize vs keep exploring:

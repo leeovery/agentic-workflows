@@ -138,4 +138,4 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 For feature work types, deep-dive findings fold into the existing research file — there is only one research topic per feature.
 
-**Findings the user rejects**: nothing lands in the research file either way — the surfacing protocol's **Rejecting a raise** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
+**Findings the user rejects**: nothing lands in the research file either way — **Rejecting a raise** in **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.

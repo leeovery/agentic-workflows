@@ -48,6 +48,7 @@
       "manifest get search-relevance.research.vector-search-migration status",
       "topic queue search-relevance research vector-search-migration",
       "agent dispatch search-relevance research vector-search-migration --kind review",
+      "manifest get search-relevance.research.vector-search-migration dismissed_grounds",
       "agent ack search-relevance research vector-search-migration review-001 --clean",
       "render research-conclude-gate search-relevance.research.vector-search-migration --dead-end",
       "discovery-map handle search-relevance vector-search-migration",

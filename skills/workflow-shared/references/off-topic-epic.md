@@ -1,10 +1,10 @@
 # Off-Topic Concern — Epic
 
-*Shared reference. Loaded by the research and discussion epic sessions when an off-topic concern surfaces.*
+*Shared reference. Loaded by the research and discussion epic sessions when a concern belongs elsewhere on the map.*
 
 ---
 
-The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` — the session's own phase), and the `concern` with its discussed context. The concern is already judged off-topic for this session — on an epic it belongs to a sibling topic, existing or new. Offer the reroute, resolve the target yourself, and land the concern where it belongs.
+The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` — the session's own phase), the `concern` with its discussed context, and `reason` — `off-topic` (the default when omitted: a concern this session judged not its own) or `grown-thread` (a thread grown inside this topic that has earned a topic of its own). Either way the concern's home on an epic is a sibling topic, existing or new. Offer the reroute, resolve the target yourself, and land the concern where it belongs.
 
 **If the concern is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. Park it (born at the first park; the verb validates and self-commits), note it in the session's running record, and continue — capture-weight, never shaping:
 
@@ -28,6 +28,8 @@ node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 
 You hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The concern's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the concern. Don't put the reading back on the user. Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)** — the concern's nature decides, so the judgement holds whatever the target.
 
+On a `grown-thread` entry the current topic is never the answer — the thread grew here and a home of its own is the point, so the target is a sibling or the new name by construction.
+
 #### If the resolved target is the current topic
 
 It was a detail of this session's own topic after all, not a reroute — keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, fold it into the research file as a thread.
@@ -48,7 +50,7 @@ Two or more plausible homes and the conversation doesn't settle it. Set `resolut
 
 ## B. Offer the Reroute
 
-Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/reroute-offer.json` with the Write tool (`{"concern": "…", "target": "…", "landing_phase": "…"}` — the concern's short title, with `target` and `landing_phase` only when `resolution` is `clear`), then render it:
+Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/reroute-offer.json` with the Write tool (`{"concern": "…", "target": "…", "landing_phase": "…", "new_target": true, "grown": true}` — the concern's short title, with `target` and `landing_phase` only when `resolution` is `clear`; add `new_target` when the **A** map read showed no such topic, since the landing creates it, and `grown` when `reason` is `grown-thread`, which implies it), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render reroute-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/reroute-offer.json

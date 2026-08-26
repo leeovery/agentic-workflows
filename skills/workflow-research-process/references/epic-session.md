@@ -30,7 +30,7 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
 
 When a concern reads as off-topic, hold it with the full context discussed about it:
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, concern = `{the concern, with its discussed context}`.
+→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, concern = `{the concern, with its discussed context}`, reason = `off-topic`.
 
 → On return, proceed as the reference directed.
 
@@ -46,7 +46,7 @@ Either the session's written material keeps deepening ground that deserves a map
 
 Hold the thread with the full context worked out about it:
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, concern = `{the thread, with its worked-out context}`.
+→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, concern = `{the thread, with its worked-out context}`, reason = `grown-thread`.
 
 → On return, proceed as the reference directed.
 

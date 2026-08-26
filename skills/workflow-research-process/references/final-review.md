@@ -10,7 +10,7 @@ This flow runs once per "user signals done" entry during Step 6 (Research Sessio
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
-**A completed artifact carries no unowned threads.** Every gap this review surfaces resolves before conclusion: explored here (the session or a deep-dive), corrected in place, or routed to the topic that owns it — existing or newly created, confirmed with the user. Closing a finding by writing it into the file as unexplored material is not a resolution; unexplored notes serve nobody downstream.
+**A completed artifact carries no unowned threads.** Every gap this review surfaces resolves before conclusion: explored here (the session or a deep-dive), corrected in place, routed to the topic that owns it — existing or newly created, confirmed with the user — parked on the roadmap as a staged product capability, or rejected by you (*not now*, or dismissed for good — the review advises, and the conclusion is yours to call). Closing a finding by writing it into the file as unexplored material is not a resolution; unexplored notes serve nobody downstream.
 
 ## A. Check Review State
 

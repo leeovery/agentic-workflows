@@ -101,4 +101,4 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 **Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and record it on the Discussion Map as a `pending` subtopic (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
 
-**Findings the user rejects**: nothing lands in the discussion file either way — the surfacing protocol's **Rejecting a raise** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
+**Findings the user rejects**: nothing lands in the discussion file either way — **Rejecting a raise** in **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.

@@ -73,11 +73,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render candidate-gate {wo
 
 Emit the response's sections verbatim per their markers. The surface reads `gate_mode` from the `analysis_staging.discovery-gap-analysis` subtree and branches for you — an `auto` mode answers with the approval line, a `gated` mode with the menu.
 
-#### If the response carried the approval line
+#### If the response carried `DISPLAY: candidate approved`
 
 → Proceed to **C. Write Approved Candidate**.
 
-#### If the response carried the menu
+#### If the response carried `MENU: candidate gate`
 
 **STOP.** Wait for user response.
 
@@ -109,7 +109,7 @@ Revise this block's `routing`, `summary`, or `description` in the staging file p
 
 ## C. Write Approved Candidate
 
-Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status approved`), then write the discovery item from the block's stored fields:
+Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status approved`); on the auto path, emit the held approval-line section per its marker. Then write the discovery item from the block's stored fields:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {name} {routing} --source "gap-analysis" --summary "{summary}" --description "{description}"
