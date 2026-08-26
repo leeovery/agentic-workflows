@@ -10,6 +10,9 @@ importers:
 
   app:
     dependencies:
+      '@workflow-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       clsx:
         specifier: ^2.1.0
         version: 2.1.1

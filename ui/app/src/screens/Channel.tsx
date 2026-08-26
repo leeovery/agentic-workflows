@@ -2,15 +2,38 @@
 // panel (engine embed, artifacts, activity drawer) on the right. Threads
 // never expand inline; commits live in the drawer, never on the spine.
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { api, useLive, type ChannelData } from '../api';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { api, useLive, type ChannelData, type SessionData } from '../api';
 import { EngineEmbed } from '../components/EngineEmbed';
 import { SpineItem } from '../components/SpineItem';
+import { SessionHealthBadge } from '../components/SessionHealthBadge';
 
 export function Channel() {
   const { wu = '' } = useParams();
   const { data, error } = useLive<ChannelData>(() => api.channel(wu), [wu]);
+  const { data: sessionsData } = useLive<{ sessions: SessionData[] }>(() => api.sessions());
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const navigate = useNavigate();
+
+  const channelSessions = (sessionsData?.sessions ?? []).filter(
+    (s) => s.address.workUnit === wu && s.state !== 'ended',
+  );
+  const drive = async () => {
+    if (channelSessions.length > 0) {
+      navigate(`/s/${channelSessions[0]!.bridgeSessionId}`);
+      return;
+    }
+    setStarting(true);
+    try {
+      // The session's own start overview carries the continue routes — the
+      // human navigates by answering its card (no second routing source).
+      const res = await api.startSession({ workUnit: wu }, '/workflow-start');
+      navigate(`/s/${res.bridgeSessionId}`);
+    } finally {
+      setStarting(false);
+    }
+  };
 
   if (error) return <div className="p-8 font-sans text-sm text-blocked">{error}</div>;
   if (!data) return <div className="p-8 font-sans text-sm text-stone-400">…</div>;
@@ -24,6 +47,18 @@ export function Channel() {
             {data.workType}
           </span>
           <span className="font-mono text-xs text-stone-500">{data.status}</span>
+          {channelSessions.map((s) => (
+            <Link key={s.bridgeSessionId} to={`/s/${s.bridgeSessionId}`}>
+              <SessionHealthBadge state={s.state} error={s.lastError} />
+            </Link>
+          ))}
+          <button
+            onClick={drive}
+            disabled={starting}
+            className="ml-auto rounded px-2.5 py-1 text-xs font-sans bg-nav text-white disabled:opacity-40"
+          >
+            {starting ? 'starting…' : channelSessions.length > 0 ? 'open session' : 'drive from here'}
+          </button>
         </header>
 
         <section>

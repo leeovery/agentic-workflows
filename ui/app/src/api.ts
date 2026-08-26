@@ -45,12 +45,88 @@ async function getJson<T>(url: string): Promise<T> {
   return res.json();
 }
 
+// The bearer token for mutating calls and the event stream (trust boundary).
+let tokenPromise: Promise<string | null> | null = null;
+export function bridgeToken(): Promise<string | null> {
+  if (!tokenPromise) {
+    tokenPromise = fetch('/api/token')
+      .then((r) => r.json())
+      .then((b) => b.token ?? null)
+      .catch(() => null);
+  }
+  return tokenPromise;
+}
+
+async function postJson<T>(url: string, body: Record<string, unknown>): Promise<T> {
+  const token = await bridgeToken();
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok && res.status !== 409) throw new Error(json.error ?? `${url}: ${res.status}`);
+  return json;
+}
+
+export type GateCardData = {
+  id: string;
+  kind: string;
+  source: string;
+  surface?: string;
+  question?: string;
+  context: string;
+  options: { key: string; word?: string; label: string; recommended: boolean; form: string }[];
+  confirm: 'tap' | 'typed';
+  state: string;
+  address: { workUnit?: string; topic?: string; phase?: string };
+  session: { bridgeSessionId: string; askOrdinal: number };
+  openedAt: string;
+  relayDiverged?: boolean;
+};
+
+export type QueueRowData = {
+  tier: 'live' | 'durable';
+  kind: string;
+  address: { workUnit?: string; topic?: string; phase?: string };
+  stage: 0 | 1 | 2;
+  since: string;
+  detail: string;
+  gateId?: string;
+  bridgeSessionId?: string;
+  askPreview?: string;
+};
+
+export type SessionData = {
+  bridgeSessionId: string;
+  address: { workUnit?: string; topic?: string; phase?: string };
+  state: string;
+  openGate: GateCardData | null;
+  lastError?: string;
+};
+
+export type ThreadData = {
+  state: string;
+  openGate: GateCardData | null;
+  lastError?: string;
+  records: Record<string, any>[];
+  asks: { ordinal: number; gateId: string; answered: boolean; kind: string }[];
+};
+
 export const api = {
   health: () => getJson<Health>('/health'),
   lobby: () => getJson<LobbyData>('/api/lobby'),
   channel: (wu: string) => getJson<ChannelData>(`/api/channel/${encodeURIComponent(wu)}`),
   artifact: (wu: string, path: string) =>
     getJson<ArtifactData>(`/api/artifact/${encodeURIComponent(wu)}?path=${encodeURIComponent(path)}`),
+  queue: () => getJson<{ rows: QueueRowData[] }>('/api/queue'),
+  sessions: () => getJson<{ sessions: SessionData[] }>('/api/sessions'),
+  thread: (id: string) => getJson<ThreadData>(`/api/session/${encodeURIComponent(id)}/thread`),
+  startSession: (address: Record<string, unknown>, entryPrompt?: string) =>
+    postJson<{ bridgeSessionId: string; state: string }>(`/api/session/start`, { address, entryPrompt }),
+  answerGate: (gateId: string, text: string, bridgeSessionId?: string) =>
+    postJson<{ ok: boolean; state: string; reason?: string }>(`/api/gate/${gateId}/answer`, { text, bridgeSessionId }),
+  endSession: (id: string) => postJson<{ ok: boolean }>(`/api/session/${encodeURIComponent(id)}/end`, {}),
 };
 
 // One shared SSE subscription; consumers register a refetch callback that
@@ -59,9 +135,9 @@ type Listener = () => void;
 const listeners = new Set<Listener>();
 let source: EventSource | null = null;
 
-function ensureStream(): void {
-  if (source) return;
-  source = new EventSource('/events');
+async function openStream(): Promise<void> {
+  const token = await bridgeToken();
+  source = new EventSource(token ? `/events?token=${token}` : '/events');
   let timer: ReturnType<typeof setTimeout> | null = null;
   const poke = () => {
     if (timer) clearTimeout(timer);
@@ -82,6 +158,13 @@ function ensureStream(): void {
   source.onerror = () => {
     // EventSource auto-reconnects; nothing to do but wait.
   };
+}
+
+let streamStarted = false;
+function ensureStream(): void {
+  if (streamStarted) return;
+  streamStarted = true;
+  void openStream();
 }
 
 export function useLive<T>(fetcher: () => Promise<T>, deps: unknown[] = []): {

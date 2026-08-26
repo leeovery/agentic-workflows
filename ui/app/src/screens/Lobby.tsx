@@ -2,9 +2,11 @@
 // (project · bridge health · knowledge state), WORK cards, START (inbox count,
 // roadmap horizons, baseline), plus the designed empty and knowledge-not-ready
 // states. NEEDS YOU and TODAY arrive with Phases 2–3.
-import { Link } from 'react-router-dom';
-import { api, useLive, type Health, type LobbyData } from '../api';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { api, useLive, type Health, type LobbyData, type SessionData } from '../api';
 import { EngineEmbed } from '../components/EngineEmbed';
+import { SessionHealthBadge } from '../components/SessionHealthBadge';
 
 const GROUPS: [string, string][] = [
   ['epics', 'epic'],
@@ -17,6 +19,28 @@ const GROUPS: [string, string][] = [
 export function Lobby() {
   const { data: lobby, error } = useLive<LobbyData>(() => api.lobby());
   const { data: health } = useLive<Health>(() => api.health());
+  const { data: sessionsData } = useLive<{ sessions: SessionData[] }>(() => api.sessions());
+  const [starting, setStarting] = useState(false);
+  const navigate = useNavigate();
+
+  // The lobby holds at most one shaping session per human (spec 2): reuse a
+  // live lobby-addressed session rather than starting a second.
+  const lobbySessions = (sessionsData?.sessions ?? []).filter(
+    (s) => !s.address.workUnit && s.state !== 'ended',
+  );
+  const startShaping = async () => {
+    if (lobbySessions.length > 0) {
+      navigate(`/s/${lobbySessions[0]!.bridgeSessionId}`);
+      return;
+    }
+    setStarting(true);
+    try {
+      const res = await api.startSession({}, '/workflow-start');
+      navigate(`/s/${res.bridgeSessionId}`);
+    } finally {
+      setStarting(false);
+    }
+  };
 
   if (error) return <div className="p-8 font-sans text-sm text-blocked">bridge unreachable: {error}</div>;
   if (!lobby) return <div className="p-8 font-sans text-sm text-stone-400">…</div>;
@@ -97,9 +121,37 @@ export function Lobby() {
       {/* Engine's own overview — the reference rendering. */}
       {lobby.overviewRender && <EngineEmbed text={lobby.overviewRender} label="engine · overview" />}
 
-      {/* START — project-level tier (read-only rows; actions arrive P2/P6) */}
+      {/* Sessions this bridge is driving. */}
+      {(sessionsData?.sessions ?? []).filter((s) => s.state !== 'ended').length > 0 && (
+        <section>
+          <div className="region-label mb-2">Sessions</div>
+          <div className="space-y-1.5">
+            {(sessionsData?.sessions ?? [])
+              .filter((s) => s.state !== 'ended')
+              .map((s) => (
+                <Link key={s.bridgeSessionId} to={`/s/${s.bridgeSessionId}`} className="flex items-center gap-2 text-sm font-sans text-nav hover:underline">
+                  {s.address.workUnit ? `#${s.address.workUnit}` : 'shaping thread'}
+                  <SessionHealthBadge state={s.state} error={s.lastError} />
+                </Link>
+              ))}
+          </div>
+        </section>
+      )}
+
+      {/* START — project-level tier: the shaping thread lives here */}
       <section>
         <div className="region-label mb-2">Start</div>
+        <button
+          onClick={startShaping}
+          disabled={starting}
+          className="mb-2 rounded px-3 py-1.5 text-sm font-sans bg-nav text-white disabled:opacity-40"
+        >
+          {starting
+            ? 'starting…'
+            : lobbySessions.length > 0
+              ? 'continue the shaping thread'
+              : 'start something — a session begins here'}
+        </button>
         <div className="space-y-1.5 text-sm font-sans text-stone-600 dark:text-stone-400">
           <div>
             Inbox: <span className="font-mono">{lobby.detail?.inbox?.total_count ?? 0}</span> item(s)
