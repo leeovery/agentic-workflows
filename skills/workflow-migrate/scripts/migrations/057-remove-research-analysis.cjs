@@ -27,6 +27,7 @@ const { execFileSync } = require('child_process');
 module.exports = {
   id: '057',
   description: 'remove research-analysis manifest fields, .state files, and knowledge-base chunks',
+  info: 'The boot-time research analysis was removed — completed research now feeds its topics by reference, and the gap analysis is the sole boot-time analysis. This migration deletes the retired analysis\'s residue per work unit: the phases.research.analysis_cache manifest field, the research-analysis key in the shared analysis_staging container (and the container when it empties), the .state/research-analysis.md and .state/research-analysis-candidates.md files, and the cache file\'s knowledge-base chunks.',
   run({ projectDir, reportUpdate, reportSkip }) {
     const workflowsDir = path.join(projectDir, '.workflows');
     let entries;
@@ -43,6 +44,8 @@ module.exports = {
     const storeExists = fs.existsSync(path.join(workflowsDir, '.knowledge'));
 
     let touched = false;
+    /** @type {string[]} */
+    const purgedUnits = [];
     for (const entry of entries) {
       if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
       const workUnit = entry.name;
@@ -96,8 +99,18 @@ module.exports = {
       if (changed) {
         reportUpdate();
         touched = true;
+        if (storeExists) purgedUnits.push(workUnit);
       }
     }
-    if (!touched) reportSkip();
+    if (!touched) {
+      reportSkip();
+      return;
+    }
+    if (purgedUnits.length === 0) return;
+    // The KB purge is the one silent-failure path — the shell-out degrades
+    // without reporting, so chunks can survive it. Hand the check over.
+    return {
+      verify: `The knowledge-base purge degrades silently, so confirm it landed for: ${purgedUnits.join(', ')}. Query the store for lingering analysis chunks (node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "research analysis" — any hit whose Source is .workflows/{wu}/.state/research-analysis.md is a straggler) and remove any with: node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {wu} --phase analysis --topic research-analysis.`,
+    };
   },
 };

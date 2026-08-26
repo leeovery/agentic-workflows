@@ -38,7 +38,7 @@ cp.execFileSync = realExecFileSync;
 let dir, updates, skips;
 
 function run() {
-  MIGRATION.run({ projectDir: dir, reportUpdate: () => { updates++; }, reportSkip: () => { skips++; } });
+  return MIGRATION.run({ projectDir: dir, reportUpdate: () => { updates++; }, reportSkip: () => { skips++; } });
 }
 
 function writeUnit(name, manifest) {
@@ -204,5 +204,25 @@ describe('migration 057: remove research-analysis residue', () => {
     assert.strictEqual(updates, 0);
     assert.strictEqual(skips, 1);
     assert.strictEqual(JSON.stringify(readUnit('pay')), after);
+  });
+
+  it('verify addendum: fires naming purged units when the store exists', () => {
+    writeUnit('pay', analysedManifest());
+    fs.mkdirSync(path.join(dir, '.workflows', '.knowledge'), { recursive: true });
+    const ret = run();
+    assert.match(ret.verify, /confirm it landed for: pay/);
+    assert.match(ret.verify, /remove --work-unit \{wu\} --phase analysis --topic research-analysis/);
+  });
+
+  it('verify addendum: absent when no store exists (no chunks can linger)', () => {
+    writeUnit('pay', analysedManifest());
+    const ret = run();
+    assert.strictEqual(ret, undefined);
+  });
+
+  it('verify addendum: absent on the clean-skip path', () => {
+    writeUnit('pay', { name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} });
+    const ret = run();
+    assert.strictEqual(ret, undefined);
   });
 });
