@@ -897,7 +897,7 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
 /**
  * Cancel an epic topic: stash the current status into `previous_status`, set
  * `status: cancelled`, drop the topic's discovery-map `order`, remove its
- * knowledge-base chunks (warn-don't-block), commit scoped to the work unit.
+ * knowledge-base chunks (warn-don't-block), commit the manifest write.
  *
  * Cancelling a discussion a live specification sources collapses that spec:
  * the bare cancel refuses, naming the affected spec item(s); `cascade: true`
@@ -988,9 +988,12 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   const lifecycleAfter = computeTopicLifecycle(loadWorkUnitManifest(cwd, workUnit), topic).lifecycle;
   const reverted = lifecycleAfter === 'cancelled' ? revertJoins(cwd, workUnit, { topic }) : [];
 
+  // A cancel writes the work-unit manifest (and the project manifest when a
+  // roadmap join reverted) and nothing else on disk — it runs from the epic
+  // menu, beside sessions holding the unit's other topics.
   const cancelSpec = reverted.length > 0
-    ? [`.workflows/${workUnit}`, '.workflows/manifest.json']
-    : `.workflows/${workUnit}`;
+    ? [`.workflows/${workUnit}/manifest.json`, '.workflows/manifest.json']
+    : `.workflows/${workUnit}/manifest.json`;
   const outcome = commitTailWithKb(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${phase})`, warnings);
   /** @type {TopicTransitionResult} */
   const result = { topic, phase, status: 'cancelled', committed: outcome.committed, warnings };
@@ -1004,8 +1007,8 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
 /**
  * Reactivate a cancelled epic topic: restore `previous_status` to `status`,
  * delete the stash, re-index the artifact when the restored status is
- * `completed` in an indexed phase (warn-don't-block), commit scoped to the
- * work unit.
+ * `completed` in an indexed phase (warn-don't-block), commit the manifest
+ * write.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -1065,7 +1068,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
     knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
   }
 
-  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate ${topic} (${phase})`, warnings);
+  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${phase})`, warnings);
   /** @type {TopicTransitionResult} */
   const result = { topic, phase, status: restored, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
