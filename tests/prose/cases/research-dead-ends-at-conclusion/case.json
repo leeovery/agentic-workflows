@@ -53,8 +53,7 @@
       "render research-conclude-gate search-relevance.research.vector-search-migration --dead-end",
       "discovery-map handle search-relevance vector-search-migration",
       "topic complete search-relevance research vector-search-migration",
-      "research(search-relevance): complete vector-search-migration research",
-      "presence clear search-relevance research vector-search-migration"
+      "research(search-relevance): complete vector-search-migration research"
     ],
     "calls_in_order": [
       "manifest get search-relevance.research.vector-search-migration status",

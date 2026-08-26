@@ -8,7 +8,7 @@
 
 Not a rigid checklist — a natural cadence for productive research conversations:
 
-1. **Check for findings** — Beat presence first, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} research {topic}` — before the gated checks below: any of them can end in a STOP that closes the turn, and the beat must not miss its iteration.
+1. **Check for findings** — anything waiting is surfaced before the conversation moves on.
 
    Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. Its offer and raise gates end the turn — the agent checks below wait for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
 

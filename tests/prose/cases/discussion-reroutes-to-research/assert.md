@@ -34,8 +34,8 @@ The prose should have taken this path:
    gates run the review machinery per the conduct (the stubbed review
    returns clean), the conclude gate finds the queue still empty, and
    the discussion completes with the `--kb` commit
-8. presence clears, the sweep finds no leavings, and the walk stops
-   at the bridge invocation
+8. the sweep finds no leavings, and the walk stops at the bridge
+   invocation
 
 Further claims:
 
