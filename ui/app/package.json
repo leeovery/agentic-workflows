@@ -1,0 +1,11 @@
+{
+  "name": "@workflow-ui/app",
+  "private": true,
+  "version": "0.0.0",
+  "description": "SPA shell — empty until Phase 1 (the mirror).",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"app: no tests until Phase 1\"",
+    "typecheck": "echo \"app: no sources until Phase 1\""
+  }
+}

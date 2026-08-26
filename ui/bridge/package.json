@@ -1,0 +1,29 @@
+{
+  "name": "@workflow-ui/bridge",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Bridge daemon — turns the project's existing surfaces into a typed event stream.",
+  "type": "module",
+  "bin": {
+    "bridge": "./src/cli.ts"
+  },
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@workflow-ui/shared": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "chokidar": "^4.0.0",
+    "drizzle-orm": "^0.38.0",
+    "tsx": "^4.19.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
