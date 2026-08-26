@@ -63,7 +63,7 @@ Briefs (`discovery/briefs/`) are views — regenerated at each harvest, never re
 Apply corrections directly to the file, then commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "docs(discovery/{work_unit}): reconcile session log with conversation"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "docs(discovery/{work_unit}): reconcile session log with conversation" --discovery
 ```
 
 → Proceed to **D. Brief the User**.

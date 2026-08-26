@@ -154,7 +154,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit
 Single commit covering all writes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): backfill {N} discovery provenance field(s) from source files"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): backfill {N} discovery provenance field(s) from source files" --discovery
 ```
 
 → Return to caller.
