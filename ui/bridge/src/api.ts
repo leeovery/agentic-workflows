@@ -12,6 +12,9 @@ import type { EventStore } from './store.js';
 import { snapshotTree } from './snapshot.js';
 import { attachDerived } from './spine.js';
 import { durableRows, durableCounts } from './durable.js';
+import { buildQueue } from './queue.js';
+import { checkToken } from './auth.js';
+import type { SessionManager } from './sessions.js';
 import { SPINE_EVENT_TYPES } from '@workflow-ui/shared';
 
 export type ApiDeps = {
@@ -19,6 +22,9 @@ export type ApiDeps = {
   engine: EngineAdapter | null;
   store: EventStore | null;
   knowledgePath: string | null; // knowledge.cjs of the installed product
+  sessions?: SessionManager | null;
+  token?: string;
+  readOnlyMirror?: { host: string } | null; // lease not held — no writes
 };
 
 type Json = Record<string, unknown>;
@@ -68,12 +74,52 @@ export async function handleApi(
 ): Promise<boolean> {
   if (!url.pathname.startsWith('/api/')) return false;
   if (req.method !== 'GET') {
-    send(res, 405, { error: 'read-only surface' });
+    // Mutating routes: bearer token (the trust boundary) + a driving lease.
+    if (req.method !== 'POST') {
+      send(res, 405, { error: 'method not allowed' });
+      return true;
+    }
+    if (!deps.token || !checkToken(req, url, deps.token)) {
+      send(res, 401, { error: 'token required' });
+      return true;
+    }
+    if (deps.readOnlyMirror) {
+      send(res, 409, { error: `read-only mirror — driven from ${deps.readOnlyMirror.host}` });
+      return true;
+    }
+    await handleMutation(url, req, res, deps);
     return true;
   }
   try {
     if (url.pathname === '/api/lobby') {
       await lobby(res, deps);
+      return true;
+    }
+    if (url.pathname === '/api/token') {
+      // Same-origin pages only (Host+Origin checked upstream) — hands the
+      // SPA its bearer token for mutating calls.
+      send(res, 200, { token: deps.token ?? null });
+      return true;
+    }
+    if (url.pathname === '/api/queue') {
+      await queueView(res, deps);
+      return true;
+    }
+    if (url.pathname === '/api/sessions') {
+      send(res, 200, { sessions: publicSessions(deps) });
+      return true;
+    }
+    const thread = url.pathname.match(/^\/api\/session\/([^/]+)\/thread$/);
+    if (thread && deps.sessions) {
+      const t = deps.sessions.transcript(decodeURIComponent(thread[1]!));
+      const row = deps.sessions.get(decodeURIComponent(thread[1]!));
+      send(res, 200, {
+        state: row?.state ?? 'dead',
+        openGate: row?.openGate ?? null,
+        lastError: row?.lastError,
+        records: t.records,
+        asks: t.asks.map((a) => ({ ordinal: a.ordinal, gateId: a.gateId, answered: a.answered, kind: a.detection.kind })),
+      });
       return true;
     }
     const channel = url.pathname.match(/^\/api\/channel\/([^/]+)$/);
@@ -102,6 +148,101 @@ export async function handleApi(
     send(res, 500, { error: String((err as Error).message ?? err) });
     return true;
   }
+}
+
+function publicSessions(deps: ApiDeps): unknown[] {
+  if (!deps.sessions) return [];
+  return deps.sessions.list().map((s) => ({
+    bridgeSessionId: s.bridgeSessionId,
+    address: s.address,
+    state: s.state,
+    openGate: s.openGate,
+    lastError: s.lastError,
+  }));
+}
+
+async function queueView(res: http.ServerResponse, deps: ApiDeps): Promise<void> {
+  const snap = snapshotTree(deps.projectRoot);
+  if (deps.engine) await attachDerived(snap, deps.engine);
+  const rows = buildQueue(durableRows(snap, deps.projectRoot), deps.sessions ?? null, deps.store);
+  send(res, 200, { rows });
+}
+
+async function handleMutation(
+  url: URL,
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  deps: ApiDeps,
+): Promise<void> {
+  if (!deps.sessions) {
+    send(res, 503, { error: 'session manager unavailable' });
+    return;
+  }
+  const body = await readBody(req);
+
+  if (url.pathname === '/api/session/start') {
+    const address = (body.address ?? {}) as { workUnit?: string; topic?: string; phase?: string };
+    const entryPrompt = typeof body.entryPrompt === 'string' && body.entryPrompt.trim() !== ''
+      ? body.entryPrompt
+      : '/workflow-start';
+    const row = await deps.sessions.start(address, entryPrompt);
+    send(res, 200, {
+      bridgeSessionId: row.bridgeSessionId,
+      state: row.state,
+      openGate: row.openGate,
+      lastError: row.lastError,
+    });
+    return;
+  }
+
+  const answer = url.pathname.match(/^\/api\/gate\/([0-9a-f]{16})\/answer$/);
+  if (answer) {
+    const gateId = answer[1]!;
+    const text = String(body.text ?? '');
+    if (text.trim() === '') {
+      send(res, 400, { error: 'empty answer' });
+      return;
+    }
+    const holder = deps.sessions.list().find((s) => s.openGate?.id === gateId)
+      ?? deps.sessions.list().find((s) => s.bridgeSessionId === body.bridgeSessionId);
+    if (!holder) {
+      send(res, 404, { error: 'no session holds this gate' });
+      return;
+    }
+    const result = await deps.sessions.answer(holder.bridgeSessionId, gateId, text, 'ui');
+    const row = deps.sessions.get(holder.bridgeSessionId);
+    send(res, result.ok ? 200 : 409, {
+      ...result,
+      session: row ? { state: row.state, openGate: row.openGate, lastError: row.lastError } : null,
+    });
+    return;
+  }
+
+  const end = url.pathname.match(/^\/api\/session\/([^/]+)\/end$/);
+  if (end) {
+    await deps.sessions.end(decodeURIComponent(end[1]!));
+    send(res, 200, { ok: true });
+    return;
+  }
+
+  send(res, 404, { error: 'unknown mutation' });
+}
+
+function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', (c) => {
+      data += c;
+      if (data.length > 1_000_000) req.destroy();
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(data || '{}'));
+      } catch {
+        resolve({});
+      }
+    });
+  });
 }
 
 async function lobby(res: http.ServerResponse, deps: ApiDeps): Promise<void> {

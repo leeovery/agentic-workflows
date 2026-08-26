@@ -232,23 +232,20 @@ export type TurnView = {
   ended: boolean;
 };
 
-export type Detection =
-  | {
-      kind: GateKind;
-      source: 'tool-result' | 'relay' | 'prose';
-      surface?: string;
-      question?: string;
-      options: GateOption[];
-      context: string;
-      confirm: 'tap' | 'typed';
-      gateType?: string;
-      /** Identity input: section extent (tool-result) or option block (grammar). */
-      identityBody: string;
-      /** For tool-result cards: the model's relay diverged from the section. */
-      relayDiverged?: boolean;
-    }
-  | { kind: 'pass-through'; source: 'prose'; options: []; context: string; confirm: 'tap'; identityBody: string }
-  | null;
+export type Detection = {
+  kind: GateKind;
+  source: 'tool-result' | 'relay' | 'prose';
+  surface?: string;
+  question?: string;
+  options: GateOption[];
+  context: string;
+  confirm: 'tap' | 'typed';
+  gateType?: string;
+  /** Identity input: section extent (tool-result) or option block (grammar). */
+  identityBody: string;
+  /** For tool-result cards: the model's relay diverged from the section. */
+  relayDiverged?: boolean;
+} | null;
 
 export function detectAsk(turn: TurnView): Detection {
   if (turn.ended) return null;

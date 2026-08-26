@@ -11,6 +11,7 @@ import type { RawEvent } from './derive.js';
 import type { Handshake } from './version.js';
 import type { Db } from './db.js';
 import { handleApi, serveStatic, type ApiDeps } from './api.js';
+import { checkRequestOrigin, checkToken } from './auth.js';
 
 const APP_DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'app', 'dist');
 
@@ -71,6 +72,24 @@ export class BridgeServer {
 
   private route(req: http.IncomingMessage, res: http.ServerResponse): void {
     const url = new URL(req.url ?? '/', 'http://localhost');
+    // The local trust boundary: every request passes the Host allowlist
+    // (DNS-rebinding defence) and, when an Origin header is present, the
+    // local-origin allowlist.
+    const origin = checkRequestOrigin(req);
+    if (!origin.ok) {
+      res.writeHead(403, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: origin.reason }));
+      return;
+    }
+    // The event stream carries repo content — token-gated when one is set
+    // (query param: EventSource cannot set headers).
+    if (url.pathname === '/events' && this.opts.api?.token) {
+      if (!checkToken(req, url, this.opts.api.token)) {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'token required' }));
+        return;
+      }
+    }
     if (this.opts.api && url.pathname.startsWith('/api/')) {
       handleApi(url, req, res, this.opts.api).catch((err) => {
         logger.error('api route failed', { path: url.pathname, error: String(err) });
@@ -211,7 +230,8 @@ const DEBUG_CONSOLE_HTML = `<!doctype html>
     document.getElementById('costs').textContent = JSON.stringify(c, null, 2);
   }
   refresh(); setInterval(refresh, 5000);
-  const ev = new EventSource('/events');
+  fetch('/api/token').then(r => r.json()).catch(() => ({ token: null })).then(({ token }) => {
+  const ev = new EventSource(token ? '/events?token=' + token : '/events');
   ev.onmessage = (m) => {
     const e = JSON.parse(m.data);
     const el = document.createElement('pre');
@@ -230,4 +250,5 @@ const DEBUG_CONSOLE_HTML = `<!doctype html>
     box.prepend(el);
     while (box.children.length > 200) box.lastChild.remove();
   };
+  });
 </script>`;

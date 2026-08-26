@@ -102,10 +102,12 @@ describe('read-only API', () => {
     expect(nonMd.status).toBe(400);
   });
 
-  it('unknown unit 404s; writes are refused', async () => {
+  it('unknown unit 404s; writes without a token are refused', async () => {
     expect((await get('/api/channel/nope')).status).toBe(404);
     const post = await fetch(`http://127.0.0.1:${PORT}/api/lobby`, { method: 'POST' });
-    expect(post.status).toBe(405);
+    expect(post.status).toBe(401); // the trust boundary: no token, no mutation
+    const put = await fetch(`http://127.0.0.1:${PORT}/api/lobby`, { method: 'PUT' });
+    expect(put.status).toBe(405);
   });
 
   it('epic channel answers with engine-lifecycle threads (the round-7 500 regression)', async () => {

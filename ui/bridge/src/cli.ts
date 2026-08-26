@@ -14,10 +14,28 @@ import { Watcher } from './watch.js';
 import { openDb, type Db } from './db.js';
 import { EventStore } from './store.js';
 import { BridgeServer, type HealthState } from './server.js';
+import { acquireLease, releaseLease } from './lease.js';
+import { loadOrMintToken } from './auth.js';
+import { generateAllowlist } from './allowlist.js';
+import { SessionManager, SdkDriver } from './sessions.js';
 import { Replayer } from './replay.js';
 import { convertTranscript, deriveAnswers, snapshotWorld } from './convert.js';
 import { logger } from './log.js';
 import type { RawEvent } from './derive.js';
+
+function loadBridgeId(stateDir: string): string {
+  const p = path.join(stateDir, 'bridge-id');
+  try {
+    const id = fs.readFileSync(p, 'utf8').trim();
+    if (id) return id;
+  } catch {
+    /* mint */
+  }
+  const id = `bridge-${crypto.randomBytes(6).toString('hex')}`;
+  fs.mkdirSync(stateDir, { recursive: true });
+  fs.writeFileSync(p, id);
+  return id;
+}
 
 function defaultStateDir(projectRoot: string): string {
   const slug = path.basename(projectRoot).replace(/[^a-zA-Z0-9-]/g, '_');
@@ -131,6 +149,32 @@ async function runLive(projectRoot: string): Promise<void> {
     ? path.resolve(enginePath, '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs')
     : null;
 
+  // The trust boundary + the bridge lease. A bridge that cannot take the
+  // lease runs as a read-only mirror with a banner — no sessions, no pushes.
+  const token = loadOrMintToken(stateDir);
+  const bridgeId = loadBridgeId(stateDir);
+  let mirror: { host: string } | null = null;
+  let sessions: SessionManager | null = null;
+  if (hs.mode === 'full') {
+    const lease = acquireLease(projectRoot, bridgeId);
+    if (!lease.held) {
+      mirror = { host: lease.holder?.host ?? 'unknown' };
+      hs.bannerReasons.push(`another bridge is driving this project${mirror.host ? ` from ${mirror.host}` : ''} — read-only mirror`);
+      logger.warn('bridge lease not held — read-only mirror', { holder: lease.holder });
+    } else {
+      sessions = new SessionManager(db, new SdkDriver(arg('session-model')), {
+        projectRoot,
+        project,
+        bridgeId,
+        journalsDir: path.join(stateDir, 'journals'),
+        allowedTools: generateAllowlist(projectRoot),
+        displayWidth: WIDTH,
+        enginePath,
+      });
+      sessions.restore();
+    }
+  }
+
   const server = new BridgeServer({
     port: Number(arg('port') ?? config.port),
     store,
@@ -140,6 +184,9 @@ async function runLive(projectRoot: string): Promise<void> {
       engine: engine ?? null,
       store,
       knowledgePath: knowledgePath && fs.existsSync(knowledgePath) ? knowledgePath : null,
+      sessions,
+      token,
+      readOnlyMirror: mirror,
     },
     health: (): HealthState => ({
       ok: true,
@@ -232,8 +279,33 @@ async function runLive(projectRoot: string): Promise<void> {
   });
   watcher.start();
 
+  // Session/gate transitions ride the live layer (spec 3: the ledger is the
+  // durable record; the stream carries freshness).
+  if (sessions) {
+    const mkLive = (type: string, address: Record<string, unknown>, payload: Record<string, unknown>) => ({
+      id: crypto.createHash('sha256').update(`${type}\n${crypto.randomUUID()}`).digest('hex').slice(0, 16),
+      epoch: epoch ?? 'live-only',
+      live: true as const,
+      ts: new Date().toISOString(),
+      project,
+      type,
+      address,
+      payload,
+    });
+    sessions.on('gate', (ev: { type: string; card?: any; gateId?: string; via?: string; bridgeSessionId: string }) => {
+      const payload = ev.card ? { card: ev.card } : { gateId: ev.gateId, via: ev.via ?? 'ui' };
+      const type = ev.type === 'gate.opened' || ev.type === 'gate.answered' || ev.type === 'gate.resolved' ? ev.type : 'gate.resolved';
+      server.broadcast([mkLive(type, ev.card?.address ?? {}, payload) as any]);
+    });
+    sessions.on('session', (ev: { type: string; bridgeSessionId: string; address?: any }) => {
+      const type = ev.type === 'session.started' ? 'session.started' : 'session.ended';
+      server.broadcast([mkLive(type, ev.address ?? {}, { address: ev.address ?? {}, bridgeSessionId: ev.bridgeSessionId }) as any]);
+    });
+  }
+
   const shutdown = async () => {
     logger.info('shutting down');
+    releaseLease(projectRoot, bridgeId);
     await watcher?.close();
     server.close();
     process.exit(0);
