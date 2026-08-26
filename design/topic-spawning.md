@@ -367,3 +367,25 @@ Landed as stack #1017 off main (the design PR stays standalone):
   after merge and release, with fast fixes to follow. `select --diff
   main` flags ~85 cases, inflated by every fixture world now running
   migration 057.
+
+## Amendment — 2026-08-26: triage everywhere, spawn removed
+
+The review pass surfaced the inconsistency that killed spawn: layer 2
+had already made triage the carrier for review-noticed threads (the
+route lane delivers to new topics through triage-landing), so a
+session-noticed grown thread took a different carrier — spawn — only
+because a different surface noticed it. And after §7's provenance-walk
+extension, a triage-created topic gets the same discussion-time
+parent-read spawn promised, making the carriers near-isomorphic. The
+ruling: whether the target exists is irrelevant; knowledge moves one
+way — as a rich concern into the target's triage queue, the target
+created when nothing fits, the drain the structured pickup.
+
+Landed as layer 6 (#1021): topic-spawning.md and the spawn-offer
+surface deleted; the grown-thread trigger routes through the shared
+off-topic reroute; the deep-dive promotion converts to a triage
+delivery (the concern carries the findings' full substance — the cache
+report is purged at close); `spawn:{parent}` leaves the vocabulary,
+never having shipped. §5's spawn design and the spawn-related test
+footprint entries are superseded by this amendment; the model section's
+move 2 collapses into move 1.
