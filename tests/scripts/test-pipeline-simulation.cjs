@@ -632,6 +632,16 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'apply', wu, '--file', ops]);
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.alpha`, 'reconcile_needed']), 'true');
     sim.run(['manifest', 'delete', `${wu}.research.alpha`, 'reconcile_needed']);
+
+    // A dismissed finding's ground rides the topic and is carried into every
+    // later review dispatch; the user's recall pulls it back off.
+    sim.run(['manifest', 'push', `${wu}.research.alpha`, 'dismissed_grounds',
+      'Vendor pricing tiers beyond the shortlist']);
+    assert.deepStrictEqual(sim.manifest(wu).phases.research.items.alpha.dismissed_grounds,
+      ['Vendor pricing tiers beyond the shortlist']);
+    sim.run(['manifest', 'pull', `${wu}.research.alpha`, 'dismissed_grounds',
+      'Vendor pricing tiers beyond the shortlist']);
+    assert.deepStrictEqual(sim.manifest(wu).phases.research.items.alpha.dismissed_grounds, []);
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);

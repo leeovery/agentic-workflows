@@ -80,6 +80,12 @@ Record the dispatch — the engine allocates the id and answers with the content
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind deep-dive --label {thread:(kebabcase)}
 ```
 
+Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} dismissed_grounds
+```
+
 **Agent path**: `../../../agents/workflow-research-deep-dive.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
@@ -89,6 +95,7 @@ The deep-dive agent receives:
 1. **Research brief** — the self-contained investigation brief
 2. **Research file path** — `.workflows/{work_unit}/research/{topic}.md` (for background context)
 3. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
+4. **Dismissed grounds** — the list read above, verbatim. Omit this input entirely when the list is empty.
 
 > *Output the next fenced block as a code block:*
 
@@ -131,4 +138,4 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 For feature work types, deep-dive findings fold into the existing research file — there is only one research topic per feature.
 
-**Findings the user deflects**: If the user doesn't want to engage with a finding you raised, note it in the Open Questions section of the research file.
+**Findings the user rejects**: nothing lands in the research file either way — the surfacing protocol's **Rejecting a raise** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
