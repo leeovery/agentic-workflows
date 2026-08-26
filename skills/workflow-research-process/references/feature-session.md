@@ -18,7 +18,7 @@ Two types of background agent operate during research, and the topic's triage qu
 
 ## B. Session Loop
 
-Focused, single-topic session. No splitting, no multi-file management.
+Focused, single-topic session — one research file; off-topic concerns route through **E. Off-Topic Concerns**.
 
 → Load **[session-loop.md](session-loop.md)** and follow its conversation process.
 

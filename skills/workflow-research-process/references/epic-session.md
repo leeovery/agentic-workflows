@@ -26,7 +26,7 @@ Per-topic session with topic awareness and convergence routing.
 
 ## C. Topic Awareness
 
-When a concern surfaces that belongs to a *different* topic — raised in conversation, not yet written into this file — flag it rather than letting it accumulate here. (Sustained *written* drift over multiple exchanges is the separate split signal — see **D. Convergence Routing**.) The heuristic: a thread that informs this topic's own question stays here; a concern whose home is a different topic — one that exists, or one that should — isn't this research's to explore.
+When a concern surfaces that belongs to a *different* topic — raised in conversation, not yet written into this file — flag it rather than letting it accumulate here. (Sustained *written* drift over multiple exchanges triggers the same reroute from **D. Convergence Routing**.) The heuristic: a thread that informs this topic's own question stays here; a concern whose home is a different topic — one that exists, or one that should — isn't this research's to explore.
 
 When a concern reads as off-topic, hold it with the full context discussed about it:
 
@@ -44,9 +44,11 @@ When you notice convergence signals (from the research guidelines), flag it and 
 
 Either the session's written material keeps deepening ground that deserves a map topic of its own — sustained accumulation over multiple exchanges, not a clean thematic separation alone — or the user names a thread and asks for it to become a topic.
 
-→ Load **[topic-spawning.md](topic-spawning.md)** and follow its instructions as written.
+Hold the thread with the full context worked out about it:
 
-→ On return, return to **B. Session Loop**.
+→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, concern = `{the thread, with its worked-out context}`.
+
+→ On return, proceed as the reference directed.
 
 #### If the current topic is converging (tradeoffs clear, approaching decision territory) or the user indicates they're done
 

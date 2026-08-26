@@ -224,7 +224,6 @@ Commands:
   render triage-block     <wu.phase.topic>
   render requeue-offer    <wu.phase.topic> --file <payload.json>
   render reroute-offer    <wu.phase.topic> --file <payload.json>
-  render spawn-offer      <wu.research.topic> --file <payload.json>
   render research-conclude-gate <wu.research.topic> [--dead-end]
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
