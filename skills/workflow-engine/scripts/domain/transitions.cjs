@@ -444,7 +444,10 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
     result.warnings = warnings;
     noteCommitOutcome(result, outcome);
     if (outcome.failed) {
-      result.note = `commit pending — state saved; retry with: engine commit ${workUnit} --topic ${phase}/${topic} -m "<message>"`;
+      // `--sweep` on the retry for the same reason the delivery itself never
+      // beats: the origin's session is committing into the TARGET topic, and
+      // a heartbeat there would manufacture a hold no session is holding.
+      result.note = `commit pending — state saved; retry with: engine commit ${workUnit} --topic ${phase}/${topic} --sweep -m "<message>"`;
     }
   }
 
@@ -666,7 +669,9 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
   result.warnings = warnings;
   noteCommitOutcome(result, outcome);
   if (outcome.failed) {
-    result.note = `commit pending — the concern is moved; retry with: engine commit ${workUnit} --topic ${toPhase}/${topic} -m "<message>"`;
+    // `--sweep` keeps the retry as beat-free as the move: requeue is a
+    // repair across a topic's two phase-sides, not a session working one.
+    result.note = `commit pending — the concern is moved; retry with: engine commit ${workUnit} --topic ${toPhase}/${topic} --sweep -m "<message>"`;
   }
   return result;
 }

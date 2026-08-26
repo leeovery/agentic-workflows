@@ -156,7 +156,7 @@ engine sources stale <work-unit> <discussion> [--except <spec-topic>]
 |---|---|
 | `commit --topic {phase}/{topic}` | beats — the session-cadence commit, so "last active" means "time since the last real write" |
 | `commit --topic … --kb` | **clears** — the terminal conclusion commit; a beat here would re-stamp the topic after it concluded and it would read held forever |
-| `commit --topic … --sweep` | suppressed — the conclude sweep commits a dead session's leavings; a sweeper stamping the topic it just cleaned would resurrect the hold |
+| `commit --topic … --sweep` | suppressed — the commit is on a topic this session is not working (the conclude sweep's leavings, a foreign-topic delivery's retry); stamping it would manufacture a hold |
 | `commit --paths … --for {wu} {phase}/{topic}` | beats the named code topic |
 | `topic queue` | beats — the session loops' findings check polls it every turn, so a turn with no writes still registers |
 | `topic start` · `topic complete` · `topic absorb` | beat — opening, closing, and folding a concern into the session's own topic |
@@ -251,7 +251,7 @@ The scope by form: `.workflows/{wu}` bare, `.workflows/.inbox` with `--inbox`, `
 
 `--plan <topic>` widens the work-unit scope with the plan's declared storage: `.workflows/manifest.json` and every `storage_paths` entry recorded on the planning item at plan init (the format's authoring doc declares them; entries are validated relative-only, while deleted-but-tracked paths still commit their deletions). A planning item without `storage_paths` (pre-upgrade plan) fails loudly with the one-line repair. Code never rides a `--plan` commit — code has its own form below.
 
-`--topic <phase>/<topic>` is the session-cadence form: the topic's artifact (`{phase}/{topic}.md` for research/discussion/investigation, `{phase}/{topic}/` for specification/planning/implementation/review) plus the topic's triage-queue directory (research/discussion) plus the work-unit manifest. The KB dir does not ride by default; `--kb` adds it for the moments whose own action dirtied the store — a conclusion commit right after `topic complete`'s knowledge index. `--sweep` marks the conclude sweep's commit of a dead session's leavings. Both riders carry presence semantics — see the beat table under `presence`. Mutually exclusive with `--plan` and `--discovery`.
+`--topic <phase>/<topic>` is the session-cadence form: the topic's artifact (`{phase}/{topic}.md` for research/discussion/investigation, `{phase}/{topic}/` for specification/planning/implementation/review) plus the topic's triage-queue directory (research/discussion) plus the work-unit manifest. The KB dir does not ride by default; `--kb` adds it for the moments whose own action dirtied the store — a conclusion commit right after `topic complete`'s knowledge index. `--sweep` marks a commit made on a topic the session is not working — the conclude sweep's leavings, or the retry a foreign-topic delivery's pending note prescribes. Both riders carry presence semantics — see the beat table under `presence`. Mutually exclusive with `--plan` and `--discovery`.
 
 `--discovery` is the discovery session's cadence form: `discovery/sessions/`, `discovery/briefs/`, and the work-unit manifest (the map lives there). Discovery runs beside live research and discussion sessions on the same work unit, so it slices its own paths and never theirs.
 

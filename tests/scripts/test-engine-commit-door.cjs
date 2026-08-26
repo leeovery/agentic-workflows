@@ -633,4 +633,31 @@ describe('commit door: transaction-tail degrade', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
     assert.strictEqual(manifest.phases.research.items['auth-flow'].status, 'cancelled', 'state landed despite the failed commit');
   });
+
+  it('a foreign-topic tail prescribes a retry that beats no more than the verb did', () => {
+    // The notes are contract surface: a session follows the command verbatim,
+    // so a delivery's retry must carry the same suppression the delivery has.
+    writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
+    fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
+    const delivered = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'topic-b',
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): reroute to topic-b'],
+    { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
+    assert.strictEqual(delivered.committed, null);
+    assert.match(delivered.note, /--topic discussion\/topic-b --sweep -m/, 'the delivery\'s retry never beats the target');
+
+    const moved = engine(dir, ['topic', 'requeue', 'payments', 'discussion', 'research', 'topic-b',
+      '--file', '001-q.md', '-m', 'research(payments/topic-b): move 001-q to the research side'],
+    { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
+    assert.strictEqual(moved.committed, null);
+    assert.match(moved.note, /--topic research\/topic-b --sweep -m/, 'the move\'s retry never beats the destination');
+
+    // Absorb is the session folding a concern into its own document — its
+    // retry beats, exactly as the verb does.
+    const absorbed = engine(dir, ['topic', 'absorb', 'payments', 'research', 'topic-b',
+      '--file', '001-q.md', '-m', 'research(payments/topic-b): absorb 001-q (from topic-a)'],
+    { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
+    assert.strictEqual(absorbed.committed, null);
+    assert.match(absorbed.note, /--topic research\/topic-b -m/, 'the owning session\'s retry carries no suppression');
+    assert.ok(!absorbed.note.includes('--sweep'));
+  });
 });
