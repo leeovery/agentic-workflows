@@ -67,7 +67,7 @@ describe('discoveryMapView', () => {
     richFixture(dir);
     assert.strictEqual(discoveryMapView('payments', mapOf(dir, 'payments')), [
       'Discovery Map (7 topics — 1 decided · 1 in flight · 1 ready · 2',
-      'fresh · 1 handled · 1 cancelled)',
+      'fresh · 1 dead-ended · 1 cancelled)',
       '  ├─ ✓ Ordering Flow',
       '  │     ↳ Decided',
       '  │',
@@ -84,7 +84,7 @@ describe('discoveryMapView', () => {
       '  │     ↳ Fresh · routed to research',
       '  │',
       '  ├─ ⊙ Umbrella',
-      '  │     ↳ Handled',
+      '  │     ↳ Dead end · nothing to carry forward',
       '  │',
       '  └─ ⊘ Legacy Import',
       '        ↳ Cancelled',
@@ -124,7 +124,7 @@ describe('discoveryMapView', () => {
     ].join('\n'));
   });
 
-  it('tags derive from the actual research state — fan-out claimed only when research exists, superseded named', () => {
+  it('tags derive from the actual research state — kept record claimed only when research exists, superseded named', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -144,15 +144,15 @@ describe('discoveryMapView', () => {
       },
     });
     assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
-      'Discovery Map (3 topics — 1 ready · 2 handled)',
+      'Discovery Map (3 topics — 1 ready · 2 dead-ended)',
       '  ├─ → Split Parent',
       '  │     ↳ Research superseded · ready for discussion',
       '  │',
       '  ├─ ⊙ No Research',
-      '  │     ↳ Handled',
+      '  │     ↳ Dead end · nothing to carry forward',
       '  │',
       '  └─ ⊙ Umbrella',
-      '        ↳ Handled · research fanned out',
+      '        ↳ Dead end · research kept as record',
       '',
     ].join('\n'));
   });

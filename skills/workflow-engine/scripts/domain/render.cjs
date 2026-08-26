@@ -1771,6 +1771,32 @@ function rerouteOffer(cwd, { dotpath, file }) {
   );
 }
 
+// research-conclude-gate — the topic-completion consent gate. The dead-end
+// row renders only when the session's own conclusion is that the topic gives
+// the product nothing to carry forward under its own name — the judgment
+// travels as the --dead-end flag, never derived here.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, 'dead-end'?: string}} args
+ * @returns {string}
+ */
+function researchConcludeGate(cwd, args) {
+  resolveAddress(cwd, args.dotpath, 'research-conclude-gate');
+  const options = [
+    cmdOption('c', 'conclude', 'Mark this topic as complete, ready for discussion'),
+  ];
+  if (args['dead-end']) {
+    options.push(cmdOption('d', 'dead-end', 'Close it as a dead end — completed and kept as record, no discussion owed; reversible from the map'));
+  }
+  options.push(cmdOption('k', 'keep', "Keep digging, there's more to understand"));
+  return section(
+    'MENU: research conclude gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu('', options, { question: 'This topic looks ready to conclude.' }),
+  );
+}
+
 // spawn-offer — the consent gate for spawning a grown research thread into
 // its own map topic. Content never moves: the material stays in the parent's
 // research file, and the new topic feeds from it by provenance. The thread
@@ -3441,6 +3467,7 @@ const SURFACES = {
   'requeue-offer': requeueOffer,
   'reroute-offer': rerouteOffer,
   'spawn-offer': spawnOffer,
+  'research-conclude-gate': researchConcludeGate,
   'reroute-candidates': rerouteCandidates,
   'off-topic-offer': offTopicOffer,
   'proposed-task': proposedTask,

@@ -307,12 +307,12 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryLifecycleLabel('ready_for_discussion', null, 'superseded'), 'research superseded · ready for discussion');
   });
 
-  it('discoveryLifecycleLabel claims a fan-out only for completed or superseded research', () => {
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'completed'), 'handled · research fanned out');
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'superseded'), 'handled · research fanned out');
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'in-progress'), 'handled');
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'cancelled'), 'handled');
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, null), 'handled');
+  it('discoveryLifecycleLabel claims kept research only for completed or superseded research', () => {
+    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'completed'), 'dead end · research kept as record');
+    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'superseded'), 'dead end · research kept as record');
+    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'in-progress'), 'dead end · nothing to carry forward');
+    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'cancelled'), 'dead end · nothing to carry forward');
+    assert.strictEqual(discoveryLifecycleLabel('handled', null, null), 'dead end · nothing to carry forward');
   });
 
   it('discoveryLifecycleLabel appends the triage waiting cue when parked', () => {
