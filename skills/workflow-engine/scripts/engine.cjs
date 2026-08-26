@@ -225,8 +225,14 @@ Commands:
   render requeue-offer    <wu.phase.topic> --file <payload.json>
   render reroute-offer    <wu.phase.topic> --file <payload.json>
   render research-conclude-gate <wu.research.topic> [--dead-end]
+  render deep-dive-offer  <wu.research.topic> --file <payload.json>
+  render in-flight-agents-gate <wu.research.topic> --count N
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
+  render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>
+  render candidate-gate   <wu> --file <payload.json>
+  render topic-collision-gate
+  render triage-closed-target <wu.discovery.target>
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
   render cancel-cascade-gate <wu.phase.topic>

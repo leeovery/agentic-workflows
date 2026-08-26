@@ -44,16 +44,13 @@ Skip the offer — the user already asked.
 
 #### Otherwise
 
-> *Output the next fenced block as markdown (not a code block):*
+Write the offer payload to `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-offer.json` with the Write tool (`{"thread": "…"}` — the thread description as it should open the offer), then render it:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render deep-dive-offer {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/deep-dive-offer.json
 ```
-· · · · · · · · · · · ·
-{Thread description} looks like it could use a deep dive.
-Want me to spin up a background investigation while we keep going?
 
-**`y/yes`** → Dispatch a deep-dive agent
-**`n/no`**  → Skip, we'll cover it in conversation
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

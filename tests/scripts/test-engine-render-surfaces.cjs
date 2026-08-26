@@ -2869,7 +2869,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, reroute-candidates, off-topic-offer, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -3493,5 +3493,306 @@ describe('render — the adopted cross-flow static gates', () => {
     assert.match(out, /`◆ How should I proceed\?`/);
     assert.match(out, /`r\/retry`.*I'll fix the issue; retry the query/);
     assert.match(out, /`s\/skip`.*Proceed without knowledge context for this phase/);
+  });
+});
+
+describe('render map-op-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      phases: { discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } } },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  const render = (op, obj, name = 'op.json') => renderSurface(dir, 'map-op-gate', {
+    dotpath: 'pay', op, file: writePayload(dir, name, obj),
+  });
+
+  it('renders the summary batch byte-exactly — one gate for the whole run', () => {
+    const out = render('edit-summary', {
+      items: [
+        { name: 'auth-flow', summary: 'How sign-in survives a session drop' },
+        { name: 'legacy-bits', summary: 'What the old importer still owns' },
+      ],
+    });
+    assert.strictEqual(out, [
+      '=== DISPLAY: map operation (emit verbatim as a code block, directly above the menu) ===',
+      'Updating 2 summary(ies):',
+      '',
+      '  • auth-flow: "How sign-in survives a session drop"',
+      '  • legacy-bits: "What the old importer still owns"',
+      '',
+      "=== MENU: map operation gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Apply?`**',
+      '',
+      '**`y/yes`**',
+      '**`n/no`**',
+      '',
+    ].join('\n'));
+  });
+
+  it('renders the remove proposal byte-exactly — body wrapped at the display width', () => {
+    const out = render('remove', { name: 'auth-flow' });
+    assert.strictEqual(out, [
+      '=== DISPLAY: map operation (emit verbatim as a code block, directly above the menu) ===',
+      'Remove "auth-flow" from the map.',
+      '',
+      '  Lifecycle: fresh — no work has started on this topic.',
+      '  The name will be added to the dismissed list so the analysis',
+      "  won't auto-re-propose it.",
+      '',
+      "=== MENU: map operation gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Confirm removal?`**',
+      '',
+      '**`y/yes`**',
+      '**`n/no`**',
+      '',
+    ].join('\n'));
+  });
+
+  it('each remaining op carries its own headline and confirm question', () => {
+    const rename = render('rename', { name: 'auth-flow', new_name: 'sign-in-flow' });
+    assert.match(rename, /Rename "auth-flow" → "sign-in-flow"\./);
+    assert.match(rename, /no files exist under\n {2}this name\. Manifest mutation only\./);
+    assert.match(rename, /`◆ Confirm rename\?`/);
+
+    const reroute = render('reroute', { name: 'auth-flow', from: 'research', to: 'discussion' });
+    assert.match(reroute, /Change routing of "auth-flow": research → discussion\./);
+    assert.match(reroute, /`◆ Confirm routing change\?`/);
+
+    const close = render('close', { name: 'auth-flow' });
+    assert.match(close, /Close "auth-flow" as a dead end\./);
+    assert.match(close, /Reversible with "reopen auth-flow"\./);
+    assert.match(close, /`◆ Confirm close as dead end\?`/);
+
+    const reopen = render('reopen', { name: 'auth-flow' });
+    assert.match(reopen, /Reopen "auth-flow"\./);
+    assert.match(reopen, /Clears the dead-end marker\./);
+    assert.match(reopen, /`◆ Confirm reopen\?`/);
+
+    const descriptions = render('edit-description', { items: [{ name: 'auth-flow', description: 'A long one…' }] });
+    assert.match(descriptions, /Updating 1 description\(s\):/);
+    assert.match(descriptions, /`◆ Apply\?`/);
+  });
+
+  it('validates loudly — op vocabulary, payload shape, routing pair', () => {
+    assert.throws(() => render('edit', { name: 'x' }), /--op must be one of edit-summary, edit-description, remove, rename, reroute, close, reopen/);
+    assert.throws(() => renderSurface(dir, 'map-op-gate', { dotpath: 'pay', op: 'remove' }), /--file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'map-op-gate', { dotpath: 'pay.discovery.auth-flow', op: 'remove', file: writePayload(dir, 'a.json', { name: 'x' }) }), /address must be a bare <work_unit>/);
+    assert.throws(() => render('remove', {}), /"name" must be a non-empty string/);
+    assert.throws(() => render('rename', { name: 'a' }), /"new_name" must be a non-empty string/);
+    assert.throws(() => render('edit-summary', { items: [] }), /"items" must be a non-empty array of \{name, summary\}/);
+    assert.throws(() => render('edit-summary', { items: [{ name: 'a' }] }), /item 1 is missing "summary"/);
+    assert.throws(() => render('edit-description', { items: [{ description: 'd' }] }), /item 1 is missing "name"/);
+    assert.throws(() => render('reroute', { name: 'a', from: 'planning', to: 'discussion' }), /"from" must be "research" or "discussion"/);
+    assert.throws(() => render('reroute', { name: 'a', from: 'research', to: 'research' }), /name the same routing/);
+  });
+});
+
+describe('render candidate-gate', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  function staged(gateMode, status = 'pending') {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: {
+          items: {},
+          analysis_staging: {
+            'discovery-gap-analysis': {
+              gate_mode: gateMode,
+              candidates: { 'signal-freshness-contract': { status } },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  const payload = {
+    name: 'signal-freshness-contract',
+    routing: 'discussion',
+    summary: 'What freshness the ranking signals must guarantee downstream',
+  };
+  const render = (obj = payload, name = 'c.json') => renderSurface(dir, 'candidate-gate', {
+    dotpath: 'pay', file: writePayload(dir, name, obj),
+  });
+
+  it('renders the gated candidate byte-exactly — display then the four-way gate', () => {
+    staged('gated');
+    assert.strictEqual(render(), [
+      '=== DISPLAY: candidate (emit verbatim as a code block) ===',
+      'Signal Freshness Contract [discussion]',
+      '  What freshness the ranking signals must guarantee downstream',
+      '  surfaced by gap analysis',
+      '',
+      "=== MENU: candidate gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Add this topic to the map?`**',
+      '',
+      '**`y/yes`**   → Approve — the topic joins the map and its phase can',
+      `${NB(10)}start from the epic menu`,
+      '**`a/auto`**  → Approve this and all remaining candidates automatically',
+      '**`s/skip`**  → Skip and dismiss — the analysis never re-proposes this',
+      `${NB(10)}name`,
+      '**Comment** → Tell me what to change (routing, summary, or',
+      `${NB(10)}description)`,
+      '',
+    ].join('\n'));
+  });
+
+  it('an auto gate mode renders the approval line and no menu — the branch is the surface\'s', () => {
+    staged('auto');
+    const out = render();
+    assert.match(out, /=== DISPLAY: candidate \(/);
+    assert.match(out, /=== DISPLAY: candidate approved \(after recording the approval: /);
+    assert.match(out, /Signal Freshness Contract — approved \[auto\]\./);
+    assert.ok(!out.includes('MENU:'), 'auto never stops');
+  });
+
+  it('validates loudly — staging present, candidate pending, payload fields, gate mode', () => {
+    staged('gated');
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'pay' }), /--file <payload\.json> is required/);
+    assert.throws(() => render({ ...payload, name: 'nope' }, 'n.json'), /"nope" is not a pending candidate — a stale payload never renders/);
+    assert.throws(() => render({ ...payload, routing: 'planning' }, 'r.json'), /"routing" must be "research" or "discussion"/);
+    assert.throws(() => render({ name: 'signal-freshness-contract', routing: 'discussion' }, 's.json'), /"summary" must be a non-empty string/);
+
+    staged('gated', 'approved');
+    assert.throws(() => render(), /is not a pending candidate/);
+
+    staged('sometimes');
+    assert.throws(() => render(), /gate_mode must be "gated" or "auto", got "sometimes"/);
+
+    writeManifest(dir, 'bare', { phases: { discovery: { items: {} } } });
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'bare', file: writePayload(dir, 'b.json', payload) }),
+      /no staged gap-analysis candidates for "bare"/);
+  });
+});
+
+describe('render topic-collision-gate', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  it('renders the cancel / pick-another pair byte-exactly', () => {
+    assert.strictEqual(renderSurface(dir, 'topic-collision-gate', {}), [
+      "=== MENU: topic collision gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ How would you like to proceed?`**',
+      '',
+      '**`c/cancel`**     → Abandon creating this topic',
+      '**Pick another** → Tell me a different name',
+      '',
+    ].join('\n'));
+  });
+});
+
+describe('render triage-closed-target', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: {
+          items: {
+            'auth-flow': { routing: 'discussion', source: 'discovery', handled: true },
+            'legacy-bits': { routing: 'research', source: 'discovery' },
+            live: { routing: 'research', source: 'discovery' },
+          },
+        },
+        discussion: { items: { 'legacy-bits': { status: 'cancelled' } } },
+      },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the dead-end target byte-exactly — statement context, three destinations', () => {
+    assert.strictEqual(renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.auth-flow' }), [
+      "=== MENU: closed target gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '"auth-flow" is closed as a dead end, so it won\'t pick up rerouted concerns.',
+      '',
+      '**`o/open`**      → Reopen it and land the concern there',
+      '**`e/elsewhere`** → Pick a different target',
+      '**`d/drop`**      → Drop the reroute; the concern stays with the',
+      `${NB(14)}current topic`,
+      '',
+    ].join('\n'));
+  });
+
+  it('a cancelled target flips both words the lifecycle owns', () => {
+    const out = renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.legacy-bits' });
+    assert.match(out, /"legacy-bits" is cancelled, so it won't pick up rerouted concerns\./);
+    assert.match(out, /\*\*`o\/open`\*\*\s+→ Reactivate it and land the concern there/);
+  });
+
+  it('refuses a live target, an unknown name, and a non-discovery address', () => {
+    assert.throws(() => renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.live' }),
+      /"live" is "fresh", not closed — the gate serves handled and cancelled targets/);
+    assert.throws(() => renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.ghost' }),
+      /no discovery item "ghost" on the map/);
+    assert.throws(() => renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discussion.legacy-bits' }),
+      /address must be <work_unit>\.discovery\.<target>, got phase "discussion"/);
+  });
+});
+
+describe('render deep-dive-offer / in-flight-agents-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: { checkout: { status: 'in-progress' } } },
+        discussion: { items: { checkout: { status: 'in-progress' } } },
+      },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  it('deep-dive-offer renders the two-line offer byte-exactly — context, never a glyphed label', () => {
+    const file = writePayload(dir, 'd.json', { thread: "The competitor's ranking pipeline" });
+    assert.strictEqual(renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout', file }), [
+      "=== MENU: deep dive offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      "The competitor's ranking pipeline looks like it could use a deep dive.",
+      'Want me to spin up a background investigation while we keep going?',
+      '',
+      '**`y/yes`** → Dispatch a deep-dive agent',
+      "**`n/no`**  → Skip, we'll cover it in conversation",
+      '',
+    ].join('\n'));
+  });
+
+  it('in-flight-agents-gate renders the wait/proceed pair byte-exactly — one gate, both sessions', () => {
+    assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '2' }), [
+      "=== MENU: in-flight agents gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ There are still 2 background agents working.`**',
+      '',
+      '**`w/wait`**    → Wait for results before concluding',
+      '**`p/proceed`** → Conclude now (results will persist in cache for',
+      `${NB(12)}reference)`,
+      '',
+    ].join('\n'));
+  });
+
+  it('both pin the research address and validate their own input', () => {
+    const file = writePayload(dir, 'd.json', { thread: 'x' });
+    assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.discussion.checkout', file }),
+      /render deep-dive-offer: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout' }), /--file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout', file: writePayload(dir, 'e.json', {}) }),
+      /"thread" must be a non-empty string/);
+    assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '2' }),
+      /render in-flight-agents-gate: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout' }),
+      /--count must be a positive integer, got "undefined"/);
+    assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '0' }),
+      /--count must be a positive integer, got "0"/);
   });
 });
