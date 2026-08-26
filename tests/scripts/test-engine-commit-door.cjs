@@ -444,13 +444,13 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     assert.ok(beaten('discussion', 'topic-b'), 'the dispatching session holds the topic');
   });
 
-  it('a beat is best-effort: a phase outside presence changes nothing', () => {
-    const res = engine(dir, ['topic', 'start', 'payments', 'discovery', 'topic-a'].slice(0, 3).concat(['discussion', 'topic-a']));
+  it('a beat never changes a verb\'s answer, and discovery stays out of presence', () => {
+    // Discovery carries no heartbeat — `discovery-session open` serialises it
+    // engine-side — so the write lands and the beat silently no-ops.
+    const res = engine(dir, ['manifest', 'set', 'payments.discovery.topic-a', 'routing', 'discussion']);
     assert.strictEqual(res.ok, true);
-    // Discovery carries no heartbeat — `discovery-session open` serialises it.
-    engine(dir, ['manifest', 'set', 'payments.discovery.topic-a', 'routing', 'discussion']);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/payments/discovery/topic-a/presence')),
-      'discovery stays out of presence');
+    assert.deepStrictEqual(res.set, { routing: 'discussion' }, 'the response is the field surface\'s, untouched');
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/payments/discovery/topic-a/presence')));
   });
 });
 
