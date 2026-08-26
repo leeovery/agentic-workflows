@@ -27,8 +27,7 @@
     "p — pull into delivery",
     "1, 2 — ordering and menu management",
     "y — shape it as an epic",
-    "A different name — call it mvp",
-    "y — the name is fine"
+    "A different name — call it mvp"
   ],
   "conduct": "The user shaped Orderflow's roadmap in an earlier session and has come back ready to start building. They want the first slice small: customer ordering and menu upkeep now, the kitchen display to follow once those stand. They confirm the epic shape when it is proposed, name the unit 'mvp' themselves, and stop as soon as the epic's discovery opens — they will deepen it another day.",
   "invariants": {

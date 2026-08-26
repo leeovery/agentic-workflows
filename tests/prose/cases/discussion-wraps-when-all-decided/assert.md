@@ -56,8 +56,10 @@ EXPECTED WORLD — from a feature holding only its discovery carrier:
 - the manifest holding the discussion in progress with every subtopic
   `decided` — none pending, exploring, or deferred; the discussion is
   NOT completed
-- the agent store holding one or more review rows, every one
-  incorporated
+- the agent store holding one or more review rows; every review that
+  was surfaced during the session is incorporated, while a review
+  dispatched at the close itself may still be pending at the stop —
+  the walk ends before its findings are walked
 - no research, specification, planning, implementation, or review
   artifacts anywhere; the work-unit description unchanged; no second
   work unit

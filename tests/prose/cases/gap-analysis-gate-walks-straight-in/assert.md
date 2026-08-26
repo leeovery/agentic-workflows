@@ -30,7 +30,8 @@ The prose should have taken this path:
    candidate blocks — a reuse boot never re-derived a full topic list —
    and the stamp records a checksum over the completed research and both
    completed discussions
-9. the sweep finds the tree dirty (cache file, staging file, manifest)
+9. the sweep finds the tree dirty (the cache file and the manifest —
+   on this reuse boot the staged candidates file was never rewritten)
    and commits the bookkeeping; the dispatch then re-runs the epic
    gateway so the caller sees the new item
 10. the refreshed output reports the map unsequenced — the new item
@@ -51,8 +52,10 @@ Further claims:
   map topic, nothing more
 - search-analytics-dashboard appears nowhere on the map, and its name is
   the only entry on the dismissed list
-- `analysis_staging` is absent from the discovery phase entirely — the
-  subtree was deleted, not left behind marked `approved`/`skipped`
+- the `analysis_staging.discovery-gap-analysis` subtree is gone — the
+  gate deleted it rather than leaving candidates marked
+  `approved`/`skipped` (the engine's delete may leave the parent
+  `analysis_staging` container behind empty; that residue is fine)
 - nothing anywhere reads or writes research-analysis state; the only
   boot-time analysis is the gap one
 - the three harvested map items keep their harvest summaries and
@@ -64,7 +67,7 @@ Further claims:
 EXPECTED WORLD — the fixture plus: `signal-freshness-contract` on the
 discovery map with gap-analysis provenance and an order within a
 contiguous 1..4; `search-analytics-dashboard` on the discovery phase's
-dismissed list and nowhere else; no `analysis_staging` subtree; a
+dismissed list and nowhere else; no `analysis_staging.discovery-gap-analysis` subtree; a
 rewritten `.state/discovery-gap-analysis.md` naming the staged
 candidates, with `gap_analysis_cache` stamped over the current input
 set; and no new phase items, artifacts, or work units.
