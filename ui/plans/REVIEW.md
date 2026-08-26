@@ -143,6 +143,37 @@ scope (walkthrough #12's claims-verification badge is best-effort only; consiste
 bootstrap-ask wording resolved by making spec 5 authoritative rather than rewriting
 phase 3's table).
 
+## Round 5: the design contract vs the intent metrics
+
+Spec 6 (components and layouts) was written against the intent baseline with an explicit
+traceability rule, then adversarially reviewed against the same metrics (2026-08-26).
+Fourteen findings, all accepted (one narrowed); the spec was revised in place:
+
+- **Traceability made per-element** — an intent column on the catalog, citations on
+  every visual rule; the cut rule is now enforceable (finding 1).
+- **The batch screen got its surface** — `BatchScreenCard`, plus `PassThroughAsk` so a
+  pass-through queue row opens the thread tail, never a fabricated card (2, 10).
+- **Duplication discipline written down** — one interactive card at a time; badges are
+  derived, never counted separately; lobby digests suppress their waiting section; the
+  S5 rail replaces the frame's context panel; the what-moved column became an overlay
+  chip with a 60ch minimum measure for the Read lens (3, 5, 11, 12).
+- **The mobile story specified** — cards as sheets over their threads, drain mode's
+  small-screen behaviour, breakpoint ownership assigned (4).
+- **The keyboard model added** — typed option keys answer a focused card; initial focus
+  on the free-text input, never an option (pre-selection by focus ring); focus survives
+  card resolution mid-drain (6).
+- **The thread-model fork closed** — threads never expand inline; density lives on S4;
+  the spine set aligned with spec 3 by adding the unit-status-change `SpineItem` (7, 8).
+- **`BridgeBanner` gained the live-only cause and a closed-list rule; `TombstoneCard`
+  split from `ArchiveCard` with the archived view defined** (9, 14).
+- Narrowed, not cut: `ClaimChip`'s verification badge is explicitly sourced from the
+  work unit's review-report artifact only — never bridge-side execution (13; the
+  reviewer's cut-it option declined because the badge's source already existed in
+  phase 4's wording, which the spec now mirrors).
+
+The review's survived list confirmed the state machines match specs 1–2 exactly, the
+gold reservation has no leaks, and the commits-exiled spine holds in letter and spirit.
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in
