@@ -387,7 +387,7 @@ Emit the lane marker on this drain's first screen only — later screens and re-
 **`▪ Belongs Elsewhere`**
 ```
 
-Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per remaining finding — up to five, `remaining` counting the lane's findings beyond this screen: `title` is the report's own claim, `target` is the owning topic, `detail` is why it is theirs and which queue it lands in), then render it:
+Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per remaining finding — up to five, `remaining` counting the lane's findings beyond this screen: `title` is the report's own claim, `target` is the owning topic — or, when no topic on the map owns the finding, the new kebab-case name the report proposed (the landing creates the topic; say so in `detail`), `detail` is why it is theirs and which queue it lands in), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
@@ -399,7 +399,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker — exce
 
 **If `yes`:**
 
-Deliver each finding in turn, with the context built here so its target resolves it from cold. Write no reroute record and leave the Discussion Map untouched — the target's queue is the record.
+Deliver each finding in turn, with the context built here so its target resolves it from cold — honouring triage-landing's one-ask-per-file rule: a finding making several asks the target could accept or reject independently is delivered as separate concerns. Write no reroute record and leave the Discussion Map untouched — the target's queue is the record.
 
 → Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`.
 

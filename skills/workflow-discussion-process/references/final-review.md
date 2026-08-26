@@ -10,6 +10,8 @@ This step runs once per "user signals done" entry. It dispatches a fresh review 
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
+**A completed artifact carries no unowned threads.** Every gap this review surfaces resolves before conclusion: settled here, corrected in place, or routed to the topic that owns it — existing or newly created, confirmed with the user. Closing a finding by writing it into the file as an open thread nobody owns is not a resolution.
+
 ## A. Check Review State
 
 Read the store:
