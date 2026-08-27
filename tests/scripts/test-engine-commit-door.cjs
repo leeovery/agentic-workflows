@@ -610,6 +610,25 @@ describe('mechanical heartbeats: the self-referential rule', () => {
       'and stops it stamping this session\'s identity over the peer\'s');
   });
 
+  it('--sweep outranks the terminal-status release too — the live spec-side case', () => {
+    // The document a spec sources is `completed`, and its own session may be
+    // sitting in it idle-but-alive (a reopen, a correction round). Terminal
+    // status releases a slot this session holds; it must never release one
+    // this session is only visiting.
+    engine(dir, ['topic', 'start', 'payments', 'discussion', 'topic-b']);
+    engine(dir, ['topic', 'complete', 'payments', 'discussion', 'topic-b']);
+    const peer = beatFile('discussion', 'topic-b');
+    fs.mkdirSync(path.dirname(peer), { recursive: true });
+    fs.writeFileSync(peer, JSON.stringify({ pid: null, pid_start: null, session_id: 'peer' }) + '\n');
+
+    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\nthe resolution landed\n');
+    engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',
+      '--topic', 'discussion/topic-b', '--kb', '--sweep']);
+
+    assert.strictEqual(JSON.parse(fs.readFileSync(peer, 'utf8')).session_id, 'peer',
+      'a completed topic another session holds is still that session\'s to release');
+  });
+
   it('both riders still require a --topic scope', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--sweep']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--kb', '--sweep']).error, /Usage/);
