@@ -61,7 +61,7 @@ Delete the in-progress log, clear the marker, and commit:
 ```bash
 rm .workflows/{work_unit}/discovery/sessions/session-{active_session}.md
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery active_session
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): restart interrupted session"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): restart interrupted session" --discovery
 ```
 
 `session_number` will be set at Step 7 from discovery's `next_session_number`.
