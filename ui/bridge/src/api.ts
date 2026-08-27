@@ -544,8 +544,10 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
 
 /** The topic's plan format: topic-level override, else project default. */
 function planFormatOf(projectRoot: string, manifest: Record<string, any>): string {
-  const topicFmt = Object.values(manifest.phases?.planning?.items ?? {}).find((i: any) => i?.format)?.['format'];
-  if (topicFmt) return String(topicFmt);
+  const planItem = Object.values(manifest.phases?.planning?.items ?? {}).find((i: any) => i?.format) as
+    | { format?: string }
+    | undefined;
+  if (planItem?.format) return String(planItem.format);
   try {
     const proj = JSON.parse(fs.readFileSync(path.join(projectRoot, '.workflows', 'manifest.json'), 'utf8'));
     return String(proj?.defaults?.plan_format ?? 'local-markdown');

@@ -16,6 +16,8 @@ gateway DATA text, never the session cache).
 | completed tasks | `items.{topic}.completed_tasks[]` |
 | item status (in-progress / completed / blocked) | `items.{topic}.status` |
 | dep-blocked ⚑ | engine `lib.cjs` derivation — `deps_blocking[]` on the epic detail's planning item (a render-time join, never a manifest field) |
+| fix-attempt count | `items.{topic}.fix_attempts` (integer — verified present in the real manifest; a durable field) |
+| analysis cycle count | `items.{topic}.analysis_cycle_total` (integer) |
 | consolidation gate mode | `items.{topic}.consolidation_gate_mode` (`auto` \| present = gated) |
 | staging tasks (consolidation) | `items.{topic}.staging.p{N}` (the gated tasks in an open phase) |
 | the consolidation bank | `items.{topic}.bank[]` (banked cross-scope opportunities) |
@@ -30,9 +32,8 @@ Phase 3), and `workunit.status-changed` on completion. Everything else —
 per-task progress, attempt counters — updates the telemetry surface **in
 place** and never touches the spine (the anti-firehose rule).
 
-**Not displayed (no source):** a per-task "attempt count" as a standalone
-number has no manifest field — the fix-attempt loop is session-local
-(`fix direction` gates recur but aren't counted durably). The surface shows the
-fix-direction gate when it is open (a live gate) rather than inventing a
-counter. Proposed upstream if a durable counter is ever wanted (UPSTREAM: a
-`fix_attempts` field on the implementation item).
+**Correction (verified against the real manifest, round-11 prep):** the
+implementation item DOES carry durable `fix_attempts` and
+`analysis_cycle_total`/`analysis_cycle_session` counters — the surface shows
+`fix_attempts` and the analysis cycle count directly; nothing is invented and
+nothing is scraped.

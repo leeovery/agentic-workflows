@@ -8,6 +8,30 @@ import { EngineEmbed } from '../components/EngineEmbed';
 import { SpineItem } from '../components/SpineItem';
 import { SessionHealthBadge } from '../components/SessionHealthBadge';
 import { PresenceStrip } from '../components/PresenceStrip';
+import { TelemetrySurface, ConsolidationCard, PlanDAG } from '../components/delivery';
+import { api as apiClient, type PlanDagData } from '../api';
+
+// Lazily loads a topic's plan DAG (collapsed by default — Delivery is quiet).
+function PlanDagLoader({ wu, topic }: { wu: string; topic: string }) {
+  const [open, setOpen] = useState(false);
+  const [dag, setDag] = useState<PlanDagData | null>(null);
+  const load = () => {
+    if (!open && !dag) apiClient.plan(wu, topic).then((r) => setDag(r.dag)).catch(() => {});
+    setOpen((o) => !o);
+  };
+  return (
+    <div className="mt-1">
+      <button onClick={load} className="text-xs font-sans text-nav hover:underline">
+        {open ? '▾' : '▸'} plan graph
+      </button>
+      {open && dag && (
+        <div className="mt-1">
+          <PlanDAG dag={dag} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Channel() {
   const { wu = '' } = useParams();
@@ -74,6 +98,23 @@ export function Channel() {
             data.spine.map((e: any) => <SpineItem key={e.id} event={e} />)
           )}
         </section>
+
+        {/* Delivery telemetry — the quiet end of the cone, only when an
+            implementation topic is running. Collapsed by default. */}
+        {(data.telemetry ?? []).length > 0 && (
+          <section>
+            <div className="region-label mb-1">Delivery</div>
+            <div className="space-y-2">
+              {(data.telemetry ?? []).map((t) => (
+                <div key={t.topic}>
+                  <TelemetrySurface t={t} />
+                  <ConsolidationCard t={t} />
+                  <PlanDagLoader wu={data.name} topic={t.topic} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <div className="region-label mb-1">Threads</div>

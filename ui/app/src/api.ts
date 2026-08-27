@@ -36,7 +36,35 @@ export type ChannelData = {
   embed: string | null;
   artifacts: { path: string; phase: string }[];
   presence?: { phase?: string; topic?: string; held?: boolean; live?: boolean; session_id?: string }[];
+  telemetry?: TopicTelemetry[];
+  planFormat?: string;
 };
+
+export type TopicTelemetry = {
+  topic: string;
+  status: string;
+  currentPhase: string | null;
+  currentTask: string | null;
+  completedPhases: string[];
+  completedTasks: string[];
+  fixAttempts: number;
+  analysisCycles: number;
+  depBlocked: { topic: string; reason?: string }[];
+  consolidation: {
+    gated: boolean;
+    bank: any[];
+    staging: Record<string, any[]>;
+    consolidatedPhases: string[];
+  };
+  commitsLanded: { sha: string; subject: string }[];
+  agentsActive: number;
+};
+
+export type PlanTask = { id: string; title: string; phase: string | null; status: string; priority: number; dependsOn: string[] };
+export type PlanDagData =
+  | { format: 'local-markdown' | 'tick'; tasks: PlanTask[] }
+  | { format: 'linear'; linkOut: string | null }
+  | { format: 'unknown'; tasks: [] };
 
 export type StructureNode = { label: string; status?: string; anchor?: string; detail?: string };
 export type ClaimChipData = { command: string; result?: string; anchor?: string; verified?: boolean };
@@ -170,6 +198,8 @@ export const api = {
   history: (wu: string, path: string) =>
     getJson<{ timeline: HistoryEntry[] }>(`/api/history/${encodeURIComponent(wu)}?path=${encodeURIComponent(path)}`),
   roadmap: () => getJson<RoadmapData>('/api/roadmap'),
+  plan: (wu: string, topic: string) =>
+    getJson<{ dag: PlanDagData }>(`/api/plan/${encodeURIComponent(wu)}/${encodeURIComponent(topic)}`),
   // Advance the read-ref for the what-moved diff base — a deliberate view.
   markArtifactRead: (wu: string, path: string) =>
     postJson(`/api/artifact/${encodeURIComponent(wu)}/read`, { path }).catch(() => ({})),

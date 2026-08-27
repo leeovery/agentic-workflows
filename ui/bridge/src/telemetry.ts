@@ -19,6 +19,8 @@ export type TopicTelemetry = {
   currentTask: string | null;
   completedPhases: string[];
   completedTasks: string[];
+  fixAttempts: number;
+  analysisCycles: number;
   depBlocked: { topic: string; reason?: string }[];
   consolidation: Consolidation;
   commitsLanded: { sha: string; subject: string }[];
@@ -56,6 +58,8 @@ export function buildTelemetry(
     currentTask: typeof item.current_task === 'string' && item.current_task ? item.current_task : null,
     completedPhases: Array.isArray(item.completed_phases) ? item.completed_phases.map(String) : [],
     completedTasks: Array.isArray(item.completed_tasks) ? item.completed_tasks.map(String) : [],
+    fixAttempts: Number.isFinite(item.fix_attempts) ? Number(item.fix_attempts) : 0,
+    analysisCycles: Number.isFinite(item.analysis_cycle_total) ? Number(item.analysis_cycle_total) : 0,
     depBlocked,
     consolidation: {
       gated: gateMode !== undefined && gateMode !== 'auto',
