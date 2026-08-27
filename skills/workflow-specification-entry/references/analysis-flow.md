@@ -14,7 +14,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}
 
 #### If the response has `live_sources` greater than `0`
 
-Hold off — the analysis reads the settled record, and its cache is stale either way, so it runs the next time it is asked for. Emit the response's `DISPLAY: presence deferral` section verbatim at this moment.
+Hold off — the analysis reads the settled record, so it waits for those sessions and runs at the next entry. Emit the response's `DISPLAY: presence deferral` section verbatim at this moment.
+
+The stop is the whole answer wherever this fires, and there is nothing to fall through to: a re-analysis the user chose has no older pass to show instead, and the automatic rerun route only ever arrives with no groupings and no specifications on the manifest — a live discussion blocks that route before it reaches here, leaving live research as its only way in.
 
 **STOP.** Do not proceed — terminal condition.
 
