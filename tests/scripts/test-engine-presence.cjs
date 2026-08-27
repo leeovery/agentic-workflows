@@ -218,6 +218,29 @@ describe('engine presence', () => {
     assert.strictEqual(engineWith(dir, ['presence', 'scan', 'pay']).sessions[0].held, true);
   });
 
+  it('the code-slot read takes held implementation and review rows, never the caller\'s own', () => {
+    const { heldCodeSessions } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+    fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
+    craftRecord(dir, 'implementation', 'alpha', { pid: null, pid_start: null, session_id: 'peer' });
+    craftRecord(dir, 'discussion', 'beta', { pid: null, pid_start: null, session_id: 'peer' });
+    const shipRow = path.join(dir, '.workflows/.cache/ship/review/gamma/presence');
+    fs.mkdirSync(path.dirname(shipRow), { recursive: true });
+    fs.writeFileSync(shipRow, JSON.stringify({ pid: null, pid_start: null, session_id: 'mine' }) + '\n');
+
+    const before = process.env.CLAUDE_CODE_SESSION_ID;
+    process.env.CLAUDE_CODE_SESSION_ID = 'mine';
+    try {
+      const rows = heldCodeSessions(dir);
+      assert.deepStrictEqual(rows.map((r) => `${r.work_unit}/${r.phase}/${r.topic}`), ['pay/implementation/alpha'],
+        'a doc row never takes the slot, and the caller\'s own hold is not a gate against itself');
+      process.env.CLAUDE_CODE_SESSION_ID = 'other';
+      assert.strictEqual(heldCodeSessions(dir).length, 2, 'from another session both code rows are holders');
+    } finally {
+      if (before === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+      else process.env.CLAUDE_CODE_SESSION_ID = before;
+    }
+  });
+
   it('cleanup sweeps only the named session, argv or stdin, across work units', () => {
     fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
     craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-a' });

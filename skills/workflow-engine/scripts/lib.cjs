@@ -100,6 +100,7 @@ module.exports = {
   presence: {
     scanPresence: presence.scanPresence,
     scanProject: presence.scanProject,
+    heldCodeSessions: presence.heldCodeSessions,
     fmtAge: presence.fmtAge,
   },
   detail: {

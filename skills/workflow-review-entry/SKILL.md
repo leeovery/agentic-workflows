@@ -48,6 +48,14 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 ---
 
-## Step 3: Invoke the Skill
+## Step 3: Check the Code Slot
+
+Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with phase = `review`.
+
+→ On return, proceed to **Step 4**.
+
+---
+
+## Step 4: Invoke the Skill
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

@@ -12,6 +12,7 @@
     "skills/workflow-implementation-entry/references/validate-dependencies.md",
     "skills/workflow-implementation-process/SKILL.md",
     "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-shared/references/code-session-gate.md",
     "skills/workflow-implementation-entry/references/invoke-skill.md"
   ],
   "answers": [

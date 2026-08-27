@@ -246,6 +246,7 @@ Commands:
   render phase-completed   <wu> --phase <phase> [--paths]
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render entry-gate        <wu.phase.topic> [--own]  (planning|implementation|review|specification)
+  render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
   render cancel-gate <wu.phase.topic>

@@ -14,7 +14,7 @@ const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kerne
 const { WORK_TYPE_PIPELINES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
-const { fmtAge } = require('../presence.cjs');
+const { fmtAge, CODE_PHASES } = require('../presence.cjs');
 const { buildOrderLive } = require('../build-order.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
@@ -41,6 +41,7 @@ const { buildOrderLive } = require('../build-order.cjs');
  * @property {boolean} [input_moved]   the entry's item (or its source item) carries a live reconcile flag
  * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
  * @property {number} [session_age]    that session's last-active age in seconds
+ * @property {{work_unit: string, phase: string, topic: string}} [session_holder] the held code row taking the slot, when it is not this entry's own topic
  */
 
 /** @typedef {import('../presence.cjs').PresenceRow} PresenceRow */
@@ -644,8 +645,10 @@ function pickRecommendation(detail, numbered, options, hasMap) {
     // settled — first build-phase next_phase_ready entry in pipeline order.
     // An input-moved entry is never the recommendation: recommending a start
     // that propagates known-stale input contradicts its own cue — the
-    // reconcile (via the flagged item's entry flow) comes first.
-    const build = numbered.find((e) => e.action.startsWith('start_') && !e.input_moved
+    // reconcile (via the flagged item's entry flow) comes first. Nor is an
+    // entry a held session occupies — recommending the row the menu has
+    // struck through would be the display arguing with itself.
+    const build = numbered.find((e) => e.action.startsWith('start_') && !e.input_moved && !e.in_session
       && BUILD_PHASES.includes(ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (e.action)]));
     if (build) return build;
     // With a flagged completed item and nothing else to start, the reconcile
@@ -691,17 +694,24 @@ function pickRecommendation(detail, numbered, options, hasMap) {
 }
 
 /**
- * Mark entries whose (phase, topic) a held session elsewhere occupies —
- * research and discussion actions only, the phases presence tracks.
+ * Mark entries a held session elsewhere occupies. A doc entry is marked by a
+ * row on its own (phase, topic); a code entry is marked by any held
+ * implementation or review row in the project, because code does not
+ * partition — one tree, one index, one slot, whatever work unit holds it.
  * @param {MenuKey[]} numbered @param {PresenceRow[]} held
+ * @param {(PresenceRow & {work_unit: string})[]} [codeHeld] project-wide held code rows
  */
-function markHeldEntries(numbered, held) {
+function markHeldEntries(numbered, held, codeHeld = []) {
   for (const e of numbered) {
     const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (e.action)];
-    const row = held.find((r) => r.phase === phase && r.topic === e.topic);
-    if (row) {
-      e.in_session = true;
-      e.session_age = row.age_seconds;
+    const own = held.find((r) => r.phase === phase && r.topic === e.topic);
+    const foreign = own || !CODE_PHASES.includes(phase) ? undefined : codeHeld[0];
+    const row = own || foreign;
+    if (!row) continue;
+    e.in_session = true;
+    e.session_age = row.age_seconds;
+    if (foreign) {
+      e.session_holder = { work_unit: foreign.work_unit, phase: foreign.phase, topic: foreign.topic };
     }
   }
 }
@@ -711,7 +721,7 @@ function markHeldEntries(numbered, held) {
  * (skills route on these); `rendered` is the dotted-gate markdown block.
  * @param {string} workUnit
  * @param {EpicDetail} detail
- * @param {{presence?: PresenceRow[]}} [opts]
+ * @param {{presence?: PresenceRow[], codeHeld?: (PresenceRow & {work_unit: string})[]}} [opts]
  * @returns {{keys: MenuKey[], rendered: string}}
  */
 function epicMenu(workUnit, detail, opts = {}) {
@@ -750,7 +760,7 @@ function epicMenu(workUnit, detail, opts = {}) {
     }
   }
 
-  markHeldEntries(numbered, heldSessions(opts.presence));
+  markHeldEntries(numbered, heldSessions(opts.presence), opts.codeHeld || []);
 
   const options = commandOptions(workUnit, detail, hasMap);
 
@@ -771,7 +781,9 @@ function epicMenu(workUnit, detail, opts = {}) {
   const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
     const label = e.in_session
-      ? `~~${e.label}~~ · in session (last active ${fmtAge(e.session_age ?? 0)} ago)`
+      ? `~~${e.label}~~ · ${e.session_holder
+        ? `code session in ${e.session_holder.work_unit}/${e.session_holder.topic}`
+        : 'in session'} (last active ${fmtAge(e.session_age ?? 0)} ago)`
       : e.label;
     lines.push(cmdOption(e.key, null, `${label}${e.recommended ? ' (recommended)' : ''}`));
   }
@@ -785,22 +797,36 @@ function epicMenu(workUnit, detail, opts = {}) {
 /**
  * Labelled confirm-gate section for one menu entry a held session occupies —
  * served by the gateway's `in-session-gate` verb, fetched by the flow at the
- * gate that displays it.
+ * gate that displays it. Never blocks: the machine can verify that a process
+ * still runs, never that its session still matters, so the gate states the
+ * fact, names the consequence and the release, and lets the user decide. One
+ * shape, two consequences — a doc phase risks conflicting work on one topic,
+ * a code phase risks two writers on one tree.
+ * @param {string} workUnit  this epic — the holder whenever the entry's own topic is the held one
  * @param {MenuKey} entry
  * @returns {string} one labelled MENU section
  */
-function epicInSessionGate(entry) {
+function epicInSessionGate(workUnit, entry) {
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (entry.action)];
+  const holder = entry.session_holder || { work_unit: workUnit, phase, topic: entry.topic || '' };
+  const age = fmtAge(entry.session_age ?? 0);
+  const fact = entry.session_holder
+    ? `Another session is ${holder.phase === 'review' ? 'reviewing' : 'implementing'} "${titlecase(holder.topic)}" (${holder.work_unit}) — last active ${age} ago.`
+    : `"${titlecase(entry.topic || '')}" is open in another session — last active ${age} ago.`;
+  const consequence = CODE_PHASES.includes(phase)
+    ? 'Code phases run one at a time — concurrent sessions write the same files, and even worktrees end in merge conflicts.'
+    : `Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`;
+  const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${holder.work_unit} ${holder.phase} ${holder.topic}`;
   return section(
     `MENU: in-session gate — ${entry.key}`,
     "emit verbatim as markdown, then STOP for the user's response",
     menuFrame([
-      `"${titlecase(entry.topic || '')}" is open in another session — last active ${fmtAge(entry.session_age ?? 0)} ago. Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`,
+      `${fact} ${consequence} Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with \`${release}\`.`,
       '',
       '**`◆ Proceed anyway?`**',
       '',
-      cmdOption('y', 'yes', 'Proceed anyway'),
-      cmdOption('b', 'back', 'Return to menu'),
+      cmdOption('b', 'back', 'Return to menu (recommended)'),
+      cmdOption('p', 'proceed', 'Proceed anyway'),
     ]),
   );
 }

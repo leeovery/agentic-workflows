@@ -24,6 +24,7 @@ const {
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
+const { heldCodeSessions, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const {
   roadmapMapView,
@@ -3190,6 +3191,59 @@ function entryGate(cwd, { dotpath, own }) {
 }
 
 // ---------------------------------------------------------------------------
+// code-gate — the one-code-session rule at the entry chokepoint. Everything
+// else in the system partitions by topic; the tree and the index do not, so
+// a second implementation or review session anywhere in the checkout writes
+// the same files as the first. The gate states who holds the slot and lets
+// the user through anyway — the machine can verify that a process still
+// runs, never that its session still matters. An empty response means the
+// slot is free.
+// ---------------------------------------------------------------------------
+
+/** @param {string} phase */
+function codeVerb(phase) {
+  return phase === 'review' ? 'reviewing' : 'implementing';
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string} the gate's sections, or '' when no other session holds code
+ */
+function codeGate(cwd, { dotpath }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'code-gate');
+  if (!CODE_PHASES.includes(phase)) {
+    throw new Error(`render code-gate: the code rule covers ${CODE_PHASES.join('|')} only, got "${phase}"`);
+  }
+  const holders = heldCodeSessions(cwd);
+  if (holders.length === 0) return '';
+
+  const facts = holders.map((h) =>
+    `⚑ Another session is ${codeVerb(h.phase)} "${titlecase(h.topic)}" (${h.work_unit}) — last active ${fmtAge(h.age_seconds)} ago.`);
+  const first = holders[0];
+  return [
+    section(
+      'DISPLAY: code gate',
+      'emit verbatim as a properties code block — ```properties fence',
+      facts.join('\n'),
+    ),
+    section(
+      'MENU: code gate',
+      "emit verbatim as markdown, then STOP for the user's response",
+      menuFrame([
+        'Code phases run one at a time — concurrent sessions write the same files, and even worktrees end in merge conflicts. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with '
+          + `\`node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${first.work_unit} ${first.phase} ${first.topic}\`.`,
+        '',
+        '**`◆ Proceed anyway?`**',
+        '',
+        cmdOption('b', 'back', 'Leave that session to it (recommended)'),
+        cmdOption('p', 'proceed', 'Enter anyway — two sessions on one code base'),
+      ]),
+    ),
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Task-loop surfaces — the brief, the result header, and the gates, fetched
 // by the implementation loop at the exact stage that displays them, so the
 // section always sits in the tool result directly above its emission.
@@ -3853,6 +3907,7 @@ const SURFACES = {
   'phase-completed': phaseCompleted,
   'phase-note': phaseNote,
   'entry-gate': entryGate,
+  'code-gate': codeGate,
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,
   'cancel-gate': cancelGate,

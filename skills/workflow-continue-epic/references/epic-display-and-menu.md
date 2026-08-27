@@ -83,7 +83,7 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or a comman
 
 **If the selected entry carries an `(in session: …)` marker:**
 
-Another live session holds this topic open. Fetch and emit the `MENU: in-session gate — {key}` section for the selected entry:
+A live session holds what this entry would open — this topic for a document phase, or the one code slot for implementation and review. Fetch and emit the `MENU: in-session gate — {key}` section for the selected entry:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {work_unit} {key}
@@ -95,7 +95,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 → Return to **A. State Display and Menu**.
 
-**If user chose `yes`:**
+**If user chose `proceed`:**
 
 Continue with the **Hard gate check** below.
 

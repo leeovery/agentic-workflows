@@ -56,6 +56,14 @@ Load **[validate-dependencies.md](references/validate-dependencies.md)** and fol
 
 ---
 
-## Step 4: Invoke the Skill
+## Step 4: Check the Code Slot
+
+Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with phase = `implementation`.
+
+→ On return, proceed to **Step 5**.
+
+---
+
+## Step 5: Invoke the Skill
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

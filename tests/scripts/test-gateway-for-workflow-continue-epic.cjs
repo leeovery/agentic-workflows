@@ -1864,7 +1864,9 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.ok(gate.stdout.includes(
       "=== MENU: in-session gate — 1 (emit verbatim as markdown, then STOP for the user's response) ==="
     ), gate.stdout);
-    assert.ok(gate.stdout.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s.'), gate.stdout);
+    const gateText = gate.stdout.replace(/\n\u00a0+/g, ' ');
+    assert.ok(gateText.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion auth`.'), gateText);
+    assert.ok(gateText.indexOf('`b/back`') < gateText.indexOf('`p/proceed`'), 'back leads the family\'s options');
     const unheld = run(['in-session-gate', 'v1', 'r']);
     assert.ok(unheld.stdout.includes('is not held by another session'), unheld.stdout);
 
@@ -1873,6 +1875,40 @@ describe('workflow-continue-epic CLI dispatch', () => {
     const freed = run(['view', 'v1']);
     assert.ok(freed.stdout.includes('sessions_in_progress: (none)'), freed.stdout);
     assert.ok(!freed.stdout.includes('in session'), freed.stdout);
+  });
+
+  it('a code session anywhere in the project marks this epic\'s code entries', () => {
+    const fs = require('fs');
+    epicFixture();
+    // A ready-to-implement plan in this epic, and a peer session holding the
+    // code slot in a different work unit entirely.
+    const mpath = path.join(dir, '.workflows/v1/manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(mpath, 'utf8'));
+    manifest.phases.specification = { items: { auth: { status: 'completed', order: 1, sources: { auth: { status: 'incorporated' } } } } };
+    manifest.phases.planning = { items: { auth: { status: 'completed', format: 'local-markdown' } } };
+    manifest.phases.discussion.items.auth.status = 'completed';
+    fs.writeFileSync(mpath, JSON.stringify(manifest, null, 2));
+    fs.mkdirSync(path.join(dir, '.workflows/ship'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/ship/manifest.json'), JSON.stringify({
+      name: 'ship', work_type: 'feature', status: 'in-progress', phases: {},
+    }, null, 2));
+    const peer = path.join(dir, '.workflows/.cache/ship/implementation/checkout-flow/presence');
+    fs.mkdirSync(path.dirname(peer), { recursive: true });
+    fs.writeFileSync(peer, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
+
+    const res = run(['view', 'v1']);
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.ok(res.stdout.includes('(in session: ship/checkout-flow, last active'),
+      `the ACTIONS marker names the holder:\n${res.stdout}`);
+    assert.match(res.stdout.replace(/\n\u00a0+/g, ' '), /~~[^~]*~~ · code session in ship\/checkout-flow/, res.stdout);
+
+    const key = res.stdout.split('\n').find((l) => l.includes('start_implementation')).trim().split(/\s+/)[0];
+    const gate = run(['in-session-gate', 'v1', key]);
+    assert.strictEqual(gate.status, 0, gate.stderr);
+    const text = gate.stdout.replace(/\n\u00a0+/g, ' ');
+    assert.ok(text.includes('Another session is implementing "Checkout Flow" (ship)'), text);
+    assert.ok(text.includes('Code phases run one at a time'), text);
+    assert.ok(text.includes('presence clear ship implementation checkout-flow'), text);
   });
 
   it('view without a work unit errors instead of rendering the first epic', () => {

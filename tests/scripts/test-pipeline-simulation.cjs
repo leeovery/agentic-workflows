@@ -209,7 +209,10 @@ class Sim {
     // Hermetic session-label environment: the config dir pins into the
     // sandbox and the tmux identity is stripped, so `session label` can
     // never read the developer's real opt-in or rename their real session.
-    this.env = { ...process.env, WORKFLOWS_CONFIG_DIR: path.join(this.dir, '.wf-config') };
+    // A real session always carries its identity, and presence reads it to
+    // tell its own holds from a peer's — pin one so the sim never gates
+    // against itself, whatever the host environment carries.
+    this.env = { ...process.env, WORKFLOWS_CONFIG_DIR: path.join(this.dir, '.wf-config'), CLAUDE_CODE_SESSION_ID: 'sim-session' };
     delete this.env.TMUX;
     delete this.env.TMUX_PANE;
   }
@@ -266,12 +269,12 @@ class Sim {
 
   /** Bare-stdout read (manifest get / exists / resolve …). */
   read(args) {
-    return execFileSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8' }).trim();
+    return execFileSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.env }).trim();
   }
 
   /** Render surface: must exit 0 (an entry-gate that passes renders empty). */
   render(args, { expect } = {}) {
-    const res = spawnSync('node', [ENGINE, 'render', ...args], { cwd: this.dir, encoding: 'utf8' });
+    const res = spawnSync('node', [ENGINE, 'render', ...args], { cwd: this.dir, encoding: 'utf8', env: this.env });
     assert.strictEqual(res.status, 0,
       `[render ${args.join(' ')}] crashed or refused\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     if (expect === 'content') {
@@ -383,6 +386,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
 
   // Implementation — no `topic start` in prose; task init creates.
   sim.render(['entry-gate', `${wu}.implementation.${topic}`], { expect: 'empty' });
+  // The entry chokepoint's code-slot read: nothing else in this sim holds
+  // implementation or review, so the slot is free and the gate renders empty.
+  sim.render(['code-gate', `${wu}.implementation.${topic}`], { expect: 'empty' });
   label(sim, wu, 'implementation', topic);
   const implInit = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
@@ -428,6 +434,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // its surfaces, and the pass completes the phase. The offer at a pass
   // consumes the banked set and deletes the field.
   sim.render(['entry-gate', `${wu}.review.${topic}`], { expect: 'empty' });
+  sim.render(['code-gate', `${wu}.review.${topic}`], { expect: 'empty' });
   label(sim, wu, 'review', topic);
   sim.run(['topic', 'start', wu, 'review', topic]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'reviewed_tasks', `${topic}-1-1`]);
