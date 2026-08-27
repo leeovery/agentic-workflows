@@ -221,7 +221,7 @@ function apply(cwd, workUnit, currentSource) {
     };
   }
 
-  // Stage 6: git add + commit, scoped to exactly the split's paths.
+  // Stage 6: commit through the door, scoped to exactly the split's paths.
   const sourceRel = path.relative(cwd, sourceFile);
   // Only reference the source's old path if git knows it. An untracked source
   // (never committed) was renamed away in Stage 2, so the old path matches
