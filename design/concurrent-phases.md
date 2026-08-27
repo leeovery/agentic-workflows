@@ -495,6 +495,13 @@ Settled 2026-08-28, from the review pass:
   whole of it; a warning the user may act on or ignore stays plain, so
   red stays rare enough to mean something.
 
+- 2026-08-27 — **The banked menus were carried after all.** Ruling (i)
+  above held for the stack itself; the 21 menus in the 15 files it
+  touched then landed in a follow-up on the same day (#1038, eleven new
+  render surfaces, wording byte-preserved), rather than sitting as an
+  idea. The exemption stands and is what let the stack stay about commit
+  scope; only the "not carried" half is spent.
+
 **Correction.** The components section's "Three-segment `manifest
 set`/`apply` on a presence phase — beats (every state transition
 heartbeats)" line is superseded by the first entry above. Read the
