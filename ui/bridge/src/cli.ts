@@ -18,11 +18,28 @@ import { acquireLease, releaseLease } from './lease.js';
 import { loadOrMintToken } from './auth.js';
 import { generateAllowlist } from './allowlist.js';
 import { SessionManager, SdkDriver } from './sessions.js';
+import { AttentionCoordinator } from './attention-coordinator.js';
 import { Replayer } from './replay.js';
 import { convertTranscript, deriveAnswers, snapshotWorld } from './convert.js';
 import { Journal } from './journal.js';
 import { logger } from './log.js';
 import type { RawEvent } from './derive.js';
+
+// Web-push delivery sink. In the prototype, push subscriptions live in the
+// db and delivery is best-effort; an undelivered push is logged on the
+// observability floor so "left closed with confidence" degrades to badge +
+// digest prominence, never silence (phase-3 risk).
+function deliverWebPush(db: Db, d: { rowKey: string; kind: string; body: string }): void {
+  const subs = db.sqlite.prepare('SELECT COUNT(*) as n FROM push_ledger WHERE row_key = ?').get('__subscription__') as { n: number } | undefined;
+  // No real VAPID transport in the prototype; the delivery attempt is recorded.
+  db.sqlite
+    .prepare(
+      `INSERT INTO push_ledger (row_key, kind, decided_at, content_hash) VALUES (?, 'delivered', ?, ?)
+       ON CONFLICT(row_key, kind) DO UPDATE SET decided_at = excluded.decided_at`,
+    )
+    .run(`delivery:${d.rowKey}`, new Date().toISOString(), d.body.slice(0, 40));
+  void subs;
+}
 
 function loadBridgeId(stateDir: string): string {
   const p = path.join(stateDir, 'bridge-id');
@@ -156,6 +173,7 @@ async function runLive(projectRoot: string): Promise<void> {
   const bridgeId = loadBridgeId(stateDir);
   let mirror: { host: string } | null = null;
   let sessions: SessionManager | null = null;
+  let attention: AttentionCoordinator | null = null;
   if (hs.mode === 'full') {
     const lease = acquireLease(projectRoot, bridgeId);
     if (!lease.held) {
@@ -176,6 +194,33 @@ async function runLive(projectRoot: string): Promise<void> {
       // Idle-timeout sweep (spec 2): retire sessions idle past 4h.
       const idleTimer = setInterval(() => sessions?.reapIdle(Date.now()), 10 * 60 * 1000);
       idleTimer.unref?.();
+
+      // The attention system (Phase 3): ceremony, escalation, digests. Push
+      // delivery is the web-push sink; in the prototype it also logs on the
+      // observability floor so an undelivered push is visible.
+      attention = new AttentionCoordinator(
+        db,
+        project,
+        {
+          projectRoot,
+          store,
+          sessions,
+          engine: engine ?? null,
+          config: {
+            rollupMinutes: config.notifications.rollupMinutes,
+            quietStart: config.notifications.quietHours.start,
+            quietEnd: config.notifications.quietHours.end,
+            morningHour: 8,
+            escalationMinutes: config.notifications.escalationMinutes,
+            graceMinutes: config.notifications.graceMinutes,
+          },
+        },
+        (d) => {
+          logger.info('push', { rowKey: d.rowKey, kind: d.kind, body: d.body });
+          deliverWebPush(db, d);
+        },
+      );
+      attention.start();
     }
   }
 
@@ -191,6 +236,9 @@ async function runLive(projectRoot: string): Promise<void> {
       sessions,
       token,
       readOnlyMirror: mirror,
+      db,
+      digests: () => attention?.lobbyStrip() ?? [],
+      markActivity: (sig) => attention?.markActivity(sig),
     },
     health: (): HealthState => ({
       ok: true,

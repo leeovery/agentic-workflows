@@ -15,6 +15,8 @@ import { durableRows, durableCounts } from './durable.js';
 import { buildQueue } from './queue.js';
 import { checkToken } from './auth.js';
 import type { SessionManager } from './sessions.js';
+import type { Db } from './db.js';
+import { HUMAN_SENTINEL } from './db.js';
 import { SPINE_EVENT_TYPES } from '@workflow-ui/shared';
 
 export type ApiDeps = {
@@ -25,6 +27,9 @@ export type ApiDeps = {
   sessions?: SessionManager | null;
   token?: string;
   readOnlyMirror?: { host: string } | null; // lease not held — no writes
+  db?: Db | null; // cursors + read-refs (Phase 3)
+  digests?: () => unknown; // lobby digest strip provider (Phase 3)
+  markActivity?: (sig: { appConnected?: boolean; focusedThread?: string | null }) => void;
 };
 
 type Json = Record<string, unknown>;
@@ -105,6 +110,10 @@ export async function handleApi(
       await queueView(res, deps);
       return true;
     }
+    if (url.pathname === '/api/digests') {
+      send(res, 200, { strip: deps.digests ? deps.digests() : [] });
+      return true;
+    }
     if (url.pathname === '/api/sessions') {
       send(res, 200, { sessions: publicSessions(deps) });
       return true;
@@ -150,6 +159,27 @@ export async function handleApi(
   }
 }
 
+function headSha(projectRoot: string): string | null {
+  try {
+    return execFileSync('git', ['-C', projectRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return null;
+  }
+}
+
+function recordReadRef(db: Db, projectRoot: string, wu: string, rel: string): void {
+  const sha = headSha(projectRoot);
+  if (!sha) return;
+  const artifact = `${wu}/${rel}`;
+  db.sqlite
+    .prepare(
+      `INSERT INTO artifact_read_refs (human_id, project, artifact, sha, state, rendered_at)
+       VALUES (?, ?, ?, ?, 'current', ?)
+       ON CONFLICT(human_id, project, artifact) DO UPDATE SET sha = excluded.sha, state = 'current', rendered_at = excluded.rendered_at`,
+    )
+    .run(HUMAN_SENTINEL, path.basename(path.resolve(projectRoot)), artifact, sha, new Date().toISOString());
+}
+
 function publicSessions(deps: ApiDeps): unknown[] {
   if (!deps.sessions) return [];
   return deps.sessions.list().map((s) => ({
@@ -185,11 +215,23 @@ async function handleMutation(
   res: http.ServerResponse,
   deps: ApiDeps,
 ): Promise<void> {
+  const body = await readBody(req);
+
+  // Activity signalling needs no session manager (a read-only mirror still
+  // reports focus for suppression).
+  if (url.pathname === '/api/activity') {
+    deps.markActivity?.({
+      appConnected: body.appConnected !== false,
+      focusedThread: (body.focusedThread as string | null) ?? null,
+    });
+    send(res, 200, { ok: true });
+    return;
+  }
+
   if (!deps.sessions) {
     send(res, 503, { error: 'session manager unavailable' });
     return;
   }
-  const body = await readBody(req);
 
   if (url.pathname === '/api/session/start') {
     const address = (body.address ?? {}) as { workUnit?: string; topic?: string; phase?: string };
@@ -431,6 +473,10 @@ function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: 
     send(res, 404, { error: 'artifact not found' });
     return;
   }
+  // Record the read-ref: HEAD-at-render is Phase 4's diff base (spec, phase-0
+  // §8). Read is idempotent — a GET recording a receipt is a deliberate,
+  // UI-native write, never workflow state.
+  if (deps.db) recordReadRef(deps.db, deps.projectRoot, wu, rel);
   send(res, 200, { workUnit: wu, path: rel, phase: rel.split('/')[0] ?? '', content });
 }
 
