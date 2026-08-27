@@ -103,7 +103,7 @@ Ensure a clean working tree before analysis. Run `git status`.
 
 Categorize them:
 
-- **Implementation files** (files touched by `impl({work_unit}):` commits) — stage these automatically.
+- **Implementation files** (files touched by `impl({work_unit}):` commits) — name these in the checkpoint commit automatically.
 - **Unexpected files** (files not touched during implementation) — present to the user:
 
 > *Output the next fenced block as a code block:*
