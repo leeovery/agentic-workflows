@@ -3132,7 +3132,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -4129,5 +4129,250 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
       /--count must be a positive integer, got "undefined"/);
     assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '0' }),
       /--count must be a positive integer, got "0"/);
+  });
+});
+
+describe('render — the adopted phase gates', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      phases: {
+        discussion: { items: { checkout: { status: 'in-progress' } } },
+        investigation: { items: { checkout: { status: 'in-progress' } } },
+        implementation: { items: { checkout: { status: 'in-progress' } } },
+        planning: {
+          items: {
+            checkout: {
+              status: 'in-progress',
+              external_dependencies: {
+                'data-model': { description: 'the shared row shape', state: 'unresolved' },
+                'auth-flow': { description: 'session tokens', state: 'resolved', internal_id: 'auth-1-2' },
+              },
+            },
+          },
+        },
+      },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  it('conclude-gate: one surface, the address\'s phase picking the wording', () => {
+    assert.strictEqual(renderSurface(dir, 'conclude-gate', { dotpath: 'pay.discussion.checkout' }), [
+      "=== MENU: conclude gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Conclude this discussion and mark as completed?`**',
+      '',
+      '**`y/yes`** → Conclude discussion',
+      '**`n/no`**  → Continue discussing',
+      '',
+    ].join('\n'));
+
+    const investigation = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.investigation.checkout' });
+    assert.match(investigation, /`◆ Investigation complete\. Ready to conclude\?`/);
+    assert.match(investigation, /\*\*`y\/yes`\*\*\s+→ Conclude investigation/);
+    assert.match(investigation, /\*\*Keep going\*\* → Tell me what else to explore/);
+
+    const implementation = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.implementation.checkout' });
+    assert.match(implementation, /`◆ Ready to mark implementation as completed\?`/);
+    assert.match(implementation, /\*\*`y\/yes`\*\* → Mark as completed/);
+    assert.match(implementation, /\*\*`n\/no`\*\*\s+→ Go back and make changes/);
+
+    const planning = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning.checkout' });
+    assert.match(planning, /`◆ Ready to conclude\?`/);
+    assert.match(planning, /\*\*`y\/yes`\*\* → Conclude plan and mark as completed/);
+  });
+
+  it('conclude-gate: refuses a phase that concludes some other way', () => {
+    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.research.checkout' }),
+      /phase must be one of discussion, investigation, implementation, planning, got "research"/);
+    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning' }),
+      /address must be <work_unit>\.<phase>\.<topic>/);
+  });
+
+  it('summary-backfill-gate: the static batch gate and the payload-named unsourced set', () => {
+    const batch = renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant: 'batch' });
+    assert.match(batch, /MENU: summary batch gate/);
+    assert.match(batch, /`◆ Accept these summaries\?`/);
+    assert.match(unwrap(batch), /\*\*`y\/yes`\*\*\s+→ Accept all summaries as drafted \(description is auto-drafted silently\)/);
+    assert.match(unwrap(batch), /\*\*`e\/edit`\*\* → Edit one or more summary lines before accepting/);
+    assert.match(unwrap(batch), /\*\*`s\/skip`\*\* → Skip the whole batch \(leave fields blank\)/);
+
+    const unsourced = renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay', variant: 'unsourced', file: writePayload(dir, 'u.json', { names: ['auth-flow', 'legacy-bits'] }),
+    });
+    assert.match(unsourced, /`◆ 2 topic\(s\) have no source file to draft from:`/);
+    assert.match(unsourced, /\n- Auth Flow\n- Legacy Bits\n\n/);
+    assert.match(unwrap(unsourced), /\*\*`p\/provide`\*\* → Tell me the summary for each and I'll write it/);
+    assert.match(unwrap(unsourced), /\*\*`l\/leave`\*\*\s+→ Leave them unset; this flow re-offers next time/);
+  });
+
+  it('summary-backfill-gate: validates the variant, the payload and the address', () => {
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay' }),
+      /--variant must be "batch" or "unsourced", got "undefined"/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay.discovery.x', variant: 'batch' }),
+      /address must be a bare <work_unit>/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant: 'unsourced' }),
+      /--file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'summary-backfill-gate', {
+      dotpath: 'pay', variant: 'unsourced', file: writePayload(dir, 'u.json', { names: [] }),
+    }), /"names" must be a non-empty array of topic names/);
+  });
+
+  it('external-dependency-gate: the blocking gate is static, the pick reads its descriptions from the plan', () => {
+    const blocking = renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant: 'blocking' });
+    assert.match(blocking, /MENU: blocking dependencies gate/);
+    assert.match(blocking, /`◆ How would you like to proceed\?`/);
+    assert.match(blocking, /\*\*`s\/satisfied`\*\* → Mark a dependency as satisfied externally/);
+    assert.match(blocking, /\*\*`i\/implement`\*\* → Exit to implement blocking dependencies first/);
+
+    const pick = renderSurface(dir, 'external-dependency-gate', {
+      dotpath: 'pay.planning.checkout', variant: 'pick', blocking: 'data-model,auth-flow',
+    });
+    assert.strictEqual(pick, [
+      "=== MENU: dependency pick (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Which dependency has been satisfied?`**',
+      '',
+      '**`1`** → Data Model — the shared row shape',
+      '**`2`** → Auth Flow — session tokens',
+      '',
+    ].join('\n'));
+  });
+
+  it('external-dependency-gate: refuses a foreign name, an empty set and a non-planning address', () => {
+    assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant: 'pick' }),
+      /--blocking <topic,topic,…> is required/);
+    assert.throws(() => renderSurface(dir, 'external-dependency-gate', {
+      dotpath: 'pay.planning.checkout', variant: 'pick', blocking: 'ghost',
+    }), /"ghost" is not an external dependency of "checkout"/);
+    assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.implementation.checkout', variant: 'blocking' }),
+      /address must be <work_unit>\.planning\.<topic>, got phase "implementation"/);
+    assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant: 'nope' }),
+      /--variant must be "blocking" or "pick"/);
+  });
+
+  it('checkpoint-files-gate and executor-block-gate: the implementation loop\'s two static stops', () => {
+    const checkpoint = renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.implementation.checkout' });
+    assert.match(checkpoint, /MENU: checkpoint files gate/);
+    assert.match(checkpoint, /`◆ Include unexpected files in the checkpoint commit\?`/);
+    assert.match(unwrap(checkpoint), /\*\*`y\/yes`\*\*\s+→ Include all/);
+    assert.match(unwrap(checkpoint), /\*\*`s\/skip`\*\*\s+→ Exclude unexpected files, commit only implementation files/);
+    assert.match(unwrap(checkpoint), /\*\*Comment\*\* → Specify which to include/);
+
+    const block = renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout' });
+    assert.match(block, /MENU: executor block gate/);
+    assert.match(block, /`◆ How would you like to proceed\?`/);
+    assert.match(unwrap(block), /\*\*`r\/retry`\*\* → Re-invoke the executor with your comments \(provide below\)/);
+    assert.match(unwrap(block), /\*\*`t\/stop`\*\*\s+→ Stop implementation entirely/);
+
+    for (const surface of ['checkpoint-files-gate', 'executor-block-gate']) {
+      assert.throws(() => renderSurface(dir, surface, { dotpath: 'pay.planning.checkout' }),
+        /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
+    }
+  });
+
+  it('dependency-approval-gate: three variants, one approve-or-change shape', () => {
+    const graph = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph' });
+    assert.match(graph, /MENU: dependency approval gate/);
+    assert.match(graph, /`◆ Approve the dependency graph\?`/);
+    assert.match(unwrap(graph), /\*\*`y\/yes`\*\*\s+→ Proceed/);
+    assert.match(unwrap(graph), /\*\*Tell me what to change\*\* → which priorities or dependencies to adjust/);
+
+    assert.match(renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph' }),
+      /`◆ Approve the updated graph\?`/);
+    const resolution = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' });
+    assert.match(resolution, /`◆ Approve the dependency resolution\?`/);
+    assert.match(unwrap(resolution), /\*\*Tell me what to change\*\* → which resolutions to adjust or links to add/);
+
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout' }),
+      /--variant must be one of graph, updated-graph, resolution, got "undefined"/);
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.discussion.checkout', variant: 'graph' }),
+      /address must be <work_unit>\.planning\.<topic>/);
+  });
+
+  it('task-count-gate: the authoring mismatch stop', () => {
+    const out = renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout' });
+    assert.match(out, /MENU: task count gate/);
+    assert.match(out, /`◆ How would you like to proceed\?`/);
+    assert.match(unwrap(out), /\*\*`r\/retry`\*\* → Re-invoke the author agent once more/);
+    assert.match(unwrap(out), /\*\*Adjust\*\*\s+→ Tell me what to correct \(the task table or the detail file\), and I'll apply it and re-validate/);
+    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.implementation.checkout' }),
+      /address must be <work_unit>\.planning\.<topic>/);
+  });
+
+  it('plan-format-gate: names the project default, and refuses when none is set', () => {
+    assert.throws(() => renderSurface(dir, 'plan-format-gate', {}),
+      /no project default plan_format — the offer only renders over an existing default/);
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'),
+      JSON.stringify({ work_units: { pay: {} }, defaults: { plan_format: 'local-markdown' } }));
+    assert.strictEqual(renderSurface(dir, 'plan-format-gate', {}), [
+      "=== MENU: plan format gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'Project default format is **local-markdown**. Use the same format?',
+      '',
+      '**`y/yes`** → Use local-markdown',
+      '**`n/no`**  → See all available formats',
+      '',
+    ].join('\n'));
+  });
+
+  it('plan-review-gate: the loop\'s two gates, spec-review-gate\'s sibling', () => {
+    const cont = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'continue' });
+    assert.match(cont, /MENU: plan review continue gate/);
+    assert.match(cont, /`◆ Continue with review\?`/);
+    assert.match(cont, /\*\*`p\/proceed`\*\* → Continue review/);
+    assert.match(cont, /\*\*`s\/skip`\*\*\s+→ Skip review, proceed to completion/);
+
+    const reloop = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'reloop' });
+    assert.match(reloop, /MENU: plan review reloop gate/);
+    assert.match(reloop, /`◆ Run another review round\?`/);
+    assert.match(unwrap(reloop), /\*\*`r\/reanalyse`\*\* → Run another round \(traceability \+ integrity\)/);
+    assert.match(reloop, /\*\*`p\/proceed`\*\*\s+→ Proceed to conclusion/);
+
+    assert.throws(() => renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout' }),
+      /--variant must be "continue" or "reloop"/);
+    assert.throws(() => renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.discussion.checkout', variant: 'continue' }),
+      /address must be <work_unit>\.planning\.<topic>/);
+  });
+
+  it('correction-gate: derives the spec path, and serves completed units only', () => {
+    writeManifest(dir, 'done', {
+      work_type: 'feature',
+      status: 'completed',
+      phases: { specification: { items: { done: { status: 'completed' } } } },
+    });
+    const out = renderSurface(dir, 'correction-gate', { dotpath: 'done.specification.done' });
+    assert.strictEqual(out, [
+      "=== MENU: correction gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'Apply the correction protocol to .workflows/done/specification/done/specification.md?',
+      '',
+      '**`y/yes`**  → Edit in place + corrigendum + knowledge re-index',
+      '**`v/view`** → Show the full correction list',
+      '**`n/no`**   → Leave the specification as-is',
+      '',
+    ].join('\n'));
+
+    assert.throws(() => renderSurface(dir, 'correction-gate', { dotpath: 'pay.specification.checkout' }),
+      /"pay" is "in-progress" — the corrigendum protocol serves completed work units/);
+    assert.throws(() => renderSurface(dir, 'correction-gate', { dotpath: 'done.discussion.done' }),
+      /address must be <work_unit>\.specification\.<topic>, got phase "discussion"/);
+  });
+
+  it('analysis-proceed-gate: the bare y/n consent before the grouping analysis', () => {
+    assert.strictEqual(renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'pay' }), [
+      "=== MENU: analysis proceed gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Proceed with analysis?`**',
+      '',
+      '**`y/yes`**',
+      '**`n/no`**',
+      '',
+    ].join('\n'));
+    assert.throws(() => renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'pay.specification.checkout' }),
+      /address must be a bare <work_unit>/);
+    assert.throws(() => renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'ghost' }),
+      /work unit "ghost" not found/);
   });
 });

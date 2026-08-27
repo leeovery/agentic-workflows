@@ -47,6 +47,7 @@
       "render resume-gate pay.discussion.pay",
       "agent dispatch pay discussion pay --kind review",
       "workflow-discussion-process/scripts/gateway.cjs map pay pay",
+      "render conclude-gate pay.discussion.pay",
       "topic complete pay discussion pay"
     ],
     "calls_in_order": [

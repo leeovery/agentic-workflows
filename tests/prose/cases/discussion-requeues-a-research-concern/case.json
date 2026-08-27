@@ -52,6 +52,7 @@
       "render requeue-offer search-relevance.discussion.synonym-handling",
       "topic requeue search-relevance discussion research synonym-handling",
       "discussion-map set search-relevance synonym-handling result-caching decided",
+      "render conclude-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [

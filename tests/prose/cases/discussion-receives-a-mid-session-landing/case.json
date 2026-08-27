@@ -55,6 +55,7 @@
       "discussion-map add search-relevance synonym-handling expansion-cache-invalidation",
       "discussion-map set search-relevance synonym-handling expansion-cache-invalidation exploring",
       "absorb 001-expansion-cache-invalidation (from relevance-measurement)",
+      "render conclude-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [

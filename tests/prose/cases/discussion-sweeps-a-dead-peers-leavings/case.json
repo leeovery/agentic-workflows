@@ -40,6 +40,7 @@
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
+      "render conclude-gate search-relevance.discussion.behavioural-ranking",
       "topic complete search-relevance discussion behavioural-ranking",
       "--topic discussion/behavioural-ranking --kb",
       "presence scan search-relevance",

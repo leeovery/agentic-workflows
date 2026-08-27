@@ -52,6 +52,7 @@
       "agent scan pay discussion pay",
       "agent dispatch pay discussion pay --kind review --final",
       "--clean",
+      "render conclude-gate pay.discussion.pay",
       "topic complete pay discussion pay"
     ],
     "calls_in_order": [

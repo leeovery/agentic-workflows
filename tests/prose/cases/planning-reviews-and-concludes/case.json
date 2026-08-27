@@ -54,6 +54,7 @@
       "manifest set pay.planning.pay review_cycle 1",
       "planning(pay): complete plan review",
       "manifest set pay.planning.pay spec_commit",
+      "render conclude-gate pay.planning.pay",
       "topic complete pay planning pay",
       "planning(pay): complete plan"
     ],
