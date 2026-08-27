@@ -562,6 +562,12 @@ async function runMcp(): Promise<void> {
     console.error('bridge mcp: set WORKFLOW_BRIDGE_TOKEN (the install token from the SPA) in the environment');
     process.exit(2);
   }
+  if (!authCookie) {
+    // Fail-safe, not a hole: without a cookie a github-mode bridge resolves the
+    // caller as anonymous → a non-member → every answer refused. Hint it, so a
+    // multiplayer deployment isn't met with opaque "watching" refusals.
+    console.error('bridge mcp: WORKFLOW_BRIDGE_COOKIE is unset — in single-user mode this is fine; a github-mode bridge will refuse every answer without it (mint one in the SPA).');
+  }
   const client = new HttpBridgeClient({ baseUrl, bearerToken, authCookie });
   const server = createMcpServer(client, { spaBaseUrl: baseUrl });
   runStdio(server);

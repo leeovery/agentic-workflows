@@ -142,6 +142,39 @@ describe('MCP server — protocol + tools', () => {
     expect(contents.mimeType).toBe('text/html');
     expect(contents.text).toContain('#auth');
   });
+
+  // --- round-13 folds -------------------------------------------------------
+
+  it('resources/read serves the gate-card template (list/read consistent)', async () => {
+    const srv = createMcpServer(new FakeBridge(fakeCard()));
+    const out = await srv.handle({ jsonrpc: '2.0', id: 10, method: 'resources/read', params: { uri: GATE_CARD_RESOURCE } });
+    expect((out!.result as any).contents[0].mimeType).toBe('text/html');
+    expect((out!.result as any).contents[0].text).toContain('Open a gate');
+  });
+
+  it('the widgets ship an interactivity producer: a host-bridge script + data-gate hooks', async () => {
+    const srv = createMcpServer(new FakeBridge(fakeCard()));
+    const gate = await srv.callTool('workflow_open_gate', { gateId: 'a'.repeat(16) }, {});
+    const html = gate.content.find((c) => c.type === 'resource')!.resource.text;
+    expect(html).toContain('callTool'); // the producer exists
+    expect(html).toContain(`data-gate="${'a'.repeat(16)}"`); // options carry the gate id
+    const q = await srv.callTool('workflow_queue', {}, {});
+    expect(q.content.find((c) => c.type === 'resource')!.resource.text).toContain('callTool');
+  });
+
+  it('initialize echoes the client-requested protocol version', async () => {
+    const srv = createMcpServer(new FakeBridge(fakeCard()));
+    const out = await srv.handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } });
+    expect((out!.result as any).protocolVersion).toBe('2025-06-18');
+  });
+
+  it('an unknown-method NOTIFICATION (no id) gets no response', async () => {
+    const srv = createMcpServer(new FakeBridge(fakeCard()));
+    expect(await srv.handle({ jsonrpc: '2.0', method: 'some/notification' } as any)).toBeNull();
+    // but an unknown-method REQUEST (with id) does get an error
+    const withId = await srv.handle({ jsonrpc: '2.0', id: 5, method: 'nope' });
+    expect((withId!.error as any).code).toBe(-32601);
+  });
 });
 
 // --- real-server parity -----------------------------------------------------
@@ -236,6 +269,11 @@ describe('MCP parity with the SPA (real bridge)', () => {
     expect(journalUserText(b.session.bridgeSessionId)).toBe(journalUserText(a.session.bridgeSessionId));
     expect(ledgerAnswer(b.id)).toBe(ledgerAnswer(a.id));
     expect(ledgerAnswer(b.id)).toBe('c');
+    // ...but the PROVENANCE differs: the audit trail can tell MCP from SPA even
+    // though the answer is identical (round-13 — provenance ≠ parity).
+    const via = (id: string) => JSON.parse((db.sqlite.prepare('SELECT resolution FROM gate_ledger WHERE gate_id = ?').get(id) as any).resolution).via;
+    expect(via(a.id)).toBe('ui');
+    expect(via(b.id)).toBe('mcp');
   });
 
   it('a plain model tool call answering a typed-confirm gate is REJECTED; a UI gesture is accepted', async () => {

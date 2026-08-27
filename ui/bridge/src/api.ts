@@ -302,6 +302,24 @@ function commentTargetFromQuery(url: URL): CommentTarget | null {
   return null;
 }
 
+/**
+ * The confirm mode ('tap' | 'typed') of a gate BY id — from the holder's live
+ * card when it matches, else the durable ledger's stored card. Independent of
+ * how the holder was resolved, so the typed-confirm attestation guard can't be
+ * sidestepped via the bridgeSessionId fallback (round-13).
+ */
+function confirmModeOf(deps: ApiDeps, holder: { openGate: { id: string; confirm?: string } | null }, gateId: string): string | undefined {
+  if (holder.openGate?.id === gateId) return holder.openGate.confirm;
+  if (!deps.db) return undefined;
+  const row = deps.db.sqlite.prepare('SELECT card FROM gate_ledger WHERE gate_id = ?').get(gateId) as { card: string } | undefined;
+  if (!row) return undefined;
+  try {
+    return JSON.parse(row.card)?.confirm;
+  } catch {
+    return undefined;
+  }
+}
+
 /** A comment target from a POST body (gateId or artifact). */
 function bodyCommentTarget(body: Record<string, unknown>): CommentTarget | null {
   const gateId = body.gateId ? String(body.gateId) : '';
@@ -660,8 +678,11 @@ async function handleMutation(
     // tool call (no attestation) is rejected with a deep link to the SPA. The
     // SPA answer is always a real gesture and attests. This is the SINGLE
     // enforcement point — the MCP server renders these read-only, and the bridge
-    // is the backstop (the negative parity test targets exactly this).
-    if (holder.openGate?.id === gateId && holder.openGate.confirm === 'typed' && body.attestation !== 'ui-gesture') {
+    // is the backstop (the negative parity test targets exactly this). The gate's
+    // confirm mode is looked up BY gateId (from the live card or the ledger) so
+    // the guard never depends on how `holder` was resolved (round-13).
+    const gateConfirm = confirmModeOf(deps, holder, gateId);
+    if (gateConfirm === 'typed' && body.attestation !== 'ui-gesture') {
       send(res, 403, {
         error: 'this decision requires a typed confirmation from a UI gesture — answer it in the app',
         deepLink: `/s/${holder.bridgeSessionId}`,
@@ -693,7 +714,12 @@ async function handleMutation(
       }
       noteOwnerActivity(deps.db, gateId, human.id);
     }
-    const result = await deps.sessions.answer(holder.bridgeSessionId, gateId, text, 'ui');
+    // Provenance for the durable ledger: an MCP-host answer is recorded as
+    // `mcp`, an SPA answer as `ui` — the audit trail can tell them apart even
+    // though the answer is byte-identical (round-13). The MCP client sends
+    // `via: 'mcp'`; the SPA sends nothing.
+    const via = body.via === 'mcp' ? 'mcp' : 'ui';
+    const result = await deps.sessions.answer(holder.bridgeSessionId, gateId, text, via);
     const row = deps.sessions.get(holder.bridgeSessionId);
     send(res, result.ok ? 200 : 409, {
       ...result,

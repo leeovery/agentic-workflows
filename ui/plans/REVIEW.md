@@ -452,6 +452,35 @@ the entry now exists, the reference is valid.)
 
 **Survived attack:** routing-never-authority holds (all ownership state is bridge SQLite; the engine is never touched; a terminal answer bypasses it and resolves the card externally); comments never push and quote-to-draft is explicit, never implicit injection; no SQL injection (prepared statements, fixed WHERE clauses, regex-pinned gate ids), no XSS (React text children; no new dangerouslySetInnerHTML), no token leak (`GITHUB_TOKEN` stripped by sessionEnv, never in argv/responses/logs); the capture payload is a prompt under the same containment as any session, not a shell string; out-of-scope respected (single-driver sessions, only owner/watcher, no process-side enforcement).
 
+## Round 13: Phase 7 implementation review (2026-08-27)
+
+Two parallel adversarial reviewers — fidelity/scope and security/quality — over
+the MCP Apps distribution (workflow MCP server, card/queue `ui://` resources,
+the answer round-trip). Both confirmed the two things that matter most:
+**scope discipline holds** (no second card-logic implementation — the resources
+render the frozen `shared/` schema and never recompute recommended/typed/owner;
+no artifact lenses, telemetry, or channels leaked; not an SPA-in-an-iframe) and
+**XSS is clean** (every interpolation in the `ui://` HTML is `esc()`-escaped,
+attributes included). Findings folded:
+
+**Defects (fixed, with tests):**
+
+| # | Finding | Fix |
+|---|---|---|
+| F1 | The `ui://` resources were display-only shells — no script producer, so the option buttons and queue rows were inert and the gesture-attestation path had no originator | A feature-detected host-bridge `<script>` (OpenAI Apps `callTool` / MCP-UI postMessage) wires a real click → a host tool call; tap gates and queue-row-open now work; typed-confirm stays read-only (never originated from the widget) |
+| S2 | `runStdio` grew its stdin buffer without bound (the HTTP path caps at 1MB; stdio had no guard) — a newline-less peer → memory exhaustion | 4MB cap; an over-long un-terminated frame is dropped and the parser resyncs |
+| S3 | The typed-confirm attestation guard keyed off `holder.openGate?.id === gateId`, so the `bridgeSessionId` fallback branch skipped it (not exploitable — `sessions.answer` rejects a mismatched tail — but fragile) | `confirmModeOf` looks the gate's confirm up BY id (live card or the ledger's stored card), so the guard is independent of how the holder resolved |
+| S4 | Every MCP answer was written to the ledger as `via: 'ui'` — the audit trail couldn't tell an MCP-host answer from an in-app one, and the `'mcp'` union value was dead | The MCP client sends `via: 'mcp'`; the route threads it into the ledger. The parity test now asserts identical answers/ledger-resolution but **differing provenance** (provenance ≠ parity) |
+| F2 | `resources/list` advertised the gate-card resource but `resources/read` returned `-32602` for it | `resources/read` serves a gate-card template placeholder — list and read agree |
+
+**Nits (fixed):** `initialize` now echoes the client's requested protocolVersion (MCP negotiation); an unknown-method **notification** (no id) gets no response (JSON-RPC forbids replying to notifications); the MCP client `encodeURIComponent`s the gateId (defense-in-depth — it's exported and self-validates nothing); `bridge mcp` warns when a github-mode deployment has no `WORKFLOW_BRIDGE_COOKIE` (fail-safe, but the refusals were opaque).
+
+**Honest residual risk (S1, documented not "fixed"):** the typed-confirm attestation rests on the host setting `_meta['ui-gesture']` only from a real gesture — the bridge **cannot verify** that (`_meta` is a plain params field). The code comment now says so plainly instead of claiming "the model cannot forge it." The guarantee the server actually provides: a plain model tool call carries no attestation → rejected; the shipped widget renders typed-confirm read-only, so weakening it needs **both** a mis-implementing host **and** a prompt injection, not either alone. This is the best achievable given the MCP-host-mediated architecture; it is the same trust-boundary honesty as the round-12 OAuth deviation.
+
+**Accepted as-is:** the positive parity test feeds the same literal down both paths (adequate — the load-bearing coverage is the negative rejection on the real server and the A-owns-refuses-B ownership test); a bridge-down tool call returns a `-32603` JSON-RPC error rather than a friendly `isError` (a valid degradation).
+
+**Survived attack:** no unauthenticated answer path; secrets (bearer + cookie) come from env not argv, and never reach logs, responses, or the `ui://` HTML; the attestation is the single enforcement point (proven by the real-server negative test, gate stays `open`); the JSON-RPC loop handles malformed lines, missing params, and unknown methods without wedging.
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in

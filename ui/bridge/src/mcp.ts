@@ -12,10 +12,17 @@
 //     unauthenticated answer path exists.
 //   · Typed-confirm gates require UI-ORIGIN ATTESTATION. In an MCP host tool
 //     args are MODEL-produced unless a UI gesture originates the call, so the
-//     server passes `attestation: ui-gesture` to the bridge ONLY when the host
-//     attests a gesture (a `_meta['ui-gesture']` the HOST sets, never the model).
-//     A plain model tool call carries no attestation → the bridge rejects it
-//     (the negative parity test). The card renders read-only with a deep link.
+//     server passes `attestation: ui-gesture` to the bridge ONLY when the call
+//     carries a `_meta['ui-gesture']`. HONESTY (round 13): the bridge TRUSTS the
+//     host to set that meta only from a real gesture — it cannot verify origin
+//     (`_meta` is a plain params field over stdio). The guarantee is therefore
+//     the host's SEP-1865 implementation, not something this server enforces; a
+//     host that forwarded model-authored `_meta` verbatim would weaken it. What
+//     the server DOES guarantee: a plain model tool call carries no attestation,
+//     so the bridge rejects it (the negative parity test), and the shipped
+//     widget renders typed-confirm READ-ONLY with a deep link — it never
+//     originates a typed-confirm answer, so the residual risk needs a
+//     mis-implementing host AND a prompt injection, not just one.
 //   · Open-gate comments render on the card (read-only) so an MCP answer is
 //     never blind to a teammate's concern.
 import type { GateCard } from '@workflow-ui/shared';
@@ -152,13 +159,20 @@ export function createMcpServer(client: BridgeClient, opts: { spaBaseUrl?: strin
 
   async function handle(req: JsonRpcRequest): Promise<JsonRpcResponse | null> {
     const id = req.id ?? null;
-    const ok = (result: unknown): JsonRpcResponse => ({ jsonrpc: '2.0', id, result });
-    const err = (code: number, message: string): JsonRpcResponse => ({ jsonrpc: '2.0', id, error: { code, message } });
+    // A JSON-RPC NOTIFICATION has no id — the spec forbids responding to one,
+    // even with an error (round-13 nit: an unknown-method notification must stay
+    // silent, not get a -32601 back).
+    const isNotification = req.id === undefined;
+    const ok = (result: unknown): JsonRpcResponse | null => (isNotification ? null : { jsonrpc: '2.0', id, result });
+    const err = (code: number, message: string): JsonRpcResponse | null =>
+      isNotification ? null : { jsonrpc: '2.0', id, error: { code, message } };
     try {
       switch (req.method) {
         case 'initialize':
           return ok({
-            protocolVersion: MCP_PROTOCOL_VERSION,
+            // Echo the client's requested protocol version when it sends one
+            // (MCP negotiation), else our baseline (round-13 nit).
+            protocolVersion: typeof req.params?.protocolVersion === 'string' ? req.params.protocolVersion : MCP_PROTOCOL_VERSION,
             capabilities: { tools: {}, resources: {} },
             serverInfo: { name: 'workflow-bridge', version: '0.7.0' },
           });
@@ -183,6 +197,12 @@ export function createMcpServer(client: BridgeClient, opts: { spaBaseUrl?: strin
             const rows = await client.queue();
             return ok({ contents: [{ uri, mimeType: 'text/html', text: renderQueueHtml(rows, spa) }] });
           }
+          if (uri === GATE_CARD_RESOURCE) {
+            // The gate card is delivered per-gate embedded in workflow_open_gate;
+            // a bare read returns the template placeholder so list and read stay
+            // consistent (round-13: list advertised it, read rejected it).
+            return ok({ contents: [{ uri, mimeType: 'text/html', text: renderGateTemplateHtml(spa) }] });
+          }
           return err(-32602, `unknown resource: ${uri}`);
         }
         default:
@@ -206,6 +226,38 @@ function errorContent(message: string): { content: any[]; isError: true } {
 
 function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+}
+
+// The host-bridge script that gives the widgets a PRODUCER (round-13 fidelity):
+// a real click in the resource iframe invokes a host tool. Feature-detected —
+// the OpenAI Apps SDK (`window.openai.callTool`) or the MCP-UI postMessage
+// convention — and inert where neither exists (the "host variance" degradation).
+// A click is a genuine user GESTURE, so the host attests origin; the server's
+// typed-confirm attestation gate accepts it. Typed-confirm option buttons ship
+// disabled, so this script never originates one (they deep-link to the SPA).
+const HOST_BRIDGE_SCRIPT = `<script>
+(function(){
+  function callTool(name, args){
+    try {
+      if (window.openai && typeof window.openai.callTool === 'function') { window.openai.callTool(name, args); return true; }
+      if (window.parent && window.parent !== window) { window.parent.postMessage({ type: 'tool', payload: { toolName: name, params: args } }, '*'); return true; }
+    } catch (e) {}
+    return false;
+  }
+  document.addEventListener('click', function(ev){
+    var opt = ev.target.closest && ev.target.closest('.opt[data-key]:not([disabled])');
+    if (opt) { callTool('workflow_answer', { gateId: opt.getAttribute('data-gate'), text: opt.getAttribute('data-key') }); return; }
+    var row = ev.target.closest && ev.target.closest('.row[data-gate]');
+    if (row) { callTool('workflow_open_gate', { gateId: row.getAttribute('data-gate') }); return; }
+  });
+})();
+</script>`;
+
+/** The bare gate-card resource (a template placeholder — real cards arrive
+ *  per-gate embedded in workflow_open_gate). */
+export function renderGateTemplateHtml(spa: string): string {
+  return `<!doctype html><meta charset="utf-8"><style>body{font:14px system-ui;margin:0;padding:12px;color:#57534e}</style>
+  <div>Open a gate from the <a href="${esc(spa)}/queue" target="_blank">needs-you queue</a> to see its card here.</div>`;
 }
 
 export function renderQueueText(rows: QueueRow[]): string {
@@ -239,7 +291,7 @@ export function renderGateHtml(card: GateCard, comments: GateComment[], spa: str
   const opts = card.options
     .map(
       (o) =>
-        `<button class="opt"${typed ? ' disabled' : ''} data-key="${esc(o.key)}">` +
+        `<button class="opt"${typed ? ' disabled' : ''} data-gate="${esc(card.id)}" data-key="${esc(o.key)}">` +
         `<code>${esc(o.key)}${o.word ? '/' + esc(o.word) : ''}</code> ${esc(o.label)}` +
         `${o.recommended ? ' <span class="rec">recommended</span>' : ''}</button>`,
     )
@@ -263,7 +315,7 @@ export function renderGateHtml(card: GateCard, comments: GateComment[], spa: str
     .warn{color:#b45309}.comments{margin-top:10px;border-top:1px solid #e7e5e4;padding-top:8px;font-size:13px}
   </style><div class="q">◆ ${esc(card.question ?? 'Decision')}</div>
   <div class="ctx">${esc(card.context)}</div>
-  <div class="opts">${opts}</div>${typedNote}${commentHtml}`;
+  <div class="opts">${opts}</div>${typedNote}${commentHtml}${HOST_BRIDGE_SCRIPT}`;
 }
 
 export function renderQueueHtml(rows: QueueRow[], spa: string): string {
@@ -283,16 +335,25 @@ export function renderQueueHtml(rows: QueueRow[], spa: string): string {
     .m{color:#a16207}.a{color:#57534e}.b{flex:1;color:#292524}
     .w{font-size:10px;color:#a8a29e}.s{font-size:10px;color:#b45309}
   </style>${rows.length ? items : '<div>Nothing is waiting on you.</div>'}
-  <div style="margin-top:6px;font-size:11px"><a href="${esc(spa)}/queue" target="_blank">Open the full queue →</a></div>`;
+  <div style="margin-top:6px;font-size:11px"><a href="${esc(spa)}/queue" target="_blank">Open the full queue →</a></div>${HOST_BRIDGE_SCRIPT}`;
 }
 
 // --- stdio transport (production) -------------------------------------------
 // Line-delimited JSON-RPC over stdin/stdout — the standard MCP stdio transport.
+const MAX_LINE_BYTES = 4 * 1024 * 1024; // a JSON-RPC frame is small; cap the buffer
+
 export function runStdio(server: { handle: (req: JsonRpcRequest) => Promise<JsonRpcResponse | null> }): void {
   let buf = '';
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', async (chunk: string) => {
     buf += chunk;
+    // A peer that never sends a newline must not grow the buffer without bound
+    // (round-13: the HTTP path caps at 1MB; stdio had no guard). Drop the
+    // over-long, un-terminated frame and resync at the next newline.
+    if (buf.length > MAX_LINE_BYTES && buf.indexOf('\n') < 0) {
+      buf = '';
+      return;
+    }
     let nl: number;
     while ((nl = buf.indexOf('\n')) >= 0) {
       const line = buf.slice(0, nl).trim();

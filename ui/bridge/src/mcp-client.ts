@@ -54,7 +54,9 @@ export class HttpBridgeClient implements BridgeClient {
     const { sessions } = await this.get<{ sessions: { openGate: (GateCard & { state: string }) | null }[] }>('/api/sessions');
     const card = sessions.map((s) => s.openGate).find((g) => g && g.id === gateId && g.state === 'open');
     if (!card) return null;
-    const { comments } = await this.get<{ comments: GateComment[] }>(`/api/comments?gateId=${gateId}`);
+    // Defense-in-depth: encode the id even though every caller regex-validates
+    // it (this client is exported and carries no validation of its own).
+    const { comments } = await this.get<{ comments: GateComment[] }>(`/api/comments?gateId=${encodeURIComponent(gateId)}`);
     return { card, comments: comments.map((c) => ({ author: c.author, body: c.body })) };
   }
 
@@ -63,10 +65,12 @@ export class HttpBridgeClient implements BridgeClient {
     text: string,
     attestation?: 'ui-gesture',
   ): Promise<{ ok: boolean; state?: string; error?: string; deepLink?: string; needsAttestation?: boolean }> {
-    const res = await this.fetch(`${this.cfg.baseUrl}/api/gate/${gateId}/answer`, {
+    const res = await this.fetch(`${this.cfg.baseUrl}/api/gate/${encodeURIComponent(gateId)}/answer`, {
       method: 'POST',
       headers: this.headers(true),
-      body: JSON.stringify({ text, ...(attestation ? { attestation } : {}) }),
+      // `via: 'mcp'` marks the answer's provenance in the durable ledger (an
+      // MCP-host answer is distinguishable from an in-app one, round-13).
+      body: JSON.stringify({ text, via: 'mcp', ...(attestation ? { attestation } : {}) }),
     });
     const json = (await res.json().catch(() => ({}))) as any;
     return { ok: res.ok && json.ok !== false, state: json.state, error: json.error, deepLink: json.deepLink, needsAttestation: json.needsAttestation };
