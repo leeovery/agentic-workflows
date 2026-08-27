@@ -1974,6 +1974,89 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });
 
+  it('restart: the cleanup commits while the plan item lives, the entry goes last', () => {
+    const wu = 'redo';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Redo it', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion — Redo\n');
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    sim.run(['topic', 'start', wu, 'specification', wu]);
+    sim.run(['topic', 'complete', wu, 'specification', wu]);
+    sim.run(['topic', 'start', wu, 'planning', wu]);
+    sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
+    sim.write(`.workflows/${wu}/planning/${wu}/tasks/${wu}-1-1.md`, '---\nid: redo-1-1\n---\n\n# A task\n');
+    sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
+      'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
+      'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
+      `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
+    sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', wu]);
+
+    // A peer session is mid-write on the discussion beside it — the restart's
+    // two commits must not touch that.
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion — Redo\n\npeer session dirt\n');
+
+    // The restart, in prose order: files first, committed through `--plan`
+    // while the planning item still resolves it.
+    fs.rmSync(path.join(sim.dir, `.workflows/${wu}/planning/${wu}`), { recursive: true, force: true });
+    const cleanup = sim.run(['commit', wu, '-m', `planning(${wu}): restart planning — clear the authored plan`, '--plan', wu]);
+    assert.match(cleanup.committed, /^[0-9a-f]+$/, 'the cleanup commits while the item lives');
+    const cleaned = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    assert.ok(cleaned.includes(`.workflows/${wu}/planning/${wu}/planning.md`), 'the deleted plan files ride the cleanup');
+    assert.ok(!cleaned.includes(`.workflows/${wu}/discussion/${wu}.md`), 'the peer session\'s dirt does not');
+
+    // The entry goes last, committed on the topic's own scope.
+    sim.run(['manifest', 'delete', `${wu}.planning`, `items.${wu}`]);
+    assert.strictEqual(sim.manifest(wu).phases.planning.items[wu], undefined);
+    const closed = sim.run(['commit', wu, '-m', `planning(${wu}): restart planning`, '--topic', `planning/${wu}`]);
+    assert.match(closed.committed, /^[0-9a-f]+$/);
+    assert.deepStrictEqual(git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean),
+      [`.workflows/${wu}/manifest.json`], 'only the entry\'s removal — the plan files are already in');
+    assert.match(git(sim.dir, ['status', '--porcelain']), /discussion\/redo\.md/, 'the peer\'s dirt survives both commits');
+
+    // And the reason the order is what it is: `--plan` cannot resolve a
+    // deleted item, so a cleanup committed after the delete has no scope.
+    sim.refuses(['commit', wu, '-m', 'too late', '--plan', wu], /no planning item/);
+  });
+
+  it('restart: a quick-fix commits the plan first, then everything its work unit is', () => {
+    const wu = 'typo';
+    sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Fix the typo', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['topic', 'start', wu, 'scoping', wu]);
+    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, `# Spec — ${wu}\n`);
+    sim.run(['topic', 'start', wu, 'specification', wu]);
+    sim.run(['topic', 'complete', wu, 'specification', wu]);
+    sim.run(['commit', wu, '-m', `spec(${wu}): quick-fix specification`, '--topic', `specification/${wu}`, '--kb']);
+    sim.run(['topic', 'start', wu, 'planning', wu]);
+    sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
+    sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
+      'format=local-markdown', 'task_list_gate_mode=auto', 'author_gate_mode=auto',
+      'finding_gate_mode=auto', 'review_cycle=0', 'phase=1', 'task=~',
+      `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
+    sim.run(['topic', 'complete', wu, 'planning', wu]);
+    sim.run(['commit', wu, '-m', `scoping(${wu}): register plan`, '--plan', wu]);
+
+    fs.rmSync(path.join(sim.dir, `.workflows/${wu}/specification/${wu}`), { recursive: true, force: true });
+    fs.rmSync(path.join(sim.dir, `.workflows/${wu}/planning/${wu}`), { recursive: true, force: true });
+    const cleanup = sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping — clear the authored plan`, '--plan', wu]);
+    const cleaned = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    assert.match(cleanup.committed, /^[0-9a-f]+$/);
+    assert.ok(cleaned.includes(`.workflows/${wu}/planning/${wu}/planning.md`), 'the plan half rides --plan');
+    assert.ok(!cleaned.includes(`.workflows/${wu}/specification/${wu}/specification.md`),
+      'the spec is outside the plan scope and waits for the closing commit');
+
+    sim.run(['manifest', 'delete', `${wu}.specification`, `items.${wu}`]);
+    sim.run(['manifest', 'delete', `${wu}.planning`, `items.${wu}`]);
+    assert.strictEqual(sim.manifest(wu).phases.scoping.items[wu].status, 'in-progress',
+      'the scoping item stays in progress — the fresh run re-completes it');
+    sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping`]);
+    const closed = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    assert.ok(closed.includes(`.workflows/${wu}/specification/${wu}/specification.md`), 'the deleted spec lands here');
+    assert.ok(closed.includes(`.workflows/${wu}/manifest.json`), 'and both entry removals with it');
+    assert.deepStrictEqual(git(sim.dir, ['status', '--porcelain', '--', `.workflows/${wu}`]).split('\n').filter(Boolean), [],
+      'the restart leaves nothing of the work unit behind');
+  });
+
   // -------------------------------------------------------------------------
   // Concurrency — several sessions on one checkout, interleaved.
   //
