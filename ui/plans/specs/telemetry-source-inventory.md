@@ -1,0 +1,38 @@
+# Phase 5 — Loop telemetry source inventory
+
+Every datum the telemetry surface displays, mapped to its manifest field or git
+fact. **The rule (phase-5 §1): anything not on this list is cut or proposed
+upstream, never scraped from a transcript.** Written before the surface.
+
+Implementation items live at `phases.implementation.items.{topic}` in the work
+unit's `manifest.json`. The bridge reads these fields directly (never the
+gateway DATA text, never the session cache).
+
+| Displayed datum | Source |
+|---|---|
+| current task in flight | `items.{topic}.current_task` (string) |
+| current phase (plan phase) | `items.{topic}.current_phase` (string\|number; `~` = none) |
+| completed phases | `items.{topic}.completed_phases[]` |
+| completed tasks | `items.{topic}.completed_tasks[]` |
+| item status (in-progress / completed / blocked) | `items.{topic}.status` |
+| dep-blocked ⚑ | engine `lib.cjs` derivation — `deps_blocking[]` on the epic detail's planning item (a render-time join, never a manifest field) |
+| consolidation gate mode | `items.{topic}.consolidation_gate_mode` (`auto` \| present = gated) |
+| staging tasks (consolidation) | `items.{topic}.staging.p{N}` (the gated tasks in an open phase) |
+| the consolidation bank | `items.{topic}.bank[]` (banked cross-scope opportunities) |
+| consolidated phases | `items.{topic}.consolidated_phases[]` |
+| commits landed (this topic) | git — `commit.landed` events whose scope includes the work unit (the Phase 0 durable store) |
+| background agents active | `agent.dispatched` / `agent.returned` live events (Phase 0 vocabulary), from the cache agent store |
+
+**Spine events (≤4 per implementation phase):** `phase.completed` (the plan
+phase closing), the consolidation gate opening (a `gate.opened` on the
+`MENU: consolidation` surface), the three-strike consult (a gate, pushing per
+Phase 3), and `workunit.status-changed` on completion. Everything else —
+per-task progress, attempt counters — updates the telemetry surface **in
+place** and never touches the spine (the anti-firehose rule).
+
+**Not displayed (no source):** a per-task "attempt count" as a standalone
+number has no manifest field — the fix-attempt loop is session-local
+(`fix direction` gates recur but aren't counted durably). The surface shows the
+fix-direction gate when it is open (a live gate) rather than inventing a
+counter. Proposed upstream if a durable counter is ever wanted (UPSTREAM: a
+`fix_attempts` field on the implementation item).

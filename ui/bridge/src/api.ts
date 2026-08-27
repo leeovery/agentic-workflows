@@ -15,6 +15,8 @@ import { durableRows, durableCounts } from './durable.js';
 import { buildQueue } from './queue.js';
 import { buildStructure } from './structure.js';
 import { fileTimeline, whatMoved } from './history.js';
+import { buildTelemetry } from './telemetry.js';
+import { planDag } from './plan-dag.js';
 import { checkToken } from './auth.js';
 import type { SessionManager } from './sessions.js';
 import type { Db } from './db.js';
@@ -175,6 +177,19 @@ export async function handleApi(
     }
     if (url.pathname === '/api/roadmap') {
       await roadmapView(res, deps);
+      return true;
+    }
+    const plan = url.pathname.match(/^\/api\/plan\/([^/]+)\/([^/]+)$/);
+    if (plan) {
+      const wu = decodeURIComponent(plan[1]!);
+      const topic = decodeURIComponent(plan[2]!);
+      if (!validUnitName(wu) || !validUnitName(topic)) {
+        send(res, 400, { error: 'name refused' });
+        return true;
+      }
+      const manifest = deps.engine?.readUnitManifest(wu) ?? null;
+      const format = manifest ? planFormatOf(deps.projectRoot, manifest) : 'local-markdown';
+      send(res, 200, { dag: planDag(deps.projectRoot, wu, topic, format) });
       return true;
     }
     send(res, 404, { error: 'unknown api route' });
@@ -490,6 +505,28 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
     presence = scan?.sessions ?? [];
   }
 
+  // Delivery telemetry (Phase 5) — one surface per implementation topic, all
+  // from the manifest per the source inventory. Dep-blocked comes from the
+  // engine's own derivation (never re-derived here); agent activity from the
+  // live agent store scan.
+  const allEvents = store ? store.readFrom(0) : [];
+  const telemetry: unknown[] = [];
+  const implItems = manifest.phases?.implementation?.items ?? {};
+  let depBlockedByTopic: Record<string, { topic: string; reason?: string }[]> = {};
+  if (workType === 'epic' && engine) {
+    const detail = (await engine.epicDetailFor(manifest).catch(() => null)) as any;
+    for (const p of detail?.phases?.planning ?? []) {
+      if (Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0) {
+        depBlockedByTopic[p.name] = p.deps_blocking.map((d: any) => ({ topic: d.topic ?? String(d), reason: d.reason }));
+      }
+    }
+  }
+  const agentCounts = countAgents(projectRoot, wu);
+  for (const topic of Object.keys(implItems)) {
+    const t = buildTelemetry(wu, topic, manifest, depBlockedByTopic[topic] ?? [], allEvents, agentCounts[topic] ?? 0);
+    if (t) telemetry.push(t);
+  }
+
   send(res, 200, {
     name: wu,
     workType,
@@ -500,7 +537,52 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
     embed,
     artifacts,
     presence,
+    telemetry,
+    planFormat: planFormatOf(deps.projectRoot, manifest),
   });
+}
+
+/** The topic's plan format: topic-level override, else project default. */
+function planFormatOf(projectRoot: string, manifest: Record<string, any>): string {
+  const topicFmt = Object.values(manifest.phases?.planning?.items ?? {}).find((i: any) => i?.format)?.['format'];
+  if (topicFmt) return String(topicFmt);
+  try {
+    const proj = JSON.parse(fs.readFileSync(path.join(projectRoot, '.workflows', 'manifest.json'), 'utf8'));
+    return String(proj?.defaults?.plan_format ?? 'local-markdown');
+  } catch {
+    return 'local-markdown';
+  }
+}
+
+/** Count in-flight background agents per topic from the cache agent store. */
+function countAgents(projectRoot: string, wu: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  const base = path.join(projectRoot, '.workflows', '.cache', wu);
+  let phases: string[];
+  try {
+    phases = fs.readdirSync(base).filter((n) => !n.startsWith('.'));
+  } catch {
+    return out;
+  }
+  for (const phase of phases) {
+    let topics: string[];
+    try {
+      topics = fs.readdirSync(path.join(base, phase)).filter((n) => !n.startsWith('.'));
+    } catch {
+      continue;
+    }
+    for (const topic of topics) {
+      let state: any;
+      try {
+        state = JSON.parse(fs.readFileSync(path.join(base, phase, topic, 'state.json'), 'utf8'));
+      } catch {
+        continue;
+      }
+      const inflight = Object.values(state?.agents ?? {}).filter((a: any) => a?.status === 'in-flight').length;
+      if (inflight > 0) out[topic] = (out[topic] ?? 0) + inflight;
+    }
+  }
+  return out;
 }
 
 function listUnitArtifacts(projectRoot: string, wu: string): { path: string; phase: string }[] {
