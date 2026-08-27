@@ -320,6 +320,34 @@ Hardening also folded: origin-check duplication on `/replay/step` removed (singl
 
 **Survived attack:** zero writes into `.workflows/` from the session/gate/API path (answers are only SDK resume turns); the journal-is-source / ledger-is-audit separation; gate identity and its resume-invariance; the answer mutex (two-tab race → one injection, visible resolved-externally); the lease's atomic O_EXCL with no TOCTOU; every mutation and the event stream token-gated behind the Host/Origin boundary; no ping anywhere (Phase 3 boundary holds); no activity theater; React-escaped rendering (no XSS in the new surfaces). The surface sweep test pins `NEVER_AUTO_SURFACES` over every `AUTO_OVERRIDE_LINE` site in the live engine.
 
+## Round 9: Phase 3 implementation review (2026-08-27)
+
+Two reviewers (plan/spec fidelity + intent baseline combined; quality + security).
+Both converged on one structural truth: **the pure policy functions were correct
+and well-tested, but the coordinator wiring that feeds them live data was broken
+in several places and had no test.** The fold overhauled the coordinator and added
+a coordinator-level test suite. Dispositions:
+
+**Defects (fixed, with coordinator-level tests):**
+
+| # | Finding | Fix |
+|---|---|---|
+| R9-1 | Queue `escalated` hardcoded `false` — spec 5's #1 sort key and the escalation chip were dead | `buildQueue` takes an `isEscalated` predicate; the coordinator joins `EscalationTracker`; the API passes it |
+| R9-2 | Digest `next` always `null` — "what's next" never rendered | The coordinator calls the engine's own `renderWorkUnitStatus`/`renderEpicDashboard`, verbatim |
+| R9-3 | The notifier conflated a quiet-hours-deferred push with a batch `digest` — batch screens could ride the morning OS push ("never pings" violated) | Quiet-hours accrual moved OUT of the pure `apply()` INTO the notifier (a `quietHours` arg); a batch `digest` now never accrues and never pushes |
+| R9-4 | An escalation could be swallowed by the T_roll collapse and never delivered; the T_roll roll-up only fired once a day | Escalations are exempt from the roll-up collapse (always fire); an intraday `maybeRollup` drains accrued bursts past T_roll |
+| R9-5 | The morning-rollup day guard mixed a UTC date with the local hour → fired twice daily outside UTC | Local-date `dayKey`; a coordinator test pins once-per-local-day |
+| R9-6 | The report rowKey dropped the phase and hashed only lane counts → cross-phase reports suppressed each other | Phase in the rowKey; the content hash includes the file path; a test pins two distinct ledger rows |
+| R9-7 | The activity heartbeat was unconditional and always `appConnected:true` — a backgrounded tab silenced pushes and re-armed escalation every 60s | The heartbeat is visibility-gated and carries `interaction:false`; only a real pointer/key event (or navigation) re-arms escalation; navigation grace wired from focus changes |
+| R9 gate-1 | `gateCeremony`'s engaged→none rows were dead code (identical ternary arms; `'none'` dropped from the type) | `'none'` restored to `Ceremony`; engaged conversational asks return it; the notifier delivers nothing for it |
+| R9 blocks | `blocksWithNothingElse` checked only the session's own gate | Now checks no OTHER open gate anywhere (single-user: the sentinel owns all) |
+
+**Hardening:** the artifact-view `git rev-parse` is cached ~2s (no per-GET shell-out on the event loop); the report scan skips files over 2MB and evicts `seenReports` when a work unit's cache is gone; the dead web-push subscription query removed. **Nits:** the `morningHour` config field added; `QueueRowData` declares `escalated`/`stuck`/`buildOrderPos` (the `as any` cast gone).
+
+**Accepted as-is (recorded):** `stream_cursors` stays defined-but-unread — the badges are needs-you-row counts (which the components spec actually prescribes: "a channel badge = that channel's queue-row count"), and per-human unread-delta cursors are a Phase 4/6 concern; the watchdog is an in-page visibility+heartbeat timer, not a service worker (a closed tab's alarm needs the web-push transport, which is prototype-stubbed — documented as the phase's stated push-delivery risk); the consult/replan push branch stays reachable-but-unfired until the Phase 2 surface sweep names those prose-rendered surfaces (the commit's "delivered" claim was corrected here to "wired, awaiting surface names").
+
+**Survived attack:** the lane extractor (apply/decide/route vs walk vs ENOENT); push-once-per-report-landing; the durable ledger's restart-re-pushes-nothing; quiet-hours-window midnight wrap; the lobby TODAY strip not duplicating NEEDS YOU (waiting suppressed server-side); no per-finding pushes, no email; every mutation and the event stream token+Host/Origin gated; `/api/activity` gated the same; no XSS in the new surfaces.
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in

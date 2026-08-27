@@ -69,6 +69,7 @@ export function buildQueue(
   sessions: SessionManager | null,
   store: EventStore | null,
   buildOrder: Record<string, Record<string, number>> = {},
+  isEscalated: (gateId: string) => boolean = () => false,
 ): QueueRow[] {
   const rows: QueueRow[] = [];
   // buildOrderPos joins a row's (workUnit, topic) against the epic's spec
@@ -87,7 +88,7 @@ export function buildQueue(
         address: g.address,
         stage: stageOf(g.address),
         since: g.openedAt,
-        escalated: false,
+        escalated: isEscalated(g.id),
         detail: g.question ?? g.context.split('\n')[0] ?? '',
         gateId: g.id,
         bridgeSessionId: s.bridgeSessionId,

@@ -90,7 +90,7 @@ export function Queue() {
             <span className="font-serif text-sm truncate flex-1 text-stone-800 dark:text-stone-200">
               {row.tier === 'live' ? (row.askPreview ?? '') : row.detail}
             </span>
-            {row.tier === 'live' && <EscalationChip since={row.since} escalated={(row as any).escalated} />}
+            {row.tier === 'live' && <EscalationChip since={row.since} escalated={row.escalated} />}
             <time className="font-sans text-xs text-stone-400 shrink-0">{age(row.since)}</time>
           </button>
         ))}

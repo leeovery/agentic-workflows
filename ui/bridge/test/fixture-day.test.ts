@@ -50,12 +50,12 @@ describe('fixture day', () => {
     // The badge/digest items fired no push but the floor (queue) still holds them.
   });
 
-  it('overnight: a 2am walk report pushes nothing, produces one morning roll-up', () => {
+  it('overnight: a 2am walk report pushes nothing (accrues), produces one morning roll-up', () => {
     const walk = { present: true, parsed: true, counts: { apply: 0, decide: 0, route: 0, walk: 1 }, hasWalk: true };
-    // At 2am the caller passes quietHours → ceremony downgrades to digest.
-    const ceremony = findingCeremony(walk, { ...idle, quietHours: true });
-    expect(ceremony).toBe('digest');
-    notifier.notify({ rowKey: 'A:report', ceremony, contentHash: 'r1' }, 'overnight report', new Date('2026-08-27T02:00:00Z'));
+    // The ceremony is 'push'; the notifier accrues it because quietHours=true.
+    const ceremony = findingCeremony(walk, idle);
+    expect(ceremony).toBe('push');
+    notifier.notify({ rowKey: 'A:report', ceremony, contentHash: 'r1' }, 'overnight report', new Date('2026-08-27T02:00:00Z'), true);
     expect(delivered.filter((d) => d.kind === 'push')).toHaveLength(0);
     // Morning: one roll-up.
     notifier.drainAccrued(new Date('2026-08-27T08:00:00Z'));

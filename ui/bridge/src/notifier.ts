@@ -53,25 +53,28 @@ export class Notifier {
    * ledger: the same (rowKey, contentHash) never fires twice; a content change
    * or a fresh escalation re-cross does.
    */
-  notify(d: NotifyDecision, body: string, now: Date): Delivered | null {
+  notify(d: NotifyDecision, body: string, now: Date, quietHours = false): Delivered | null {
     const nowIso = now.toISOString();
-    if (!isPushLike(d.ceremony)) {
-      // Accrued (quiet-hours 'digest' from a would-be push) or plain badge —
-      // record accrual so the morning roll-up can find it, but deliver nothing now.
-      if (d.ceremony === 'digest') {
-        this.ledgerSet(d.rowKey, 'accrued', d.contentHash, nowIso);
-      }
-      return null;
-    }
+    // 'none' (engaged) and badge/digest (batch — badge + digest surface, NEVER
+    // an OS push) deliver nothing now; the queue/digest carry them.
+    if (!isPushLike(d.ceremony)) return null;
+
     const kind = d.ceremony === 'alert' ? 'alert' : 'push';
     const prior = this.ledgerGet(d.rowKey, kind);
     if (prior && prior.contentHash === d.contentHash && !d.escalated) {
       // Already delivered for this content — a restart re-pushes nothing.
       return null;
     }
-    // Roll-up: if another push fired within T_roll, collapse into the roll-up
-    // rather than firing a second discrete one.
-    if (this.withinRollup(now)) {
+    // Quiet-hours: a would-be push accrues; the morning roll-up fires it.
+    // Nothing is so urgent it beats sleep (spec 5).
+    if (quietHours) {
+      this.ledgerSet(d.rowKey, 'accrued', d.contentHash, nowIso);
+      return null;
+    }
+    // Roll-up: a non-escalation push within T_roll of another collapses into
+    // the accrued set (drained shortly after by the intraday roll-up).
+    // Escalations ALWAYS fire — a stopped session is spent attention.
+    if (!d.escalated && this.withinRollup(now)) {
       this.ledgerSet(d.rowKey, 'accrued', d.contentHash, nowIso);
       return null;
     }
@@ -87,6 +90,27 @@ export class Notifier {
     const last = this.ledgerGet('__last_push__', 'window');
     if (!last) return false;
     return now.getTime() - new Date(last.decidedAt).getTime() < this.cfg.rollupMinutes * 60_000;
+  }
+
+  /** The oldest accrued row's age in ms, or null if none accrued. */
+  private oldestAccruedAgeMs(now: Date): number | null {
+    const row = this.db.sqlite
+      .prepare("SELECT MIN(decided_at) as t FROM push_ledger WHERE kind = 'accrued'")
+      .get() as { t: string | null } | undefined;
+    if (!row?.t) return null;
+    return now.getTime() - new Date(row.t).getTime();
+  }
+
+  /**
+   * The intraday roll-up: outside quiet hours, once accrued pushes have aged
+   * past T_roll, fire them as ONE roll-up. (Quiet-hours accrual waits for the
+   * morning drain instead.) Returns what it delivered, or null.
+   */
+  maybeRollup(now: Date, quietHours: boolean): Delivered | null {
+    if (quietHours) return null;
+    const age = this.oldestAccruedAgeMs(now);
+    if (age === null || age < this.cfg.rollupMinutes * 60_000) return null;
+    return this.drainAccrued(now, 'waiting');
   }
 
   /**

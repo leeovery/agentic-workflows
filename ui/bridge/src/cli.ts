@@ -30,15 +30,14 @@ import type { RawEvent } from './derive.js';
 // observability floor so "left closed with confidence" degrades to badge +
 // digest prominence, never silence (phase-3 risk).
 function deliverWebPush(db: Db, d: { rowKey: string; kind: string; body: string }): void {
-  const subs = db.sqlite.prepare('SELECT COUNT(*) as n FROM push_ledger WHERE row_key = ?').get('__subscription__') as { n: number } | undefined;
-  // No real VAPID transport in the prototype; the delivery attempt is recorded.
+  // No real VAPID transport in the prototype; the delivery attempt is recorded
+  // so an undelivered push is visible on the observability floor (phase-3 risk).
   db.sqlite
     .prepare(
       `INSERT INTO push_ledger (row_key, kind, decided_at, content_hash) VALUES (?, 'delivered', ?, ?)
        ON CONFLICT(row_key, kind) DO UPDATE SET decided_at = excluded.decided_at`,
     )
     .run(`delivery:${d.rowKey}`, new Date().toISOString(), d.body.slice(0, 40));
-  void subs;
 }
 
 function loadBridgeId(stateDir: string): string {
@@ -210,7 +209,7 @@ async function runLive(projectRoot: string): Promise<void> {
             rollupMinutes: config.notifications.rollupMinutes,
             quietStart: config.notifications.quietHours.start,
             quietEnd: config.notifications.quietHours.end,
-            morningHour: 8,
+            morningHour: config.notifications.morningHour,
             escalationMinutes: config.notifications.escalationMinutes,
             graceMinutes: config.notifications.graceMinutes,
           },
@@ -239,6 +238,7 @@ async function runLive(projectRoot: string): Promise<void> {
       db,
       digests: () => attention?.lobbyStrip() ?? [],
       markActivity: (sig) => attention?.markActivity(sig),
+      isEscalated: (gateId) => attention?.isEscalated(gateId) ?? false,
     },
     health: (): HealthState => ({
       ok: true,

@@ -29,7 +29,8 @@ export type ApiDeps = {
   readOnlyMirror?: { host: string } | null; // lease not held — no writes
   db?: Db | null; // cursors + read-refs (Phase 3)
   digests?: () => unknown; // lobby digest strip provider (Phase 3)
-  markActivity?: (sig: { appConnected?: boolean; focusedThread?: string | null }) => void;
+  markActivity?: (sig: { appConnected?: boolean; focusedThread?: string | null; interaction?: boolean }) => void;
+  isEscalated?: (gateId: string) => boolean; // Phase 3 escalation join for the queue
 };
 
 type Json = Record<string, unknown>;
@@ -159,12 +160,21 @@ export async function handleApi(
   }
 }
 
+// HEAD changes rarely relative to artifact GETs — cache it briefly so a burst
+// of reads (or an SSE reconnect storm) doesn't shell out per request on the
+// event-loop thread (round-9 hardening).
+let headCache: { sha: string | null; at: number; root: string } | null = null;
 function headSha(projectRoot: string): string | null {
+  const now = Date.now();
+  if (headCache && headCache.root === projectRoot && now - headCache.at < 2000) return headCache.sha;
+  let sha: string | null = null;
   try {
-    return execFileSync('git', ['-C', projectRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    sha = execFileSync('git', ['-C', projectRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
   } catch {
-    return null;
+    sha = null;
   }
+  headCache = { sha, at: now, root: projectRoot };
+  return sha;
 }
 
 function recordReadRef(db: Db, projectRoot: string, wu: string, rel: string): void {
@@ -205,7 +215,7 @@ async function queueView(res: http.ServerResponse, deps: ApiDeps): Promise<void>
       }
     }
   }
-  const rows = buildQueue(durableRows(snap, deps.projectRoot), deps.sessions ?? null, deps.store, buildOrder);
+  const rows = buildQueue(durableRows(snap, deps.projectRoot), deps.sessions ?? null, deps.store, buildOrder, deps.isEscalated);
   send(res, 200, { rows });
 }
 
@@ -223,6 +233,7 @@ async function handleMutation(
     deps.markActivity?.({
       appConnected: body.appConnected !== false,
       focusedThread: (body.focusedThread as string | null) ?? null,
+      interaction: body.interaction === true,
     });
     send(res, 200, { ok: true });
     return;

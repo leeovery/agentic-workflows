@@ -4,7 +4,7 @@
 import type { GateKind } from '@workflow-ui/shared';
 import type { LaneExtract } from './lanes.js';
 
-export type Ceremony = 'push' | 'alert' | 'badge' | 'digest';
+export type Ceremony = 'push' | 'alert' | 'badge' | 'digest' | 'none';
 
 export type ActivityContext = {
   appConnected: boolean; // WebSocket up + interaction within 90s
@@ -15,14 +15,12 @@ export type ActivityContext = {
 
 /**
  * app-connected downgrades a would-be push to an alert (an open UI is never
- * OS-pushed); quiet hours downgrade to digest (accrual — the caller's ledger
- * turns accrued pushes into a morning roll-up). Both applied at the end.
+ * OS-pushed). Quiet-hours accrual is NOT applied here — it is the notifier's
+ * job, so a batch `digest` (badge + digest, never an OS push) is never
+ * confused with a quiet-hours-deferred push (which the morning roll-up fires).
  */
 function apply(level: Ceremony, ctx: ActivityContext): Ceremony {
-  if (level === 'push') {
-    if (ctx.quietHours) return 'digest'; // accrue; morning roll-up fires it
-    if (ctx.appConnected) return 'alert';
-  }
+  if (level === 'push' && ctx.appConnected) return 'alert';
   return level;
 }
 
@@ -52,29 +50,27 @@ export function gateCeremony(
   ctx: ActivityContext & { escalated: boolean; blocksWithNothingElse: boolean },
 ): Ceremony {
   if (ctx.escalated) return apply('push', ctx);
-  // Engaged with this thread → the conversational asks need no ceremony.
-  if (ctx.engagedThread && (kind === 'pass-through' || kind === 'menu' || kind === 'confirm')) {
-    // ... unless it's a never-auto/consult/replan kind that always pushes.
-  }
+  // The always-push kinds fire regardless of engagement (never-auto ceremony).
   if (confirm === 'typed') return apply('push', ctx);
   if (gateType === 'consult' || gateType === 'replan' || gateType === 'signoff') return apply('push', ctx);
   if (gateType === 'conflict' || gateType === 'lifecycle') {
     return ctx.blocksWithNothingElse ? apply('push', ctx) : 'badge';
+  }
+  // Engaged with this thread → a conversational ask needs no ceremony at all
+  // (spec 5: "conversational ask, human engaged with that thread → none").
+  if (ctx.engagedThread && (kind === 'pass-through' || kind === 'menu' || kind === 'confirm')) {
+    return 'none';
   }
   switch (kind) {
     case 'batch-screen':
       return 'digest'; // badge + digest; never pings on open (escalation applies)
     case 'menu':
     case 'confirm':
-      // bootstrap / routing / shaping asks: badge; push only via escalation.
-      if (gateType === 'task-loop') return 'badge';
-      return ctx.engagedThread ? 'badge' : 'badge';
     case 'pass-through':
-      return ctx.engagedThread ? 'badge' : 'badge';
     case 'stop-notice':
-      return 'badge';
     case 'walk-raise':
-      // In-drain raises are in-card turns — never a fresh push.
+      // bootstrap / routing / shaping / task-loop asks: badge; push only via
+      // escalation. In-drain walk raises are in-card turns, never a push.
       return 'badge';
     default:
       return 'badge';

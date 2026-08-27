@@ -96,6 +96,9 @@ export type QueueRowData = {
   gateId?: string;
   bridgeSessionId?: string;
   askPreview?: string;
+  escalated?: boolean;
+  stuck?: boolean;
+  buildOrderPos?: number;
 };
 
 export type SessionData = {
@@ -125,8 +128,8 @@ export const api = {
   health: () => getJson<Health>('/health'),
   lobby: () => getJson<LobbyData>('/api/lobby'),
   digests: () => getJson<{ strip: DigestStripEntry[] }>('/api/digests'),
-  reportActivity: (focusedThread: string | null) =>
-    postJson('/api/activity', { appConnected: true, focusedThread }).catch(() => ({})),
+  reportActivity: (focusedThread: string | null, interaction = false) =>
+    postJson('/api/activity', { appConnected: true, focusedThread, interaction }).catch(() => ({})),
   channel: (wu: string) => getJson<ChannelData>(`/api/channel/${encodeURIComponent(wu)}`),
   artifact: (wu: string, path: string) =>
     getJson<ArtifactData>(`/api/artifact/${encodeURIComponent(wu)}?path=${encodeURIComponent(path)}`),

@@ -53,12 +53,23 @@ export default function App() {
   // /c/:wu is the channel). Health polling doubles as the watchdog heartbeat.
   useEffect(() => {
     const channel = location.pathname.match(/^\/c\/([^/]+)/)?.[1] ?? null;
-    api.reportActivity(channel);
-    const iv = setInterval(() => api.reportActivity(channel), 60_000);
-    const onVis = () => document.visibilityState === 'visible' && api.reportActivity(channel);
+    // A genuine interaction (navigating here counts) re-arms escalation and
+    // records focus. The heartbeat only keeps app-connected fresh — and only
+    // while the tab is VISIBLE, so a backgrounded tab neither suppresses a
+    // push nor re-arms a stuck gate (round-9 finding).
+    api.reportActivity(channel, true);
+    const iv = setInterval(() => {
+      if (document.visibilityState === 'visible') api.reportActivity(channel, false);
+    }, 60_000);
+    const onInteract = () => api.reportActivity(channel, true);
+    const onVis = () => document.visibilityState === 'visible' && api.reportActivity(channel, true);
+    window.addEventListener('pointerdown', onInteract, { passive: true });
+    window.addEventListener('keydown', onInteract);
     document.addEventListener('visibilitychange', onVis);
     return () => {
       clearInterval(iv);
+      window.removeEventListener('pointerdown', onInteract);
+      window.removeEventListener('keydown', onInteract);
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [location.pathname]);

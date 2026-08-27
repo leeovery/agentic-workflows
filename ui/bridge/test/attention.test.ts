@@ -68,10 +68,13 @@ describe('finding ceremony', () => {
     expect(findingCeremony({ present: true, parsed: true, counts: { apply: 0, decide: 0, route: 0, walk: 0 }, hasWalk: false }, idle)).toBe('badge');
   });
 
-  it('app-connected downgrades a walk push to an alert; quiet hours to digest', () => {
+  it('app-connected downgrades a walk push to an alert; quiet hours is the notifier’s job now', () => {
     const walk = { present: true, parsed: true, counts: { apply: 0, decide: 0, route: 0, walk: 1 }, hasWalk: true };
     expect(findingCeremony(walk, { ...idle, appConnected: true })).toBe('alert');
-    expect(findingCeremony(walk, { ...idle, quietHours: true })).toBe('digest');
+    // The pure function no longer downgrades for quiet hours — that would
+    // conflate a deferred push with a batch digest. It stays 'push'; the
+    // notifier accrues it when quietHours is passed.
+    expect(findingCeremony(walk, { ...idle, quietHours: true })).toBe('push');
   });
 });
 
@@ -122,16 +125,32 @@ describe('Notifier + push ledger', () => {
     expect(delivered).toHaveLength(1);
   });
 
-  it('quiet-hours pushes accrue and fire as one morning roll-up', () => {
+  it('quiet-hours pushes accrue (quietHours flag) and fire as one morning roll-up', () => {
     const night = new Date('2026-08-27T02:00:00Z');
-    // At quiet-hours, the caller passes ceremony already downgraded to digest.
-    notifier.notify({ rowKey: 'wu-a:g1', ceremony: 'digest', contentHash: 'h1' }, 'a', night);
-    notifier.notify({ rowKey: 'wu-b:g2', ceremony: 'digest', contentHash: 'h2' }, 'b', night);
+    // A real push offered during quiet hours accrues rather than firing.
+    notifier.notify({ rowKey: 'wu-a:g1', ceremony: 'push', contentHash: 'h1' }, 'a', night, true);
+    notifier.notify({ rowKey: 'wu-b:g2', ceremony: 'push', contentHash: 'h2' }, 'b', night, true);
     expect(delivered).toHaveLength(0);
     const roll = notifier.drainAccrued(new Date('2026-08-27T08:00:00Z'));
     expect(roll).not.toBeNull();
     expect(delivered).toHaveLength(1);
     expect(delivered[0]!.body).toContain('2 waiting across 2 work units');
+  });
+
+  it('a batch digest NEVER pushes and NEVER accrues for the morning (never pings on open)', () => {
+    notifier.notify({ rowKey: 'wu-a:batch', ceremony: 'digest', contentHash: 'b1' }, 'batch', new Date('2026-08-27T14:00:00Z'));
+    expect(delivered).toHaveLength(0);
+    // Nothing accrued — the morning roll-up finds nothing from a batch digest.
+    expect(notifier.drainAccrued(new Date('2026-08-28T08:00:00Z'))).toBeNull();
+  });
+
+  it('an escalation ALWAYS fires, even within the T_roll window', () => {
+    const t = new Date('2026-08-27T14:00:00Z');
+    notifier.notify({ rowKey: 'wu-a:g1', ceremony: 'push', contentHash: 'h1' }, 'first', t);
+    // A normal push within T_roll accrues; an escalated one fires anyway.
+    notifier.notify({ rowKey: 'wu-b:g2', ceremony: 'push', contentHash: 'h2' }, 'normal', new Date('2026-08-27T14:02:00Z'));
+    notifier.notify({ rowKey: 'wu-c:g3', ceremony: 'push', contentHash: 'e1', escalated: true }, 'escalated', new Date('2026-08-27T14:03:00Z'));
+    expect(delivered.map((d) => d.rowKey)).toEqual(['wu-a:g1', 'wu-c:g3']);
   });
 
   it('a second push within T_roll collapses into accrual', () => {
