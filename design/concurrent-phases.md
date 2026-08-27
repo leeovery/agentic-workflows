@@ -370,10 +370,14 @@ Settled 2026-08-27, as the stack landed:
   the dispatch's `live > 0` mean "any session anywhere", which would
   have deferred the gap analysis behind a live planning or code
   session that touches nothing it reads.
-- The automatic analysis-rerun route falls through on deferral
-  (PR 8 review). A user who asked for the spec menu and met a
-  deferred re-run sees the callout and then the display over the
-  prior pass's state — proposed items persist on the manifest, so
-  the menu renders what a valid-cache entry would have shown. The
-  terminal stop stays for the user-invoked analyze route, whose
-  whole request was the analysis it cannot have.
+- The deferral's terminal stop is the whole answer at every arrival
+  (PR 8 review). A fall-through to the prior pass's display was
+  ordered for the automatic rerun route and then refuted by
+  reachability: `analysis-rerun` is defined by emptiness (no
+  proposed groupings, no specifications), and a live discussion
+  flips the scenario to `blocked-discussions-open` before the
+  analysis is reached — so the deferred rerun's only arrival is a
+  live research session over a state with nothing to show. If the
+  route should ever end somewhere other than a stop, the honest fix
+  is in the scenario derivation (a display naming the live source
+  session), not a branch in the analysis flow — noted, not built.
