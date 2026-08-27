@@ -652,6 +652,23 @@ async function handleMutation(
       send(res, 404, { error: 'no session holds this gate' });
       return;
     }
+    // UI-origin attestation for typed-confirm gates (Phase 7 §1 / SEP-1865). In
+    // an MCP host, tool arguments are MODEL-produced unless a UI gesture
+    // originates the call — so a prompt injection could otherwise synthesize the
+    // confirmation string for a never-auto gate. A typed-confirm answer is
+    // accepted ONLY with an explicit `ui-gesture` attestation; a plain model
+    // tool call (no attestation) is rejected with a deep link to the SPA. The
+    // SPA answer is always a real gesture and attests. This is the SINGLE
+    // enforcement point — the MCP server renders these read-only, and the bridge
+    // is the backstop (the negative parity test targets exactly this).
+    if (holder.openGate?.id === gateId && holder.openGate.confirm === 'typed' && body.attestation !== 'ui-gesture') {
+      send(res, 403, {
+        error: 'this decision requires a typed confirmation from a UI gesture — answer it in the app',
+        deepLink: `/s/${holder.bridgeSessionId}`,
+        needsAttestation: true,
+      });
+      return;
+    }
     // Ownership routing (UI-side, never process authority): a watcher's submit
     // is refused unless the owner is stuck. The engine enforces none of this —
     // a terminal answer bypasses it entirely (and resolves the card externally).

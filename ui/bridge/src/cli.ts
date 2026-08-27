@@ -547,11 +547,36 @@ function runRecordMoment(): void {
   console.log(`recorded moment: ${out} (${journal.length} journal records, world snapshot @ ${gateId || 'no gate'})`);
 }
 
+// bridge mcp — the Phase 7 MCP server over stdio. A third client of a RUNNING
+// bridge: it holds the install bearer token + a per-user auth cookie and proxies
+// the frozen card schema + the answer round-trip into an MCP host. No new card
+// logic, no new answer path.
+async function runMcp(): Promise<void> {
+  const { createMcpServer, runStdio } = await import('./mcp.js');
+  const { HttpBridgeClient } = await import('./mcp-client.js');
+  const baseUrl = arg('bridge-url') ?? `http://127.0.0.1:${config.port}`;
+  // Secrets come from the environment, never argv (argv is world-readable via ps).
+  const bearerToken = process.env.WORKFLOW_BRIDGE_TOKEN ?? '';
+  const authCookie = process.env.WORKFLOW_BRIDGE_COOKIE;
+  if (!bearerToken) {
+    console.error('bridge mcp: set WORKFLOW_BRIDGE_TOKEN (the install token from the SPA) in the environment');
+    process.exit(2);
+  }
+  const client = new HttpBridgeClient({ baseUrl, bearerToken, authCookie });
+  const server = createMcpServer(client, { spaBaseUrl: baseUrl });
+  runStdio(server);
+}
+
 const mode = process.argv[2];
 if (mode === 'convert') {
   runConvert();
 } else if (mode === 'record-moment') {
   runRecordMoment();
+} else if (mode === 'mcp') {
+  runMcp().catch((e) => {
+    logger.error('mcp server failed', { error: String(e?.stack ?? e) });
+    process.exit(1);
+  });
 } else if (arg('replay')) {
   runReplay(arg('replay')!).catch((e) => {
     logger.error('replay failed', { error: String(e?.stack ?? e) });
@@ -564,7 +589,7 @@ if (mode === 'convert') {
   });
 } else {
   console.error(
-    'usage: bridge --project <path> | bridge --replay <fixture> [--offline] | bridge convert ... | bridge record-moment ...',
+    'usage: bridge --project <path> | bridge --replay <fixture> [--offline] | bridge convert ... | bridge record-moment ... | bridge mcp [--bridge-url <url>]',
   );
   process.exit(2);
 }

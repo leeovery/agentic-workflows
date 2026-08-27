@@ -242,8 +242,13 @@ export const api = {
   thread: (id: string) => getJson<ThreadData>(`/api/session/${encodeURIComponent(id)}/thread`),
   startSession: (address: Record<string, unknown>, entryPrompt?: string) =>
     postJson<{ bridgeSessionId: string; state: string }>(`/api/session/start`, { address, entryPrompt }),
+  // Every SPA answer IS a real user gesture (a click / Enter), so it attests
+  // UI-origin — the typed-confirm attestation the bridge requires (Phase 7).
   answerGate: (gateId: string, text: string, bridgeSessionId?: string) =>
-    postJson<{ ok: boolean; state: string; reason?: string; error?: string; unreadComments?: number }>(`/api/gate/${gateId}/answer`, { text, bridgeSessionId }),
+    postJson<{ ok: boolean; state: string; reason?: string; error?: string; unreadComments?: number; deepLink?: string }>(
+      `/api/gate/${gateId}/answer`,
+      { text, bridgeSessionId, attestation: 'ui-gesture' },
+    ),
   endSession: (id: string) => postJson<{ ok: boolean }>(`/api/session/${encodeURIComponent(id)}/end`, {}),
   // Phase 6 — identity.
   whoami: () => getJson<WhoamiData>('/api/whoami'),
