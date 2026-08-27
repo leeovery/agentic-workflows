@@ -390,10 +390,18 @@ Settled 2026-08-27, as the stack landed:
   beats its entrant, so the slot is held from entry, not from the
   first commit), gave investigation's triage sidecar its place in
   the topic commit scope, narrowed the corrigenda commit, and routed
-  the legacy-split apply through the commit door. Still open, needing
-  a design call: the planning and scoping restart paths' raw
-  pathspec-less commits (their `--plan` form dies with the item they
-  delete).
+  the legacy-split apply through the commit door.
+- The restart paths reorder instead of growing an engine form
+  (PR 9, user-approved). Cleanup commits via `--plan` while the
+  planning item still resolves; the manifest entry deletes last,
+  committed on the topic's own scope (planning) or the confined
+  work-unit form (scoping — topic == work unit). No raw pathspec-less
+  commit remains anywhere in the prose corpus. Crash-re-offers holds
+  for planning, whose resume detection keys on the manifest entry;
+  it is deliberately not claimed for scoping, whose resume detection
+  keys on a file the cleanup deletes — a pre-existing seam, noted
+  for a follow-up (re-key scoping's resume detection on the
+  manifest), not widened by the reorder.
 - The deferral's terminal stop is the whole answer at every arrival
   (PR 8 review). A fall-through to the prior pass's display was
   ordered for the automatic rerun route and then refuted by
