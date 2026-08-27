@@ -24,14 +24,6 @@ function runCli(cwd, args) {
   return r.stdout;
 }
 
-function runGit(cwd, args) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
-  if (r.status !== 0) {
-    throw new Error(`git failed (${args.join(' ')}): ${r.stderr || r.stdout}`);
-  }
-  return r.stdout;
-}
-
 // Index-truth check: does git track this path? Reads the index, so it answers
 // correctly even after the file has been moved on disk (the index still records
 // the old path until we stage the move).
@@ -250,7 +242,7 @@ function apply(cwd, workUnit, currentSource) {
       ? `commit failed (likely pre-commit hook). All file and manifest mutations are applied. ` +
         `Resolve the hook issue, commit the split, then clean the cache: ` +
         `${retry} && rm -rf ${cacheDir}`
-      : `git staging failed — the source file ${sourceRel} was never committed, so its pre-split ` +
+      : `commit failed — the source file ${sourceRel} was never committed, so its pre-split ` +
         `history isn't in git. All file and manifest mutations are applied. Commit the split, ` +
         `then clean the cache: ${retry} && rm -rf ${cacheDir}`;
     return {

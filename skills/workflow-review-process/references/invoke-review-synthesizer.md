@@ -50,7 +50,7 @@ If the agent fails (error, timeout), record the failure and report "synthesis fa
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.gate_mode=gated staging.c{N}.tasks.1=pending … staging.c{N}.tasks.{TASKS_PROPOSED}=pending
 ```
 
-Commit the report and staging file (if created) — both sit under the implementation topic, which this session is reviewing rather than working, so the commit leaves that topic's presence alone:
+Commit the report and staging file (if created) — both sit under the implementation topic, which this session is reviewing rather than working, so the commit carries `--sweep`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — findings" --topic implementation/{topic} --sweep

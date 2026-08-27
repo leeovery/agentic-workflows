@@ -24,8 +24,8 @@ module.exports = {
     e.completeDiscussions(h);
 
     // Grouping analysis outcome: the proposed spec and its source rows
-    // (analysis-flow C's upsert shape), then the consolidation cache
-    // with the surfaced tension (analysis-flow D).
+    // (analysis-flow D's upsert shape), then the consolidation cache
+    // with the surfaced tension (analysis-flow E).
     h.engine('manifest', 'set', `${WU}.specification.expansion`,
       'status=proposed',
       'sources.behavioural-ranking.status=pending',

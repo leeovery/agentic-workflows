@@ -60,11 +60,6 @@ Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code b
 
 #### If `yes`
 
-If `cache_status` is `stale`, delete the cache first:
-```bash
-rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
-```
-
 → Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions as written.
 
 #### If `no`

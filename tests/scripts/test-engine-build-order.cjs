@@ -123,6 +123,24 @@ describe('engine build-order sequence', () => {
     assert.strictEqual(spec.items.legacy.order, undefined, 'terminal untouched');
   });
 
+  it('commits the manifest alone, leaving a live peer\'s document behind', () => {
+    // The sequencing pass runs from the epic entry, beside sessions holding
+    // the unit's topics. It wrote the manifest and nothing else.
+    fs.mkdirSync(path.join(dir, '.workflows/portal/discussion'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/portal/discussion/auth.md'), '# Discussion — Auth\n');
+    commitAll(dir, 'a peer topic');
+    fs.writeFileSync(path.join(dir, '.workflows/portal/discussion/auth.md'), '# Discussion — Auth\nhalf a turn\n');
+
+    engine(dir, ['build-order', 'sequence', 'portal', 'auth=1', 'reports=2', 'billing=3']);
+
+    assert.deepStrictEqual(
+      git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean),
+      ['.workflows/portal/manifest.json']);
+    assert.deepStrictEqual(
+      git(dir, ['status', '--porcelain']).split('\n').filter(Boolean),
+      [' M .workflows/portal/discussion/auth.md'], 'the peer keeps its dirt');
+  });
+
   it('completed topics are live — they keep a number', () => {
     engine(dir, ['build-order', 'sequence', 'portal', 'reports=1', 'auth=2', 'billing=3']);
     assert.strictEqual(readManifest(dir, 'portal').phases.specification.items.reports.order, 1);

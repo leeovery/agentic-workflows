@@ -503,6 +503,23 @@ describe('engine commit --paths: the code commit', () => {
       '--for beats the code topic');
   });
 
+  it('carries a staged rename, and reads the residual dirt past its two-field record', () => {
+    // `git status --porcelain -z` writes a rename as one record with TWO
+    // NUL-separated paths. Miscounting there would misread every path after
+    // it, so `left_dirty` would name files the task never touched.
+    git(dir, ['mv', 'src/other.js', 'src/renamed.js']);
+    writeFile(dir, 'src/left-behind.js', '// not this task\n');
+
+    const res = engine(dir, ['commit', '--paths', 'src/other.js', 'src/renamed.js',
+      '-m', 'refactor(topic-a): move the module', ...forTopic]);
+
+    assert.deepStrictEqual(
+      git(dir, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort(),
+      ['src/other.js', 'src/renamed.js'], 'both sides of the rename ride the commit');
+    assert.deepStrictEqual(res.left_dirty, ['src/left-behind.js'],
+      'the rename record is consumed whole — nothing after it shifts');
+  });
+
   it('answers nothing to commit when the named paths are clean', () => {
     const res = engine(dir, ['commit', '--paths', 'src/app.js', '-m', 'noop', ...forTopic]);
     assert.strictEqual(res.committed, null);

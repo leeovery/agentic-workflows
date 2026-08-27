@@ -40,17 +40,17 @@ Store work_unit for the handoff.
 
 ---
 
-## Step 2: Validate Phase
+## Step 2: Check the Code Slot
 
-Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
+Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with phase = `review`.
 
 → On return, proceed to **Step 3**.
 
 ---
 
-## Step 3: Check the Code Slot
+## Step 3: Validate Phase
 
-Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with phase = `review`.
+Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 4**.
 

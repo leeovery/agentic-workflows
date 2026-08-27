@@ -1,7 +1,7 @@
 ---
 name: workflow-scoping-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git rev-parse), Bash(git add), Bash(git commit)
+allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git status), Bash(git rev-parse)
 hooks:
   SessionEnd:
     - hooks:
@@ -180,7 +180,7 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
    ```
 3. Commit each edit under its own scope — the specification with the store its re-completion re-indexed, then the plan with its declared storage:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): adjust quick-fix specification" --topic specification/{topic} --kb
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): adjust quick-fix specification" --topic specification/{topic} --kb --sweep
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): adjust plan" --plan {topic}
    ```
 

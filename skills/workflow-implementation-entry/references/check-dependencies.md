@@ -150,7 +150,11 @@ Update the selected dependency's state via `engine manifest`:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{selected_topic}.state satisfied_externally
 ```
 
-Commit: `impl({work_unit}): mark {selected_topic} dependency as satisfied externally`
+The record belongs to the plan, and this is navigation reaching into it — `--sweep`, so the entry never stamps its identity on a planning topic no session is in:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic planning/{topic} --sweep -m "impl({work_unit}): mark {selected_topic} dependency as satisfied externally"
+```
 
 → Return to **A. Evaluate Dependencies**.
 

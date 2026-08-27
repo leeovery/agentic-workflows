@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { commitPathspecScoped, commitPathspecWithKb, discoveryScope, KB_DIR } = require('./domain/commit.cjs');
-const { dirtyPaths, stageableSpecs } = require('./kernel/git.cjs');
+const { dirtyPaths, stageableSpecs, hasStagedDeletions } = require('./kernel/git.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
@@ -1306,7 +1306,12 @@ function codePathSpec(cwd, given) {
   if (spec === '.workflows' || spec.startsWith('.workflows/')) {
     throw new Error(`commit --paths: "${given}" is a workflow artifact — those commit by their own scope (--topic/--discovery/--plan)`);
   }
-  if (stageableSpecs(cwd, [spec]).length === 0) {
+  // On disk, in the index, or — the case `stageableSpecs` cannot see — gone
+  // from both with its deletion already staged, which is what a `git mv` or
+  // `git rm` leaves behind. The commit door accepts that path; so must the
+  // validator in front of it, or the vanished side of a rename cannot be
+  // named and the commit lands half a move.
+  if (stageableSpecs(cwd, [spec]).length === 0 && !hasStagedDeletions(cwd, spec)) {
     throw new Error(`commit --paths: "${given}" is neither on disk nor tracked`);
   }
   return spec;

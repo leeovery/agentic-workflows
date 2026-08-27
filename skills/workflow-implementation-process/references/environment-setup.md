@@ -45,10 +45,10 @@ No environment setup document found. Are there any setup instructions I should f
 
 **If they provide instructions:**
 
-Save them to `.workflows/.state/environment-setup.md` and commit the document (the scoped commit covers it):
+Save them to `.workflows/.state/environment-setup.md` and commit the global state dir alone — this runs from inside a live implementation session, and everything else dirty belongs to someone:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "chore(workflows): record environment setup"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --state -m "chore(workflows): record environment setup"
 ```
 
 Then follow the saved instructions.
@@ -57,10 +57,10 @@ Then follow the saved instructions.
 
 **If they say no setup is needed:**
 
-Create `.workflows/.state/environment-setup.md` with "No special setup required." and commit it (the scoped commit covers the document):
+Create `.workflows/.state/environment-setup.md` with "No special setup required." and commit the global state dir alone:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "chore(workflows): record environment setup"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --state -m "chore(workflows): record environment setup"
 ```
 
 This prevents asking the same question in future sessions.

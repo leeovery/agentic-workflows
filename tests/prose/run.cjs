@@ -62,13 +62,6 @@ function changedFiles(ref) {
   ]);
 }
 
-// A snapshot's recipe hash is bookkeeping — it records when the world was
-// last rebuilt, never what the case tests. Re-stamping the corpus after an
-// engine change would otherwise select every case in it, which is the same
-// as selecting none: the suggestion is only worth reading when it is short.
-// A snapshot's *content* moving is real, and still selects.
-const BOOKKEEPING = /(^|\/)\.recipe-hash$/;
-
 function cmdSelect(argv) {
   const all = cases.loadAllCases();
   let selected;
@@ -84,11 +77,7 @@ function cmdSelect(argv) {
   } else {
     const ref = flag(argv, '--diff') || 'main';
     mode = `diff:${ref}`;
-    const changed = new Set([...changedFiles(ref)].filter((p) => !BOOKKEEPING.test(p)));
-    selected = all.filter((c) => c.files.some((f) => changed.has(f.path))
-      || [...changed].some((p) => p.startsWith(`${c.rel}/`))
-      || c.stubs.some((s) => changed.has(`tests/prose/stubs/${s.name}.md`))
-      || [...changed].some((p) => p.startsWith('tests/prose/mainlines/')));
+    selected = cases.selectCases(all, changedFiles(ref));
   }
   process.stdout.write(`${JSON.stringify({
     mode,

@@ -23,7 +23,7 @@
     "calls_include": [
       "task init",
       "engine.cjs commit pay -m impl(pay): start implementation",
-      "engine.cjs commit --workflows -m chore(workflows): record environment setup"
+      "engine.cjs commit --state -m chore(workflows): record environment setup"
     ],
     "calls_exclude": [
       "task start",

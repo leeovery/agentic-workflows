@@ -1,7 +1,7 @@
 ---
 name: workflow-planning-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git diff), Bash(git rev-parse), Bash(git add), Bash(git commit)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git diff), Bash(git status), Bash(git rev-parse)
 hooks:
   SessionEnd:
     - hooks:
@@ -57,7 +57,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Hard Rules
 
-1. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. Work-unit commits go through the scoped helper:
+1. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. The planning topic's own artifacts commit on its topic scope:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}" --topic planning/{topic}
    ```
@@ -133,7 +133,7 @@ If spec-change-detection reported changes, carry them into the walkthrough: reco
 
 #### If `restart`
 
-Order matters — the cleanup commits while the planning item still exists, so `--plan` resolves the plan's declared storage, and the manifest entry is deleted last. A crash between the two commits leaves the entry standing, so the next entry re-offers restart and re-runs the cleanup over an already-clean tree.
+Order matters — the cleanup commits while the planning item still exists, so `--plan` resolves the plan's declared storage, and the manifest entry is deleted last. A crash between the two commits leaves the entry standing over cleared files, and the resume gate reads that: it offers the restart alone, which re-runs the cleanup over an already-clean tree.
 
 1. Read the `format` and the plan's `external_id` from the manifest:
    ```bash

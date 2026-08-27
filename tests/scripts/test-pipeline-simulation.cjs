@@ -472,6 +472,13 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.render(['resume-gate', `${wu}.review.${topic}`, '--variant', 'review'], { expect: 'content' });
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'out_of_scope',
     '{"id":"A3","kind":"quick-fix","summary":"a guard the spec never asked for"}']);
+  // The apply lane writes code: in-scope, contained findings land in-session
+  // as one commit, through the same declared-paths door the task loop uses —
+  // beating the review topic, which is the code slot this session holds.
+  sim.write(`src/${topic}.js`, `module.exports = ${JSON.stringify(topic)}; // guarded\n`);
+  const applied = sim.run(['commit', '--paths', `src/${topic}.js`,
+    '-m', `review(${wu}): apply do-now findings`, '--for', wu, `review/${topic}`]);
+  assert.deepStrictEqual(applied.left_dirty, [], 'the apply lane names everything it touched');
   sim.write(`.workflows/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
   sim.run(['commit', wu, '-m', `review(${wu}): complete review`, '--topic', `review/${topic}`]);
   const presentation = sim.write(`.workflows/.cache/${wu}/review/${topic}/presentation.json`, {

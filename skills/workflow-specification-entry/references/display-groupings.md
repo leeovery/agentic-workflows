@@ -65,7 +65,7 @@ Then rewrite `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): reconcile proposed groupings"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --state -m "spec({work_unit}): reconcile proposed groupings"
 ```
 
 Spec name: "Unified". Sources: all completed discussions.
@@ -73,10 +73,5 @@ Spec name: "Unified". Sources: all completed discussions.
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
 
 #### If `action` is `reanalyze`
-
-Delete the cache:
-```bash
-rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
-```
 
 → Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions as written.

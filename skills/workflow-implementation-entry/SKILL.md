@@ -40,25 +40,25 @@ Store work_unit for the handoff.
 
 ---
 
-## Step 2: Validate Phase
+## Step 2: Check the Code Slot
 
-Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
+Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with phase = `implementation`.
 
 → On return, proceed to **Step 3**.
 
 ---
 
-## Step 3: Check Dependencies
+## Step 3: Validate Phase
 
-Load **[validate-dependencies.md](references/validate-dependencies.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 4**.
 
 ---
 
-## Step 4: Check the Code Slot
+## Step 4: Check Dependencies
 
-Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with phase = `implementation`.
+Load **[validate-dependencies.md](references/validate-dependencies.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
 

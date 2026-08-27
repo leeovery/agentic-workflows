@@ -289,6 +289,10 @@ Store the selected entry's `topic` (the plan) and its `(dep: …)` value (the de
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep}.state satisfied_externally
 ```
 
-Commit: `impl({work_unit}): mark {dep} dependency as satisfied externally`
+The record belongs to the plan, and the menu is not the session working it — `--sweep`, so the commit stamps no identity there:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic planning/{topic} --sweep -m "impl({work_unit}): mark {dep} dependency as satisfied externally"
+```
 
 → Return to **A. State Display and Menu**.
