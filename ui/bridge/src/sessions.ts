@@ -52,7 +52,7 @@ export class SdkDriver implements SessionDriver {
     // click a prompt): file tools inside the project root, Bash by
     // allowlisted prefix, read-only basics — everything else denied with the
     // reason surfaced (the prompt-fallout rule). Never a blanket bypass.
-    const root = path.resolve(opts.cwd) + path.sep;
+    const rootReal = fs.existsSync(opts.cwd) ? fs.realpathSync(opts.cwd) : path.resolve(opts.cwd);
     const bashPrefixes = (opts.allowedTools ?? [])
       .map((t) => t.match(/^Bash\((.+?)(?::\*)?\)$/)?.[1])
       .filter((p): p is string => Boolean(p));
@@ -60,27 +60,32 @@ export class SdkDriver implements SessionDriver {
       const allow = { behavior: 'allow' as const, updatedInput: input };
       const deny = (message: string) => ({ behavior: 'deny' as const, message });
       switch (toolName) {
+        // Read-only / non-filesystem tools workflow skills actually call. NOT
+        // WebFetch — no skill declares it, and an unscoped fetch is an SSRF /
+        // exfiltration primitive (round 8 security review).
         case 'Read':
         case 'Glob':
         case 'Grep':
         case 'TodoWrite':
         case 'Task':
         case 'Skill':
-        case 'WebFetch':
           return allow;
         case 'Write':
         case 'Edit':
         case 'MultiEdit':
         case 'NotebookEdit': {
-          const p = String(input.file_path ?? input.path ?? '');
-          const resolved = path.resolve(opts.cwd, p);
-          return resolved === path.resolve(opts.cwd) || resolved.startsWith(root)
+          const p = String(input.file_path ?? input.path ?? input.notebook_path ?? '');
+          if (p === '') return deny('file tool call with no path');
+          // Containment must be REAL, not lexical: resolve the deepest
+          // existing ancestor's realpath so a symlinked component can't escape
+          // the project (mirrors the read-path fix, round 7 P1-3).
+          return writeWithinProject(p, opts.cwd, rootReal)
             ? allow
             : deny(`file edits are confined to the project (${opts.cwd})`);
         }
         case 'Bash': {
-          const cmd = String(input.command ?? '').trim();
-          return bashPrefixes.some((pfx) => cmd === pfx || cmd.startsWith(pfx + ' '))
+          const cmd = String(input.command ?? '');
+          return bashCommandAllowed(cmd, bashPrefixes)
             ? allow
             : deny('command not in the generated workflow allowlist — an allowlist gap, not a policy call');
         }
@@ -105,7 +110,7 @@ export class SdkDriver implements SessionDriver {
         // observed round 8). File tools fall through to the policy callback.
         allowedTools: (opts.allowedTools ?? []).filter((t) => /^Bash\(/.test(t)),
         canUseTool,
-        env: { ...process.env, ...opts.env },
+        env: sessionEnv(opts.env),
         settingSources: ['project'] as any,
       },
     });
@@ -160,7 +165,7 @@ export class SdkDriver implements SessionDriver {
 
 // --- the manager ------------------------------------------------------------
 
-export type SessionState = 'live' | 'idle-at-ask' | 'stalled' | 'errored' | 'dead' | 'ended';
+export type SessionState = 'live' | 'idle-at-ask' | 'stalled' | 'errored' | 'dead' | 'ended' | 'resuming';
 
 export type SessionRow = {
   bridgeSessionId: string;
@@ -172,6 +177,7 @@ export type SessionRow = {
 };
 
 const T_STALL_MS = 120_000;
+const T_IDLE_MS = 4 * 60 * 60 * 1000; // 4h idle-timeout (spec 2 lifecycle rules)
 
 export class SessionManager extends EventEmitter {
   private sessions = new Map<string, SessionRow>();
@@ -198,6 +204,27 @@ export class SessionManager extends EventEmitter {
     return [...this.sessions.values()];
   }
 
+  /**
+   * Retire sessions idle past T_IDLE (spec 2). Called on a timer by the CLI;
+   * a retired session's thread stays readable until replaced. Returns the
+   * ids retired.
+   */
+  reapIdle(now: number): string[] {
+    const retired: string[] = [];
+    for (const s of this.sessions.values()) {
+      if (s.state === 'ended') continue;
+      const row = this.db.sqlite
+        .prepare('SELECT last_event_at as t FROM sessions WHERE bridge_session_id = ?')
+        .get(s.bridgeSessionId) as { t: string | null } | undefined;
+      const last = row?.t ? new Date(row.t).getTime() : 0;
+      if (last > 0 && now - last > T_IDLE_MS) {
+        void this.end(s.bridgeSessionId, 'interrupted');
+        retired.push(s.bridgeSessionId);
+      }
+    }
+    return retired;
+  }
+
   get(bridgeSessionId: string): SessionRow | undefined {
     return this.sessions.get(bridgeSessionId);
   }
@@ -211,6 +238,16 @@ export class SessionManager extends EventEmitter {
   }
 
   async start(address: SessionRow['address'], entryPrompt: string): Promise<SessionRow> {
+    // One live session per (workUnit, topic) activity; the lobby holds at most
+    // one shaping session (spec 2). Enforced bridge-side, not just in the SPA
+    // — a second tab or the MCP surface must not open a duplicate.
+    const sameAddress = (a: SessionRow['address'], b: SessionRow['address']) =>
+      (a.workUnit ?? '') === (b.workUnit ?? '') && (a.topic ?? '') === (b.topic ?? '');
+    const existing = [...this.sessions.values()].find(
+      (s) => s.state !== 'ended' && sameAddress(s.address, address),
+    );
+    if (existing) return existing;
+
     const bridgeSessionId = `bs-${crypto.randomUUID().slice(0, 13)}`;
     const row: SessionRow = { bridgeSessionId, sdkSessionId: null, address, state: 'live', openGate: null };
     this.sessions.set(bridgeSessionId, row);
@@ -270,9 +307,16 @@ export class SessionManager extends EventEmitter {
         row.openGate = { ...row.openGate, state: 'answering' };
         this.emitGate(row, row.openGate);
       }
+      // A dead session (process gone between turns — the normal one-query-per-
+      // turn case) shows a visible "resuming…" state while the SDK re-attaches.
+      if (row.state === 'dead') {
+        row.state = 'resuming';
+        this.persistState(row);
+        this.emit('session', { type: 'session.resuming', bridgeSessionId });
+      }
       const turnNo = journal.read().filter((r) => r.record === 'user').length + 1;
       try {
-        await this.runTurn(row, journal, text, turnNo);
+        await this.runTurn(row, journal, text, turnNo, gateId);
         const resolvedAt = new Date().toISOString();
         this.db.sqlite
           .prepare('UPDATE gate_ledger SET state = ?, resolved_at = ?, resolution = ? WHERE gate_id = ?')
@@ -293,10 +337,23 @@ export class SessionManager extends EventEmitter {
   }
 
   /** One SDK turn: stream, tee the journal, detect the ask, project the gate. */
-  private async runTurn(row: SessionRow, journal: Journal, prompt: string, turnNo: number): Promise<void> {
+  private async runTurn(
+    row: SessionRow,
+    journal: Journal,
+    prompt: string,
+    turnNo: number,
+    answeringGateId?: string,
+  ): Promise<void> {
     row.state = 'live';
     this.persistState(row);
-    journal.append({ record: 'user', text: prompt, ts: new Date().toISOString() });
+    // Tag the injected answer with the gate id it resolves (defense-in-depth
+    // audit trail; a post-hoc mismatch is caught by the pre-injection CAS).
+    journal.append({
+      record: 'user',
+      text: prompt,
+      ...(answeringGateId ? { gateId: answeringGateId } : {}),
+      ts: new Date().toISOString(),
+    });
 
     const env: Record<string, string> = {
       WORKFLOWS_DISPLAY_WIDTH: String(this.opts.displayWidth ?? 65),
@@ -355,6 +412,11 @@ export class SessionManager extends EventEmitter {
             // health with the denied command shown — never a silent hang.
             if (/requested permissions|permission.*denied|hasn't granted/i.test(ev.text)) {
               row.lastError = `permission denied: ${ev.text.slice(0, 200)}`;
+              // The prompt-fallout rule: flip to errored health so the card/row
+              // shows it. If the turn recovers to a gate, the end-of-turn
+              // projection overwrites this back to idle-at-ask.
+              row.state = 'errored';
+              this.persistState(row);
               logger.warn('allowlist gap — permission denied in session', {
                 bridgeSessionId: row.bridgeSessionId,
                 detail: row.lastError,
@@ -392,11 +454,24 @@ export class SessionManager extends EventEmitter {
 
     // Project the gate from the journal (never from memory of the stream).
     const ask = openAsk(journal.read(), row.bridgeSessionId);
+    const deniedThisTurn = row.state === 'errored' && row.lastError?.startsWith('permission denied');
     if (ask) {
-      row.state = 'idle-at-ask';
-      row.openGate = this.toCard(row, ask);
-      this.recordLedger(row, row.openGate, ask);
-      this.emitGate(row, row.openGate);
+      // A real structured/menu gate means the turn recovered — clear errored;
+      // but a permission denial that only produced a trailing pass-through
+      // (the model narrating that it's blocked) keeps errored health.
+      if (deniedThisTurn && ask.detection.kind === 'pass-through') {
+        row.openGate = this.toCard(row, ask);
+        this.recordLedger(row, row.openGate, ask);
+        // state stays 'errored'; the card carries the ask for a retry.
+        this.emitGate(row, row.openGate);
+      } else {
+        row.state = 'idle-at-ask';
+        row.openGate = this.toCard(row, ask);
+        this.recordLedger(row, row.openGate, ask);
+        this.emitGate(row, row.openGate);
+      }
+    } else if (deniedThisTurn) {
+      row.openGate = null; // stays errored, no gate
     } else {
       row.state = 'ended';
       row.openGate = null;
@@ -554,3 +629,83 @@ export class SessionManager extends EventEmitter {
 }
 
 export { sha256 as sha256hex };
+
+/**
+ * The env a session runs with. The SDK needs a broad environment (node, git,
+ * the ambient Anthropic auth), so we start from process.env but redact
+ * NON-Anthropic secret-shaped vars (the knowledge subsystem's OpenAI key, cloud
+ * creds) — with allowlisted Bash and file tools, an in-session `printenv` would
+ * otherwise persist them to the journal and re-expose them over the API
+ * (round 8 blast-radius finding). ANTHROPIC_* is kept: the session needs it and
+ * the SDK already withholds it from the Bash subprocess.
+ */
+export function sessionEnv(extra: Record<string, string>): Record<string, string> {
+  const SECRET = /SECRET|PASSWORD|CREDENTIAL|API_?KEY|_TOKEN|ACCESS_KEY/i;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v === undefined) continue;
+    if (/^ANTHROPIC_/.test(k)) {
+      // The session's own auth — kept (the SDK withholds it from Bash).
+      out[k] = v;
+      continue;
+    }
+    if (SECRET.test(k)) continue;
+    out[k] = v;
+  }
+  return { ...out, ...extra };
+}
+
+// ---------------------------------------------------------------------------
+// Session tool policy helpers (round 8 security review)
+// ---------------------------------------------------------------------------
+
+/**
+ * Real (not lexical) containment for a write target: resolve the deepest
+ * existing ancestor's realpath and require it inside the project's realpath,
+ * so a symlinked path component cannot escape.
+ */
+export function writeWithinProject(p: string, cwd: string, rootReal: string): boolean {
+  const target = path.resolve(cwd, p);
+  let ancestor = target;
+  while (!fs.existsSync(ancestor)) {
+    const parent = path.dirname(ancestor);
+    if (parent === ancestor) break;
+    ancestor = parent;
+  }
+  let real: string;
+  try {
+    real = fs.realpathSync(ancestor);
+  } catch {
+    return false;
+  }
+  // The remaining (non-existent) tail must not reintroduce traversal.
+  const tail = path.relative(ancestor, target);
+  if (tail.split(path.sep).includes('..')) return false;
+  const full = path.resolve(real, tail);
+  return full === rootReal || full.startsWith(rootReal + path.sep);
+}
+
+/**
+ * Shell-aware Bash validation: a naive startsWith lets `git diff && curl evil`
+ * through (round 8). Reject command/process substitution outright, then split
+ * on every shell control operator and require EVERY segment's command to
+ * match an allowlisted prefix — so no segment can invoke an un-allowlisted
+ * program.
+ */
+export function bashCommandAllowed(command: string, prefixes: string[]): boolean {
+  const cmd = command.trim();
+  if (cmd === '') return false;
+  // Substitution executes arbitrary inner commands we can't statically vet.
+  if (/`|\$\(|<\(|>\(/.test(cmd)) return false;
+  // Split on ; && || | & and newlines (segment separators the shell runs).
+  const segments = cmd.split(/;|&&|\|\||\||&|\n/).map((s) => s.trim()).filter(Boolean);
+  if (segments.length === 0) return false;
+  const matches = (seg: string) => {
+    // Strip leading VAR=val env assignments and a leading redirect.
+    let s = seg.replace(/^([A-Za-z_][A-Za-z0-9_]*=(\S+|"[^"]*"|'[^']*')\s+)+/, '').trim();
+    s = s.replace(/^\d*[<>]+\s*\S+\s+/, '').trim();
+    if (s === '') return true; // pure redirect / assignment, no program invoked
+    return prefixes.some((pfx) => s === pfx || s.startsWith(pfx + ' ') || s.startsWith(pfx + '\t'));
+  };
+  return segments.every(matches);
+}

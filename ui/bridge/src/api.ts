@@ -118,7 +118,7 @@ export async function handleApi(
         openGate: row?.openGate ?? null,
         lastError: row?.lastError,
         records: t.records,
-        asks: t.asks.map((a) => ({ ordinal: a.ordinal, gateId: a.gateId, answered: a.answered, kind: a.detection.kind })),
+        asks: t.asks.map((a) => ({ ordinal: a.ordinal, gateId: a.gateId, answered: a.answered, kind: a.detection.kind, turn: a.turn })),
       });
       return true;
     }
@@ -164,7 +164,18 @@ function publicSessions(deps: ApiDeps): unknown[] {
 async function queueView(res: http.ServerResponse, deps: ApiDeps): Promise<void> {
   const snap = snapshotTree(deps.projectRoot);
   if (deps.engine) await attachDerived(snap, deps.engine);
-  const rows = buildQueue(durableRows(snap, deps.projectRoot), deps.sessions ?? null, deps.store);
+  // Build order per epic (spec item `order` fields) — the queue's within-epic
+  // tie-break (spec 5 clause 4).
+  const buildOrder: Record<string, Record<string, number>> = {};
+  for (const [name, unit] of Object.entries(snap.units)) {
+    const items = (unit.manifest as any)?.phases?.specification?.items ?? {};
+    for (const [topic, item] of Object.entries<any>(items)) {
+      if (typeof item?.order === 'number') {
+        (buildOrder[name] ??= {})[topic] = item.order;
+      }
+    }
+  }
+  const rows = buildQueue(durableRows(snap, deps.projectRoot), deps.sessions ?? null, deps.store, buildOrder);
   send(res, 200, { rows });
 }
 
@@ -289,12 +300,28 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
   }
   const workType: string = manifest.work_type ?? 'feature';
 
-  // The spine — the Phase 0 pure function's stored output, filtered to the
-  // admissible set (gates arrive with Phase 2).
+  // The spine — the Phase 0 pure function's stored output (durable), plus the
+  // live gate refs for this unit joined from the session projections (gates
+  // are ephemeral, not durable events, so they're joined here, not stored).
   const all = store ? store.readFrom(0) : [];
-  const spine = all.filter(
+  const spine: unknown[] = all.filter(
     (e) => (SPINE_EVENT_TYPES as readonly string[]).includes(e.type) && e.address.workUnit === wu,
   );
+  if (deps.sessions) {
+    for (const s of deps.sessions.list()) {
+      const g = s.openGate;
+      if (g && g.state === 'open' && g.address.workUnit === wu) {
+        spine.push({
+          id: g.id,
+          type: 'gate.opened',
+          ts: g.openedAt,
+          address: g.address,
+          payload: { card: g },
+          live: true,
+        });
+      }
+    }
+  }
   // The activity drawer: commits touching this unit + its artifact updates.
   const drawer = all.filter(
     (e) =>

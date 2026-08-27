@@ -14,6 +14,20 @@ afterEach(() => {
 });
 
 describe('bridge lease', () => {
+  afterEach(() => {
+    // The lease now lives out of tree (round 8) — clean it between tests.
+    try {
+      fs.rmSync(path.dirname(leasePath(dir)), { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  it('lives OUT of the project tree (zero-new-workflow-state)', () => {
+    expect(leasePath(dir).startsWith(dir)).toBe(false);
+    expect(leasePath(dir)).toContain('.cache');
+  });
+
   it('first bridge takes the lease; a second is refused with the holder named', () => {
     expect(acquireLease(dir, 'b1').held).toBe(true);
     const second = acquireLease(dir, 'b2');

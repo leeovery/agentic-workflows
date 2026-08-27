@@ -8,8 +8,10 @@ named compensation.
 
 ## The bridge lease (single instance)
 
-Before driving anything, a bridge takes a per-project lease —
-`.workflows/.cache/.bridge-lease` (gitignored), O_EXCL create with
+Before driving anything, a bridge takes a per-project lease — an out-of-tree
+path deterministic from the project root (`~/.cache/workflow-bridge/{slug-hash}/lease`;
+amended round 8 from the original in-tree `.workflows/.cache/.bridge-lease`, which
+violated the zero-new-workflow-state rule and could leak into fixture overlays), O_EXCL create with
 `{pid, pid_start, host, bridge_id}`, the engine's own stale-break discipline
 (dead pid+start → break). A bridge that cannot take the lease runs as a **read-only
 mirror with a banner** ("driven from {host}") — no sessions, no pushes, no ledger writes.

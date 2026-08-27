@@ -215,9 +215,11 @@ export function confirmMode(section: Section | null, menu: ParsedMenu | null): '
       (NEVER_AUTO_SURFACES as readonly string[]).includes(section.name);
     if (!known && NEVER_AUTO_SUSPICION.test(`${section.name}\n${menu?.context ?? ''}`)) return 'typed';
   }
-  const labels = (menu?.options ?? []).map((o) => o.label).join('\n');
-  if (NEVER_AUTO_LABEL_PATTERNS.some((p) => p.test(labels))) return 'typed';
-  if (menu && NEVER_AUTO_SUSPICION.test(labels)) return 'typed';
+  // Scan option labels AND the surrounding context (a cancel gate's
+  // confirmation sentence lives in its DISPLAY body, not the y/yes label).
+  const scan = [(menu?.options ?? []).map((o) => o.label).join('\n'), menu?.context ?? '', section?.body ?? ''].join('\n');
+  if (NEVER_AUTO_LABEL_PATTERNS.some((p) => p.test(scan))) return 'typed';
+  if (menu && NEVER_AUTO_SUSPICION.test(scan)) return 'typed';
   return 'tap';
 }
 
@@ -252,26 +254,52 @@ export function detectAsk(turn: TurnView): Detection {
 
   // 1. Demarcated STOP sections in tool results — the LAST is the ask
   //    (earlier ones render as context; two-menus-per-turn is valid input).
+  //    A DISPLAY section paired with the MENU (same trailing name — e.g. the
+  //    finding-batch pair) is captured so the card can never be answered
+  //    without showing what it decides.
   const stopSections: Section[] = [];
+  const displaysByName = new Map<string, string>();
   for (const tr of turn.toolResults) {
     for (const s of extractSections(tr)) {
       if (s.name.startsWith('MENU') && isStopSection(s)) stopSections.push(s);
+      const disp = s.name.match(/^DISPLAY: (.+)$/);
+      if (disp) displaysByName.set(disp[1]!, s.body);
     }
   }
   const last = stopSections.at(-1) ?? null;
+  const pairedDisplay = last ? displaysByName.get(last.name.replace(/^MENU: /, '')) : undefined;
   if (last) {
     const menu = parseMenu(last.body);
+    // Structural deviation → pass-through, never a fabricated card (N3, spec
+    // 1): a section whose body carries option-like markup that FAILED to
+    // parse is malformed, not a genuine no-option stop-notice. Distinguish by
+    // the presence of option markup the parser rejected.
+    if (menu === null && /^\s*\*\*`/m.test(last.body)) {
+      return {
+        kind: 'pass-through',
+        source: 'tool-result',
+        surface: last.name,
+        options: [],
+        context: last.body,
+        confirm: confirmMode(last, null),
+        identityBody: normalizedBody(last.body),
+      };
+    }
     const kind = classifyKind(last, menu);
     const identityBody = normalizedBody(last.body);
     const relayDiverged =
       menu !== null && turn.finalText.trim() !== '' && !relayMatches(turn.finalText, menu);
+    // The paired DISPLAY (finding batch, etc.) leads the context so the card
+    // shows what it is deciding on the queue's first-stop surface too.
+    const baseContext = menu?.context ?? last.body;
+    const context = pairedDisplay ? `${pairedDisplay}\n\n${baseContext}`.trim() : baseContext;
     return {
       kind,
       source: 'tool-result',
       surface: last.name,
       question: menu?.question,
       options: menu?.options ?? [],
-      context: menu?.context ?? last.body,
+      context,
       confirm: confirmMode(last, menu),
       gateType: SURFACE_GATE_TYPES[last.name],
       identityBody,

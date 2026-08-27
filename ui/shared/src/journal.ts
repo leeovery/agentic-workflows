@@ -37,6 +37,9 @@ export const JournalToolResult = z.object({
 export const JournalUser = z.object({
   record: z.literal('user'),
   text: z.string(),
+  // The gate this answer resolved, when the turn was an injected answer
+  // (bridge audit metadata; absent for the entry prompt and free chat).
+  gateId: z.string().optional(),
   ts: z.string().optional(),
 });
 

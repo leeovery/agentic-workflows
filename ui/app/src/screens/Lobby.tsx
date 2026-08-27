@@ -4,7 +4,7 @@
 // states. NEEDS YOU and TODAY arrive with Phases 2–3.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, useLive, type Health, type LobbyData, type SessionData } from '../api';
+import { api, useLive, type Health, type LobbyData, type SessionData, type QueueRowData } from '../api';
 import { EngineEmbed } from '../components/EngineEmbed';
 import { SessionHealthBadge } from '../components/SessionHealthBadge';
 
@@ -20,6 +20,7 @@ export function Lobby() {
   const { data: lobby, error } = useLive<LobbyData>(() => api.lobby());
   const { data: health } = useLive<Health>(() => api.health());
   const { data: sessionsData } = useLive<{ sessions: SessionData[] }>(() => api.sessions());
+  const { data: queueData } = useLive<{ rows: QueueRowData[] }>(() => api.queue());
   const [starting, setStarting] = useState(false);
   const navigate = useNavigate();
 
@@ -78,6 +79,38 @@ export function Lobby() {
           Memory not initialised — finish knowledge setup in a terminal session (
           <span className="font-mono">/workflow-start</span> walks you through it).
         </div>
+      )}
+
+      {/* NEEDS YOU — top cross-unit queue rows (the morning answer, intent 3).
+          A reference strip only; /queue is the interactive surface. */}
+      {(queueData?.rows.length ?? 0) > 0 && (
+        <section>
+          <div className="flex items-baseline justify-between mb-2">
+            <div className="region-label">Needs you</div>
+            <Link to="/queue" className="text-xs font-sans text-nav hover:underline">
+              all {queueData!.rows.length} →
+            </Link>
+          </div>
+          <div className="space-y-1">
+            {queueData!.rows.slice(0, 4).map((r, i) => (
+              <Link
+                key={`${r.tier}-${r.gateId ?? `${r.kind}-${r.address.workUnit}-${i}`}`}
+                to="/queue"
+                className="flex items-baseline gap-3 text-sm hover:bg-stone-100/60 dark:hover:bg-stone-900/60 rounded px-1 py-0.5"
+              >
+                <span className={`font-mono text-xs shrink-0 w-20 truncate ${r.tier === 'live' ? 'text-gate' : 'text-stone-500'}`}>
+                  {r.tier === 'live' ? `◆ ${r.kind}` : `⚑ ${r.kind}`}
+                </span>
+                <span className="font-sans text-stone-600 dark:text-stone-400 shrink-0">
+                  {r.address.workUnit ?? 'lobby'}
+                </span>
+                <span className="font-serif truncate flex-1 text-stone-800 dark:text-stone-200">
+                  {r.tier === 'live' ? r.askPreview : r.detail}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* WORK — feature and epic cards */}

@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { api, useLive, type QueueRowData, type SessionData } from '../api';
 import { GateCard } from '../components/GateCard';
+import { BatchScreenCard } from '../components/BatchScreenCard';
 
 function age(since: string): string {
   const ms = Date.now() - new Date(since).getTime();
@@ -103,7 +104,11 @@ export function Queue() {
               #{overlay.address.workUnit ?? 'lobby'} — the card answers here; the full thread is one click away.
             </div>
             <div className="px-2 pb-2">
-              <GateCard card={overlay} onAnswer={(text) => answer(overlay.id, text)} busy={busy} />
+              {overlay.kind === 'batch-screen' ? (
+                <BatchScreenCard card={overlay} onAnswer={(text) => answer(overlay.id, text)} busy={busy} />
+              ) : (
+                <GateCard card={overlay} onAnswer={(text) => answer(overlay.id, text)} busy={busy} />
+              )}
               <button
                 className="text-xs font-sans text-nav hover:underline px-2 pb-2"
                 onClick={() => navigate(`/s/${overlay.session.bridgeSessionId}`)}

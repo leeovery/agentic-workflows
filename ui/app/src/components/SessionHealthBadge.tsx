@@ -5,6 +5,7 @@ import { clsx } from 'clsx';
 const COPY: Record<string, { label: string; cls: string }> = {
   live: { label: 'live', cls: 'text-ok border-ok/40' },
   'idle-at-ask': { label: 'waiting on you', cls: 'text-gate border-gate/40' },
+  resuming: { label: 'resuming…', cls: 'text-nav border-nav/40' },
   stalled: { label: 'stalled', cls: 'text-warn border-warn/40' },
   errored: { label: 'errored', cls: 'text-blocked border-blocked/40' },
   dead: { label: 'resumable', cls: 'text-stone-400 border-stone-300' },

@@ -6,23 +6,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const SDK_BASICS = [
-  'Read',
-  'Glob',
-  'Grep',
-  'Write',
-  'Edit',
-  'Skill',
-  'Task',
-  'TodoWrite',
-  // Dot-paths are "sensitive files" the harness gates even under acceptEdits
-  // (measured, round 8) — the workflow's own state tree is exactly where its
-  // sessions write, so it gets an explicit grant.
-  'Write(.workflows/**)',
-  'Edit(.workflows/**)',
-  'Write(./.workflows/**)',
-  'Edit(./.workflows/**)',
-];
+// The generated allowlist governs BASH ONLY. File tools (Write/Edit/…) and the
+// read-only basics are decided by the session manager's canUseTool policy, not
+// by declarative rules — the harness's sensitive-file guard shadows declarative
+// file grants under acceptEdits, and a bare tool name auto-approves before the
+// callback runs (both measured, round 8). SDK_BASICS therefore lists Bash
+// prefixes only; the tool-name basics are named in canUseTool.
+export const SDK_BASICS: string[] = [];
 
 function splitOutsideParens(s: string): string[] {
   const out: string[] = [];
@@ -98,6 +88,11 @@ export const BASE_BASH = [
   'git blame',
   'git bisect',
   'git rm --cached',
+  // Cache housekeeping the skills legitimately run (spec 2 named these as the
+  // hand-enumeration gap) — scoped to the workflow cache, never bare.
+  'rm -rf .workflows/.cache',
+  'rm .workflows/.cache',
+  'mv .workflows/.cache',
 ];
 
 /**
@@ -109,9 +104,6 @@ export function generateAllowlist(projectRoot: string): string[] {
   const union = new Set<string>(SDK_BASICS);
   // Absolute-form grants too — relative patterns don't reliably resolve
   // against the session cwd in every harness context (measured).
-  const abs = path.resolve(projectRoot);
-  union.add(`Write(//${abs.replace(/^\//, '')}/.workflows/**)`);
-  union.add(`Edit(//${abs.replace(/^\//, '')}/.workflows/**)`);
   for (const b of BASE_BASH) union.add(`Bash(${b}:*)`);
   let names: string[] = [];
   try {

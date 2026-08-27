@@ -111,7 +111,7 @@ export type ThreadData = {
   openGate: GateCardData | null;
   lastError?: string;
   records: Record<string, any>[];
-  asks: { ordinal: number; gateId: string; answered: boolean; kind: string }[];
+  asks: { ordinal: number; gateId: string; answered: boolean; kind: string; turn: number }[];
 };
 
 export const api = {

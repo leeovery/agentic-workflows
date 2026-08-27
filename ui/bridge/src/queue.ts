@@ -68,8 +68,14 @@ export function buildQueue(
   durable: DurableRow[],
   sessions: SessionManager | null,
   store: EventStore | null,
+  buildOrder: Record<string, Record<string, number>> = {},
 ): QueueRow[] {
   const rows: QueueRow[] = [];
+  // buildOrderPos joins a row's (workUnit, topic) against the epic's spec
+  // build order (spec 5 clause 4 — incomparable across units, so it only
+  // tie-breaks within one epic at equal stage).
+  const orderOf = (a: { workUnit?: string; topic?: string }) =>
+    a.workUnit && a.topic ? buildOrder[a.workUnit]?.[a.topic] : undefined;
 
   if (sessions) {
     for (const s of sessions.list()) {
@@ -86,6 +92,7 @@ export function buildQueue(
         gateId: g.id,
         bridgeSessionId: s.bridgeSessionId,
         askPreview: g.question ?? g.context.slice(0, 120),
+        buildOrderPos: orderOf(g.address),
       });
     }
   }
@@ -99,6 +106,7 @@ export function buildQueue(
       since: durableSince(d, store),
       escalated: false,
       detail: d.detail,
+      buildOrderPos: orderOf(d.address),
     });
   }
 

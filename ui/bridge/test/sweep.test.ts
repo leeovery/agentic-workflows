@@ -47,9 +47,10 @@ describe('allowlist generation', () => {
     expect(tools).toEqual(['Bash(node a.cjs)', 'Bash(git diff, git log)', 'Read']);
   });
 
-  it('sweeps the dev repo (skills/ layout absent under .claude) without error and includes basics', () => {
+  it('sweeps the dev repo without error and yields Bash-only entries (file tools are canUseTool-governed)', () => {
     const list = generateAllowlist(REPO);
-    expect(list).toContain('Read');
-    expect(list).toContain('Task');
+    expect(list.length).toBeGreaterThan(0);
+    expect(list.every((t) => t.startsWith('Bash('))).toBe(true);
+    expect(list).toContain('Bash(node:*)');
   });
 });

@@ -20,6 +20,7 @@ import { generateAllowlist } from './allowlist.js';
 import { SessionManager, SdkDriver } from './sessions.js';
 import { Replayer } from './replay.js';
 import { convertTranscript, deriveAnswers, snapshotWorld } from './convert.js';
+import { Journal } from './journal.js';
 import { logger } from './log.js';
 import type { RawEvent } from './derive.js';
 
@@ -172,6 +173,9 @@ async function runLive(projectRoot: string): Promise<void> {
         enginePath,
       });
       sessions.restore();
+      // Idle-timeout sweep (spec 2): retire sessions idle past 4h.
+      const idleTimer = setInterval(() => sessions?.reapIdle(Date.now()), 10 * 60 * 1000);
+      idleTimer.unref?.();
     }
   }
 
@@ -421,9 +425,55 @@ function runConvert(): void {
   console.log(`fixture written: ${out} (${journal.length} journal records)`);
 }
 
+// bridge record-moment — the Phase 2 recorder's snapshot half (spec 4). The
+// journal is always teed live by the session manager; this pairs a live
+// session's journal with a world snapshot at a quiesced moment (the session
+// must be idle-at-ask — no tool call in flight — which the caller ensures by
+// snapshotting when the queue shows the gate open).
+function runRecordMoment(): void {
+  const project = arg('project');
+  const sessionId = arg('session-id');
+  const stateDir = arg('state-dir');
+  const out = arg('out');
+  const gateId = arg('gate-id') ?? '';
+  if (!project || !sessionId || !stateDir || !out) {
+    console.error('usage: bridge record-moment --project <p> --session-id <bs-…> --state-dir <dir> --out <fixtures/name> [--gate-id <id>]');
+    process.exit(2);
+  }
+  const journalPath = path.join(stateDir, 'journals', `${sessionId}.jsonl`);
+  if (!fs.existsSync(journalPath)) {
+    console.error(`no journal at ${journalPath}`);
+    process.exit(1);
+  }
+  fs.mkdirSync(out, { recursive: true });
+  fs.copyFileSync(journalPath, path.join(out, 'transcript.jsonl'));
+  snapshotWorld(path.resolve(project), path.join(out, 'worlds', '0'));
+  const journal = new Journal(path.dirname(journalPath), sessionId).read();
+  const meta = journal.find((r) => r.record === 'meta') as any;
+  fs.writeFileSync(
+    path.join(out, 'meta.json'),
+    JSON.stringify(
+      {
+        productVersion: arg('product-version') ?? 'unknown',
+        recordedAt: new Date().toISOString(),
+        width: meta?.width ?? WIDTH,
+        entryPrompt: meta?.entryPrompt ?? '/workflow-start',
+        description: arg('description') ?? path.basename(out),
+        moments: gateId ? [{ gateId, world: '0' }] : [],
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+  fs.writeFileSync(path.join(out, 'answers.json'), JSON.stringify(deriveAnswers(journal), null, 2) + '\n');
+  console.log(`recorded moment: ${out} (${journal.length} journal records, world snapshot @ ${gateId || 'no gate'})`);
+}
+
 const mode = process.argv[2];
 if (mode === 'convert') {
   runConvert();
+} else if (mode === 'record-moment') {
+  runRecordMoment();
 } else if (arg('replay')) {
   runReplay(arg('replay')!).catch((e) => {
     logger.error('replay failed', { error: String(e?.stack ?? e) });
@@ -435,6 +485,8 @@ if (mode === 'convert') {
     process.exit(1);
   });
 } else {
-  console.error('usage: bridge --project <path> | bridge --replay <fixture> [--offline] | bridge convert ...');
+  console.error(
+    'usage: bridge --project <path> | bridge --replay <fixture> [--offline] | bridge convert ... | bridge record-moment ...',
+  );
   process.exit(2);
 }

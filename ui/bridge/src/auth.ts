@@ -8,6 +8,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type http from 'node:http';
 
+/** Constant-time string compare (avoids a token timing side-channel). */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
 export function loadOrMintToken(stateDir: string): string {
   const p = path.join(stateDir, 'token');
   try {
@@ -38,7 +46,8 @@ export function checkRequestOrigin(req: http.IncomingMessage): { ok: boolean; re
 /** Mutating routes: bearer token (header) or ?token= (EventSource can't set headers). */
 export function checkToken(req: http.IncomingMessage, url: URL, token: string): boolean {
   const auth = req.headers.authorization;
-  if (auth === `Bearer ${token}`) return true;
-  if (url.searchParams.get('token') === token) return true;
+  if (typeof auth === 'string' && safeEqual(auth, `Bearer ${token}`)) return true;
+  const q = url.searchParams.get('token');
+  if (q !== null && safeEqual(q, token)) return true;
   return false;
 }

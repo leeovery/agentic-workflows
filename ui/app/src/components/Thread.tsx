@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import { extractSections } from '@workflow-ui/shared';
 import { EngineEmbed } from './EngineEmbed';
 import { GateCard } from './GateCard';
+import { BatchScreenCard } from './BatchScreenCard';
 import type { GateCardData, ThreadData } from '../api';
 
 function ToolResultBlock({ text }: { text: string }) {
@@ -37,15 +38,17 @@ export function Thread({
     bottomRef.current?.scrollIntoView({ block: 'end' });
   }, [thread.records.length, thread.openGate?.id]);
 
-  const answeredGateByOrdinal = new Map(thread.asks.map((a) => [a.ordinal, a]));
-  let askOrdinal = -1;
+  // deriveAsks advances an ordinal only on turns where an ask was detected;
+  // mirror that exactly rather than counting every turn-end (which drifts on
+  // clean-ended or ask-less turns).
+  const asksInOrder = [...thread.asks].sort((a, b) => a.ordinal - b.ordinal);
+  let detectedSoFar = 0;
 
   return (
     <div className="max-w-3xl space-y-3">
       {thread.records.map((rec, i) => {
         switch (rec.record) {
           case 'user':
-            if (i > 0) askOrdinal += 0; // ordinals advance on detection, not here
             return (
               <div key={i} className="flex justify-end">
                 <div className="max-w-[85%] rounded-lg bg-nav/10 px-3 py-2 font-serif text-[15px] leading-6 whitespace-pre-wrap">
@@ -64,15 +67,18 @@ export function Thread({
             if (!/^=== /m.test(String(rec.text ?? ''))) return null;
             return <ToolResultBlock key={i} text={String(rec.text)} />;
           case 'turn-end': {
-            askOrdinal += 1;
-            const ask = answeredGateByOrdinal.get(askOrdinal);
-            if (ask?.answered) {
-              // A resolved card collapses to one line.
-              return (
-                <div key={i} className="text-xs font-sans text-stone-400 border-l-2 border-stone-200 dark:border-stone-800 pl-2">
-                  ◆ answered
-                </div>
-              );
+            // Whether THIS turn produced an ask is what the ask list records —
+            // consume the next ask in order only when its turn matches.
+            const ask = asksInOrder[detectedSoFar];
+            if (ask && ask.turn === rec.turn) {
+              detectedSoFar += 1;
+              if (ask.answered) {
+                return (
+                  <div key={i} className="text-xs font-sans text-stone-400 border-l-2 border-stone-200 dark:border-stone-800 pl-2">
+                    ◆ answered
+                  </div>
+                );
+              }
             }
             return null;
           }
@@ -91,6 +97,8 @@ export function Thread({
       {thread.openGate &&
         (thread.openGate.kind === 'pass-through' ? (
           <PassThroughAsk gate={thread.openGate} onAnswer={onAnswer} busy={busy} />
+        ) : thread.openGate.kind === 'batch-screen' ? (
+          <BatchScreenCard card={thread.openGate} onAnswer={(text) => onAnswer(thread.openGate!.id, text)} busy={busy} />
         ) : (
           <GateCard card={thread.openGate} onAnswer={(text) => onAnswer(thread.openGate!.id, text)} busy={busy} />
         ))}

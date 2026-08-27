@@ -99,7 +99,15 @@ export function Channel() {
               <span className="ml-auto text-xs font-sans text-stone-400">
                 {t.cues?.reconcilePending && <span className="text-warn mr-2">⚑ input moved</span>}
                 {t.cues?.triageParked && <span className="text-warn mr-2">triage waiting</span>}
-                thread opens in Phase 2
+                {(() => {
+                  // Link to an existing session addressed to this topic, if any.
+                  const s = channelSessions.find((cs) => cs.address.topic === t.name);
+                  return s ? (
+                    <Link to={`/s/${s.bridgeSessionId}`} className="text-nav hover:underline">
+                      open session
+                    </Link>
+                  ) : null;
+                })()}
               </span>
             </div>
             );

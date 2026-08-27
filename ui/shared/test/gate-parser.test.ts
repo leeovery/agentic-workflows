@@ -117,14 +117,42 @@ describe('classification + never-auto', () => {
     const m = parseMenu('**`1`** → Overwrite the approved content\n**`2`** → Leave it')!;
     expect(confirmMode({ name: 'MENU: novel gate', instruction: STOP, body: '' }, m)).toBe('typed');
   });
+
+  it('a bare work-unit cancel confirm is typed (from surface AND from context text)', () => {
+    const m = parseMenu('**`y/yes`** → Confirm cancellation\n**`n/no`** → Return to menu')!;
+    expect(confirmMode({ name: 'MENU: cancel gate', instruction: STOP, body: '' }, m)).toBe('typed');
+    // Even without the surface name, the confirmation sentence in context trips it.
+    const ctx = { name: 'MENU: mystery', instruction: STOP, body: 'Cancelling **auth-flow** will mark it as cancelled.' };
+    expect(confirmMode(ctx, m)).toBe('typed');
+  });
+});
+
+describe('detectAsk — the finding batch pair', () => {
+  it('pairs the DISPLAY: finding batch content into the batch-screen card context', () => {
+    const tr = [
+      '=== DISPLAY: finding batch (emit verbatim as markdown) ===',
+      '1. Finding one — a real thing',
+      '2. Finding two — another',
+      '',
+      "=== MENU: finding batch (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      '**`y/yes`** → Apply the batch',
+      '**`d/discuss`** → Walk them',
+    ].join('\n');
+    const d = detectAsk({ toolResults: [tr], finalText: '', ended: false })!;
+    expect(d.kind).toBe('batch-screen');
+    expect(d.context).toContain('Finding one');
+    expect(d.context).toContain('Finding two');
+  });
 });
 
 describe('detectAsk — the adversarial corpus', () => {
-  it('a truncated menu falls back to pass-through, never a fabricated card', () => {
+  it('a truncated menu falls back to PASS-THROUGH, never a fabricated card (N3)', () => {
     const d = detectAsk({ toolResults: [adv('truncated-menu.txt')], finalText: 'relay text', ended: false });
-    // The section is STOP-eligible but its option block is malformed —
-    // strict parse fails, the card degrades (stop-notice/pass-through, no options).
     expect(d).not.toBeNull();
+    // A section whose option markup failed to parse degrades to pass-through
+    // (chat + reply box), not a gold decision card.
+    expect(d!.kind).toBe('pass-through');
     expect(d!.options).toHaveLength(0);
   });
 

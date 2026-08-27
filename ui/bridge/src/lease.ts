@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { logger } from './log.js';
 
@@ -19,8 +20,18 @@ function pidStart(pid: number): string | null {
   }
 }
 
+/**
+ * The lease lives OUT of the project tree (the "zero new workflow state"
+ * rule — round 8; the earlier `.workflows/.cache/.bridge-lease` was both a
+ * write into the tree and leakable into fixture overlays). The path is
+ * deterministic from the project root, so a second bridge — whatever its
+ * --state-dir — computes the same location and coordinates on it.
+ */
 export function leasePath(projectRoot: string): string {
-  return path.join(projectRoot, '.workflows', '.cache', '.bridge-lease');
+  const abs = path.resolve(projectRoot);
+  const slug = path.basename(abs).replace(/[^a-zA-Z0-9-]/g, '_');
+  const hash = crypto.createHash('sha256').update(abs).digest('hex').slice(0, 8);
+  return path.join(os.homedir(), '.cache', 'workflow-bridge', `${slug}-${hash}`, 'lease');
 }
 
 export function acquireLease(projectRoot: string, bridgeId: string): { held: boolean; holder?: Lease } {

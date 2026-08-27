@@ -82,13 +82,16 @@ export const NEVER_AUTO_SURFACES = [
   'MENU: resurface gate',
   'MENU: finding choice', // the choice-move finding surface
   'MENU: spec signoff gate', // spec 1 §3 — verified at render.cjs (Phase 2 sweep)
+  'MENU: cancel gate', // destructive lifecycle confirm (work-unit/topic cancel) — render.cjs
   // The consult/three-strike surfaces are prose-rendered today (no render.cjs
   // section) — the suspicion heuristic carries them (typed confirm).
 ] as const;
 
 export const NEVER_AUTO_LABEL_PATTERNS: readonly RegExp[] = [
-  /cancel .*--cascade/,
+  /--cascade/, // the cascade cancel confirm (the label carries the flag)
   /permanently delete/i,
+  /confirm cancellation/i, // work-unit / topic cancel confirms
+  /will (mark it as cancelled|not be built)/i,
 ];
 
 // The suspicion heuristic — an unrecognised surface matching this defaults to
@@ -102,7 +105,11 @@ export const SURFACE_GATE_TYPES: Record<string, string> = {
   'MENU: fix direction': 'task-loop',
   'MENU: incoherence conflict': 'conflict',
   'MENU: incoherence gap': 'conflict',
+  'MENU: incoherence held doc': 'conflict',
+  'MENU: resurface gate': 'conflict',
   'MENU: finding choice': 'finding',
+  'MENU: cancel gate': 'lifecycle',
+  'MENU: spec signoff gate': 'signoff',
   // consult/three-strike surfaces → 'consult' once the Phase 2 sweep names
   // them (prose-rendered today, no engine section name to key on).
 };

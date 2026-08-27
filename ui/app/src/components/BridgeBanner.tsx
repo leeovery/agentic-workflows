@@ -19,6 +19,7 @@ const COPY: Record<BannerCause, (detail?: string) => string> = {
 export function causesFromHealth(h: {
   bridgeMode: string;
   version: { supported: boolean; pendingMigrations: string[]; shallow: boolean };
+  bannerReasons?: string[];
 }): { cause: BannerCause; detail?: string }[] {
   const causes: { cause: BannerCause; detail?: string }[] = [];
   if (!h.version.supported) causes.push({ cause: 'version-skew' });
@@ -26,6 +27,12 @@ export function causesFromHealth(h: {
     causes.push({ cause: 'pending-migrations', detail: `${h.version.pendingMigrations.length} pending` });
   }
   if (h.bridgeMode === 'live-only') causes.push({ cause: 'live-only' });
+  // The lease-lost read-only mirror — its reason string names the host.
+  const mirror = (h.bannerReasons ?? []).find((r) => /read-only mirror/.test(r));
+  if (mirror) {
+    const host = mirror.match(/from (\S+)/)?.[1];
+    causes.push({ cause: 'read-only-mirror', detail: host });
+  }
   return causes;
 }
 

@@ -155,15 +155,8 @@ export class BridgeServer {
           res.writeHead(this.opts.onReplayStep ? 405 : 404).end();
           return;
         }
-        // Cross-origin defence for a localhost daemon: a browser request from
-        // any web page carries an Origin header — reject unless it names this
-        // bridge itself. curl/fetch-from-scripts send no Origin and pass.
-        const origin = req.headers.origin;
-        if (origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) {
-          res.writeHead(403, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'cross-origin state change refused' }));
-          return;
-        }
+        // Origin is already checked by checkRequestOrigin at the top of
+        // route() (single-sourced in auth.ts) — no second, drifting copy here.
         this.opts.onReplayStep();
         res.writeHead(204).end();
         return;

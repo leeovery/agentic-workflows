@@ -156,7 +156,7 @@ describe('SessionManager', () => {
     expect(row.lastError).toBe('rate_limited');
   });
 
-  it('a permission denial is captured for the allowlist bug log', async () => {
+  it('a permission denial flips to errored health AND is captured for the allowlist bug log', async () => {
     driver.turns.push([
       { type: 'init', sdkSessionId: 'sdk-p' },
       { type: 'tool-use', tool: 'Bash', id: 't1', input: {} },
@@ -165,6 +165,39 @@ describe('SessionManager', () => {
     ]);
     const row = await mgr.start({ workUnit: 'x' }, '/workflow-start');
     expect(row.lastError).toContain('permission denied');
+    // No gate followed, so the errored state stands (the prompt-fallout rule).
+    expect(row.state).toBe('errored');
+  });
+
+  it('a second start on the same address returns the existing session (bridge-side dedup)', async () => {
+    driver.turns.push(askTurn('First?'));
+    const a = await mgr.start({ workUnit: 'dup', topic: 'dup' }, '/workflow-start');
+    const b = await mgr.start({ workUnit: 'dup', topic: 'dup' }, '/workflow-start');
+    expect(b.bridgeSessionId).toBe(a.bridgeSessionId);
+    expect(driver.seen).toHaveLength(1); // no second session driven
+  });
+
+  it('the injected answer turn is tagged with the gate id in the journal', async () => {
+    driver.turns.push(askTurn('Tag?'));
+    const row = await mgr.start({ workUnit: 'x' }, '/workflow-start');
+    driver.turns.push(askTurn('Next?'));
+    await mgr.answer(row.bridgeSessionId, row.openGate!.id, 'c', 'ui');
+    const journal = mgr.transcript(row.bridgeSessionId).records;
+    const answerTurn = journal.find((r) => r.record === 'user' && r.text === 'c') as any;
+    expect(answerTurn.gateId).toBeTruthy();
+  });
+
+  it('restart re-derives TWO open gates across two sessions (done-means, n=2)', async () => {
+    driver.turns.push(askTurn('Gate A?'));
+    const a = await mgr.start({ workUnit: 'a' }, '/workflow-start');
+    driver.turns.push(askTurn('Gate B?'));
+    const b = await mgr.start({ workUnit: 'b' }, '/workflow-start');
+
+    const mgr2 = makeManager();
+    mgr2.restore();
+    expect(mgr2.get(a.bridgeSessionId)!.openGate!.id).toBe(a.openGate!.id);
+    expect(mgr2.get(b.bridgeSessionId)!.openGate!.id).toBe(b.openGate!.id);
+    expect(mgr2.list().filter((s) => s.state === 'idle-at-ask')).toHaveLength(2);
   });
 
   it('restart re-derives the SAME gate id from the journal — a projection, never a table', async () => {

