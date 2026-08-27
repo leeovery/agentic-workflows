@@ -1,21 +1,22 @@
-# Menu Adoption Sweep — 17 prose menus in 13 files
+# Menu Adoption Sweep — 21 prose menus in 15 files
 
 ## The Idea
 
-Migrate the 17 remaining prose-authored menus in the files the concurrent-phases stack touched to the engine, in one PR, wording preserved.
+Migrate the 21 remaining prose-authored menus in the files the concurrent-phases stack touched to the engine, in one PR, wording preserved.
 
 ## Why It Is Outstanding
 
-CONVENTIONS' menu rule is "touching a file adopts its menus" — a change to a file that still carries a prose-authored menu migrates it in the same change, so the corpus converges file by file. The concurrent-phases stack touched these thirteen files, and its edits were mechanical: a flag added inside an existing fenced command, a pathspec narrowed, a commit form swapped. The review pass ruled that a mechanical edit inside a fence does not trip the adoption rule (the exemption is now written into CONVENTIONS), which is what keeps a commit-scope stack from turning into a menu-rendering stack. The adoption is still owed — just not by that stack.
+CONVENTIONS' menu rule is "touching a file adopts its menus" — a change to a file that still carries a prose-authored menu migrates it in the same change, so the corpus converges file by file. The concurrent-phases stack and its review pass touched these fifteen files, and the edits were mechanical or near it: a flag added inside an existing fenced command, a pathspec narrowed, a commit form swapped, a prose commit instruction given the command it always implied. The review pass ruled that a mechanical edit inside a fence does not trip the adoption rule (the exemption is now written into CONVENTIONS), which is what keeps a commit-scope stack from turning into a menu-rendering stack. Two files here sit just past that exemption; they are listed with the rest rather than adopted alone, because a partial sweep is the drift the rule exists to prevent. The adoption is owed — just not by that stack.
 
 ## The Files
 
-Found with `grep -c '· · · · · · ·'` over every skill markdown file the stack touched:
+Found with `grep -c '· · · · · · ·'` over every skill markdown file the stack and its review pass touched:
 
 | Menus | File |
 |---|---|
 | 2 | `skills/workflow-continue-epic/references/summary-backfill.md` |
 | 1 | `skills/workflow-discussion-process/references/conclude-discussion.md` |
+| 2 | `skills/workflow-implementation-entry/references/check-dependencies.md` |
 | 1 | `skills/workflow-implementation-process/references/analysis-loop.md` |
 | 1 | `skills/workflow-implementation-process/references/conclude-implementation.md` |
 | 1 | `skills/workflow-implementation-process/references/task-loop.md` |
@@ -27,6 +28,7 @@ Found with `grep -c '· · · · · · ·'` over every skill markdown file the s
 | 3 | `skills/workflow-planning-process/references/plan-review.md` |
 | 1 | `skills/workflow-planning-process/references/resolve-dependencies.md` |
 | 1 | `skills/workflow-shared/references/correcting-historical-artifacts.md` |
+| 2 | `skills/workflow-specification-entry/references/display-analyze.md` |
 
 ## Shape of the Work
 
