@@ -114,9 +114,19 @@ export type ThreadData = {
   asks: { ordinal: number; gateId: string; answered: boolean; kind: string; turn: number }[];
 };
 
+export type DigestStripEntry = {
+  channel: string;
+  landed: { commits: { sha: string; subject: string }[]; artifacts: string[] };
+  next: string | null;
+  emittedAt: string;
+};
+
 export const api = {
   health: () => getJson<Health>('/health'),
   lobby: () => getJson<LobbyData>('/api/lobby'),
+  digests: () => getJson<{ strip: DigestStripEntry[] }>('/api/digests'),
+  reportActivity: (focusedThread: string | null) =>
+    postJson('/api/activity', { appConnected: true, focusedThread }).catch(() => ({})),
   channel: (wu: string) => getJson<ChannelData>(`/api/channel/${encodeURIComponent(wu)}`),
   artifact: (wu: string, path: string) =>
     getJson<ArtifactData>(`/api/artifact/${encodeURIComponent(wu)}?path=${encodeURIComponent(path)}`),

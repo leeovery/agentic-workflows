@@ -1,7 +1,7 @@
 // The app frame (spec 6): project rail · active surface · context panel.
 // Phase 1 is the read-only mirror — the palette navigates, nothing acts.
 import { useEffect, useState } from 'react';
-import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { api, useLive, type Health, type LobbyData, type QueueRowData } from './api';
 import { BridgeBanner, causesFromHealth } from './components/BridgeBanner';
 import { Lobby } from './screens/Lobby';
@@ -45,6 +45,33 @@ export default function App() {
   const [dark, toggleTheme] = useTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [bridgeSeenAt, setBridgeSeenAt] = useState(Date.now());
+
+  // Report focus for time-based, thread-scoped suppression (spec 5). The
+  // focused thread is derived from the route (/s/:id maps to no topic here;
+  // /c/:wu is the channel). Health polling doubles as the watchdog heartbeat.
+  useEffect(() => {
+    const channel = location.pathname.match(/^\/c\/([^/]+)/)?.[1] ?? null;
+    api.reportActivity(channel);
+    const iv = setInterval(() => api.reportActivity(channel), 60_000);
+    const onVis = () => document.visibilityState === 'visible' && api.reportActivity(channel);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (health) setBridgeSeenAt(Date.now());
+  }, [health]);
+  // Watchdog: if health hasn't refreshed within 90s, the bridge may be down.
+  const [bridgeStale, setBridgeStale] = useState(false);
+  useEffect(() => {
+    const iv = setInterval(() => setBridgeStale(Date.now() - bridgeSeenAt > 90_000), 15_000);
+    return () => clearInterval(iv);
+  }, [bridgeSeenAt]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -140,6 +167,7 @@ export default function App() {
 
       {/* Active surface */}
       <main className="flex-1 overflow-y-auto">
+        {bridgeStale && <BridgeBanner cause="bridge-unreachable" />}
         {health &&
           causesFromHealth(health).map((c) => <BridgeBanner key={c.cause} cause={c.cause} detail={c.detail} />)}
         <Routes>

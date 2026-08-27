@@ -7,6 +7,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, useLive, type Health, type LobbyData, type SessionData, type QueueRowData } from '../api';
 import { EngineEmbed } from '../components/EngineEmbed';
 import { SessionHealthBadge } from '../components/SessionHealthBadge';
+import { DigestCard } from '../components/DigestCard';
+import type { DigestStripEntry } from '../api';
 
 const GROUPS: [string, string][] = [
   ['epics', 'epic'],
@@ -21,6 +23,7 @@ export function Lobby() {
   const { data: health } = useLive<Health>(() => api.health());
   const { data: sessionsData } = useLive<{ sessions: SessionData[] }>(() => api.sessions());
   const { data: queueData } = useLive<{ rows: QueueRowData[] }>(() => api.queue());
+  const { data: digestData } = useLive<{ strip: DigestStripEntry[] }>(() => api.digests());
   const [starting, setStarting] = useState(false);
   const navigate = useNavigate();
 
@@ -108,6 +111,18 @@ export function Lobby() {
                   {r.tier === 'live' ? r.askPreview : r.detail}
                 </span>
               </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* TODAY — the digest strip (waiting-suppressed; NEEDS YOU carries it). */}
+      {(digestData?.strip ?? []).some((d) => d.landed.commits.length || d.landed.artifacts.length || d.next) && (
+        <section>
+          <div className="region-label mb-2">Today</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {(digestData?.strip ?? []).map((d) => (
+              <DigestCard key={d.channel} digest={d} />
             ))}
           </div>
         </section>
