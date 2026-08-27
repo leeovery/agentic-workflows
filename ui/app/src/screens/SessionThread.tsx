@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { api, useLive } from '../api';
 import { Thread } from '../components/Thread';
 import { SessionHealthBadge } from '../components/SessionHealthBadge';
+import { ChatInput } from '../components/ChatInput';
+import { Working } from '../components/Working';
 
 export function SessionThread() {
   const { id = '' } = useParams();
@@ -35,6 +37,21 @@ export function SessionThread() {
     await api.claimGate(gateId);
     reload();
   };
+  const resume = async (text: string) => {
+    setBusy(true);
+    setNote(null);
+    try {
+      const res = await api.resumeSession(id, text);
+      if (res.ok === false) setNote(res.error ?? res.reason ?? 'could not resume');
+    } finally {
+      setBusy(false);
+      reload();
+    }
+  };
+  // An interrupted (dead) or errored session has no open gate — the thread would
+  // otherwise dead-end with no input. Offer a free-text turn to resume it (the
+  // "resumable" badge finally has an affordance).
+  const resumable = !thread.openGate && (thread.state === 'dead' || thread.state === 'errored');
 
   return (
     <div className="p-8">
@@ -61,6 +78,25 @@ export function SessionThread() {
         </button>
       </header>
       <Thread thread={thread} onAnswer={answer} busy={busy} onClaim={claim} />
+      {resumable && (
+        <div data-testid="resume-box" className="max-w-3xl mt-4 border-t border-stone-200 dark:border-stone-800 pt-3">
+          <p className="text-xs font-sans text-stone-400 mb-1.5">
+            This session was {thread.state === 'errored' ? 'errored' : 'interrupted'} — send a message to resume it.
+          </p>
+          <ChatInput
+            busy={busy}
+            placeholder="resume the session…"
+            sendLabel="resume"
+            onSend={resume}
+            attach={{ bridgeSessionId: id, workUnit: thread.openGate?.address?.workUnit }}
+          />
+          {busy && (
+            <div className="mt-1.5">
+              <Working label="resuming…" />
+            </div>
+          )}
+        </div>
+      )}
       {note && <p className="max-w-3xl mt-2 text-xs font-sans text-warn">{note}</p>}
     </div>
   );

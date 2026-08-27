@@ -250,6 +250,9 @@ export const api = {
       { text, bridgeSessionId, attestation: 'ui-gesture' },
     ),
   endSession: (id: string) => postJson<{ ok: boolean }>(`/api/session/${encodeURIComponent(id)}/end`, {}),
+  // Resume an interrupted/errored session (no open ask) with a free-text turn.
+  resumeSession: (id: string, text: string) =>
+    postJson<{ ok: boolean; state: string; reason?: string; error?: string }>(`/api/session/${encodeURIComponent(id)}/resume`, { text }),
   // Phase 6 — identity.
   whoami: () => getJson<WhoamiData>('/api/whoami'),
   login: (githubLogin: string, token?: string) =>

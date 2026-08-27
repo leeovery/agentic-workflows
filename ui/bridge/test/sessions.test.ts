@@ -7,6 +7,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { openDb, type Db } from '../src/db.js';
 import { SessionManager, type SessionDriver, type DriverEvent, type TurnOptions } from '../src/sessions.js';
+import { Journal } from '../src/journal.js';
 
 const STOP = "emit verbatim as markdown, then STOP for the user's response";
 
@@ -127,6 +128,42 @@ describe('SessionManager', () => {
     expect(res.ok).toBe(false);
     expect(res.state).toBe('resolved-externally');
     expect(driver.seen).toHaveLength(1); // no turn ran
+  });
+
+  it('resumes an interrupted (dead, no open ask) session with a free-text turn', async () => {
+    // Build a session whose journal was cut mid-turn (tail is a tool-result, no
+    // ask) — exactly the bridge-restart-mid-turn case — and restore it dead.
+    const id = 'bs-dead1';
+    const jdir = path.join(tmp, 'journals');
+    fs.mkdirSync(jdir, { recursive: true });
+    const j = new Journal(jdir, id);
+    j.append({ record: 'meta', bridgeSessionId: id, width: 65, entryPrompt: '/workflow-start', recordedAt: 't' } as any);
+    j.append({ record: 'user', text: '/workflow-start', ts: 't' } as any);
+    j.append({ record: 'tool-use', tool: 'Bash', id: 't1', input: {} } as any);
+    j.append({ record: 'tool-result', tool: 'Bash', id: 't1', text: 'partial output' } as any);
+    db.sqlite
+      .prepare(
+        `INSERT INTO sessions (bridge_session_id, sdk_session_id, bridge_id, project, address, started_at, state)
+         VALUES (?, 'sdk-1', 'b1', 'demo', '{}', 't', 'live')`,
+      )
+      .run(id);
+    const mgr2 = makeManager();
+    mgr2.restore();
+    const row = mgr2.get(id)!;
+    expect(row.state).toBe('dead'); // interrupted → dead, no gate
+    expect(row.openGate).toBeNull();
+
+    // Resume with a free-text turn — it resumes the recorded SDK session.
+    driver.turns.push([{ type: 'assistant', text: 'resumed' }, { type: 'result', outcome: 'completed' }]);
+    const res = await mgr2.resume(id, 'keep going');
+    expect(res.ok).toBe(true);
+    const last = driver.seen[driver.seen.length - 1]!;
+    expect(last.prompt).toBe('keep going');
+    expect(last.resume).toBe('sdk-1'); // resumed the recorded SDK session
+
+    // A live/ended session refuses resume.
+    const busy = await mgr2.resume('nope', 'x');
+    expect(busy.ok).toBe(false);
   });
 
   it('two concurrent submits: the second resolves visibly, never double-injects', async () => {

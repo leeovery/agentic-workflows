@@ -827,6 +827,24 @@ async function handleMutation(
     return;
   }
 
+  // Resume an interrupted/errored session that has NO open ask — a free-text
+  // turn that continues it (the "resumable" badge finally has an affordance).
+  const resume = url.pathname.match(/^\/api\/session\/([^/]+)\/resume$/);
+  if (resume) {
+    const text = String(body.text ?? '').trim();
+    if (text === '') {
+      send(res, 400, { error: 'a message is required to resume' });
+      return;
+    }
+    const result = await deps.sessions.resume(decodeURIComponent(resume[1]!), text);
+    const row = deps.sessions.get(decodeURIComponent(resume[1]!));
+    send(res, result.ok ? 200 : 409, {
+      ...result,
+      session: row ? { state: row.state, openGate: row.openGate, lastError: row.lastError } : null,
+    });
+    return;
+  }
+
   send(res, 404, { error: 'unknown mutation' });
 }
 

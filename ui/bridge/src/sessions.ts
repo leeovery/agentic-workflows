@@ -336,6 +336,39 @@ export class SessionManager extends EventEmitter {
     });
   }
 
+  /**
+   * Resume a session that has NO open ask — one interrupted mid-turn (a bridge
+   * restart or crash cut the SDK turn; the journal tail is a tool-result, not an
+   * ask), or one that errored. Runs a fresh turn with `text` as the prompt,
+   * resuming the recorded SDK session. Unlike answer(), there is no gate CAS —
+   * there is no gate. Refused while the session is live (a turn is running) or
+   * cleanly ended.
+   */
+  async resume(bridgeSessionId: string, text: string): Promise<{ ok: boolean; state: string; reason?: string }> {
+    const row = this.sessions.get(bridgeSessionId);
+    if (!row) return { ok: false, state: 'unknown-session', reason: 'no such session' };
+    if (row.state === 'live' || row.state === 'resuming') return { ok: false, state: row.state, reason: 'a turn is already running' };
+    if (row.state === 'ended') return { ok: false, state: 'ended', reason: 'the session has ended' };
+    return this.locked(bridgeSessionId, async () => {
+      const journal = new Journal(this.opts.journalsDir, bridgeSessionId);
+      const turnNo = journal.read().filter((r) => r.record === 'user').length + 1;
+      if (row.state === 'dead') {
+        row.state = 'resuming';
+        this.persistState(row);
+        this.emit('session', { type: 'session.resuming', bridgeSessionId });
+      }
+      try {
+        await this.runTurn(row, journal, text, turnNo);
+        return { ok: true, state: row.state };
+      } catch (err) {
+        row.state = 'errored';
+        row.lastError = String((err as Error).message ?? err);
+        this.persistState(row);
+        return { ok: false, state: 'errored', reason: row.lastError };
+      }
+    });
+  }
+
   /** One SDK turn: stream, tee the journal, detect the ask, project the gate. */
   private async runTurn(
     row: SessionRow,

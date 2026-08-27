@@ -46,4 +46,22 @@ describe('SessionThread', () => {
     await waitFor(() => expect(screen.getByText('/workflow-start')).toBeTruthy());
     expect(screen.getByText('shaping thread')).toBeTruthy();
   });
+
+  it('offers a resume box for an interrupted (dead, no-gate) session', async () => {
+    // A dead session with no open gate would otherwise dead-end with no input.
+    (globalThis as any).fetch = vi.fn(async (url: string) => ({
+      ok: true,
+      json: async () => (url.includes('/thread') ? { ...thread, state: 'dead', openGate: null } : { token: null }),
+    }));
+    render(
+      <MemoryRouter initialEntries={['/s/bs-1']}>
+        <Routes>
+          <Route path="/s/:id" element={<SessionThread />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('resume-box')).toBeTruthy());
+    expect(screen.getByText(/interrupted — send a message to resume/)).toBeTruthy();
+    expect(screen.getByPlaceholderText('resume the session…')).toBeTruthy();
+  });
 });
