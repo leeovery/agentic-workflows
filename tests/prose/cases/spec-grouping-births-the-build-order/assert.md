@@ -3,12 +3,14 @@ The prose should have taken this path:
 1. the scoped path (epic, no topic) routes through prerequisites into
    the grouping analysis — both discussions are concluded, so the
    analyze route passes its gates
-2. the analysis forms groupings from the two concluded discussions
+2. the analysis checks presence before reading anything — no source
+   session is live, so nothing defers and no deferral is emitted
+3. the analysis forms groupings from the two concluded discussions
    (their exact shape and names are the model's judgment) and persists
    the whole reconcile through one `manifest apply`
-3. the same reconcile assigns the build order: every specification
+4. the same reconcile assigns the build order: every specification
    item it creates carries an `order` field
-4. the groupings menu is presented and the walk stops there
+5. the groupings menu is presented and the walk stops there
 
 Further claims about the end state:
 

@@ -45,7 +45,7 @@ The analysis reads completed corpora, and a live peer session is mid-conversatio
 node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}
 ```
 
-**If the response has `live` greater than `0`:**
+**If the response has `live_sources` greater than `0`:**
 
 Hold off — the cache self-heals at the next entry once those sessions conclude. Emit the response's `DISPLAY: presence deferral` section verbatim at this moment. `new_arrivals` stays empty.
 

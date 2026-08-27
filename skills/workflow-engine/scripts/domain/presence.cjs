@@ -37,6 +37,9 @@ const STALE_AFTER_SECONDS = 900;
 const PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
 // The phases that write the tree and the index — the unpartitionable pair.
 const CODE_PHASES = ['implementation', 'review'];
+// The corpora the epic-wide analyses read. A live session in any other phase
+// is no reason to defer an analysis that never looks at its material.
+const SOURCE_PHASES = ['research', 'discussion'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
@@ -209,7 +212,7 @@ function collectRows(cwd, workUnit, startOf) {
  * read every consumer shares. `held` answers "does a session hold this topic
  * open" (unbounded by time); `live` answers "is it actively working".
  * @param {string} cwd @param {string} workUnit
- * @returns {{work_unit: string, stale_after_seconds: number, live: number, held: number, sessions: PresenceRow[]}}
+ * @returns {{work_unit: string, stale_after_seconds: number, live: number, live_sources: number, held: number, sessions: PresenceRow[]}}
  */
 function scanPresence(cwd, workUnit) {
   assertArgs(cwd, workUnit, undefined);
@@ -218,6 +221,10 @@ function scanPresence(cwd, workUnit) {
     work_unit: workUnit,
     stale_after_seconds: STALE_AFTER_SECONDS,
     live: sessions.filter((r) => r.live).length,
+    // The analyses read research and discussion; `live_sources` is the count
+    // that decides a deferral, so a live planning or spec session never holds
+    // one up.
+    live_sources: sessions.filter((r) => r.live && SOURCE_PHASES.includes(r.phase)).length,
     held: sessions.filter((r) => r.held).length,
     sessions,
   };
@@ -317,23 +324,25 @@ function cleanupPresence(cwd, sessionId) {
 
 /**
  * The deferral callout, rendered engine-side so calling flows emit it
- * verbatim (only at the dispatch deferral the marker names). Empty when
- * nothing is live.
- * @param {{live: number, sessions: PresenceRow[]}} scan
+ * verbatim (only where an analysis defers — the marker says so). Counts the
+ * source phases alone, like the deferral itself. Empty when no source session
+ * is live.
+ * @param {{sessions: PresenceRow[]}} scan
  * @returns {string}
  */
 function deferralSection(scan) {
-  if (scan.live === 0) return '';
-  const names = scan.sessions.filter((r) => r.live).map((r) => `${r.phase}/${r.topic}`).join(', ');
+  const live = scan.sessions.filter((r) => r.live && SOURCE_PHASES.includes(r.phase));
+  if (live.length === 0) return '';
+  const names = live.map((r) => `${r.phase}/${r.topic}`).join(', ');
   return section(
     'DISPLAY: presence deferral',
-    `only at the analysis-dispatch deferral: ${CONTINUE_INSTRUCTION}`,
-    callout(`Analyses deferred — ${scan.live} live session(s): ${names}. They re-run at the next entry once those sessions conclude.`),
+    `only at an analysis deferral: ${CONTINUE_INSTRUCTION}`,
+    callout(`Analyses deferred — ${live.length} live session(s): ${names}. They read the settled record, so they wait for those sessions to conclude.`),
   );
 }
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, clearQuietly,
   scanPresence, scanProject, heldCodeSessions, cleanupPresence, deferralSection,
-  fmtAge, PHASES, CODE_PHASES, STALE_AFTER_SECONDS,
+  fmtAge, PHASES, CODE_PHASES, SOURCE_PHASES, STALE_AFTER_SECONDS,
 };
