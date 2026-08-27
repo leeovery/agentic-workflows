@@ -13,6 +13,8 @@ import { snapshotTree } from './snapshot.js';
 import { attachDerived } from './spine.js';
 import { durableRows, durableCounts } from './durable.js';
 import { buildQueue } from './queue.js';
+import { buildStructure } from './structure.js';
+import { fileTimeline, whatMoved } from './history.js';
 import { checkToken } from './auth.js';
 import type { SessionManager } from './sessions.js';
 import type { Db } from './db.js';
@@ -152,6 +154,25 @@ export async function handleApi(
       artifactView(res, deps, wu, url.searchParams.get('path') ?? '');
       return true;
     }
+    const history = url.pathname.match(/^\/api\/history\/([^/]+)$/);
+    if (history) {
+      const wu = decodeURIComponent(history[1]!);
+      if (!validUnitName(wu)) {
+        send(res, 400, { error: 'work unit name refused' });
+        return true;
+      }
+      const rel = url.searchParams.get('path') ?? '';
+      if (rel.includes('..') || !rel.endsWith('.md')) {
+        send(res, 400, { error: 'artifact path refused' });
+        return true;
+      }
+      send(res, 200, { timeline: fileTimeline(deps.projectRoot, path.join('.workflows', wu, rel)) });
+      return true;
+    }
+    if (url.pathname === '/api/roadmap') {
+      await roadmapView(res, deps);
+      return true;
+    }
     send(res, 404, { error: 'unknown api route' });
     return true;
   } catch (err) {
@@ -177,6 +198,13 @@ function headSha(projectRoot: string): string | null {
   return sha;
 }
 
+function readRef(db: Db, projectRoot: string, artifact: string): { sha: string; state: string } | null {
+  const row = db.sqlite
+    .prepare('SELECT sha, state FROM artifact_read_refs WHERE human_id = ? AND project = ? AND artifact = ?')
+    .get(HUMAN_SENTINEL, path.basename(path.resolve(projectRoot)), artifact) as { sha: string; state: string } | undefined;
+  return row ?? null;
+}
+
 function recordReadRef(db: Db, projectRoot: string, wu: string, rel: string): void {
   const sha = headSha(projectRoot);
   if (!sha) return;
@@ -199,6 +227,25 @@ function publicSessions(deps: ApiDeps): unknown[] {
     openGate: s.openGate,
     lastError: s.lastError,
   }));
+}
+
+async function roadmapView(res: http.ServerResponse, deps: ApiDeps): Promise<void> {
+  // The roadmap surface — horizons + items + lifecycle + origin + sessions,
+  // all from the engine's own roadmapState (via startDetail). Read-and-navigate.
+  const detail = deps.engine ? ((await deps.engine.call('startDetail')) as any) : null;
+  const rm = detail?.roadmap ?? null;
+  if (!rm || !rm.exists) {
+    send(res, 200, { exists: false });
+    return;
+  }
+  send(res, 200, {
+    exists: true,
+    horizons: rm.horizons ?? [],
+    items: rm.items ?? [],
+    totals: rm.totals ?? {},
+    sessions: rm.session_logs ?? [],
+    activeSession: rm.active_session ?? null,
+  });
 }
 
 async function queueView(res: http.ServerResponse, deps: ApiDeps): Promise<void> {
@@ -484,11 +531,23 @@ function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: 
     send(res, 404, { error: 'artifact not found' });
     return;
   }
+  // The what-moved ribbon reads the ref BEFORE this view overwrites it.
+  const phase = rel.split('/')[0] ?? '';
+  const artifactKey = `${wu}/${rel}`;
+  const priorRef = deps.db ? readRef(deps.db, deps.projectRoot, artifactKey) : null;
+  const moved = priorRef
+    ? whatMoved(deps.projectRoot, path.join('.workflows', wu, rel), priorRef.sha, priorRef.state)
+    : { state: 'none' as const };
+
+  // Structure (manifest-owned or heading-keyed) and claim chips.
+  const manifest = deps.engine?.readUnitManifest(wu) ?? null;
+  const structure = buildStructure(phase, wu, manifest, content);
+
   // Record the read-ref: HEAD-at-render is Phase 4's diff base (spec, phase-0
   // §8). Read is idempotent — a GET recording a receipt is a deliberate,
   // UI-native write, never workflow state.
   if (deps.db) recordReadRef(deps.db, deps.projectRoot, wu, rel);
-  send(res, 200, { workUnit: wu, path: rel, phase: rel.split('/')[0] ?? '', content });
+  send(res, 200, { workUnit: wu, path: rel, phase, content, structure, whatMoved: moved });
 }
 
 // ---------------------------------------------------------------------------

@@ -89,6 +89,10 @@ export class EngineAdapter {
     });
   }
 
+  readUnitManifest(name: string): Record<string, unknown> | null {
+    return readJson(path.join(this.projectRoot, '.workflows', name, 'manifest.json'));
+  }
+
   async epicDetailFor(manifest: Record<string, unknown>): Promise<Record<string, unknown>> {
     return this.call('epicDetailFor', { manifest });
   }
@@ -100,5 +104,13 @@ export class EngineAdapter {
   stop(): void {
     this.child?.kill();
     this.child = null;
+  }
+}
+
+function readJson(p: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {
+    return null;
   }
 }
