@@ -79,4 +79,37 @@ describe('PlanDAG', () => {
     expect(screen.getByText(/tracked in Linear/)).toBeTruthy();
     expect(screen.getByText('open in Linear')).toBeTruthy();
   });
+
+  it('renders an honest degradation banner on a dependency cycle', () => {
+    render(
+      <PlanDAG
+        dag={{
+          format: 'local-markdown',
+          tasks: [
+            { id: 'a', title: 'A', phase: '1', status: 'pending', priority: 0, dependsOn: ['b'] },
+            { id: 'b', title: 'B', phase: '1', status: 'pending', priority: 0, dependsOn: ['a'] },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText(/dependency cycle/)).toBeTruthy();
+  });
+
+  it('sorts task ids naturally within a column (t-1-10 after t-1-2)', () => {
+    render(
+      <PlanDAG
+        dag={{
+          format: 'local-markdown',
+          tasks: [
+            { id: 't-1-10', title: 'Ten', phase: '1', status: 'pending', priority: 0, dependsOn: [] },
+            { id: 't-1-2', title: 'Two', phase: '1', status: 'pending', priority: 0, dependsOn: [] },
+          ],
+        }}
+      />,
+    );
+    const ids = [...document.querySelectorAll('[data-testid="plan-dag"] .font-mono')].map((e) => e.textContent);
+    const two = ids.findIndex((t) => t?.includes('t-1-2 '));
+    const ten = ids.findIndex((t) => t?.includes('t-1-10'));
+    expect(two).toBeLessThan(ten);
+  });
 });

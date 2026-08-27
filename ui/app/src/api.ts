@@ -38,6 +38,7 @@ export type ChannelData = {
   presence?: { phase?: string; topic?: string; held?: boolean; live?: boolean; session_id?: string }[];
   telemetry?: TopicTelemetry[];
   planFormat?: string;
+  agentsReading?: number;
 };
 
 export type TopicTelemetry = {

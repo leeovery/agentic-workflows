@@ -8,7 +8,7 @@ import type { TopicTelemetry, PlanDagData, PlanTask } from '../api';
 
 // TelemetrySurface (catalog: P5, intent 4/5) — manifest-sourced loop state,
 // in-place updates, collapsed by default.
-export function TelemetrySurface({ t }: { t: TopicTelemetry }) {
+export function TelemetrySurface({ t, extra }: { t: TopicTelemetry; extra?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const consulting = false; // the consult state arrives as a live gate, not here
   const blocked = t.depBlocked.length > 0;
@@ -68,6 +68,10 @@ export function TelemetrySurface({ t }: { t: TopicTelemetry }) {
               ))}
             </div>
           )}
+          {/* The heavy telemetry (consolidation, plan graph) lives HERE, behind
+              the per-topic toggle — so the channel scroll stays density-neutral
+              and the conversation/telemetry seam never occurs (S3 spec). */}
+          {extra}
         </div>
       )}
       {void consulting}
@@ -126,13 +130,22 @@ const TASK_STATUS_CLS: Record<string, string> = {
   blocked: 'border-warn/50 text-warn',
 };
 
-function layer(tasks: PlanTask[]): PlanTask[][] {
+// Natural id compare so {topic}-1-10 sorts after {topic}-1-2.
+function naturalCompare(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { numeric: true });
+}
+
+function layer(tasks: PlanTask[]): { layers: PlanTask[][]; hasCycle: boolean } {
   // Longest-path layering: a task sits one level below its deepest dependency.
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const depth = new Map<string, number>();
+  let hasCycle = false;
   const compute = (id: string, seen: Set<string>): number => {
     if (depth.has(id)) return depth.get(id)!;
-    if (seen.has(id)) return 0; // cycle guard
+    if (seen.has(id)) {
+      hasCycle = true;
+      return 0; // cycle guard — reported honestly below
+    }
     seen.add(id);
     const t = byId.get(id);
     const d = t && t.dependsOn.length ? 1 + Math.max(...t.dependsOn.map((x) => compute(x, seen))) : 0;
@@ -141,11 +154,9 @@ function layer(tasks: PlanTask[]): PlanTask[][] {
   };
   for (const t of tasks) compute(t.id, new Set());
   const layers: PlanTask[][] = [];
-  for (const t of tasks) {
-    const d = depth.get(t.id) ?? 0;
-    (layers[d] ??= []).push(t);
-  }
-  return layers;
+  for (const t of tasks) (layers[depth.get(t.id) ?? 0] ??= []).push(t);
+  for (const col of layers) if (col) col.sort((a, b) => naturalCompare(a.id, b.id));
+  return { layers, hasCycle };
 }
 
 export function PlanDAG({ dag }: { dag: PlanDagData }) {
@@ -166,9 +177,14 @@ export function PlanDAG({ dag }: { dag: PlanDagData }) {
   if (dag.format === 'unknown' || dag.tasks.length === 0) {
     return <div className="text-sm font-sans text-stone-400">no plan tasks yet</div>;
   }
-  const layers = layer(dag.tasks);
+  const { layers, hasCycle } = layer(dag.tasks);
   return (
     <div data-testid="plan-dag" className="overflow-x-auto">
+      {hasCycle && (
+        <div className="banner-degraded text-xs mb-2">
+          This plan has a dependency cycle — the graph below is a best-effort layout, not a strict order.
+        </div>
+      )}
       <div className="flex gap-6 min-w-max py-2">
         {layers.map((col, i) => (
           <div key={i} className="flex flex-col gap-2">

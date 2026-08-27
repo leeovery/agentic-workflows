@@ -385,6 +385,29 @@ copy-only (no re-run); the what-moved epoch-break `lost` state; out-of-scope
 discipline (no browser editing, no artifact-embedded execution, no Phase 5
 creep).
 
+## Round 11: Phase 5 implementation review (2026-08-27)
+
+One combined reviewer (fidelity + intent + quality/security; the phase is small
+and read-only). Findings verified against the real manifest and format sources.
+
+**Defects (fixed, with tests):**
+
+| # | Finding | Fix |
+|---|---|---|
+| R11-staging | `staging` was always empty — the real shape is `staging.{cycle}.tasks.{n}=<decision>` (nested), not the array CLAUDE.md's shorthand implied | Flatten each cycle's task decisions; verified live (caught pre-emptively from the prompt) |
+| R11-1 | The full Delivery section inlined into the channel scroll created the conversation/telemetry seam the spec forbids ("density lives on S4") | The heavy detail (consolidation, plan graph) now lives behind each topic's collapsed TelemetrySurface toggle — the channel stays density-neutral |
+| R11-3 | `planFormatOf` returned the FIRST planning topic's format, not the requested one — an epic mixing adapters could render one topic's plan with another's format | Resolves the specific topic's `format`; `/api/plan` passes the topic |
+| R11-4 | The plan DAG reader followed symlinks and had no size cap (the round-10 hardening wasn't mirrored) | Skips symlinks (Dirent.isFile), caps at 1MB; symlink test |
+| R11-5 | `countAgents` keyed by topic only → a stale discussion/review agent inflated an unrelated impl topic's chip; also duplicated the watcher's phase-aware scan | Scoped to the implementation phase for the per-topic chip; a channel-wide `countAgentsAllPhases` powers the header chip |
+
+**Gaps closed:** the background-agent chip is now channel-wide (research/discussion deep-dives and perspectives show in the header, not only implementation — deliverable 5's own examples); the plan-DAG cycle case degrades honestly (a banner, not a confidently-wrong graph); task ids sort naturally.
+
+**Doc nits fixed:** the source inventory now documents the real `staging.{cycle}.tasks.{n}` shape and that "blocked" is a derived join, not a status value; the plan records the @xyflow→CSS-layout correction and names `PlanDAG` (catalog).
+
+**Accepted as-is (recorded honestly):** the S4 telemetry thread-MODE (deliverable-2 wording) is not a separate surface — the per-topic TelemetrySurface behind its toggle carries the telemetry, and threads-as-previews on S3 never show conversation, so the seam the rule guards against does not occur; a fuller S4 integration is deferred. The **review board** (deliverable 4) ships as the artifact lens's verdict + linked buckets (Phase 4) plus the out-of-scope bank as a durable queue row (Phase 2) — the dedicated columns-by-bucket board with provenance links is deferred, not built. **tick DAG** returns `[]` (the CLI isn't installed in the prototype) so the "byte-equal from local-markdown AND tick" done-means is met only for local-markdown; the reader exists so the branch is honest. No **`delivery-running` fixture** was recorded — the done-means was verified LIVE against the real completed quick-fix (which carries a full implementation item, a 2-task local-markdown plan, and a gated consolidation), which is stronger evidence than a synthetic fixture; recording the fixture is deferred.
+
+**Survived attack:** every telemetry datum traces to the source inventory (nothing scraped); dep-blocked from the engine's own render-time join; the ConsolidationCard is read-only (no answer path — decisions ride the session's gate); no loop control, no task-tracker writes; no new spine event types (updates replace, never append); no animation; `validUnitName` blocks traversal on both `wu` and `topic`.
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in

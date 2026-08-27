@@ -14,12 +14,12 @@ gateway DATA text, never the session cache).
 | current phase (plan phase) | `items.{topic}.current_phase` (string\|number; `~` = none) |
 | completed phases | `items.{topic}.completed_phases[]` |
 | completed tasks | `items.{topic}.completed_tasks[]` |
-| item status (in-progress / completed / blocked) | `items.{topic}.status` |
+| item status (in-progress / completed / cancelled) | `items.{topic}.status` — the schema's allowed set (`manifest-schema.cjs`); "blocked" is NOT a status value, it is a derived join (`deps_blocking[]`, the row below) |
 | dep-blocked ⚑ | engine `lib.cjs` derivation — `deps_blocking[]` on the epic detail's planning item (a render-time join, never a manifest field) |
 | fix-attempt count | `items.{topic}.fix_attempts` (integer — verified present in the real manifest; a durable field) |
 | analysis cycle count | `items.{topic}.analysis_cycle_total` (integer) |
 | consolidation gate mode | `items.{topic}.consolidation_gate_mode` (`auto` \| present = gated) |
-| staging tasks (consolidation) | `items.{topic}.staging.p{N}` (the gated tasks in an open phase) |
+| staging tasks (consolidation) | `items.{topic}.staging.{cycle}.tasks.{n}` = `<decision>` (a nested object per `fields.cjs`, NOT `staging.p{N}` — corrected round 11 against the real manifest) |
 | the consolidation bank | `items.{topic}.bank[]` (banked cross-scope opportunities) |
 | consolidated phases | `items.{topic}.consolidated_phases[]` |
 | commits landed (this topic) | git — `commit.landed` events whose scope includes the work unit (the Phase 0 durable store) |

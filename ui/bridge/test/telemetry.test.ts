@@ -5,6 +5,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
+describe('plan DAG — symlink + size hardening (round 11)', () => {
+  it('never follows a symlinked task file', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dag-sym-'));
+    const outside = path.join(dir, 'secret.md');
+    fs.writeFileSync(outside, '---\nid: leaked\n---\n# Secret\n');
+    const tdir = path.join(dir, '.workflows', 'wu', 'planning', 'wu', 'tasks');
+    fs.mkdirSync(tdir, { recursive: true });
+    fs.writeFileSync(path.join(tdir, 'real.md'), '---\nid: wu-1-1\nstatus: pending\n---\n# Real\n');
+    fs.symlinkSync(outside, path.join(tdir, 'leak.md'));
+    try {
+      const tasks = readLocalMarkdownDag(dir, 'wu', 'wu');
+      expect(tasks.map((t) => t.id)).toEqual(['wu-1-1']); // the symlink is skipped
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 const ev = (type: string, payload: any): any => ({ type, payload, address: {}, id: 'x', seq: 0, epoch: 'e', ts: 't', project: 'p' });
 
 describe('loop telemetry — manifest-sourced', () => {

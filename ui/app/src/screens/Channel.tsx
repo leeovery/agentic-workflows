@@ -77,6 +77,11 @@ export function Channel() {
               <SessionHealthBadge state={s.state} error={s.lastError} />
             </Link>
           ))}
+          {(data.agentsReading ?? 0) > 0 && (
+            <span className="text-xs font-sans text-nav" title="background agents reading (any phase)">
+              ● {data.agentsReading} reading
+            </span>
+          )}
           <button
             onClick={drive}
             disabled={starting}
@@ -99,18 +104,25 @@ export function Channel() {
           )}
         </section>
 
-        {/* Delivery telemetry — the quiet end of the cone, only when an
-            implementation topic is running. Collapsed by default. */}
+        {/* Delivery telemetry — the quiet end of the cone. Each topic is a
+            collapsed one-liner; the heavy detail (consolidation, plan graph)
+            lives behind its toggle so the channel scroll stays density-neutral
+            (no conversation/telemetry seam — S3 spec). */}
         {(data.telemetry ?? []).length > 0 && (
           <section>
             <div className="region-label mb-1">Delivery</div>
             <div className="space-y-2">
               {(data.telemetry ?? []).map((t) => (
-                <div key={t.topic}>
-                  <TelemetrySurface t={t} />
-                  <ConsolidationCard t={t} />
-                  <PlanDagLoader wu={data.name} topic={t.topic} />
-                </div>
+                <TelemetrySurface
+                  key={t.topic}
+                  t={t}
+                  extra={
+                    <>
+                      <ConsolidationCard t={t} />
+                      <PlanDagLoader wu={data.name} topic={t.topic} />
+                    </>
+                  }
+                />
               ))}
             </div>
           </section>

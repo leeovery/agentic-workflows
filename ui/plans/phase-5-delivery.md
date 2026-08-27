@@ -23,8 +23,13 @@ not APIs — reading them in TypeScript is a knowing, contained duplication.
    pinging per Phase 3).
 2. **Consolidation moments** — the boundary sweep as its own card: the bank
    (`implementation.{topic}.bank`), the finder's verdicts, the gated tasks in staging
-   (`staging.p{N}`) — one decide-shaped screen, consistent with the lanes.
-3. **Plan DAG** — @xyflow/react + elkjs. Sources, split honestly per adapter:
+   (`staging.{cycle}.tasks.{n}` — a nested object, corrected round 11) — one
+   decide-shaped screen, consistent with the lanes.
+3. **Plan DAG** — ~~@xyflow/react + elkjs~~ *(corrected in execution, round 11:
+   a hand-rolled dependency-depth layered layout in plain CSS — @xyflow/elkjs
+   is heavy for a read-only, scannable graph, and a self-contained layout meets
+   the bar with no new dependency; `PlanDAG` is the component name, added to the
+   catalog).* Sources, split honestly per adapter:
    **local-markdown** — a small TS frontmatter parser with golden fixtures pinned to the
    shipped format templates (v0); **tick** — its own CLI's graph output; **Linear** —
    degraded to link-out unless the bridge is configured with its own API credentials

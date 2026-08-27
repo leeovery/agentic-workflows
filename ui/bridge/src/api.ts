@@ -188,7 +188,7 @@ export async function handleApi(
         return true;
       }
       const manifest = deps.engine?.readUnitManifest(wu) ?? null;
-      const format = manifest ? planFormatOf(deps.projectRoot, manifest) : 'local-markdown';
+      const format = manifest ? planFormatOf(deps.projectRoot, manifest, topic) : 'local-markdown';
       send(res, 200, { dag: planDag(deps.projectRoot, wu, topic, format) });
       return true;
     }
@@ -521,7 +521,7 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
       }
     }
   }
-  const agentCounts = countAgents(projectRoot, wu);
+  const agentCounts = countAgents(projectRoot, wu, 'implementation');
   for (const topic of Object.keys(implItems)) {
     const t = buildTelemetry(wu, topic, manifest, depBlockedByTopic[topic] ?? [], allEvents, agentCounts[topic] ?? 0);
     if (t) telemetry.push(t);
@@ -537,17 +537,23 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
     embed,
     artifacts,
     presence,
+    // Channel-wide agent activity (any phase) — deep-dives/perspectives in
+    // research/discussion show here, not only implementation (round-11).
+    agentsReading: countAgentsAllPhases(projectRoot, wu),
     telemetry,
-    planFormat: planFormatOf(deps.projectRoot, manifest),
+    planFormat: planFormatOf(deps.projectRoot, manifest, workType === 'epic' ? undefined : wu),
   });
 }
 
-/** The topic's plan format: topic-level override, else project default. */
-function planFormatOf(projectRoot: string, manifest: Record<string, any>): string {
-  const planItem = Object.values(manifest.phases?.planning?.items ?? {}).find((i: any) => i?.format) as
-    | { format?: string }
-    | undefined;
-  if (planItem?.format) return String(planItem.format);
+/**
+ * The plan format for a SPECIFIC topic (its planning item's `format`), falling
+ * back to the project default. `format` is per-topic — resolving it globally
+ * would apply one topic's adapter to another (round-11 defect).
+ */
+function planFormatOf(projectRoot: string, manifest: Record<string, any>, topic?: string): string {
+  const items = manifest.phases?.planning?.items ?? {};
+  const item = topic ? items[topic] : undefined;
+  if (item?.format) return String(item.format);
   try {
     const proj = JSON.parse(fs.readFileSync(path.join(projectRoot, '.workflows', 'manifest.json'), 'utf8'));
     return String(proj?.defaults?.plan_format ?? 'local-markdown');
@@ -556,35 +562,48 @@ function planFormatOf(projectRoot: string, manifest: Record<string, any>): strin
   }
 }
 
-/** Count in-flight background agents per topic from the cache agent store. */
-function countAgents(projectRoot: string, wu: string): Record<string, number> {
+/**
+ * Count in-flight background agents for a work unit, keyed by (phase, topic).
+ * The delivery telemetry only counts the IMPLEMENTATION phase's agents so a
+ * stale discussion/review agent never inflates an unrelated topic's chip
+ * (round-11 defect — was keyed by topic only). Returns per-topic counts
+ * scoped to `phaseFilter`.
+ */
+function countAgents(projectRoot: string, wu: string, phaseFilter: string): Record<string, number> {
   const out: Record<string, number> = {};
+  const base = path.join(projectRoot, '.workflows', '.cache', wu, phaseFilter);
+  let topics: string[];
+  try {
+    topics = fs.readdirSync(base).filter((n) => !n.startsWith('.'));
+  } catch {
+    return out;
+  }
+  for (const topic of topics) {
+    let state: any;
+    try {
+      state = JSON.parse(fs.readFileSync(path.join(base, topic, 'state.json'), 'utf8'));
+    } catch {
+      continue;
+    }
+    const inflight = Object.values(state?.agents ?? {}).filter((a: any) => a?.status === 'in-flight').length;
+    if (inflight > 0) out[topic] = inflight;
+  }
+  return out;
+}
+
+/** All in-flight agents across the work unit (any phase) — the channel-wide
+ *  "N reading" chip, so research/discussion deep-dives/perspectives show too. */
+function countAgentsAllPhases(projectRoot: string, wu: string): number {
   const base = path.join(projectRoot, '.workflows', '.cache', wu);
+  let total = 0;
   let phases: string[];
   try {
     phases = fs.readdirSync(base).filter((n) => !n.startsWith('.'));
   } catch {
-    return out;
+    return 0;
   }
-  for (const phase of phases) {
-    let topics: string[];
-    try {
-      topics = fs.readdirSync(path.join(base, phase)).filter((n) => !n.startsWith('.'));
-    } catch {
-      continue;
-    }
-    for (const topic of topics) {
-      let state: any;
-      try {
-        state = JSON.parse(fs.readFileSync(path.join(base, phase, topic, 'state.json'), 'utf8'));
-      } catch {
-        continue;
-      }
-      const inflight = Object.values(state?.agents ?? {}).filter((a: any) => a?.status === 'in-flight').length;
-      if (inflight > 0) out[topic] = (out[topic] ?? 0) + inflight;
-    }
-  }
-  return out;
+  for (const phase of phases) for (const [t, n] of Object.entries(countAgents(projectRoot, wu, phase))) { void t; total += n; }
+  return total;
 }
 
 function listUnitArtifacts(projectRoot: string, wu: string): { path: string; phase: string }[] {

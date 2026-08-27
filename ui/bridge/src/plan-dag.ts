@@ -62,17 +62,23 @@ function titleFromBody(md: string, id: string): string {
 /** local-markdown: task files at planning/{topic}/tasks/{id}.md. */
 export function readLocalMarkdownDag(projectRoot: string, workUnit: string, topic: string): PlanTask[] {
   const dir = path.join(projectRoot, '.workflows', workUnit, 'planning', topic, 'tasks');
-  let files: string[];
+  let entries: fs.Dirent[];
   try {
-    files = fs.readdirSync(dir).filter((f) => f.endsWith('.md'));
+    entries = fs.readdirSync(dir, { withFileTypes: true });
   } catch {
     return [];
   }
   const tasks: PlanTask[] = [];
-  for (const f of files) {
+  for (const e of entries) {
+    // Never follow a symlink (a hostile repo could point a task file at any
+    // host file), and cap size (round-11 hardening, mirroring artifactView).
+    if (!e.isFile() || !e.name.endsWith('.md')) continue;
+    const f = e.name;
     let md: string;
     try {
-      md = fs.readFileSync(path.join(dir, f), 'utf8');
+      const p = path.join(dir, f);
+      if (fs.statSync(p).size > 1024 * 1024) continue;
+      md = fs.readFileSync(p, 'utf8');
     } catch {
       continue;
     }
