@@ -26,6 +26,10 @@ Emit each returned section verbatim at its marked instruction — the triage war
 
 1. Delete {restart_targets}
 2. Reset {restart_resets} — only when the caller passed `restart_resets`; skip otherwise. Deleting artifacts while their manifest tracking rows stay satisfied would leave the fresh run believing that work already happened.
-3. Commit: `{commit}`
+3. Commit the deletions and the reset on the topic's own scope:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {artifact}/{topic} -m "{commit}"
+   ```
 
 → Return to caller for **Step 1**.

@@ -99,6 +99,9 @@ module.exports = {
   },
   presence: {
     scanPresence: presence.scanPresence,
+    scanProject: presence.scanProject,
+    heldCodeSessions: presence.heldCodeSessions,
+    ownsRow: presence.ownsRow,
     fmtAge: presence.fmtAge,
   },
   detail: {

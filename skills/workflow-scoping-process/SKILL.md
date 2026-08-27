@@ -1,10 +1,12 @@
 ---
 name: workflow-scoping-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git rev-parse), Bash(git add), Bash(git commit)
+allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git status), Bash(git rev-parse)
 hooks:
   SessionEnd:
     - hooks:
+        - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
         - type: command
           command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
@@ -176,35 +178,45 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
    ```
-3. Commit — `--plan` stages the work unit, the project manifest, and the plan's declared storage in one scoped call (the knowledge store rides along automatically):
+3. Commit each edit under its own scope — the specification with the store its re-completion re-indexed, then the plan with its declared storage:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): adjust specification and plan" --plan {topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): adjust quick-fix specification" --topic specification/{topic} --kb --sweep
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): adjust plan" --plan {topic}
    ```
 
 → Proceed to **Step 8**.
 
 #### If `restart`
 
+Order matters — the plan's cleanup commits while the planning item still exists, so `--plan` resolves the plan's declared storage, and the manifest entries are deleted last.
+
 1. Read the planning item once — `format`, `external_id`, and `storage_paths` all ride the subtree:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
    ```
-2. Load the format's **[authoring.md](../workflow-planning-process/references/output-formats/{format}/authoring.md)**
-3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
-4. Delete the spec and plan files: `rm -rf .workflows/{work_unit}/specification/{topic}/ .workflows/{work_unit}/planning/{topic}/`
-5. Remove the spec's knowledge-base entry:
+2. **If the subtree carries no `storage_paths`** (a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
+   ```
+3. Load the format's **[authoring.md](../workflow-planning-process/references/output-formats/{format}/authoring.md)**
+4. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
+5. Delete the spec and plan files: `rm -rf .workflows/{work_unit}/specification/{topic}/ .workflows/{work_unit}/planning/{topic}/`
+6. Remove the spec's knowledge-base entry:
    ```bash
    node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase specification --topic {topic}
    ```
-6. Delete the specification and planning manifest entries — the scoping item stays `in-progress`; the fresh run re-completes it at Write Tasks:
+7. Commit the plan's cleanup — `--plan` stages the planning topic, both manifests, and the plan's declared storage, so the deleted plan files and the format's own cleanup land together:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): restart scoping — clear the authored plan" --plan {topic}
+   ```
+8. Delete the specification and planning manifest entries — the scoping item stays `in-progress`; the fresh run re-completes it at Write Tasks:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{topic}
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-7. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit, the knowledge store (only when `.workflows/.knowledge` exists — staging a nonexistent path is a git error), and the `storage_paths` read in step 1, then commit. Each entry passes as a bare pathspec; when the array is `[]` or the field is absent, stage nothing extra.
+9. Commit what remains — the deleted specification, the store the removal emptied, and the two manifest entries. A quick-fix's topic is its work unit, so the work-unit scope is this action's own:
    ```bash
-   git add -- .workflows/{work_unit} .workflows/.knowledge {storage_paths}
-   git commit -m "scoping({work_unit}): restart scoping"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): restart scoping"
    ```
 
 → Proceed to **Step 1**.

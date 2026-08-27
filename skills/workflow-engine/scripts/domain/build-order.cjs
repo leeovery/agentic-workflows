@@ -20,7 +20,7 @@
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { phaseItems } = require('./derivations.cjs');
 const { TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
@@ -46,7 +46,7 @@ function buildOrderLive(item) {
 
 /**
  * Record the build order across an epic's specification topics: set each
- * topic's `order`, clear the staleness flag, commit scoped to the work unit.
+ * topic's `order`, clear the staleness flag, commit the manifest write.
  * The assignment must be the whole live set — every non-terminal
  * specification topic exactly once, orders a contiguous permutation of 1..N.
  * @param {string} cwd project root
@@ -108,11 +108,15 @@ function sequenceBuildOrder(cwd, workUnit, orders) {
 
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `specification(${workUnit}): sequence build order`, warnings);
+  // The sequencing pass runs from the epic entry, beside whatever sessions
+  // hold the unit's topics: it wrote the manifest and nothing else, so that
+  // is all it commits.
+  const outcome = commitTailPathspec(cwd, `.workflows/${workUnit}/manifest.json`, `specification(${workUnit}): sequence build order`, warnings);
   /** @type {BuildOrderSequenceResult} */
   const result = { ordered: orders, committed: outcome.committed };
   if (outcome.failed) result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
+  // The manifest-only scope the work unit's `--state` form covers.
+  noteCommitOutcome(result, outcome, `${workUnit} --state`);
   return result;
 }
 

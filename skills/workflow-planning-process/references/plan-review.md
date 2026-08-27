@@ -62,15 +62,11 @@ Auto mode is active — pass through to review. Section E's safety cap (cycle 5)
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant continue
 ```
-· · · · · · · · · · · ·
-**`◆ Continue with review?`**
 
-**`p/proceed`** → Continue review
-**`s/skip`**    → Skip review, proceed to completion
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -93,7 +89,7 @@ Auto mode is active — pass through to review. Section E's safety cap (cycle 5)
 **If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): traceability review cycle {N}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): traceability review cycle {N}" --topic planning/{topic}
 ```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
@@ -111,7 +107,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 **If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}" --topic planning/{topic}
 ```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
@@ -152,15 +148,11 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 > Fixes applied this cycle may have shifted dependencies, introduced gaps, or affected other tasks. A follow-up round reviews the corrected plan with fresh context — 2-3 cycles typically surface anything cascading.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant reloop
 ```
-· · · · · · · · · · · ·
-**`◆ Run another review round?`**
 
-**`r/reanalyse`** → Run another round (traceability + integrity)
-**`p/proceed`**   → Proceed to conclusion
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -182,15 +174,11 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 > Fixes applied this cycle may have shifted dependencies, introduced gaps, or affected other tasks. A follow-up round reviews the corrected plan with fresh context — 2-3 cycles typically surface anything cascading.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant reloop
 ```
-· · · · · · · · · · · ·
-**`◆ Run another review round?`**
 
-**`r/reanalyse`** → Run another round (traceability + integrity)
-**`p/proceed`**   → Proceed to conclusion
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -214,7 +202,7 @@ Read `manifest get {work_unit}.planning.{topic} tracking`. If any entry is `in-p
 
 2. **Commit** all review tracking files:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})" --topic planning/{topic}
    ```
 
 > *Output the next fenced block as markdown (not a code block):*

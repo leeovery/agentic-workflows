@@ -47,6 +47,12 @@ Record the dispatch — the engine allocates the id and answers with the content
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind review
 ```
 
+Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} dismissed_grounds
+```
+
 **Agent path**: `../../../agents/workflow-research-review.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
@@ -56,6 +62,7 @@ The review agent receives:
 1. **Research file path(s)** — `.workflows/{work_unit}/research/{topic}.md` (for epic, include all research files in `.workflows/{work_unit}/research/` relevant to the current topic)
 2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
 3. **Maturity indication** — one line judging where the session stands, from the session itself: early exploration, threads deepening, or largely concluded.
+4. **Dismissed grounds** — the list read above, verbatim. Omit this input entirely when the list is empty.
 
 > *Output the next fenced block as a code block:*
 
@@ -85,4 +92,4 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 **Offering deep dives during presentation**: If the user engages with a raised finding and it's substantial enough for independent investigation, offer to dispatch a deep-dive agent for it. Follow the deep-dive agent instructions for the offer and dispatch.
 
-**Findings the user deflects**: If the user doesn't want to engage with a finding you raised, note it in the Open Questions section of the research file.
+**Findings the user rejects**: nothing lands in the research file either way — **Rejecting a raise** in **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.

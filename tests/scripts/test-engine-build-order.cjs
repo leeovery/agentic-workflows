@@ -123,6 +123,24 @@ describe('engine build-order sequence', () => {
     assert.strictEqual(spec.items.legacy.order, undefined, 'terminal untouched');
   });
 
+  it('commits the manifest alone, leaving a live peer\'s document behind', () => {
+    // The sequencing pass runs from the epic entry, beside sessions holding
+    // the unit's topics. It wrote the manifest and nothing else.
+    fs.mkdirSync(path.join(dir, '.workflows/portal/discussion'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/portal/discussion/auth.md'), '# Discussion — Auth\n');
+    commitAll(dir, 'a peer topic');
+    fs.writeFileSync(path.join(dir, '.workflows/portal/discussion/auth.md'), '# Discussion — Auth\nhalf a turn\n');
+
+    engine(dir, ['build-order', 'sequence', 'portal', 'auth=1', 'reports=2', 'billing=3']);
+
+    assert.deepStrictEqual(
+      git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean),
+      ['.workflows/portal/manifest.json']);
+    assert.deepStrictEqual(
+      git(dir, ['status', '--porcelain']).split('\n').filter(Boolean),
+      [' M .workflows/portal/discussion/auth.md'], 'the peer keeps its dirt');
+  });
+
   it('completed topics are live — they keep a number', () => {
     engine(dir, ['build-order', 'sequence', 'portal', 'reports=1', 'auth=2', 'billing=3']);
     assert.strictEqual(readManifest(dir, 'portal').phases.specification.items.reports.order, 1);
@@ -169,6 +187,81 @@ describe('engine build-order sequence', () => {
     writeManifest(dir, 'empty', { name: 'empty', work_type: 'epic', status: 'in-progress', phases: {} });
     commitAll(dir, 'empty');
     assert.match(engineFails(dir, ['build-order', 'sequence', 'empty', 'x=1']).error, /no live specification topics/);
+  });
+});
+
+// The caller computes an order from a read, then asks the engine to write it.
+// Between those two moments a peer session can move the live set — a spec
+// completed, a topic cancelled, a grouping added. The whole re-check runs
+// inside the manifest lock's read-modify-write, so a write computed against a
+// set that has since moved is refused, never silently applied.
+describe('sequence re-checks the live set it writes against', () => {
+  let dir;
+  beforeEach(() => { dir = setupGitFixture(); setupEpic(dir); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** The caller's compute step: read, derive the live set, propose 1..N. */
+  function computeOrders(dir) {
+    const items = readManifest(dir, 'portal').phases.specification.items;
+    const orders = {};
+    Object.entries(items)
+      .filter(([, item]) => buildOrderLive(item))
+      .forEach(([name], i) => { orders[name] = i + 1; });
+    return orders;
+  }
+
+  const asArgs = (orders) => Object.entries(orders).map(([t, n]) => `${t}=${n}`);
+
+  it('refuses a write whose live set gained a topic after the compute', () => {
+    const computed = computeOrders(dir);
+    // A peer's grouping analysis lands a new proposed topic.
+    const m = readManifest(dir, 'portal');
+    m.phases.specification.items.notifications = { status: 'proposed', sources: {} };
+    writeManifest(dir, 'portal', m);
+
+    const err = engineFails(dir, ['build-order', 'sequence', 'portal', ...asArgs(computed)]);
+    assert.match(err.error, /missing: notifications/);
+    const after = readManifest(dir, 'portal').phases.specification;
+    assert.ok(Object.values(after.items).every((i) => i.order === undefined), 'nothing was written');
+  });
+
+  it('refuses a write whose live set lost a topic after the compute', () => {
+    const computed = computeOrders(dir);
+    // A peer cancels one of the topics the caller numbered.
+    const m = readManifest(dir, 'portal');
+    m.phases.specification.items.billing.status = 'cancelled';
+    m.phases.specification.items.billing.previous_status = 'proposed';
+    writeManifest(dir, 'portal', m);
+
+    const err = engineFails(dir, ['build-order', 'sequence', 'portal', ...asArgs(computed)]);
+    assert.match(err.error, /"billing" is cancelled — terminal topics carry no build order/);
+    assert.strictEqual(readManifest(dir, 'portal').phases.specification.items.auth.order, undefined, 'nothing was written');
+  });
+
+  it('a flag raised after the pass wrote is not swallowed by it', () => {
+    const m0 = readManifest(dir, 'portal');
+    m0.phases.specification.build_order_stale = true;
+    writeManifest(dir, 'portal', m0);
+
+    engine(dir, ['build-order', 'sequence', 'portal', ...asArgs(computeOrders(dir))]);
+    assert.strictEqual(readManifest(dir, 'portal').phases.specification.build_order_stale, undefined,
+      'the flag this pass read is the flag it clears');
+
+    // A completion landing after that hold sets the flag again; the finished
+    // pass cannot have cleared a flag it never read.
+    engine(dir, ['topic', 'complete', 'portal', 'specification', 'auth']);
+    assert.strictEqual(readManifest(dir, 'portal').phases.specification.build_order_stale, true,
+      'the later completion still asks for a re-sequence');
+  });
+
+  it('a status change that leaves the set intact still applies', () => {
+    const computed = computeOrders(dir);
+    // in-progress → completed keeps a topic live: same membership, same write.
+    engine(dir, ['topic', 'complete', 'portal', 'specification', 'auth']);
+
+    const res = engine(dir, ['build-order', 'sequence', 'portal', ...asArgs(computed)]);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(readManifest(dir, 'portal').phases.specification.items.auth.order, computed.auth);
   });
 });
 

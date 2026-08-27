@@ -19,7 +19,8 @@
 const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
-const { commitScopedWithKb, commitPathspecScoped, KB_DIR } = require('./domain/commit.cjs');
+const { commitPathspecScoped, commitPathspecWithKb, discoveryScope, KB_DIR } = require('./domain/commit.cjs');
+const { dirtyPaths, stageableSpecs, hasStagedDeletions } = require('./kernel/git.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
@@ -30,7 +31,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
-const { beatPresence, clearPresence, scanPresence, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, beatQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, setLabelConfig } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -150,7 +151,7 @@ Commands:
   topic requeue <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
-  presence scan <work-unit>
+  presence scan [work-unit]
   presence cleanup [session-id]
   session label <work-unit> <phase> <topic>
   session label-config <true|false>
@@ -190,14 +191,15 @@ Commands:
   roadmap horizon merge <from> --into <to>
   roadmap horizon split <name> --new <name> --items <a,b,…> [--position <n>]
   roadmap horizon remove <name>
-  cache stamp <work-unit> (research-analysis|gap-analysis)
+  cache stamp <work-unit> gap-analysis
   agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>] [--final]
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
   agent announce <work-unit> <phase> <topic> <id>
   agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…]
   agent incorporate <work-unit> <phase> <topic> <id>
-  commit <work-unit> -m <message> [--plan <topic>]
+  commit <work-unit> -m <message> [--plan <topic> | --discovery | --topic <phase>/<topic> [--kb] [--sweep]]
+  commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic>
   commit --inbox -m <message>
   commit --roadmap -m <message>
   commit --workflows -m <message>
@@ -224,8 +226,26 @@ Commands:
   render triage-block     <wu.phase.topic>
   render requeue-offer    <wu.phase.topic> --file <payload.json>
   render reroute-offer    <wu.phase.topic> --file <payload.json>
+  render research-conclude-gate <wu.research.topic> [--dead-end]
+  render deep-dive-offer  <wu.research.topic> --file <payload.json>
+  render in-flight-agents-gate <wu.research.topic> --count N
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
+  render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>
+  render candidate-gate   <wu> --file <payload.json>
+  render topic-collision-gate
+  render triage-closed-target <wu.discovery.target>
+  render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
+  render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
+  render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]
+  render checkpoint-files-gate <wu.implementation.topic>
+  render executor-block-gate <wu.implementation.topic>
+  render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph|resolution
+  render task-count-gate  <wu.planning.topic>
+  render plan-format-gate
+  render plan-review-gate <wu.planning.topic> --variant continue|reloop
+  render correction-gate  <wu.specification.topic>
+  render analysis-proceed-gate <wu>
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
   render cancel-cascade-gate <wu.phase.topic>
@@ -237,6 +257,7 @@ Commands:
   render phase-completed   <wu> --phase <phase> [--paths]
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render entry-gate        <wu.phase.topic> [--own]  (planning|implementation|review|specification)
+  render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
   render cancel-gate <wu.phase.topic>
@@ -291,6 +312,13 @@ Commands:
 // CLI's bare stdout byte-for-byte — prose substitution surfaces, including
 // their exit-code convention (2 = expected miss) — while mutations
 // (set/push/pull/delete) answer with the engine's one-line JSON response.
+//
+// No field write heartbeats. A three-segment `set` looks self-referential and
+// frequently is not: the storage-path backfills, review's `updated` stamp and
+// the epic menu's unblock all write one phase's item from another phase's
+// session, and a beat there manufactures a hold on a topic nobody is in (P8).
+// The session's cadence commit is its heartbeat; `apply`, the cross-topic
+// batch door, never beat either.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -307,7 +335,8 @@ function runManifest(argv) {
     return;
   }
   try {
-    respond(/** @type {object} */ (runFieldCommand(process.cwd(), command ?? '', rest)));
+    const result = runFieldCommand(process.cwd(), command ?? '', rest);
+    respond(/** @type {object} */ (result));
   } catch (err) {
     failJson(err);
   }
@@ -632,9 +661,24 @@ function runDiscoverySession(argv) {
 // one transaction per call: manifest write, knowledge-base sync
 // (warn-don't-block), scoped git commit. The JSON response reports what
 // happened — no follow-up read needed.
+//
+// Heartbeats ride the self-referential verbs — the session acting on its own
+// topic: `start` (opening it), `absorb` (folding a concern into its own
+// document), and `queue` (the findings check polls it every turn, so a turn
+// with no writes still registers). `complete` is the release: the topic is
+// closed, so the slot it held opens at that moment rather than at some later
+// commit. `triage` never beats — delivery acts on the TARGET topic from the
+// origin's session, and a beat there would stamp the origin process onto a
+// topic it does not hold. Nor do `requeue`, `cancel`, `reactivate`,
+// `supersede` or `reopen`: those are analysis and navigation actors reaching
+// across topics.
 // ---------------------------------------------------------------------------
 
 const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
+
+// The self-referential verbs among those dispatched through TOPIC_COMMANDS;
+// `queue` and `absorb` beat at their own branches.
+const TOPIC_BEATS = ['start'];
 
 /**
  * A SessionEnd hook target's session id: the argument when given, else the
@@ -664,7 +708,20 @@ function runPresence(argv) {
     }
     if (command === 'scan') {
       const [workUnit] = rest;
-      if (!workUnit || rest.length !== 1) throw new Error('Usage: engine presence scan <work-unit>');
+      if (rest.length > 1) throw new Error('Usage: engine presence scan [work-unit]');
+      // An empty argument is an unset shell variable (`scan "$wu"`), not a
+      // request for the project read — refuse it loudly rather than silently
+      // widening the scope. Only a genuinely absent argument takes that path.
+      if (rest.length === 1 && !workUnit) {
+        throw new Error('Usage: engine presence scan [work-unit] — an empty work unit is refused; omit the argument for the project-wide read');
+      }
+      // Work-unit-less: the project-wide read the code gate takes. The
+      // deferral section is the analysis dispatch's, which always scans one
+      // work unit — a project scan renders nothing.
+      if (!workUnit) {
+        respond(scanProject(process.cwd()));
+        return;
+      }
       const res = scanPresence(process.cwd(), workUnit);
       respond(res);
       respondSections(deferralSection(res));
@@ -761,7 +818,9 @@ function runTopic(argv) {
       if (!workUnit || !phase || !topic || rest.length !== 3) {
         throw new Error('Usage: engine topic queue <work-unit> <phase> <topic>');
       }
-      respond(queueStatus(process.cwd(), workUnit, phase, topic));
+      const status = queueStatus(process.cwd(), workUnit, phase, topic);
+      beatQuietly(process.cwd(), workUnit, phase, topic);
+      respond(status);
       return;
     }
     if (command === 'absorb') {
@@ -778,7 +837,9 @@ function runTopic(argv) {
       if (!workUnit || !phase || !topic || pos.length !== 3 || !file || !message) {
         throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>');
       }
-      respond(absorbConcern(process.cwd(), workUnit, phase, topic, { file, message }));
+      const absorbed = absorbConcern(process.cwd(), workUnit, phase, topic, { file, message });
+      beatQuietly(process.cwd(), workUnit, phase, topic);
+      respond(absorbed);
       return;
     }
     if (command === 'requeue') {
@@ -835,7 +896,13 @@ function runTopic(argv) {
     if (!workUnit || !phase || !topic) {
       throw new Error(`Usage: engine topic ${command} <work-unit> <phase> <topic>`);
     }
-    respond(fn(process.cwd(), workUnit, phase, topic));
+    const result = fn(process.cwd(), workUnit, phase, topic);
+    if (TOPIC_BEATS.includes(command)) beatQuietly(process.cwd(), workUnit, phase, topic);
+    // The close releases the slot. Everything after it — the conclusion
+    // commit, a plan or implementation wrap-up — is a session tidying a topic
+    // it has finished, and none of it should re-take the hold.
+    if (command === 'complete') clearQuietly(process.cwd(), workUnit, phase, topic);
+    respond(result);
   } catch (err) {
     failJson(err);
   }
@@ -1087,7 +1154,7 @@ function runCache(argv) {
   const [command, workUnit, kind] = argv;
   try {
     if (command !== 'stamp' || !workUnit || !kind) {
-      throw new Error('Usage: engine cache stamp <work-unit> <research-analysis|gap-analysis>');
+      throw new Error('Usage: engine cache stamp <work-unit> gap-analysis');
     }
     respond(stampAnalysisCache(process.cwd(), workUnit, kind));
   } catch (err) {
@@ -1097,6 +1164,8 @@ function runCache(argv) {
 
 // ---------------------------------------------------------------------------
 // agent — the background-agent lifecycle store (domain/agent-state.cjs).
+// Every verb addresses the session's own topic — dispatching, scanning, and
+// walking its own agents' findings — so every one heartbeats.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -1106,18 +1175,23 @@ function runAgent(argv) {
     const { opts, flags, lists, positional } = parseArgs(rest, ['clean', 'final'], ['label']);
     const [workUnit, phase, topic, id, finding] = positional;
     const cwd = process.cwd();
+    /** @param {object} result */
+    const answer = (result) => {
+      beatQuietly(cwd, workUnit, phase, topic);
+      respond(result);
+    };
     if (command === 'dispatch') {
       if (!workUnit || !phase || !topic || positional.length !== 3 || !opts.kind) {
         throw new Error('Usage: engine agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>] [--final]');
       }
-      respond(agentState.dispatchAgent(cwd, workUnit, phase, topic, { kind: opts.kind, labels: lists.label || [], set: opts.set, final: flags.has('final') }));
+      answer(agentState.dispatchAgent(cwd, workUnit, phase, topic, { kind: opts.kind, labels: lists.label || [], set: opts.set, final: flags.has('final') }));
       return;
     }
     if (command === 'scan') {
       if (!workUnit || !phase || !topic || positional.length !== 3) {
         throw new Error('Usage: engine agent scan <work-unit> <phase> <topic>');
       }
-      respond(agentState.scanAgents(cwd, workUnit, phase, topic));
+      answer(agentState.scanAgents(cwd, workUnit, phase, topic));
       return;
     }
     if (command === 'ack') {
@@ -1126,7 +1200,7 @@ function runAgent(argv) {
         throw new Error('Usage: engine agent ack <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)');
       }
       const findings = hasFindings ? opts.findings.split(',').map((f) => f.trim()) : [];
-      respond(agentState.ackAgent(cwd, workUnit, phase, topic, id, { findings }));
+      answer(agentState.ackAgent(cwd, workUnit, phase, topic, id, { findings }));
       return;
     }
     if (command === 'announce' || command === 'incorporate') {
@@ -1134,14 +1208,14 @@ function runAgent(argv) {
         throw new Error(`Usage: engine agent ${command} <work-unit> <phase> <topic> <id>`);
       }
       const fn = command === 'announce' ? agentState.announceAgent : agentState.incorporateAgent;
-      respond(fn(cwd, workUnit, phase, topic, id));
+      answer(fn(cwd, workUnit, phase, topic, id));
       return;
     }
     if (command === 'surface') {
       if (!workUnit || !phase || !topic || !id || !finding || positional.length !== 5) {
         throw new Error('Usage: engine agent surface <work-unit> <phase> <topic> <id> <finding>[,<finding>…]');
       }
-      respond(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding));
+      answer(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding));
       return;
     }
     throw new Error('Usage: engine agent <dispatch|scan|ack|announce|surface|incorporate> <work-unit> <phase> <topic> …');
@@ -1164,10 +1238,13 @@ function runBoot() {
 }
 
 // ---------------------------------------------------------------------------
-// commit — the scoped commit helper: stage `.workflows/{wu}` (the inbox with
-// --inbox, or the whole tree with --workflows) and commit. The knowledge
-// store rides along whenever it exists (domain/commit.cjs). A clean tree is
-// fine: {committed: null}.
+// commit — the scoped commit helper. Every form computes a pathspec and
+// commits confined to it: the work unit (`.workflows/{wu}`), the inbox, the
+// roadmap, the whole `.workflows` tree, one topic's artifacts (`--topic`),
+// the discovery session's paths (`--discovery`), a plan's declared storage
+// (`--plan`), or declared code paths (`--paths`). The knowledge store rides
+// the work-unit forms whenever it exists (domain/commit.cjs). A clean scope
+// is fine: {committed: null}.
 // ---------------------------------------------------------------------------
 
 // Per-phase artifact pathspecs for `commit --topic` — the paths a topic's
@@ -1177,62 +1254,122 @@ function runBoot() {
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
   research: (wu, t) => [`.workflows/${wu}/research/${t}.md`, `.workflows/${wu}/research/.triage/${t}`],
   discussion: (wu, t) => [`.workflows/${wu}/discussion/${t}.md`, `.workflows/${wu}/discussion/.triage/${t}`],
-  investigation: (wu, t) => [`.workflows/${wu}/investigation/${t}.md`],
+  investigation: (wu, t) => [`.workflows/${wu}/investigation/${t}.md`, `.workflows/${wu}/investigation/.triage/${t}`],
   specification: (wu, t) => [`.workflows/${wu}/specification/${t}`],
   planning: (wu, t) => [`.workflows/${wu}/planning/${t}`],
   implementation: (wu, t) => [`.workflows/${wu}/implementation/${t}`],
   review: (wu, t) => [`.workflows/${wu}/review/${t}`],
 });
 
+// A topic whose item reads one of these is finished: nothing further a
+// session does to it is work on a live topic, so its commits release the slot
+// rather than hold it.
+const TERMINAL_TOPIC_STATUSES = ['completed', 'cancelled', 'superseded', 'promoted'];
+
 /**
- * Whether the directory holds any file, at any depth. An existing-but-empty
- * directory is a git no-man's-land: `git add` tolerates its pathspec
- * silently while `git commit -- <paths>` refuses it — the state every
- * triage queue reaches once its last concern's deletion is committed.
- * @param {string} dirAbs
- * @returns {boolean}
+ * A phase item straight off disk, or null when there is none — a direct read,
+ * because the beat/clear decision must cost nothing and must never fail a
+ * commit that has already landed.
+ * @param {string} cwd @param {string} wu @param {string} phase @param {string} topic
+ * @returns {Record<string, unknown>|null}
  */
-function dirHasFiles(dirAbs) {
-  /** @type {fs.Dirent[]} */
-  let entries;
+function topicItem(cwd, wu, phase, topic) {
   try {
-    entries = fs.readdirSync(dirAbs, { withFileTypes: true });
+    const manifest = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', wu, 'manifest.json'), 'utf8'));
+    const item = manifest?.phases?.[phase]?.items?.[topic];
+    return item && typeof item === 'object' ? item : null;
   } catch {
-    return false;
+    return null;
   }
-  for (const e of entries) {
-    if (e.isDirectory()) {
-      if (dirHasFiles(path.join(dirAbs, e.name))) return true;
-    } else {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**
- * Keep pathspecs the whole add+commit sequence will accept: a file on disk,
- * a directory with content, or a path holding index entries (a
- * deleted-but-tracked path still stages its deletions). An empty directory
- * with no index entries is dropped — see dirHasFiles.
- * @param {string} cwd @param {string[]} specs
- * @returns {string[]}
+ * The phase item's recorded status, or null when the item or the field is
+ * absent.
+ * @param {string} cwd @param {string} wu @param {string} phase @param {string} topic
+ * @returns {string|null}
  */
-function stageableSpecs(cwd, specs) {
-  const { execFileSync } = require('child_process');
-  return specs.filter((p) => {
-    const abs = path.join(cwd, p);
-    if (fs.existsSync(abs)) {
-      if (!fs.statSync(abs).isDirectory()) return true;
-      if (dirHasFiles(abs)) return true;
-    }
-    try {
-      return execFileSync('git', ['ls-files', '--', p], { cwd, encoding: 'utf8' }).trim() !== '';
-    } catch {
-      return false;
-    }
-  });
+function topicStatus(cwd, wu, phase, topic) {
+  const status = topicItem(cwd, wu, phase, topic)?.status;
+  return typeof status === 'string' ? status : null;
 }
+
+/**
+ * Validate one declared code path. Code has no layout to derive a pathspec
+ * from, so the paths are Claude's to name — and every one is checked before
+ * anything is staged: inside the project, literal (a glob would commit
+ * whatever it happened to match), and never a workflow artifact, which has a
+ * derived scope of its own.
+ * @param {string} cwd @param {string} given
+ * @returns {string} the project-relative path
+ */
+function codePathSpec(cwd, given) {
+  if (given === '' || given === '-') throw new Error(`commit --paths: "${given}" is not a path`);
+  if (/[*?\[\]]/.test(given) || given.startsWith(':')) {
+    throw new Error(`commit --paths: "${given}" is a pattern — name each file literally`);
+  }
+  const abs = path.resolve(cwd, given);
+  const rel = path.relative(cwd, abs);
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`commit --paths: "${given}" resolves outside the project`);
+  }
+  const spec = rel.split(path.sep).join('/');
+  if (spec === '.workflows' || spec.startsWith('.workflows/')) {
+    throw new Error(`commit --paths: "${given}" is a workflow artifact — those commit by their own scope (--topic/--discovery/--plan)`);
+  }
+  // On disk, in the index, or — the case `stageableSpecs` cannot see — gone
+  // from both with its deletion already staged, which is what a `git mv` or
+  // `git rm` leaves behind. The commit door accepts that path; so must the
+  // validator in front of it, or the vanished side of a rename cannot be
+  // named and the commit lands half a move.
+  if (stageableSpecs(cwd, [spec]).length === 0 && !hasStagedDeletions(cwd, spec)) {
+    throw new Error(`commit --paths: "${given}" is neither on disk nor tracked`);
+  }
+  return spec;
+}
+
+/**
+ * The `--for` target must be real. It is what the commit beats, and a beat on
+ * a mistyped topic mints a hold no session owns and nothing clears — the code
+ * slot then reads taken until the machine reboots. Every prose site that
+ * commits code does so from inside a live code phase, so the item always
+ * exists by then; a miss is a typo, and it fails loudly.
+ * @param {string} cwd @param {{workUnit: string, phase: string, topic: string}} target
+ */
+function assertCodeTarget(cwd, target) {
+  const { workUnit, phase, topic } = target;
+  if (workUnit.includes('/') || workUnit.includes('..')) throw new Error(`invalid work unit name "${workUnit}"`);
+  if (topic.includes('..')) throw new Error(`invalid topic name "${topic}"`);
+  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
+    throw new Error(`commit --paths: no work unit directory: .workflows/${workUnit}`);
+  }
+  if (topicItem(cwd, workUnit, phase, topic) === null) {
+    throw new Error(`commit --paths: no ${phase} item "${topic}" in "${workUnit}" — check the --for target`);
+  }
+}
+
+/**
+ * The code commit: the declared paths, committed confined under the commit
+ * lock, answering with what the working tree still holds. `left_dirty` is the
+ * backstop for a forgotten path — every tracked modification and untracked
+ * file left outside `.workflows` (a doc session's dirt is its own, and runs
+ * concurrently by design).
+ * @param {string} cwd @param {string[]} paths @param {string} message
+ * @param {{workUnit: string, phase: string, topic: string}} target
+ */
+function commitCodePaths(cwd, paths, message, target) {
+  assertCodeTarget(cwd, target);
+  const specs = paths.map((p) => codePathSpec(cwd, p));
+  const committed = commitPathspecScoped(cwd, specs, message);
+  beatQuietly(cwd, target.workUnit, target.phase, target.topic);
+  const left = dirtyPaths(cwd).filter((p) => p !== '.workflows' && !p.startsWith('.workflows/'));
+  /** @type {{committed: string|null, left_dirty: string[], note?: string}} */
+  const result = { committed, left_dirty: left };
+  if (committed === null) result.note = 'nothing to commit';
+  respond(result);
+}
+
+const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --state | --topic <phase>/<topic> [--kb] [--sweep]] | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message>';
 
 /** @param {string[]} argv */
 function runCommit(argv) {
@@ -1241,34 +1378,80 @@ function runCommit(argv) {
     /** @type {string|null} */ let message = null;
     /** @type {string|null} */ let plan = null;
     /** @type {string|null} */ let topicSpec = null;
+    /** @type {string[]} */ const files = [];
+    /** @type {string[]} */ const forSpec = [];
+    let paths = false;
+    let discovery = false;
+    let stateScope = false;
     let inbox = false;
     let workflows = false;
     let roadmapScope = false;
     let kb = false;
+    let sweep = false;
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i];
       if (a === '-m' || a === '--message') message = argv[++i];
       else if (a === '--plan') plan = argv[++i];
       else if (a === '--topic') topicSpec = argv[++i];
+      else if (a === '--paths') paths = true;
+      // The code commit's target: work unit and phase/topic, in containment
+      // order, for the beat and nothing else.
+      else if (a === '--for') forSpec.push(argv[++i], argv[++i]);
       else if (a === '--kb') kb = true;
+      else if (a === '--sweep') sweep = true;
+      else if (a === '--discovery') discovery = true;
+      else if (a === '--state') stateScope = true;
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
       else if (a === '--roadmap') roadmapScope = true;
+      else if (paths) files.push(a);
       else if (workUnit === null) workUnit = a;
       else throw new Error(`unexpected argument "${a}"`);
     }
-    const scopeCount = [inbox, workflows, roadmapScope, workUnit !== null].filter(Boolean).length;
-    if (!message || scopeCount !== 1 || (plan !== null && workUnit === null) || plan === '' || plan === undefined ||
-        (topicSpec !== null && workUnit === null) || topicSpec === '' || topicSpec === undefined ||
-        (topicSpec !== null && plan !== null) || (kb && topicSpec === null)) {
-      throw new Error('Usage: engine commit <work-unit> -m <message> [--plan <topic> | --topic <phase>/<topic> [--kb]] | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message>');
-    }
     const cwd = process.cwd();
+
+    if (paths) {
+      // Code commits are the one scope no layout derives (P7): declared,
+      // validated, confined, and answered with the residual dirt.
+      const [forWorkUnit, forTopicSpec] = forSpec;
+      const parts = (forTopicSpec || '').split('/');
+      if (!message || files.length === 0 || forSpec.length !== 2 || !forWorkUnit || parts.length !== 2
+          || !CODE_PHASES.includes(parts[0]) || !parts[1] || plan !== null || topicSpec !== null
+          || discovery || stateScope || inbox || workflows || roadmapScope || kb || sweep || workUnit !== null) {
+        throw new Error(COMMIT_USAGE);
+      }
+      commitCodePaths(cwd, files, message, { workUnit: forWorkUnit, phase: parts[0], topic: parts[1] });
+      return;
+    }
+
+    // `--state` names two scopes by whether a work unit rides with it: the
+    // unit's own analysis dir, or the global one.
+    const globalState = stateScope && workUnit === null;
+    const scopeCount = [inbox, workflows, roadmapScope, globalState, workUnit !== null].filter(Boolean).length;
+    const workUnitFlags = [plan !== null, topicSpec !== null, discovery, stateScope && workUnit !== null].filter(Boolean).length;
+    if (!message || scopeCount !== 1 || forSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
+        workUnitFlags > 1 || plan === '' || plan === undefined ||
+        topicSpec === '' || topicSpec === undefined ||
+        (kb && topicSpec === null) || (sweep && topicSpec === null)) {
+      throw new Error(COMMIT_USAGE);
+    }
     /** @type {string|string[]} */ let scope;
-    if (workflows) {
+    // The knowledge store rides only where the form's own action can dirty
+    // it: a work unit's cadence commits, the whole-tree migration commit, and
+    // the product session's. A plan authoring pass, an inbox transaction and
+    // the global state dir never touch the store, so sweeping its dirt in
+    // would be the theft the confinement removes.
+    let rider = true;
+    if (globalState) {
+      // `.workflows/.state` — migrations, environment setup: project-level
+      // bookkeeping written from inside whatever session happened to need it.
+      scope = '.workflows/.state';
+      rider = false;
+    } else if (workflows) {
       scope = '.workflows';
     } else if (inbox) {
       scope = '.workflows/.inbox';
+      rider = false;
     } else if (roadmapScope) {
       // The product session's cadence commit: the roadmap dir (sessions,
       // imports) plus the project manifest (the roadmap node lives there).
@@ -1307,22 +1490,66 @@ function runCommit(argv) {
           ...artifact(wu, topic),
           ...(kb ? [KB_DIR] : []),
         ]);
-        if (specs.length === 0) {
-          respond({ committed: null, note: 'nothing to commit' });
-          return;
+        const committed = specs.length === 0 ? null : commitPathspecScoped(cwd, specs, message);
+        // `--sweep` outranks everything. It marks a commit on a topic this
+        // session is not working — the conclude sweep's leavings, a
+        // foreign-topic delivery's retry, a correction landed in another
+        // phase's document — and presence there is somebody else's. Stamping
+        // it would manufacture a hold; clearing it would destroy a live
+        // peer's.
+        //
+        // Otherwise the item's own status decides. A terminal item is
+        // finished, so every commit that follows its close — the conclusion,
+        // the plan wrap-up, review's complete-then-commit — releases the slot
+        // rather than re-taking it until the process dies. `--kb` clears for
+        // the same reason at the conclusion moment. Anything else is the
+        // session's own cadence commit, and that is its heartbeat.
+        if (!sweep) {
+          const status = topicStatus(cwd, wu, phase, topic);
+          if (status !== null) {
+            if (kb || TERMINAL_TOPIC_STATUSES.includes(status)) clearQuietly(cwd, wu, phase, topic);
+            else beatQuietly(cwd, wu, phase, topic);
+          }
         }
-        const committed = commitPathspecScoped(cwd, specs, message);
+        if (committed === null) respond({ committed: null, note: 'nothing to commit' });
+        else respond({ committed });
+        return;
+      }
+      if (stateScope) {
+        // --state: the work unit's analysis dir plus its manifest — the scope
+        // the epic-wide analyses write (grouping, consolidation, the gap
+        // analysis, build-order sequencing). Every one of them runs beside
+        // live topic sessions whose half-written documents sit in the same
+        // work unit, so the analysis slices its own paths and never theirs.
+        // The store rides: an analysis that stamped its cache indexed it.
+        const committed = commitPathspecWithKb(cwd, [
+          `.workflows/${wu}/.state`,
+          `.workflows/${wu}/manifest.json`,
+        ], message);
+        if (committed === null) respond({ committed: null, note: 'nothing to commit' });
+        else respond({ committed });
+        return;
+      }
+      if (discovery) {
+        // --discovery: the discovery session's cadence commit. Discovery runs
+        // beside live research and discussion sessions, so it slices its own
+        // paths — session logs, briefs, the manifest the map lives in.
+        const specs = stageableSpecs(cwd, discoveryScope(wu));
+        const committed = specs.length === 0 ? null : commitPathspecScoped(cwd, specs, message);
         if (committed === null) respond({ committed: null, note: 'nothing to commit' });
         else respond({ committed });
         return;
       }
       if (plan !== null) {
-        // --plan: the plan's declared storage pathspecs (recorded at plan
-        // init from the format's authoring doc) plus the project manifest
-        // (plan init writes project defaults). A pathspec that neither exists
-        // on disk nor has index entries is skipped — `git add` would refuse
-        // it — while a deleted-but-tracked path still stages its deletions
-        // (the restart-cleanup commits depend on that).
+        // --plan: the planning topic's own directory and the work-unit
+        // manifest — the action scope, like --topic — plus the plan's
+        // declared storage pathspecs (recorded at plan init from the format's
+        // authoring doc, and often outside the work unit) and the project
+        // manifest (plan init writes project defaults). A pathspec that
+        // neither exists on disk nor has index entries is skipped, while a
+        // deleted-but-tracked path still commits its deletions (the
+        // restart-cleanup commits depend on that).
+        if (plan.includes('/') || plan.includes('..')) throw new Error(`invalid planning topic name "${plan}"`);
         const manifestFile = path.join(cwd, '.workflows', wu, 'manifest.json');
         /** @type {any} */ let planItem;
         try {
@@ -1343,10 +1570,18 @@ function runCommit(argv) {
             throw new Error(`commit --plan: illegal storage_paths entry ${JSON.stringify(p)} — pathspecs are relative, never ".", "..", or absolute`);
           }
         }
-        scope = [scope, ...stageableSpecs(cwd, ['.workflows/manifest.json', ...declared])];
+        scope = stageableSpecs(cwd, [
+          `.workflows/${wu}/planning/${plan}`,
+          `.workflows/${wu}/manifest.json`,
+          '.workflows/manifest.json',
+          ...declared,
+        ]);
+        rider = false;
       }
     }
-    const committed = commitScopedWithKb(cwd, scope, message);
+    const committed = rider
+      ? commitPathspecWithKb(cwd, scope, message)
+      : commitPathspecScoped(cwd, scope, message);
     if (committed === null) respond({ committed: null, note: 'nothing to commit' });
     else respond({ committed });
   } catch (err) {
@@ -1357,7 +1592,7 @@ function runCommit(argv) {
 /** @param {string[]} argv */
 function runRender(argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -1372,6 +1607,7 @@ function runRender(argv) {
       if (flags.has('pipeline')) args.pipeline = '1';
       if (flags.has('donow')) args.donow = '1';
       if (flags.has('recommendations')) args.recommendations = '1';
+      if (flags.has('dead-end')) args['dead-end'] = '1';
       respondSections(renderSurface(process.cwd(), command, args));
     } catch (err) {
       failJson(err);

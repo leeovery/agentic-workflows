@@ -10,6 +10,8 @@ This flow runs once per "user signals done" entry during Step 6 (Research Sessio
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
+**A completed artifact carries no unowned threads.** Every gap this review surfaces resolves before conclusion: explored here (the session or a deep-dive), corrected in place, routed to the topic that owns it — existing or newly created, confirmed with the user — parked on the roadmap as a staged product capability, or rejected by you (*not now*, or dismissed for good — the review advises, and the conclusion is yours to call). Closing a finding by writing it into the file as unexplored material is not a resolution; unexplored notes serve nobody downstream.
+
 ## A. Check Review State
 
 Read the store:
@@ -152,6 +154,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit
 
 **Otherwise:**
 
+Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} dismissed_grounds
+```
+
 **Agent path**: `../../../agents/workflow-research-review.md`
 
 Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
@@ -161,6 +169,7 @@ The review agent receives:
 1. **Research file path(s)** — `.workflows/{work_unit}/research/{topic}.md` (for epic, include all research files in `.workflows/{work_unit}/research/` relevant to the current topic)
 2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
 3. **Maturity indication** — one line judging where the session stands. At conclusion this is `largely concluded` unless the session genuinely stopped early.
+4. **Dismissed grounds** — the list read above, verbatim. Omit this input entirely when the list is empty.
 
 When the agent returns:
 

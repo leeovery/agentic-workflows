@@ -4,6 +4,10 @@
 
 ---
 
+**Parameters** (provided by caller via Load directive):
+
+- `closure` — which closure applies: `discussion` (the findings feed a discussion) or `dead-end` (the topic is closed as a dead end)
+
 First check the topic's triage queue:
 
 ```bash
@@ -37,14 +41,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
    node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.research.{topic} --verb complete --warn
    ```
 
-3. Clear this session's presence and sweep for leavings:
+3. Sweep for leavings:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs presence clear {work_unit} research {topic}
-   git status --porcelain -- .workflows
+   git status --porcelain -- .workflows/{work_unit}
    ```
 
-   **If dirt remains under another topic's paths:** run `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}`. Dirt under a `held` row's topic belongs to that session — leave it, however long it has idled. For each dirty topic with no held presence — a dead session's leavings — commit it action-scoped: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{dirty_topic} -m "chore({work_unit}/{dirty_topic}): sweep session leavings"`.
+   **If dirt remains under another topic's paths:** run `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}`. Dirt under a `held` row's topic belongs to that session — leave it, however long it has idled. For each dirty topic with no held presence — a dead session's leavings — commit it action-scoped: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{dirty_topic} --sweep -m "chore({work_unit}/{dirty_topic}): sweep session leavings"`.
 
    **Otherwise:** nothing to sweep — continue.
 
@@ -54,10 +57,20 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 5. Closure signpost:
 
+**If `closure` is `discussion`:**
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 > Research complete. The discussion phase will use these findings to make decisions about architecture and approach.
+```
+
+**If `closure` is `dead-end`:**
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Research complete — the topic is closed as a dead end, so no discussion follows. It stays on the map and in the knowledge base as record and seed material, and reopening it from the map makes it actionable again.
 ```
 
 6. Invoke `/workflow-bridge {work_unit} research`.

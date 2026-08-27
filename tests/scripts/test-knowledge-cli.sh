@@ -213,7 +213,8 @@ MD
 }
 
 # Create an analysis cache file under .state/.
-# Filename arg must be one of: research-analysis | discovery-gap-analysis.
+# discovery-gap-analysis is the only indexable filename; other names are
+# written to prove the whitelist refuses them.
 create_analysis_cache() {
   local wu="$1" filename="$2"
   mkdir -p "$TEST_ROOT/.workflows/$wu/.state"
@@ -2208,17 +2209,17 @@ teardown_project
 
 echo "=== Analysis Cache Indexing Tests ==="
 
-# --- Test 88: Index research-analysis cache ---
-echo "Test 88: Index research-analysis cache"
+# --- Test 88: Retired research-analysis cache rejected ---
+echo "Test 88: Retired research-analysis cache rejected"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
 create_analysis_cache "auth-flow" "research-analysis"
-output=$(run_kb index .workflows/auth-flow/.state/research-analysis.md 2>&1)
 exit_code=0
+output=$(run_kb index .workflows/auth-flow/.state/research-analysis.md 2>&1 || true)
 run_kb index .workflows/auth-flow/.state/research-analysis.md >/dev/null 2>&1 || exit_code=$?
-assert_eq "indexes research-analysis cache" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
-assert_eq "exits 0" "0" "$exit_code"
+assert_eq "rejects retired research-analysis cache" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "error names the one indexable cache" "true" "$(echo "$output" | grep -qF 'analysis caches (discovery-gap-analysis)' && echo true || echo false)"
 teardown_project
 
 # --- Test 89: Index gap-analysis cache ---
@@ -2239,11 +2240,11 @@ echo "Test 90: Analysis chunks queryable with phase=analysis"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
-create_analysis_cache "auth-flow" "research-analysis"
-run_kb index .workflows/auth-flow/.state/research-analysis.md >/dev/null 2>&1
+create_analysis_cache "auth-flow" "discovery-gap-analysis"
+run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 output=$(run_kb query "caching" 2>&1)
 # Provenance line shape: [analysis | wu/topic | confidence | date]
-assert_eq "query returns analysis-phase hit" "true" "$(echo "$output" | grep -qE '^\[analysis \| auth-flow/research-analysis \| low \|' && echo true || echo false)"
+assert_eq "query returns analysis-phase hit" "true" "$(echo "$output" | grep -qE '^\[analysis \| auth-flow/gap-analysis \| low \|' && echo true || echo false)"
 teardown_project
 
 # --- Test 91: remove --work-unit drops analysis chunks ---
@@ -2251,9 +2252,7 @@ echo "Test 91: remove --work-unit drops analysis chunks"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
-create_analysis_cache "auth-flow" "research-analysis"
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
-run_kb index .workflows/auth-flow/.state/research-analysis.md >/dev/null 2>&1
 run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 before_query=$(run_kb query "caching" 2>&1)
 assert_eq "analysis indexed before remove" "true" "$(echo "$before_query" | grep -qE '^\[analysis \|' && echo true || echo false)"
@@ -2281,10 +2280,10 @@ echo "Test 93: Hidden wu rejected for .state path"
 setup_project
 write_stub_config
 mkdir -p "$TEST_ROOT/.workflows/.hidden/.state"
-echo "content" > "$TEST_ROOT/.workflows/.hidden/.state/research-analysis.md"
+echo "content" > "$TEST_ROOT/.workflows/.hidden/.state/discovery-gap-analysis.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$BUNDLE" index ".workflows/.hidden/.state/research-analysis.md" 2>/dev/null || exit_code=$?
+node "$BUNDLE" index ".workflows/.hidden/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects hidden wu" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
@@ -2293,28 +2292,27 @@ echo "Test 94: Re-indexing analysis cache idempotent"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
-create_analysis_cache "auth-flow" "research-analysis"
-run_kb index .workflows/auth-flow/.state/research-analysis.md >/dev/null 2>&1
+create_analysis_cache "auth-flow" "discovery-gap-analysis"
+run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 first_status=$(run_kb status 2>&1)
 first_chunks=$(echo "$first_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
-run_kb index .workflows/auth-flow/.state/research-analysis.md >/dev/null 2>&1
+run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 second_status=$(run_kb status 2>&1)
 second_chunks=$(echo "$second_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
 assert_eq "analysis chunk count stable across re-index" "$first_chunks" "$second_chunks"
 teardown_project
 
-# --- Test 95: Bulk index discovers analysis caches ---
-echo "Test 95: Bulk index discovers analysis caches"
+# --- Test 95: Bulk index discovers the gap-analysis cache only ---
+echo "Test 95: Bulk index discovers the gap-analysis cache only"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
 create_analysis_cache "auth-flow" "research-analysis"
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
 output=$(run_kb index 2>&1)
-research_lines=$(echo "$output" | grep -c 'research-analysis.md' || true)
 gap_lines=$(echo "$output" | grep -c 'discovery-gap-analysis.md' || true)
-assert_eq "bulk discovers research-analysis" "true" "$([ "$research_lines" -ge 1 ] && echo true || echo false)"
 assert_eq "bulk discovers discovery-gap-analysis" "true" "$([ "$gap_lines" -ge 1 ] && echo true || echo false)"
+assert_eq "bulk skips retired research-analysis" "true" "$(echo "$output" | grep -q '/research-analysis.md' && echo false || echo true)"
 teardown_project
 
 # --- Test 96: Bulk index skips cancelled wu's analysis caches ---
@@ -2322,10 +2320,10 @@ echo "Test 96: Bulk index skips cancelled wu analysis caches"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
-create_analysis_cache "auth-flow" "research-analysis"
+create_analysis_cache "auth-flow" "discovery-gap-analysis"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set auth-flow status cancelled >/dev/null 2>&1
 output=$(run_kb index 2>&1)
-assert_eq "cancelled wu's analysis cache skipped" "true" "$(echo "$output" | grep -q 'research-analysis.md' && echo false || echo true)"
+assert_eq "cancelled wu's analysis cache skipped" "true" "$(echo "$output" | grep -q 'discovery-gap-analysis.md' && echo false || echo true)"
 teardown_project
 
 # --- Test 97: Bulk index ignores stray .state files (whitelist) ---
@@ -2339,18 +2337,17 @@ output=$(run_kb index 2>&1)
 assert_eq "stray .state file not indexed" "true" "$(echo "$output" | grep -q 'migrations.md' && echo false || echo true)"
 teardown_project
 
-# --- Test 98: Bulk index skips missing analysis caches silently ---
-echo "Test 98: Missing analysis caches skipped silently"
+# --- Test 98: Bulk index skips a missing analysis cache silently ---
+echo "Test 98: Missing analysis cache skipped silently"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
-create_analysis_cache "auth-flow" "research-analysis"
-# Only research-analysis exists; gap-analysis is absent.
+create_discussion_file "auth-flow" "session-mgmt"
+# No analysis cache on disk — the walk must skip it without failing.
 output=$(run_kb index 2>&1)
 exit_code=0
 run_kb index >/dev/null 2>&1 || exit_code=$?
 assert_eq "missing cache doesn't fail bulk" "0" "$exit_code"
-assert_eq "present cache discovered" "true" "$(echo "$output" | grep -q 'research-analysis.md' && echo true || echo false)"
 assert_eq "absent cache not mentioned" "true" "$(echo "$output" | grep -q 'discovery-gap-analysis.md' && echo false || echo true)"
 teardown_project
 
@@ -2359,10 +2356,10 @@ echo "Test 99: Path-traversal on .state rejected"
 setup_project
 write_stub_config
 mkdir -p "$TEST_ROOT/.workflows/valid/.state"
-echo "content" > "$TEST_ROOT/.workflows/valid/.state/research-analysis.md"
+echo "content" > "$TEST_ROOT/.workflows/valid/.state/discovery-gap-analysis.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$BUNDLE" index ".workflows/../etc/.state/research-analysis.md" 2>/dev/null || exit_code=$?
+node "$BUNDLE" index ".workflows/../etc/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects traversal on .state" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 

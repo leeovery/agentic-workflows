@@ -151,16 +151,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}
 {executor's ISSUES content}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ How would you like to proceed?`**
 
-**`r/retry`** → Re-invoke the executor with your comments (provide below)
-**`s/skip`**  → Skip this task and move to the next
-**`t/stop`**  → Stop implementation entirely
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -440,13 +435,27 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
 
 **If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`).
 
-**Commit all changes** with raw git — stage the task's code and tests, the plan's task state (the files the format's **updating.md** touched, plus the `storage_paths` pathspecs recorded on the planning item for storage outside the work unit), the work unit's manifest, and the task's fix-tracking file when one exists (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`), then commit:
+**Commit the task** — each scope through the verb that owns it, state before code, so the code commit's answer names only code:
 
-```
-impl({work_unit}): T{internal_id} — {brief description}
-```
+1. **The plan's task state** — the files the format's **updating.md** touched, the `storage_paths` recorded on the planning item for storage outside the work unit, and the work unit's manifest:
 
-One commit per approved task, staging the listed paths explicitly — never `git add -A` or `git add .`. The subject is exactly as fenced — `T` immediately followed by the internal id, no space (`impl(pay): Tpay-1-1 — …`); review's scope-grep finds task commits by this token. Never `engine commit` here — its scopes cover `.workflows` only, never code or the plan format's storage.
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): record T{internal_id}" --plan {topic}
+   ```
+
+2. **The task's fix tracking**, when the task took a fix round (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`):
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): record T{internal_id} fix rounds" --topic implementation/{topic}
+   ```
+
+3. **The task's code and tests** — name every file the task wrote; the engine validates each path, commits confined to them, and answers with `left_dirty`:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {code and test files} -m "impl({work_unit}): T{internal_id} — {brief description}" --for {work_unit} implementation/{topic}
+   ```
+
+   The subject is exactly as shown — `T` immediately followed by the internal id, no space (`impl(pay): Tpay-1-1 — …`); review's scope-grep finds task commits by this token, and this commit alone is what it reads the task's file list from, so nothing but code and tests belongs in it. Anything in the response's `left_dirty` that this task touched is a path you forgot: commit it now with a second `--paths` call before proceeding. Nothing else in that list is yours. `.workflows` dirt never appears there at all, but a plan store outside the work unit does, and so does anything else on the tree — including a concurrent session's. Name only files this task wrote.
 
 #### If `{disposition}` is `boundary`
 

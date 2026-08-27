@@ -26,7 +26,7 @@
     "skills/workflow-shared/references/triage-landing.md",
     "skills/workflow-shared/references/create-discovery-topic.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
-    "skills/workflow-discussion-process/references/off-topic-epic.md",
+    "skills/workflow-shared/references/off-topic-epic.md",
     "skills/workflow-discussion-process/references/closing-gates.md",
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
@@ -53,6 +53,7 @@
       "discussion-map set search-relevance synonym-handling result-caching",
       "topic triage search-relevance research behavioural-ranking",
       "reroute concern to behavioural-ranking",
+      "render conclude-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [

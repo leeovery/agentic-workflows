@@ -32,7 +32,7 @@ The brief just read is the carrier — nothing more to read here.
 
 ## B. Check for Research
 
-Completed research reaches a topic two ways: under the topic's own name, and through provenance — a topic spawned by research analysis carries `research-analysis:{parent}` in its discovery item's `source`, naming the research that contributed it.
+Completed research reaches a topic two ways: under the topic's own name, and through provenance — a rerouted or split-out topic carries its origin in its discovery item's `source` (`reroute:{origin}`, `legacy-split:{parent}`, or the historical `research-analysis:{parent}` / `research-split:{parent}`), naming the topic whose research contributed it.
 
 Read the topic's own research status:
 
@@ -46,7 +46,7 @@ Then the topic's provenance (empty for non-epic work — no discovery map item):
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} source
 ```
 
-Each `research-analysis:{parent}` entry (values comma-accumulate) names a contributing research topic — read each parent's `{work_unit}.research.{parent}` status the same way.
+Each such entry (values comma-accumulate) names a contributing topic — read each parent's `{work_unit}.research.{parent}` status the same way; a parent with no research item contributes nothing.
 
 #### If any status read is `completed`
 

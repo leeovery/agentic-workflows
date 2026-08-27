@@ -23,15 +23,14 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
 const { computeTopicLifecycle, phaseItems } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
 // Why each non-fresh lifecycle blocks a destructive op — mirrors the
 // conversational rejection phrasing in map-operations.md. Derived from the
 // actual research state, same honesty rule as the render-time tags: superseded
-// research is named as such, never as completed, and a handled topic claims a
-// fan-out only when research completed or was superseded.
+// research is named as such, never as completed.
 /** @param {string} lifecycle @param {string|null} researchState */
 function lifecyclePhrase(lifecycle, researchState) {
   switch (lifecycle) {
@@ -42,10 +41,7 @@ function lifecyclePhrase(lifecycle, researchState) {
         ? 'its research was superseded and discussion is queued'
         : 'research has completed and discussion is queued';
     case 'decided': return 'discussion has concluded';
-    case 'handled':
-      return researchState === 'completed' || researchState === 'superseded'
-        ? 'it has fanned out into discussions and stays on the map as historical anchor'
-        : 'it is marked handled and stays on the map as historical anchor';
+    case 'handled': return 'it is closed as a dead end and stays on the map as record';
     default: return 'it has phase work in cancelled state and stays on the map as historical record'; // cancelled
   }
 }
@@ -138,7 +134,7 @@ function assertFresh(manifest, name, verbPhrase) {
     );
   }
   const recovery = lifecycle === 'handled'
-    ? 'unhandle it to make it actionable again'
+    ? 'reopen it to make it actionable again'
     : 'cancel from the epic menu instead';
   throw new Error(`"${name}" can't be ${verbPhrase} — ${lifecyclePhrase(lifecycle, research_state)}; ${recovery}`);
 }
@@ -179,11 +175,11 @@ function sequenceMap(cwd, workUnit, orders) {
 
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `discovery(${workUnit}): sequence topic map`, warnings);
+  const outcome = commitTailPathspec(cwd, discoveryScope(workUnit), `discovery(${workUnit}): sequence topic map`, warnings);
   /** @type {SequenceResult} */
   const result = { ordered: orders, committed: outcome.committed };
   if (outcome.failed) result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
+  noteCommitOutcome(result, outcome, `${workUnit} --discovery`);
   return result;
 }
 
@@ -195,7 +191,7 @@ function sequenceMap(cwd, workUnit, orders) {
  * artifacts already exist (absorb, pivot); it is mutually exclusive with
  * passing either field. Refuses an active duplicate, and a dismissed name
  * unless `forceDismissed` carries the user's confirmed re-add decision (the
- * entry is then pulled off the dismissed list so analyses treat the topic as
+ * entry is then pulled off the dismissed list so the analysis treats the topic as
  * live again). No git commit — the calling session's commit cadence picks the
  * change up.
  * @param {string} cwd project root
@@ -371,7 +367,7 @@ function editItem(cwd, workUnit, name, { summary, description } = {}) {
 
 /**
  * Hard-delete a fresh map item and push its name onto the dismissed list so
- * analyses won't auto-re-propose it. Fresh-only — anything further along
+ * the analysis won't auto-re-propose it. Fresh-only — anything further along
  * stays on the map (as work-in-flight or historical anchor). No git commit
  * for the map write itself; a roadmap join naming the topic is reverted (the
  * un-pull for a never-started topic) and that project-manifest write stages
@@ -413,13 +409,13 @@ function removeItem(cwd, workUnit, name) {
   // back to the map on removal — the stretch-scope wrap's revert. Lazy
   // require and after the work-unit lock closes, mirroring the cancel hop —
   // and like that hop the project manifest is staged in its own commit (the
-  // map op itself stays cadence-committed, wu-scoped, which never covers the
+  // map op itself stays cadence-committed, and no work-unit scope reaches the
   // project manifest).
   const { revertJoins } = require('./roadmap.cjs');
   const reverted = revertJoins(cwd, workUnit, { topic: name });
   if (reverted.length > 0) {
     result.roadmap_reverted = reverted;
-    const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+    const { PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
     /** @type {string[]} */
     const warnings = [];
     commitTailPathspec(cwd, PROJECT_MANIFEST_SPEC, `roadmap: un-pull ${reverted.join(', ')} (${name} removed from ${workUnit})`, warnings);
@@ -552,10 +548,10 @@ function handleItem(cwd, workUnit, name) {
     const item = mapItem(manifest, name);
     const { lifecycle } = computeTopicLifecycle(manifest, name);
     if (lifecycle === 'handled') {
-      throw new Error(`"${name}" can't be marked handled — it's already marked handled`);
+      throw new Error(`"${name}" can't be closed as a dead end — it's already closed`);
     }
     if (lifecycle === 'cancelled') {
-      throw new Error(`"${name}" can't be marked handled — it's cancelled; reactivate the phase work from the epic menu first`);
+      throw new Error(`"${name}" can't be closed as a dead end — it's cancelled; reactivate the phase work from the epic menu first`);
     }
     item.handled = true;
 
@@ -579,7 +575,7 @@ function unhandleItem(cwd, workUnit, name) {
     const item = mapItem(manifest, name);
     const { lifecycle } = computeTopicLifecycle(manifest, name);
     if (lifecycle !== 'handled') {
-      throw new Error(`"${name}" can't be unhandled — it isn't marked handled, so there's nothing to unhandle`);
+      throw new Error(`"${name}" can't be reopened — it isn't closed as a dead end, so there's nothing to reopen`);
     }
     delete item.handled;
 

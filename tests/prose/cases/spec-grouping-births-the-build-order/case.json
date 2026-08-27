@@ -21,6 +21,7 @@
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
+      "presence scan search-relevance",
       "manifest apply search-relevance"
     ],
     "calls_exclude": [

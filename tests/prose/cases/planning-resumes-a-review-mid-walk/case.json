@@ -58,6 +58,7 @@
       "manifest set pay.planning.pay tracking.review-traceability-tracking-c1 complete",
       "planning(pay): complete plan review",
       "manifest set pay.planning.pay spec_commit",
+      "render conclude-gate pay.planning.pay",
       "topic complete pay planning pay",
       "planning(pay): complete plan"
     ],

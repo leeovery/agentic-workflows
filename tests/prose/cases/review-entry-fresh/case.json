@@ -9,10 +9,16 @@
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-review-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/code-session-gate.md",
     "skills/workflow-review-entry/references/invoke-skill.md"
   ],
   "invariants": {
     "calls_include": [
+      "render entry-gate pay.review.pay",
+      "render code-gate pay.review.pay"
+    ],
+    "calls_in_order": [
+      "render code-gate pay.review.pay",
       "render entry-gate pay.review.pay"
     ],
     "calls_exclude": [

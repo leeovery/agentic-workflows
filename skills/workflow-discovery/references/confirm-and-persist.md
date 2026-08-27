@@ -42,7 +42,7 @@ Notes:
 
 - Each entry's `name` becomes the manifest dict key (the `{topic}` path segment).
 - `routing` is the value confirmed by the user at the synthesis gate.
-- Batch entries always land with `source: discovery`, marking topics the user surfaced during discovery — distinct from items added later with other provenance (e.g. `research-analysis`, `gap-analysis`).
+- Batch entries always land with `source: discovery`, marking topics the user surfaced during discovery — distinct from items added later with other provenance (e.g. `gap-analysis`, `reroute:{origin}`).
 - The response's `map_total` is `{T}` for the Conclusion line in **C**, and `added` lists every persisted topic — no re-read needed.
 - `brief_path` records where the topic's brief lives; the brief file itself was written at harvest by [brief-synthesis.md](brief-synthesis.md).
 
@@ -116,7 +116,7 @@ Pick the commit message:
 
 #### If the log file exists
 
-Close the session — one engine transaction clears the active-session marker (resume detection on the next entry sees a closed session) and indexes the finalised log into the knowledge base so this epic's discovery is retrievable by later phases and sibling epics (idempotent — re-indexing the same session replaces its chunks; distinct sessions coexist under their own identity), then commits. One call covers whatever this session left dirty: the manifest writes from **A**, the Topics Identified write, the Conclusion replacement, and the briefs written and reconciled at harvest by [brief-synthesis.md](brief-synthesis.md):
+Close the session — one engine transaction clears the active-session marker (resume detection on the next entry sees a closed session) and indexes the finalised log into the knowledge base so this epic's discovery is retrievable by later phases and sibling epics (idempotent — re-indexing the same session replaces its chunks; distinct sessions coexist under their own identity), then commits. One call covers everything a discovery session writes — its logs, its briefs, the manifest: the manifest writes from **A**, the Topics Identified write, the Conclusion replacement, and the briefs written and reconciled at harvest by [brief-synthesis.md](brief-synthesis.md):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-session close {work_unit} -m "{message}"
@@ -132,10 +132,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render session-receipt {w
 
 #### If no log file exists
 
-Browse-only session — the marker was never set and there is nothing to index. Commit whatever the session left dirty; a clean tree reports `committed: null` and is fine:
+Browse-only session — the marker was never set and there is nothing to index. Commit anything the session left in the discovery scope; a clean tree reports `committed: null` and is fine:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): finalise session log"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): finalise session log" --discovery
 ```
 
 → Return to caller.

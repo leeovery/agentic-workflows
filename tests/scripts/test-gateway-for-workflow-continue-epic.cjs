@@ -289,9 +289,7 @@ describe('workflow-continue-epic discovery', () => {
       const r = discover(dir);
       const d = r.epics[0].detail;
       assert.ok(d.analysis_caches);
-      assert.ok(d.analysis_caches.research_analysis);
       assert.ok(d.analysis_caches.gap_analysis);
-      assert.strictEqual(d.analysis_caches.research_analysis.status, 'absent');
       assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
     });
 
@@ -1478,7 +1476,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       '=== EPIC: v1 ===',
       'all_done: false',
       'reconcile_pending: (none)',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: gap_analysis=absent',
       'needs_sequencing: true',
       'build_order_needs_sequencing: false',
       'discovery_map (2):',
@@ -1498,7 +1496,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       '=== EPIC: v1 ===',
       'all_done: false',
       'reconcile_pending: (none)',
-      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'analysis_caches: gap_analysis=absent',
       'needs_sequencing: false',
       'build_order_needs_sequencing: false',
       'discovery_map (0):',
@@ -1835,7 +1833,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('view {work_unit} still answers the sectioned snapshot, with and without new arrivals', () => {
     epicFixture();
-    for (const args of [['view', 'v1'], ['view', 'v1', '{"research_analysis":[],"gap_analysis":[]}']]) {
+    for (const args of [['view', 'v1'], ['view', 'v1', '{"gap_analysis":[]}']]) {
       const res = run(args);
       assert.strictEqual(res.status, 0, res.stderr);
       assert.ok(res.stdout.includes('=== DATA'));
@@ -1866,7 +1864,9 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.ok(gate.stdout.includes(
       "=== MENU: in-session gate — 1 (emit verbatim as markdown, then STOP for the user's response) ==="
     ), gate.stdout);
-    assert.ok(gate.stdout.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s.'), gate.stdout);
+    const gateText = gate.stdout.replace(/\n\u00a0+/g, ' ');
+    assert.ok(gateText.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion auth`.'), gateText);
+    assert.ok(gateText.indexOf('`b/back`') < gateText.indexOf('`p/proceed`'), 'back leads the family\'s options');
     const unheld = run(['in-session-gate', 'v1', 'r']);
     assert.ok(unheld.stdout.includes('is not held by another session'), unheld.stdout);
 
@@ -1875,6 +1875,68 @@ describe('workflow-continue-epic CLI dispatch', () => {
     const freed = run(['view', 'v1']);
     assert.ok(freed.stdout.includes('sessions_in_progress: (none)'), freed.stdout);
     assert.ok(!freed.stdout.includes('in session'), freed.stdout);
+  });
+
+  it('a code session anywhere in the project marks this epic\'s code entries', () => {
+    const fs = require('fs');
+    epicFixture();
+    // A ready-to-implement plan in this epic, and a peer session holding the
+    // code slot in a different work unit entirely.
+    const mpath = path.join(dir, '.workflows/v1/manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(mpath, 'utf8'));
+    manifest.phases.specification = { items: { auth: { status: 'completed', order: 1, sources: { auth: { status: 'incorporated' } } } } };
+    manifest.phases.planning = { items: { auth: { status: 'completed', format: 'local-markdown' } } };
+    manifest.phases.discussion.items.auth.status = 'completed';
+    fs.writeFileSync(mpath, JSON.stringify(manifest, null, 2));
+    fs.mkdirSync(path.join(dir, '.workflows/ship'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/ship/manifest.json'), JSON.stringify({
+      name: 'ship', work_type: 'feature', status: 'in-progress', phases: {},
+    }, null, 2));
+    const peer = path.join(dir, '.workflows/.cache/ship/implementation/checkout-flow/presence');
+    fs.mkdirSync(path.dirname(peer), { recursive: true });
+    fs.writeFileSync(peer, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
+
+    const res = run(['view', 'v1']);
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.ok(res.stdout.includes('(code session: ship/checkout-flow, last active'),
+      `the ACTIONS marker names the slot and its holder:\n${res.stdout}`);
+    assert.match(res.stdout.replace(/\n\u00a0+/g, ' '), /~~[^~]*~~ · code session in ship\/checkout-flow/, res.stdout);
+
+    // One gate per attempt: the marker is the menu's awareness signal, and the
+    // stop belongs to the entry skill's code gate — asking here refuses.
+    assert.ok(!res.stdout.includes('(in session:'), `a code row never wears the doc marker:\n${res.stdout}`);
+    const key = res.stdout.split('\n').find((l) => l.includes('start_implementation')).trim().split(/\s+/)[0];
+    const gate = run(['in-session-gate', 'v1', key]);
+    assert.strictEqual(gate.status, 0, gate.stderr);
+    assert.ok(!gate.stdout.includes('MENU: in-session gate'), `no gate section for a code entry:\n${gate.stdout}`);
+    assert.ok(gate.stdout.includes('the code slot is gated at the entry skill'), gate.stdout);
+  });
+
+  it('the caller\'s own hold marks nothing — a session never strikes through itself', () => {
+    const fs = require('fs');
+    epicFixture();
+    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'mine' }) + '\n');
+
+    // From the holding session — stepping back to the menu mid-discussion.
+    const own = spawnSync('node', [GATEWAY, 'view', 'v1'], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'mine' },
+    });
+    assert.strictEqual(own.status, 0, own.stderr);
+    assert.ok(own.stdout.includes('sessions_in_progress: (none)'), own.stdout);
+    assert.ok(!own.stdout.includes('in session'), `its own topic reads free:\n${own.stdout}`);
+    const ownGate = spawnSync('node', [GATEWAY, 'in-session-gate', 'v1', '1'], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'mine' },
+    });
+    assert.ok(ownGate.stdout.includes('is not held by another session'), ownGate.stdout);
+
+    // From anywhere else, the same row is a peer's hold.
+    const peer = spawnSync('node', [GATEWAY, 'view', 'v1'], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'someone-else', CLAUDE_PID: '' },
+    });
+    assert.ok(peer.stdout.includes('sessions_in_progress: discussion/auth'), peer.stdout);
+    assert.ok(peer.stdout.includes('(in session:'), peer.stdout);
   });
 
   it('view without a work unit errors instead of rendering the first epic', () => {

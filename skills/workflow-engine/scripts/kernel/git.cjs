@@ -1,11 +1,16 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel: scoped git operations — stage a pathspec, commit, report the sha.
+// Kernel: scoped git operations — stage a pathspec, commit it confined to
+// exactly those paths, report the sha.
+//
+// Every commit is pathspec-confined: no engine commit can sweep a path
+// outside its declared scope, so concurrent sessions never take each other's
+// work under their own messages.
 //
 // Mechanism only: it knows nothing about work units or the inbox. Every call
 // spawns `git` with an explicit cwd (the project root). Failures throw loud
-// with git's own stderr; a clean index is not a failure — `commitScoped`
+// with git's own stderr; a clean scope is not a failure — `commitPathspec`
 // reports it as `null` so callers can treat an empty pause as fine.
 //
 // Index-mutating operations (add, commit, rm) retry on `index.lock`
@@ -14,6 +19,8 @@
 // holder that outlives it surfaces git's original error.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
+const path = require('path');
 const { spawnSync } = require('child_process');
 
 const INDEX_RETRY_MS = 100;
@@ -75,19 +82,6 @@ function gitIndexed(cwd, args) {
 }
 
 /**
- * Whether the index holds staged changes against HEAD.
- * @param {string} cwd
- * @returns {boolean}
- */
-function hasStagedChanges(cwd) {
-  const res = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd, encoding: 'utf8' });
-  if (res.error) throw new Error(`git diff failed: ${res.error.message}`);
-  if (res.status === 0) return false;
-  if (res.status === 1) return true;
-  throw new Error(`git diff failed: ${(res.stderr || `exit ${res.status}`).trim()}`);
-}
-
-/**
  * Whether the given pathspecs differ from HEAD (worktree or index).
  * @param {string} cwd
  * @param {string[]} specs
@@ -98,30 +92,72 @@ function hasChangesInPaths(cwd, specs) {
 }
 
 /**
- * Stage one or more pathspecs and commit with the given message. The commit
- * itself takes the whole index — anything another process staged rides
- * along. Use `commitPathspec` when the commit must be confined to the named
- * paths.
- * @param {string} cwd      project root
- * @param {string|string[]} pathspec e.g. `.workflows/{wu}` or `.workflows/.inbox`
- * @param {string} message
- * @returns {string|null} the short commit sha, or null when nothing was staged
+ * Whether the directory holds any file, at any depth. An existing-but-empty
+ * directory is a git no-man's-land: `git add` tolerates its pathspec silently
+ * while `git commit -- <paths>` refuses it — the state every triage queue
+ * reaches once its last concern's deletion is committed.
+ * @param {string} dirAbs
+ * @returns {boolean}
  */
-function commitScoped(cwd, pathspec, message) {
-  const specs = Array.isArray(pathspec) ? pathspec : [pathspec];
-  gitIndexed(cwd, ['add', '--', ...specs]);
-  if (!hasStagedChanges(cwd)) return null;
-  gitIndexed(cwd, ['commit', '-m', message]);
-  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+function dirHasFiles(dirAbs) {
+  /** @type {fs.Dirent[]} */
+  let entries;
+  try {
+    entries = fs.readdirSync(dirAbs, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  for (const e of entries) {
+    if (e.isDirectory()) {
+      if (dirHasFiles(path.join(dirAbs, e.name))) return true;
+    } else {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Keep pathspecs the whole add+commit sequence will accept: a file on disk, a
+ * directory with content, or a path holding index entries (a deleted-but-
+ * tracked path still commits its deletions). An empty directory with no index
+ * entries is dropped — see dirHasFiles.
+ * @param {string} cwd @param {string[]} specs
+ * @returns {string[]}
+ */
+function stageableSpecs(cwd, specs) {
+  return specs.filter((p) => {
+    const abs = path.join(cwd, p);
+    if (fs.existsSync(abs)) {
+      if (!fs.statSync(abs).isDirectory()) return true;
+      if (dirHasFiles(abs)) return true;
+    }
+    const res = spawnSync('git', ['ls-files', '--', p], { cwd, encoding: 'utf8' });
+    return res.status === 0 && (res.stdout || '').trim() !== '';
+  });
+}
+
+/**
+ * Whether the pathspec holds changes staged against HEAD. The one state
+ * `stageableSpecs` cannot see: a `git rm` leaves the path in neither the
+ * worktree nor the index, so only HEAD still knows it — and `git commit`
+ * accepts that pathspec where `git add` refuses it.
+ * @param {string} cwd @param {string} spec
+ * @returns {boolean}
+ */
+function hasStagedDeletions(cwd, spec) {
+  const res = spawnSync('git', ['diff', '--cached', '--name-only', '--', spec], { cwd, encoding: 'utf8' });
+  return res.status === 0 && (res.stdout || '').trim() !== '';
 }
 
 /**
  * Commit exactly the named pathspecs — `git commit -- <paths>` builds a
  * temporary index from HEAD plus the worktree content of those paths, so
  * other processes' dirty or staged files are ignored and left untouched.
- * The `add` catches untracked files among the paths. Every pathspec must
- * exist on disk or hold index entries — `git add` refuses a pathspec that
- * matches nothing; callers exists-guard.
+ * The `add` catches untracked files among the paths. Pathspecs git knows
+ * nothing about are dropped: it refuses one that matches nothing, and a
+ * scope naming a path its transaction never created is normal (an absent
+ * triage queue, a work unit with no imports).
  * @param {string} cwd      project root
  * @param {string|string[]} pathspec
  * @param {string} message
@@ -129,10 +165,33 @@ function commitScoped(cwd, pathspec, message) {
  */
 function commitPathspec(cwd, pathspec, message) {
   const specs = Array.isArray(pathspec) ? pathspec : [pathspec];
-  gitIndexed(cwd, ['add', '--', ...specs]);
-  if (!hasChangesInPaths(cwd, specs)) return null;
-  gitIndexed(cwd, ['commit', '-m', message, '--', ...specs]);
+  const addable = stageableSpecs(cwd, specs);
+  if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...addable]);
+  const known = specs.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p));
+  if (known.length === 0 || !hasChangesInPaths(cwd, known)) return null;
+  gitIndexed(cwd, ['commit', '-m', message, '--', ...known]);
   return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+}
+
+/**
+ * Every path in the working tree that differs from HEAD — tracked
+ * modifications and untracked, non-ignored files alike — project-relative.
+ * NUL-separated so paths with spaces or non-ASCII bytes survive; a rename
+ * record's second field (the source path) is consumed with it.
+ * @param {string} cwd
+ * @returns {string[]}
+ */
+function dirtyPaths(cwd) {
+  const fields = git(cwd, ['status', '--porcelain', '-z']).split('\0');
+  /** @type {string[]} */
+  const paths = [];
+  for (let i = 0; i < fields.length; i++) {
+    const entry = fields[i];
+    if (entry.length < 4) continue;
+    paths.push(entry.slice(3));
+    if (entry[0] === 'R' || entry[0] === 'C') i += 1;
+  }
+  return paths;
 }
 
 /**
@@ -145,4 +204,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, commitScoped, commitPathspec, hasStagedChanges, removeFiles };
+module.exports = { git, commitPathspec, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };

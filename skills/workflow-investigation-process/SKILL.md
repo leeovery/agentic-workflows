@@ -6,6 +6,8 @@ hooks:
   SessionEnd:
     - hooks:
         - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
+        - type: command
           command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
@@ -63,7 +65,7 @@ The investigation file is your memory. Context compaction is lossy — what's no
 - Fix direction is agreed
 - Each significant finding
 
-**After writing, commit** (`node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): {what changed}"`). Commits let you track and recover after compaction. Don't batch — commit each time you write.
+**After writing, commit** (`node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): {what changed}" --topic investigation/{topic}`). Commits let you track and recover after compaction. Don't batch — commit each time you write.
 
 **Draft decisions to cache.** Anything still under discussion — fix options, validation output — lives in `.workflows/.cache/{work_unit}/investigation/{topic}/` until agreed. The investigation file records only what is agreed; a crash mid-discussion loses nothing.
 

@@ -660,19 +660,19 @@ function checkInertLoadChrome(files) {
 // the ratchet working, not a reason to adjust it.
 /** @type {Record<string, number>} */
 const RATCHET_PINS = {
-  'skills/workflow-continue-epic/references/summary-backfill.md': 3,
+  'skills/workflow-continue-epic/references/summary-backfill.md': 2,
   'skills/workflow-discovery/references/confirm-trigger.md': 1,
   'skills/workflow-discovery/references/continuity-load.md': 1,
-  'skills/workflow-discovery/references/map-operations.md': 9,
+  'skills/workflow-discovery/references/map-operations.md': 2,
   'skills/workflow-discovery/references/name-resolution.md': 2,
   'skills/workflow-discovery/references/opener-pattern.md': 1,
   'skills/workflow-discovery/references/session-loop.md': 1,
   'skills/workflow-discovery/references/show-dismissed.md': 1,
   'skills/workflow-discussion-entry/references/gather-context-continue.md': 1,
   'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
-  'skills/workflow-discussion-process/references/closing-gates.md': 2,
+  'skills/workflow-discussion-process/references/closing-gates.md': 1,
   'skills/workflow-discussion-process/references/perspective-agents.md': 2,
-  'skills/workflow-implementation-entry/references/check-dependencies.md': 4,
+  'skills/workflow-implementation-entry/references/check-dependencies.md': 3,
   'skills/workflow-implementation-process/SKILL.md': 1,
   'skills/workflow-implementation-process/references/analysis-loop.md': 1,
   'skills/workflow-implementation-process/references/task-loop.md': 3,
@@ -689,16 +689,12 @@ const RATCHET_PINS = {
   'skills/workflow-planning-process/references/author-tasks.md': 6,
   'skills/workflow-planning-process/references/conclude-plan.md': 1,
   'skills/workflow-planning-process/references/define-tasks.md': 1,
-  'skills/workflow-planning-process/references/initialize-plan.md': 1,
   'skills/workflow-planning-process/references/output-formats/linear/authoring.md': 1,
   'skills/workflow-planning-process/references/plan-construction.md': 3,
   'skills/workflow-planning-process/references/plan-review.md': 2,
   'skills/workflow-planning-process/references/process-review-findings.md': 1,
   'skills/workflow-planning-process/references/resolve-dependencies.md': 1,
-  'skills/workflow-research-process/references/deep-dive-agent.md': 2,
-  'skills/workflow-research-process/references/epic-session.md': 2,
-  'skills/workflow-research-process/references/feature-session.md': 1,
-  'skills/workflow-research-process/references/topic-splitting.md': 2,
+  'skills/workflow-research-process/references/deep-dive-agent.md': 1,
   'skills/workflow-roadmap/references/session-loop.md': 1,
   'skills/workflow-scoping-process/SKILL.md': 2,
   'skills/workflow-scoping-process/references/complexity-check.md': 2,
@@ -706,13 +702,11 @@ const RATCHET_PINS = {
   'skills/workflow-scoping-process/references/gather-context.md': 1,
   'skills/workflow-scoping-process/references/select-format.md': 1,
   'skills/workflow-scoping-process/references/write-specification.md': 1,
-  'skills/workflow-shared/references/analysis-approval-gate.md': 4,
+  'skills/workflow-shared/references/analysis-approval-gate.md': 1,
   'skills/workflow-shared/references/background-agent-surfacing.md': 2,
   'skills/workflow-shared/references/compliance-check.md': 1,
-  'skills/workflow-shared/references/correcting-historical-artifacts.md': 1,
   'skills/workflow-shared/references/final-review-menu.md': 1,
   'skills/workflow-shared/references/topic-name-validation.md': 1,
-  'skills/workflow-shared/references/triage-landing.md': 1,
   'skills/workflow-specification-entry/references/confirm-continue.md': 4,
   'skills/workflow-specification-entry/references/confirm-create.md': 3,
   'skills/workflow-specification-entry/references/confirm-refine.md': 2,
@@ -921,6 +915,32 @@ function checkConditionalOptions(files) {
   return out;
 }
 
+// Check 18 — every presence phase's process skill declares the SessionEnd
+// cleanup hook. A session that leaves without sweeping its own heartbeat
+// leaves a hold nothing releases: a doc topic reads occupied to its peers, and
+// a code topic locks the checkout's one code slot. The phase set is the
+// schema's, minus discovery (engine-serialised, no heartbeat) — so a new
+// phase arrives here the moment it arrives in the schema.
+const PRESENCE_CLEANUP_HOOK =
+  '\'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup\'';
+
+function checkPresenceCleanupHook(files, root = REPO) {
+  const { VALID_PHASES } = require(path.join(REPO, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
+  const out = [];
+  for (const phase of VALID_PHASES) {
+    if (phase === 'discovery') continue;
+    const file = path.join(root, 'skills', `workflow-${phase}-process`, 'SKILL.md');
+    if (!files.includes(file)) {
+      out.push({ file, line: 1, message: `no process skill for presence phase "${phase}" — the heartbeat has no owner to sweep it` });
+      continue;
+    }
+    if (!readLines(file).some((l) => l.includes(PRESENCE_CLEANUP_HOOK))) {
+      out.push({ file, line: 1, message: `presence phase "${phase}" but no SessionEnd \`presence cleanup\` hook — a session leaving by /clear or logout strands its hold` });
+    }
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 
 const CHECKS = [
@@ -941,6 +961,7 @@ const CHECKS = [
   ['15: cross-file section references', checkCrossFileSections],
   ['16: menu option alignment', checkMenuAlignment],
   ['17: conditional menu options', checkConditionalOptions],
+  ['18: presence-phase SessionEnd cleanup hooks', checkPresenceCleanupHook],
 ];
 
 function report(violations) {
@@ -1387,5 +1408,29 @@ test('check 17 (conditional menu options) — catches @if-guarded rows, permits 
     const display = write(dir, 'skills/x/display.md',
       '```\nStatus:\n@if(has_plan)\n  Plan: {plan_status}\n@endif\n```\n');
     assert.strictEqual(checkConditionalOptions([display]).length, 0, 'templated displays keep @if');
+  });
+});
+
+test('check 18 (presence cleanup hooks) — catches a missing hook and a missing skill', () => {
+  withTemp((dir) => {
+    const { VALID_PHASES } = require(path.join(REPO, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
+    const phases = VALID_PHASES.filter((p) => p !== 'discovery');
+    const hooked = (phase) => write(dir, `skills/workflow-${phase}-process/SKILL.md`,
+      `---\nname: workflow-${phase}-process\nhooks:\n  SessionEnd:\n    - hooks:\n        - type: command\n          command: ${PRESENCE_CLEANUP_HOOK}\n---\n`);
+
+    const complete = phases.map(hooked);
+    assert.strictEqual(checkPresenceCleanupHook(complete, dir).length, 0, 'every presence phase sweeps its own heartbeat');
+
+    // The hook dropped: a session leaving by /clear strands its hold.
+    const unhooked = write(dir, `skills/workflow-${phases[0]}-process/SKILL.md`,
+      `---\nname: workflow-${phases[0]}-process\n---\n`);
+    const v = checkPresenceCleanupHook([unhooked, ...complete.slice(1)], dir);
+    assert.strictEqual(v.length, 1, `expected the unhooked phase to be caught, got ${report(v)}`);
+    assert.match(v[0].message, /no SessionEnd `presence cleanup` hook/);
+
+    // A presence phase with no process skill at all.
+    const missing = checkPresenceCleanupHook(complete.slice(1), dir);
+    assert.strictEqual(missing.length, 1);
+    assert.match(missing[0].message, /no process skill for presence phase/);
   });
 });

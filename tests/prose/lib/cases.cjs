@@ -260,8 +260,29 @@ function validateCorpus(cases) {
   return errors;
 }
 
+// A snapshot's recipe hash is bookkeeping — it records when the world was
+// last rebuilt, never what the case tests. Re-stamping the corpus after an
+// engine change would otherwise select every case in it, which is the same
+// as selecting none: the suggestion is only worth reading when it is short.
+// A snapshot's *content* moving is real, and still selects.
+const BOOKKEEPING = /(^|\/)\.recipe-hash$/;
+
+/**
+ * The cases a set of changed paths implicates: a case's own declared files,
+ * anything under its directory, a stub it arms, and the shared mainlines
+ * every walk runs through. Bookkeeping paths are dropped first.
+ * @param {object[]} all @param {Iterable<string>} changedPaths
+ */
+function selectCases(all, changedPaths) {
+  const changed = new Set([...changedPaths].filter((p) => !BOOKKEEPING.test(p)));
+  return all.filter((c) => c.files.some((f) => changed.has(f.path))
+    || [...changed].some((p) => p.startsWith(`${c.rel}/`))
+    || c.stubs.some((s) => changed.has(`tests/prose/stubs/${s.name}.md`))
+    || [...changed].some((p) => p.startsWith('tests/prose/mainlines/')));
+}
+
 module.exports = {
   ROOT, PROSE_DIR, CASES_DIR, STUBS_DIR, FILES, SNAPSHOTS,
   listCaseIds, loadCase, loadAllCases, requireState, listStubs, readStub,
-  validateCorpus, entryErrors,
+  validateCorpus, entryErrors, selectCases, BOOKKEEPING,
 };

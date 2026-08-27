@@ -57,16 +57,11 @@ Proposed summaries for {N} topic(s):
 @endforeach
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant batch
 ```
-· · · · · · · · · · · ·
-**`◆ Accept these summaries?`**
 
-**`y/yes`**  → Accept all summaries as drafted (description is auto-drafted silently)
-**`e/edit`** → Edit one or more summary lines before accepting
-**`s/skip`** → Skip the whole batch (leave fields blank)
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -114,22 +109,13 @@ Update the in-memory summary for that item with the user's response. Re-render t
 
 ## D. Write and Commit
 
-**If any item's needed field is still null** (source file missing, nothing provided via the edit loop), give it an exit — otherwise it re-triggers this flow on every epic entry forever:
+**If any item's needed field is still null** (source file missing, nothing provided via the edit loop), give it an exit — otherwise it re-triggers this flow on every epic entry forever. Write the names to `.workflows/.cache/{work_unit}/discovery/unsourced.json` with the Write tool (`{"names": ["{item.name}", …]}` — every item whose derived field is still null), then render the gate:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant unsourced --file .workflows/.cache/{work_unit}/discovery/unsourced.json
 ```
-· · · · · · · · · · · ·
-**`◆ {K} topic(s) have no source file to draft from:`**
 
-@foreach(item in items_to_recover where derived field is null)
-- {item.name:(titlecase)}
-@endforeach
-
-**`p/provide`** → Tell me the summary for each and I'll write it
-**`d/dismiss`** → Write a minimal name-derived summary noting the missing source, so this stops re-prompting
-**`l/leave`**   → Leave them unset; this flow re-offers next time
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -154,7 +140,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit
 Single commit covering all writes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): backfill {N} discovery provenance field(s) from source files"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): backfill {N} discovery provenance field(s) from source files" --discovery
 ```
 
 → Return to caller.

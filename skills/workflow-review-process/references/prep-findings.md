@@ -89,7 +89,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}
 Commit the durable dirt of verification and prep — the per-task reports and the manifest — so the apply that follows starts from a clean tree and a crash from here forward loses nothing expensive:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): verification and prep"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): verification and prep" --topic review/{topic}
 ```
 
 The findings are never rewritten or deleted — the per-task reports stand as the record of what was raised. What prep produces is the layer above them: what survived, what merged, what was corrected, and what was discarded with its reason.

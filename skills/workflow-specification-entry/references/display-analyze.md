@@ -24,13 +24,13 @@ Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code b
 
 ```
 > What happens next. Your discussions will be analyzed for natural groupings. Each grouping becomes a proposed specification you can start when ready. Results are cached and reused until discussions change.
-
-· · · · · · · · · · · ·
-**`◆ Proceed with analysis?`**
-
-**`y/yes`**
-**`n/no`**
 ```
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render analysis-proceed-gate {work_unit}
+```
+
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -42,13 +42,13 @@ Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code b
 
 ```
 > Analysis outdated. A previous grouping analysis exists but discussions have changed since it was created. Your discussions will be re-analyzed for natural groupings. Results are cached and reused until discussions change.
-
-· · · · · · · · · · · ·
-**`◆ Proceed with analysis?`**
-
-**`y/yes`**
-**`n/no`**
 ```
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render analysis-proceed-gate {work_unit}
+```
+
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -59,11 +59,6 @@ Emit the TITLE section (markdown), then the DISPLAY section verbatim as a code b
 ## B. Handle Response
 
 #### If `yes`
-
-If `cache_status` is `stale`, delete the cache first:
-```bash
-rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
-```
 
 → Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions as written.
 

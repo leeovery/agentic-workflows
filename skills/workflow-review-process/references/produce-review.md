@@ -45,7 +45,7 @@ Omit the entire `## Findings` section.
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review" --topic review/{topic}
 ```
 
 Your review feedback can be:

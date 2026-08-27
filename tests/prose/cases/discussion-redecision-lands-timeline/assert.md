@@ -49,8 +49,8 @@ The prose should have taken this path:
    without unwinding the timeline — the revision landing survives
    reconciliation intact
 8. the conclusion marks the discussion complete (`topic complete`),
-   commits, clears the session's presence heartbeat, finds no
-   leavings to sweep, and the walk stops at the bridge invocation
+   commits, finds no leavings to sweep, and the walk stops at the
+   bridge invocation
 
 Further claims:
 

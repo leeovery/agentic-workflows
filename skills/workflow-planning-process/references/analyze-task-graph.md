@@ -53,15 +53,11 @@ I've analyzed all {M} tasks and the natural execution order is already correct �
 {notes from agent output}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant graph
 ```
-· · · · · · · · · · · ·
-**`◆ Approve the dependency graph?`**
 
-**`y/yes`**                  → Proceed
-**Tell me what to change** → which priorities or dependencies to adjust
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -77,7 +73,7 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 **If `yes`:**
 
-Commit — `--plan` stages the work unit and the plan's declared storage in one scoped call:
+Commit — `--plan` stages the planning topic, the manifests, and the plan's declared storage in one scoped call:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}
@@ -123,15 +119,11 @@ I've analyzed and applied dependencies and priorities across all {M} tasks:
 {any notes from agent output}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant updated-graph
 ```
-· · · · · · · · · · · ·
-**`◆ Approve the updated graph?`**
 
-**`y/yes`**                  → Proceed
-**Tell me what to change** → which priorities or dependencies to adjust
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -147,7 +139,7 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 **If `yes`:**
 
-Commit — `--plan` stages the work unit and the plan's declared storage in one scoped call:
+Commit — `--plan` stages the planning topic, the manifests, and the plan's declared storage in one scoped call:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}

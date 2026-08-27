@@ -36,8 +36,8 @@ The prose should have taken this path:
 8. compliance runs its re-read discipline, and the conclusion follows:
    the topic's own queue is empty, the user confirms, `topic complete`
    marks the discussion completed and indexes it, the commit lands,
-   presence clears with no leavings to sweep, and the walk stops at
-   the bridge invocation
+   the sweep finds no leavings, and the walk stops at the bridge
+   invocation
 
 Further claims:
 

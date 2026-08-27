@@ -1,0 +1,76 @@
+{
+  "origin": "topic-spawning (design/topic-spawning.md §6) replaced the fan-out offer with one conversational dead-end entry point at the research conclude gate — the session judges it, the flag carries the judgment, and the closing signpost branches on the closure. Nothing covered it: not the judged flag, not the map marking ordered before completion, not the branch-aware signpost. The gate whose author could not answer it is the incident this whole design starts from",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/review-agent.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-research-process/references/topic-completion.md",
+    "skills/workflow-research-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-research-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-research-process/references/conclude-research.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user comes back to close out the vector-search question and has nothing to add — the numbers in the file are the whole answer, and the answer is no. Pressed on it, they are firm rather than hesitant: six to nine times the cost of the entire search cluster is not a negotiation, nobody on a two-person part-time team is going to run a model-serving path, and the recall complaints that started this turn out to be the wrong shape for it anyway. Asked what happens to the question now, they say there is nothing left for anyone to weigh — you cannot hold a conversation about options on something nobody is going to build — and what they want is the sizing kept where someone will find it if the catalogue ever grows an order of magnitude, so the same question does not come back around in six months as though it were new. They are agreeable to required steps — a mandatory review or check gets a yes — and decline optional extras: no deep dive, no further threads. They introduce no new material and never ask to keep digging.",
+  "stubs": {
+    "research-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.research.vector-search-migration status",
+      "topic queue search-relevance research vector-search-migration",
+      "agent dispatch search-relevance research vector-search-migration --kind review",
+      "manifest get search-relevance.research.vector-search-migration dismissed_grounds",
+      "agent ack search-relevance research vector-search-migration review-001 --clean",
+      "render research-conclude-gate search-relevance.research.vector-search-migration --dead-end",
+      "discovery-map handle search-relevance vector-search-migration",
+      "topic complete search-relevance research vector-search-migration",
+      "research(search-relevance): complete vector-search-migration research"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.research.vector-search-migration status",
+      "agent dispatch search-relevance research vector-search-migration --kind review",
+      "render research-conclude-gate search-relevance.research.vector-search-migration --dead-end",
+      "discovery-map handle search-relevance vector-search-migration",
+      "topic complete search-relevance research vector-search-migration"
+    ],
+    "calls_exclude": [
+      "topic supersede",
+      "topic cancel",
+      "discovery-map unhandle",
+      "discovery-map remove",
+      "discovery-map add",
+      "topic triage",
+      "topic start search-relevance discussion",
+      "--kind deep-dive"
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 The prose should have taken this path:
 
 1. workflow-start routes into continue-epic for the one active epic
-2. topic discovery dispatches nothing (both caches settled) and the
+2. topic discovery dispatches nothing (the gap-analysis cache settled) and the
    map sequencing step is silent (every map topic already ordered)
 3. the build-order sequencing step fires — the scoped discovery output
    reports `build_order_needs_sequencing: true`, from the stale flag

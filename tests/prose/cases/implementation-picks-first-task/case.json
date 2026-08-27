@@ -12,6 +12,7 @@
     "skills/workflow-implementation-entry/references/validate-dependencies.md",
     "skills/workflow-implementation-process/SKILL.md",
     "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-shared/references/code-session-gate.md",
     "skills/workflow-implementation-entry/references/invoke-skill.md"
   ],
   "answers": [
@@ -22,7 +23,7 @@
     "calls_include": [
       "task init",
       "engine.cjs commit pay -m impl(pay): start implementation",
-      "engine.cjs commit --workflows -m chore(workflows): record environment setup"
+      "engine.cjs commit --state -m chore(workflows): record environment setup"
     ],
     "calls_exclude": [
       "task start",

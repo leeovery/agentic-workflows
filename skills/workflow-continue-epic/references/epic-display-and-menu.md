@@ -6,7 +6,7 @@
 
 Display the full phase-by-phase breakdown for the selected epic, then present an interactive menu of actionable items. The caller is responsible for providing:
 - `work_unit` — the epic's work unit name
-- `new_arrivals` (optional) — tracker from `topic-discovery.md` listing, per analysis, the topic names added during this boot-up (`research_analysis`, `gap_analysis`). Drives the "new topics added" callouts above the Discovery Map. Empty / absent means no callout.
+- `new_arrivals` (optional) — tracker from `topic-discovery.md` listing the topic names added during this boot-up (`gap_analysis`). Drives the "new topics added" callout above the Discovery Map. Empty / absent means no callout.
 
 This reference collects the user's selection and returns control to the caller. The caller decides what to do with the selection (invoke a skill directly, enter plan mode, etc.).
 
@@ -23,12 +23,12 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit}
 When `new_arrivals` has any names, pass the tracker as a JSON argument instead:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} '{"research_analysis":["{topic}", "{topic}"],"gap_analysis":[]}'
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} '{"gap_analysis":["{topic}", "{topic}"]}'
 ```
 
 The output is one snapshot in four demarcated sections:
 
-- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(in session: …)` markers. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(in session: …)` / `(code session: …)` markers. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
 - **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
@@ -81,6 +81,8 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or a comman
 
 #### Otherwise
 
+A `(code session: …)` marker needs no gate here — implementation and review are gated at their entry skill, which reads the whole checkout's code slot; the marked row routes like any other.
+
 **If the selected entry carries an `(in session: …)` marker:**
 
 Another live session holds this topic open. Fetch and emit the `MENU: in-session gate — {key}` section for the selected entry:
@@ -95,7 +97,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 → Return to **A. State Display and Menu**.
 
-**If user chose `yes`:**
+**If user chose `proceed`:**
 
 Continue with the **Hard gate check** below.
 
@@ -287,6 +289,10 @@ Store the selected entry's `topic` (the plan) and its `(dep: …)` value (the de
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep}.state satisfied_externally
 ```
 
-Commit: `impl({work_unit}): mark {dep} dependency as satisfied externally`
+The record belongs to the plan, and the menu is not the session working it — `--sweep`, so the commit stamps no identity there:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic planning/{topic} --sweep -m "impl({work_unit}): mark {dep} dependency as satisfied externally"
+```
 
 → Return to **A. State Display and Menu**.

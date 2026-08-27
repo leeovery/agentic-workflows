@@ -251,6 +251,18 @@ function cmdOption(key, word, label) {
 }
 
 /**
+ * Bare command option — key and word, no arrow and no label. The shape a
+ * yes/no gate takes (CONVENTIONS.md: Yes/no prompt): the question above the
+ * options already says what yes means, so a label would only repeat it.
+ * Carries no arrow, so the enclosing frame passes it through unaligned.
+ * @param {string} key @param {string} word
+ * @returns {string}
+ */
+function bareOption(key, word) {
+  return `**\`${key}/${word}\`**`;
+}
+
+/**
  * Prompt option line — the user responds naturally; the description directs
  * their response. Plain bold rather than a code span, because there is no
  * literal input to type.
@@ -282,6 +294,29 @@ function rangeOption(first, last, label) {
 function callout(text, { width = displayWidth() } = {}) {
   const segs = Array.isArray(text) ? text : wrap(text, width - 4);
   return segs.map((l, i) => (i === 0 ? `  ⚑ ${l}` : `    ${l}`)).join('\n');
+}
+
+/**
+ * The indented explanation beneath a proposal's headline: each paragraph
+ * wrapped at the display width, two columns in. A hand-picked column drifts
+ * with the pane; a measured one cannot.
+ * @param {string[]} paragraphs
+ * @param {{width?: number}} [opts]
+ * @returns {string[]}
+ */
+function indentedBody(paragraphs, { width = displayWidth() } = {}) {
+  const budget = width - 2;
+  return paragraphs.flatMap((p) => wrap(p, budget).map((line) => `  ${line}`));
+}
+
+/**
+ * One `•` row at the callout indent, continuations aligned under the text.
+ * @param {string} text
+ * @param {{width?: number}} [opts]
+ * @returns {string[]}
+ */
+function bulletRow(text, { width = displayWidth() } = {}) {
+  return wrap(text, width - 4).map((s, i) => (i === 0 ? `  • ${s}` : `    ${s}`));
 }
 
 /**
@@ -317,5 +352,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menuFrame, alignOptions, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList };
 

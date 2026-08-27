@@ -103,7 +103,7 @@ Ensure a clean working tree before analysis. Run `git status`.
 
 Categorize them:
 
-- **Implementation files** (files touched by `impl({work_unit}):` commits) — stage these automatically.
+- **Implementation files** (files touched by `impl({work_unit}):` commits) — name these in the checkpoint commit automatically.
 - **Unexpected files** (files not touched during implementation) — present to the user:
 
 > *Output the next fenced block as a code block:*
@@ -114,42 +114,40 @@ Pre-analysis checkpoint — unexpected files detected:
 - ...
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render checkpoint-files-gate {work_unit}.implementation.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ Include unexpected files in the checkpoint commit?`**
 
-**`y/yes`**   → Include all
-**`s/skip`**  → Exclude unexpected files, commit only implementation files
-**Comment** → Specify which to include
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
+The checkpoint is a code commit — name the files, and the engine confines the commit to them. A `.workflows` path among the unexpected files is never named here: those belong to their own phase's scope, and the loop's own commits carry them.
+
 **If `yes`:**
 
-Stage all files (implementation and unexpected). Commit:
-```
-impl({work_unit}): pre-analysis checkpoint
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation and unexpected files} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
 
 **If `skip`:**
 
-Stage only implementation files. Leave unexpected files unstaged. Commit:
-```
-impl({work_unit}): pre-analysis checkpoint
+Name only the implementation files; the unexpected ones stay uncommitted, and come back in the response's `left_dirty`.
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation files} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
 
 **If comment:**
 
-Stage the files the user specified alongside implementation files. Commit:
-```
-impl({work_unit}): pre-analysis checkpoint
+Name the implementation files plus the ones the user specified.
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation files and the named ones} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -165,7 +163,7 @@ impl({work_unit}): pre-analysis checkpoint
 Commit the analysis findings — the scoped commit covers the findings files and the manifest's cycle counters:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — findings"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — findings" --topic implementation/{topic}
 ```
 
 Read the bank (an absent field prints empty):
@@ -199,7 +197,7 @@ The phase boundaries left residue — the synthesizer runs over the bank alone f
 Commit the synthesis output — the scoped commit covers the report, any staging file, and the manifest's gate state:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — synthesis"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — synthesis" --topic implementation/{topic}
 ```
 
 #### If `STATUS` is `clean`
@@ -291,7 +289,7 @@ Revise the task content in the staging file based on the user's feedback.
 Commit the cycle's decisions (the scoped commit covers the manifest):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — tasks declined"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — tasks declined" --topic implementation/{topic}
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 8**.
@@ -310,9 +308,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
 ```
 
-Commit all analysis and plan changes — `--plan` stages the work unit and the plan's declared storage in one scoped call:
+Commit the staging file with this topic's implementation artifacts, then the tasks — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
 
 ```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis phase {N} — staged tasks" --topic implementation/{topic}
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add analysis phase {N} ({K} tasks)" --plan {topic}
 ```
 

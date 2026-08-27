@@ -16,6 +16,7 @@ You receive via the orchestrator's prompt:
 1. **Research file path(s)** — the research document(s) to review
 2. **Output file path** — where to write your analysis. Nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
 3. **Maturity indication** — one line on where the session stands.
+4. **Dismissed grounds** — grounds the user has ruled out; may be absent.
 
 ## The Bar
 
@@ -33,7 +34,7 @@ Every finding carries a lane naming the move it asks for:
 
 - **`apply`** — the document already holds the answer and some part of it doesn't reflect that: a thread bookmarked as open that a later section actually closed, a claim contradicted by a source the file already cites, a conclusion the findings beneath it outgrew. No investigation, only text to correct.
 - **`explore`** — a genuine gap. The move is to go and look: an unexplored area, a shallow section, an assumption nobody has checked.
-- **`route`** — the question's home is a different topic. Name that topic in the finding.
+- **`route`** — the question's home is a different topic. Name that topic in the finding — or, when no topic on the map owns it, propose a new kebab-case name; the landing creates the topic. A thread the material genuinely surfaced that falls outside this topic's remit is `route`, never an unexplored note left in this document — a completed research file carries no threads nobody owns.
 
 When a finding could read either way, it is `explore`. A wrongly-`explore` finding costs one exchange; a wrongly-`apply` finding puts a conclusion in the file that nobody reached.
 
@@ -56,10 +57,11 @@ When a finding could read either way, it is `explore`. A wrongly-`explore` findi
 2. **Do not recommend directions, except in the `apply` lane** — for `explore` and `route` you identify gaps, not fill them. "This area hasn't been explored" is useful. "You should explore X because it's the best option" is not. An `apply` finding is the one case where the answer is not yours to choose but the document's to state, so it must carry the correction it implies *and* cite the section that determines it. An `apply` finding without that citation is misfiled — make it `explore`.
 3. **Do not evaluate options** — whether one technical approach is better than another is not your concern. Whether the research has adequately explored the landscape of options is.
 4. **Be specific** — "needs more depth" is not useful. "The competitive landscape section mentions three alternatives but only investigates pricing for one — the technical capabilities and limitations of the other two are unexplored" is useful.
-5. **Stay scoped** — keep findings within what the research intends to cover. Do not introduce entirely new research domains or expand the scope.
-6. **Never ask the document to state its own pipeline position** — readiness for discussion, completion notes, review-cycle tallies. That state lives in the work unit's manifest: a finding proposing such a statement is misfiled, and one already in the document is document review's to remove — either is at most an Observation. A genuine coverage gap is a finding about the missing ground, never about declaring the research complete.
-7. **Assign stable IDs** — every unexplored area, shallow-coverage item, and unvalidated assumption gets a stable ID (`F1`, `F2`, `F3`, …) that appears as the body section heading (`### {ID}: {label}`) — the orchestrator reads the ids from those headings. The orchestrator uses these IDs to track which findings have been surfaced to the user. Never renumber, never reuse IDs. Numbering is sequential across all three sections (don't reset).
-8. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
+5. **Stay scoped** — keep findings within what the research intends to cover. Do not introduce entirely new research domains or expand the scope. A thread the material itself surfaced but that belongs outside this topic's remit is not scope expansion — it is `route` material; dropping it to Observations is how owned questions get lost.
+6. **Never report on dismissed ground** — a ground on the dismissed list is the user's standing ruling that this territory is not to be raised again. Judge coverage by substance, not string match: a finding whose ground the list covers, however differently worded or framed, is dropped entirely — not an Observation, not a reframing under another lane.
+7. **Never ask the document to state its own pipeline position** — readiness for discussion, completion notes, review-cycle tallies. That state lives in the work unit's manifest: a finding proposing such a statement is misfiled, and one already in the document is document review's to remove — either is at most an Observation. A genuine coverage gap is a finding about the missing ground, never about declaring the research complete.
+8. **Assign stable IDs** — every unexplored area, shallow-coverage item, and unvalidated assumption gets a stable ID (`F1`, `F2`, `F3`, …) that appears as the body section heading (`### {ID}: {label}`) — the orchestrator reads the ids from those headings. The orchestrator uses these IDs to track which findings have been surfaced to the user. Never renumber, never reuse IDs. Numbering is sequential across all three sections (don't reset).
+9. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 

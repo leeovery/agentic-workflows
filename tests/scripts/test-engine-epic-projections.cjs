@@ -66,7 +66,7 @@ describe('epic projections: dashboard (map branch)', () => {
     '  · seeded from the inbox',
     '  · 1 import',
     '',
-    '  ⚑ 1 new topic(s) added to the map from research-analysis.',
+    '  ⚑ 1 new topic(s) added to the map from gap-analysis.',
     '',
     'RESEARCH & DISCUSSION (2 topics · 1 ready · 1 fresh)',
     '  ├─ → Kitchen Hardware',
@@ -101,14 +101,14 @@ describe('epic projections: dashboard (map branch)', () => {
 
   it('renders the map-branch dashboard byte-for-byte (callouts, stages, trees)', () => {
     const out = epicDashboard('quiz-competition-v1', mapDetail(), {
-      newArrivals: { research_analysis: ['menu-admin'], gap_analysis: [] },
+      newArrivals: { gap_analysis: ['menu-admin'] },
     });
     assert.strictEqual(out, EXPECTED_DASHBOARD);
   });
 
   it('keeps every body line within TREE_WIDTH and the │ gutter unbroken', () => {
     const out = epicDashboard('quiz-competition-v1', mapDetail(), {
-      newArrivals: { research_analysis: ['menu-admin'], gap_analysis: [] },
+      newArrivals: { gap_analysis: ['menu-admin'] },
     });
     const lines = out.split('\n');
     const start = lines.findIndex((l) => l.startsWith('  ├─ → Kitchen Hardware'));
@@ -413,7 +413,6 @@ describe('epic projections: menu', () => {
       imports_count: 0,
       seeds_count: 0,
       analysis_caches: {
-        research_analysis: { status: 'absent', generated: null, files: [] },
         gap_analysis: { status: 'absent', generated: null, files: [] },
       },
       gating: {
@@ -479,14 +478,14 @@ describe('epic projections: menu', () => {
           items: {
             ready: { routing: 'research', source: 'discovery', order: 1 },
             decided: { routing: 'discussion', source: 'discovery', order: 2 },
-            umbrella: { routing: 'research', source: 'discovery', handled: true },
+            'dead-lead': { routing: 'research', source: 'discovery', handled: true },
             dropped: { routing: 'research', source: 'discovery' },
           },
         },
         research: {
           items: {
             ready: { status: 'completed' },
-            umbrella: { status: 'completed' },
+            'dead-lead': { status: 'completed' },
             dropped: { status: 'cancelled' },
           },
         },
@@ -507,7 +506,7 @@ describe('epic projections: menu', () => {
     assert.strictEqual(numbered[0].recommended, true);
     assert.ok(/\*\*`1`\*\* +→ Start discussion for "Ready" — \*research completed\*\n\u00a0+\(recommended\)/.test(rendered));
     assert.ok(/\*\*`e\/reactivate`\*\* +→ Reactivate a cancelled topic/.test(rendered), 'cancelled items exist');
-    assert.ok(!rendered.includes('Umbrella'), 'handled row has no menu entry');
+    assert.ok(!rendered.includes('Dead Lead'), 'handled row has no menu entry');
     assert.ok(!rendered.includes('Dropped'), 'cancelled row has no menu entry');
   });
 
@@ -709,17 +708,94 @@ describe('epic projections: presence join', () => {
   it('renders the in-session confirm gate as a labelled MENU section, byte-for-byte', () => {
     const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [heldRow] });
     const marked = keys.find((k) => k.in_session);
-    assert.strictEqual(epicInSessionGate(marked), [
+    assert.strictEqual(epicInSessionGate('v1', marked), [
       '=== MENU: in-session gate — 1 (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
-      '"Topic A" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s.',
+      '"Topic A" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion topic-a`.',
       '',
       '**`◆ Proceed anyway?`**',
       '',
-      '**`y/yes`**  → Proceed anyway',
-      '**`b/back`** → Return to menu',
+      '**`b/back`**    → Return to menu (recommended)',
+      '**`p/proceed`** → Proceed anyway',
       '',
     ].join('\n'));
+  });
+
+  // A plan ready to implement — the state a code entry needs on the menu.
+  function readyToImplementDetail() {
+    return detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { 'topic-a': { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discussion: { items: { 'topic-a': { status: 'completed' } } },
+        specification: { items: { 'topic-a': { status: 'completed', order: 1, sources: { 'topic-a': { status: 'incorporated' } } } } },
+        planning: { items: { 'topic-a': { status: 'completed', format: 'local-markdown' } } },
+      },
+    });
+  }
+
+  it('a held code row anywhere in the project marks every code entry, naming the holder', () => {
+    const d = readyToImplementDetail();
+    // A code session holding a different work unit's topic — one slot, one
+    // checkout.
+    const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, live: true, session_id: 'peer' };
+    const { keys, rendered } = epicMenu('v1', d, { presence: [], codeHeld: [codeRow] });
+    const code = keys.find((k) => k.action === 'start_implementation');
+    assert.ok(code, 'the implementation entry is on the menu');
+    assert.strictEqual(code.in_session, true, 'the code entry is marked though the holder is elsewhere');
+    assert.deepStrictEqual(code.session_holder, { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow' });
+    assert.match(rendered.replace(/\n\u00a0+/g, ' '), /~~[^~]*~~ · code session in ship\/checkout-flow \(last active 5m ago\)/,
+      `the struck row names the holder:\n${rendered}`);
+    assert.ok(!code.recommended, 'a struck row is never the recommendation');
+    assert.strictEqual(code.code_session, true, 'the marker says the slot, so this menu never gates it');
+    assert.ok(!keys.some((k) => k.action !== 'start_implementation' && k.in_session),
+      'doc entries are untouched by the code slot');
+  });
+
+  it('a code entry is marked by its own held topic too, and still carries the slot marker', () => {
+    const d = readyToImplementDetail();
+    const ownRow = { phase: 'implementation', topic: 'topic-a', age_seconds: 30, held: true, live: true, session_id: 'peer' };
+    const { keys, rendered } = epicMenu('v1', d, { presence: [ownRow], codeHeld: [] });
+    const code = keys.find((k) => k.action === 'start_implementation');
+    assert.strictEqual(code.in_session, true);
+    assert.strictEqual(code.code_session, true, 'own-topic or elsewhere, a code hold is the one slot');
+    // The word names what holds the row, and it is the slot either way. Only
+    // the holder's address is conditional — a hold on this very topic needs
+    // none.
+    assert.match(rendered.replace(/\n +/g, ' '), /~~[^~]*~~ · code session \(last active 30s ago\)/,
+      `the struck row says code session without an address:\n${rendered}`);
+  });
+
+  it('a no-map epic never recommends a row the code slot has struck through', () => {
+    // The map branch has skipped held rows since the gate family landed; the
+    // no-map branch picks by phase-completion state and had no such guard, so
+    // it recommended the very entry it drew struck.
+    const d = detailFor(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { 'topic-a': { status: 'completed' } } },
+        specification: { items: { 'topic-a': { status: 'completed', sources: { 'topic-a': { status: 'incorporated' } } } } },
+        planning: { items: { 'topic-a': { status: 'completed', format: 'local-markdown' } } },
+      },
+    });
+    const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, live: true, session_id: 'peer' };
+
+    const free = epicMenu('v2', d, { presence: [], codeHeld: [] });
+    assert.strictEqual(free.keys.find((k) => k.action === 'start_implementation').recommended, true,
+      'with the slot free it is the obvious next move');
+
+    const { keys } = epicMenu('v2', d, { presence: [], codeHeld: [codeRow] });
+    const code = keys.find((k) => k.action === 'start_implementation');
+    assert.strictEqual(code.in_session, true, 'the slot is held elsewhere');
+    assert.ok(!code.recommended, 'so the menu does not point at it');
+  });
+
+  it('the in-session gate speaks for document phases alone — a code entry never reaches it', () => {
+    const d = twoTopicDetail();
+    const { keys } = epicMenu('v1', d, { presence: [heldRow] });
+    const gate = epicInSessionGate('v1', keys.find((k) => k.in_session));
+    assert.match(gate, /second concurrent session on the same discussion/, 'the doc consequence is the only one left');
+    assert.doesNotMatch(gate, /Code phases run one at a time/, 'the code wording belongs to the code-gate surface');
   });
 
   it('the dashboard cues held map rows on their ↳ state lines (no key legend needed)', () => {

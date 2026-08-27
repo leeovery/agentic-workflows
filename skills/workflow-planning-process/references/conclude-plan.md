@@ -6,15 +6,11 @@
 
 > **CHECKPOINT**: Do not conclude if any designed task internal IDs are missing from `task_map` in the manifest. All tasks must be authored before concluding.
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.planning.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ Ready to conclude?`**
 
-**`y/yes`** → Conclude plan and mark as completed
-**`n/no`**  → Go back and make changes
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -34,7 +30,7 @@
    ```
 3. **Final commit** — Commit the completed plan:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan" --topic planning/{topic}
    ```
 4. **Present completion summary**:
 

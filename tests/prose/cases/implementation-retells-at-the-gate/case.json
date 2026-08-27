@@ -11,6 +11,7 @@
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-implementation-entry/references/validate-phase.md",
     "skills/workflow-implementation-entry/references/validate-dependencies.md",
+    "skills/workflow-shared/references/code-session-gate.md",
     "skills/workflow-implementation-entry/references/invoke-skill.md",
     "skills/workflow-implementation-process/SKILL.md",
     "skills/workflow-implementation-process/references/environment-setup.md",
@@ -62,6 +63,7 @@
       "task complete pay pay pay-1-2 --phase 1 --next-task ~",
       "--phase-complete",
       "impl(pay): Tpay-1-1",
+      "commit --paths",
       "impl(pay): Tpay-1-2",
       "manifest get pay.implementation.pay consolidation_gate_mode",
       "manifest push pay.implementation.pay consolidated_phases 1"

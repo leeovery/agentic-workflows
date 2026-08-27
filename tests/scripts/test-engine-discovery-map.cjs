@@ -83,6 +83,25 @@ describe('engine CLI: discovery-map sequence', () => {
     assert.strictEqual(items['session-model'].order, 2);
   });
 
+  it('commits the discovery scope, leaving a live peer\'s document behind', () => {
+    // The map lives in the manifest, which the discovery scope covers; a
+    // research or discussion session's half-written file does not.
+    fs.mkdirSync(path.join(dir, '.workflows/payments/discussion'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/payments/discussion/auth-flow.md'), '# Discussion\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', 'a peer topic']);
+    fs.writeFileSync(path.join(dir, '.workflows/payments/discussion/auth-flow.md'), '# Discussion\nhalf a turn\n');
+
+    execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' });
+
+    assert.deepStrictEqual(
+      git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean),
+      ['.workflows/payments/manifest.json']);
+    assert.deepStrictEqual(
+      git(dir, ['status', '--porcelain']).split('\n').filter(Boolean),
+      [' M .workflows/payments/discussion/auth-flow.md'], 'the peer keeps its dirt');
+  });
+
   it('re-applying the same orders is a no-op commit: committed null, note, exit 0', () => {
     execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' });
     const res = JSON.parse(execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' }).trim());
@@ -547,8 +566,8 @@ describe('engine CLI: discovery-map operations', () => {
       'ready-topic': /research has completed and discussion is queued.*cancel from the epic menu instead/,
       'discussing-topic': /discussion is in flight on it.*cancel from the epic menu instead/,
       'decided-topic': /discussion has concluded.*cancel from the epic menu instead/,
-      // handled-topic has no research item — no fan-out to claim.
-      'handled-topic': /it is marked handled and stays on the map as historical anchor.*unhandle it to make it actionable again/,
+      // One phrase for handled, whatever the topic's research state.
+      'handled-topic': /it is closed as a dead end and stays on the map as record.*reopen it to make it actionable again/,
       'cancelled-topic': /phase work in cancelled state.*cancel from the epic menu instead/,
       // triaged-topic derives fresh, but its parked stub is real content —
       // the refusal names the triage, not the historical anchor.
@@ -608,13 +627,13 @@ describe('engine CLI: discovery-map operations', () => {
       assert.ok(!/research has completed/.test(err.error), 'superseded research must not read as completed');
     });
 
-    it('a handled topic with completed research keeps the fan-out phrasing', () => {
+    it('a handled topic reads the same phrase whatever its research state', () => {
       const m = readManifest(dir);
       m.phases.research.items['handled-topic'] = { status: 'completed' };
       fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
 
       const err = runFail(dir, ['rename', 'payments', 'handled-topic', 'anything-else']);
-      assert.match(err.error, /it has fanned out into discussions and stays on the map as historical anchor/);
+      assert.match(err.error, /it is closed as a dead end and stays on the map as record/);
     });
   });
 
@@ -629,7 +648,7 @@ describe('engine CLI: discovery-map operations', () => {
 
     it('refuses an already-handled item', () => {
       const err = runFail(dir, ['handle', 'payments', 'handled-topic']);
-      assert.match(err.error, /"handled-topic" can't be marked handled — it's already marked handled/);
+      assert.match(err.error, /"handled-topic" can't be closed as a dead end — it's already closed/);
     });
 
     it('refuses a cancelled item, pointing at phase-work reactivation', () => {
@@ -654,7 +673,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('refuses any non-handled item', () => {
       for (const topic of ['fresh-topic', 'researching-topic', 'decided-topic', 'cancelled-topic']) {
         const err = runFail(dir, ['unhandle', 'payments', topic]);
-        assert.match(err.error, /isn't marked handled, so there's nothing to unhandle/, topic);
+        assert.match(err.error, /isn't closed as a dead end, so there's nothing to reopen/, topic);
       }
     });
   });

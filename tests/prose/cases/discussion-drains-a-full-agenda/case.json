@@ -57,6 +57,7 @@
       "discussion-map add search-relevance relevance-measurement expansion-quality-tracking",
       "absorb 001-offline-metrics-baseline (from behavioural-ranking)",
       "absorb 002-expansion-quality-tracking (from synonym-handling)",
+      "render conclude-gate search-relevance.discussion.relevance-measurement",
       "topic complete search-relevance discussion relevance-measurement"
     ],
     "calls_exclude": [

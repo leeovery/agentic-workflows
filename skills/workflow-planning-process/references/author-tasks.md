@@ -82,15 +82,11 @@ Planning file task table: {N} tasks — {internal IDs from the table}
 Task detail file:         {M} tasks — {internal IDs found in the file}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render task-count-gate {work_unit}.planning.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ How would you like to proceed?`**
 
-**`r/retry`** → Re-invoke the author agent once more
-**Adjust**  → Tell me what to correct (the task table or the detail file), and I'll apply it and re-validate
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -249,7 +245,7 @@ For each approved task in the task detail file, in order (crash-resume guard: a 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id}={external_id} task={next_task_id} task_map.{phase_internal_id}={phase_external_id} external_id={plan_external_id}
    ```
-4. Commit — `--plan` stages the work unit, the project manifest, and the plan's declared storage in one scoped call:
+4. Commit — `--plan` stages the planning topic, the work-unit manifest, the project manifest, and the plan's declared storage in one scoped call:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): author task {internal_id} ({task name})" --plan {topic}
    ```

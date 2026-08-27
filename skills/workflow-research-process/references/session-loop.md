@@ -8,7 +8,7 @@
 
 Not a rigid checklist — a natural cadence for productive research conversations:
 
-1. **Check for findings** — Beat presence first, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} research {topic}` — before the gated checks below: any of them can end in a STOP that closes the turn, and the beat must not miss its iteration.
+1. **Check for findings** — anything waiting is surfaced before the conversation moves on.
 
    Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. Its offer and raise gates end the turn — the agent checks below wait for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
 
@@ -35,6 +35,8 @@ Not a rigid checklist — a natural cadence for productive research conversation
    Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and deep-dive agent instructions loaded by the session wrapper. If conditions are met, dispatch before continuing. If not, proceed.
 
 7. **Continue** — Follow the conversation where it leads. If a tangent is promising, pursue it. If a thread is exhausted, move on. If earlier threads gain new context from what was just discussed, circle back.
+
+**A request to see or revisit what's been ruled out** — *"what have I ruled out?"* — reads the topic's dismissed grounds back (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} dismissed_grounds`); an entry the user wants back in play comes off with `manifest pull` on the same field, and later reviews stop carrying it.
 
 ## Navigating the Conversation
 

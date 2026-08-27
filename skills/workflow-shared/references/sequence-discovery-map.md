@@ -32,7 +32,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 ## B. Gather Live Topics
 
-Take the live topic names from the caller's most recent discovery output — every `discovery_map` row whose tier is neither `⊘` (cancelled) nor `⊙` (handled). Handled topics are non-actionable — a research umbrella that fanned out — so they get no execution order, the same as cancelled.
+Take the live topic names from the caller's most recent discovery output — every `discovery_map` row whose tier is neither `⊘` (cancelled) nor `⊙` (dead end). Dead-ended topics are non-actionable — nothing to carry forward under their own name — so they get no execution order, the same as cancelled.
 
 For richer context, read the whole discovery subtree once — every topic's `summary` and `description` arrive in one call:
 

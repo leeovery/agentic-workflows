@@ -1,0 +1,75 @@
+{
+  "origin": "topic-spawning (design/topic-spawning.md §3) made route-in-the-moment the replacement for the deleted boot-time research analysis: a thread no topic owns leaves the review through the route lane with a proposed name, and the shared landing creates the target. This is the Fumi scale thread's new home, and nothing covered it — not a route target that is a new name rather than an existing owner, not the create-then-park delivery beneath it",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/review-agent.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-research-process/references/topic-completion.md",
+    "skills/workflow-research-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/create-discovery-topic.md",
+    "skills/workflow-shared/references/topic-name-validation.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user returns to the relevance-measurement research with nothing left to add: the metric pair reads right to them, the judgment question is answered, and the eval-set sizing question is fine sitting open. They say so and expect to be wrapping up. Offered the background review's findings, they want to hear them. Shown that the interleaving thread needs a traffic layer nobody in the epic owns, they agree immediately and without argument — it is plainly not a measurement question, they had not thought about who would own it, and they would rather it be somebody's than nobody's. Told what sending it would set up on the other side, they are content with the name suggested and do not ask for a different one. They ask no questions about the batch and never claim the thread back for this topic. They decline optional extras — no deep dive — and introduce no new material.",
+  "stubs": {
+    "research-review-routes-unowned": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.research.relevance-measurement status",
+      "agent dispatch search-relevance research relevance-measurement --kind review",
+      "agent ack search-relevance research relevance-measurement review-001 --findings F1",
+      "render finding-batch search-relevance.research.relevance-measurement",
+      "discovery-map add search-relevance experiment-assignment research --source reroute:relevance-measurement",
+      "topic triage search-relevance research experiment-assignment --concern",
+      "reroute concern to experiment-assignment",
+      "agent surface search-relevance research relevance-measurement review-001 F1"
+    ],
+    "calls_in_order": [
+      "agent dispatch search-relevance research relevance-measurement --kind review",
+      "agent ack search-relevance research relevance-measurement review-001 --findings F1",
+      "render finding-batch search-relevance.research.relevance-measurement",
+      "discovery-map add search-relevance experiment-assignment research --source reroute:relevance-measurement",
+      "topic triage search-relevance research experiment-assignment --concern",
+      "agent surface search-relevance research relevance-measurement review-001 F1"
+    ],
+    "calls_exclude": [
+      "topic start search-relevance research experiment-assignment",
+      "topic complete",
+      "topic reopen",
+      "discovery-map remove",
+      "discovery-map handle",
+      "--kind deep-dive",
+      "--kind perspective",
+      "knowledge.cjs index"
+    ]
+  }
+}

@@ -44,7 +44,7 @@ The prose should have taken this path:
     again with no re-presented header or summary
 11. the fifth scripted answer approves; progress lands for pay-1-1:
     frontmatter status flips to completed, the engine records
-    completion naming pay-1-2 as next, and one raw git commit lands
+    completion naming pay-1-2 as next, and the code commit lands
     as impl(pay): Tpay-1-1
 12. pay-1-2 runs the plain path: brief, executor and reviewer stubs,
     result header, product summary, one gate fetch, and the sixth

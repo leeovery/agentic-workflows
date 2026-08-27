@@ -8,6 +8,6 @@ Research file: `.workflows/{work_unit}/research/{topic}.md`
 
 One topic, one file. The session is focused on the topic the caller provided.
 
-For epics, threads that grow into distinct topics get split out via the topic-splitting flow — each split creates its own discovery item and its own research file. See **[topic-splitting.md](topic-splitting.md)**.
+For epics, a thread that grows into a distinct topic is rerouted through that topic's triage queue — it lands on the map with `reroute:{origin}` provenance, and its material reaches the new topic through the queue entry and the provenance read at its discussion.
 
 → Return to caller.

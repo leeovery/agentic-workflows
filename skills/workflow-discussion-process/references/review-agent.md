@@ -57,6 +57,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit
 
 **Otherwise:**
 
+Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
+```
+
 **Agent path**: `../../../agents/workflow-discussion-review.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
@@ -65,6 +71,7 @@ The review agent receives:
 
 1. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
 2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
+3. **Dismissed grounds** — the list read above, verbatim. Omit this input entirely when the list is empty.
 
 > *Output the next fenced block as a code block:*
 
@@ -94,4 +101,4 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 **Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and record it on the Discussion Map as a `pending` subtopic (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
 
-**Findings the user deflects**: If the user doesn't want to engage with a finding you raised, note it in the Summary → Open Threads section of the discussion file.
+**Findings the user rejects**: nothing lands in the discussion file either way — **Rejecting a raise** in **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.

@@ -55,7 +55,7 @@ When you read these, surface the ambient nudge — see [harvest-nudge.md](harves
 - **No inline topic decomposition.** Don't surface "I'm hearing X, Y, Z as topics" during the loop. Topics are the harvest output, synthesised when the user pulls — not named mid-conversation.
 - **The user pulls the harvest.** Never push synthesis. Surface the ambient nudge at convergence (per **C**); the user decides when to harvest.
 - **Conversational, not autonomous.** Substance and soft decisions are welcome, but no automatic deep-dive — spin up a background agent or research thread only if the user asks.
-- **The initial map need not be exhaustive.** 2 topics is fine, 20 is fine. The map fills as work progresses — analyses auto-add, splits and reroutes spawn. Don't push for completeness at the harvest.
+- **The initial map need not be exhaustive.** 2 topics is fine, 20 is fine. The map fills as work progresses — the gap analysis auto-adds, reroutes land new topics. Don't push for completeness at the harvest.
 
 ## E. Soft by Location
 

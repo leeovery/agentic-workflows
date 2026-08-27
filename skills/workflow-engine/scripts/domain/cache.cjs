@@ -25,13 +25,6 @@ const { knowledge } = require('./kb.cjs');
 // index covers), the cache object's manifest home (`phases.{phase}.{field}`),
 // the field naming the checksummed inputs, and the nothing-to-stamp error.
 const KIND_CONFIG = {
-  'research-analysis': {
-    cacheFile: 'research-analysis.md',
-    phase: 'research',
-    field: 'analysis_cache',
-    filesField: 'files',
-    emptyError: 'nothing to stamp: no completed research files',
-  },
   'gap-analysis': {
     cacheFile: 'discovery-gap-analysis.md',
     phase: 'discovery',
@@ -45,7 +38,7 @@ const KINDS = Object.keys(KIND_CONFIG);
 
 /**
  * @typedef {object} CacheStampResult
- * @property {string} kind      `research-analysis` | `gap-analysis`
+ * @property {string} kind      `gap-analysis`
  * @property {string} checksum
  * @property {number} files     how many input files the checksum covers
  * @property {string[]} warnings non-blocking failures (knowledge-base index)
@@ -63,14 +56,13 @@ function phaseObject(manifest, phase) {
 /**
  * Stamp one analysis cache: checksum the current completed inputs (exactly as
  * the read side collects them), write the cache object to its manifest home —
- * `phases.research.analysis_cache` (`files`) for research-analysis,
  * `phases.discovery.gap_analysis_cache` (`input_files`) for gap-analysis —
  * then index the kind's `.state/` cache file into the knowledge base
- * (warn-don't-block). Throws when there is nothing to stamp — the analyses'
+ * (warn-don't-block). Throws when there is nothing to stamp — the analysis'
  * preconditions skip the stamp when no qualifying inputs exist.
  * @param {string} cwd project root
  * @param {string} workUnit
- * @param {string} kind  `research-analysis` | `gap-analysis`
+ * @param {string} kind  `gap-analysis`
  * @returns {CacheStampResult}
  */
 function stampAnalysisCache(cwd, workUnit, kind) {

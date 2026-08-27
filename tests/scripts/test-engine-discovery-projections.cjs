@@ -30,7 +30,7 @@ function richFixture(dir) {
           'ordering-flow': { routing: 'discussion', source: 'discovery', summary: 'order lifecycle' },
           'loyalty': { source: 'discovery', summary: 'points and rewards' },
           'operator-analytics': { routing: 'research', source: 'discovery', summary: 'dashboards' },
-          'umbrella': { routing: 'research', source: 'discovery', handled: true },
+          'dead-lead': { routing: 'research', source: 'discovery', handled: true },
           'legacy-import': { routing: 'research', source: 'discovery' },
         },
         dismissed: ['old-idea'],
@@ -67,7 +67,7 @@ describe('discoveryMapView', () => {
     richFixture(dir);
     assert.strictEqual(discoveryMapView('payments', mapOf(dir, 'payments')), [
       'Discovery Map (7 topics — 1 decided · 1 in flight · 1 ready · 2',
-      'fresh · 1 handled · 1 cancelled)',
+      'fresh · 1 dead-ended · 1 cancelled)',
       '  ├─ ✓ Ordering Flow',
       '  │     ↳ Decided',
       '  │',
@@ -83,8 +83,8 @@ describe('discoveryMapView', () => {
       '  ├─ ○ Operator Analytics',
       '  │     ↳ Fresh · routed to research',
       '  │',
-      '  ├─ ⊙ Umbrella',
-      '  │     ↳ Handled',
+      '  ├─ ⊙ Dead Lead',
+      '  │     ↳ Dead end',
       '  │',
       '  └─ ⊘ Legacy Import',
       '        ↳ Cancelled',
@@ -124,35 +124,35 @@ describe('discoveryMapView', () => {
     ].join('\n'));
   });
 
-  it('tags derive from the actual research state — fan-out claimed only when research exists, superseded named', () => {
+  it('tags derive from the actual research state — superseded named, dead end stated plainly', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
         discovery: {
           items: {
-            'umbrella': { routing: 'research', source: 'discovery', handled: true },
+            'dead-lead': { routing: 'research', source: 'discovery', handled: true },
             'no-research': { routing: 'discussion', source: 'discovery', handled: true },
-            'split-parent': { routing: 'research', source: 'discovery' },
+            'superseded-lead': { routing: 'research', source: 'discovery' },
           },
         },
         research: {
           items: {
-            'umbrella': { status: 'completed' },
-            'split-parent': { status: 'superseded' },
+            'dead-lead': { status: 'completed' },
+            'superseded-lead': { status: 'superseded' },
           },
         },
       },
     });
     assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
-      'Discovery Map (3 topics — 1 ready · 2 handled)',
-      '  ├─ → Split Parent',
+      'Discovery Map (3 topics — 1 ready · 2 dead-ended)',
+      '  ├─ → Superseded Lead',
       '  │     ↳ Research superseded · ready for discussion',
       '  │',
-      '  ├─ ⊙ No Research',
-      '  │     ↳ Handled',
+      '  ├─ ⊙ Dead Lead',
+      '  │     ↳ Dead end',
       '  │',
-      '  └─ ⊙ Umbrella',
-      '        ↳ Handled · research fanned out',
+      '  └─ ⊙ No Research',
+      '        ↳ Dead end',
       '',
     ].join('\n'));
   });

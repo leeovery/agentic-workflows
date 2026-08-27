@@ -25,6 +25,8 @@ Two doors:
 
 Output sections are one-directional: `DATA` is for reasoning and is never displayed; `DISPLAY` and `MENU` are emitted to the user verbatim and never parsed for decisions.
 
+**Sessions run concurrently, so every write is confined.** Manifest writes hold the work unit's lock; cache state is partitioned per topic; and every engine commit — the `commit` helper and every transaction tail — commits a pathspec, never the index, so no commit can reach outside the paths its own action wrote. Session liveness rides the same principle: heartbeats are stamped by the engine as a side effect of the verbs a session runs on its own topic (`presence`), never by prose.
+
 **Anything parameterised or state-branching renders in code.** Static chrome lives as literal blocks in skill prose; adapter-side chrome is rendered in-process by projections; shared runtime surfaces (gates, menus, parameterised displays) are served by the `render` surface catalogue in `engine.cjs`, which returns demarcated sections the flow emits verbatim. The engine never parses markdown artifacts to populate a render — address-backed values are JSON state, judgment content is a validated payload file.
 
 ## Reference

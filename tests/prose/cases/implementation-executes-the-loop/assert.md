@@ -42,8 +42,9 @@ The prose should have taken this path:
     scripted answer approves
 13. progress lands for pay-1-1: frontmatter status flips to completed,
     the phase is not yet complete (pay-1-2 remains), the engine
-    records completion naming pay-1-2 as next, and one raw git commit
-    lands as impl(pay): Tpay-1-1 with a brief description
+    records completion naming pay-1-2 as next, and the task's commits
+    land — the state through --plan, the code through --paths as
+    impl(pay): Tpay-1-1 with a brief description
 14. the loop returns to retrieval and selects pay-1-2, starts it,
     marks it in-progress, and presents its brief before the dispatch
 15. executor and reviewer stubs fire once each for pay-1-2; the fourth
@@ -52,7 +53,7 @@ The prose should have taken this path:
     disposition comes out `boundary` — no open tasks remain and
     consolidated_phases lacks phase 1 — so the plan-side phase
     completion is deferred, the engine call carries --next-task ~
-    WITHOUT --phase-complete, one raw git commit lands as
+    WITHOUT --phase-complete, the code commit lands as
     impl(pay): Tpay-1-2, and the stage routes to the consolidation
     pass
 17. the pass announces itself (marker and signpost), reads
@@ -80,9 +81,9 @@ Further claims:
   hand-drawn; both task-gate menus likewise via `render task-gate` at
   the gate itself, emitted verbatim and never carried from an earlier
   response
-- the per-task commits are raw git commits that include the task
-  file's status change alongside the code and tests — the plan's
-  state is not left uncommitted
+- each task lands as a pair of engine commits — the plan's task
+  state through --plan, the code and tests through --paths — so the
+  plan's state is not left uncommitted and no commit mixes the two
 - no fix-tracking file and no attempt-findings cache file exist; the
   task-brief and task-result payload cache files under
   .workflows/.cache are expected residue of the renders

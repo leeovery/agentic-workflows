@@ -74,7 +74,7 @@ The landing phase is already judged and confirmed — `{landing_phase}` decides,
 
 ## B. New Target
 
-Create the target via the shared topic-creation core, routed at the judged landing phase. No `phase` is passed — the phase item is created as `triaged` in **C**, never started:
+Create the target via the shared topic-creation core, routed at the judged landing phase. The core writes the map item alone — the phase item is created as `triaged` in **C**, never started:
 
 → Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `{landing_phase}`, source = `reroute:{origin}`.
 
@@ -116,18 +116,13 @@ Set `landed_topic = {target}` and `result = landed`. When the response carries `
 
 ## D. Closed Target
 
-Never stub over a concluded artefact, and never land an entry no session will surface. Present the state and let the user decide:
+Never stub over a concluded artefact, and never land an entry no session will surface. Present the state and let the user decide — the surface derives which closed state the target is in and words the reopen row for it:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render triage-closed-target {work_unit}.discovery.{target}
 ```
-· · · · · · · · · · · ·
-"{target}" is @if(lifecycle == 'handled') marked handled — fanned out into other topics @else cancelled @endif, so it won't pick up rerouted concerns.
 
-**`o/open`**      → @if(lifecycle == 'handled') Clear the handled marker @else Reactivate it @endif and land the concern there
-**`e/elsewhere`** → Pick a different target
-**`d/drop`**      → Drop the reroute; the concern stays with the current topic
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -145,7 +140,7 @@ For `cancelled` (an engine transaction — it commits itself) — reactivate the
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {cancelled_phase} {target}
 ```
 
-If the response is `ok: false`, surface the engine's error verbatim and re-render this menu — the concern is still unlanded. Otherwise re-resolve against the fresh state:
+If the response is `ok: false`, surface the engine's error verbatim and re-fetch the gate above — the concern is still unlanded. Otherwise re-resolve against the fresh state:
 
 → Return to **A. Resolve the Target**.
 

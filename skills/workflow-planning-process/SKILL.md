@@ -1,10 +1,12 @@
 ---
 name: workflow-planning-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git diff), Bash(git rev-parse), Bash(git add), Bash(git commit)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git log), Bash(git diff), Bash(git status), Bash(git rev-parse)
 hooks:
   SessionEnd:
     - hooks:
+        - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
         - type: command
           command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
@@ -55,11 +57,11 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Hard Rules
 
-1. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. Work-unit commits go through the scoped helper:
+1. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. The planning topic's own artifacts commit on its topic scope:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}" --topic planning/{topic}
    ```
-2. **`--plan` when the plan format's storage is staged** — task authoring, graph writes, and applied review fixes write through the format adapter, whose task storage may live outside `.workflows/{work_unit}`. Commit those with `engine commit {work_unit} -m "{message}" --plan {topic}` — it stages the work unit, the project manifest, and the plan's recorded `storage_paths`. The one raw-git case is restart cleanup, where the planning item is already deleted: stage `{storage_paths}` (read before the deletion) explicitly.
+2. **`--plan` when the plan format's storage is staged** — task authoring, graph writes, and applied review fixes write through the format adapter, whose task storage may live outside `.workflows/{work_unit}`. Commit those with `engine commit {work_unit} -m "{message}" --plan {topic}` — it stages the planning topic, both manifests, and the plan's recorded `storage_paths`. Restart cleanup commits the same way, before the planning item is deleted — `--plan` reads `storage_paths` off the item, so the cleanup lands while it still resolves.
 
 ---
 
@@ -131,22 +133,31 @@ If spec-change-detection reported changes, carry them into the walkthrough: reco
 
 #### If `restart`
 
+Order matters — the cleanup commits while the planning item still exists, so `--plan` resolves the plan's declared storage, and the manifest entry is deleted last. A crash between the two commits leaves the entry standing over cleared files, and the resume gate reads that: it offers the restart alone, which re-runs the cleanup over an already-clean tree.
+
 1. Read the `format` and the plan's `external_id` from the manifest:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
    ```
-2. Load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
-3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
-4. Delete all planning files: `rm -rf .workflows/{work_unit}/planning/{topic}/`
-5. Delete the planning manifest entry:
+2. **If the subtree read at resume detection carries no `storage_paths`** (a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
+   ```
+3. Load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
+4. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
+5. Delete all planning files: `rm -rf .workflows/{work_unit}/planning/{topic}/`
+6. Commit the cleanup — `--plan` stages the planning topic, both manifests, and the plan's declared storage, so the deleted plan files and the format's own cleanup land together:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): restart planning — clear the authored plan" --plan {topic}
+   ```
+7. Delete the planning manifest entry:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-6. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit and the plan's `storage_paths` (from the manifest subtree read during resume detection), then commit. Each entry passes as a bare pathspec; when the array is `[]` or the field is absent, stage nothing extra.
+8. Commit the entry's removal on the topic's own scope:
    ```bash
-   git add -- .workflows/{work_unit} {storage_paths}
-   git commit -m "planning({work_unit}): restart planning"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): restart planning" --topic planning/{topic}
    ```
 
 → Proceed to **Step 1**.

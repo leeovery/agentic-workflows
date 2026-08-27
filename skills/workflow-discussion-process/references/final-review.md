@@ -10,6 +10,8 @@ This step runs once per "user signals done" entry. It dispatches a fresh review 
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
+**A completed artifact carries no unowned threads.** Every gap this review surfaces resolves before conclusion: settled here, corrected in place, routed to the topic that owns it — existing or newly created, confirmed with the user — parked on the roadmap as a staged product capability, or rejected by you (*not now*, or dismissed for good — the review advises, and the conclusion is yours to call). Closing a finding by writing it into the file as an open thread nobody owns is not a resolution.
+
 ## A. Check Review State
 
 Read the store:
@@ -164,6 +166,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit
 
 **Otherwise:**
 
+Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
+```
+
 **Agent path**: `../../../agents/workflow-discussion-review.md`
 
 Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
@@ -172,6 +180,7 @@ The review agent receives:
 
 1. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
 2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
+3. **Dismissed grounds** — the list read above, verbatim. Omit this input entirely when the list is empty.
 
 When the agent returns:
 

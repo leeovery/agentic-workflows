@@ -30,11 +30,6 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or the comm
 
 #### If `action` is `analyze`
 
-If `cache_status` is `stale`, delete the cache first:
-```bash
-rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
-```
-
 → Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions as written.
 
 #### If `action` is `continue_spec`

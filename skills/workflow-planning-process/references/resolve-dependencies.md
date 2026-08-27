@@ -208,15 +208,11 @@ Reverse resolutions:
 @endif
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant resolution
 ```
-· · · · · · · · · · · ·
-**`◆ Approve the dependency resolution?`**
 
-**`y/yes`**                  → Proceed
-**Tell me what to change** → which resolutions to adjust or links to add
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -224,7 +220,7 @@ Reverse resolutions:
 
 Commit:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): resolve external dependencies"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): resolve external dependencies" --topic planning/{topic}
 ```
 
 → Return to caller.

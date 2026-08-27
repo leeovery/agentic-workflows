@@ -10,8 +10,8 @@ The prose should have taken this path:
 3. the backfill checks find nothing — no qualifying legacy sources,
    no map rows missing a summary or description — and the backfill
    reference is never loaded
-4. topic discovery reads both analysis caches as absent and dispatches
-   nothing; new_arrivals stays empty
+4. topic discovery reads the gap-analysis cache as absent and
+   dispatches nothing; new_arrivals stays empty
 5. the map needs sequencing, so the sequencing reference runs: work
    type confirmed epic, the discovery subtree read once, a full
    1..3 order assigned over the three live topics in a single

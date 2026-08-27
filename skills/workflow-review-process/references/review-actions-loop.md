@@ -41,7 +41,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit
 Commit the completion:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase" --topic review/{topic}
 ```
 
 **Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
@@ -101,7 +101,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit
 Commit the completion:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase" --topic review/{topic}
 ```
 
 > *Output the next fenced block as a code block:*
@@ -201,7 +201,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit
 Commit the cycle's decisions (the scoped commit covers the manifest):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — tasks declined"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — tasks declined" --topic review/{topic}
 ```
 
 **Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
@@ -224,9 +224,10 @@ Filter to the tasks the manifest's `staging.c{N}.tasks` marks `approved`, taking
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
 ```
 
-Commit all changes (staging file, plan tasks, task_map updates) — `--plan` stages the work unit and the plan's declared storage in one scoped call:
+Commit the staging file with this topic's implementation artifacts, then the plan tasks and `task_map` updates — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
 
 ```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): stage review remediation" --topic implementation/{topic} --sweep
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): add review remediation ({K} tasks)" --plan {topic}
 ```
 
@@ -244,7 +245,7 @@ For each plan that received new tasks:
 2. Commit tracking changes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): re-open implementation tracking"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): re-open implementation tracking" --topic review/{topic}
 ```
 
 Then enter plan mode and write the following plan. Resolve `{work_type}` from the manifest when not already in context:

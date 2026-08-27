@@ -42,9 +42,8 @@ const FLAT_PHASES = new Set(['research', 'discussion', 'investigation', 'imports
 // Whitelist of indexable filenames in .workflows/{wu}/.state/, mapping each
 // on-disk basename to its KB topic identity. The .state/ directory also holds
 // operational metadata (migrations, environment-setup) that must never enter
-// the KB. Restrict to the two analysis cache files.
+// the KB. Restrict to the gap-analysis cache file.
 const ANALYSIS_CACHE_FILES = {
-  'research-analysis': 'research-analysis',
   'discovery-gap-analysis': 'gap-analysis',
 };
 
@@ -1083,7 +1082,7 @@ function discoverArtifacts(workUnits) {
     for (const it of collectFlatEntries(wu, wuName, 'imports')) items.push(it);
     for (const it of collectFlatEntries(wu, wuName, 'seeds')) items.push(it);
 
-    // Analysis caches — file-based, not manifest-tracked. Two known paths per
+    // Analysis cache — file-based, not manifest-tracked. One known path per
     // work unit; discover by existence on disk.
     for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
       const filePath = path.posix.join('.workflows', wuName, '.state', `${basename}.md`);

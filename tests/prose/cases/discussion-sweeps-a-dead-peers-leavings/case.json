@@ -1,0 +1,63 @@
+{
+  "origin": "concurrent-phases (design/concurrent-phases.md) — the conclude sweep collects what a dead session never committed and leaves a live one's alone, and the verdict rests on a presence read; nothing walked either half",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md"
+  ],
+  "conduct": "The user settled behavioural ranking in an earlier session and is returning only to close it out. Both questions they cared about are already decided and documented — batch nightly aggregation with real-time streaming rejected, and purchases weighing ten times clicks on a ninety-day decay — and they add nothing new: picking the session back up they confirm in a sentence that nothing has changed for them, say that covers it, and ask to wrap up. On the way out they are agreeable to anything required — a mandatory review, the conclusion itself, a confirmation of either gets a yes — while declining optional extras: offered tangents, new threads, or an extra pass they do not owe. They never introduce new material and never ask which option is better.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render conclude-gate search-relevance.discussion.behavioural-ranking",
+      "topic complete search-relevance discussion behavioural-ranking",
+      "--topic discussion/behavioural-ranking --kb",
+      "presence scan search-relevance",
+      "--topic discussion/synonym-handling --sweep"
+    ],
+    "calls_in_order": [
+      "topic complete search-relevance discussion behavioural-ranking",
+      "--topic discussion/behavioural-ranking --kb",
+      "presence scan search-relevance",
+      "--topic discussion/synonym-handling --sweep"
+    ],
+    "calls_exclude": [
+      "--topic research/relevance-measurement",
+      "topic complete search-relevance discussion synonym-handling",
+      "topic reopen",
+      "presence clear",
+      "discovery-map add"
+    ]
+  }
+}

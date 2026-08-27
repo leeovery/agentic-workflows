@@ -1,0 +1,7 @@
+[
+  ".workflows/search-relevance/discussion/synonym-handling.md",
+  {
+    "path": ".workflows/search-relevance/research/relevance-measurement.md",
+    "committed": "# Research: Relevance Measurement\n\n## Question\n\nWhat does a usable evaluation harness look like for a catalogue\nsearch of this size, and what does it cost to keep the judgements\nfresh?\n"
+  }
+]

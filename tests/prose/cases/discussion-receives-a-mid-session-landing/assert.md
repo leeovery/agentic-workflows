@@ -29,8 +29,8 @@ The prose should have taken this path:
 8. the user wraps; the closing gates run the review machinery per the
    conduct (the stubbed review returns clean); the conclude gate reads
    the queue, finds it empty again, and the discussion completes with
-   the `--kb` commit; presence clears, the sweep finds no leavings,
-   and the walk stops at the bridge invocation
+   the `--kb` commit; the sweep finds no leavings, and the walk stops
+   at the bridge invocation
 
 Further claims:
 

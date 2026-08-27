@@ -7,12 +7,16 @@
 // and each surface returns demarcated sections the calling flow emits
 // verbatim at its prescribed moment. Gate-mode branching renders inside the
 // surface: the caller never chooses between gated and auto output.
+//
+// Surfaces read; they never write — with one exception. `code-gate`'s empty
+// path beats the addressed topic, because claiming the code slot and reading
+// it are the same act: the read that finds the slot free is what takes it.
 
 const fs = require('fs');
 const path = require('path');
-const { loadManifest } = require('./reads.cjs');
-const { titlecase, WORKLIST_GLYPH } = require('./conventions.cjs');
-const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { loadManifest, loadProjectManifest } = require('./reads.cjs');
+const { titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
+const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
@@ -24,6 +28,7 @@ const {
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
+const { heldCodeSessions, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const {
   roadmapMapView,
@@ -35,7 +40,7 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -105,10 +110,19 @@ function resumeGate(cwd, args) {
       ],
     ));
   }
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
   const t = titlecase(topic);
   if (variant === 'plan') {
     const item = itemOf(manifest, 'planning', topic) || {};
+    // A restart deletes the planning directory first and the manifest entry
+    // second. Between the two commits the entry survives a crash with nothing
+    // left to continue — so the gate offers the restart alone.
+    if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, 'planning', topic))) {
+      return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
+        `Found a planning entry for **${t}**, but the prior run's files are already cleared.`,
+        [cmdOption('r', 'restart', 'Clear what is left and plan from scratch')],
+      ));
+    }
     // Partial fill is a real state — define-phases advances `phase` and nulls
     // `task`; keep the known phase anchor rather than dropping the whole
     // parenthetical.
@@ -1738,7 +1752,12 @@ function reviewGate(cwd, args) {
 
 // reroute-offer — the off-topic reroute's consent gate. The concern and,
 // when one home is clear, the resolved target with its judged landing
-// phase are judgment content; the chrome and the options are fixed.
+// phase are judgment content; the chrome and the options are fixed. Two
+// flags shape what the offer says about the destination: `new_target` — the
+// home is a name the map does not hold yet, so rerouting creates it — and
+// `grown`, the same creation reached from the other end, where the thread
+// itself outgrew this topic. Grown implies new: a thread that grew into its
+// own topic has nowhere existing to go.
 
 /**
  * @param {string} cwd
@@ -1750,6 +1769,11 @@ function rerouteOffer(cwd, { dotpath, file }) {
   resolveAddress(cwd, dotpath, 'reroute-offer');
   const p = readJsonPayload(cwd, file, 'reroute-offer');
   if (!isFilled(p.concern)) throw new Error('render reroute-offer: "concern" must be a non-empty string');
+  for (const flag of ['new_target', 'grown']) {
+    if (p[flag] !== undefined && typeof p[flag] !== 'boolean') {
+      throw new Error(`render reroute-offer: "${flag}" must be true or false`);
+    }
+  }
   const hasTarget = isFilled(p.target);
   const hasPhase = isFilled(p.landing_phase);
   if (hasTarget !== hasPhase) {
@@ -1758,17 +1782,131 @@ function rerouteOffer(cwd, { dotpath, file }) {
   if (hasPhase && !['research', 'discussion'].includes(p.landing_phase)) {
     throw new Error(`render reroute-offer: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
   }
-  const label = hasTarget
-    ? `**${p.concern}** belongs to a different topic, not this one.\nIt reads as **${p.target}**'s ground, landing ${p.landing_phase}-side — append a phase to override (e.g. \`r discussion\`).`
-    : `**${p.concern}** belongs to a different topic, not this one.`;
+  const grown = p.grown === true;
+  if (grown && !hasTarget) {
+    throw new Error('render reroute-offer: "grown" needs "target" and "landing_phase" — a thread that grew into its own topic carries the name it grew into');
+  }
+  if (p.new_target === true && !hasTarget) {
+    throw new Error('render reroute-offer: "new_target" needs "target" — there is no new topic without a name');
+  }
+  let label;
+  if (grown) {
+    label = `**${p.concern}** has grown into its own topic here.\n`
+      + `Rerouting creates **${p.target}** on the map, landing ${p.landing_phase}-side — the material stays in this file and feeds the new topic through the queue entry and the provenance read at its discussion. Append a phase to override (e.g. \`r discussion\`).`;
+  } else if (hasTarget) {
+    label = `**${p.concern}** belongs to a different topic, not this one.\n`
+      + `It reads as **${p.target}**'s ground, landing ${p.landing_phase}-side — append a phase to override (e.g. \`r discussion\`).`;
+    if (p.new_target === true) label += `\n**${p.target}** isn't on the map yet — rerouting creates it.`;
+  } else {
+    label = `**${p.concern}** belongs to a different topic, not this one.`;
+  }
   return section(
     'MENU: reroute offer',
     "emit verbatim as markdown, then STOP for the user's response",
     menu(label, [
       cmdOption('r', 'reroute', 'Send it to the topic it belongs to; it picks it up later'),
-      cmdOption('k', 'keep', 'Keep it here as a subtopic'),
+      cmdOption('k', 'keep', 'Keep it here as part of this topic'),
     ]),
   );
+}
+
+// research-conclude-gate — the topic-completion consent gate. The dead-end
+// row renders only when the session's own conclusion is that the topic gives
+// the product nothing to carry forward under its own name — the judgment
+// travels as the --dead-end flag, never derived here.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, 'dead-end'?: string}} args
+ * @returns {string}
+ */
+function researchConcludeGate(cwd, args) {
+  resolveResearch(cwd, args.dotpath, 'research-conclude-gate');
+  const options = [
+    cmdOption('c', 'conclude', 'Mark this topic as complete, ready for discussion'),
+  ];
+  if (args['dead-end']) {
+    options.push(cmdOption('d', 'dead-end', 'Close it as a dead end — completed and kept as record, no discussion owed; reversible from the map'));
+  }
+  options.push(cmdOption('k', 'keep', "Keep digging, there's more to understand"));
+  return section(
+    'MENU: research conclude gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu('', options, { question: 'This topic looks ready to conclude.' }),
+  );
+}
+
+/**
+ * Pin a research address, refusing any other phase by name.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{workUnit: string, phase: string, topic: string, manifest: object}}
+ */
+function resolveResearch(cwd, dotpath, surface) {
+  const resolved = resolveAddress(cwd, dotpath, surface);
+  if (resolved.phase !== 'research') {
+    throw new Error(`render ${surface}: address must be <work_unit>.research.<topic>, got phase "${resolved.phase}"`);
+  }
+  return resolved;
+}
+
+// deep-dive-offer — the orchestrator's dispatch offer over a thread it judged
+// worth investigating independently. The thread description is the judgment
+// content; the two-line opening and the y/n pair are fixed. The two lines
+// split by role: the statement names what was noticed and stays context, the
+// question beneath it is the ask and takes the decision glyph.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function deepDiveOffer(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render deep-dive-offer: --file <payload.json> is required');
+  resolveResearch(cwd, dotpath, 'deep-dive-offer');
+  const p = readJsonPayload(cwd, file, 'deep-dive-offer');
+  if (!isFilled(p.thread)) {
+    throw new Error('render deep-dive-offer: "thread" must be a non-empty string — the thread description as it opens the offer');
+  }
+  return section('MENU: deep dive offer', STOP_FOR_RESPONSE, menu(
+    `${p.thread} looks like it could use a deep dive.`,
+    [
+      cmdOption('y', 'yes', 'Dispatch a deep-dive agent'),
+      cmdOption('n', 'no', "Skip, we'll cover it in conversation"),
+    ],
+    { question: 'Want me to spin up a background investigation while we keep going?' },
+  ));
+}
+
+// in-flight-agents-gate — the wait-or-conclude gate a session takes when
+// background agents are still running at conclusion. Research and discussion
+// both dispatch and both conclude, so the gate serves the pair. Served to the
+// epic and feature sessions alike: the shape is one gate, and the count is
+// the session's own (this session's dispatches, an earlier session's dead
+// rows already closed), so it rides as a scalar flag rather than being
+// re-derived. A statement-headed route menu — the opening line reports what
+// is still running, and there is no yes to answer — so it stays context
+// rather than flickering into a glyphed label as the count changes.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, count?: string}} args
+ * @returns {string}
+ */
+function inFlightAgentsGate(cwd, { dotpath, count }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'in-flight-agents-gate');
+  if (phase !== 'research' && phase !== 'discussion') {
+    throw new Error(`render in-flight-agents-gate: address must be <work_unit>.research|discussion.<topic>, got phase "${phase}"`);
+  }
+  const n = Number(count);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`render in-flight-agents-gate: --count must be a positive integer, got "${count}"`);
+  }
+  return section('MENU: in-flight agents gate', STOP_FOR_RESPONSE, menuFrame([
+    n === 1 ? 'There is still 1 background agent working.' : `There are still ${n} background agents working.`,
+    '',
+    cmdOption('w', 'wait', 'Wait for results before concluding'),
+    cmdOption('p', 'proceed', 'Conclude now (results will persist in cache for reference)'),
+  ], { glyphLabel: false }));
 }
 
 // off-topic-offer — the single-topic counterpart of reroute-offer: with no
@@ -1809,7 +1947,10 @@ function offTopicOffer(cwd, { dotpath, file, variant }) {
 
 // reroute-candidates — the ambiguous reroute's selection gate. The plausible
 // homes and the judged landing phase are judgment content; the numbering,
-// the new-topic option, and the override grammar are fixed.
+// the new-topic option, and the override grammar are fixed. A candidate's
+// state reaches the user in the map's own words: the raw lifecycle token is
+// manifest vocabulary, so it goes through the same label every map render
+// uses rather than being echoed at a reader.
 
 /**
  * @param {string} cwd
@@ -1831,7 +1972,10 @@ function rerouteCandidates(cwd, { dotpath, file }) {
     for (const field of ['name', 'lifecycle']) {
       if (!isFilled(c[field])) throw new Error(`render reroute-candidates: candidate ${i + 1} is missing "${field}"`);
     }
-    return cmdOption(String(i + 1), null, `${c.name} [${c.lifecycle}]`);
+    if (!Object.hasOwn(DISCOVERY_GLYPH, c.lifecycle)) {
+      throw new Error(`render reroute-candidates: candidate ${i + 1} carries unknown lifecycle "${c.lifecycle}" (expected ${Object.keys(DISCOVERY_GLYPH).join('/')})`);
+    }
+    return cmdOption(String(i + 1), null, `${c.name} [${discoveryLifecycleLabel(c.lifecycle, c.routing, c.research_state)}]`);
   });
   options.push(cmdOption('n', 'new', 'Create a new topic for it'));
   const prompt = p.landing_phase === 'research'
@@ -1842,6 +1986,627 @@ function rerouteCandidates(cwd, { dotpath, file }) {
     "emit verbatim as markdown, then STOP for the user's response",
     menu(`Where should "${p.concern}" land?`, options, { prompt }),
   );
+}
+
+// ---------------------------------------------------------------------------
+// The discovery-map gates. A map edit, a staged candidate, a name collision
+// and a closed reroute target each stop the same way: the proposal above,
+// the confirm beneath. Judgment supplies the names and values; the bodies,
+// the questions and the option sets are fixed here, so a gate reads the same
+// whichever flow raised it and at any width.
+// ---------------------------------------------------------------------------
+
+// A bare yes/no pair — no labels, because the question above them already
+// says what yes means (CONVENTIONS.md: Yes/no prompt).
+const YES_NO = [bareOption('y', 'yes'), bareOption('n', 'no')];
+
+// The map-operation family: op → the confirm question its gate asks. The
+// batch ops (a run of summary or description edits confirmed together) ask
+// once for the whole batch; every other op is its own group of one.
+const MAP_OP_QUESTIONS = {
+  'edit-summary': 'Apply?',
+  'edit-description': 'Apply?',
+  remove: 'Confirm removal?',
+  rename: 'Confirm rename?',
+  reroute: 'Confirm routing change?',
+  close: 'Confirm close as dead end?',
+  reopen: 'Confirm reopen?',
+};
+
+/** @param {object} p @param {string} field @returns {string} */
+function mapOpName(p, field) {
+  if (!isFilled(p[field])) throw new Error(`render map-op-gate: "${field}" must be a non-empty string`);
+  return p[field];
+}
+
+/**
+ * The batch rows of an edit op: `[{name, <field>}]`, at least one.
+ * @param {object} p @param {string} field @returns {{name: string, value: string}[]}
+ */
+function mapOpRows(p, field) {
+  if (!Array.isArray(p.items) || p.items.length === 0) {
+    throw new Error(`render map-op-gate: "items" must be a non-empty array of {name, ${field}}`);
+  }
+  return p.items.map((row, i) => {
+    for (const key of ['name', field]) {
+      if (!row || !isFilled(row[key])) {
+        throw new Error(`render map-op-gate: item ${i + 1} is missing "${key}" (each item needs name and ${field})`);
+      }
+    }
+    return { name: row.name, value: row[field] };
+  });
+}
+
+/** @param {string} value @param {string} field @returns {string} */
+function mapOpRouting(value, field) {
+  if (!['research', 'discussion'].includes(value)) {
+    throw new Error(`render map-op-gate: "${field}" must be "research" or "discussion", got "${value}"`);
+  }
+  return value;
+}
+
+/**
+ * The proposal body for one map operation.
+ * @param {string} op @param {object} p @returns {string[]}
+ */
+function mapOpBody(op, p) {
+  if (op === 'edit-summary' || op === 'edit-description') {
+    const field = op === 'edit-summary' ? 'summary' : 'description';
+    const noun = op === 'edit-summary' ? 'summary(ies)' : 'description(s)';
+    const rows = mapOpRows(p, field);
+    return [
+      `Updating ${rows.length} ${noun}:`,
+      '',
+      ...rows.flatMap((r) => bulletRow(`${r.name}: "${r.value}"`)),
+    ];
+  }
+  if (op === 'remove') {
+    return [
+      `Remove "${mapOpName(p, 'name')}" from the map.`,
+      '',
+      ...indentedBody([
+        'Lifecycle: fresh — no work has started on this topic.',
+        "The name will be added to the dismissed list so the analysis won't auto-re-propose it.",
+      ]),
+    ];
+  }
+  if (op === 'rename') {
+    return [
+      `Rename "${mapOpName(p, 'name')}" → "${mapOpName(p, 'new_name')}".`,
+      '',
+      ...indentedBody([
+        'Lifecycle: fresh — no work has started, no files exist under this name. Manifest mutation only.',
+      ]),
+    ];
+  }
+  if (op === 'reroute') {
+    const name = mapOpName(p, 'name');
+    const from = mapOpRouting(p.from, 'from');
+    const to = mapOpRouting(p.to, 'to');
+    if (from === to) throw new Error('render map-op-gate: "from" and "to" name the same routing — nothing to confirm');
+    return [
+      `Change routing of "${name}": ${from} → ${to}.`,
+      '',
+      ...indentedBody(['Lifecycle: fresh — no phase work yet, so the routing hint is mutable.']),
+    ];
+  }
+  if (op === 'close') {
+    const name = mapOpName(p, 'name');
+    return [
+      `Close "${name}" as a dead end.`,
+      '',
+      ...indentedBody([
+        'It stays on the map and in the knowledge base as record and seed material, but stops '
+        + 'prompting for a next action and no longer counts against convergence — nothing to carry '
+        + `forward under its own name. Reversible with "reopen ${name}".`,
+      ]),
+    ];
+  }
+  return [
+    `Reopen "${mapOpName(p, 'name')}".`,
+    '',
+    ...indentedBody([
+      'Clears the dead-end marker. The topic returns to its name-matched lifecycle and counts against convergence again.',
+    ]),
+  ];
+}
+
+// The names one op touches: a run of rows for the batch edits, the single
+// subject otherwise. The op's own payload validation has already run, so
+// every name here is a filled string.
+/** @param {string} op @param {object} p @returns {string[]} */
+function mapOpTargets(op, p) {
+  if (op === 'edit-summary') return mapOpRows(p, 'summary').map((r) => r.name);
+  if (op === 'edit-description') return mapOpRows(p, 'description').map((r) => r.name);
+  return [mapOpName(p, 'name')];
+}
+
+// The lifecycle each op is legal from, mirroring map-operations.md's
+// validation table — the prose pre-checks and the engine's write path both
+// enforce it, and the gate refuses in between rather than confirming an
+// operation that cannot land. The lifecycle join is the one every map
+// consumer uses, so the three cannot drift apart.
+/** @param {object} manifest @param {string} op @param {string} name */
+function assertMapOp(manifest, op, name) {
+  const items = (((manifest.phases || {}).discovery || {}).items) || {};
+  if (!items[name]) throw new Error(`render map-op-gate: no discovery item "${name}" on the map`);
+  if (op === 'edit-summary' || op === 'edit-description') return;
+  const { lifecycle } = computeTopicLifecycle(manifest, name);
+  if (op === 'close') {
+    if (lifecycle === 'handled') {
+      throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's already closed`);
+    }
+    if (lifecycle === 'cancelled') {
+      throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's cancelled; reactivate the phase work from the epic menu first`);
+    }
+    return;
+  }
+  if (op === 'reopen') {
+    if (lifecycle !== 'handled') {
+      throw new Error(`render map-op-gate: "${name}" can't be reopened — it's "${lifecycle}", not closed as a dead end`);
+    }
+    return;
+  }
+  if (lifecycle !== 'fresh') {
+    const verb = { remove: 'removed', rename: 'renamed', reroute: 're-routed' }[op];
+    throw new Error(`render map-op-gate: "${name}" can't be ${verb} — it's "${lifecycle}", not fresh`);
+  }
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, op?: string, file?: string}} args
+ * @returns {string}
+ */
+function mapOpGate(cwd, { dotpath, op, file }) {
+  if (!isFilled(op) || !Object.hasOwn(MAP_OP_QUESTIONS, op)) {
+    throw new Error(`render map-op-gate: --op must be one of ${Object.keys(MAP_OP_QUESTIONS).join(', ')}, got "${op}"`);
+  }
+  if (!file) throw new Error('render map-op-gate: --file <payload.json> is required');
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'map-op-gate');
+  const p = readJsonPayload(cwd, file, 'map-op-gate');
+  const body = mapOpBody(op, p);
+  for (const name of mapOpTargets(op, p)) assertMapOp(manifest, op, name);
+  return [
+    section('DISPLAY: map operation', 'emit verbatim as a code block, directly above the menu', body.join('\n')),
+    section('MENU: map operation gate', STOP_FOR_RESPONSE, menu('', YES_NO, { question: MAP_OP_QUESTIONS[op] })),
+  ].join('\n');
+}
+
+// candidate-gate — the analysis approval gate's per-candidate stop. The
+// candidate's own fields are judgment content staged by the analysis; the
+// gate mode is manifest state at the staging subtree, so the branch renders
+// inside the surface: the caller never chooses between gated and auto
+// output. A candidate the manifest does not mark `pending` never renders —
+// a stale payload refuses rather than gating something already decided.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function candidateGate(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render candidate-gate: --file <payload.json> is required');
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'candidate-gate');
+  const staging = ((((manifest.phases || {}).discovery || {}).analysis_staging) || {})['discovery-gap-analysis'];
+  if (!staging || typeof staging !== 'object') {
+    throw new Error(`render candidate-gate: no staged gap-analysis candidates for "${workUnit}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'candidate-gate');
+  if (!isFilled(p.name)) throw new Error('render candidate-gate: "name" must be a non-empty string');
+  if (!['research', 'discussion'].includes(p.routing)) {
+    throw new Error(`render candidate-gate: "routing" must be "research" or "discussion", got "${p.routing}"`);
+  }
+  if (!isFilled(p.summary)) throw new Error('render candidate-gate: "summary" must be a non-empty string');
+  const row = (staging.candidates || {})[p.name];
+  if (!row || typeof row !== 'object' || row.status !== 'pending') {
+    throw new Error(`render candidate-gate: "${p.name}" is not a pending candidate — a stale payload never renders`);
+  }
+  const mode = staging.gate_mode;
+  if (mode !== 'gated' && mode !== 'auto') {
+    throw new Error(`render candidate-gate: gate_mode must be "gated" or "auto", got "${mode}"`);
+  }
+  const name = titlecase(p.name);
+  const display = section('DISPLAY: candidate', 'emit verbatim as a code block', [
+    `${name} [${p.routing}]`,
+    ...indentedBody([p.summary, 'surfaced by gap analysis']),
+  ].join('\n'));
+  if (mode === 'auto') {
+    return [display, section(
+      'DISPLAY: candidate approved',
+      `after recording the approval: ${AUTO_GATE_INSTRUCTION}`,
+      `${name} — approved [auto].`,
+    )].join('\n');
+  }
+  return [display, section('MENU: candidate gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', 'Approve — the topic joins the map and its phase can start from the epic menu'),
+    cmdOption('a', 'auto', 'Approve this and all remaining candidates automatically'),
+    cmdOption('s', 'skip', 'Skip and dismiss — the analysis never re-proposes this name'),
+    promptOption('Comment', 'Tell me what to change (routing, summary, or description)'),
+  ], { question: 'Add this topic to the map?' }))].join('\n');
+}
+
+// topic-collision-gate — the shared topic-creation core's exit after a
+// proposed name collided with an active map item. Static: the rejection
+// itself was rendered by the validation, and this gate only asks what to do
+// about it.
+
+/** @param {string} _cwd @param {object} _args @returns {string} */
+function topicCollisionGate(_cwd, _args) {
+  return section('MENU: topic collision gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('c', 'cancel', 'Abandon creating this topic'),
+    promptOption('Pick another', 'Tell me a different name'),
+  ], { question: 'How would you like to proceed?' }));
+}
+
+// triage-closed-target — the reroute's stop over a target no future session
+// will surface. The address names the target and the surface derives its
+// lifecycle with the same join every other map consumer uses, so the two
+// closed states cannot drift apart in the wording. A statement-headed route
+// menu: three destinations, no yes to answer, so the statement stays
+// context rather than flickering into a glyphed label as the name shortens.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function triageClosedTarget(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'triage-closed-target');
+  if (phase !== 'discovery') {
+    throw new Error(`render triage-closed-target: address must be <work_unit>.discovery.<target>, got phase "${phase}"`);
+  }
+  const items = (((manifest.phases || {}).discovery || {}).items) || {};
+  if (!items[topic]) {
+    throw new Error(`render triage-closed-target: no discovery item "${topic}" on the map`);
+  }
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  if (lifecycle !== 'handled' && lifecycle !== 'cancelled') {
+    throw new Error(`render triage-closed-target: "${topic}" is "${lifecycle}", not closed — the gate serves handled and cancelled targets`);
+  }
+  const closed = lifecycle === 'handled' ? 'closed as a dead end' : 'cancelled';
+  // The reopen row states its consequence: choosing it does not only land the
+  // concern, it puts the topic back in front of every convergence read.
+  const reopen = lifecycle === 'handled'
+    ? 'Reopen it and land the concern there — it returns to its name-matched lifecycle and counts as open again'
+    : 'Reactivate it and land the concern there — its phase work returns to its previous status and counts as open again';
+  return section('MENU: closed target gate', STOP_FOR_RESPONSE, menuFrame([
+    `"${topic}" is ${closed}, so it won't pick up rerouted concerns.`,
+    '',
+    cmdOption('o', 'open', reopen),
+    cmdOption('e', 'elsewhere', 'Pick a different target'),
+    cmdOption('d', 'drop', 'Drop the reroute; the concern stays with the current topic'),
+  ], { glyphLabel: false }));
+}
+
+// ---------------------------------------------------------------------------
+// The phase gates. Each of these stops a flow the same way a shipped surface
+// does — the option set in code, the prose carrying the fetch and the
+// emission. Wording is the flow's own; the frame, the alignment and the
+// register are this catalogue's.
+// ---------------------------------------------------------------------------
+
+// conclude-gate — the closing consent of the four phases whose conclusion is
+// a user's call. One surface, keyed by the address's own phase segment: the
+// shape is identical (a question, a yes, a way back), and only the wording
+// each phase has always used differs, so it lives in one table rather than
+// four copies of the same frame. Research's conclude gate is its own surface
+// — it carries a conditional dead-end row no other phase has.
+const CONCLUDE_GATES = {
+  discussion: {
+    question: 'Conclude this discussion and mark as completed?',
+    options: () => [
+      cmdOption('y', 'yes', 'Conclude discussion'),
+      cmdOption('n', 'no', 'Continue discussing'),
+    ],
+  },
+  investigation: {
+    question: 'Investigation complete. Ready to conclude?',
+    options: () => [
+      cmdOption('y', 'yes', 'Conclude investigation'),
+      promptOption('Keep going', 'Tell me what else to explore'),
+    ],
+  },
+  implementation: {
+    question: 'Ready to mark implementation as completed?',
+    options: () => [
+      cmdOption('y', 'yes', 'Mark as completed'),
+      cmdOption('n', 'no', 'Go back and make changes'),
+    ],
+  },
+  planning: {
+    question: 'Ready to conclude?',
+    options: () => [
+      cmdOption('y', 'yes', 'Conclude plan and mark as completed'),
+      cmdOption('n', 'no', 'Go back and make changes'),
+    ],
+  },
+};
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function concludeGate(cwd, { dotpath }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'conclude-gate');
+  const gate = CONCLUDE_GATES[phase];
+  if (!gate) {
+    throw new Error(`render conclude-gate: phase must be one of ${Object.keys(CONCLUDE_GATES).join(', ')}, got "${phase}"`);
+  }
+  return section('MENU: conclude gate', STOP_FOR_RESPONSE, menu('', gate.options(), { question: gate.question }));
+}
+
+// summary-backfill-gate — the epic's provenance recovery, both stops. The
+// batch variant is static (the proposed lines are displayed above it); the
+// unsourced variant names the topics no source file could be drafted from,
+// so its list rides as a payload.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string, file?: string}} args
+ * @returns {string}
+ */
+function summaryBackfillGate(cwd, { dotpath, variant, file }) {
+  if (variant !== 'batch' && variant !== 'unsourced') {
+    throw new Error(`render summary-backfill-gate: --variant must be "batch" or "unsourced", got "${variant}"`);
+  }
+  resolveWorkUnit(cwd, dotpath, 'summary-backfill-gate');
+  if (variant === 'batch') {
+    return section('MENU: summary batch gate', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('y', 'yes', 'Accept all summaries as drafted (description is auto-drafted silently)'),
+      cmdOption('e', 'edit', 'Edit one or more summary lines before accepting'),
+      cmdOption('s', 'skip', 'Skip the whole batch (leave fields blank)'),
+    ], { question: 'Accept these summaries?' }));
+  }
+  if (!file) throw new Error('render summary-backfill-gate: --file <payload.json> is required for --variant unsourced');
+  const p = readJsonPayload(cwd, file, 'summary-backfill-gate');
+  if (!Array.isArray(p.names) || p.names.length === 0 || p.names.some((n) => !isFilled(n))) {
+    throw new Error('render summary-backfill-gate: "names" must be a non-empty array of topic names');
+  }
+  return section('MENU: unsourced topics gate', STOP_FOR_RESPONSE, menuFrame([
+    `${p.names.length} topic(s) have no source file to draft from:`,
+    '',
+    ...p.names.map((n) => `- ${titlecase(n)}`),
+    '',
+    cmdOption('p', 'provide', "Tell me the summary for each and I'll write it"),
+    cmdOption('d', 'dismiss', 'Write a minimal name-derived summary noting the missing source, so this stops re-prompting'),
+    cmdOption('l', 'leave', 'Leave them unset; this flow re-offers next time'),
+  ]));
+}
+
+/**
+ * Pin a planning address, refusing any other phase by name.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{workUnit: string, phase: string, topic: string, manifest: object}}
+ */
+function resolvePlanning(cwd, dotpath, surface) {
+  const resolved = resolveAddress(cwd, dotpath, surface);
+  if (resolved.phase !== 'planning') {
+    throw new Error(`render ${surface}: address must be <work_unit>.planning.<topic>, got phase "${resolved.phase}"`);
+  }
+  return resolved;
+}
+
+// external-dependency-gate — implementation entry's two stops over a plan's
+// external dependencies: what to do about the blocking set, and which of them
+// the user has satisfied outside the pipeline. Which dependencies block is
+// judgment — it comes from reading each one's plan through its output format
+// — so the pick variant is told the set by name; each row's description is
+// manifest state and is read here, so the menu can never name a dependency
+// the plan does not declare.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string, blocking?: string}} args
+ * @returns {string}
+ */
+function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
+  if (variant !== 'blocking' && variant !== 'pick') {
+    throw new Error(`render external-dependency-gate: --variant must be "blocking" or "pick", got "${variant}"`);
+  }
+  const { manifest, topic } = resolvePlanning(cwd, dotpath, 'external-dependency-gate');
+  if (variant === 'blocking') {
+    return section('MENU: blocking dependencies gate', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('s', 'satisfied', 'Mark a dependency as satisfied externally'),
+      cmdOption('i', 'implement', 'Exit to implement blocking dependencies first'),
+    ], { question: 'How would you like to proceed?' }));
+  }
+  const names = String(blocking || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (names.length === 0) {
+    throw new Error('render external-dependency-gate: --blocking <topic,topic,…> is required for --variant pick — the blocking set, in offer order');
+  }
+  const declared = ((((manifest.phases || {}).planning || {}).items || {})[topic] || {}).external_dependencies || {};
+  const rows = names.map((name, i) => {
+    const dep = declared[name];
+    if (!dep || typeof dep !== 'object') {
+      throw new Error(`render external-dependency-gate: "${name}" is not an external dependency of "${topic}"`);
+    }
+    if (!isFilled(dep.description)) {
+      throw new Error(`render external-dependency-gate: "${name}" carries no description — the row has nothing to say`);
+    }
+    return cmdOption(String(i + 1), null, `${titlecase(name)} — ${dep.description}`);
+  });
+  return section('MENU: dependency pick', STOP_FOR_RESPONSE, menu('', rows, { question: 'Which dependency has been satisfied?' }));
+}
+
+// checkpoint-files-gate — the analysis loop's pre-analysis checkpoint. The
+// unexpected files are listed above by the flow; the gate only asks what the
+// commit should carry.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function checkpointFilesGate(cwd, { dotpath }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'checkpoint-files-gate');
+  if (phase !== 'implementation') {
+    throw new Error(`render checkpoint-files-gate: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
+  }
+  return section('MENU: checkpoint files gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', 'Include all'),
+    cmdOption('s', 'skip', 'Exclude unexpected files, commit only implementation files'),
+    promptOption('Comment', 'Specify which to include'),
+  ], { question: 'Include unexpected files in the checkpoint commit?' }));
+}
+
+// executor-block-gate — the task loop's stop after an executor returns
+// blocked or failed. The executor's own ISSUES text is echoed above; the
+// three ways out are fixed.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function executorBlockGate(cwd, { dotpath }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'executor-block-gate');
+  if (phase !== 'implementation') {
+    throw new Error(`render executor-block-gate: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
+  }
+  return section('MENU: executor block gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('r', 'retry', 'Re-invoke the executor with your comments (provide below)'),
+    cmdOption('s', 'skip', 'Skip this task and move to the next'),
+    cmdOption('t', 'stop', 'Stop implementation entirely'),
+  ], { question: 'How would you like to proceed?' }));
+}
+
+// dependency-approval-gate — planning's three approvals over dependency
+// work: the graph as first analysed, the graph after it was applied, and the
+// external-dependency resolutions. One shape — approve, or say what to
+// change — with each variant's own wording.
+const DEPENDENCY_APPROVALS = {
+  graph: { question: 'Approve the dependency graph?', change: 'which priorities or dependencies to adjust' },
+  'updated-graph': { question: 'Approve the updated graph?', change: 'which priorities or dependencies to adjust' },
+  resolution: { question: 'Approve the dependency resolution?', change: 'which resolutions to adjust or links to add' },
+};
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string}} args
+ * @returns {string}
+ */
+function dependencyApprovalGate(cwd, { dotpath, variant }) {
+  const spec = variant === undefined ? undefined : DEPENDENCY_APPROVALS[variant];
+  if (!spec) {
+    throw new Error(`render dependency-approval-gate: --variant must be one of ${Object.keys(DEPENDENCY_APPROVALS).join(', ')}, got "${variant}"`);
+  }
+  resolvePlanning(cwd, dotpath, 'dependency-approval-gate');
+  return section('MENU: dependency approval gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', 'Proceed'),
+    promptOption('Tell me what to change', spec.change),
+  ], { question: spec.question }));
+}
+
+// task-count-gate — the authoring loop's stop when the detail file and the
+// task table still disagree after two attempts.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function taskCountGate(cwd, { dotpath }) {
+  resolvePlanning(cwd, dotpath, 'task-count-gate');
+  return section('MENU: task count gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('r', 'retry', 'Re-invoke the author agent once more'),
+    promptOption('Adjust', "Tell me what to correct (the task table or the detail file), and I'll apply it and re-validate"),
+  ], { question: 'How would you like to proceed?' }));
+}
+
+// plan-format-gate — the plan's format offer, reached only when a project
+// default exists. The format is project-manifest state, so the surface reads
+// it rather than being told: an offer naming a format nobody set would be a
+// gate over nothing. The address is the project's, not a work unit's — the
+// planning item does not exist yet when this gate renders.
+
+/**
+ * @param {string} cwd
+ * @returns {string}
+ */
+function planFormatGate(cwd) {
+  const project = loadProjectManifest(cwd);
+  const format = ((project || {}).defaults || {}).plan_format;
+  if (!isFilled(format)) {
+    throw new Error('render plan-format-gate: no project default plan_format — the offer only renders over an existing default');
+  }
+  return section('MENU: plan format gate', STOP_FOR_RESPONSE, menu(
+    `Project default format is **${format}**. Use the same format?`,
+    [
+      cmdOption('y', 'yes', `Use ${format}`),
+      cmdOption('n', 'no', 'See all available formats'),
+    ],
+  ));
+}
+
+// plan-review-gate — the plan review loop's two gates, the sibling of
+// spec-review-gate: continue = the cycle-count escape hatch, reloop = another
+// full round of both reviews.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string}} args
+ * @returns {string}
+ */
+function planReviewGate(cwd, { dotpath, variant }) {
+  if (variant !== 'continue' && variant !== 'reloop') {
+    throw new Error('render plan-review-gate: --variant must be "continue" or "reloop"');
+  }
+  resolvePlanning(cwd, dotpath, 'plan-review-gate');
+  if (variant === 'continue') {
+    return section('MENU: plan review continue gate', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('p', 'proceed', 'Continue review'),
+      cmdOption('s', 'skip', 'Skip review, proceed to completion'),
+    ], { question: 'Continue with review?' }));
+  }
+  return section('MENU: plan review reloop gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('r', 'reanalyse', 'Run another round (traceability + integrity)'),
+    cmdOption('p', 'proceed', 'Proceed to conclusion'),
+  ], { question: 'Run another review round?' }));
+}
+
+// correction-gate — the consent stop before editing another work unit's
+// completed specification. The path is the address's own, derived here so the
+// gate can never name a file the correction protocol would not touch; the
+// owning unit must be completed, which is the one state the protocol edits.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function correctionGate(cwd, { dotpath }) {
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'correction-gate');
+  if (phase !== 'specification') {
+    throw new Error(`render correction-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
+  }
+  if (manifest.status !== 'completed') {
+    throw new Error(`render correction-gate: "${workUnit}" is "${manifest.status}" — the corrigendum protocol serves completed work units`);
+  }
+  const specPath = `.workflows/${workUnit}/specification/${topic}/specification.md`;
+  return section('MENU: correction gate', STOP_FOR_RESPONSE, menu(
+    `Apply the correction protocol to ${specPath}?`,
+    [
+      cmdOption('y', 'yes', 'Edit in place + corrigendum + knowledge re-index'),
+      cmdOption('v', 'view', 'Show the full correction list'),
+      cmdOption('n', 'no', 'Leave the specification as-is'),
+    ],
+  ));
+}
+
+// analysis-proceed-gate — specification entry's consent before the grouping
+// analysis runs. The cache-aware message above it differs by cache state; the
+// ask does not.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function analysisProceedGate(cwd, { dotpath }) {
+  resolveWorkUnit(cwd, dotpath, 'analysis-proceed-gate');
+  return section('MENU: analysis proceed gate', STOP_FOR_RESPONSE, menu('', YES_NO, { question: 'Proceed with analysis?' }));
 }
 
 // finding-announce — the surfacing protocol's opt-in gate: a background
@@ -2769,6 +3534,78 @@ function entryGate(cwd, { dotpath, own }) {
 }
 
 // ---------------------------------------------------------------------------
+// code-gate — the one-code-session rule at the entry chokepoint. Everything
+// else in the system partitions by topic; the tree and the index do not, so
+// a second implementation or review session anywhere in the checkout writes
+// the same files as the first. The gate states who holds the slot and lets
+// the user through anyway — the machine can verify that a process still
+// runs, never that its session still matters. An empty response means the
+// slot is free, and taking it is the same act as reading it: the empty path
+// beats the addressed topic, so the slot is held from entry rather than from
+// the session's first code commit.
+// ---------------------------------------------------------------------------
+
+/** @param {string} phase */
+function codeVerb(phase) {
+  return phase === 'review' ? 'reviewing' : 'implementing';
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string} the gate's sections, or '' when no other session holds code
+ */
+function codeGate(cwd, { dotpath }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'code-gate');
+  if (!CODE_PHASES.includes(phase)) {
+    throw new Error(`render code-gate: the code rule covers ${CODE_PHASES.join('|')} only, got "${phase}"`);
+  }
+  // The empty path beats this address, and a beat is silent on a name it
+  // cannot write — so a malformed topic would claim nothing while rendering a
+  // free slot. The item itself may not exist yet (a fresh entry gates before
+  // it initialises anything); the name must still be a name.
+  if (/[\\/]/.test(topic) || topic.includes('..')) {
+    throw new Error(`render code-gate: invalid topic name "${topic}" — no separators or ".."`);
+  }
+  const holders = heldCodeSessions(cwd);
+  if (holders.length === 0) {
+    // The slot is free, and this session is taking it. This check is the
+    // chokepoint every route into a code phase passes through, so it is the
+    // session's first structurally self-referential act on its own topic —
+    // and the beat here is what closes the window between entering the phase
+    // and the first code commit, during which a second session would read
+    // the slot as free. A session's own rows never gate it, so a re-render
+    // stays empty and simply refreshes the hold.
+    beatQuietly(cwd, workUnit, phase, topic);
+    return '';
+  }
+
+  const facts = holders.map((h) =>
+    `⚑ Another session is ${codeVerb(h.phase)} "${titlecase(h.topic)}" (${h.work_unit}) — last active ${fmtAge(h.age_seconds)} ago.`);
+  const first = holders[0];
+  return [
+    section(
+      'DISPLAY: code gate',
+      'emit verbatim as a properties code block — ```properties fence',
+      facts.join('\n'),
+    ),
+    section(
+      'MENU: code gate',
+      "emit verbatim as markdown, then STOP for the user's response",
+      menuFrame([
+        'Code phases run one at a time — concurrent sessions write the same files, and even worktrees end in merge conflicts. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with '
+          + `\`node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${first.work_unit} ${first.phase} ${first.topic}\`.`,
+        '',
+        '**`◆ Proceed anyway?`**',
+        '',
+        cmdOption('b', 'back', 'Leave that session to it (recommended)'),
+        cmdOption('p', 'proceed', 'Enter anyway — two sessions on one code base'),
+      ]),
+    ),
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Task-loop surfaces — the brief, the result header, and the gates, fetched
 // by the implementation loop at the exact stage that displays them, so the
 // section always sits in the tool result directly above its emission.
@@ -3412,8 +4249,26 @@ const SURFACES = {
   'triage-block': triageBlock,
   'requeue-offer': requeueOffer,
   'reroute-offer': rerouteOffer,
+  'research-conclude-gate': researchConcludeGate,
+  'deep-dive-offer': deepDiveOffer,
+  'in-flight-agents-gate': inFlightAgentsGate,
   'reroute-candidates': rerouteCandidates,
   'off-topic-offer': offTopicOffer,
+  'map-op-gate': mapOpGate,
+  'candidate-gate': candidateGate,
+  'topic-collision-gate': topicCollisionGate,
+  'triage-closed-target': triageClosedTarget,
+  'conclude-gate': concludeGate,
+  'summary-backfill-gate': summaryBackfillGate,
+  'external-dependency-gate': externalDependencyGate,
+  'checkpoint-files-gate': checkpointFilesGate,
+  'executor-block-gate': executorBlockGate,
+  'dependency-approval-gate': dependencyApprovalGate,
+  'task-count-gate': taskCountGate,
+  'plan-format-gate': planFormatGate,
+  'plan-review-gate': planReviewGate,
+  'correction-gate': correctionGate,
+  'analysis-proceed-gate': analysisProceedGate,
   'proposed-task': proposedTask,
   'incoherence-gate': incoherenceGate,
   'cancel-cascade-gate': cancelCascadeGate,
@@ -3425,6 +4280,7 @@ const SURFACES = {
   'phase-completed': phaseCompleted,
   'phase-note': phaseNote,
   'entry-gate': entryGate,
+  'code-gate': codeGate,
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,
   'cancel-gate': cancelGate,
