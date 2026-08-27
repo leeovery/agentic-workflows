@@ -172,7 +172,9 @@ export default function App() {
         <div className="mt-auto flex flex-col gap-2 px-2 pt-3 border-t border-stone-200 dark:border-stone-800">
           <div className="flex items-center justify-between">
             <IdentityBadge />
-            <CaptureButton />
+            {/* Bottom-left rail button — open the popover upward-right so a
+                fixed-width popover never clips off the bottom/left edge. */}
+            <CaptureButton align="left" direction="up" />
           </div>
           <div className="flex items-center justify-between">
             <button onClick={toggleTheme} className="text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300">

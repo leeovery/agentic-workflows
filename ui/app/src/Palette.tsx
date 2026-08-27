@@ -27,12 +27,20 @@ export function Palette({
           />
           <Command.List className="max-h-72 overflow-y-auto p-2 text-sm">
             <Command.Empty className="px-3 py-2 text-stone-400">Nothing matches.</Command.Empty>
-            <Command.Item
-              className="px-3 py-2 rounded cursor-pointer data-[selected=true]:bg-stone-100 dark:data-[selected=true]:bg-stone-800"
-              onSelect={() => onNavigate('/lobby')}
-            >
-              Lobby
-            </Command.Item>
+            {/* The top-level destinations — the same set the rail offers. */}
+            {[
+              { to: '/lobby', label: 'Lobby' },
+              { to: '/queue', label: 'Queue' },
+              { to: '/roadmap', label: 'Roadmap' },
+            ].map((r) => (
+              <Command.Item
+                key={r.to}
+                className="px-3 py-2 rounded cursor-pointer data-[selected=true]:bg-stone-100 dark:data-[selected=true]:bg-stone-800"
+                onSelect={() => onNavigate(r.to)}
+              >
+                {r.label}
+              </Command.Item>
+            ))}
             {units.map((u) => (
               <Command.Item
                 key={u.name}

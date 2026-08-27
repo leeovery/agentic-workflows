@@ -48,6 +48,16 @@ describe('CaptureButton — optimistic ack then reconcile', () => {
     await waitFor(() => expect(screen.getByTestId('capture-toast').textContent).toMatch(/Captured to the inbox/));
   });
 
+  it('opens the popover with the requested alignment/direction (never off-screen)', () => {
+    // A left-rail/bottom button opens the fixed-width popover upward-right so it
+    // never clips off the viewport edge (round-13 browser finding).
+    render(<CaptureButton align="left" direction="up" />);
+    fireEvent.click(screen.getByText(/capture/));
+    const pop = screen.getByPlaceholderText(/what's on your mind/).closest('div[class*="absolute"]')!;
+    expect(pop.className).toContain('left-0'); // opens rightward
+    expect(pop.className).toContain('bottom-full'); // opens upward
+  });
+
   it('a failed capture reconciles to a "kept to retry" toast, never a silent loss', async () => {
     (globalThis as any).fetch = vi.fn(async (url: string) => ({
       ok: true,

@@ -20,12 +20,20 @@ export function CaptureButton({
   seed,
   label = '✦ capture',
   compact = false,
+  align = 'left',
+  direction = 'down',
 }: {
   provenance?: Record<string, unknown>;
   seed?: string; // prefill (e.g. a message or selection being parked)
   label?: string;
   compact?: boolean;
+  // Where the popover opens relative to the trigger — so a left-rail / bottom
+  // button doesn't push a fixed-width popover off-screen (it did: clipped past
+  // the left edge from the rail). `left` opens rightward; `up` opens above.
+  align?: 'left' | 'right';
+  direction?: 'up' | 'down';
 }) {
+  const popPos = `${align === 'right' ? 'right-0' : 'left-0'} ${direction === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`;
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState('idea');
   const [payload, setPayload] = useState(seed ?? '');
@@ -66,7 +74,7 @@ export function CaptureButton({
         {label}
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 z-30 w-72 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg shadow-xl p-3">
+        <div className={`absolute ${popPos} z-30 w-72 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg shadow-xl p-3`}>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
@@ -99,7 +107,7 @@ export function CaptureButton({
       {toast && (
         <div
           data-testid="capture-toast"
-          className={`absolute right-0 mt-1 z-30 text-xs font-sans rounded px-2 py-1 border ${
+          className={`absolute ${popPos} z-30 whitespace-nowrap text-xs font-sans rounded px-2 py-1 border ${
             toast.tone === 'ok'
               ? 'text-ok border-ok/40'
               : toast.tone === 'fail'
