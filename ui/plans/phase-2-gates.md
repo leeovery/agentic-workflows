@@ -57,6 +57,15 @@ session hosting, and the `GateCard`, `QueueRow`, `TopicThread`, `PresenceStrip`,
    here too; their dedicated surfaces come in Phase 4.
 5. **Thread surface** — assistant-ui primitives for the conversational phases, wired to
    the AG-UI stream. We do not build message rendering.
+   *Amended in execution (round 8):* the thread surface renders the **session journal**
+   — provenance-typed records (serif conversation, mono engine sections, cards inline)
+   — not a streaming chat. assistant-ui's value is streaming-chat state management,
+   which the one-query-per-turn journal model does not have; adopting it would have
+   meant wrapping journal records in a synthetic chat runtime to get rendering we
+   still had to style per the provenance rules. The lean journal renderer (~150
+   lines, in `Thread.tsx`) is the honest cost. The end-of-phase checkpoint call
+   (assistant-ui vs CopilotKit) is therefore **neither**; revisit only if Phase 3+
+   needs live token streaming inside a turn.
 6. **Needs-you queue, two tiers** — one list joining:
    - **Durable tier (all sessions, terminal included):** waiting-on-you state derived
      from the manifest — `reconcile_needed` flags, blocked specs, stale source rows,

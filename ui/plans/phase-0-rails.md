@@ -89,6 +89,12 @@ them.
 - **AG-UI fit.** Decision criterion, owned here: if the mirror (Phase 1) would need a
   synthetic "run" per work unit to carry repo-scoped state, we drop to
   CUSTOM-events-over-AG-UI-transport and keep run semantics for live sessions only.
+  *Decided in execution (recorded round 8):* the criterion fired — repo-scoped state
+  has no natural "run", so the wire is custom domain events over SSE (the spec-3
+  envelope verbatim, `event: control` frames for stream management). AG-UI's run
+  semantics were not adopted for live sessions either: gates-as-projections made the
+  domain event set sufficient, and a second protocol would have been a second thing
+  to keep honest.
 - **Watcher noise.** Engine commits land mid-transaction bursts; debounce plus
   manifest-diff (not file-event) semantics is the defence.
 - **Fixture staleness.** Recorded fixtures encode a product version; re-recording after

@@ -45,14 +45,66 @@ export class SdkDriver implements SessionDriver {
   async *runTurn(opts: TurnOptions): AsyncIterable<DriverEvent> {
     const { query } = await import('@anthropic-ai/claude-agent-sdk');
     const toolNames = new Map<string, string>();
+
+    // The bridge OWNS the permission policy, programmatically and scoped
+    // (measured, round 8: declarative rules cannot override the harness's
+    // sensitive-file guard on dot-paths, and a headless session can never
+    // click a prompt): file tools inside the project root, Bash by
+    // allowlisted prefix, read-only basics — everything else denied with the
+    // reason surfaced (the prompt-fallout rule). Never a blanket bypass.
+    const root = path.resolve(opts.cwd) + path.sep;
+    const bashPrefixes = (opts.allowedTools ?? [])
+      .map((t) => t.match(/^Bash\((.+?)(?::\*)?\)$/)?.[1])
+      .filter((p): p is string => Boolean(p));
+    const canUseTool = async (toolName: string, input: Record<string, unknown>) => {
+      const allow = { behavior: 'allow' as const, updatedInput: input };
+      const deny = (message: string) => ({ behavior: 'deny' as const, message });
+      switch (toolName) {
+        case 'Read':
+        case 'Glob':
+        case 'Grep':
+        case 'TodoWrite':
+        case 'Task':
+        case 'Skill':
+        case 'WebFetch':
+          return allow;
+        case 'Write':
+        case 'Edit':
+        case 'MultiEdit':
+        case 'NotebookEdit': {
+          const p = String(input.file_path ?? input.path ?? '');
+          const resolved = path.resolve(opts.cwd, p);
+          return resolved === path.resolve(opts.cwd) || resolved.startsWith(root)
+            ? allow
+            : deny(`file edits are confined to the project (${opts.cwd})`);
+        }
+        case 'Bash': {
+          const cmd = String(input.command ?? '').trim();
+          return bashPrefixes.some((pfx) => cmd === pfx || cmd.startsWith(pfx + ' '))
+            ? allow
+            : deny('command not in the generated workflow allowlist — an allowlist gap, not a policy call');
+        }
+        default:
+          return deny(`tool ${toolName} is outside the bridge's session policy`);
+      }
+    };
     const q = query({
       prompt: opts.prompt,
       options: {
         cwd: opts.cwd,
         ...(opts.resume ? { resume: opts.resume } : {}),
         ...(this.model ? { model: this.model } : {}),
-        permissionMode: 'default',
-        ...(opts.allowedTools ? { allowedTools: opts.allowedTools } : {}),
+        // Measured (round 8): 'default' denies Write/Edit into dot-paths
+        // (.workflows/**) with an approval no headless session can grant —
+        // acceptEdits is the faithful mode for workflow sessions; Bash stays
+        // allowlist-gated, and this is not a blanket bypass.
+        permissionMode: 'acceptEdits',
+        // Only scoped Bash rules ride allowedTools — a bare tool name
+        // auto-approves the whole tool BEFORE canUseTool and then the
+        // sensitive-file guard shadows the callback (the SDK's own warning,
+        // observed round 8). File tools fall through to the policy callback.
+        allowedTools: (opts.allowedTools ?? []).filter((t) => /^Bash\(/.test(t)),
+        canUseTool,
         env: { ...process.env, ...opts.env },
         settingSources: ['project'] as any,
       },

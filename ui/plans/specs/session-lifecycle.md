@@ -30,8 +30,12 @@ query({
   options: {
     cwd: project.root,
     resume: sdkSessionId,          // continuation turns
-    permissionMode: 'default',
-    allowedTools: ALLOWLIST,       // generated — see below
+    permissionMode: 'acceptEdits', // measured (round 8): 'default' denies Write into
+                                   // .workflows/** dot-paths headless; acceptEdits is the
+                                   // faithful mode — Bash stays allowlist-gated, no bypass
+    allowedTools: ALLOWLIST,       // generated — see below; Bash(cmd) grants expand to
+                                   // Bash(cmd:*) (the rule grammar matches argv-less exact
+                                   // strings otherwise — observed live)
     env: {
       WORKFLOWS_DISPLAY_WIDTH: '65',   // SPIKED: propagates ✓
       BRIDGE_ID: bridge_id,            // SPIKED: propagates ✓

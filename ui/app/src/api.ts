@@ -35,6 +35,7 @@ export type ChannelData = {
   threads: { name: string; lifecycle: string; phase: string | null; cues: any }[];
   embed: string | null;
   artifacts: { path: string; phase: string }[];
+  presence?: { phase?: string; topic?: string; held?: boolean; live?: boolean; session_id?: string }[];
 };
 
 export type ArtifactData = { workUnit: string; path: string; phase: string; content: string };

@@ -336,6 +336,14 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
   // Artifact listing for navigation (unit-scoped, markdown only).
   const artifacts = listUnitArtifacts(projectRoot, wu);
 
+  // Presence — the engine's own scan (research/discussion heartbeats; other
+  // phases have none and that is labelled, never inferred as absence of work).
+  let presence: unknown[] = [];
+  if (engine) {
+    const scan = (await engine.scanPresence(wu).catch(() => null)) as { sessions?: unknown[] } | null;
+    presence = scan?.sessions ?? [];
+  }
+
   send(res, 200, {
     name: wu,
     workType,
@@ -345,6 +353,7 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
     threads,
     embed,
     artifacts,
+    presence,
   });
 }
 

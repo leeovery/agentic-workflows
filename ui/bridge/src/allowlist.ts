@@ -6,7 +6,23 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const SDK_BASICS = ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'Skill', 'Task', 'TodoWrite'];
+export const SDK_BASICS = [
+  'Read',
+  'Glob',
+  'Grep',
+  'Write',
+  'Edit',
+  'Skill',
+  'Task',
+  'TodoWrite',
+  // Dot-paths are "sensitive files" the harness gates even under acceptEdits
+  // (measured, round 8) — the workflow's own state tree is exactly where its
+  // sessions write, so it gets an explicit grant.
+  'Write(.workflows/**)',
+  'Edit(.workflows/**)',
+  'Write(./.workflows/**)',
+  'Edit(./.workflows/**)',
+];
 
 function splitOutsideParens(s: string): string[] {
   const out: string[] = [];
@@ -55,6 +71,35 @@ export function skillAllowedTools(skillMd: string): string[] {
   return tools;
 }
 
+// Base dev-command prefixes the pipeline legitimately runs beyond the skills'
+// own frontmatter (the implementation phase executes project code and tests;
+// review agents read history). Each permission denial observed in a session is
+// an allowlist bug — this set grew from round 8's live run.
+export const BASE_BASH = [
+  'node',
+  'npm test',
+  'npm run',
+  'ls',
+  'cat',
+  'head',
+  'tail',
+  'grep',
+  'rg',
+  'wc',
+  'find',
+  'mkdir',
+  'git status',
+  'git diff',
+  'git log',
+  'git add',
+  'git commit',
+  'git show',
+  'git rev-parse',
+  'git blame',
+  'git bisect',
+  'git rm --cached',
+];
+
 /**
  * Sweep the installed product for the union allowlist. Skills live under
  * `<project>/.claude/skills/` in an installed project.
@@ -62,6 +107,12 @@ export function skillAllowedTools(skillMd: string): string[] {
 export function generateAllowlist(projectRoot: string): string[] {
   const skillsDir = path.join(projectRoot, '.claude', 'skills');
   const union = new Set<string>(SDK_BASICS);
+  // Absolute-form grants too — relative patterns don't reliably resolve
+  // against the session cwd in every harness context (measured).
+  const abs = path.resolve(projectRoot);
+  union.add(`Write(//${abs.replace(/^\//, '')}/.workflows/**)`);
+  union.add(`Edit(//${abs.replace(/^\//, '')}/.workflows/**)`);
+  for (const b of BASE_BASH) union.add(`Bash(${b}:*)`);
   let names: string[] = [];
   try {
     names = fs.readdirSync(skillsDir);
@@ -76,7 +127,15 @@ export function generateAllowlist(projectRoot: string): string[] {
     } catch {
       continue;
     }
-    for (const t of skillAllowedTools(text)) union.add(t);
+    for (const t of skillAllowedTools(text)) {
+      union.add(t);
+      // A frontmatter grant `Bash(cmd)` means "this command" — but the
+      // permission-rule grammar matches it as the EXACT argv-less string, so
+      // `cmd boot` still prompts (observed live). Expand to the wildcard form
+      // alongside the literal.
+      const bash = t.match(/^Bash\((.+)\)$/);
+      if (bash && !bash[1]!.includes('*')) union.add(`Bash(${bash[1]}:*)`);
+    }
   }
   return [...union].sort();
 }

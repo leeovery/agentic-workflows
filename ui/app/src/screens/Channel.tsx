@@ -7,6 +7,7 @@ import { api, useLive, type ChannelData, type SessionData } from '../api';
 import { EngineEmbed } from '../components/EngineEmbed';
 import { SpineItem } from '../components/SpineItem';
 import { SessionHealthBadge } from '../components/SessionHealthBadge';
+import { PresenceStrip } from '../components/PresenceStrip';
 
 export function Channel() {
   const { wu = '' } = useParams();
@@ -60,6 +61,7 @@ export function Channel() {
             {starting ? 'starting…' : channelSessions.length > 0 ? 'open session' : 'drive from here'}
           </button>
         </header>
+        {data.presence && <PresenceStrip rows={data.presence} />}
 
         <section>
           <div className="region-label mb-1">Spine</div>
@@ -75,12 +77,19 @@ export function Channel() {
 
         <section>
           <div className="region-label mb-1">Threads</div>
-          {data.threads.map((t) => (
+          {data.threads.map((t) => {
+            // The epic view's own discipline mirrored: a topic HELD by another
+            // session strikes through and is not offered.
+            const held = (data.presence ?? []).some((p) => p.topic === t.name && p.held);
+            return (
             <div
               key={t.name}
               className="flex items-baseline gap-3 py-2 border-b border-stone-200/70 dark:border-stone-800/70"
             >
-              <span className="font-sans text-sm font-medium">{t.name}</span>
+              <span className={`font-sans text-sm font-medium ${held ? 'line-through text-stone-400' : ''}`}>
+                {t.name}
+              </span>
+              {held && <span className="text-xs font-sans text-stone-400">held by another session</span>}
               <span className="font-mono text-xs text-stone-500">
                 {/* The header already states the unit's status — never print
                     the same fact twice on one screen (intent 5). */}
@@ -93,7 +102,8 @@ export function Channel() {
                 thread opens in Phase 2
               </span>
             </div>
-          ))}
+            );
+          })}
         </section>
       </div>
 
