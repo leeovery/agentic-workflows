@@ -1,0 +1,35 @@
+{
+  "origin": "concurrent-phases (design/concurrent-phases.md P10) — code is the one resource that does not partition, and the entry skills are the chokepoint every route into a code phase passes through; nothing walked the gate firing",
+  "entry": "workflow-review-entry",
+  "files": [
+    "skills/workflow-review-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-review-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/code-session-gate.md",
+    "skills/workflow-review-entry/references/invoke-skill.md"
+  ],
+  "answers": [
+    "b — back"
+  ],
+  "invariants": {
+    "calls_include": [
+      "render entry-gate pay.review.pay",
+      "render code-gate pay.review.pay"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.review.pay",
+      "render code-gate pay.review.pay"
+    ],
+    "calls_exclude": [
+      "manifest get pay.planning.pay format",
+      "session label pay review pay",
+      "topic start",
+      "topic reopen",
+      "presence clear"
+    ]
+  }
+}

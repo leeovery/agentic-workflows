@@ -1,0 +1,39 @@
+{
+  "origin": "concurrent-phases (design/concurrent-phases.md, riders) — the grouping analysis rewrites work-unit-wide `.state/` staging and reads the source corpus, so it holds off while a source session is live; nothing walked the deferral",
+  "entry": "workflow-specification-entry",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-entry/references/check-prerequisites.md",
+    "skills/workflow-specification-entry/references/route-scenario.md",
+    "skills/workflow-specification-entry/references/display-analyze.md",
+    "skills/workflow-specification-entry/references/analysis-flow.md"
+  ],
+  "answers": [
+    "y — yes"
+  ],
+  "invariants": {
+    "calls_include": [
+      "workflow-specification-entry/scripts/gateway.cjs view search-relevance",
+      "presence scan search-relevance"
+    ],
+    "calls_in_order": [
+      "workflow-specification-entry/scripts/gateway.cjs view search-relevance",
+      "presence scan search-relevance"
+    ],
+    "calls_exclude": [
+      "knowledge.cjs query",
+      "manifest apply search-relevance",
+      "analysis_cache.checksum",
+      "engine.cjs commit search-relevance",
+      "topic start"
+    ]
+  }
+}
