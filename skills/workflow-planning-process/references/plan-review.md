@@ -62,15 +62,11 @@ Auto mode is active — pass through to review. Section E's safety cap (cycle 5)
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant continue
 ```
-· · · · · · · · · · · ·
-**`◆ Continue with review?`**
 
-**`p/proceed`** → Continue review
-**`s/skip`**    → Skip review, proceed to completion
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -152,15 +148,11 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 > Fixes applied this cycle may have shifted dependencies, introduced gaps, or affected other tasks. A follow-up round reviews the corrected plan with fresh context — 2-3 cycles typically surface anything cascading.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant reloop
 ```
-· · · · · · · · · · · ·
-**`◆ Run another review round?`**
 
-**`r/reanalyse`** → Run another round (traceability + integrity)
-**`p/proceed`**   → Proceed to conclusion
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -182,15 +174,11 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 > Fixes applied this cycle may have shifted dependencies, introduced gaps, or affected other tasks. A follow-up round reviews the corrected plan with fresh context — 2-3 cycles typically surface anything cascading.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant reloop
 ```
-· · · · · · · · · · · ·
-**`◆ Run another review round?`**
 
-**`r/reanalyse`** → Run another round (traceability + integrity)
-**`p/proceed`**   → Proceed to conclusion
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

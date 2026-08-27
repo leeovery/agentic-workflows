@@ -660,7 +660,7 @@ function checkInertLoadChrome(files) {
 // the ratchet working, not a reason to adjust it.
 /** @type {Record<string, number>} */
 const RATCHET_PINS = {
-  'skills/workflow-continue-epic/references/summary-backfill.md': 3,
+  'skills/workflow-continue-epic/references/summary-backfill.md': 2,
   'skills/workflow-discovery/references/confirm-trigger.md': 1,
   'skills/workflow-discovery/references/continuity-load.md': 1,
   'skills/workflow-discovery/references/map-operations.md': 2,
@@ -672,7 +672,7 @@ const RATCHET_PINS = {
   'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
   'skills/workflow-discussion-process/references/closing-gates.md': 1,
   'skills/workflow-discussion-process/references/perspective-agents.md': 2,
-  'skills/workflow-implementation-entry/references/check-dependencies.md': 4,
+  'skills/workflow-implementation-entry/references/check-dependencies.md': 3,
   'skills/workflow-implementation-process/SKILL.md': 1,
   'skills/workflow-implementation-process/references/analysis-loop.md': 1,
   'skills/workflow-implementation-process/references/task-loop.md': 3,
@@ -689,7 +689,6 @@ const RATCHET_PINS = {
   'skills/workflow-planning-process/references/author-tasks.md': 6,
   'skills/workflow-planning-process/references/conclude-plan.md': 1,
   'skills/workflow-planning-process/references/define-tasks.md': 1,
-  'skills/workflow-planning-process/references/initialize-plan.md': 1,
   'skills/workflow-planning-process/references/output-formats/linear/authoring.md': 1,
   'skills/workflow-planning-process/references/plan-construction.md': 3,
   'skills/workflow-planning-process/references/plan-review.md': 2,
@@ -706,7 +705,6 @@ const RATCHET_PINS = {
   'skills/workflow-shared/references/analysis-approval-gate.md': 1,
   'skills/workflow-shared/references/background-agent-surfacing.md': 2,
   'skills/workflow-shared/references/compliance-check.md': 1,
-  'skills/workflow-shared/references/correcting-historical-artifacts.md': 1,
   'skills/workflow-shared/references/final-review-menu.md': 1,
   'skills/workflow-shared/references/topic-name-validation.md': 1,
   'skills/workflow-specification-entry/references/confirm-continue.md': 4,

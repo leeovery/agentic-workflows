@@ -151,16 +151,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}
 {executor's ISSUES content}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ How would you like to proceed?`**
 
-**`r/retry`** → Re-invoke the executor with your comments (provide below)
-**`s/skip`**  → Skip this task and move to the next
-**`t/stop`**  → Stop implementation entirely
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

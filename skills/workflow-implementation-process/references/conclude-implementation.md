@@ -4,15 +4,11 @@
 
 ---
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.implementation.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ Ready to mark implementation as completed?`**
 
-**`y/yes`** → Mark as completed
-**`n/no`**  → Go back and make changes
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

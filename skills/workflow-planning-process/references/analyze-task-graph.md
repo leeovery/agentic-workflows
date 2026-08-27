@@ -53,15 +53,11 @@ I've analyzed all {M} tasks and the natural execution order is already correct �
 {notes from agent output}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant graph
 ```
-· · · · · · · · · · · ·
-**`◆ Approve the dependency graph?`**
 
-**`y/yes`**                  → Proceed
-**Tell me what to change** → which priorities or dependencies to adjust
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -123,15 +119,11 @@ I've analyzed and applied dependencies and priorities across all {M} tasks:
 {any notes from agent output}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant updated-graph
 ```
-· · · · · · · · · · · ·
-**`◆ Approve the updated graph?`**
 
-**`y/yes`**                  → Proceed
-**Tell me what to change** → which priorities or dependencies to adjust
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

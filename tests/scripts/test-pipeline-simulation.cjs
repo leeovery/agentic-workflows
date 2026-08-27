@@ -395,13 +395,20 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
     'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
     `task_map.${topic}-1-1=${topic}-1-1`, 'storage_paths=[]']);
+  // Plan init records the project default (initialize-plan C); the offer the
+  // next plan opens on reads it back rather than being told (initialize-plan A).
+  sim.run(['manifest', 'set', 'project.defaults.plan_format', 'local-markdown']);
+  sim.render(['plan-format-gate'], { expect: 'content' });
 
   // Approvals and authoring decisions are manifest state, vocabulary-guarded.
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.structure', '2026-07-23']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.tasks.p1', '2026-07-23']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'rejected']);
-  // The amendment resets a rejected row to pending only after the rewrite validates (author-tasks C).
+  // The amendment resets a rejected row to pending only after the rewrite
+  // validates (author-tasks C) — the mismatch that never settles stops at its
+  // own gate first.
+  sim.render(['task-count-gate', `${wu}.planning.${topic}`], { expect: 'content' });
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'approved']);
   sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'maybe'], /Invalid staging task status/);
@@ -411,6 +418,15 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.refuses(['manifest', 'set', `${wu}.planning`, `items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"items" is the topic tree/);
   sim.refuses(['manifest', 'set', wu, `phases.planning.items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"phases" is the phase tree/);
   sim.run(['manifest', 'delete', `${wu}.planning.${topic}`, 'staging.author-p1']);
+
+  // The graph approval, then the review loop's two gates and the conclusion's
+  // consent — each fetched where the flow displays it.
+  sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph'], { expect: 'content' });
+  sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'updated-graph'], { expect: 'content' });
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'review_cycle', '1']);
+  sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'continue'], { expect: 'content' });
+  sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'reloop'], { expect: 'content' });
+  sim.render(['conclude-gate', `${wu}.planning.${topic}`], { expect: 'content' });
 
   sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', topic]);
   sim.run(['topic', 'complete', wu, 'planning', topic]);
@@ -425,6 +441,10 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
+  // The loop's two stops: an executor that comes back blocked (task-loop C),
+  // and the analysis loop's checkpoint over files implementation never wrote.
+  sim.render(['executor-block-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
+  sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
   // The task's code commit: declared paths, validated and confined, with the
   // residual dirt answered back so nothing the task touched is left behind.
   // Code has no layout to derive a scope from — this is the one commit whose
@@ -457,6 +477,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // The analysis loop's synthesizer consumes the residue (invoke-synthesizer.md);
   // conclude's hygiene covers a loop that never got its verdicts in.
   sim.run(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank']);
+  sim.render(['conclude-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 
   // Review — verification, then the prepped pipeline: out-of-scope
@@ -514,6 +535,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    sim.render(['conclude-gate', `${wu}.discussion.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`, '--kb']);
 
@@ -526,6 +548,10 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).status, 'completed');
     assert.match(sim.render(['workunit-receipt', wu, '--verb', 'complete', '--pipeline'], { expect: 'content' }),
       /Feature Completed/, 'pipeline completion renders the banner receipt');
+    // A completed unit is the one state the corrigendum protocol edits — the
+    // gate derives the spec path from the address it is given.
+    assert.match(sim.render(['correction-gate', `${wu}.specification.${wu}`], { expect: 'content' }),
+      new RegExp(`Apply the correction protocol to \\.workflows/${wu}/specification/${wu}/specification\\.md\\?`));
   });
 
   it('feature: review skipped at the early-completion gate', () => {
@@ -559,6 +585,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(closed.status, 'incorporated');
 
     sim.run(['commit', wu, '-m', `investigation(${wu}): root cause`, '--topic', `investigation/${wu}`]);
+    sim.render(['conclude-gate', `${wu}.investigation.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
 
     // The bugfix spec source name is pinned to the topic.
@@ -973,7 +1000,14 @@ describe('pipeline simulation', () => {
       /"delta" can't be reopened — it isn't closed as a dead end, so there's nothing to reopen/);
 
     // Grouping: alpha and beta unify into one spec; sources gate, then the
-    // per-topic spec items are superseded by the unified one.
+    // per-topic spec items are superseded by the unified one. The analysis
+    // asks first (display-analyze A), and the map's provenance recovery has
+    // its own two stops (summary-backfill B and D).
+    sim.render(['analysis-proceed-gate', wu], { expect: 'content' });
+    sim.render(['summary-backfill-gate', wu, '--variant', 'batch'], { expect: 'content' });
+    const unsourced = sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
+    assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
+      { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);
     sim.write(`.workflows/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');
     sim.run(['topic', 'complete', wu, 'specification', 'alpha']);
@@ -1029,6 +1063,12 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.planning.unified`,
       'external_dependencies.alpha.description=Needs alpha shipped',
       'external_dependencies.alpha.state=unresolved']);
+    // Implementation entry's two dependency stops, and the planning-side
+    // approval over the resolutions the plan recorded.
+    sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'blocking'], { expect: 'content' });
+    assert.match(sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'pick',
+      '--blocking', 'alpha'], { expect: 'content' }), /\*\*`1`\*\* → Alpha — Needs alpha shipped/);
+    sim.render(['dependency-approval-gate', `${wu}.planning.unified`, '--variant', 'resolution'], { expect: 'content' });
     const epicDetailNow = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail;
     const menuNow = () => require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs')).project.epicMenu(wu, epicDetailNow());
     let keys = menuNow().keys;

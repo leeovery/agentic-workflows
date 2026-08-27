@@ -50,6 +50,7 @@
       "manifest get search-relevance.discussion.synonym-handling status",
       "topic triage search-relevance discussion behavioural-ranking",
       "document review — reroute carry-notes via triage",
+      "render conclude-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_in_order": [

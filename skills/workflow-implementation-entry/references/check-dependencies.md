@@ -72,15 +72,11 @@ Missing Dependencies
 @endforeach
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render external-dependency-gate {work_unit}.planning.{topic} --variant blocking
 ```
-· · · · · · · · · · · ·
-**`◆ How would you like to proceed?`**
 
-**`s/satisfied`** → Mark a dependency as satisfied externally
-**`i/implement`** → Exit to implement blocking dependencies first
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -122,17 +118,13 @@ Set `selected_topic` = `{dep_topic}`.
 
 **If multiple dependencies in the blocking list:**
 
-> *Output the next fenced block as markdown (not a code block):*
+Set `blocking_topics` = the blocking list's dependency topics, comma-separated, in the order they should be offered. The surface reads each row's description from the plan's `external_dependencies`:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render external-dependency-gate {work_unit}.planning.{topic} --variant pick --blocking {blocking_topics}
 ```
-· · · · · · · · · · · ·
-**`◆ Which dependency has been satisfied?`**
 
-**`1`** → {dep_topic:(titlecase)} — {description}
-**`2`** → ...
-
-Select an option:
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

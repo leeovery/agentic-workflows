@@ -53,6 +53,7 @@
       "discussion-map set search-relevance synonym-handling result-caching",
       "topic triage search-relevance research behavioural-ranking",
       "reroute concern to behavioural-ranking",
+      "render conclude-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [

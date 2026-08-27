@@ -18,15 +18,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 
 #### Otherwise
 
-> *Output the next fenced block as markdown (not a code block):*
+The surface reads the default itself and names it in both the question and the accept row:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-format-gate
 ```
-· · · · · · · · · · · ·
-Project default format is **{format}**. Use the same format?
 
-**`y/yes`** → Use {format}
-**`n/no`**  → See all available formats
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
