@@ -5,6 +5,7 @@
 // route writes anything, anywhere.
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import type http from 'node:http';
 import type { EngineAdapter } from './engine.js';
@@ -337,12 +338,9 @@ export function writeAttachment(
   opts: { name: string; dataBase64: string; workUnit?: string; bridgeSessionId?: string },
 ): { path: string } | { error: string; status: number } {
   // Decode + size-cap first (reject a runaway before touching disk).
-  let buf: Buffer;
-  try {
-    buf = Buffer.from(opts.dataBase64, 'base64');
-  } catch {
-    return { error: 'invalid attachment data', status: 400 };
-  }
+  // `Buffer.from(x,'base64')` is lenient and never throws — garbage yields fewer
+  // bytes (caught by the empty check), so no decode try/catch is needed.
+  const buf = Buffer.from(opts.dataBase64, 'base64');
   if (buf.length === 0) return { error: 'empty attachment', status: 400 };
   if (buf.length > MAX_ATTACHMENT_BYTES) return { error: 'attachment too large (max 10MB)', status: 413 };
 
@@ -350,7 +348,7 @@ export function writeAttachment(
   // path separators, no leading dot. Length-capped; a default if it empties out.
   const raw = path.basename(String(opts.name ?? '')).replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '');
   const safe = (raw || 'file').slice(0, 80);
-  const unique = `${crypto.randomUUID().slice(0, 8)}-${safe}`;
+  const unique = `${crypto.randomBytes(4).toString('hex')}-${safe}`;
 
   // Target dir under the gitignored cache; keyed by work unit when present, else
   // by the session (lobby/shaping). Both segments are validated.
@@ -375,6 +373,15 @@ export function writeAttachment(
     if (!realDir.startsWith(fs.realpathSync(cacheRoot) + path.sep) && realDir !== fs.realpathSync(cacheRoot)) {
       return { error: 'attachment path refused', status: 400 };
     }
+    // A light per-target quota — even a trusted member shouldn't be able to fill
+    // the disk in a loop (round-13 review: no quota existed). 200 files/target.
+    let existing = 0;
+    try {
+      existing = fs.readdirSync(dir).length;
+    } catch {
+      /* fresh dir */
+    }
+    if (existing >= 200) return { error: 'too many attachments here — discard some first', status: 429 };
     fs.writeFileSync(full, buf, { flag: 'wx' }); // wx: never clobber (random prefix makes collision ~nil)
   } catch {
     return { error: 'could not store attachment', status: 500 };
@@ -526,6 +533,14 @@ async function handleMutation(
   // Attachment upload — read with a larger cap than other routes (a 10MB file's
   // base64 is ~14MB), handled BEFORE the generic 1MB readBody would destroy it.
   if (url.pathname === '/api/attachments') {
+    // The membership gate is applied here too — this early return is for the
+    // body-size cap, NOT an auth exemption. A non-member watcher (github mode)
+    // must not gain a disk-write primitive the other mutations deny them
+    // (round-13 security review). Single-user is always the sentinel member.
+    if (deps.identity?.mode === 'github' && !currentHuman(deps, req).member) {
+      send(res, 403, { error: 'you have no push access to the origin repo — read-only watcher' });
+      return;
+    }
     const big = await readBody(req, MAX_ATTACHMENT_BYTES * 2);
     const result = writeAttachment(deps.projectRoot, {
       name: String(big.name ?? ''),
@@ -815,20 +830,37 @@ async function handleMutation(
   send(res, 404, { error: 'unknown mutation' });
 }
 
-function readBody(req: http.IncomingMessage, maxBytes = 1_000_000): Promise<Record<string, unknown>> {
+export function readBody(req: http.IncomingMessage, maxBytes = 1_000_000): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
     let data = '';
+    let done = false;
+    // Settle exactly once and free the accumulated buffer — `req.destroy()` on
+    // an oversize body emits 'close'/'error', NEVER 'end', so resolving only on
+    // 'end' left the promise pending forever, hanging the handler and pinning
+    // the buffered body (round-13 security review). Now every terminal event
+    // settles and clears `data`.
+    const finish = (v: Record<string, unknown>) => {
+      if (done) return;
+      done = true;
+      data = '';
+      resolve(v);
+    };
     req.on('data', (c) => {
       data += c;
-      if (data.length > maxBytes) req.destroy();
+      if (data.length > maxBytes) {
+        req.destroy();
+        finish({}); // oversize → empty body → the route responds (413/400), no hang
+      }
     });
     req.on('end', () => {
       try {
-        resolve(JSON.parse(data || '{}'));
+        finish(JSON.parse(data || '{}'));
       } catch {
-        resolve({});
+        finish({});
       }
     });
+    req.on('close', () => finish({}));
+    req.on('error', () => finish({}));
   });
 }
 

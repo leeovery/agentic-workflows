@@ -481,6 +481,37 @@ attributes included). Findings folded:
 
 **Survived attack:** no unauthenticated answer path; secrets (bearer + cookie) come from env not argv, and never reach logs, responses, or the `ui://` HTML; the attestation is the single enforcement point (proven by the real-server negative test, gate stays `open`); the JSON-RPC loop handles malformed lines, missing params, and unknown methods without wedging.
 
+## Round 14: chat-input consolidation + file attachments (2026-08-27)
+
+Post-Phase-7 follow-up (a user request): the four bespoke chat inputs unified into
+`<ChatInput>`, plus file attachments materialized into the gitignored cache and
+referenced by path so the session's Read tool consumes them. A dedicated
+adversarial **security review of the upload sink** (a classic attack surface)
+confirmed the traversal/containment core is well-hardened (basename + charset
+filter + leading-dot strip + random prefix + lexical AND realpath containment +
+`flag:'wx'`; the trust boundary — host/origin/token/mirror — enforced upstream)
+and folded these findings:
+
+| # | Finding | Fix |
+|---|---|---|
+| A1 | The attachment route returned BEFORE the github-mode membership gate — a non-member watcher could gain a disk-write primitive the other mutations deny | The membership check is applied inside the attachment branch too (single-user is always the sentinel member, so it never fires there) |
+| A2 | `readBody` resolved only on `'end'`; `req.destroy()` on an oversize body emits `'close'`/`'error'`, never `'end'` — so the promise hung forever, pinning the buffered body (a leak, amplified 20× by the attachment cap) | `readBody` now settles once on any terminal event and frees the buffer; unit-tested against the destroy/close/end paths |
+| A3 | No quota — unbounded attachment count/disk fill | A per-target cap (200 files → 429) |
+| A4/A5 | Dead base64 try/catch (`Buffer.from` never throws); `crypto` resolved to the unimported Web Crypto global | Removed the dead catch; `import crypto from 'node:crypto'` |
+
+Deliberate documented exception: this is the ONE place the bridge writes into
+`.workflows/` — justified because the file is transient, gitignored, user-input-
+in-transit (not bridge state) in the purgeable cache. **Not a new prompt-
+injection surface** (the `[attached: …]` marker is composed client-side, and the
+content entering context via Read is equivalent to the user pasting it).
+
+Also this session, found by driving the live SPA with a browser: a `SessionThread`
+hooks-order crash (a `useState` below an early return, React #310 — blanked the
+whole app), the capture popover clipping off the left viewport edge, and the ⌘K
+palette listing only Lobby. All three fixed with regression tests. A calm
+`Working` indicator was added for the answer-in-flight moment (a scoped,
+requested exception to the "no ambient spinner" motion rule).
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in
