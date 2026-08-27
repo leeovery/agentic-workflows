@@ -203,6 +203,38 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a')), 'the empty dir is still on disk — excluded, not deleted');
   });
 
+  it('an investigation\'s triage queue rides its own topic\'s commit', () => {
+    // Triage is legal for investigation, and a delivery whose own tail commit
+    // failed leaves the concern file on disk with a pending note prescribing
+    // `--topic investigation/{topic} --sweep` as the retry. Without the
+    // sidecar in the scope that retry commits the manifest and walks past the
+    // concern it was run to land.
+    writeFile(dir, '.workflows/crash-fix/manifest.json', JSON.stringify({
+      name: 'crash-fix',
+      work_type: 'bugfix',
+      status: 'in-progress',
+      phases: { investigation: { items: { 'crash-fix': { status: 'in-progress' } } } },
+    }, null, 2) + '\n');
+    writeFile(dir, '.workflows/crash-fix/investigation/crash-fix.md', '# Investigation — Crash Fix\n');
+    commitAll(dir, 'a bugfix under investigation');
+
+    writeFile(dir, '.workflows/crash-fix/investigation/.triage/crash-fix/001-q.md',
+      '### Q\n*From: topic-a · discussion · 2026-01-01*\n\nBody.\n');
+    const landed = engine(dir, ['commit', 'crash-fix', '-m', 'investigation(crash-fix): land the concern',
+      '--topic', 'investigation/crash-fix', '--sweep']);
+
+    assert.match(landed.committed, /^[0-9a-f]+$/);
+    assert.ok(headFiles(dir).includes('.workflows/crash-fix/investigation/.triage/crash-fix/001-q.md'),
+      'the queued concern rides the investigation topic commit');
+
+    // And the drain's deletion commits on the same scope.
+    fs.unlinkSync(path.join(dir, '.workflows/crash-fix/investigation/.triage/crash-fix/001-q.md'));
+    const drain = engine(dir, ['commit', 'crash-fix', '-m', 'investigation(crash-fix): drain triage',
+      '--topic', 'investigation/crash-fix']);
+    assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
+    assert.deepStrictEqual(statusLines(dir), [], 'nothing left dirty');
+  });
+
   it('does not stage the knowledge store — the KB dir never rides a --topic commit', () => {
     writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
@@ -437,6 +469,29 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\ndead session leavings\n');
     engine(dir, ['commit', 'payments', '-m', 'chore(payments/topic-b): sweep session leavings', '--topic', 'discussion/topic-b', '--sweep']);
     assert.ok(!beaten('discussion', 'topic-b'), '--sweep never stamps the swept topic');
+  });
+
+  it('--sweep outranks --kb: a foreign topic is neither stamped nor cleared', () => {
+    // The spec-side resolution edits and reindexes another phase's document,
+    // so its commit carries both riders. `--kb` means the action touched the
+    // store; it never means this session owns the topic — and a peer that is
+    // alive but idle still holds it. Clearing there would delete a live hold.
+    const peer = beatFile('discussion', 'topic-b');
+    fs.mkdirSync(path.dirname(peer), { recursive: true });
+    fs.writeFileSync(peer, JSON.stringify({ pid: null, pid_start: null, session_id: 'peer' }) + '\n');
+
+    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\nresolution landed\n');
+    engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',
+      '--topic', 'discussion/topic-b', '--kb', '--sweep']);
+
+    assert.ok(beaten('discussion', 'topic-b'), '--sweep stops --kb clearing a peer\'s hold');
+    assert.strictEqual(JSON.parse(fs.readFileSync(peer, 'utf8')).session_id, 'peer',
+      'and stops it stamping this session\'s identity over the peer\'s');
+  });
+
+  it('both riders still require a --topic scope', () => {
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--sweep']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--kb', '--sweep']).error, /Usage/);
   });
 
   it('the topic verbs a session runs on its own topic beat — and triage never does', () => {

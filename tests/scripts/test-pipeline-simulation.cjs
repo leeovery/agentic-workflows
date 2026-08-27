@@ -2110,16 +2110,25 @@ describe('pipeline simulation', () => {
       'only the discussion counts as a source — a live spec session defers no analysis');
 
     // --- the code slot ------------------------------------------------------
-    // Free before anyone takes it, for either kind of code session.
-    sim.render(['code-gate', `${wu}.implementation.dispatch`], { expect: 'empty', identity: null });
+    // The slot is taken at the entry chokepoint, not at the first commit:
+    // reading a free slot is how a code session claims it, so the window
+    // between entering the phase and writing anything is not a window.
+    const codeSlot = path.join(sim.dir, '.workflows/.cache', wu, 'implementation/dispatch/presence');
+    assert.ok(!fs.existsSync(codeSlot), 'nobody holds the code slot before anyone enters');
+    codeSession.render(['code-gate', `${wu}.implementation.dispatch`], { expect: 'empty' });
+    assert.strictEqual(JSON.parse(fs.readFileSync(codeSlot, 'utf8')).session_id, 'code-session',
+      'the entry-gate render is the claim');
+
     codeSession.run(['task', 'init', wu, 'dispatch']);
     codeSession.run(['task', 'start', wu, 'dispatch', 'dispatch-1-1']);
     sim.write(CODE_FILE, "export function dispatch(event) { return sink.write(event); }\n");
-    // The first code commit is where the slot is taken: `--for` beats the
-    // named code topic, and code is the one scope no layout derives.
+    // And the code commit beats it too: `--for` names the code topic, and
+    // code is the one scope no layout derives.
     const firstCode = codeSession.run(['commit', '--paths', CODE_FILE, '-m', 'feat(relay): dispatch events',
       '--for', wu, 'implementation/dispatch']);
     assert.deepStrictEqual(firstCode.left_dirty, [], 'the task committed everything it touched');
+    assert.strictEqual(JSON.parse(fs.readFileSync(codeSlot, 'utf8')).session_id, 'code-session',
+      'the cadence commit keeps the hold alive');
     confined('C1', [CODE_FILE], [SPEC_FILE, TALK_FILE]);
 
     // A second code entrant — a different session, a different pid — is

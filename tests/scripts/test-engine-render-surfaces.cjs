@@ -2784,8 +2784,65 @@ describe('render code-gate', () => {
     return file;
   }
 
+  /**
+   * Render as a named session. Identity is what presence records and what
+   * every consumer compares against, so a test about two sessions is a test
+   * about two identities — and the pid is stripped so ownership rests on the
+   * session id alone (both "sessions" are this one process).
+   */
+  function renderAs(sessionId, dotpath) {
+    const session = process.env.CLAUDE_CODE_SESSION_ID;
+    const pid = process.env.CLAUDE_PID;
+    process.env.CLAUDE_CODE_SESSION_ID = sessionId;
+    delete process.env.CLAUDE_PID;
+    try {
+      return renderSurface(dir, 'code-gate', { dotpath });
+    } finally {
+      if (session === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+      else process.env.CLAUDE_CODE_SESSION_ID = session;
+      if (pid === undefined) delete process.env.CLAUDE_PID;
+      else process.env.CLAUDE_PID = pid;
+    }
+  }
+
+  const slotOf = (workUnit, phase, topic) =>
+    path.join(dir, '.workflows', '.cache', workUnit, phase, topic, 'presence');
+
   it('renders nothing when no session holds the code slot', () => {
     assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' }), '');
+  });
+
+  it('taking a free slot is the same act as reading it — the empty path beats', () => {
+    const slot = slotOf('pay', 'implementation', 'pay');
+    assert.ok(!fs.existsSync(slot), 'nothing holds the slot yet');
+
+    assert.strictEqual(renderAs('mine', 'pay.implementation.pay'), '');
+
+    assert.strictEqual(JSON.parse(fs.readFileSync(slot, 'utf8')).session_id, 'mine',
+      'the entrant holds the slot from entry, not from its first code commit');
+  });
+
+  it('the entrant then holds it against the next session, and never against itself', () => {
+    assert.strictEqual(renderAs('mine', 'pay.implementation.pay'), '');
+
+    const out = renderAs('theirs', 'pay.review.pay');
+    assert.match(out, /⚑ Another session is implementing "Pay" \(pay\)/, out);
+
+    // The holder re-reading its own gate stays empty and refreshes its hold —
+    // backdated past the staleness window, the re-render brings it back.
+    const slot = slotOf('pay', 'implementation', 'pay');
+    const stale = new Date(Date.now() - 600 * 1000);
+    fs.utimesSync(slot, stale, stale);
+    assert.strictEqual(renderAs('mine', 'pay.implementation.pay'), '');
+    assert.ok((Date.now() - fs.statSync(slot).mtimeMs) / 1000 < 60, 'the re-render refreshed the beat');
+    assert.strictEqual(JSON.parse(fs.readFileSync(slot, 'utf8')).session_id, 'mine');
+  });
+
+  it('a gated entrant never stamps the slot it was refused', () => {
+    holdCode('ship', 'implementation', 'checkout-flow');
+    assert.notStrictEqual(renderAs('mine', 'pay.review.pay'), '');
+    assert.ok(!fs.existsSync(slotOf('pay', 'review', 'pay')),
+      'the gate is a stop, not an entry — nothing is held until the slot is free');
   });
 
   it('states the holder in the red register and offers back first, proceed second', () => {

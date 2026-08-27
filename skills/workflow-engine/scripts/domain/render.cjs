@@ -24,7 +24,7 @@ const {
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
-const { heldCodeSessions, fmtAge, CODE_PHASES } = require('./presence.cjs');
+const { heldCodeSessions, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const {
   roadmapMapView,
@@ -3197,7 +3197,9 @@ function entryGate(cwd, { dotpath, own }) {
 // the same files as the first. The gate states who holds the slot and lets
 // the user through anyway — the machine can verify that a process still
 // runs, never that its session still matters. An empty response means the
-// slot is free.
+// slot is free, and taking it is the same act as reading it: the empty path
+// beats the addressed topic, so the slot is held from entry rather than from
+// the session's first code commit.
 // ---------------------------------------------------------------------------
 
 /** @param {string} phase */
@@ -3211,12 +3213,22 @@ function codeVerb(phase) {
  * @returns {string} the gate's sections, or '' when no other session holds code
  */
 function codeGate(cwd, { dotpath }) {
-  const { phase } = resolveAddress(cwd, dotpath, 'code-gate');
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'code-gate');
   if (!CODE_PHASES.includes(phase)) {
     throw new Error(`render code-gate: the code rule covers ${CODE_PHASES.join('|')} only, got "${phase}"`);
   }
   const holders = heldCodeSessions(cwd);
-  if (holders.length === 0) return '';
+  if (holders.length === 0) {
+    // The slot is free, and this session is taking it. This check is the
+    // chokepoint every route into a code phase passes through, so it is the
+    // session's first structurally self-referential act on its own topic —
+    // and the beat here is what closes the window between entering the phase
+    // and the first code commit, during which a second session would read
+    // the slot as free. A session's own rows never gate it, so a re-render
+    // stays empty and simply refreshes the hold.
+    beatQuietly(cwd, workUnit, phase, topic);
+    return '';
+  }
 
   const facts = holders.map((h) =>
     `⚑ Another session is ${codeVerb(h.phase)} "${titlecase(h.topic)}" (${h.work_unit}) — last active ${fmtAge(h.age_seconds)} ago.`);

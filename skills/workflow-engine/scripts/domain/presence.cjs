@@ -5,7 +5,8 @@
 // cache directory. Awareness, never mutual exclusion: the epic view marks
 // topics another session holds open, the analysis dispatch defers an epic-wide
 // analysis while a peer session is live, the conclude sweep leaves a held
-// peer's dirt alone, the code gate reads the whole project's rows, and the
+// peer's dirt alone, the code gate reads the whole project's rows and stamps
+// the entrant's when the slot is free, and the
 // spec-side resolution flow checks the target discussion before editing its
 // document in place. The file records the
 // owning Claude process's identity

@@ -1244,7 +1244,7 @@ function runBoot() {
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
   research: (wu, t) => [`.workflows/${wu}/research/${t}.md`, `.workflows/${wu}/research/.triage/${t}`],
   discussion: (wu, t) => [`.workflows/${wu}/discussion/${t}.md`, `.workflows/${wu}/discussion/.triage/${t}`],
-  investigation: (wu, t) => [`.workflows/${wu}/investigation/${t}.md`],
+  investigation: (wu, t) => [`.workflows/${wu}/investigation/${t}.md`, `.workflows/${wu}/investigation/.triage/${t}`],
   specification: (wu, t) => [`.workflows/${wu}/specification/${t}`],
   planning: (wu, t) => [`.workflows/${wu}/planning/${t}`],
   implementation: (wu, t) => [`.workflows/${wu}/implementation/${t}`],
@@ -1411,12 +1411,17 @@ function runCommit(argv) {
         const committed = specs.length === 0 ? null : commitPathspecScoped(cwd, specs, message);
         // The session's own cadence commit is its heartbeat. `--kb` is the
         // terminal one (the conclusion, right after `topic complete`): it
-        // clears instead, or the topic would read held forever. `--sweep` is
-        // the conclude sweep committing a dead session's leavings — a
-        // sweeper stamping its identity on the topic it just cleaned would
-        // resurrect the hold.
-        if (kb) clearQuietly(cwd, wu, phase, topic);
-        else if (!sweep) beatQuietly(cwd, wu, phase, topic);
+        // clears instead, or the topic would read held forever.
+        //
+        // `--sweep` outranks both. It marks a commit on a topic this session
+        // is not working — the conclude sweep's leavings, a foreign-topic
+        // delivery's retry, a correction landed in another phase's document —
+        // and presence there is somebody else's. Stamping it would manufacture
+        // a hold; clearing it would destroy a live peer's.
+        if (!sweep) {
+          if (kb) clearQuietly(cwd, wu, phase, topic);
+          else beatQuietly(cwd, wu, phase, topic);
+        }
         if (committed === null) respond({ committed: null, note: 'nothing to commit' });
         else respond({ committed });
         return;
