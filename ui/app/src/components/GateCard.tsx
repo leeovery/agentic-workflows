@@ -150,7 +150,7 @@ export function GateCard({
             key={o.key}
             onClick={() => tapOption(o.key)}
             onKeyDown={(e) => optionKeyDown(e, o.key)}
-            disabled={busy || resolvedish}
+            disabled={submitBlocked}
             className={clsx(
               'w-full text-left flex items-baseline gap-3 rounded px-2.5 py-1.5 border',
               'border-stone-200 dark:border-stone-800 hover:border-gate focus:outline-none focus:ring-1 focus:ring-gate',
@@ -218,7 +218,7 @@ export function GateCard({
             {(card.commentCount ?? 0) > 0 && (
               <span className="ml-1 font-mono text-[10px] rounded-full bg-stone-200 dark:bg-stone-800 px-1.5">
                 {card.commentCount}
-                {unread > 0 && <span className="text-gate"> · {unread} new</span>}
+                {unread > 0 && <span className="text-warn"> · {unread} new</span>}
               </span>
             )}
           </button>

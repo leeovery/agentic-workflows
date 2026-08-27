@@ -152,7 +152,7 @@ export async function handleApi(
       send(res, 200, {
         mode: deps.identity?.mode ?? 'single',
         human: { id: human.id, name: human.name, member: human.member, sentinel: human.sentinel, githubLogin: human.githubLogin },
-        repo: deps.identity?.mode === 'github' ? undefined : undefined,
+        repo: deps.identity?.mode === 'github' ? deps.identity.repo : undefined,
       });
       return true;
     }
@@ -175,7 +175,7 @@ export async function handleApi(
       return true;
     }
     if (url.pathname === '/api/sessions') {
-      send(res, 200, { sessions: publicSessions(deps) });
+      send(res, 200, { sessions: publicSessions(deps, currentHuman(deps, req)) });
       return true;
     }
     const thread = url.pathname.match(/^\/api\/session\/([^/]+)\/thread$/);
@@ -310,13 +310,16 @@ function bodyCommentTarget(body: Record<string, unknown>): CommentTarget | null 
   return null;
 }
 
-function publicSessions(deps: ApiDeps): unknown[] {
+function publicSessions(deps: ApiDeps, viewer: Human): unknown[] {
   if (!deps.sessions) return [];
   return deps.sessions.list().map((s) => ({
     bridgeSessionId: s.bridgeSessionId,
     address: s.address,
     state: s.state,
-    openGate: s.openGate,
+    // Enrich the open card with ownership + unread + external-resolution so the
+    // queue overlay (which reads this route) shows the same ceremony as the
+    // thread — a watcher's read-only state, the unread block (round-12 G4).
+    openGate: s.openGate ? gateWithOwnership(deps, s.openGate, viewer) : null,
     lastError: s.lastError,
   }));
 }
@@ -345,13 +348,38 @@ async function roadmapView(res: http.ServerResponse, deps: ApiDeps): Promise<voi
  * card with owner/stuck/unread/canAnswer sibling fields the SPA reads to route
  * submit/watch and badge the card. Never mutates the card's engine-derived core.
  */
+/** Durable resolving signals (phase.completed / workunit.status-changed) for a
+ *  work unit — the "answered outside the UI" join source, read once per card. */
+function externalResolutionOf(deps: ApiDeps, card: any): string | undefined {
+  if (!deps.store || !card.address?.workUnit) return undefined;
+  const durable = deps.store
+    .readFrom(0)
+    .filter(
+      (e) =>
+        (e.type === 'phase.completed' || e.type === 'workunit.status-changed') &&
+        e.address.workUnit === card.address.workUnit,
+    );
+  return externallyResolvedAt(card, durable as any) ?? undefined;
+}
+
 function gateWithOwnership(deps: ApiDeps, card: any, viewer: Human): any {
   if (!deps.db) return card;
   const stuckMs = deps.stuckMs ?? 24 * 3600 * 1000;
-  const escalated = deps.isEscalated?.(card.id) ?? false;
-  const info = ownerInfo(deps.db, card.id, { escalated, now: Date.now(), stuckMs });
   const unread = unreadForGate(deps.db, deps.project ?? '', card.id, viewer.id);
   const commentCount = countForGate(deps.db, deps.project ?? '', card.id);
+  // "Answered outside the UI" applies on EVERY surface that shows the card
+  // (thread, queue, channel) — not only the channel spine (round-12 G2).
+  const extAt = externalResolutionOf(deps, card);
+  const extFields = extAt ? { state: 'resolved-externally', resolvedExternallyAt: extAt } : {};
+  // Ownership chrome is meaningful only with more than one human. In single-user
+  // mode identity stays invisible (deliverable 1, zero-config) — no owner badge,
+  // no watcher state, everyone can answer (round-12 intent finding). Comments
+  // still attach (a solo user auto-reads their own, so unread is always 0).
+  if (deps.identity?.mode !== 'github') {
+    return { ...card, canAnswer: true, unreadComments: unread, commentCount, ...extFields };
+  }
+  const escalated = deps.isEscalated?.(card.id) ?? false;
+  const info = ownerInfo(deps.db, card.id, { escalated, now: Date.now(), stuckMs });
   const perm = mayAnswer(deps.db, card.id, viewer.id, { escalated, now: Date.now(), stuckMs });
   return {
     ...card,
@@ -360,6 +388,7 @@ function gateWithOwnership(deps: ApiDeps, card: any, viewer: Human): any {
     watching: !perm.ok,
     unreadComments: unread,
     commentCount,
+    ...extFields,
   };
 }
 
@@ -380,21 +409,32 @@ async function queueView(res: http.ServerResponse, deps: ApiDeps, viewer: Human)
   const rows = buildQueue(durableRows(snap, deps.projectRoot), deps.sessions ?? null, deps.store, buildOrder, deps.isEscalated);
   // Overlay ownership + unread onto live (gate-bearing) rows. A stuck gate
   // surfaces in EVERYONE's queue (the "stuck — claim?" chip); a watcher's row
-  // is marked so the SPA shows read-only.
+  // is marked so the SPA shows read-only. Ownership chrome is multiplayer-only
+  // (single-user stays zero-config); unread still shows (0 in single-user).
   if (deps.db) {
     const stuckMs = deps.stuckMs ?? 24 * 3600 * 1000;
+    const multiplayer = deps.identity?.mode === 'github';
     for (const row of rows as any[]) {
       if (row.tier !== 'live' || !row.gateId) continue;
+      row.unreadComments = unreadForGate(deps.db, deps.project ?? '', row.gateId, viewer.id);
+      if (!multiplayer) continue;
       const escalated = deps.isEscalated?.(row.gateId) ?? false;
       const info = ownerInfo(deps.db, row.gateId, { escalated, now: Date.now(), stuckMs });
       const perm = mayAnswer(deps.db, row.gateId, viewer.id, { escalated, now: Date.now(), stuckMs });
       row.owner = { id: info.ownerId, name: info.ownerName, isYou: info.ownerId === viewer.id };
       row.stuck = info.stuck;
       row.watching = !perm.ok;
-      row.unreadComments = unreadForGate(deps.db, deps.project ?? '', row.gateId, viewer.id);
     }
   }
-  send(res, 200, { rows });
+  // Spec 5 default view = mine + unowned + stuck. In multiplayer, a live gate
+  // owned by SOMEONE ELSE and not stuck is not in YOUR needs-you queue (round-12
+  // G6). Single-user keeps everything (no ownership overlay ran). Durable rows
+  // are never owner-filtered. `watching` is exactly others'-owned-non-stuck.
+  const filtered =
+    deps.identity?.mode === 'github'
+      ? (rows as any[]).filter((r) => r.tier !== 'live' || !r.watching)
+      : rows;
+  send(res, 200, { rows: filtered });
 }
 
 async function handleMutation(
@@ -405,6 +445,20 @@ async function handleMutation(
 ): Promise<void> {
   const body = await readBody(req);
   const human = currentHuman(deps, req);
+
+  // Membership gate (github mode): "push access to the origin repo = member".
+  // A non-member is a read-only WATCHER — they may sign out, but not answer,
+  // claim, comment, or capture. UI-side routing only (the engine enforces
+  // nothing; a member with terminal access always bypasses the UI). Single-user
+  // is always the sentinel member, so this never fires there (round-12 D2).
+  if (
+    deps.identity?.mode === 'github' &&
+    !human.member &&
+    !['/api/login', '/api/logout', '/api/activity'].includes(url.pathname)
+  ) {
+    send(res, 403, { error: 'you have no push access to the origin repo — read-only watcher' });
+    return;
+  }
 
   // Advance the artifact read-ref — a deliberate, focused view, not a side
   // effect of every GET (round-10 finding). Per-human (Phase 6 multiplayer).
@@ -454,9 +508,15 @@ async function handleMutation(
       'set-cookie',
       `${AUTH_COOKIE}=${result.cookie}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000`,
     );
-    send(res, result.human.member ? 200 : 403, {
+    // A successful login is a successful login (200) — a non-member is
+    // authenticated as a WATCHER, not rejected. Membership gates nothing at the
+    // process level (it never can — the record has no owner); it only steers the
+    // UI's own routing and the badge. Returning 403 with a working cookie was a
+    // cosmetic contradiction (round-12): the non-member had a live session
+    // regardless. The `member` flag + `warning` carry the truth.
+    send(res, 200, {
       human: { id: result.human.id, name: result.human.name, member: result.human.member },
-      ...(result.human.member ? {} : { warning: `${result.human.name} is not a member (no push access to the origin repo)` }),
+      ...(result.human.member ? {} : { warning: `${result.human.name} has no push access to the origin repo — you're a watcher` }),
     });
     return;
   }
@@ -524,10 +584,15 @@ async function handleMutation(
     // The route AWAITS the ephemeral session; the SPA has already shown its
     // optimistic toast, so this response is the reconcile. A failure is a
     // durable row, not an error the user must catch.
+    // The bridge stamps the authenticated author onto provenance — so the
+    // captured file's body carries the "who" on the happy path, not only when
+    // the client happens to send it (round-12 G5). Client-supplied author is
+    // overridden (attribution is the bridge's to assert, not the payload's).
+    const clientProv = (body.provenance as any) ?? {};
     const result = await deps.capture.run({
       kind,
       payload,
-      provenance: (body.provenance as any) ?? { source: 'bridge' },
+      provenance: { source: 'bridge', ...clientProv, author: human.name },
       humanId: human.id,
     });
     send(res, 200, result);
@@ -702,25 +767,17 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string, 
     (e) => (SPINE_EVENT_TYPES as readonly string[]).includes(e.type) && e.address.workUnit === wu,
   );
   if (deps.sessions) {
-    // Durable resolving signals on this unit — the "answered outside the UI"
-    // join (a terminal sign-off flips the manifest; the card resolves within
-    // one watcher cycle rather than hanging open forever).
-    const durableForWu = all.filter(
-      (e) => (e.type === 'phase.completed' || e.type === 'workunit.status-changed') && e.address.workUnit === wu,
-    );
+    // gateWithOwnership carries owner/unread AND the "answered outside the UI"
+    // join (round-12 G2 — every surface, not just the spine).
     for (const s of deps.sessions.list()) {
       const g = s.openGate;
       if (g && g.state === 'open' && g.address.workUnit === wu) {
-        const extAt = externallyResolvedAt(g, durableForWu as any);
-        const card = extAt
-          ? { ...gateWithOwnership(deps, g, viewer), state: 'resolved-externally', resolvedExternallyAt: extAt }
-          : gateWithOwnership(deps, g, viewer);
         spine.push({
           id: g.id,
           type: 'gate.opened',
           ts: g.openedAt,
           address: g.address,
-          payload: { card },
+          payload: { card: gateWithOwnership(deps, g, viewer) },
           live: true,
         });
       }

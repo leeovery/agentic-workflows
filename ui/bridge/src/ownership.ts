@@ -167,8 +167,15 @@ export function mayAnswer(
 // The durable event types that RESOLVE a decision a card was gating — the
 // signal that the same decision was answered outside the UI (a terminal
 // session, the MCP surface, any path the bridge doesn't mediate).
+//
+// A sign-off resolves ONLY on `phase.completed` (which is topic-addressed): a
+// spec sign-off IS a phase completing. `workunit.status-changed` is topicless
+// (derive.cjs addresses it {workUnit} only) and fires on cancel/reactivate too,
+// so keying signoff off it resolved EVERY open sign-off card on the unit,
+// including for a cancelled unit — a false positive (round-12 G1). It stays the
+// signal for a LIFECYCLE (unit-level cancel) gate, which is unit-addressed.
 const RESOLVING_EVENTS: Record<string, readonly string[]> = {
-  signoff: ['phase.completed', 'workunit.status-changed'],
+  signoff: ['phase.completed'],
   lifecycle: ['workunit.status-changed'],
 };
 

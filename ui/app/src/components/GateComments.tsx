@@ -31,7 +31,9 @@ export function GateComments({
         {comments.length === 0 && <p className="text-xs font-sans text-stone-400">No comments yet.</p>}
         {comments.map((c: CommentData) => (
           <div key={c.id} className="text-sm font-sans flex items-start gap-2">
-            <span className={`shrink-0 w-1.5 h-1.5 mt-1.5 rounded-full ${c.read ? 'bg-stone-300 dark:bg-stone-700' : 'bg-gate'}`} />
+            {/* Unread dot is list chrome, not a confirm control — gold stays
+                reserved for gates (rounds 5/7). Warn amber marks the unread. */}
+            <span className={`shrink-0 w-1.5 h-1.5 mt-1.5 rounded-full ${c.read ? 'bg-stone-300 dark:bg-stone-700' : 'bg-warn'}`} />
             <div className="flex-1">
               <span className="font-medium text-stone-700 dark:text-stone-300">{c.author}</span>{' '}
               <span className="font-serif text-stone-700 dark:text-stone-300">{c.body}</span>

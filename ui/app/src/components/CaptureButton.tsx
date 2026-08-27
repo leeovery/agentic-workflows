@@ -15,17 +15,27 @@ const KINDS: { value: string; label: string }[] = [
   { value: 'roadmap', label: 'roadmap (→ inbox)' },
 ];
 
-export function CaptureButton({ provenance }: { provenance?: Record<string, unknown> }) {
+export function CaptureButton({
+  provenance,
+  seed,
+  label = '✦ capture',
+  compact = false,
+}: {
+  provenance?: Record<string, unknown>;
+  seed?: string; // prefill (e.g. a message or selection being parked)
+  label?: string;
+  compact?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState('idea');
-  const [payload, setPayload] = useState('');
+  const [payload, setPayload] = useState(seed ?? '');
   const [toast, setToast] = useState<Toast | null>(null);
 
   const submit = async () => {
     const text = payload.trim();
     if (text === '') return;
     setOpen(false);
-    setPayload('');
+    setPayload(seed ?? '');
     // Optimistic: the gesture is acknowledged at once (seconds, not ms, for the
     // ephemeral session — spec risk: latency must never block the gesture).
     setToast({ text: 'Capturing…', tone: 'pending' });
@@ -42,11 +52,18 @@ export function CaptureButton({ provenance }: { provenance?: Record<string, unkn
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen((o) => !o)}
-        className="text-xs font-sans text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 border border-stone-300 dark:border-stone-700 rounded px-2 py-1"
+        onClick={() => {
+          setPayload(seed ?? '');
+          setOpen((o) => !o);
+        }}
+        className={
+          compact
+            ? 'text-[11px] font-sans text-stone-400 hover:text-nav'
+            : 'text-xs font-sans text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 border border-stone-300 dark:border-stone-700 rounded px-2 py-1'
+        }
         title="park a note as an inbox item"
       >
-        ✦ capture
+        {label}
       </button>
       {open && (
         <div className="absolute right-0 mt-1 z-30 w-72 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg shadow-xl p-3">
@@ -67,7 +84,7 @@ export function CaptureButton({ provenance }: { provenance?: Record<string, unkn
             autoFocus
             rows={3}
             placeholder="what's on your mind…"
-            className="w-full rounded border border-stone-300 dark:border-stone-700 bg-transparent px-2 py-1 text-sm font-sans focus:outline-none focus:border-gate"
+            className="w-full rounded border border-stone-300 dark:border-stone-700 bg-transparent px-2 py-1 text-sm font-sans focus:outline-none focus:border-nav"
           />
           <div className="flex justify-end gap-2 mt-2">
             <button onClick={() => setOpen(false)} className="text-xs font-sans text-stone-500">

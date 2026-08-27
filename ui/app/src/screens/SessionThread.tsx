@@ -16,14 +16,22 @@ export function SessionThread() {
   const meta = thread.records.find((r) => r.record === 'meta');
   const address = thread.openGate?.address;
 
+  const [note, setNote] = useState<string | null>(null);
   const answer = async (gateId: string, text: string) => {
     setBusy(true);
+    setNote(null);
     try {
-      await api.answerGate(gateId, text, id);
+      const res = await api.answerGate(gateId, text, id);
+      // A watcher / unread-comment block keeps the card and says why (round-12).
+      if (res.ok === false) setNote(res.error ?? res.reason ?? 'could not answer');
     } finally {
       setBusy(false);
       reload();
     }
+  };
+  const claim = async (gateId: string) => {
+    await api.claimGate(gateId);
+    reload();
   };
 
   return (
@@ -50,7 +58,8 @@ export function SessionThread() {
           end session
         </button>
       </header>
-      <Thread thread={thread} onAnswer={answer} busy={busy} />
+      <Thread thread={thread} onAnswer={answer} busy={busy} onClaim={claim} />
+      {note && <p className="max-w-3xl mt-2 text-xs font-sans text-warn">{note}</p>}
     </div>
   );
 }

@@ -59,18 +59,42 @@ export function capturePrompt(req: CaptureRequest): string {
     '',
     '---',
     `Captured via the workflow bridge${prov.author ? ` by ${prov.author}` : ''}.`,
-    `Source: ${prov.source}${prov.gateId ? ` (gate ${prov.gateId})` : ''}${prov.artifact ? ` (artifact ${prov.artifact})` : ''}.`,
+    `Source: ${prov.source}${prov.gateId ? ` (gate ${prov.gateId})` : ''}${prov.artifact ? ` (artifact ${prov.artifact})` : ''}${prov.messageSeq !== undefined ? ` (message #${prov.messageSeq})` : ''}.`,
   ];
   if (meta.note) lines.push(meta.note);
   return lines.join('\n');
 }
 
+// Each capture spawns a full ephemeral SDK subprocess. Cap concurrency so a
+// burst of authenticated /api/capture POSTs can't fan out into unbounded model
+// turns (round-12 hardening); excess captures queue for a slot rather than
+// running all at once.
+const MAX_CONCURRENT = 4;
+
 export class CaptureRunner {
+  private inFlight = 0;
+  private waiters: (() => void)[] = [];
+
   constructor(
     private db: Db,
     private driver: SessionDriver,
     private opts: { projectRoot: string; project: string; allowedTools?: string[]; displayWidth?: number },
   ) {}
+
+  private async acquire(): Promise<void> {
+    if (this.inFlight < MAX_CONCURRENT) {
+      this.inFlight++;
+      return;
+    }
+    await new Promise<void>((resolve) => this.waiters.push(resolve));
+    this.inFlight++;
+  }
+
+  private release(): void {
+    this.inFlight--;
+    const next = this.waiters.shift();
+    if (next) next();
+  }
 
   /**
    * Run one capture turn to completion. Returns ok on the SDK's `completed`
@@ -81,6 +105,7 @@ export class CaptureRunner {
   async run(req: CaptureRequest): Promise<CaptureResult> {
     const prompt = capturePrompt(req);
     const env: Record<string, string> = { WORKFLOWS_DISPLAY_WIDTH: String(this.opts.displayWidth ?? 65) };
+    await this.acquire();
     try {
       let errored: string | null = null;
       for await (const ev of this.driver.runTurn({
@@ -95,6 +120,8 @@ export class CaptureRunner {
       return { ok: true };
     } catch (err) {
       return this.recordFailure(req, String((err as Error).message ?? err));
+    } finally {
+      this.release();
     }
   }
 
@@ -119,22 +146,27 @@ export class CaptureRunner {
     return { ok: false, captureId: id, error };
   }
 
-  /** Retry a failed capture. On success the row is cleared; on failure it stays
-   *  (with the fresh error), so a persistent failure never silently vanishes. */
+  /**
+   * Retry a failed capture. The original row is removed BEFORE the retry so a
+   * retry that fails again records exactly one fresh row (round-12 defect: the
+   * old code left the original AND added a new one, growing the lobby one
+   * orphan per click). On success no row remains; on failure a single fresh row
+   * carries the new error — a persistent failure never silently vanishes, and
+   * never duplicates.
+   */
   async retry(captureId: string): Promise<CaptureResult> {
     const row = this.db.sqlite
       .prepare('SELECT kind, payload, provenance, human_id as humanId FROM failed_captures WHERE id = ?')
       .get(captureId) as { kind: CaptureKind; payload: string; provenance: string | null; humanId: string } | undefined;
     if (!row) return { ok: true }; // already cleared
+    this.discard(captureId); // clear first — the retry's outcome is the new truth
     const req: CaptureRequest = {
       kind: row.kind,
       payload: row.payload,
       provenance: row.provenance ? JSON.parse(row.provenance) : { source: 'retry' },
       humanId: row.humanId,
     };
-    const result = await this.run(req);
-    if (result.ok) this.discard(captureId);
-    return result;
+    return this.run(req);
   }
 
   discard(captureId: string): void {

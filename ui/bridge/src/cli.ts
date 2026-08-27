@@ -205,11 +205,15 @@ async function runLive(projectRoot: string): Promise<void> {
 
       // The capture-gesture runner — an ephemeral headless session per park,
       // fire-and-reconcile with a durable-failure lobby row. Only when driving
-      // (a read-only mirror has no session authority).
+      // (a read-only mirror has no session authority). Least privilege: a
+      // capture turn only writes one inbox file (`workflow-log-*` declares just
+      // `Bash(mkdir -p)`; Write goes through canUseTool's project containment) —
+      // so it gets a capture-scoped Bash allowlist, not the full session surface
+      // (round-12 N3).
       capture = new CaptureRunner(db, new SdkDriver(arg('session-model')), {
         projectRoot,
         project,
-        allowedTools: generateAllowlist(projectRoot),
+        allowedTools: ['Bash(mkdir -p:*)'],
         displayWidth: WIDTH,
       });
 

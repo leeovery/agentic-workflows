@@ -408,6 +408,50 @@ and read-only). Findings verified against the real manifest and format sources.
 
 **Survived attack:** every telemetry datum traces to the source inventory (nothing scraped); dep-blocked from the engine's own render-time join; the ConsolidationCard is read-only (no answer path — decisions ride the session's gate); no loop control, no task-tracker writes; no new spine event types (updates replace, never append); no animation; `validUnitName` blocks traversal on both `wu` and `topic`.
 
+## Round 12: Phase 6 implementation review (2026-08-27)
+
+Three parallel adversarial reviewers — plan/spec fidelity, code-quality/security,
+intent/UX — over the multiplayer build (auth, gate ownership, capture, presence,
+comments). Every finding verified against the code before folding.
+
+**Deviation recorded in place** (phase-6 §1): the auth deliverable ships the
+**identity + member-check contract** (server-side cookie sessions, a real
+fail-closed GitHub push-access check, membership enforced UI-side) but **not**
+better-auth's OAuth redirect flow, which is deployment wiring. Two honest
+consequences until it lands: identity is **attribution, not authentication** (a
+holder of the shared bearer token can assert any login — it grants no privilege,
+so the exposure is forged attribution only), and the Phase 2 **bearer token is
+not swapped** — it stays the transport boundary with identity layered on top.
+(The reviewer's flag that the code cited "REVIEW.md round 12" before it existed
+was a forward reference to *this* entry — the same in-flight pattern as round 8;
+the entry now exists, the reference is valid.)
+
+**Security defects (fixed, with tests):**
+
+| # | Finding | Fix |
+|---|---|---|
+| CQ1 | A capture **retry that failed again** orphaned the original row AND added a new one — the lobby grew one duplicate per click, unbounded | `retry` discards the original BEFORE re-running, so a repeat failure leaves exactly one fresh row; test covers retry-fails-again |
+| D2 | **Membership never gated participation** — a non-member ("watcher" by push access) could claim, answer sign-offs, comment, capture | github-mode mutations now refuse a non-member (403, read-only watcher) — UI-side routing, the engine still enforces nothing; single-user (sentinel member) is unaffected |
+| CQ4/N3 | Capture had no concurrency cap (a POST burst → unbounded SDK subprocesses); and was handed the **full** session allowlist | A 4-slot semaphore queues excess captures; the capture turn gets a capture-scoped `Bash(mkdir -p)` allowlist (Write rides canUseTool containment) |
+| CQ2 | A non-member login set the auth cookie then returned a cosmetic 403 (a working session behind a rejection) | A successful login is 200 — a non-member is authenticated as a watcher, the `member` flag + warning carry the truth |
+
+**Correctness defects (fixed, with tests):**
+
+| # | Finding | Fix |
+|---|---|---|
+| G1 | `externallyResolvedAt` keyed a sign-off off the **topicless** `workunit.status-changed`, so any unit cancel/reactivate falsely resolved EVERY open sign-off card on the unit | Sign-off resolves only on the topic-addressed `phase.completed`; `workunit.status-changed` stays the signal for a unit-level lifecycle gate; regression test added |
+| G2 | "Answered outside the UI" was joined only on the channel spine — a watcher on the **session thread** (the natural answer surface) saw the card hang open | The external-resolution join moved into `gateWithOwnership`, so thread, queue, and channel all flip the card |
+| G4 | The queue overlay built its card from the **un-enriched** `/api/sessions` openGate — no owner badge, no watcher read-only, no unread block on that surface | `/api/sessions` now enriches openGate with ownership + unread + external-resolution |
+| G3 | The **inferred-sessions** presence kind read a `presence` file that only exists for research/discussion — so for every OTHER phase it was **always empty** (dead deliverable) | Infers from the topic's cache `state.json` mtime (the lock signal the plan names); **verified live** — a touched spec cache now surfaces an `inferred` row |
+| G5 | Capture dropped the **"who"** on the happy path (author never stamped) and had no message-level gesture | The route stamps the authenticated author onto provenance; a **capture-from-message** affordance rides each thread message with `{source, author, messageSeq}`; `messageSeq` now lands in the body. **Verified live** — the idea body reads "Captured via the workflow bridge by You" |
+| G6 | Spec 5's default queue view is "mine + unowned + stuck"; the build returned ALL rows | github-mode filters out others'-owned-non-stuck live rows (single-user keeps everything) |
+
+**Intent/UX (fixed):** the ownership badge (and whole overlay) is suppressed in single-user mode — identity stays invisible, zero-config (intent-1); artifact comment threads now render on the Artifact screen (deliverable 5's "gates AND artifacts"); a **claim** affordance is wired into the session thread, not only the queue; option rows are disabled (not dead) for a watcher / comment-blocked card; the gold reserved for gates no longer leaks onto comment/capture chrome (recolored to warn/nav); failed-capture rows show the error so a persistent failure isn't opaque; `whoami` sends the real repo (was a dead ternary).
+
+**Accepted as-is (recorded honestly):** the **comment ceremony blocking all gate kinds** uniformly (not just sign-offs) is deliberate — the trigger is "a human bothered to comment," not the gate type, and clearing it is one click (opening the thread), so the friction is proportional to *someone raised a concern*, which is exactly when the answerer should look. The **comment-read→answer race** (a submit beating the mark-read round-trip can 409) self-corrects on retry and the local "seen" clears the block immediately; left as a minor. The **dual-human OAuth done-means walkthrough** is not automatable here (no two live GitHub identities, no live paid SDK sessions) — verified at the model/API level (backend + UI tests: ownership precedence, watcher-blocked/owner-allowed/stuck-claim, ceremony 409, capture success/failure/retry, external-resolution) and **live** for the single-user capture gesture (real inbox idea + provenance) and the presence/ownership/comment routes.
+
+**Survived attack:** routing-never-authority holds (all ownership state is bridge SQLite; the engine is never touched; a terminal answer bypasses it and resolves the card externally); comments never push and quote-to-draft is explicit, never implicit injection; no SQL injection (prepared statements, fixed WHERE clauses, regex-pinned gate ids), no XSS (React text children; no new dangerouslySetInnerHTML), no token leak (`GITHUB_TOKEN` stripped by sessionEnv, never in argv/responses/logs); the capture payload is a prompt under the same containment as any session, not a shell string; out-of-scope respected (single-driver sessions, only owner/watcher, no process-side enforcement).
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in

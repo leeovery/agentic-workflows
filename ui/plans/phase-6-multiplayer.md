@@ -14,6 +14,20 @@ the UI must not invent one that can disagree with it.
    rule, concretely: push access to the project's origin repo = member; checked via the
    GitHub API at login, cached per auth session. Single-user mode remains zero-config
    (the Phase 0 sentinel human).
+
+   *Corrected in execution (round 12):* the prototype implements the **identity +
+   member-check contract** the rule names — a server-side cookie-session store, a real
+   GitHub push-access check (`GET /repos/{repo}/collaborators/{login}/permission`,
+   fail-closed), membership cached on the auth session and **enforced UI-side** (a
+   non-member is a read-only watcher) — but NOT better-auth's OAuth redirect flow, which
+   is deployment wiring (a registered GitHub app, client secret, redirect URLs). Two
+   honest consequences until the redirect flow lands: (a) identity is **attribution, not
+   authentication** — `login` verifies the claimed login's push access but not that the
+   caller controls that account; (b) the Phase 2 **bearer token is not swapped** — it
+   stays the transport trust boundary (localhost CSRF / DNS-rebinding defence), and
+   identity layers attribution on top of it rather than replacing it. The member-check
+   and routing model beneath are already correct; the OAuth exchange closes (a) and the
+   Round-8-deferred origin-trust narrowing.
 2. **Gate ownership (routing, not authority)** — every gate is addressed to a named
    decider. Default precedence (the walkthrough caught first-to-open disabling the
    driver of a live session): **a gate raised by a session a named human launched or is

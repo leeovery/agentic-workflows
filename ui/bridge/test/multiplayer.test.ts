@@ -170,6 +170,19 @@ describe('gate ownership — routing, not authority', () => {
     // A card with no resolving gateType never externally-resolves.
     expect(externallyResolvedAt(card('f'.repeat(16), { gateType: 'task-loop' }) as any, durable)).toBeNull();
   });
+
+  it('a topicless workunit.status-changed does NOT resolve a signoff card (round-12 G1)', () => {
+    const c = card('f'.repeat(16)); // gateType signoff, topic auth
+    // A unit cancel/status change is topicless and must not falsely resolve a
+    // still-open sign-off (the bug: it resolved every sign-off on the unit).
+    const statusChange = [
+      { type: 'workunit.status-changed', ts: '2026-08-27T11:00:00.000Z', address: { workUnit: 'auth' } },
+    ];
+    expect(externallyResolvedAt(c as any, statusChange)).toBeNull();
+    // A lifecycle (cancel) gate DOES resolve on it — that's unit-level.
+    const cancel = card('f'.repeat(16), { gateType: 'lifecycle', address: { workUnit: 'auth' } });
+    expect(externallyResolvedAt(cancel as any, statusChange)).toBe('2026-08-27T11:00:00.000Z');
+  });
 });
 
 describe('humans-viewing presence', () => {
@@ -247,5 +260,20 @@ describe('capture gesture', () => {
     const okRunner = new CaptureRunner(db, new CaptureDriver('completed'), { projectRoot: tmp, project: 'demo' });
     await okRunner.retry(failed[0]!.id);
     expect(okRunner.list()).toHaveLength(0);
+  });
+
+  it('a retry that FAILS again leaves exactly one row, never a duplicate (round 12)', async () => {
+    const runner = new CaptureRunner(db, new CaptureDriver('error'), { projectRoot: tmp, project: 'demo' });
+    await runner.run({ kind: 'idea', payload: 'still broken', provenance: { source: 'x' }, humanId: 'gh:alice' });
+    const first = runner.list();
+    expect(first).toHaveLength(1);
+    // Retry it — the driver still errors. Must NOT orphan the original + add a new one.
+    await runner.retry(first[0]!.id);
+    const after = runner.list();
+    expect(after).toHaveLength(1);
+    expect(after[0]!.payload).toBe('still broken');
+    // A second retry-fail still holds at one.
+    await runner.retry(after[0]!.id);
+    expect(runner.list()).toHaveLength(1);
   });
 });

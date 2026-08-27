@@ -11,6 +11,15 @@
 // not better-auth's OAuth redirect dance — see REVIEW.md round 12 for the
 // deviation rationale. The IDENTITY + MEMBER-CHECK contract the spec names is
 // implemented and tested; the redirect flow is deployment wiring.
+//
+// HONEST LIMITATION until that flow lands: `login(githubLogin)` verifies whether
+// THAT login has push access, but not that the CALLER controls that GitHub
+// account (no user-token exchange). So in github mode identity is ATTRIBUTION,
+// not authentication — a holder of the shared install bearer token could assert
+// any login. This grants no privilege (membership gates nothing at the process
+// level — the workflow record has no owner), so the only exposure is forged
+// attribution on comments / ownership / capture provenance. The OAuth exchange
+// closes it; the member-check and routing model are already correct beneath it.
 import crypto from 'node:crypto';
 import type { Db } from './db.js';
 import { HUMAN_SENTINEL } from './db.js';
@@ -91,6 +100,10 @@ export class Identity {
 
   get mode(): AuthConfig['mode'] {
     return this.cfg.mode;
+  }
+
+  get repo(): string | undefined {
+    return this.cfg.repo;
   }
 
   /** The human a request belongs to. Single mode is always the sentinel. */

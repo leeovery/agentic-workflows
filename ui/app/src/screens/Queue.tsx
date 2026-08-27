@@ -111,7 +111,7 @@ export function Queue() {
               <span className="shrink-0 text-[10px] font-sans text-ok">yours</span>
             ) : null}
             {(row.unreadComments ?? 0) > 0 && (
-              <span className="shrink-0 text-[10px] font-mono text-gate" title="unread comments block sign-off">💬 {row.unreadComments}</span>
+              <span className="shrink-0 text-[10px] font-mono text-warn" title="unread comments block sign-off">💬 {row.unreadComments}</span>
             )}
             {row.tier === 'live' && <EscalationChip since={row.since} escalated={row.escalated} />}
             <time className="font-sans text-xs text-stone-400 shrink-0">{age(row.since)}</time>

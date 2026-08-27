@@ -56,9 +56,12 @@ const INFER_TTL_MS = 15 * 60 * 1000; // a presence file touched within 15m = pla
 
 /**
  * Best-effort "a session may be working here" for the phases WITHOUT an engine
- * heartbeat, read from the presence-file mtimes the engine writes anyway. Every
- * row is marked `inferred: true` — the UI must label it as such, never render it
- * beside a real heartbeat as if equally certain.
+ * heartbeat. Those phases write NO `presence` file (the engine only heartbeats
+ * research/discussion — reading a presence file here would always find nothing,
+ * round-12 G3). Instead we read the mtime of the topic's cache `state.json` —
+ * the per-topic session machinery every active phase writes — as the lock-mtime
+ * signal the plan names. Every row is marked `inferred: true`; the UI labels it
+ * as such and never renders it beside a real heartbeat as equally certain.
  */
 export function inferredWorkingSessions(projectRoot: string, wu: string, now: number): InferredSession[] {
   const base = path.join(projectRoot, '.workflows', '.cache', wu);
@@ -78,14 +81,19 @@ export function inferredWorkingSessions(projectRoot: string, wu: string, now: nu
       continue;
     }
     for (const topic of topics) {
-      const presencePath = path.join(base, phase, topic, 'presence');
-      try {
-        const st = fs.statSync(presencePath);
-        if (now - st.mtimeMs < INFER_TTL_MS) {
-          out.push({ phase, topic, mtime: new Date(st.mtimeMs).toISOString(), inferred: true });
+      // Newest of state.json (session machinery) or the topic dir itself — a
+      // recent touch means a session plausibly worked here lately.
+      const topicDir = path.join(base, phase, topic);
+      let mtimeMs = 0;
+      for (const p of [path.join(topicDir, 'state.json'), topicDir]) {
+        try {
+          mtimeMs = Math.max(mtimeMs, fs.statSync(p).mtimeMs);
+        } catch {
+          /* absent — try the next signal */
         }
-      } catch {
-        /* no presence file for this topic — nothing to infer */
+      }
+      if (mtimeMs > 0 && now - mtimeMs < INFER_TTL_MS) {
+        out.push({ phase, topic, mtime: new Date(mtimeMs).toISOString(), inferred: true });
       }
     }
   }

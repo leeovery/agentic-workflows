@@ -7,6 +7,7 @@ import { extractSections } from '@workflow-ui/shared';
 import { EngineEmbed } from './EngineEmbed';
 import { GateCard } from './GateCard';
 import { BatchScreenCard } from './BatchScreenCard';
+import { CaptureButton } from './CaptureButton';
 import type { GateCardData, ThreadData } from '../api';
 
 function ToolResultBlock({ text }: { text: string }) {
@@ -28,10 +29,12 @@ export function Thread({
   thread,
   onAnswer,
   busy,
+  onClaim,
 }: {
   thread: ThreadData;
   onAnswer: (gateId: string, text: string) => void;
   busy?: boolean;
+  onClaim?: (gateId: string) => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -58,8 +61,18 @@ export function Thread({
             );
           case 'assistant':
             return (
-              <div key={i} className="font-serif text-[15px] leading-7 whitespace-pre-wrap text-stone-800 dark:text-stone-200">
+              <div key={i} className="group font-serif text-[15px] leading-7 whitespace-pre-wrap text-stone-800 dark:text-stone-200">
                 {String(rec.text)}
+                {/* Capture-from-message (Phase 6 §3): park this message as an
+                    inbox item, provenance (source + author) riding the body. */}
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 align-middle inline-block">
+                  <CaptureButton
+                    compact
+                    label="✦ capture"
+                    seed={String(rec.text)}
+                    provenance={{ source: 'message', author: 'assistant', messageSeq: i }}
+                  />
+                </span>
               </div>
             );
           case 'tool-result':
@@ -100,7 +113,12 @@ export function Thread({
         ) : thread.openGate.kind === 'batch-screen' ? (
           <BatchScreenCard card={thread.openGate} onAnswer={(text) => onAnswer(thread.openGate!.id, text)} busy={busy} />
         ) : (
-          <GateCard card={thread.openGate} onAnswer={(text) => onAnswer(thread.openGate!.id, text)} busy={busy} />
+          <GateCard
+            card={thread.openGate}
+            onAnswer={(text) => onAnswer(thread.openGate!.id, text)}
+            busy={busy}
+            onClaim={onClaim ? () => onClaim(thread.openGate!.id) : undefined}
+          />
         ))}
       <div ref={bottomRef} />
     </div>

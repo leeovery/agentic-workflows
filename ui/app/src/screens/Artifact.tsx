@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { api, useLive, type ArtifactData, type HistoryEntry } from '../api';
 import { Markdown } from '../components/Markdown';
+import { GateComments } from '../components/GateComments';
 import {
   LensTabs,
   structureRail,
@@ -128,6 +129,12 @@ export function Artifact() {
               <article className={`read-lens max-w-measure-wide min-w-measure ${firmness.cls}`}>
                 <Markdown content={data.content} />
               </article>
+              {/* Comment thread on the artifact (Phase 6 §5 — "gates AND
+                  artifacts"). Never pushes; the artifact key is wu/path. */}
+              <div className="max-w-measure-wide mt-6">
+                <div className="region-label mb-1">Comments</div>
+                <GateComments target={{ artifact: `${data.workUnit}/${data.path}` }} />
+              </div>
             </>
           )}
         </div>
