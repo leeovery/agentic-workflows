@@ -6,6 +6,8 @@ hooks:
   SessionEnd:
     - hooks:
         - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
+        - type: command
           command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
@@ -62,9 +64,9 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 1. **STOP AND WAIT** for explicit approval before any write to the specification. Present content, wait for the user to explicitly approve (`y/yes` or equivalent), then log. No exceptions.
 2. **Log verbatim** — when approved, write exactly what was presented. No silent modifications.
-3. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. Work-unit commits go through the scoped helper:
+3. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. Commits go through the scoped helper, action-scoped to this topic — the specification directory and the work-unit manifest, never a sibling session's files:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}" --topic specification/{topic}
    ```
 
 ---

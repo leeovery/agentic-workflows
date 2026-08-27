@@ -143,7 +143,7 @@ Specification is complete when:
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): conclude specification"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): conclude specification" --topic specification/{topic} --kb
 ```
 
 When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` advisory — the warning never blocks:
@@ -180,7 +180,7 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
 2. Inform the user which topics were updated
 3. Commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): mark source specifications as superseded"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): mark source specifications as superseded" --topic specification/{topic} --kb
    ```
 
 → Proceed to **F. Pipeline Continuation**.

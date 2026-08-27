@@ -41,10 +41,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
    node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.research.{topic} --verb complete --warn
    ```
 
-3. Clear this session's presence and sweep for leavings:
+3. Sweep for leavings:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs presence clear {work_unit} research {topic}
    git status --porcelain -- .workflows
    ```
 

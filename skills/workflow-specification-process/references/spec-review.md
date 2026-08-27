@@ -33,7 +33,7 @@ Record the current cycle number — used for tracking file naming (`c{N}`).
 Commit the updated manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): begin review cycle {N}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): begin review cycle {N}" --topic specification/{topic}
 ```
 
 → Proceed to **C. Phase 1 — Claims Verification**.
@@ -47,7 +47,7 @@ Record the current cycle number — used for tracking file naming (`c{N}`).
 Commit the updated manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): begin review cycle {N}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): begin review cycle {N}" --topic specification/{topic}
 ```
 
 → Proceed to **B. Cycle Gate**.
@@ -125,7 +125,7 @@ Hold its STATUS as `phase_1_status` — carried in context for the branch below,
 **If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): claims verification cycle {N}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): claims verification cycle {N}" --topic specification/{topic}
 ```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
@@ -153,7 +153,7 @@ Hold its STATUS as `phase_2_status` — carried in context for the branch below,
 **If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): input review cycle {N}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): input review cycle {N}" --topic specification/{topic}
 ```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
@@ -180,7 +180,7 @@ Hold its STATUS as `phase_3_status` — carried in context for the branch below,
 **If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): gap analysis cycle {N}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): gap analysis cycle {N}" --topic specification/{topic}
 ```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
@@ -264,7 +264,7 @@ If any entry is `in-progress`, that file's findings were not fully processed —
 2. **Commit** all review tracking files:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): complete specification review (cycle {N})"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): complete specification review (cycle {N})" --topic specification/{topic}
 ```
 
 > *Output the next fenced block as a code block:*

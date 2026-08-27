@@ -194,7 +194,7 @@ Each gap gets its own raise, acknowledgement, and landing; the specification pau
 An `incorporated` row for each routed source has flipped to `stale` and reconciles at re-entry; a still-`pending` row simply re-extracts the updated document when construction resumes — either way the engine refuses to conclude this spec, and its entry blocks, until every routed source re-concludes. Commit the session's work:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — gap routed to {doc}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — gap routed to {doc}" --topic specification/{topic}
 ```
 
 Tell the user: this specification is blocked until the reopened item(s) re-conclude — name them (`{doc}`, each of them). Do not run document dependencies, review, or conclusion.

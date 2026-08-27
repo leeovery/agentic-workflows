@@ -30,7 +30,7 @@ The prose should have taken this path:
 8. the user wraps; the closing gates run the review machinery per the
    conduct (the stubbed review returns clean); the conclude gate reads
    the empty queue; the discussion completes with the `--kb` commit;
-   presence clears and the walk stops at the bridge invocation
+   the walk stops at the bridge invocation
 
 Further claims:
 

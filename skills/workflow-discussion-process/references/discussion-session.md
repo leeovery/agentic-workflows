@@ -20,7 +20,7 @@ Two types of background agent operate during the discussion, and the topic's tri
 
 The discussion is an organic conversation. The Discussion Map is your tracking backbone — it tells you where you are, what's been decided, what's still open, and where to go next. It is typed state in the manifest (`phases.discussion.items.{topic}.subtopics`): you make every state call, the engine `discussion-map` commands record it, and the adapter renders it (see **E**). Follow this loop:
 
-1. **Check for findings** — Beat presence first, once per check — `node .claude/skills/workflow-engine/scripts/engine.cjs presence beat {work_unit} discussion {topic}` — before the gated checks below: any of them can end in a STOP that closes the turn, and the beat must not miss its iteration.
+1. **Check for findings** — anything waiting is surfaced before the conversation moves on.
 
    Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. Its offer and raise gates end the turn — the agent checks below wait for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
 
