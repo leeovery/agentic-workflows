@@ -224,7 +224,7 @@ Reverse resolutions:
 
 Commit:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): resolve external dependencies"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): resolve external dependencies" --topic planning/{topic}
 ```
 
 → Return to caller.

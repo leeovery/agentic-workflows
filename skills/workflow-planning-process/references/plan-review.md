@@ -93,7 +93,7 @@ Auto mode is active — pass through to review. Section E's safety cap (cycle 5)
 **If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): traceability review cycle {N}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): traceability review cycle {N}" --topic planning/{topic}
 ```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
@@ -111,7 +111,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 **If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}" --topic planning/{topic}
 ```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
@@ -214,7 +214,7 @@ Read `manifest get {work_unit}.planning.{topic} tracking`. If any entry is `in-p
 
 2. **Commit** all review tracking files:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})" --topic planning/{topic}
    ```
 
 > *Output the next fenced block as markdown (not a code block):*

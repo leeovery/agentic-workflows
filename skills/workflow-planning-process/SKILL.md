@@ -6,6 +6,8 @@ hooks:
   SessionEnd:
     - hooks:
         - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
+        - type: command
           command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
@@ -57,9 +59,9 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 1. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. Work-unit commits go through the scoped helper:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}" --topic planning/{topic}
    ```
-2. **`--plan` when the plan format's storage is staged** — task authoring, graph writes, and applied review fixes write through the format adapter, whose task storage may live outside `.workflows/{work_unit}`. Commit those with `engine commit {work_unit} -m "{message}" --plan {topic}` — it stages the work unit, the project manifest, and the plan's recorded `storage_paths`. The one raw-git case is restart cleanup, where the planning item is already deleted: stage `{storage_paths}` (read before the deletion) explicitly.
+2. **`--plan` when the plan format's storage is staged** — task authoring, graph writes, and applied review fixes write through the format adapter, whose task storage may live outside `.workflows/{work_unit}`. Commit those with `engine commit {work_unit} -m "{message}" --plan {topic}` — it stages the planning topic, both manifests, and the plan's recorded `storage_paths`. The one raw-git case is restart cleanup, where the planning item is already deleted: stage `{storage_paths}` (read before the deletion) explicitly.
 
 ---
 

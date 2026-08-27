@@ -45,7 +45,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 Commit:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): draft Phase {N} task list"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): draft Phase {N} task list" --topic planning/{topic}
 ```
 
 Write the task-list payload for the render surface to the phase cache — one entry per task, each summary a single line, edge cases as short phrases:
@@ -118,7 +118,7 @@ Resolve the destination per the caller's **Navigation** section — the user's p
    ```
 3. Commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve Phase {N} task list"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve Phase {N} task list" --topic planning/{topic}
    ```
 
 If the manifest already carries `approvals.tasks.p{N}` and the list is unchanged, no updates are needed.

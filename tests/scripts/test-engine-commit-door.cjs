@@ -272,12 +272,12 @@ describe('engine commit --discovery: the discovery session\'s scope', () => {
   });
 });
 
-describe('engine commit --plan: confined to the plan\'s storage', () => {
+describe('engine commit --plan: the planning topic plus the plan\'s storage', () => {
   let dir;
   beforeEach(() => { dir = setupTwoTopicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('commits the work unit and the declared storage, leaving foreign dirt behind', () => {
+  it('commits the planning topic and the declared storage, leaving foreign dirt behind', () => {
     const manifest = epicManifest();
     manifest.phases.planning = { items: { 'topic-a': { status: 'in-progress', storage_paths: ['plans/topic-a'] } } };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
@@ -285,16 +285,52 @@ describe('engine commit --plan: confined to the plan\'s storage', () => {
     writeFile(dir, 'src/app.js', 'const x = 1;\n');
     commitAll(dir, 'plan storage');
 
+    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan\n');
     writeFile(dir, 'plans/topic-a/tasks.md', '# Tasks\n- one\n');
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    // A peer session mid-write, inside the same work unit.
+    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
 
     const res = engine(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
     assert.ok(files.includes('plans/topic-a/tasks.md'), 'the declared storage rides');
+    assert.ok(files.includes('.workflows/payments/planning/topic-a/planning.md'), 'the planning topic rides');
     assert.ok(!files.includes('src/app.js'), 'code outside the plan\'s storage never rides a --plan commit');
-    assert.deepStrictEqual(statusLines(dir), [' M src/app.js'], 'the code is left exactly as it was');
+    assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'),
+      'a sibling topic inside the same work unit is not a planning session\'s to commit');
+    assert.deepStrictEqual(
+      statusLines(dir).sort(),
+      [' M .workflows/payments/discussion/topic-b.md', ' M src/app.js'],
+      'everything outside the plan\'s scope is left exactly as it was',
+    );
+  });
+
+  it('leaves a sibling planning topic alone', () => {
+    const manifest = epicManifest();
+    manifest.phases.planning = { items: {
+      'topic-a': { status: 'in-progress', storage_paths: [] },
+      'topic-b': { status: 'in-progress', storage_paths: [] },
+    } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan A\n');
+    writeFile(dir, '.workflows/payments/planning/topic-b/planning.md', '# Plan B\n');
+    commitAll(dir, 'two plans');
+
+    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan A\nphase 1\n');
+    writeFile(dir, '.workflows/payments/planning/topic-b/planning.md', '# Plan B\na peer planner mid-write\n');
+
+    engine(dir, ['commit', 'payments', '-m', 'planning(payments): draft phase structure', '--plan', 'topic-a']);
+
+    assert.ok(headFiles(dir).includes('.workflows/payments/planning/topic-a/planning.md'));
+    assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/planning/topic-b/planning.md'],
+      'the peer planning session keeps its own dirt');
+  });
+
+  it('refuses a planning topic name that is a path', () => {
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', '../escapee']).error, /invalid planning topic name/);
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'a/b']).error, /invalid planning topic name/);
   });
 
   it('never takes another process\'s staged code', () => {

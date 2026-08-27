@@ -6,6 +6,8 @@ hooks:
   SessionEnd:
     - hooks:
         - type: command
+          command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup'
+        - type: command
           command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup'
 ---
 
@@ -176,9 +178,10 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
    ```
-3. Commit — `--plan` stages the work unit, the project manifest, and the plan's declared storage in one scoped call (the knowledge store rides along automatically):
+3. Commit each edit under its own scope — the specification with the store its re-completion re-indexed, then the plan with its declared storage:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): adjust specification and plan" --plan {topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): adjust quick-fix specification" --topic specification/{topic} --kb
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): adjust plan" --plan {topic}
    ```
 
 → Proceed to **Step 8**.
