@@ -30,6 +30,9 @@ export default {
         measure: '60ch',
         'measure-wide': '78ch',
       },
+      minWidth: {
+        measure: '60ch',
+      },
     },
   },
   plugins: [],

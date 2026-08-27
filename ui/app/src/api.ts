@@ -39,7 +39,7 @@ export type ChannelData = {
 };
 
 export type StructureNode = { label: string; status?: string; anchor?: string; detail?: string };
-export type ClaimChipData = { command: string; result?: string; anchor?: string };
+export type ClaimChipData = { command: string; result?: string; anchor?: string; verified?: boolean };
 export type ArtifactStructure = {
   kind: string;
   sections: StructureNode[];
@@ -170,6 +170,9 @@ export const api = {
   history: (wu: string, path: string) =>
     getJson<{ timeline: HistoryEntry[] }>(`/api/history/${encodeURIComponent(wu)}?path=${encodeURIComponent(path)}`),
   roadmap: () => getJson<RoadmapData>('/api/roadmap'),
+  // Advance the read-ref for the what-moved diff base — a deliberate view.
+  markArtifactRead: (wu: string, path: string) =>
+    postJson(`/api/artifact/${encodeURIComponent(wu)}/read`, { path }).catch(() => ({})),
   queue: () => getJson<{ rows: QueueRowData[] }>('/api/queue'),
   sessions: () => getJson<{ sessions: SessionData[] }>('/api/sessions'),
   thread: (id: string) => getJson<ThreadData>(`/api/session/${encodeURIComponent(id)}/thread`),

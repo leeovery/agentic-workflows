@@ -7,7 +7,7 @@
 // tab, never an error.
 
 export type StructureNode = { label: string; status?: string; anchor?: string; detail?: string };
-export type ClaimChip = { command: string; result?: string; anchor?: string };
+export type ClaimChip = { command: string; result?: string; anchor?: string; verified?: boolean };
 
 export type ArtifactStructure = {
   kind: 'discussion' | 'specification' | 'investigation' | 'review' | 'brief' | 'research' | 'none';
@@ -70,7 +70,9 @@ function normalizeRows(raw: unknown): StructureNode[] {
     : Object.entries<any>(raw as Record<string, any>);
   return entries
     .filter(([name]) => name)
-    .map(([name, r]) => ({ label: String(name), status: r?.status ?? r?.incorporated ?? undefined }));
+    // A status-less source defaults to 'pending' (the engine's own fail-safe:
+    // an unmarked source must never read as already done).
+    .map(([name, r]) => ({ label: String(name), status: r?.status ?? r?.incorporated ?? 'pending' }));
 }
 
 /**
@@ -82,9 +84,18 @@ export function buildStructure(
   topic: string,
   manifest: Manifest | null,
   content: string,
+  // The work unit's review-report content, when it exists — the ONLY source of
+  // a claim's verification badge (never bridge-side execution; round-5 #13).
+  reviewReport?: string | null,
 ): ArtifactStructure {
   const item = manifest?.phases?.[phase]?.items?.[topic] ?? null;
   const claims = findClaims(content);
+  if (reviewReport) {
+    for (const c of claims) {
+      // Best-effort: the review's claims pass names the command it re-ran.
+      if (reviewReport.includes(c.command)) c.verified = /verified|confirmed|holds|✓/i.test(reviewReport);
+    }
+  }
 
   switch (phase) {
     case 'discussion': {

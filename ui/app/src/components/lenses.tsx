@@ -144,22 +144,41 @@ export function MapRail({ sections, onAnchor }: { sections: StructureNode[]; onA
   );
 }
 
-// A generic heading rail (investigation / review / spec body / brief).
+const BASELINE_LAYER_CLS: Record<string, string> = {
+  observed: 'text-ok',
+  stated: 'text-nav',
+  open: 'text-warn',
+};
+function baselineLayer(label: string): 'observed' | 'stated' | 'open' | null {
+  const l = label.toLowerCase();
+  if (l.includes('observed')) return 'observed';
+  if (l.includes('stated')) return 'stated';
+  if (l.includes('open')) return 'open';
+  return null;
+}
+
+// A generic heading rail (investigation / review / spec body / brief /
+// baseline). Baseline docs get their observed / stated / open layers coloured
+// distinctly (the layer is read from the heading label).
 export function HeadingRail({ sections, onAnchor }: { sections: StructureNode[]; onAnchor: (a: string) => void }) {
   return (
     <div className="space-y-0.5">
-      {sections.map((n, i) => (
-        <button
-          key={`${n.anchor}-${i}`}
-          onClick={() => n.anchor && onAnchor(n.anchor)}
-          className={clsx(
-            'block w-full text-left text-sm font-sans hover:text-nav truncate',
-            n.detail === 'sub' ? 'pl-3 text-stone-500' : '',
-          )}
-        >
-          {n.label}
-        </button>
-      ))}
+      {sections.map((n, i) => {
+        const layer = baselineLayer(n.label);
+        return (
+          <button
+            key={`${n.anchor}-${i}`}
+            onClick={() => n.anchor && onAnchor(n.anchor)}
+            className={clsx(
+              'block w-full text-left text-sm font-sans hover:text-nav truncate',
+              n.detail === 'sub' ? 'pl-3 text-stone-500' : '',
+              layer ? BASELINE_LAYER_CLS[layer] : '',
+            )}
+          >
+            {n.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -222,6 +241,17 @@ export function structureRail(structure: ArtifactStructure, onAnchor: (a: string
     return (
       <div className="space-y-4">
         <SourcesPanel sources={structure.sources} consult={structure.consultReferences} />
+        {/* Spec rail carries the claim chips (S5 table). */}
+        {structure.claims.length > 0 && (
+          <div>
+            <div className="region-label mb-1">Claims</div>
+            <div className="space-y-1">
+              {structure.claims.map((c, i) => (
+                <ClaimChip key={i} chip={c} />
+              ))}
+            </div>
+          </div>
+        )}
         {structure.sections.length > 0 && (
           <div>
             <div className="region-label mb-1">Contents</div>

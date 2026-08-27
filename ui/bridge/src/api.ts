@@ -162,7 +162,11 @@ export async function handleApi(
         return true;
       }
       const rel = url.searchParams.get('path') ?? '';
-      if (rel.includes('..') || !rel.endsWith('.md')) {
+      // Same containment as artifactView: realpath the target inside the
+      // unit's own dir (single-sourced check, round-10).
+      const base = path.resolve(deps.projectRoot, '.workflows', wu);
+      const full = path.resolve(base, rel);
+      if (!full.startsWith(base + path.sep) || !rel.endsWith('.md')) {
         send(res, 400, { error: 'artifact path refused' });
         return true;
       }
@@ -273,6 +277,21 @@ async function handleMutation(
   deps: ApiDeps,
 ): Promise<void> {
   const body = await readBody(req);
+
+  // Advance the artifact read-ref — a deliberate, focused view, not a side
+  // effect of every GET (round-10 finding).
+  const read = url.pathname.match(/^\/api\/artifact\/([^/]+)\/read$/);
+  if (read && deps.db) {
+    const wu = decodeURIComponent(read[1]!);
+    const rel = String(body.path ?? '');
+    if (validUnitName(wu) && rel.endsWith('.md') && !rel.split('/').includes('..')) {
+      recordReadRef(deps.db, deps.projectRoot, wu, rel);
+      send(res, 200, { ok: true });
+    } else {
+      send(res, 400, { error: 'artifact path refused' });
+    }
+    return;
+  }
 
   // Activity signalling needs no session manager (a read-only mirror still
   // reports focus for suppression).
@@ -526,6 +545,12 @@ function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: 
       send(res, 400, { error: 'artifact path refused' });
       return;
     }
+    // Size cap — an artifact is human-scale prose; refuse a runaway file
+    // rather than reading it wholesale into memory (round-10 hardening).
+    if (fs.statSync(realFull).size > 4 * 1024 * 1024) {
+      send(res, 413, { error: 'artifact too large' });
+      return;
+    }
     content = fs.readFileSync(realFull, 'utf8');
   } catch {
     send(res, 404, { error: 'artifact not found' });
@@ -539,18 +564,32 @@ function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: 
     ? whatMoved(deps.projectRoot, path.join('.workflows', wu, rel), priorRef.sha, priorRef.state)
     : { state: 'none' as const };
 
-  // Structure (manifest-owned or heading-keyed) and claim chips. The topic is
-  // the path's phase-relative segment (`{phase}/{topic}/…`) — for epics the
-  // topic differs from the work unit; for single-topic types they coincide.
+  // Structure (manifest-owned or heading-keyed) and claim chips. Derive the
+  // topic from the artifact's path — for an epic it differs from the work
+  // unit. Two layouts: a nested `{phase}/{topic}/{file}.md` (spec, review,
+  // brief) and a FLAT `{phase}/{topic}.md` (discussion, investigation).
   const parts = rel.split('/');
-  const topic = parts.length >= 3 ? parts[1]! : wu;
+  const topic =
+    parts.length >= 3
+      ? parts[1]!
+      : parts.length === 2
+        ? parts[1]!.replace(/\.md$/, '')
+        : wu;
   const manifest = deps.engine?.readUnitManifest(wu) ?? null;
-  const structure = buildStructure(phase, topic, manifest, content);
+  // The work unit's review report, if one exists — the claim-verification badge
+  // source (best-effort; never bridge execution).
+  let reviewReport: string | null = null;
+  try {
+    reviewReport = fs.readFileSync(path.join(base, '..', 'review', topic, 'report.md'), 'utf8');
+  } catch {
+    reviewReport = null;
+  }
+  const structure = buildStructure(phase, topic, manifest, content, reviewReport);
 
-  // Record the read-ref: HEAD-at-render is Phase 4's diff base (spec, phase-0
-  // §8). Read is idempotent — a GET recording a receipt is a deliberate,
-  // UI-native write, never workflow state.
-  if (deps.db) recordReadRef(deps.db, deps.projectRoot, wu, rel);
+  // The read-ref is NOT recorded here — a background SSE-driven refetch would
+  // otherwise silently mark an artifact "read" moments after a change lands.
+  // The SPA advances the ref via POST /api/read only on a genuine, focused
+  // view (round-10 finding).
   send(res, 200, { workUnit: wu, path: rel, phase, content, structure, whatMoved: moved });
 }
 

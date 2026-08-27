@@ -109,3 +109,10 @@
 .settle {
   transition: background-color 240ms ease-out, border-color 240ms ease-out;
 }
+
+/* A gate deep-link highlights its section briefly (S5). */
+.deep-linked {
+  outline: 2px solid theme(colors.gate.DEFAULT);
+  outline-offset: 4px;
+  border-radius: 4px;
+}

@@ -348,6 +348,43 @@ a coordinator-level test suite. Dispositions:
 
 **Survived attack:** the lane extractor (apply/decide/route vs walk vs ENOENT); push-once-per-report-landing; the durable ledger's restart-re-pushes-nothing; quiet-hours-window midnight wrap; the lobby TODAY strip not duplicating NEEDS YOU (waiting suppressed server-side); no per-finding pushes, no email; every mutation and the event stream token+Host/Origin gated; `/api/activity` gated the same; no XSS in the new surfaces.
 
+## Round 10: Phase 4 implementation review (2026-08-27)
+
+Two reviewers (plan/spec fidelity + intent; quality + security). The security
+fork observed the working tree mid-fold and confirmed the fixes landing there.
+
+**Defects (fixed, with tests):**
+
+| # | Finding | Fix |
+|---|---|---|
+| R10-1 | Epic discussion structure was empty — the topic derivation only handled the nested `{phase}/{topic}/{file}.md` layout, not the FLAT `{phase}/{topic}.md` (discussion, investigation), so an epic's subtopic rail silently degraded | Derive the topic from both layouts (flat → basename sans .md); verified live on payments-epic's billing-model |
+| R10-2 | The Roadmap read nonexistent `pulled_to`/`shipped` fields — every item rendered "waiting" forever, no work-unit link — a "state renders from engine" violation | Reads the engine's own `state`/`work_unit` roadmapState rows; `in-flight` key corrected |
+| R10-3 | The read-ref was recorded on EVERY GET — a background SSE refetch silently marked an artifact "read" moments after a change, breaking "what moved" | The GET no longer records; a `POST /api/artifact/:wu/read` advances the ref only on a genuine focused view (mount / becomes-visible) |
+| R10-4 | The VerdictBanner keyword-sniffed the first 8 lines (a `**Plan**: {slug}` or prose "blocked"/"fail" flipped a passing review) | Matches the template's stable `**Verdict**: Pass\|Fail` line; buckets link from the report's own headings |
+| R10-5 | Roadmap items naming an unknown horizon vanished (the loop iterated only known horizons); `orphaned` count unshown | Renders known horizons then any extra an item names; orphaned surfaced |
+| R10-6 | BriefCard's "session log is the record" link was dead (`onAnchor('top')`, no such element); panels were positional | Links to the session-log artifact route; panels label-matched (soft decisions / rejected paths / open questions) |
+
+**Gaps closed:** the claim-verification badge is now wired — sourced ONLY from the work unit's review report (never bridge execution, round-5 #13); the spec rail carries its claim chips and the review shows verdict + buckets (S5 table); baseline docs colour their observed/stated/open layers; the 60ch minimum measure + rail-collapses-first (the rail hides below `lg`, the body holds `min-w-measure`); a status-less source defaults to `pending` (engine fail-safe); gate deep-links scroll+highlight the section they concern.
+
+**Hardening:** `/api/history` uses the same realpath containment as the artifact route; the artifact read is size-capped (4MB); `history.ts` rejects leading-dash paths and non-hex refs before any git call (defence-in-depth — the `--` separators already neutralise the pathspec vector).
+
+**Accepted as-is (recorded):** full docked-card floating interaction is the deep-link's richer form — the scroll+highlight ships, the floating dock is deferred (the mutual-exclusion rule with what-moved holds trivially while only one floating layer, the ribbon, exists); the session-log link assumes `session-001.md` (the common case; a brief pointing at a later session is a Phase 6 refinement).
+
+**The Phase 4 exit decision (live discussion map):** kept CLOSED. The named
+evidence — "did anyone drive a discussion from the browser during dogfooding
+and want the rail live?" — does not exist in this build: the dogfooding was
+driven through the fixture world's API, not a sustained human discussion, and
+no one asked for a live rail. The manifest-sourced rail (rebuilt on each SSE
+refetch) is live enough; a bespoke live-map channel stays unbuilt until real
+use asks for it.
+
+**Survived attack:** no ReDoS in the extractors; no `dangerouslySetInnerHTML`
+(diff/commit text is React-escaped); the roadmap route relays only engine
+fields; structure sourced from the manifest (never session cache); claim chips
+copy-only (no re-run); the what-moved epoch-break `lost` state; out-of-scope
+discipline (no browser editing, no artifact-embedded execution, no Phase 5
+creep).
+
 ## Rejected / amended findings
 
 - Sufficiency's "SQLite schema has no consumers in Phase 0 — defer it": **rejected** in

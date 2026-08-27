@@ -47,6 +47,20 @@ describe('structure — manifest-owned', () => {
     expect(s.consultReferences).toEqual([{ label: 'other', status: 'pending' }]);
     expect(s.sections.some((n) => n.label === 'Decisions')).toBe(true);
   });
+
+  it('a status-less source defaults to pending (engine fail-safe), never blank', () => {
+    const manifest = { phases: { specification: { items: { t: { sources: { d1: {} } } } } } };
+    const s = buildStructure('specification', 't', manifest, 'body');
+    expect(s.sources).toEqual([{ label: 'd1', status: 'pending' }]);
+  });
+
+  it('a claim is verified ONLY from the review report, never bridge execution', () => {
+    const content = 'The count holds: `grep -c x f` → 3';
+    const withReport = buildStructure('specification', 't', null, content, 'claims pass: `grep -c x f` verified ✓');
+    expect(withReport.claims[0]!.verified).toBe(true);
+    const noReport = buildStructure('specification', 't', null, content);
+    expect(noReport.claims[0]!.verified).toBeUndefined();
+  });
 });
 
 describe('structure — heading-keyed + degradation', () => {

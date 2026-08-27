@@ -2,8 +2,8 @@
 // the typeset body with the firmness gradient; Structure is the per-type rail
 // (absent, never an error, on degradation); History is the file timeline. The
 // what-moved ribbon and claim chips overlay the Read lens.
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { api, useLive, type ArtifactData, type HistoryEntry } from '../api';
 import { Markdown } from '../components/Markdown';
 import {
@@ -14,7 +14,7 @@ import {
   HistoryTimeline,
   type Lens,
 } from '../components/lenses';
-import { VerdictBanner, BriefBadge } from '../components/VerdictBrief';
+import { VerdictBanner, BriefCard } from '../components/VerdictBrief';
 
 const FIRMNESS: Record<string, { cls: string; label: string }> = {
   research: { cls: 'firmness-research', label: 'research — exploratory' },
@@ -32,6 +32,32 @@ export function Artifact() {
   const { data, error } = useLive<ArtifactData>(() => api.artifact(wu, rest), [wu, rest]);
   const [lens, setLens] = useState<Lens>('read');
   const { data: history } = useLive<{ timeline: HistoryEntry[] }>(() => api.history(wu, rest), [wu, rest]);
+  const location = useLocation();
+
+  // A gate deep-link (#anchor) scrolls to and highlights the section it
+  // concerns (S5). The docked card and the what-moved panel are mutually
+  // exclusive — a deep-link collapses the ribbon.
+  // Advance the read-ref once, on a genuine focused view (mount / becomes
+  // visible) — never on a background SSE refetch.
+  useEffect(() => {
+    const mark = () => {
+      if (document.visibilityState === 'visible') api.markArtifactRead(wu, rest);
+    };
+    mark();
+    document.addEventListener('visibilitychange', mark);
+    return () => document.removeEventListener('visibilitychange', mark);
+  }, [wu, rest]);
+
+  const deepAnchor = location.hash.replace(/^#/, '');
+  useEffect(() => {
+    if (!deepAnchor || !data) return;
+    const el = document.getElementById(deepAnchor);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.add('deep-linked');
+    const t = setTimeout(() => el.classList.remove('deep-linked'), 2000);
+    return () => clearTimeout(t);
+  }, [deepAnchor, data]);
 
   if (error) return <div className="p-8 font-sans text-sm text-blocked">{error}</div>;
   if (!data) return <div className="p-8 font-sans text-sm text-stone-400">…</div>;
@@ -42,8 +68,9 @@ export function Artifact() {
 
   return (
     <div className="flex h-full">
-      {/* S5 rail — replaces the context panel. */}
-      <aside className="w-64 shrink-0 border-r border-stone-200 dark:border-stone-800 p-4 space-y-3 overflow-y-auto">
+      {/* S5 rail — replaces the context panel. It collapses first: hidden
+          below the breakpoint so the Read lens keeps its minimum measure. */}
+      <aside className="hidden lg:block w-64 shrink-0 border-r border-stone-200 dark:border-stone-800 p-4 space-y-3 overflow-y-auto">
         <Link to={`/c/${wu}`} className="text-sm font-sans text-nav hover:underline block">
           ← #{wu}
         </Link>
@@ -76,19 +103,29 @@ export function Artifact() {
           ) : (
             <>
               <div className="mb-3 space-y-2">
-                {data.structure.kind === 'review' && <VerdictBanner content={data.content} />}
-                {data.structure.kind === 'brief' && <BriefBadge />}
+                {data.structure.kind === 'review' && (
+                  <VerdictBanner content={data.content} sections={data.structure.sections} />
+                )}
+                {data.structure.kind === 'brief' && (
+                  <BriefCard
+                    sections={data.structure.sections}
+                    workUnit={wu}
+                    sessionLogHref={`/c/${wu}/a/discovery/sessions/session-001.md`}
+                  />
+                )}
                 <WhatMovedRibbon moved={data.whatMoved} />
                 {data.structure.claims.length > 0 && (
                   <div className="space-y-1">
                     <div className="region-label">Measured claims — copy to verify in a terminal</div>
                     {data.structure.claims.map((c, i) => (
-                      <ClaimChip key={i} chip={c} />
+                      <ClaimChip key={i} chip={c} verified={c.verified} />
                     ))}
                   </div>
                 )}
               </div>
-              <article className={`read-lens max-w-measure-wide min-w-0 ${firmness.cls}`}>
+              {/* The Read lens is never squeezed below its 60ch minimum
+                  measure (round-5); the rail collapses before the body does. */}
+              <article className={`read-lens max-w-measure-wide min-w-measure ${firmness.cls}`}>
                 <Markdown content={data.content} />
               </article>
             </>

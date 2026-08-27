@@ -15,8 +15,17 @@ function git(projectRoot: string, args: string[]): string {
   return execFileSync('git', ['-C', projectRoot, ...args], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
 }
 
+// A path that begins with '-' would be read by git as an option even after a
+// '--' in some subcommands' pathspec position — reject it outright. (The API
+// route already forbids '..' and non-.md; this is defence in depth for the
+// value that reaches every git call here.)
+function safePath(relPath: string): boolean {
+  return relPath !== '' && !relPath.startsWith('-') && !relPath.split('/').includes('..');
+}
+
 /** Commit timeline for one artifact (newest first). */
 export function fileTimeline(projectRoot: string, relPath: string): HistoryEntry[] {
+  if (!safePath(relPath)) return [];
   let out: string;
   try {
     out = git(projectRoot, ['log', '--format=%H%x00%aI%x00%an%x00%s', '--', relPath]);
@@ -51,7 +60,10 @@ export function whatMoved(
   refSha: string | null,
   refState: string,
 ): WhatMoved {
-  if (!refSha) return { state: 'none' };
+  if (!refSha || !safePath(relPath)) return { state: 'none' };
+  // A ref sha must be a plain 40-hex object id — never a flag or a ref
+  // expression that could reach a git call as an option.
+  if (!/^[0-9a-f]{7,64}$/.test(refSha)) return { state: 'none' };
   if (refState === 'history-rewritten' || !reachable(projectRoot, refSha)) return { state: 'lost' };
   let head: string;
   try {

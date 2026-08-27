@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { LensTabs, ClaimChip, SourcesPanel, WhatMovedRibbon } from '../src/components/lenses';
+import { VerdictBanner } from '../src/components/VerdictBrief';
 
 afterEach(cleanup);
 
@@ -50,6 +51,23 @@ describe('SourcesPanel', () => {
     expect(screen.getByText('Consult references')).toBeTruthy();
     expect(screen.getByText('other')).toBeTruthy();
     expect(screen.getByText('stale')).toBeTruthy();
+  });
+});
+
+describe('VerdictBanner', () => {
+  it('reads the template Verdict line (not a keyword guess) and links buckets', () => {
+    render(
+      <VerdictBanner
+        content="# Review\n\n**Verdict**: Fail\n\nsome prose"
+        sections={[{ label: 'Needs planning', anchor: 'needs-planning' }, { label: 'Out of scope', anchor: 'oos' }]}
+      />,
+    );
+    expect(screen.getByText(/fail/)).toBeTruthy();
+    expect(screen.getByText('Needs planning')).toBeTruthy();
+  });
+  it('renders nothing without a Verdict line', () => {
+    const { container } = render(<VerdictBanner content="just prose, no verdict" />);
+    expect(container.innerHTML).toBe('');
   });
 });
 

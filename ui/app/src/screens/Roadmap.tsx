@@ -7,7 +7,7 @@ import { api, useLive, type RoadmapData } from '../api';
 
 const LIFECYCLE_CLS: Record<string, string> = {
   waiting: 'text-stone-400',
-  in_flight: 'text-nav',
+  'in-flight': 'text-nav',
   shipped: 'text-ok',
   orphaned: 'text-warn',
 };
@@ -39,30 +39,36 @@ export function Roadmap() {
         <h1 className="text-xl font-sans font-semibold">Roadmap</h1>
         <span className="text-xs font-mono text-stone-400">
           {data.totals.items} items · {data.totals.waiting} waiting · {data.totals.shipped} shipped
+          {(data.totals.orphaned ?? 0) > 0 && ` · ${data.totals.orphaned} orphaned`}
         </span>
       </header>
 
-      {(data.horizons.length ? data.horizons.map((h: any) => h.name ?? h) : [...byHorizon.keys()]).map((hn: string) => (
+      {/* Known horizons in order, then any horizon an item names that the list
+          doesn't carry (a stale/hand-edited manifest) — so no item vanishes. */}
+      {(() => {
+        const known = data.horizons.map((h: any) => h.name ?? h);
+        const extra = [...byHorizon.keys()].filter((k) => !known.includes(k));
+        return [...known, ...extra];
+      })().map((hn: string) => (
         <section key={hn}>
           <div className="region-label mb-2">{hn}</div>
           <div className="space-y-1.5">
-            {(byHorizon.get(hn) ?? []).map((item: any, i: number) => {
-              const lifecycle = item.pulled_to ? (item.shipped ? 'shipped' : 'in_flight') : 'waiting';
-              return (
-                <div key={item.summary ?? i} className="flex items-baseline gap-3 text-sm font-sans py-1">
-                  <span className={`font-mono text-[10px] shrink-0 w-16 ${LIFECYCLE_CLS[lifecycle] ?? 'text-stone-400'}`}>
-                    {lifecycle}
-                  </span>
-                  <span className="truncate flex-1">{item.summary}</span>
-                  {item.pulled_to && (
-                    <Link to={`/c/${item.pulled_to}`} className="text-nav hover:underline shrink-0 text-xs">
-                      #{item.pulled_to}
-                    </Link>
-                  )}
-                  {item.origin && <span className="text-stone-400 text-[10px] shrink-0">{item.origin}</span>}
-                </div>
-              );
-            })}
+            {(byHorizon.get(hn) ?? []).map((item: any, i: number) => (
+              // state, work_unit, origin all come from the engine's own
+              // roadmapState row — never re-derived here.
+              <div key={item.summary ?? i} className="flex items-baseline gap-3 text-sm font-sans py-1">
+                <span className={`font-mono text-[10px] shrink-0 w-16 ${LIFECYCLE_CLS[item.state] ?? 'text-stone-400'}`}>
+                  {item.state ?? 'waiting'}
+                </span>
+                <span className="truncate flex-1">{item.summary}</span>
+                {item.work_unit && (
+                  <Link to={`/c/${item.work_unit}`} className="text-nav hover:underline shrink-0 text-xs">
+                    #{item.work_unit}
+                  </Link>
+                )}
+                {item.origin && <span className="text-stone-400 text-[10px] shrink-0">{item.origin}</span>}
+              </div>
+            ))}
             {(byHorizon.get(hn) ?? []).length === 0 && (
               <div className="text-xs font-sans text-stone-400">no items</div>
             )}
