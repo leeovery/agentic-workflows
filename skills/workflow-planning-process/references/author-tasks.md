@@ -82,15 +82,11 @@ Planning file task table: {N} tasks — {internal IDs from the table}
 Task detail file:         {M} tasks — {internal IDs found in the file}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render task-count-gate {work_unit}.planning.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ How would you like to proceed?`**
 
-**`r/retry`** → Re-invoke the author agent once more
-**Adjust**  → Tell me what to correct (the task table or the detail file), and I'll apply it and re-validate
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

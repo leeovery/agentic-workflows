@@ -22,15 +22,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 **If `count` is `0`:**
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.discussion.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ Conclude this discussion and mark as completed?`**
 
-**`y/yes`** → Conclude discussion
-**`n/no`**  → Continue discussing
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

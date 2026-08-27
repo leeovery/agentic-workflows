@@ -114,16 +114,11 @@ Pre-analysis checkpoint — unexpected files detected:
 - ...
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render checkpoint-files-gate {work_unit}.implementation.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ Include unexpected files in the checkpoint commit?`**
 
-**`y/yes`**   → Include all
-**`s/skip`**  → Exclude unexpected files, commit only implementation files
-**Comment** → Specify which to include
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

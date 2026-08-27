@@ -6,15 +6,11 @@
 
 The user has already reviewed findings and agreed on fix direction. This step confirms the investigation is complete and handles pipeline continuation.
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.investigation.{topic}
 ```
-· · · · · · · · · · · ·
-**`◆ Investigation complete. Ready to conclude?`**
 
-**`y/yes`**      → Conclude investigation
-**Keep going** → Tell me what else to explore
-```
+Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
