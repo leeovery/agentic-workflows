@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.14] - 2026-08-27
+
+✨ Added
+- Concurrent document sessions — run any number of sessions across discovery, research, discussion, investigation, scoping, specification, and planning at once; commits stage only each topic's own files, so nothing gets swept into someone else's record.
+- Code sessions (implementation, review) are now gated to one at a time per checkout — a second session meets a red stop naming who holds the slot, with an override and a `presence clear` release for a wedged session.
+- `engine commit --paths` — a validated, confined way to commit code changes, reporting any files left uncommitted (`left_dirty`) so nothing is silently dropped.
+
+🔧 Changed
+- Engine-made commits (discovery, specification, planning, investigation, scoping, and implementation/review artifacts) are now scoped to exactly the paths each action wrote, instead of sweeping the whole work unit.
+- Session presence heartbeats are now stamped automatically by the engine as a side effect of a session's own actions, rather than relying on prose-issued beats.
+- Analysis passes (grouping, gap analysis, build-order sequencing) now defer while a live research or discussion session holds the material they'd read, instead of overwriting it.
+- Epic menu rows held by another session now show who holds them and distinguish a code-phase hold from a same-topic hold.
+
+🐛 Fixed
+- Discovery sessions no longer risk committing over a concurrent research or discussion session's half-written work.
+- The research-analysis "fan-out" gate — an unclear, easily-misread offer that could silently drop a topic from an epic's completion tracking — is removed; unrouted research threads now route to their owning topic (existing or newly created) via the same triage mechanism discussion already uses.
+- Rejecting a raised review finding no longer forces a choice between silence and permanent record — "not now" drops it for possible re-surfacing, "dismiss" records it as a standing decision that suppresses future re-raising.
+
 ## [0.7.13] - 2026-08-26
 
 ✨ Added
