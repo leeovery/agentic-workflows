@@ -570,6 +570,10 @@ describe('apply.cjs: end-to-end', () => {
     assert.strictEqual(r.json.stage, 'git_commit');
     assert.ok(r.json.recovery_hint.includes('never committed'));
     assert.ok(!r.json.recovery_hint.includes('pre-commit hook'));
+    // The retry is the confined engine commit, never a raw whole-unit stage:
+    // the split runs beside live sessions on the same work unit.
+    assert.ok(r.json.recovery_hint.includes('engine.cjs commit euh -m'), r.json.recovery_hint);
+    assert.ok(!r.json.recovery_hint.includes('git add'), r.json.recovery_hint);
   });
 
   it('batched discovery set preserves summary/description containing "="', () => {
