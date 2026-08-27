@@ -9,6 +9,7 @@ import { GateCard } from './GateCard';
 import { BatchScreenCard } from './BatchScreenCard';
 import { CaptureButton } from './CaptureButton';
 import { ChatInput } from './ChatInput';
+import { Working } from './Working';
 import type { GateCardData, ThreadData } from '../api';
 
 function ToolResultBlock({ text }: { text: string }) {
@@ -149,6 +150,13 @@ export function PassThroughAsk({
         onSend={(text) => onAnswer(gate.id, text)}
         attach={{ bridgeSessionId: gate.session.bridgeSessionId, workUnit: gate.address.workUnit }}
       />
+      {/* Working feedback while the reply's turn is in flight (a pass-through
+          reply resumes the session — often many seconds). */}
+      {busy && (
+        <div className="mt-1.5">
+          <Working label="the session is working…" />
+        </div>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { clsx } from 'clsx';
 import { api, type GateCardData } from '../api';
 import { GateComments } from './GateComments';
 import { ChatInput } from './ChatInput';
+import { Working } from './Working';
 
 export function GateCard({
   card,
@@ -195,6 +196,12 @@ export function GateCard({
           }
           attach={{ bridgeSessionId: card.session.bridgeSessionId, workUnit: card.address.workUnit }}
         />
+        {/* Working feedback while the answered turn is in flight. */}
+        {busy && (
+          <div className="mt-1.5">
+            <Working label="the session is working…" />
+          </div>
+        )}
         {/* Comments toggle — the count badges the control; opening marks read. */}
         {!externallyResolved && (
           <button
