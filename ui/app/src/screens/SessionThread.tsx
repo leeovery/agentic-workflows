@@ -10,13 +10,15 @@ export function SessionThread() {
   const { id = '' } = useParams();
   const { data: thread, reload } = useLive(() => api.thread(id), [id]);
   const [busy, setBusy] = useState(false);
+  // Hooks must run on every render in the same order — this useState must sit
+  // ABOVE the `if (!thread) return` below, never after it (React error #310).
+  const [note, setNote] = useState<string | null>(null);
 
   if (!thread) return <div className="p-8 font-sans text-sm text-stone-400">…</div>;
 
   const meta = thread.records.find((r) => r.record === 'meta');
   const address = thread.openGate?.address;
 
-  const [note, setNote] = useState<string | null>(null);
   const answer = async (gateId: string, text: string) => {
     setBusy(true);
     setNote(null);
