@@ -206,8 +206,11 @@ function view(workUnit, newArrivalsJson) {
   // ACTIONS markers the in-session confirm gate reads.
   const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions;
   const held = presence.filter((r) => r.held);
+  // Code takes one slot per checkout, so the code entries read the whole
+  // project's held rows, not just this epic's.
+  const codeHeld = engine.presence.heldCodeSessions(process.cwd());
 
-  const menu = engine.project.epicMenu(e.name, d, { presence });
+  const menu = engine.project.epicMenu(e.name, d, { presence, codeHeld });
 
   const dataLines = [];
   dataLines.push(`work_unit: ${e.name}`);
@@ -237,7 +240,14 @@ function view(workUnit, newArrivalsJson) {
   for (const k of menu.keys) {
     let line = `  ${k.key}  ${k.action}  ${k.topic || '—'}  → ${k.route || '(internal)'}`;
     if (k.recommended) line += '  (recommended)';
-    if (k.in_session) line += `  (in session: last active ${engine.presence.fmtAge(k.session_age || 0)} ago)`;
+    if (k.in_session) {
+      const holder = k.session_holder ? `${k.session_holder.work_unit}/${k.session_holder.topic}, ` : '';
+      // A code entry reads as the checkout's slot, not this topic's session:
+      // its own marker keeps the menu's in-session gate from firing, because
+      // the entry skill's code gate owns that stop.
+      const label = k.code_session ? 'code session' : 'in session';
+      line += `  (${label}: ${holder}last active ${engine.presence.fmtAge(k.session_age || 0)} ago)`;
+    }
     dataLines.push(line);
   }
 
@@ -262,7 +272,8 @@ function inSessionGate(workUnit, key) {
     return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' });
   }
   const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions;
-  const menu = engine.project.epicMenu(e.name, e.detail, { presence });
+  const codeHeld = engine.presence.heldCodeSessions(process.cwd());
+  const menu = engine.project.epicMenu(e.name, e.detail, { presence, codeHeld });
   const entry = menu.keys.find((k) => k.key === key);
   if (!entry) {
     return engine.gateway.dataBlock({ work_unit: e.name, error: `no menu entry with key "${key}"` });
@@ -270,7 +281,10 @@ function inSessionGate(workUnit, key) {
   if (!entry.in_session) {
     return engine.gateway.dataBlock({ work_unit: e.name, error: `entry "${key}" is not held by another session — no gate to render` });
   }
-  return engine.project.epicInSessionGate(entry);
+  if (entry.code_session) {
+    return engine.gateway.dataBlock({ work_unit: e.name, error: `entry "${key}" is a code phase — the code slot is gated at the entry skill (render code-gate), never here` });
+  }
+  return engine.project.epicInSessionGate(e.name, entry);
 }
 
 // One selection sub-view (sections D–G): the keys table as DATA, the view's

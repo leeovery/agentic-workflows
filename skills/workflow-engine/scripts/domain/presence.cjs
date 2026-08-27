@@ -35,6 +35,8 @@ const { section, CONTINUE_INSTRUCTION, callout } = require('./projections/surfac
 
 const STALE_AFTER_SECONDS = 900;
 const PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
+// The phases that write the tree and the index — the unpartitionable pair.
+const CODE_PHASES = ['implementation', 'review'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
@@ -145,6 +147,7 @@ function clearQuietly(cwd, workUnit, phase, topic) {
  *                           mtime-fallback when the record carries none)
  * @property {boolean} live  held and beaten within the staleness window
  * @property {string|null} session_id
+ * @property {number|null} pid  the owning Claude process, when the record carries one
  */
 
 /**
@@ -194,6 +197,7 @@ function collectRows(cwd, workUnit, startOf) {
         phase, topic, age_seconds: age,
         held, live: held && age < STALE_AFTER_SECONDS,
         session_id: record ? record.session_id || null : null,
+        pid: record ? record.pid ?? null : null,
       });
     }
   }
@@ -248,6 +252,26 @@ function scanProject(cwd) {
     held: sessions.filter((r) => r.held).length,
     sessions,
   };
+}
+
+/**
+ * Every held implementation or review heartbeat in the project, minus the
+ * calling session's own — the code gate's read. Code is the one resource
+ * that does not partition by topic: one tree, one index, one checkout, so
+ * one code session at a time whatever work unit or topic it sits in. A row
+ * this session owns is its own hold — a resumed session must never gate
+ * against itself.
+ * @param {string} cwd
+ * @returns {(PresenceRow & {work_unit: string})[]}
+ */
+function heldCodeSessions(cwd) {
+  const mySession = process.env.CLAUDE_CODE_SESSION_ID || null;
+  const myPid = Number(process.env.CLAUDE_PID) || null;
+  const ownedHere = (/** @type {PresenceRow} */ row) =>
+    (mySession !== null && row.session_id === mySession) || (myPid !== null && row.pid === myPid);
+  return scanProject(cwd).sessions.filter((row) => row.held
+    && CODE_PHASES.includes(row.phase)
+    && !ownedHere(row));
 }
 
 /**
@@ -310,6 +334,6 @@ function deferralSection(scan) {
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, clearQuietly,
-  scanPresence, scanProject, cleanupPresence, deferralSection,
-  fmtAge, PHASES, STALE_AFTER_SECONDS,
+  scanPresence, scanProject, heldCodeSessions, cleanupPresence, deferralSection,
+  fmtAge, PHASES, CODE_PHASES, STALE_AFTER_SECONDS,
 };

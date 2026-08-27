@@ -2763,6 +2763,84 @@ describe('render phase-note', () => {
   });
 });
 
+describe('render code-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { work_type: 'feature', phases: { implementation: { items: { pay: { status: 'in-progress' } } } } });
+    writeManifest(dir, 'ship', { work_type: 'feature', phases: {} });
+  });
+  afterEach(() => teardown(dir));
+
+  /** A held heartbeat owned by another session. */
+  function holdCode(workUnit, phase, topic, ageSeconds = 0) {
+    const file = path.join(dir, '.workflows', '.cache', workUnit, phase, topic, 'presence');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ pid: null, pid_start: null, session_id: 'peer' }) + '\n');
+    if (ageSeconds) {
+      const when = new Date(Date.now() - ageSeconds * 1000);
+      fs.utimesSync(file, when, when);
+    }
+    return file;
+  }
+
+  it('renders nothing when no session holds the code slot', () => {
+    assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' }), '');
+  });
+
+  it('states the holder in the red register and offers back first, proceed second', () => {
+    holdCode('ship', 'implementation', 'checkout-flow', 120);
+    const out = renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' });
+
+    assert.match(out, /=== DISPLAY: code gate \(emit verbatim as a properties code block/, out);
+    assert.match(out, /⚑ Another session is implementing "Checkout Flow" \(ship\) — last active 2m ago\./, out);
+    assert.match(out, /=== MENU: code gate \(emit verbatim as markdown, then STOP/, out);
+    const menu = unwrap(out);
+    assert.match(menu, /Code phases run one at a time — concurrent sessions write the same files/, menu);
+    assert.match(menu, /Only proceed if you know that session is no longer working/, menu);
+    assert.match(menu, /presence clear ship implementation checkout-flow/, menu);
+    assert.match(menu, /\*\*`◆ Proceed anyway\?`\*\*/, menu);
+    assert.ok(menu.indexOf('`b/back`') < menu.indexOf('`p/proceed`'), 'back leads');
+    assert.match(menu, /`b\/back`\*\* +→ Leave that session to it \(recommended\)/, menu);
+  });
+
+  it('a review holder reads as reviewing, and any work unit takes the one slot', () => {
+    holdCode('ship', 'review', 'checkout-flow');
+    const out = renderSurface(dir, 'code-gate', { dotpath: 'pay.review.pay' });
+    assert.match(out, /Another session is reviewing "Checkout Flow" \(ship\)/, out);
+    assert.match(unwrap(out), /presence clear ship review checkout-flow/, out);
+  });
+
+  it('a doc-phase hold never takes the code slot', () => {
+    holdCode('ship', 'discussion', 'checkout-flow');
+    assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' }), '');
+  });
+
+  it('the calling session\'s own hold is not a gate against itself', () => {
+    holdCode('pay', 'implementation', 'pay');
+    const before = process.env.CLAUDE_CODE_SESSION_ID;
+    process.env.CLAUDE_CODE_SESSION_ID = 'peer';
+    try {
+      assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' }), '');
+    } finally {
+      if (before === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+      else process.env.CLAUDE_CODE_SESSION_ID = before;
+    }
+  });
+
+  it('names every holder when more than one slot is somehow held', () => {
+    holdCode('ship', 'implementation', 'checkout-flow');
+    holdCode('pay', 'review', 'pay');
+    const out = renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' });
+    assert.match(out, /⚑ Another session is [\s\S]*⚑ Another session is /, out);
+  });
+
+  it('refuses an address outside the code phases', () => {
+    assert.throws(() => renderSurface(dir, 'code-gate', { dotpath: 'pay.discussion.pay' }),
+      /the code rule covers implementation\|review only/);
+  });
+});
+
 describe('render entry-gate', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
@@ -2958,7 +3036,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
