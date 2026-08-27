@@ -370,6 +370,30 @@ Settled 2026-08-27, as the stack landed:
   the dispatch's `live > 0` mean "any session anywhere", which would
   have deferred the gap analysis behind a live planning or code
   session that touches nothing it reads.
+- Dead code dirt is surfaced by the next code session, not by a
+  sweep (PR 9 review). The components section promised the conclude
+  sweep would name a dead code session's leavings; what shipped is
+  structural instead, and suffices: both sweeps scan `.workflows`
+  only (code dirt is invisible to them, so the auto-commit hazard
+  cannot arise), and a dead code session's uncommitted code meets
+  the next code session as ordinary working-tree state — its entry,
+  its `git status` discipline, and its first commit's `left_dirty`
+  all name it. No doc session is asked to adjudicate code it cannot
+  judge.
+- Foreign-topic `--kb` takes `--sweep`, and suppression outranks the
+  clear (PR 9 review). The spec-side incoherence flow's source-doc
+  commit reindexes a document another session may hold idle-but-alive
+  (`held && !live` passes its gate); an unconditional `--kb` clear
+  there destroys that hold. `--sweep` now suppresses beat and clear
+  alike, and every foreign-topic `--kb` site carries it. The same
+  pass closed the resume window on the code gate (the empty render
+  beats its entrant, so the slot is held from entry, not from the
+  first commit), gave investigation's triage sidecar its place in
+  the topic commit scope, narrowed the corrigenda commit, and routed
+  the legacy-split apply through the commit door. Still open, needing
+  a design call: the planning and scoping restart paths' raw
+  pathspec-less commits (their `--plan` form dies with the item they
+  delete).
 - The deferral's terminal stop is the whole answer at every arrival
   (PR 8 review). A fall-through to the prior pass's display was
   ordered for the automatic rerun route and then refuted by
