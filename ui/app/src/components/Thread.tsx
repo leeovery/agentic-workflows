@@ -10,6 +10,7 @@ import { BatchScreenCard } from './BatchScreenCard';
 import { CaptureButton } from './CaptureButton';
 import { ChatInput } from './ChatInput';
 import { Working } from './Working';
+import { Markdown } from './Markdown';
 import type { GateCardData, ThreadData } from '../api';
 
 function ToolResultBlock({ text }: { text: string }) {
@@ -63,11 +64,17 @@ export function Thread({
             );
           case 'assistant':
             return (
-              <div key={i} className="group font-serif text-[15px] leading-7 whitespace-pre-wrap text-stone-800 dark:text-stone-200">
-                {String(rec.text)}
+              <div key={i} className="group relative text-stone-800 dark:text-stone-200">
+                {/* The conversation is markdown — render it (bold, blockquotes,
+                    lists, code via Shiki, tables via gfm), not raw source. The
+                    read-lens prose styles apply. Engine sections are separate
+                    (tool-result → EngineEmbed) and stay verbatim mono. */}
+                <div className="read-lens">
+                  <Markdown content={String(rec.text)} />
+                </div>
                 {/* Capture-from-message (Phase 6 §3): park this message as an
                     inbox item, provenance (source + author) riding the body. */}
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 align-middle inline-block">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1 right-0">
                   <CaptureButton
                     compact
                     label="✦ capture"
