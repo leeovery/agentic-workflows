@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import { api, type GateCardData } from '../api';
 import { GateComments } from './GateComments';
+import { ChatInput } from './ChatInput';
 
 export function GateCard({
   card,
@@ -26,7 +27,7 @@ export function GateCard({
   // Local "seen" makes it crisp — opening the thread clears the block at once,
   // ahead of the server round-trip that zeroes card.unreadComments.
   const [seenComments, setSeenComments] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     // Initial focus is always the free-text input, never an option — focus on
@@ -50,12 +51,6 @@ export function GateCard({
       setSeenComments(true);
       api.markCommentsRead({ gateId: card.id });
     }
-  };
-
-  const submitFree = () => {
-    if (text.trim() === '' || submitBlocked) return;
-    onAnswer(text.trim());
-    setText('');
   };
 
   const tapOption = (key: string) => {
@@ -182,32 +177,24 @@ export function GateCard({
             {unread} unread comment{unread > 1 ? 's' : ''} — read {unread > 1 ? 'them' : 'it'} before answering →
           </button>
         )}
-        <div className="flex gap-2">
-          <input
-            ref={inputRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submitFree();
-            }}
-            disabled={submitBlocked}
-            placeholder={
-              watching
-                ? 'watching — the owner answers this one'
-                : typed
-                  ? 'type the option key to confirm…'
-                  : 'answer in your own words, or type an option key…'
-            }
-            className="flex-1 rounded border border-stone-300 dark:border-stone-700 bg-transparent px-3 py-1.5 text-sm font-sans focus:outline-none focus:border-gate disabled:opacity-50"
-          />
-          <button
-            onClick={submitFree}
-            disabled={submitBlocked || text.trim() === ''}
-            className="rounded px-3 py-1.5 text-sm font-sans bg-nav text-white disabled:opacity-40"
-          >
-            {busy ? 'answering…' : 'answer'}
-          </button>
-        </div>
+        <ChatInput
+          inputRef={inputRef}
+          rows={1}
+          value={text}
+          onChange={setText}
+          onSend={(t) => onAnswer(t)}
+          busy={busy}
+          disabled={submitBlocked}
+          sendLabel="answer"
+          placeholder={
+            watching
+              ? 'watching — the owner answers this one'
+              : typed
+                ? 'type the option key to confirm…'
+                : 'answer in your own words, or type an option key…'
+          }
+          attach={{ bridgeSessionId: card.session.bridgeSessionId, workUnit: card.address.workUnit }}
+        />
         {/* Comments toggle — the count badges the control; opening marks read. */}
         {!externallyResolved && (
           <button

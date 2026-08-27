@@ -31,7 +31,9 @@ describe('GateCard', () => {
   it('marks the recommended row and puts initial focus on the free-text input, never an option', () => {
     render(<GateCard card={card()} onAnswer={() => {}} />);
     expect(screen.getByText('recommended')).toBeTruthy();
-    expect((document.activeElement as HTMLElement).tagName).toBe('INPUT');
+    // The free-text field is the shared ChatInput's textarea now — focus lands
+    // there, never on an option row (pre-selection by focus ring).
+    expect((document.activeElement as HTMLElement).tagName).toBe('TEXTAREA');
   });
 
   it('a tap answers with the option key (one answer path)', () => {

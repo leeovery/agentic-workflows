@@ -320,6 +320,68 @@ function confirmModeOf(deps: ApiDeps, holder: { openGate: { id: string; confirm?
   }
 }
 
+/**
+ * Materialize a chat attachment into the gitignored cache so the session's Read
+ * tool can pick it up by path (Phase-7 follow-up). This is the ONE place the
+ * bridge writes under `.workflows/` — a narrow, deliberate exception to the
+ * "bridge writes nothing to .workflows/" rule, justified because the file is
+ * transient, gitignored (`.cache/`), user-input-in-transit (not bridge state),
+ * and lives in the purpose-built purgeable cache. Hardened as a file-upload
+ * sink: the name is sanitized to a basename of a safe charset, a random prefix
+ * prevents collision/overwrite/guessing, the decoded size is capped, and the
+ * final path is realpath-confined under `.cache/`.
+ */
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+export function writeAttachment(
+  projectRoot: string,
+  opts: { name: string; dataBase64: string; workUnit?: string; bridgeSessionId?: string },
+): { path: string } | { error: string; status: number } {
+  // Decode + size-cap first (reject a runaway before touching disk).
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(opts.dataBase64, 'base64');
+  } catch {
+    return { error: 'invalid attachment data', status: 400 };
+  }
+  if (buf.length === 0) return { error: 'empty attachment', status: 400 };
+  if (buf.length > MAX_ATTACHMENT_BYTES) return { error: 'attachment too large (max 10MB)', status: 413 };
+
+  // Sanitize the name to a bare basename of a safe charset — no traversal, no
+  // path separators, no leading dot. Length-capped; a default if it empties out.
+  const raw = path.basename(String(opts.name ?? '')).replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '');
+  const safe = (raw || 'file').slice(0, 80);
+  const unique = `${crypto.randomUUID().slice(0, 8)}-${safe}`;
+
+  // Target dir under the gitignored cache; keyed by work unit when present, else
+  // by the session (lobby/shaping). Both segments are validated.
+  const wu = opts.workUnit;
+  if (wu && !validUnitName(wu)) return { error: 'work unit name refused', status: 400 };
+  const bs = opts.bridgeSessionId;
+  if (bs && !/^bs-[a-z0-9-]{1,40}$/i.test(bs)) return { error: 'session id refused', status: 400 };
+  const cacheRoot = path.resolve(projectRoot, '.workflows', '.cache');
+  const dir = wu
+    ? path.join(cacheRoot, wu, 'attachments')
+    : path.join(cacheRoot, '.uploads', bs ?? 'lobby');
+
+  // Realpath containment: the resolved target must stay under `.cache/` even
+  // after symlink resolution of any existing ancestor.
+  const full = path.resolve(dir, unique);
+  if (full !== path.join(dir, unique) || !full.startsWith(cacheRoot + path.sep)) {
+    return { error: 'attachment path refused', status: 400 };
+  }
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const realDir = fs.realpathSync(dir);
+    if (!realDir.startsWith(fs.realpathSync(cacheRoot) + path.sep) && realDir !== fs.realpathSync(cacheRoot)) {
+      return { error: 'attachment path refused', status: 400 };
+    }
+    fs.writeFileSync(full, buf, { flag: 'wx' }); // wx: never clobber (random prefix makes collision ~nil)
+  } catch {
+    return { error: 'could not store attachment', status: 500 };
+  }
+  return { path: path.relative(projectRoot, full) };
+}
+
 /** A comment target from a POST body (gateId or artifact). */
 function bodyCommentTarget(body: Record<string, unknown>): CommentTarget | null {
   const gateId = body.gateId ? String(body.gateId) : '';
@@ -461,6 +523,21 @@ async function handleMutation(
   res: http.ServerResponse,
   deps: ApiDeps,
 ): Promise<void> {
+  // Attachment upload — read with a larger cap than other routes (a 10MB file's
+  // base64 is ~14MB), handled BEFORE the generic 1MB readBody would destroy it.
+  if (url.pathname === '/api/attachments') {
+    const big = await readBody(req, MAX_ATTACHMENT_BYTES * 2);
+    const result = writeAttachment(deps.projectRoot, {
+      name: String(big.name ?? ''),
+      dataBase64: String(big.dataBase64 ?? ''),
+      workUnit: big.workUnit ? String(big.workUnit) : undefined,
+      bridgeSessionId: big.bridgeSessionId ? String(big.bridgeSessionId) : undefined,
+    });
+    if ('error' in result) send(res, result.status, { error: result.error });
+    else send(res, 200, result);
+    return;
+  }
+
   const body = await readBody(req);
   const human = currentHuman(deps, req);
 
@@ -738,12 +815,12 @@ async function handleMutation(
   send(res, 404, { error: 'unknown mutation' });
 }
 
-function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
+function readBody(req: http.IncomingMessage, maxBytes = 1_000_000): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
     let data = '';
     req.on('data', (c) => {
       data += c;
-      if (data.length > 1_000_000) req.destroy();
+      if (data.length > maxBytes) req.destroy();
     });
     req.on('end', () => {
       try {

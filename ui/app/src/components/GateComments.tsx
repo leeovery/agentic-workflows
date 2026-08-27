@@ -2,8 +2,8 @@
 // Comments never push. A quote affordance inserts a comment into the owner's
 // answer draft — the bridge never injects bystander text implicitly, so the
 // quote is an explicit, per-comment act by the person answering.
-import { useState } from 'react';
 import { api, useLive, type CommentData } from '../api';
+import { ChatInput } from './ChatInput';
 
 export function GateComments({
   target,
@@ -15,13 +15,11 @@ export function GateComments({
   onOpened?: () => void;
 }) {
   const { data, reload } = useLive(() => api.comments(target), [target.gateId, target.artifact]);
-  const [draft, setDraft] = useState('');
   const comments = data?.comments ?? [];
 
-  const post = async () => {
-    if (draft.trim() === '') return;
-    await api.addComment(target, draft.trim());
-    setDraft('');
+  const post = async (text: string) => {
+    if (text.trim() === '') return;
+    await api.addComment(target, text.trim());
     reload();
   };
 
@@ -49,18 +47,8 @@ export function GateComments({
           </div>
         ))}
       </div>
-      <div className="flex gap-2 mt-2">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && post()}
-          onFocus={onOpened}
-          placeholder="add a comment (never pushes)…"
-          className="flex-1 rounded border border-stone-300 dark:border-stone-700 bg-transparent px-2 py-1 text-xs font-sans focus:outline-none focus:border-gate"
-        />
-        <button onClick={post} disabled={draft.trim() === ''} className="rounded px-2 py-1 text-xs font-sans bg-stone-200 dark:bg-stone-800 disabled:opacity-40">
-          comment
-        </button>
+      <div className="mt-2" onFocus={onOpened}>
+        <ChatInput rows={1} sendLabel="comment" placeholder="add a comment (never pushes)…" onSend={post} />
       </div>
     </div>
   );

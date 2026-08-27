@@ -273,7 +273,26 @@ export const api = {
   captures: () => getJson<{ failed: FailedCapture[] }>('/api/captures'),
   retryCapture: (id: string) => postJson<{ ok: boolean }>(`/api/capture/${encodeURIComponent(id)}/retry`, {}),
   discardCapture: (id: string) => postJson<{ ok: boolean }>(`/api/capture/${encodeURIComponent(id)}/discard`, {}),
+  // Attachments — materialize a file into the gitignored cache and get back its
+  // project-relative path; the caller references it in the turn so the session's
+  // Read tool picks it up.
+  uploadAttachment: async (
+    file: File,
+    ctx: { workUnit?: string; bridgeSessionId?: string },
+  ): Promise<{ path?: string; error?: string }> => {
+    const dataBase64 = await fileToBase64(file);
+    return postJson<{ path?: string; error?: string }>('/api/attachments', { name: file.name, dataBase64, ...ctx });
+  },
 };
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
+    r.onerror = () => reject(new Error('read failed'));
+    r.readAsDataURL(file);
+  });
+}
 
 // One shared SSE subscription; consumers register a refetch callback that
 // fires (debounced) on any domain event, and a hard-reset on epoch change.

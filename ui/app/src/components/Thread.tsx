@@ -8,6 +8,7 @@ import { EngineEmbed } from './EngineEmbed';
 import { GateCard } from './GateCard';
 import { BatchScreenCard } from './BatchScreenCard';
 import { CaptureButton } from './CaptureButton';
+import { ChatInput } from './ChatInput';
 import type { GateCardData, ThreadData } from '../api';
 
 function ToolResultBlock({ text }: { text: string }) {
@@ -140,22 +141,13 @@ export function PassThroughAsk({
   }, [gate.id]);
   return (
     <div data-testid="pass-through-ask" className="border-t border-stone-200 dark:border-stone-800 pt-3">
-      <textarea
-        ref={inputRef}
-        rows={2}
-        disabled={busy}
+      <ChatInput
+        inputRef={inputRef}
+        busy={busy}
         placeholder="reply…"
-        className="w-full rounded border border-stone-300 dark:border-stone-700 bg-transparent px-3 py-2 text-[15px] font-serif focus:outline-none focus:border-nav"
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            const v = (e.target as HTMLTextAreaElement).value.trim();
-            if (v) {
-              onAnswer(gate.id, v);
-              (e.target as HTMLTextAreaElement).value = '';
-            }
-          }
-        }}
+        sendLabel="reply"
+        onSend={(text) => onAnswer(gate.id, text)}
+        attach={{ bridgeSessionId: gate.session.bridgeSessionId, workUnit: gate.address.workUnit }}
       />
     </div>
   );
