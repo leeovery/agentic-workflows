@@ -71,11 +71,22 @@ const WORLD_HISTORY = '.world-history.json';
 // the staleness window, which no walk outlives.
 const WORLD_PRESENCE = '.world-presence.json';
 
-// Snapshot paths left OUT of the world's commits — ["…"]. Everything a
-// recipe writes is committed at materialise, so a fixture that needs a
-// dead session's uncommitted leavings names them here: they are written
-// back after the last commit and stand untracked, which is what
-// `git status --porcelain` reports and what a conclude sweep takes.
+// Snapshot paths left OUT of the world's commits. Everything a recipe
+// writes is committed at materialise, so a fixture that needs a session's
+// uncommitted work names it here and it is written back after the last
+// commit. Two shapes, because dirt has two:
+//
+//   "path"                        untracked — the file has no committed
+//                                 version at all
+//   {"path", "committed": "…"}    modified — `committed` is what goes
+//                                 into the world's commits, and the
+//                                 snapshot's own content is what lands
+//                                 on top of it
+//
+// The second matters more often than it looks: an untracked file inside
+// an otherwise untracked directory collapses to the directory in
+// `git status --porcelain`, so a case whose walk must name the dirty
+// path needs the directory tracked.
 const WORLD_DIRT = '.world-dirt.json';
 
 // Every sidecar: carried by the snapshot, never part of the world.
@@ -402,13 +413,18 @@ function buildWorld(caseId) {
   const sidecar = (name) => (snap.has(name) ? JSON.parse(snap.get(name).toString('utf8')) : []);
   const history = sidecar(WORLD_HISTORY);
   const presence = sidecar(WORLD_PRESENCE);
-  const dirt = new Set(sidecar(WORLD_DIRT));
-  for (const rel of dirt) {
+  const dirt = new Map(sidecar(WORLD_DIRT)
+    .map((e) => (typeof e === 'string' ? [e, {}] : [e.path, e])));
+  for (const rel of dirt.keys()) {
     if (!snap.has(rel)) throw new Error(`case "${caseId}": ${WORLD_DIRT} names "${rel}", which the fixture does not hold`);
   }
   const layered = new Set(history.flatMap((g) => g.files));
-  for (const [rel, buf] of snap) {
-    if (SIDECARS.includes(rel) || layered.has(rel) || dirt.has(rel)) continue;
+  for (const [rel, snapshotBuf] of snap) {
+    if (SIDECARS.includes(rel) || layered.has(rel)) continue;
+    // A dirt path commits its `committed` version, or nothing at all.
+    const held = dirt.get(rel);
+    if (held && held.committed === undefined) continue;
+    const buf = held ? Buffer.from(held.committed) : snapshotBuf;
     const real = path.basename(rel) === GITIGNORE_ESCAPED
       ? path.join(path.dirname(rel), GITIGNORE)
       : rel;
@@ -481,7 +497,7 @@ function buildWorld(caseId) {
   // stands untracked because it was held back from the commits above;
   // the heartbeats are stamped here so their mtimes are the freshest
   // thing in the world, which is what makes a peer read live.
-  for (const rel of dirt) {
+  for (const rel of dirt.keys()) {
     const dest = path.join(dir, rel);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, snap.get(rel));
