@@ -34,7 +34,7 @@
    ```
 3. **Final commit** — Commit the completed plan:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan" --topic planning/{topic}
    ```
 4. **Present completion summary**:
 

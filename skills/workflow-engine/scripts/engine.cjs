@@ -1431,12 +1431,15 @@ function runCommit(argv) {
         return;
       }
       if (plan !== null) {
-        // --plan: the plan's declared storage pathspecs (recorded at plan
-        // init from the format's authoring doc) plus the project manifest
-        // (plan init writes project defaults). A pathspec that neither exists
-        // on disk nor has index entries is skipped — `git add` would refuse
-        // it — while a deleted-but-tracked path still stages its deletions
-        // (the restart-cleanup commits depend on that).
+        // --plan: the planning topic's own directory and the work-unit
+        // manifest — the action scope, like --topic — plus the plan's
+        // declared storage pathspecs (recorded at plan init from the format's
+        // authoring doc, and often outside the work unit) and the project
+        // manifest (plan init writes project defaults). A pathspec that
+        // neither exists on disk nor has index entries is skipped, while a
+        // deleted-but-tracked path still commits its deletions (the
+        // restart-cleanup commits depend on that).
+        if (plan.includes('/') || plan.includes('..')) throw new Error(`invalid planning topic name "${plan}"`);
         const manifestFile = path.join(cwd, '.workflows', wu, 'manifest.json');
         /** @type {any} */ let planItem;
         try {
@@ -1457,7 +1460,12 @@ function runCommit(argv) {
             throw new Error(`commit --plan: illegal storage_paths entry ${JSON.stringify(p)} — pathspecs are relative, never ".", "..", or absolute`);
           }
         }
-        scope = [scope, ...stageableSpecs(cwd, ['.workflows/manifest.json', ...declared])];
+        scope = stageableSpecs(cwd, [
+          `.workflows/${wu}/planning/${plan}`,
+          `.workflows/${wu}/manifest.json`,
+          '.workflows/manifest.json',
+          ...declared,
+        ]);
       }
     }
     const committed = commitPathspecWithKb(cwd, scope, message);

@@ -62,7 +62,7 @@ Project default format is **{format}**. Use the same format?
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.plan_format {chosen-format}
    ```
 
-5. Commit — `--plan` stages the work unit, the project manifest, and the plan's declared storage in one scoped call:
+5. Commit — `--plan` stages the planning topic, the work-unit manifest, the project manifest, and the plan's declared storage in one scoped call:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): initialize plan" --plan {topic}
    ```

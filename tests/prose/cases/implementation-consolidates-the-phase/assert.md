@@ -52,7 +52,8 @@ The prose should have taken this path:
     tasks/pay-1-3.md, appends the planning row, and records
     task_map.pay-1-3
 14. the folded bank entry is pulled — the bank empties — and the
-    consolidation commit lands via the engine with --plan
+    consolidation commits land via the engine: the staging file under
+    the implementation topic, the tasks with --plan
 15. the loop's next fetch sees pay-1-3: started, briefed, executed
     by the consolidation executor stub, reviewed by the reviewer
     stub's later firing (plain approve, no BANK), and approved at

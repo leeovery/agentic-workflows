@@ -224,9 +224,10 @@ Filter to the tasks the manifest's `staging.c{N}.tasks` marks `approved`, taking
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
 ```
 
-Commit all changes (staging file, plan tasks, task_map updates) — `--plan` stages the work unit and the plan's declared storage in one scoped call:
+Commit the staging file with this topic's implementation artifacts, then the plan tasks and `task_map` updates — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
 
 ```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): stage review remediation" --topic implementation/{topic}
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): add review remediation ({K} tasks)" --plan {topic}
 ```
 

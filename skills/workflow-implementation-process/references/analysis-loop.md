@@ -310,7 +310,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
 ```
 
-Commit all analysis and plan changes — `--plan` stages the work unit and the plan's declared storage in one scoped call:
+Commit all analysis and plan changes — `--plan` stages the planning topic, the manifests, and the plan's declared storage in one scoped call:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add analysis phase {N} ({K} tasks)" --plan {topic}

@@ -77,7 +77,7 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 **If `yes`:**
 
-Commit — `--plan` stages the work unit and the plan's declared storage in one scoped call:
+Commit — `--plan` stages the planning topic, the manifests, and the plan's declared storage in one scoped call:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}
@@ -147,7 +147,7 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 **If `yes`:**
 
-Commit — `--plan` stages the work unit and the plan's declared storage in one scoped call:
+Commit — `--plan` stages the planning topic, the manifests, and the plan's declared storage in one scoped call:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}
