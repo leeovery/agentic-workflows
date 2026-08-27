@@ -103,7 +103,7 @@ Ensure a clean working tree before analysis. Run `git status`.
 
 Categorize them:
 
-- **Implementation files** (files touched by `impl({work_unit}):` commits) — stage these automatically.
+- **Implementation files** (files touched by `impl({work_unit}):` commits) — name these in the checkpoint commit automatically.
 - **Unexpected files** (files not touched during implementation) — present to the user:
 
 > *Output the next fenced block as a code block:*
@@ -313,9 +313,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
 ```
 
-Commit all analysis and plan changes — `--plan` stages the planning topic, the manifests, and the plan's declared storage in one scoped call:
+Commit the staging file with this topic's implementation artifacts, then the tasks — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
 
 ```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis phase {N} — staged tasks" --topic implementation/{topic}
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add analysis phase {N} ({K} tasks)" --plan {topic}
 ```
 

@@ -179,7 +179,7 @@ function sequenceMap(cwd, workUnit, orders) {
   /** @type {SequenceResult} */
   const result = { ordered: orders, committed: outcome.committed };
   if (outcome.failed) result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
+  noteCommitOutcome(result, outcome, `${workUnit} --discovery`);
   return result;
 }
 

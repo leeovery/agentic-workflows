@@ -1,0 +1,31 @@
+{
+  "origin": "concurrent-phases (design/concurrent-phases.md P10) — code is the one resource that does not partition, and the gate stands in front of every mutation the entry would otherwise make, so `back` strands nothing",
+  "entry": "workflow-review-entry",
+  "files": [
+    "skills/workflow-review-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-review-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/code-session-gate.md",
+    "skills/workflow-review-entry/references/invoke-skill.md"
+  ],
+  "answers": [
+    "b — back"
+  ],
+  "invariants": {
+    "calls_include": [
+      "render code-gate pay.review.pay"
+    ],
+    "calls_exclude": [
+      "render entry-gate pay.review.pay",
+      "manifest get pay.planning.pay format",
+      "session label pay review pay",
+      "topic start",
+      "topic reopen",
+      "presence clear"
+    ]
+  }
+}

@@ -91,13 +91,13 @@ No dispatch.
 The analysis and its gate write state nothing self-commits — the staging file and gate registrations, spent-state clears, the cache file, manifest stamps, knowledge-store dirt. Check for leavings:
 
 ```bash
-git status --porcelain -- .workflows/{work_unit} .workflows/.knowledge
+git status --porcelain -- .workflows/{work_unit}/.state .workflows/{work_unit}/manifest.json .workflows/.knowledge
 ```
 
 #### If the tree is dirty
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): analysis run bookkeeping"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --state -m "discovery({work_unit}): analysis run bookkeeping"
 ```
 
 → Proceed to **D. Return**.

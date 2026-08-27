@@ -355,8 +355,15 @@ describe('render resume-gate variants', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => teardown(dir));
 
+  /** The prior run's planning files — what makes `continue` an option. */
+  const planFiles = (workUnit, topic) => {
+    fs.mkdirSync(path.join(dir, '.workflows', workUnit, 'planning', topic), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', workUnit, 'planning', topic, 'planning.md'), '# Plan\n');
+  };
+
   it('plan derives the position parenthetical from the planning item', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
+    planFiles('pay', 'portal');
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
     assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3, task 2).'));
     assert.ok(/\*\*`c\/continue`\*\* +→ Walk through the plan from the start\. You can review, amend, or navigate at any point — including straight to the leading edge\./.test(unwrap(out)));
@@ -365,6 +372,7 @@ describe('render resume-gate variants', () => {
 
   it('plan omits the parenthetical when the position fields are absent', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
+    planFiles('pay', 'portal');
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
     assert.ok(out.includes('Found existing plan for **Portal**.\n'));
     assert.ok(!out.includes('previously reached'));
@@ -372,8 +380,21 @@ describe('render resume-gate variants', () => {
 
   it('plan keeps the phase anchor when only the phase is known (post-advance interrupt)', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: null } } } } });
+    planFiles('pay', 'portal');
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
     assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3).'));
+  });
+
+  it('plan offers the restart alone when the prior run\'s files are already gone', () => {
+    // A restart deletes the planning directory, then the manifest entry. A
+    // crash between the two commits leaves an entry with nothing to continue,
+    // and offering `continue` there sends the session at an empty directory.
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    assert.ok(out.includes("Found a planning entry for **Portal**, but the prior run's files are already cleared."));
+    assert.ok(out.includes('r/restart'));
+    assert.ok(!out.includes('c/continue'), 'there is nothing to continue');
+    assert.ok(!out.includes('previously reached'), 'and no position to report');
   });
 
   it('review renders the coverage menu while unreviewed tasks remain', () => {
@@ -2784,8 +2805,65 @@ describe('render code-gate', () => {
     return file;
   }
 
+  /**
+   * Render as a named session. Identity is what presence records and what
+   * every consumer compares against, so a test about two sessions is a test
+   * about two identities — and the pid is stripped so ownership rests on the
+   * session id alone (both "sessions" are this one process).
+   */
+  function renderAs(sessionId, dotpath) {
+    const session = process.env.CLAUDE_CODE_SESSION_ID;
+    const pid = process.env.CLAUDE_PID;
+    process.env.CLAUDE_CODE_SESSION_ID = sessionId;
+    delete process.env.CLAUDE_PID;
+    try {
+      return renderSurface(dir, 'code-gate', { dotpath });
+    } finally {
+      if (session === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+      else process.env.CLAUDE_CODE_SESSION_ID = session;
+      if (pid === undefined) delete process.env.CLAUDE_PID;
+      else process.env.CLAUDE_PID = pid;
+    }
+  }
+
+  const slotOf = (workUnit, phase, topic) =>
+    path.join(dir, '.workflows', '.cache', workUnit, phase, topic, 'presence');
+
   it('renders nothing when no session holds the code slot', () => {
     assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' }), '');
+  });
+
+  it('taking a free slot is the same act as reading it — the empty path beats', () => {
+    const slot = slotOf('pay', 'implementation', 'pay');
+    assert.ok(!fs.existsSync(slot), 'nothing holds the slot yet');
+
+    assert.strictEqual(renderAs('mine', 'pay.implementation.pay'), '');
+
+    assert.strictEqual(JSON.parse(fs.readFileSync(slot, 'utf8')).session_id, 'mine',
+      'the entrant holds the slot from entry, not from its first code commit');
+  });
+
+  it('the entrant then holds it against the next session, and never against itself', () => {
+    assert.strictEqual(renderAs('mine', 'pay.implementation.pay'), '');
+
+    const out = renderAs('theirs', 'pay.review.pay');
+    assert.match(out, /⚑ Another session is implementing "Pay" \(pay\)/, out);
+
+    // The holder re-reading its own gate stays empty and refreshes its hold —
+    // backdated past the staleness window, the re-render brings it back.
+    const slot = slotOf('pay', 'implementation', 'pay');
+    const stale = new Date(Date.now() - 600 * 1000);
+    fs.utimesSync(slot, stale, stale);
+    assert.strictEqual(renderAs('mine', 'pay.implementation.pay'), '');
+    assert.ok((Date.now() - fs.statSync(slot).mtimeMs) / 1000 < 60, 'the re-render refreshed the beat');
+    assert.strictEqual(JSON.parse(fs.readFileSync(slot, 'utf8')).session_id, 'mine');
+  });
+
+  it('a gated entrant never stamps the slot it was refused', () => {
+    holdCode('ship', 'implementation', 'checkout-flow');
+    assert.notStrictEqual(renderAs('mine', 'pay.review.pay'), '');
+    assert.ok(!fs.existsSync(slotOf('pay', 'review', 'pay')),
+      'the gate is a stop, not an entry — nothing is held until the slot is free');
   });
 
   it('states the holder in the red register and offers back first, proceed second', () => {
@@ -2838,6 +2916,24 @@ describe('render code-gate', () => {
   it('refuses an address outside the code phases', () => {
     assert.throws(() => renderSurface(dir, 'code-gate', { dotpath: 'pay.discussion.pay' }),
       /the code rule covers implementation\|review only/);
+  });
+
+  it('refuses an unknown work unit and a topic that is not a name', () => {
+    // The empty path claims the slot by beating this address, and a beat is
+    // silent on a name it cannot write — so a bad address would render a free
+    // slot and hold nothing.
+    assert.throws(() => renderSurface(dir, 'code-gate', { dotpath: 'ghost.implementation.pay' }),
+      /work unit "ghost" not found/);
+    assert.throws(() => renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.a/b' }),
+      /invalid topic name "a\/b"/);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows/.cache/pay/implementation')), false,
+      'a refusal claims nothing');
+  });
+
+  it('gates before the item exists — a fresh entry has initialised nothing', () => {
+    assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.never-inited' }), '');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/pay/implementation/never-inited/presence')),
+      'and the slot is claimed all the same');
   });
 });
 

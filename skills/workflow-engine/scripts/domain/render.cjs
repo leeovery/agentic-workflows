@@ -7,6 +7,10 @@
 // and each surface returns demarcated sections the calling flow emits
 // verbatim at its prescribed moment. Gate-mode branching renders inside the
 // surface: the caller never chooses between gated and auto output.
+//
+// Surfaces read; they never write — with one exception. `code-gate`'s empty
+// path beats the addressed topic, because claiming the code slot and reading
+// it are the same act: the read that finds the slot free is what takes it.
 
 const fs = require('fs');
 const path = require('path');
@@ -24,7 +28,7 @@ const {
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
-const { heldCodeSessions, fmtAge, CODE_PHASES } = require('./presence.cjs');
+const { heldCodeSessions, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const {
   roadmapMapView,
@@ -106,10 +110,19 @@ function resumeGate(cwd, args) {
       ],
     ));
   }
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
   const t = titlecase(topic);
   if (variant === 'plan') {
     const item = itemOf(manifest, 'planning', topic) || {};
+    // A restart deletes the planning directory first and the manifest entry
+    // second. Between the two commits the entry survives a crash with nothing
+    // left to continue — so the gate offers the restart alone.
+    if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, 'planning', topic))) {
+      return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
+        `Found a planning entry for **${t}**, but the prior run's files are already cleared.`,
+        [cmdOption('r', 'restart', 'Clear what is left and plan from scratch')],
+      ));
+    }
     // Partial fill is a real state — define-phases advances `phase` and nulls
     // `task`; keep the known phase anchor rather than dropping the whole
     // parenthetical.
@@ -3197,7 +3210,9 @@ function entryGate(cwd, { dotpath, own }) {
 // the same files as the first. The gate states who holds the slot and lets
 // the user through anyway — the machine can verify that a process still
 // runs, never that its session still matters. An empty response means the
-// slot is free.
+// slot is free, and taking it is the same act as reading it: the empty path
+// beats the addressed topic, so the slot is held from entry rather than from
+// the session's first code commit.
 // ---------------------------------------------------------------------------
 
 /** @param {string} phase */
@@ -3211,12 +3226,29 @@ function codeVerb(phase) {
  * @returns {string} the gate's sections, or '' when no other session holds code
  */
 function codeGate(cwd, { dotpath }) {
-  const { phase } = resolveAddress(cwd, dotpath, 'code-gate');
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'code-gate');
   if (!CODE_PHASES.includes(phase)) {
     throw new Error(`render code-gate: the code rule covers ${CODE_PHASES.join('|')} only, got "${phase}"`);
   }
+  // The empty path beats this address, and a beat is silent on a name it
+  // cannot write — so a malformed topic would claim nothing while rendering a
+  // free slot. The item itself may not exist yet (a fresh entry gates before
+  // it initialises anything); the name must still be a name.
+  if (/[\\/]/.test(topic) || topic.includes('..')) {
+    throw new Error(`render code-gate: invalid topic name "${topic}" — no separators or ".."`);
+  }
   const holders = heldCodeSessions(cwd);
-  if (holders.length === 0) return '';
+  if (holders.length === 0) {
+    // The slot is free, and this session is taking it. This check is the
+    // chokepoint every route into a code phase passes through, so it is the
+    // session's first structurally self-referential act on its own topic —
+    // and the beat here is what closes the window between entering the phase
+    // and the first code commit, during which a second session would read
+    // the slot as free. A session's own rows never gate it, so a re-render
+    // stays empty and simply refreshes the hold.
+    beatQuietly(cwd, workUnit, phase, topic);
+    return '';
+  }
 
   const facts = holders.map((h) =>
     `⚑ Another session is ${codeVerb(h.phase)} "${titlecase(h.topic)}" (${h.work_unit}) — last active ${fmtAge(h.age_seconds)} ago.`);

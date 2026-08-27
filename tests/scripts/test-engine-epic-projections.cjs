@@ -754,11 +754,40 @@ describe('epic projections: presence join', () => {
 
   it('a code entry is marked by its own held topic too, and still carries the slot marker', () => {
     const d = readyToImplementDetail();
-    const codeRow = { work_unit: 'v1', phase: 'implementation', topic: 'topic-a', age_seconds: 30, held: true, live: true, session_id: 'peer' };
-    const { keys } = epicMenu('v1', d, { presence: [], codeHeld: [codeRow] });
+    const ownRow = { phase: 'implementation', topic: 'topic-a', age_seconds: 30, held: true, live: true, session_id: 'peer' };
+    const { keys, rendered } = epicMenu('v1', d, { presence: [ownRow], codeHeld: [] });
     const code = keys.find((k) => k.action === 'start_implementation');
     assert.strictEqual(code.in_session, true);
     assert.strictEqual(code.code_session, true, 'own-topic or elsewhere, a code hold is the one slot');
+    // The word names what holds the row, and it is the slot either way. Only
+    // the holder's address is conditional — a hold on this very topic needs
+    // none.
+    assert.match(rendered.replace(/\n +/g, ' '), /~~[^~]*~~ · code session \(last active 30s ago\)/,
+      `the struck row says code session without an address:\n${rendered}`);
+  });
+
+  it('a no-map epic never recommends a row the code slot has struck through', () => {
+    // The map branch has skipped held rows since the gate family landed; the
+    // no-map branch picks by phase-completion state and had no such guard, so
+    // it recommended the very entry it drew struck.
+    const d = detailFor(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { 'topic-a': { status: 'completed' } } },
+        specification: { items: { 'topic-a': { status: 'completed', sources: { 'topic-a': { status: 'incorporated' } } } } },
+        planning: { items: { 'topic-a': { status: 'completed', format: 'local-markdown' } } },
+      },
+    });
+    const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, live: true, session_id: 'peer' };
+
+    const free = epicMenu('v2', d, { presence: [], codeHeld: [] });
+    assert.strictEqual(free.keys.find((k) => k.action === 'start_implementation').recommended, true,
+      'with the slot free it is the obvious next move');
+
+    const { keys } = epicMenu('v2', d, { presence: [], codeHeld: [codeRow] });
+    const code = keys.find((k) => k.action === 'start_implementation');
+    assert.strictEqual(code.in_session, true, 'the slot is held elsewhere');
+    assert.ok(!code.recommended, 'so the menu does not point at it');
   });
 
   it('the in-session gate speaks for document phases alone — a code entry never reaches it', () => {

@@ -77,11 +77,7 @@ function cmdSelect(argv) {
   } else {
     const ref = flag(argv, '--diff') || 'main';
     mode = `diff:${ref}`;
-    const changed = changedFiles(ref);
-    selected = all.filter((c) => c.files.some((f) => changed.has(f.path))
-      || [...changed].some((p) => p.startsWith(`${c.rel}/`))
-      || c.stubs.some((s) => changed.has(`tests/prose/stubs/${s.name}.md`))
-      || [...changed].some((p) => p.startsWith('tests/prose/mainlines/')));
+    selected = cases.selectCases(all, changedFiles(ref));
   }
   process.stdout.write(`${JSON.stringify({
     mode,

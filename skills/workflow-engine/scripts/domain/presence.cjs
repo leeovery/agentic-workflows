@@ -5,7 +5,8 @@
 // cache directory. Awareness, never mutual exclusion: the epic view marks
 // topics another session holds open, the analysis dispatch defers an epic-wide
 // analysis while a peer session is live, the conclude sweep leaves a held
-// peer's dirt alone, the code gate reads the whole project's rows, and the
+// peer's dirt alone, the code gate reads the whole project's rows and stamps
+// the entrant's when the slot is free, and the
 // spec-side resolution flow checks the target discussion before editing its
 // document in place. The file records the
 // owning Claude process's identity
@@ -31,10 +32,12 @@
 const fs = require('fs');
 const path = require('path');
 const { processStartTime, processAlive } = require('../kernel/process.cjs');
+const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { section, CONTINUE_INSTRUCTION, callout } = require('./projections/surfaces.cjs');
 
 const STALE_AFTER_SECONDS = 900;
-const PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
+// Every phase a session sits in — the schema's list minus discovery.
+const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 // The phases that write the tree and the index — the unpartitionable pair.
 const CODE_PHASES = ['implementation', 'review'];
 // The corpora the epic-wide analyses read. A live session in any other phase
@@ -262,23 +265,31 @@ function scanProject(cwd) {
 }
 
 /**
+ * Does the calling session own this heartbeat? Its own session id, or its own
+ * pid where the record predates a session id. The one home for the question,
+ * because every surface that marks or gates on a peer's hold must exclude the
+ * caller's own — a session must never gate against, or strike through, itself.
+ * @param {PresenceRow} row
+ * @returns {boolean}
+ */
+function ownsRow(row) {
+  const mySession = process.env.CLAUDE_CODE_SESSION_ID || null;
+  const myPid = Number(process.env.CLAUDE_PID) || null;
+  return (mySession !== null && row.session_id === mySession) || (myPid !== null && row.pid === myPid);
+}
+
+/**
  * Every held implementation or review heartbeat in the project, minus the
  * calling session's own — the code gate's read. Code is the one resource
  * that does not partition by topic: one tree, one index, one checkout, so
- * one code session at a time whatever work unit or topic it sits in. A row
- * this session owns is its own hold — a resumed session must never gate
- * against itself.
+ * one code session at a time whatever work unit or topic it sits in.
  * @param {string} cwd
  * @returns {(PresenceRow & {work_unit: string})[]}
  */
 function heldCodeSessions(cwd) {
-  const mySession = process.env.CLAUDE_CODE_SESSION_ID || null;
-  const myPid = Number(process.env.CLAUDE_PID) || null;
-  const ownedHere = (/** @type {PresenceRow} */ row) =>
-    (mySession !== null && row.session_id === mySession) || (myPid !== null && row.pid === myPid);
   return scanProject(cwd).sessions.filter((row) => row.held
     && CODE_PHASES.includes(row.phase)
-    && !ownedHere(row));
+    && !ownsRow(row));
 }
 
 /**
@@ -344,5 +355,5 @@ function deferralSection(scan) {
 module.exports = {
   beatPresence, clearPresence, beatQuietly, clearQuietly,
   scanPresence, scanProject, heldCodeSessions, cleanupPresence, deferralSection,
-  fmtAge, PHASES, CODE_PHASES, SOURCE_PHASES, STALE_AFTER_SECONDS,
+  fmtAge, ownsRow, CODE_PHASES, STALE_AFTER_SECONDS,
 };

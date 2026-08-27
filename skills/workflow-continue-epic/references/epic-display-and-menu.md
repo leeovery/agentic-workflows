@@ -28,7 +28,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} 
 
 The output is one snapshot in four demarcated sections:
 
-- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(in session: …)` markers. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  action  topic  → route`, with `(recommended)` / `(in session: …)` / `(code session: …)` markers. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim as markdown, directly above the display.
 - **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
@@ -289,6 +289,10 @@ Store the selected entry's `topic` (the plan) and its `(dep: …)` value (the de
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep}.state satisfied_externally
 ```
 
-Commit: `impl({work_unit}): mark {dep} dependency as satisfied externally`
+The record belongs to the plan, and the menu is not the session working it — `--sweep`, so the commit stamps no identity there:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic planning/{topic} --sweep -m "impl({work_unit}): mark {dep} dependency as satisfied externally"
+```
 
 → Return to **A. State Display and Menu**.

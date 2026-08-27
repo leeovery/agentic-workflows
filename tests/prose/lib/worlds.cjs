@@ -19,6 +19,10 @@
 // into live worlds, never part of a world's own state), and store
 // `.gitignore` files escaped so the product-written `.workflows/.gitignore`
 // cannot ignore snapshot content out of this repo.
+//
+// What a snapshot cannot hold directly — git history, another session's
+// heartbeat, an uncommitted file — a recipe declares in a sidecar that
+// materialise turns into the real thing (see WORLD_HISTORY and friends).
 
 const crypto = require('crypto');
 const fs = require('fs');
@@ -51,6 +55,42 @@ const WALK_LOG = '.walk-transcript.log';
 // — the snapshot carries it, and materialise turns it into real
 // layered commits. The sidecar itself never lands in the world.
 const WORLD_HISTORY = '.world-history.json';
+
+// Two siblings of the same shape, for the worlds a concurrent-session
+// case needs. A recipe writes them, the snapshot carries them,
+// materialise turns them into world state, and neither lands in the
+// world itself.
+//
+// Heartbeats a PEER session holds — [{"work_unit", "phase", "topic"
+// [, "session_id", "pid", "pid_start"]}]. Presence files are excluded
+// from every snapshot (timing noise no case claim can pin), so a
+// fixture that needs a peer's hold declares it here instead, and
+// materialise stamps it last: the mtime is the liveness signal and
+// must read fresh for the walk that follows. Omit the identity fields
+// for the mtime-fallback record — held while the file is younger than
+// the staleness window, which no walk outlives.
+const WORLD_PRESENCE = '.world-presence.json';
+
+// Snapshot paths left OUT of the world's commits. Everything a recipe
+// writes is committed at materialise, so a fixture that needs a session's
+// uncommitted work names it here and it is written back after the last
+// commit. Two shapes, because dirt has two:
+//
+//   "path"                        untracked — the file has no committed
+//                                 version at all
+//   {"path", "committed": "…"}    modified — `committed` is what goes
+//                                 into the world's commits, and the
+//                                 snapshot's own content is what lands
+//                                 on top of it
+//
+// The second matters more often than it looks: an untracked file inside
+// an otherwise untracked directory collapses to the directory in
+// `git status --porcelain`, so a case whose walk must name the dirty
+// path needs the directory tracked.
+const WORLD_DIRT = '.world-dirt.json';
+
+// Every sidecar: carried by the snapshot, never part of the world.
+const SIDECARS = [WORLD_HISTORY, WORLD_PRESENCE, WORLD_DIRT];
 
 // --- the recipe harness ---------------------------------------------------
 
@@ -129,9 +169,10 @@ function excluded(rel) {
   if (rel.startsWith(path.join('.workflows', '.knowledge') + path.sep)) return true;
   if (rel.startsWith(path.join('.claude', 'skills') + path.sep)) return true;
   if (rel.startsWith(path.join('.claude', 'agents') + path.sep)) return true;
-  // Presence heartbeats are timing noise: every session loop beats one per
-  // turn, and no case claim can meaningfully pin an mtime artifact. Other
-  // cache content (the agent store) stays visible — cases pin its rows.
+  // Presence heartbeats are timing noise: the engine stamps them as side
+  // effects of the verbs a session runs, and no case claim can meaningfully
+  // pin an mtime artifact. Other cache content (the agent store) stays
+  // visible — cases pin its rows.
   if (parts[0] === '.workflows' && parts[1] === '.cache' && parts[parts.length - 1] === 'presence') return true;
   return false;
 }
@@ -339,7 +380,7 @@ function diffWorld(caseId, worldDir, claimsMode = false) {
     else if (!expected.get(rel).equals(buf)) changed.push(unifiedDiff(rel, expected.get(rel), buf));
   }
   for (const rel of expected.keys()) {
-    if (rel === WORLD_HISTORY) continue;
+    if (SIDECARS.includes(rel)) continue;
     if (!actual.has(rel)) removed.push(rel);
   }
 
@@ -370,10 +411,21 @@ function buildWorld(caseId) {
   const env = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' };
   const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', env });
 
-  const history = snap.has(WORLD_HISTORY) ? JSON.parse(snap.get(WORLD_HISTORY).toString('utf8')) : [];
+  const sidecar = (name) => (snap.has(name) ? JSON.parse(snap.get(name).toString('utf8')) : []);
+  const history = sidecar(WORLD_HISTORY);
+  const presence = sidecar(WORLD_PRESENCE);
+  const dirt = new Map(sidecar(WORLD_DIRT)
+    .map((e) => (typeof e === 'string' ? [e, {}] : [e.path, e])));
+  for (const rel of dirt.keys()) {
+    if (!snap.has(rel)) throw new Error(`case "${caseId}": ${WORLD_DIRT} names "${rel}", which the fixture does not hold`);
+  }
   const layered = new Set(history.flatMap((g) => g.files));
-  for (const [rel, buf] of snap) {
-    if (rel === WORLD_HISTORY || layered.has(rel)) continue;
+  for (const [rel, snapshotBuf] of snap) {
+    if (SIDECARS.includes(rel) || layered.has(rel)) continue;
+    // A dirt path commits its `committed` version, or nothing at all.
+    const held = dirt.get(rel);
+    if (held && held.committed === undefined) continue;
+    const buf = held ? Buffer.from(held.committed) : snapshotBuf;
     const real = path.basename(rel) === GITIGNORE_ESCAPED
       ? path.join(path.dirname(rel), GITIGNORE)
       : rel;
@@ -441,6 +493,25 @@ function buildWorld(caseId) {
   }
   git('add', '-A');
   git('commit', '-q', '-m', 'chore(knowledge): initialise store');
+
+  // Last, after every commit: what a peer session left behind. The dirt
+  // stands untracked because it was held back from the commits above;
+  // the heartbeats are stamped here so their mtimes are the freshest
+  // thing in the world, which is what makes a peer read live.
+  for (const rel of dirt.keys()) {
+    const dest = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, snap.get(rel));
+  }
+  for (const row of presence) {
+    const file = path.join(dir, '.workflows', '.cache', row.work_unit, row.phase, row.topic, 'presence');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({
+      pid: row.pid ?? null,
+      pid_start: row.pid_start ?? null,
+      session_id: row.session_id ?? null,
+    }) + '\n');
+  }
 
   return dir;
 }

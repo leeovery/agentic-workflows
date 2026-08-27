@@ -1005,7 +1005,10 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   if (cascaded.length > 0) result.cascaded = cascaded;
   if (discarded.length > 0) result.discarded = discarded;
   if (reverted.length > 0) result.roadmap_reverted = reverted;
-  noteCommitOutcome(result, outcome);
+  // `--sweep`, because the cancel runs from the epic menu: the session doing
+  // it is not the session in the topic. A revert widened the commit past the
+  // topic scope, so that retry stays generic.
+  noteCommitOutcome(result, outcome, reverted.length > 0 ? undefined : `${workUnit} --topic ${phase}/${topic} --sweep`);
   return result;
 }
 
@@ -1076,7 +1079,8 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${phase})`, warnings);
   /** @type {TopicTransitionResult} */
   const result = { topic, phase, status: restored, committed: outcome.committed, warnings };
-  noteCommitOutcome(result, outcome);
+  // From the epic menu, like the cancel it undoes — the retry beats nothing.
+  noteCommitOutcome(result, outcome, `${workUnit} --topic ${phase}/${topic} --sweep`);
   return result;
 }
 

@@ -16,7 +16,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}
 
 Hold off — the analysis reads the settled record, so it waits for those sessions and runs at the next entry. Emit the response's `DISPLAY: presence deferral` section verbatim at this moment.
 
-The stop is the whole answer wherever this fires, and there is nothing to fall through to: a re-analysis the user chose has no older pass to show instead, and the automatic rerun route only ever arrives with no groupings and no specifications on the manifest — a live discussion blocks that route before it reaches here, leaving live research as its only way in.
+The stop is the whole answer wherever this fires.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -27,6 +27,12 @@ The stop is the whole answer wherever this fires, and there is nothing to fall t
 ---
 
 ## B. Gather Analysis Context
+
+A prior pass's cache is about to be superseded by this one. Clear it — only when the file exists:
+
+```bash
+rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
+```
 
 > *Output the next fenced block as a code block:*
 
@@ -206,7 +212,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 Commit the whole reconcile as one commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): reconcile proposed groupings"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --state -m "spec({work_unit}): reconcile proposed groupings"
 ```
 
 → Load **[display-groupings.md](display-groupings.md)** and follow its instructions as written.

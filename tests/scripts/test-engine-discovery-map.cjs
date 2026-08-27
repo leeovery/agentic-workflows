@@ -83,6 +83,25 @@ describe('engine CLI: discovery-map sequence', () => {
     assert.strictEqual(items['session-model'].order, 2);
   });
 
+  it('commits the discovery scope, leaving a live peer\'s document behind', () => {
+    // The map lives in the manifest, which the discovery scope covers; a
+    // research or discussion session's half-written file does not.
+    fs.mkdirSync(path.join(dir, '.workflows/payments/discussion'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/payments/discussion/auth-flow.md'), '# Discussion\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', 'a peer topic']);
+    fs.writeFileSync(path.join(dir, '.workflows/payments/discussion/auth-flow.md'), '# Discussion\nhalf a turn\n');
+
+    execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' });
+
+    assert.deepStrictEqual(
+      git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean),
+      ['.workflows/payments/manifest.json']);
+    assert.deepStrictEqual(
+      git(dir, ['status', '--porcelain']).split('\n').filter(Boolean),
+      [' M .workflows/payments/discussion/auth-flow.md'], 'the peer keeps its dirt');
+  });
+
   it('re-applying the same orders is a no-op commit: committed null, note, exit 0', () => {
     execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' });
     const res = JSON.parse(execFileSync('node', [ENGINE, 'discovery-map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' }).trim());

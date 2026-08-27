@@ -293,6 +293,32 @@ describe('engine boot', () => {
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): compact store');
   });
 
+  it('a peer session\'s staged work survives both of boot\'s commits', () => {
+    // Boot runs at `workflow-start`, which is a session opening beside every
+    // other one on the checkout. Its two commits — the migration config pass
+    // and the store commit — must take their own paths and nothing else,
+    // staged peer content included.
+    writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'a peer topic']);
+    writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
+    git(fix.project, ['add', '--', '.workflows/payments/discussion/topic-a.md']);
+    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
+
+    const res = runEngine(fix.engine, fix.project, ['boot'], {
+      STUB_CHECK: 'ready', STUB_MIGRATE_MODE: 'update-config',
+    });
+
+    assert.strictEqual(res.ok, true);
+    for (const sha of git(fix.project, ['log', '--format=%H', 'HEAD']).trim().split('\n').slice(0, 2)) {
+      const files = git(fix.project, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
+      assert.ok(!files.includes('.workflows/payments/discussion/topic-a.md'),
+        `boot swept a peer session's staged file:\n${files.join('\n')}`);
+    }
+    assert.strictEqual(git(fix.project, ['diff', '--cached', '--name-only']).trim(),
+      '.workflows/payments/discussion/topic-a.md', 'and left it staged exactly as it was');
+  });
+
   it('a crashing knowledge check is not-ready — never a crash', () => {
     const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK_EXIT: '2' });
 

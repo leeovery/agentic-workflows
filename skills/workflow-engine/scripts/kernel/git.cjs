@@ -204,4 +204,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, commitPathspec, dirtyPaths, stageableSpecs, removeFiles };
+module.exports = { git, commitPathspec, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };

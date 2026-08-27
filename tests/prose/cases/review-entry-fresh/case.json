@@ -17,6 +17,10 @@
       "render entry-gate pay.review.pay",
       "render code-gate pay.review.pay"
     ],
+    "calls_in_order": [
+      "render code-gate pay.review.pay",
+      "render entry-gate pay.review.pay"
+    ],
     "calls_exclude": [
       "topic reopen",
       "topic start"

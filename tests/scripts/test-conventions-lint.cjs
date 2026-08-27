@@ -917,6 +917,32 @@ function checkConditionalOptions(files) {
   return out;
 }
 
+// Check 18 — every presence phase's process skill declares the SessionEnd
+// cleanup hook. A session that leaves without sweeping its own heartbeat
+// leaves a hold nothing releases: a doc topic reads occupied to its peers, and
+// a code topic locks the checkout's one code slot. The phase set is the
+// schema's, minus discovery (engine-serialised, no heartbeat) — so a new
+// phase arrives here the moment it arrives in the schema.
+const PRESENCE_CLEANUP_HOOK =
+  '\'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup\'';
+
+function checkPresenceCleanupHook(files, root = REPO) {
+  const { VALID_PHASES } = require(path.join(REPO, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
+  const out = [];
+  for (const phase of VALID_PHASES) {
+    if (phase === 'discovery') continue;
+    const file = path.join(root, 'skills', `workflow-${phase}-process`, 'SKILL.md');
+    if (!files.includes(file)) {
+      out.push({ file, line: 1, message: `no process skill for presence phase "${phase}" — the heartbeat has no owner to sweep it` });
+      continue;
+    }
+    if (!readLines(file).some((l) => l.includes(PRESENCE_CLEANUP_HOOK))) {
+      out.push({ file, line: 1, message: `presence phase "${phase}" but no SessionEnd \`presence cleanup\` hook — a session leaving by /clear or logout strands its hold` });
+    }
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 
 const CHECKS = [
@@ -937,6 +963,7 @@ const CHECKS = [
   ['15: cross-file section references', checkCrossFileSections],
   ['16: menu option alignment', checkMenuAlignment],
   ['17: conditional menu options', checkConditionalOptions],
+  ['18: presence-phase SessionEnd cleanup hooks', checkPresenceCleanupHook],
 ];
 
 function report(violations) {
@@ -1383,5 +1410,29 @@ test('check 17 (conditional menu options) — catches @if-guarded rows, permits 
     const display = write(dir, 'skills/x/display.md',
       '```\nStatus:\n@if(has_plan)\n  Plan: {plan_status}\n@endif\n```\n');
     assert.strictEqual(checkConditionalOptions([display]).length, 0, 'templated displays keep @if');
+  });
+});
+
+test('check 18 (presence cleanup hooks) — catches a missing hook and a missing skill', () => {
+  withTemp((dir) => {
+    const { VALID_PHASES } = require(path.join(REPO, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
+    const phases = VALID_PHASES.filter((p) => p !== 'discovery');
+    const hooked = (phase) => write(dir, `skills/workflow-${phase}-process/SKILL.md`,
+      `---\nname: workflow-${phase}-process\nhooks:\n  SessionEnd:\n    - hooks:\n        - type: command\n          command: ${PRESENCE_CLEANUP_HOOK}\n---\n`);
+
+    const complete = phases.map(hooked);
+    assert.strictEqual(checkPresenceCleanupHook(complete, dir).length, 0, 'every presence phase sweeps its own heartbeat');
+
+    // The hook dropped: a session leaving by /clear strands its hold.
+    const unhooked = write(dir, `skills/workflow-${phases[0]}-process/SKILL.md`,
+      `---\nname: workflow-${phases[0]}-process\n---\n`);
+    const v = checkPresenceCleanupHook([unhooked, ...complete.slice(1)], dir);
+    assert.strictEqual(v.length, 1, `expected the unhooked phase to be caught, got ${report(v)}`);
+    assert.match(v[0].message, /no SessionEnd `presence cleanup` hook/);
+
+    // A presence phase with no process skill at all.
+    const missing = checkPresenceCleanupHook(complete.slice(1), dir);
+    assert.strictEqual(missing.length, 1);
+    assert.match(missing[0].message, /no process skill for presence phase/);
   });
 });

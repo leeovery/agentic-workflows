@@ -234,11 +234,42 @@ class Sim {
   // advisory rides the dump, the view-family pattern.
   static SECTION_CARRYING = new Set(['presence']);
 
+  /**
+   * The environment one call runs under: the sim's own, or a named session's.
+   * @param {{CLAUDE_CODE_SESSION_ID: string, CLAUDE_PID: string}|null} [identity]
+   */
+  envOf(identity) {
+    return identity ? { ...this.env, ...identity } : this.env;
+  }
+
+  /**
+   * A second (or third) session on the same checkout: identical sandbox,
+   * distinct identity. Presence records the calling process's pid and session
+   * id, and every consumer that asks whether a hold is mine or a peer's
+   * compares against them — so concurrent sessions in the sim are exactly
+   * that, two identities issuing calls into one project. `pid` defaults to
+   * this process, which is alive and has a real start time, so the session's
+   * rows read `held`; a session that must read as a stranger to another's
+   * hold is given a pid of its own.
+   * @param {string} sessionId @param {number} [pid]
+   */
+  session(sessionId, pid = process.pid) {
+    const identity = { CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: String(pid) };
+    return {
+      id: sessionId,
+      run: (/** @type {string[]} */ args) => this.run(args, identity),
+      refuses: (/** @type {string[]} */ args, /** @type {RegExp} */ pattern) => this.refuses(args, pattern, identity),
+      read: (/** @type {string[]} */ args) => this.read(args, identity),
+      render: (/** @type {string[]} */ args, /** @type {object} */ opts) => this.render(args, { ...opts, identity }),
+      write: (/** @type {string} */ rel, /** @type {any} */ content) => this.write(rel, content),
+    };
+  }
+
   /** Engine mutation: expect ok:true JSON, then audit the whole state. */
-  run(args) {
+  run(args, identity = null) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')}`;
-    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.env });
+    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.envOf(identity) });
     assert.strictEqual(res.status, 0,
       `[${label}] expected success\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     const nl = res.stdout.indexOf('\n');
@@ -255,10 +286,10 @@ class Sim {
   }
 
   /** Engine call that must refuse loudly: exit 1, {ok:false} JSON on stderr. */
-  refuses(args, pattern) {
+  refuses(args, pattern, identity = null) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')} (expected refusal)`;
-    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.env });
+    const res = spawnSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.envOf(identity) });
     assert.strictEqual(res.status, 1, `[${label}] expected exit 1, got ${res.status}\nstdout: ${res.stdout}`);
     const parsed = JSON.parse(res.stderr.trim());
     assert.strictEqual(parsed.ok, false, `[${label}] refusal is not clean {ok:false} JSON`);
@@ -268,13 +299,13 @@ class Sim {
   }
 
   /** Bare-stdout read (manifest get / exists / resolve …). */
-  read(args) {
-    return execFileSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.env }).trim();
+  read(args, identity = null) {
+    return execFileSync('node', [ENGINE, ...args], { cwd: this.dir, encoding: 'utf8', env: this.envOf(identity) }).trim();
   }
 
   /** Render surface: must exit 0 (an entry-gate that passes renders empty). */
-  render(args, { expect } = {}) {
-    const res = spawnSync('node', [ENGINE, 'render', ...args], { cwd: this.dir, encoding: 'utf8', env: this.env });
+  render(args, { expect, identity = null } = {}) {
+    const res = spawnSync('node', [ENGINE, 'render', ...args], { cwd: this.dir, encoding: 'utf8', env: this.envOf(identity) });
     assert.strictEqual(res.status, 0,
       `[render ${args.join(' ')}] crashed or refused\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     if (expect === 'content') {
@@ -329,7 +360,7 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   label(sim, wu, 'implementation', topic);
   const init = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
-  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
+  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   // Phase boundary: the completion defers its flag, the consolidation pass
   // finds nothing, and the re-record closes the phase (consolidation-pass.md F).
@@ -352,7 +383,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'incorporated']);
   }
   sim.write(`.workflows/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
-  sim.run(['commit', wu, '-m', `spec(${wu}): construct`]);
+  sim.run(['commit', wu, '-m', `spec(${wu}): construct`, '--topic', `specification/${topic}`]);
   sim.run(['topic', 'complete', wu, 'specification', topic]);
 
   // Planning.
@@ -392,7 +423,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   label(sim, wu, 'implementation', topic);
   const implInit = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
-  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
+  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   // The task's code commit: declared paths, validated and confined, with the
   // residual dirt answered back so nothing the task touched is left behind.
@@ -441,6 +472,13 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.render(['resume-gate', `${wu}.review.${topic}`, '--variant', 'review'], { expect: 'content' });
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'out_of_scope',
     '{"id":"A3","kind":"quick-fix","summary":"a guard the spec never asked for"}']);
+  // The apply lane writes code: in-scope, contained findings land in-session
+  // as one commit, through the same declared-paths door the task loop uses —
+  // beating the review topic, which is the code slot this session holds.
+  sim.write(`src/${topic}.js`, `module.exports = ${JSON.stringify(topic)}; // guarded\n`);
+  const applied = sim.run(['commit', '--paths', `src/${topic}.js`,
+    '-m', `review(${wu}): apply do-now findings`, '--for', wu, `review/${topic}`]);
+  assert.deepStrictEqual(applied.left_dirty, [], 'the apply lane names everything it touched');
   sim.write(`.workflows/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
   sim.run(['commit', wu, '-m', `review(${wu}): complete review`, '--topic', `review/${topic}`]);
   const presentation = sim.write(`.workflows/.cache/${wu}/review/${topic}/presentation.json`, {
@@ -454,7 +492,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.render(['review-gate', `${wu}.review.${topic}`, '--verdict', 'pass', '--out-of-scope', '1'], { expect: 'content' });
   sim.run(['manifest', 'delete', `${wu}.review.${topic}`, 'out_of_scope']);
   sim.run(['topic', 'complete', wu, 'review', topic]);
-  sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`]);
+  sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`, '--topic', `review/${topic}`]);
 }
 
 // ---------------------------------------------------------------------------
@@ -520,7 +558,7 @@ describe('pipeline simulation', () => {
     const closed = sim.run(['agent', 'incorporate', wu, 'investigation', wu, val.id]);
     assert.strictEqual(closed.status, 'incorporated');
 
-    sim.run(['commit', wu, '-m', `investigation(${wu}): root cause`]);
+    sim.run(['commit', wu, '-m', `investigation(${wu}): root cause`, '--topic', `investigation/${wu}`]);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
 
     // The bugfix spec source name is pinned to the topic.
@@ -592,7 +630,7 @@ describe('pipeline simulation', () => {
     // Implementation (verification workflow) + review — task init creates.
     const init = sim.run(['task', 'init', wu, wu]);
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
-    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
+    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${wu}`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     // Quick-fix takes no consolidation boundary (its plan never grows), so the
     // completion keeps the fused --phase-complete.
@@ -876,7 +914,7 @@ describe('pipeline simulation', () => {
     assert.match(porcelain, /research\/delta\.md/, 'peer topic dirt survives a --topic commit');
     const headPaths = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
     assert.ok(!headPaths.includes('research/delta.md'), 'peer topic path absent from the --topic commit');
-    sim.run(['commit', wu, '-m', `research(${wu}): sweep delta dirt for the next steps`]);
+    sim.run(['commit', wu, '-m', `research(${wu}): sweep delta dirt for the next steps`, '--topic', 'research/delta', '--sweep']);
     const reparked = sim.run(['topic', 'triage', wu, 'research', 'delta']);
     assert.strictEqual(reparked.created, false);
     assert.strictEqual(reparked.status, 'triaged');
@@ -908,7 +946,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(drained.status, 'in-progress');
     assert.strictEqual(drained.created, false);
     sim.write(`.workflows/${wu}/research/delta.md`, '# Research — Delta\n\nDrained the parked concern.\n');
-    sim.run(['commit', wu, '-m', `research(${wu}): delta`]);
+    sim.run(['commit', wu, '-m', `research(${wu}): delta`, '--topic', 'research/delta']);
     sim.run(['topic', 'complete', wu, 'research', 'delta']);
 
     // Dead end: the conclude gate's second arm marks the map item, and the
@@ -967,7 +1005,7 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.specification.unified`,
       'sources.alpha.status=incorporated', 'sources.beta.status=incorporated']);
     sim.write(`.workflows/${wu}/specification/unified/specification.md`, '# Spec — Unified\n');
-    sim.run(['commit', wu, '-m', `spec(${wu}): unified`]);
+    sim.run(['commit', wu, '-m', `spec(${wu}): unified`, '--topic', 'specification/unified']);
     sim.run(['topic', 'complete', wu, 'specification', 'unified']);
 
     // A completed epic specification flags the build order stale; the
@@ -1474,7 +1512,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Outgrew itself', '--session-log-file', log]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion\n');
-    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`]);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
 
     sim.run(['workunit', 'pivot', wu]);
     assert.strictEqual(sim.manifest(wu).work_type, 'epic');
@@ -1492,7 +1530,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'A stray feature', '--session-log-file', sessionLog(sim, feat)]);
     sim.run(['topic', 'start', feat, 'discussion', feat]);
     sim.write(`.workflows/${feat}/discussion/${feat}.md`, '# Discussion — Stray\n');
-    sim.run(['commit', feat, '-m', `discussion(${feat}): capture`]);
+    sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
     // A standing do-not-report call on this topic's material.
     sim.run(['manifest', 'push', `${feat}.discussion.${feat}`, 'dismissed_grounds',
       'the migration path is settled and out of scope']);
@@ -1523,7 +1561,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'logging']);
     sim.run(['topic', 'start', wu, 'specification', 'logging']);
     sim.write(`.workflows/${wu}/specification/logging/specification.md`, '# Spec — Logging\n');
-    sim.run(['commit', wu, '-m', `spec(${wu}): logging`]);
+    sim.run(['commit', wu, '-m', `spec(${wu}): logging`, '--topic', 'specification/logging']);
     sim.run(['topic', 'complete', wu, 'specification', 'logging']);
 
     sim.run(['workunit', 'promote', wu, 'logging', '--to', 'logging-cc', '--description', 'Logging, project-wide']);
@@ -1557,7 +1595,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
     assert.strictEqual(init.gates.consolidation_gate_mode, 'gated', 'the boundary walk gate ships gated');
-    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
+    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${wu}`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     // The brief announces the dispatch — the shared task header plus summary and watch.
     const briefPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
@@ -1941,5 +1979,340 @@ describe('pipeline simulation', () => {
 
     // After every refusal the unit still derives and completes normally.
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
+  });
+
+  it('restart: the cleanup commits while the plan item lives, the entry goes last', () => {
+    const wu = 'redo';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Redo it', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion — Redo\n');
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    sim.run(['topic', 'start', wu, 'specification', wu]);
+    sim.run(['topic', 'complete', wu, 'specification', wu]);
+    sim.run(['topic', 'start', wu, 'planning', wu]);
+    sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
+    sim.write(`.workflows/${wu}/planning/${wu}/tasks/${wu}-1-1.md`, '---\nid: redo-1-1\n---\n\n# A task\n');
+    sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
+      'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
+      'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
+      `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
+    sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', wu]);
+
+    // A peer session is mid-write on the discussion beside it — the restart's
+    // two commits must not touch that.
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion — Redo\n\npeer session dirt\n');
+
+    // The restart, in prose order: files first, committed through `--plan`
+    // while the planning item still resolves it.
+    fs.rmSync(path.join(sim.dir, `.workflows/${wu}/planning/${wu}`), { recursive: true, force: true });
+    const cleanup = sim.run(['commit', wu, '-m', `planning(${wu}): restart planning — clear the authored plan`, '--plan', wu]);
+    assert.match(cleanup.committed, /^[0-9a-f]+$/, 'the cleanup commits while the item lives');
+    const cleaned = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    assert.ok(cleaned.includes(`.workflows/${wu}/planning/${wu}/planning.md`), 'the deleted plan files ride the cleanup');
+    assert.ok(!cleaned.includes(`.workflows/${wu}/discussion/${wu}.md`), 'the peer session\'s dirt does not');
+
+    // The entry goes last, committed on the topic's own scope.
+    sim.run(['manifest', 'delete', `${wu}.planning`, `items.${wu}`]);
+    assert.strictEqual(sim.manifest(wu).phases.planning.items[wu], undefined);
+    const closed = sim.run(['commit', wu, '-m', `planning(${wu}): restart planning`, '--topic', `planning/${wu}`]);
+    assert.match(closed.committed, /^[0-9a-f]+$/);
+    assert.deepStrictEqual(git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean),
+      [`.workflows/${wu}/manifest.json`], 'only the entry\'s removal — the plan files are already in');
+    assert.match(git(sim.dir, ['status', '--porcelain']), /discussion\/redo\.md/, 'the peer\'s dirt survives both commits');
+
+    // And the reason the order is what it is: `--plan` cannot resolve a
+    // deleted item, so a cleanup committed after the delete has no scope.
+    sim.refuses(['commit', wu, '-m', 'too late', '--plan', wu], /no planning item/);
+  });
+
+  it('restart: a quick-fix commits the plan first, then everything its work unit is', () => {
+    const wu = 'typo';
+    sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Fix the typo', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['topic', 'start', wu, 'scoping', wu]);
+    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, `# Spec — ${wu}\n`);
+    sim.run(['topic', 'start', wu, 'specification', wu]);
+    sim.run(['topic', 'complete', wu, 'specification', wu]);
+    sim.run(['commit', wu, '-m', `spec(${wu}): quick-fix specification`, '--topic', `specification/${wu}`, '--kb']);
+    sim.run(['topic', 'start', wu, 'planning', wu]);
+    sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
+    sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
+      'format=local-markdown', 'task_list_gate_mode=auto', 'author_gate_mode=auto',
+      'finding_gate_mode=auto', 'review_cycle=0', 'phase=1', 'task=~',
+      `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
+    sim.run(['topic', 'complete', wu, 'planning', wu]);
+    sim.run(['commit', wu, '-m', `scoping(${wu}): register plan`, '--plan', wu]);
+
+    fs.rmSync(path.join(sim.dir, `.workflows/${wu}/specification/${wu}`), { recursive: true, force: true });
+    fs.rmSync(path.join(sim.dir, `.workflows/${wu}/planning/${wu}`), { recursive: true, force: true });
+    const cleanup = sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping — clear the authored plan`, '--plan', wu]);
+    const cleaned = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    assert.match(cleanup.committed, /^[0-9a-f]+$/);
+    assert.ok(cleaned.includes(`.workflows/${wu}/planning/${wu}/planning.md`), 'the plan half rides --plan');
+    assert.ok(!cleaned.includes(`.workflows/${wu}/specification/${wu}/specification.md`),
+      'the spec is outside the plan scope and waits for the closing commit');
+
+    sim.run(['manifest', 'delete', `${wu}.specification`, `items.${wu}`]);
+    sim.run(['manifest', 'delete', `${wu}.planning`, `items.${wu}`]);
+    assert.strictEqual(sim.manifest(wu).phases.scoping.items[wu].status, 'in-progress',
+      'the scoping item stays in progress — the fresh run re-completes it');
+    sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping`]);
+    const closed = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    assert.ok(closed.includes(`.workflows/${wu}/specification/${wu}/specification.md`), 'the deleted spec lands here');
+    assert.ok(closed.includes(`.workflows/${wu}/manifest.json`), 'and both entry removals with it');
+    assert.deepStrictEqual(git(sim.dir, ['status', '--porcelain', '--', `.workflows/${wu}`]).split('\n').filter(Boolean), [],
+      'the restart leaves nothing of the work unit behind');
+  });
+
+  // -------------------------------------------------------------------------
+  // Concurrency — several sessions on one checkout, interleaved.
+  //
+  // Every engine call is atomic under its own locks (the manifest lock, the
+  // commit lock), so a sequential interleave IS the correctness test: what a
+  // real concurrent run can produce is some ordering of these calls, and the
+  // question a scenario has to answer is whether any ordering lets one
+  // session's commit take another's paths. The invariant this pins is the
+  // whole programme in one line: no commit ever contains a foreign session's
+  // path (design/concurrent-phases.md).
+  // -------------------------------------------------------------------------
+
+  it('concurrent sessions: interleaved commits stay confined, the code slot holds, a dead peer is swept', () => {
+    const wu = 'relay';
+
+    // --- the map both sessions inherit -------------------------------------
+    const log = sessionLog(sim, wu);
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Event relay overhaul', '--session-log-file', log]);
+    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+      { name: 'ingest', routing: 'discussion', summary: 'How events arrive' },
+      { name: 'ranking', routing: 'discussion', summary: 'How events are ordered' },
+      { name: 'metrics', routing: 'research', summary: 'What good looks like' },
+      { name: 'dispatch', routing: 'discussion', summary: 'How events leave' },
+    ]);
+    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 4 topics`]);
+
+    // ingest is discussed and ready to specify; dispatch is built out to the
+    // edge of implementation. Both were finished before this scenario opens.
+    sim.run(['topic', 'start', wu, 'discussion', 'ingest']);
+    sim.write(`.workflows/${wu}/discussion/ingest.md`, '# Discussion — Ingest\n\nDecided: batch intake.\n');
+    sim.run(['topic', 'complete', wu, 'discussion', 'ingest']);
+    sim.run(['topic', 'start', wu, 'discussion', 'dispatch']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'dispatch']);
+    sim.run(['topic', 'start', wu, 'specification', 'dispatch']);
+    sim.run(['topic', 'complete', wu, 'specification', 'dispatch']);
+    sim.run(['topic', 'start', wu, 'planning', 'dispatch']);
+    sim.run(['manifest', 'set', `${wu}.planning.dispatch`,
+      'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
+      'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
+      'task_map.dispatch-1-1=dispatch-1-1', 'storage_paths=[]']);
+    sim.run(['topic', 'complete', wu, 'planning', 'dispatch']);
+    sim.run(['commit', wu, '-m', `workflow(${wu}): set the board`]);
+
+    // The setup ran as one session and its verbs beat as it went. Clear its
+    // heartbeats so the scenario opens on a checkout nobody holds.
+    sim.run(['presence', 'cleanup', 'sim-session']);
+    assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions, [],
+      'the board starts with no session holding anything');
+
+    /** A pid that is certainly not running: a child spawned and reaped. */
+    const reapedPid = () => {
+      const res = spawnSync('node', ['-e', '']);
+      assert.ok(res.pid, 'could not mint a dead pid');
+      return res.pid;
+    };
+
+    const specSession = sim.session('spec-session');
+    const talkSession = sim.session('discussion-session');
+    const codeSession = sim.session('code-session');
+    const secondCoder = sim.session('review-session', reapedPid());
+
+    const SPEC_FILE = `.workflows/${wu}/specification/ingest/specification.md`;
+    const TALK_FILE = `.workflows/${wu}/discussion/ranking.md`;
+    const CODE_FILE = 'src/relay/dispatch.js';
+    const committedPaths = () => git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD'])
+      .split('\n').map((l) => l.trim()).filter(Boolean);
+    const dirty = () => git(sim.dir, ['status', '--porcelain'])
+      .split('\n').map((l) => l.slice(3).trim()).filter(Boolean);
+    /** No commit ever contains a foreign session's path. */
+    const confined = (label, own, foreign) => {
+      const paths = committedPaths();
+      assert.ok(paths.length > 0, `[${label}] committed nothing`);
+      for (const p of paths) {
+        assert.ok(own.some((o) => p === o || p.startsWith(`${o}/`)),
+          `[${label}] committed ${p}, outside the action's own scope`);
+      }
+      for (const f of foreign) {
+        assert.ok(!paths.includes(f), `[${label}] swept a peer's path: ${f}`);
+      }
+    };
+    const specScope = [`.workflows/${wu}/specification/ingest`, `.workflows/${wu}/manifest.json`];
+    const talkScope = [`.workflows/${wu}/discussion/ranking.md`, `.workflows/${wu}/discussion/.triage/ranking`, `.workflows/${wu}/manifest.json`];
+
+    // --- A1 · B1 · A2 · B2: two document sessions, alternating -------------
+    // A: a specification session on ingest. B: a discussion session on
+    // ranking. Neither knows the other exists; both write into one work unit
+    // and commit through the same door.
+    specSession.run(['topic', 'start', wu, 'specification', 'ingest']);
+    talkSession.run(['topic', 'start', wu, 'discussion', 'ranking']);
+
+    specSession.write(SPEC_FILE, '# Specification — Ingest\n\n## Requirements\n\n- Batch intake.\n');
+    specSession.run(['manifest', 'set', `${wu}.specification.ingest`, 'sources.ingest.status', 'pending']);
+    talkSession.write(TALK_FILE, '# Discussion — Ranking\n\n## Context\n\nOrdering under replay.\n');
+    talkSession.run(['discussion-map', 'add', wu, 'ranking', 'replay-order']);
+
+    // A commits with B's half-written document sitting dirty beside it.
+    specSession.run(['commit', wu, '-m', `spec(${wu}/ingest): construct`, '--topic', 'specification/ingest']);
+    confined('A1', specScope, [TALK_FILE]);
+    assert.ok(dirty().includes(TALK_FILE), "the peer's uncommitted document survives A's commit");
+
+    // B commits next, and A's spec is already landed — so B's confinement is
+    // proven by what its commit does NOT reach for, not by what is dirty.
+    talkSession.run(['commit', wu, '-m', `discussion(${wu}/ranking): capture`, '--topic', 'discussion/ranking']);
+    confined('B1', talkScope, [SPEC_FILE]);
+
+    // Round two, both sessions still live, both amending their own document.
+    specSession.write(SPEC_FILE, '# Specification — Ingest\n\n## Requirements\n\n- Batch intake.\n- Replay is idempotent.\n');
+    talkSession.write(TALK_FILE, '# Discussion — Ranking\n\n## Context\n\nOrdering under replay.\n\n## Decisions\n\n- Order by sequence number.\n');
+    specSession.run(['commit', wu, '-m', `spec(${wu}/ingest): idempotent replay`, '--topic', 'specification/ingest']);
+    confined('A2', specScope, [TALK_FILE]);
+    assert.ok(dirty().includes(TALK_FILE), "B's second edit survives A's second commit");
+    talkSession.run(['discussion-map', 'set', wu, 'ranking', 'replay-order', 'decided']);
+    talkSession.run(['commit', wu, '-m', `discussion(${wu}/ranking): decide replay order`, '--topic', 'discussion/ranking']);
+    confined('B2', talkScope, [SPEC_FILE]);
+
+    // Both artifacts survive intact — each holds its own session's words, and
+    // neither lost a write to the other's commit.
+    assert.match(fs.readFileSync(path.join(sim.dir, SPEC_FILE), 'utf8'), /Replay is idempotent/);
+    assert.match(fs.readFileSync(path.join(sim.dir, TALK_FILE), 'utf8'), /Order by sequence number/);
+    assert.deepStrictEqual(dirty().filter((p) => p === SPEC_FILE || p === TALK_FILE), [],
+      'both sessions committed their own work in full');
+
+    // --- presence through the interleave -----------------------------------
+    const rowOf = (scan, phase, topic) => scan.sessions.find((r) => r.phase === phase && r.topic === topic);
+    const interleaved = sim.run(['presence', 'scan', wu]);
+    const specRow = rowOf(interleaved, 'specification', 'ingest');
+    const talkRow = rowOf(interleaved, 'discussion', 'ranking');
+    assert.strictEqual(specRow.session_id, 'spec-session', "A's heartbeat carries A's identity");
+    assert.strictEqual(talkRow.session_id, 'discussion-session', "B's heartbeat carries B's identity");
+    assert.ok(specRow.live && specRow.held && talkRow.live && talkRow.held,
+      'both document sessions read live and held');
+    assert.strictEqual(interleaved.live_sources, 1,
+      'only the discussion counts as a source — a live spec session defers no analysis');
+
+    // --- the code slot ------------------------------------------------------
+    // The slot is taken at the entry chokepoint, not at the first commit:
+    // reading a free slot is how a code session claims it, so the window
+    // between entering the phase and writing anything is not a window.
+    const codeSlot = path.join(sim.dir, '.workflows/.cache', wu, 'implementation/dispatch/presence');
+    assert.ok(!fs.existsSync(codeSlot), 'nobody holds the code slot before anyone enters');
+    codeSession.render(['code-gate', `${wu}.implementation.dispatch`], { expect: 'empty' });
+    assert.strictEqual(JSON.parse(fs.readFileSync(codeSlot, 'utf8')).session_id, 'code-session',
+      'the entry-gate render is the claim');
+
+    codeSession.run(['task', 'init', wu, 'dispatch']);
+    codeSession.run(['task', 'start', wu, 'dispatch', 'dispatch-1-1']);
+    sim.write(CODE_FILE, "export function dispatch(event) { return sink.write(event); }\n");
+    // And the code commit beats it too: `--for` names the code topic, and
+    // code is the one scope no layout derives.
+    const firstCode = codeSession.run(['commit', '--paths', CODE_FILE, '-m', 'feat(relay): dispatch events',
+      '--for', wu, 'implementation/dispatch']);
+    assert.deepStrictEqual(firstCode.left_dirty, [], 'the task committed everything it touched');
+    assert.strictEqual(JSON.parse(fs.readFileSync(codeSlot, 'utf8')).session_id, 'code-session',
+      'the cadence commit keeps the hold alive');
+    confined('C1', [CODE_FILE], [SPEC_FILE, TALK_FILE]);
+
+    // A second code entrant — a different session, a different pid — is
+    // gated; the holder reading the same surface is not gated against itself.
+    const gate = secondCoder.render(['code-gate', `${wu}.review.dispatch`], { expect: 'content' });
+    assert.match(gate, /Another session is implementing "Dispatch" \(relay\)/,
+      'the gate names who holds the slot, where, and for how long');
+    assert.match(gate, /Code phases run one at a time/);
+    codeSession.render(['code-gate', `${wu}.implementation.dispatch`], { expect: 'empty' });
+
+    // --- a document session commits while the code session holds ------------
+    // The doc commit never takes code dirt, and the code commit's left_dirty
+    // never names workflow dirt: each half of the checkout is the other's
+    // business, and both are running at once.
+    sim.write(CODE_FILE, "export function dispatch(event) { return sink.write(event); }\nexport const ORDERED = true;\n");
+    sim.write('src/relay/sink.js', '// a file the task forgot to name\n');
+    talkSession.write(TALK_FILE, '# Discussion — Ranking\n\n## Context\n\nOrdering under replay.\n\n## Decisions\n\n- Order by sequence number.\n- Ties break on arrival.\n');
+    talkSession.run(['commit', wu, '-m', `discussion(${wu}/ranking): tie-break`, '--topic', 'discussion/ranking']);
+    confined('B3', talkScope, [CODE_FILE, 'src/relay/sink.js']);
+    assert.ok(dirty().includes(CODE_FILE), "the code session's dirt survives a doc session's commit");
+
+    // Now the reverse, with a document session's dirt sitting on the tree.
+    specSession.write(SPEC_FILE, '# Specification — Ingest\n\n## Requirements\n\n- Batch intake.\n- Replay is idempotent.\n- Ties break on arrival.\n');
+    const secondCode = codeSession.run(['commit', '--paths', CODE_FILE, '-m', 'feat(relay): ordered dispatch',
+      '--for', wu, 'implementation/dispatch']);
+    confined('C2', [CODE_FILE], [SPEC_FILE, TALK_FILE]);
+    assert.deepStrictEqual(secondCode.left_dirty, ['src/relay/sink.js'],
+      'the forgotten code path comes back, and nothing under .workflows ever does');
+    assert.ok(dirty().includes(SPEC_FILE), "the doc session's dirt is not the code session's to commit");
+    specSession.run(['commit', wu, '-m', `spec(${wu}/ingest): tie-break`, '--topic', 'specification/ingest']);
+    codeSession.run(['commit', '--paths', 'src/relay/sink.js', '-m', 'chore(relay): the rest',
+      '--for', wu, 'implementation/dispatch']);
+
+    // Three sessions hold, one of them code; the source count is unmoved.
+    const holding = sim.run(['presence', 'scan', wu]);
+    assert.strictEqual(holding.held, 3, 'two document sessions and one code session hold');
+    assert.strictEqual(holding.live_sources, 1, 'a live code session defers no analysis either');
+    assert.strictEqual(rowOf(holding, 'implementation', 'dispatch').session_id, 'code-session');
+
+    // --- the dead peer's leavings ------------------------------------------
+    // A research session died mid-write: its document is uncommitted and its
+    // heartbeat names a process that is gone. A concluding session sweeps it.
+    const ghostPid = reapedPid();
+    sim.run(['topic', 'start', wu, 'research', 'metrics']);
+    sim.write(`.workflows/${wu}/research/metrics.md`, '# Research — Metrics\n\nHalf a paragraph.\n');
+    sim.write(`.workflows/.cache/${wu}/research/metrics/presence`,
+      JSON.stringify({ pid: ghostPid, pid_start: null, session_id: 'ghost-session' }) + '\n');
+    const beforeSweep = rowOf(sim.run(['presence', 'scan', wu]), 'research', 'metrics');
+    assert.strictEqual(beforeSweep.held, false, 'a heartbeat whose process is gone reads unheld');
+
+    talkSession.run(['commit', wu, '--topic', 'research/metrics', '--sweep',
+      '-m', `chore(${wu}/metrics): sweep session leavings`]);
+    confined('sweep', [`.workflows/${wu}/research/metrics.md`, `.workflows/${wu}/research/.triage/metrics`, `.workflows/${wu}/manifest.json`],
+      [SPEC_FILE, TALK_FILE, CODE_FILE]);
+    assert.ok(!dirty().includes(`.workflows/${wu}/research/metrics.md`), "the dead session's document is committed");
+
+    // The sweeper never stamps its identity on the topic it just cleaned —
+    // a beat there would resurrect a hold nobody holds.
+    const afterSweep = rowOf(sim.run(['presence', 'scan', wu]), 'research', 'metrics');
+    assert.strictEqual(afterSweep.session_id, 'ghost-session', 'the sweep left the dead record alone');
+    assert.strictEqual(afterSweep.held, false, 'the swept topic is not resurrected');
+    assert.strictEqual(afterSweep.live, false);
+
+    // The suppression is what did it: the same commit without `--sweep` beats.
+    sim.write(`.workflows/${wu}/research/metrics.md`, '# Research — Metrics\n\nHalf a paragraph.\n\nPicked back up.\n');
+    talkSession.run(['commit', wu, '--topic', 'research/metrics',
+      '-m', `research(${wu}/metrics): pick the thread back up`]);
+    const adopted = rowOf(sim.run(['presence', 'scan', wu]), 'research', 'metrics');
+    assert.strictEqual(adopted.session_id, 'discussion-session', 'a session-cadence commit stamps the caller');
+    assert.strictEqual(adopted.held, true);
+
+    // --- the terminal clear -------------------------------------------------
+    // The conclusion's `--kb` commit clears instead of beating, or the topic
+    // would read held forever after its session ended.
+    talkSession.run(['topic', 'complete', wu, 'discussion', 'ranking']);
+    talkSession.run(['commit', wu, '--topic', 'discussion/ranking', '--kb',
+      '-m', `discussion(${wu}): complete ranking discussion`]);
+    assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'ranking'), undefined,
+      'the terminal commit drops the heartbeat');
+    assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'specification', 'ingest'),
+      "and leaves every peer session's hold standing");
+
+    // --- the code slot's release -------------------------------------------
+    // Review closes its topic and commits the report; the checkout's one code
+    // slot must be free the moment the topic is finished, not when the
+    // process eventually dies.
+    codeSession.run(['topic', 'complete', wu, 'implementation', 'dispatch']);
+    codeSession.write(`.workflows/${wu}/implementation/dispatch/report.md`, '# Implementation — Dispatch\n\nDone.\n');
+    codeSession.run(['commit', wu, '--topic', 'implementation/dispatch',
+      '-m', `impl(${wu}): conclude dispatch`]);
+    assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'implementation', 'dispatch'), undefined,
+      'the close released the slot, and the commit after it did not take it back');
+    assert.strictEqual(
+      require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/presence.cjs')).heldCodeSessions(sim.dir).length, 0,
+      'so the next code session walks straight in');
   });
 });

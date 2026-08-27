@@ -8,6 +8,7 @@ const { spawnSync } = require('child_process');
 const { validate } = require('./validate.cjs');
 
 const ENGINE_CLI = path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'engine.cjs');
+const { commitPathspecScoped } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'commit.cjs'));
 const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
 function die(msg, code = 1) {
@@ -19,14 +20,6 @@ function runCli(cwd, args) {
   const r = spawnSync('node', [ENGINE_CLI, 'manifest', ...args], { cwd, encoding: 'utf8' });
   if (r.status !== 0) {
     throw new Error(`engine manifest failed (${args.join(' ')}): ${r.stderr || r.stdout}`);
-  }
-  return r.stdout;
-}
-
-function runGit(cwd, args) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
-  if (r.status !== 0) {
-    throw new Error(`git failed (${args.join(' ')}): ${r.stderr || r.stdout}`);
   }
   return r.stdout;
 }
@@ -220,7 +213,7 @@ function apply(cwd, workUnit, currentSource) {
     };
   }
 
-  // Stage 6: git add + commit, scoped to exactly the split's paths.
+  // Stage 6: commit through the door, scoped to exactly the split's paths.
   const sourceRel = path.relative(cwd, sourceFile);
   // Only reference the source's old path if git knows it. An untracked source
   // (never committed) was renamed away in Stage 2, so the old path matches
@@ -233,19 +226,25 @@ function apply(cwd, workUnit, currentSource) {
     ...created.map(c => path.relative(cwd, c.path)),
   ];
 
+  // The split writes across several research topics at once, so no --topic
+  // scope covers it: the work-unit form is the confined retry, and it takes
+  // the commit lock the raw pair never did.
+  const retry = `node .claude/skills/workflow-engine/scripts/engine.cjs commit ${workUnit} `
+    + `-m "discovery(${workUnit}): legacy-split ${currentSource}"`;
   try {
-    runGit(cwd, ['add', '-A', '--', ...addPaths]);
-    // Pathspec-limit the commit so any files the user pre-staged for unrelated
-    // work don't get swept into the split commit.
-    runGit(cwd, ['commit', '--allow-empty', '-m', `discovery(${workUnit}): legacy-split ${currentSource}`, '--', ...addPaths]);
+    // Through the commit door: the split runs beside live research and
+    // discussion sessions on the same work unit, so it takes the commit lock
+    // and the index.lock retry every other engine commit takes, and stays
+    // confined to the paths it wrote.
+    commitPathspecScoped(cwd, addPaths, `discovery(${workUnit}): legacy-split ${currentSource}`);
   } catch (e) {
     const recovery_hint = sourceTracked
       ? `commit failed (likely pre-commit hook). All file and manifest mutations are applied. ` +
-        `Resolve the hook issue, commit manually, then clean the cache: ` +
-        `rm -rf ${cacheDir}`
-      : `git staging failed — the source file ${sourceRel} was never committed, so its pre-split ` +
-        `history isn't in git. All file and manifest mutations are applied. Stage and commit the ` +
-        `split manually (git add .workflows/${workUnit}), then clean the cache: rm -rf ${cacheDir}`;
+        `Resolve the hook issue, commit the split, then clean the cache: ` +
+        `${retry} && rm -rf ${cacheDir}`
+      : `commit failed — the source file ${sourceRel} was never committed, so its pre-split ` +
+        `history isn't in git. All file and manifest mutations are applied. Commit the split, ` +
+        `then clean the cache: ${retry} && rm -rf ${cacheDir}`;
     return {
       ok: false,
       stage: 'git_commit',

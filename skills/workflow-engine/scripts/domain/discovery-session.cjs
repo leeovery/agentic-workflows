@@ -172,7 +172,7 @@ function closeDiscoverySession(cwd, workUnit, { message }) {
   const outcome = commitTailWithKb(cwd, discoveryScope(workUnit), message, warnings);
   /** @type {DiscoverySessionCloseResult} */
   const result = { work_unit: workUnit, session: session.number, session_log: session.rel, committed: outcome.committed, warnings };
-  noteCommitOutcome(result, outcome);
+  noteCommitOutcome(result, outcome, `${workUnit} --discovery`);
   return result;
 }
 

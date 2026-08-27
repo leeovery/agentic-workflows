@@ -318,7 +318,7 @@ Close the phase:
    node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {N} --phase-complete
    ```
 6. **If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`).
-7. **Commit** — the scoped commit covers the manifest and the plan's declared storage:
+7. **Commit** — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidated" --plan {topic}
    ```

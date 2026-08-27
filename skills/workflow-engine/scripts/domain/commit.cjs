@@ -175,12 +175,21 @@ function commitTailWithKb(cwd, pathspec, message, warnings, beforeInLock) {
  * Stamp a transaction result from a tail-commit outcome: a failure notes the
  * pending commit (the state is saved — only the commit is owed), a clean
  * tree notes `nothing to commit`. Mutates the result in place.
+ *
+ * A note is contract surface — a session runs the command it prescribes
+ * verbatim — so a transaction whose commit was narrower than the work unit
+ * passes `retry`: the scope arguments the retry needs, everything between
+ * `engine commit` and `-m`. Without it the note stays generic, which is the
+ * honest answer for a genuinely work-unit-wide tail.
  * @param {{note?: string}} result
  * @param {{committed: string|null, failed: boolean}} outcome
+ * @param {string} [retry] the retry's scope arguments, e.g. `payments --discovery`
  */
-function noteCommitOutcome(result, outcome) {
+function noteCommitOutcome(result, outcome, retry) {
   if (outcome.failed) {
-    result.note = 'commit pending — state saved; retry with engine commit';
+    result.note = retry
+      ? `commit pending — state saved; retry with: engine commit ${retry} -m "<message>"`
+      : 'commit pending — state saved; retry with engine commit';
   } else {
     noteIfNothingCommitted(result, outcome.committed);
   }

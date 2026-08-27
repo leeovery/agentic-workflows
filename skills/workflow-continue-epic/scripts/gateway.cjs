@@ -203,8 +203,12 @@ function view(workUnit, newArrivalsJson) {
 
   // Held sessions elsewhere mark their topics across the snapshot: the
   // dashboard cue, the menu strike-through, the recommendation skip, and the
-  // ACTIONS markers the in-session confirm gate reads.
-  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions;
+  // ACTIONS markers the in-session confirm gate reads. "Elsewhere" is the
+  // whole point — a session that steps back to the menu holds a row of its
+  // own, and striking it through would have the display arguing with the
+  // user about a topic they are sitting in.
+  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions
+    .filter((r) => !engine.presence.ownsRow(r));
   const held = presence.filter((r) => r.held);
   // Code takes one slot per checkout, so the code entries read the whole
   // project's held rows, not just this epic's.
@@ -271,7 +275,8 @@ function inSessionGate(workUnit, key) {
   if (!e) {
     return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' });
   }
-  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions;
+  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions
+    .filter((r) => !engine.presence.ownsRow(r));
   const codeHeld = engine.presence.heldCodeSessions(process.cwd());
   const menu = engine.project.epicMenu(e.name, e.detail, { presence, codeHeld });
   const entry = menu.keys.find((k) => k.key === key);
