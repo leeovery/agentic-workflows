@@ -22,6 +22,7 @@ export type LobbyData =
       overviewRender: string | null;
       knowledge: { state: 'ready' | 'not-ready' | 'unknown' };
       durable: { counts: Record<string, number>; rows: any[] };
+      failedCaptures?: FailedCapture[];
       roadmap: { horizons: any[]; totals: Record<string, number>; itemCount: number } | null;
       baseline: { status: string } | null;
     };
@@ -36,9 +37,38 @@ export type ChannelData = {
   embed: string | null;
   artifacts: { path: string; phase: string }[];
   presence?: { phase?: string; topic?: string; held?: boolean; live?: boolean; session_id?: string }[];
+  humansViewing?: { humanId: string; name: string; lastSeenAt: string }[];
+  inferredSessions?: { phase: string; topic: string; mtime: string; inferred: true }[];
   telemetry?: TopicTelemetry[];
   planFormat?: string;
   agentsReading?: number;
+};
+
+// Phase 6: who the request is (single-user is always the sentinel "You").
+export type WhoamiData = {
+  mode: 'single' | 'github';
+  human: { id: string; name: string; member: boolean; sentinel: boolean; githubLogin: string | null };
+};
+
+// Phase 6: the ownership + comment overlay the bridge joins onto a gate card.
+export type GateOwnership = {
+  owner?: { id: string | null; name: string | null; stuck?: boolean; isYou: boolean };
+  canAnswer?: boolean;
+  watching?: boolean;
+  unreadComments?: number;
+  commentCount?: number;
+  resolvedExternallyAt?: string;
+};
+
+export type CommentData = { id: number; humanId: string; author: string; body: string; createdAt: string; read: boolean };
+
+export type FailedCapture = {
+  id: string;
+  kind: string;
+  payload: string;
+  provenance: { source: string; author?: string } | null;
+  error: string | null;
+  failedAt: string;
 };
 
 export type TopicTelemetry = {
@@ -147,7 +177,7 @@ export type GateCardData = {
   session: { bridgeSessionId: string; askOrdinal: number };
   openedAt: string;
   relayDiverged?: boolean;
-};
+} & GateOwnership;
 
 export type QueueRowData = {
   tier: 'live' | 'durable';
@@ -162,6 +192,9 @@ export type QueueRowData = {
   escalated?: boolean;
   stuck?: boolean;
   buildOrderPos?: number;
+  owner?: { id: string | null; name: string | null; isYou: boolean };
+  watching?: boolean;
+  unreadComments?: number;
 };
 
 export type SessionData = {
@@ -210,8 +243,31 @@ export const api = {
   startSession: (address: Record<string, unknown>, entryPrompt?: string) =>
     postJson<{ bridgeSessionId: string; state: string }>(`/api/session/start`, { address, entryPrompt }),
   answerGate: (gateId: string, text: string, bridgeSessionId?: string) =>
-    postJson<{ ok: boolean; state: string; reason?: string }>(`/api/gate/${gateId}/answer`, { text, bridgeSessionId }),
+    postJson<{ ok: boolean; state: string; reason?: string; error?: string; unreadComments?: number }>(`/api/gate/${gateId}/answer`, { text, bridgeSessionId }),
   endSession: (id: string) => postJson<{ ok: boolean }>(`/api/session/${encodeURIComponent(id)}/end`, {}),
+  // Phase 6 — identity.
+  whoami: () => getJson<WhoamiData>('/api/whoami'),
+  login: (githubLogin: string, token?: string) =>
+    postJson<{ human?: { id: string; name: string; member: boolean }; warning?: string; error?: string }>('/api/login', { githubLogin, token }),
+  logout: () => postJson<{ ok: boolean }>('/api/logout', {}),
+  // Phase 6 — gate ownership (routing).
+  claimGate: (gateId: string) => postJson<{ ok: boolean; ownerId: string }>(`/api/gate/${gateId}/claim`, {}),
+  claimChannel: (wu: string) => postJson<{ ok: boolean }>(`/api/channel/${encodeURIComponent(wu)}/claim`, {}),
+  // Phase 6 — comments (never push).
+  comments: (target: { gateId?: string; artifact?: string }) => {
+    const q = target.gateId ? `gateId=${target.gateId}` : `artifact=${encodeURIComponent(target.artifact ?? '')}`;
+    return getJson<{ comments: CommentData[] }>(`/api/comments?${q}`);
+  },
+  addComment: (target: { gateId?: string; artifact?: string }, body: string) =>
+    postJson<{ id: number }>('/api/comments', { ...target, body }),
+  markCommentsRead: (target: { gateId?: string; artifact?: string }) =>
+    postJson<{ ok: boolean }>('/api/comments/read', target).catch(() => ({ ok: false })),
+  // Phase 6 — the capture gesture.
+  capture: (kind: string, payload: string, provenance: Record<string, unknown>) =>
+    postJson<{ ok: boolean; captureId?: string; error?: string }>('/api/capture', { kind, payload, provenance }),
+  captures: () => getJson<{ failed: FailedCapture[] }>('/api/captures'),
+  retryCapture: (id: string) => postJson<{ ok: boolean }>(`/api/capture/${encodeURIComponent(id)}/retry`, {}),
+  discardCapture: (id: string) => postJson<{ ok: boolean }>(`/api/capture/${encodeURIComponent(id)}/discard`, {}),
 };
 
 // One shared SSE subscription; consumers register a refetch callback that
@@ -221,6 +277,9 @@ const listeners = new Set<Listener>();
 let source: EventSource | null = null;
 
 async function openStream(): Promise<void> {
+  // EventSource is absent in some environments (jsdom tests, older embeds) —
+  // degrade to fetch-on-mount without live-follow rather than crashing.
+  if (typeof EventSource === 'undefined') return;
   const token = await bridgeToken();
   source = new EventSource(token ? `/events?token=${token}` : '/events');
   let timer: ReturnType<typeof setTimeout> | null = null;

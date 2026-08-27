@@ -6,18 +6,26 @@
 // path: everything becomes an ordinary user turn.
 import { useEffect, useRef, useState } from 'react';
 import { clsx } from 'clsx';
-import type { GateCardData } from '../api';
+import { api, type GateCardData } from '../api';
+import { GateComments } from './GateComments';
 
 export function GateCard({
   card,
   onAnswer,
   busy,
+  onClaim,
 }: {
   card: GateCardData;
   onAnswer: (text: string) => void;
   busy?: boolean;
+  onClaim?: () => void;
 }) {
   const [text, setText] = useState('');
+  const [showComments, setShowComments] = useState(false);
+  // The ceremony: unread comments block the confirm until the thread is opened.
+  // Local "seen" makes it crisp — opening the thread clears the block at once,
+  // ahead of the server round-trip that zeroes card.unreadComments.
+  const [seenComments, setSeenComments] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -27,16 +35,31 @@ export function GateCard({
   }, [card.id]);
 
   const typed = card.confirm === 'typed';
+  const externallyResolved = card.state === 'resolved-externally' || Boolean(card.resolvedExternallyAt);
   const resolvedish = card.state !== 'open';
+  // Ownership routing (UI-side): a watcher's submit is disabled; a stuck gate
+  // opens to anyone. The process enforces none of this.
+  const watching = card.watching === true;
+  const unread = seenComments ? 0 : card.unreadComments ?? 0;
+  const blockedByComments = unread > 0;
+  const submitBlocked = busy || resolvedish || watching || blockedByComments;
+
+  const openComments = () => {
+    setShowComments(true);
+    if (!seenComments) {
+      setSeenComments(true);
+      api.markCommentsRead({ gateId: card.id });
+    }
+  };
 
   const submitFree = () => {
-    if (text.trim() === '' || busy) return;
+    if (text.trim() === '' || submitBlocked) return;
     onAnswer(text.trim());
     setText('');
   };
 
   const tapOption = (key: string) => {
-    if (busy || resolvedish) return;
+    if (submitBlocked) return;
     if (typed) {
       // Never one-tap: typing the key into the input is the confirmation.
       inputRef.current?.focus();
@@ -75,6 +98,39 @@ export function GateCard({
         </span>
         {card.surface && <span className="ml-auto font-mono text-[10px] text-stone-400">{card.surface}</span>}
       </header>
+
+      {/* Ownership badge — routing, never authority (Phase 6). */}
+      {card.owner && card.owner.id && !externallyResolved && (
+        <div className="px-4 pt-1.5 flex items-center gap-2 text-xs font-sans">
+          {card.owner.isYou ? (
+            <span className="text-ok">● you own this decision</span>
+          ) : card.owner.stuck ? (
+            <span className="text-warn">
+              ● stuck — {card.owner.name} hasn't acted{' '}
+              {onClaim && (
+                <button className="text-nav hover:underline" onClick={onClaim}>
+                  claim?
+                </button>
+              )}
+            </span>
+          ) : (
+            <span className="text-stone-500">
+              ● owned by {card.owner.name} — you're watching{' '}
+              {onClaim && (
+                <button className="text-nav hover:underline" onClick={onClaim}>
+                  claim
+                </button>
+              )}
+            </span>
+          )}
+        </div>
+      )}
+
+      {externallyResolved && (
+        <p className="mx-4 mt-2 text-xs font-sans text-stone-500">
+          Answered outside the UI — the decision was made in a terminal session; this card is closed.
+        </p>
+      )}
 
       {card.relayDiverged && (
         <p className="mx-4 mt-2 text-xs font-sans text-warn">
@@ -116,6 +172,16 @@ export function GateCard({
             This one is never answered with a tap — type the option to confirm it.
           </p>
         )}
+        {/* The ceremony: a sign-off cannot be finalised over unseen comments. */}
+        {blockedByComments && !resolvedish && (
+          <button
+            data-testid="unread-block"
+            onClick={openComments}
+            className="mb-1.5 text-xs font-sans text-warn hover:underline"
+          >
+            {unread} unread comment{unread > 1 ? 's' : ''} — read {unread > 1 ? 'them' : 'it'} before answering →
+          </button>
+        )}
         <div className="flex gap-2">
           <input
             ref={inputRef}
@@ -124,19 +190,50 @@ export function GateCard({
             onKeyDown={(e) => {
               if (e.key === 'Enter') submitFree();
             }}
-            disabled={busy || resolvedish}
-            placeholder={typed ? 'type the option key to confirm…' : 'answer in your own words, or type an option key…'}
-            className="flex-1 rounded border border-stone-300 dark:border-stone-700 bg-transparent px-3 py-1.5 text-sm font-sans focus:outline-none focus:border-gate"
+            disabled={submitBlocked}
+            placeholder={
+              watching
+                ? 'watching — the owner answers this one'
+                : typed
+                  ? 'type the option key to confirm…'
+                  : 'answer in your own words, or type an option key…'
+            }
+            className="flex-1 rounded border border-stone-300 dark:border-stone-700 bg-transparent px-3 py-1.5 text-sm font-sans focus:outline-none focus:border-gate disabled:opacity-50"
           />
           <button
             onClick={submitFree}
-            disabled={busy || resolvedish || text.trim() === ''}
+            disabled={submitBlocked || text.trim() === ''}
             className="rounded px-3 py-1.5 text-sm font-sans bg-nav text-white disabled:opacity-40"
           >
             {busy ? 'answering…' : 'answer'}
           </button>
         </div>
-        {resolvedish && (
+        {/* Comments toggle — the count badges the control; opening marks read. */}
+        {!externallyResolved && (
+          <button
+            onClick={() => (showComments ? setShowComments(false) : openComments())}
+            className="mt-1.5 text-xs font-sans text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
+          >
+            {showComments ? 'hide' : 'comments'}
+            {(card.commentCount ?? 0) > 0 && (
+              <span className="ml-1 font-mono text-[10px] rounded-full bg-stone-200 dark:bg-stone-800 px-1.5">
+                {card.commentCount}
+                {unread > 0 && <span className="text-gate"> · {unread} new</span>}
+              </span>
+            )}
+          </button>
+        )}
+        {showComments && (
+          <GateComments
+            target={{ gateId: card.id }}
+            onQuote={(q) => {
+              setText((t) => (t ? `${t}\n\n${q}` : q));
+              inputRef.current?.focus();
+            }}
+            onOpened={openComments}
+          />
+        )}
+        {resolvedish && !externallyResolved && (
           <p className="mt-1.5 text-xs font-sans text-stone-400">
             {card.state === 'resolved-externally' ? 'answered outside this card' : card.state}
           </p>

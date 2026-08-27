@@ -8,6 +8,7 @@ import { api, useLive, type Health, type LobbyData, type SessionData, type Queue
 import { EngineEmbed } from '../components/EngineEmbed';
 import { SessionHealthBadge } from '../components/SessionHealthBadge';
 import { DigestCard } from '../components/DigestCard';
+import { FailedCaptures } from '../components/FailedCaptures';
 import type { DigestStripEntry } from '../api';
 
 const GROUPS: [string, string][] = [
@@ -19,7 +20,7 @@ const GROUPS: [string, string][] = [
 ];
 
 export function Lobby() {
-  const { data: lobby, error } = useLive<LobbyData>(() => api.lobby());
+  const { data: lobby, error, reload } = useLive<LobbyData>(() => api.lobby());
   const { data: health } = useLive<Health>(() => api.health());
   const { data: sessionsData } = useLive<{ sessions: SessionData[] }>(() => api.sessions());
   const { data: queueData } = useLive<{ rows: QueueRowData[] }>(() => api.queue());
@@ -82,6 +83,11 @@ export function Lobby() {
           Memory not initialised — finish knowledge setup in a terminal session (
           <span className="font-mono">/workflow-start</span> walks you through it).
         </div>
+      )}
+
+      {/* Failed captures — durable, payload retained, never a lost toast. */}
+      {!lobby.empty && (lobby.failedCaptures?.length ?? 0) > 0 && (
+        <FailedCaptures rows={lobby.failedCaptures ?? []} onChange={reload} />
       )}
 
       {/* NEEDS YOU — top cross-unit queue rows (the morning answer, intent 3).

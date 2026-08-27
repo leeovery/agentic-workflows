@@ -48,15 +48,27 @@ export function Queue() {
     if (row.address.workUnit) navigate(`/c/${row.address.workUnit}`);
   };
 
+  const [answerNote, setAnswerNote] = useState<string | null>(null);
   const answer = async (gateId: string, text: string) => {
     setBusy(true);
+    setAnswerNote(null);
     try {
-      await api.answerGate(gateId, text);
+      const res = await api.answerGate(gateId, text);
+      // A blocked answer (watching / unread comments) keeps the card open with
+      // the reason — never a silent no-op.
+      if (res.ok === false) {
+        setAnswerNote(res.error ?? res.reason ?? 'could not answer');
+        return;
+      }
+      setOverlayGate(null);
     } finally {
       setBusy(false);
-      setOverlayGate(null);
       reload();
     }
+  };
+  const claim = async (gateId: string) => {
+    await api.claimGate(gateId);
+    reload();
   };
 
   const overlay = overlayGate ? openCards.get(overlayGate) : null;
@@ -90,6 +102,17 @@ export function Queue() {
             <span className="font-serif text-sm truncate flex-1 text-stone-800 dark:text-stone-200">
               {row.tier === 'live' ? (row.askPreview ?? '') : row.detail}
             </span>
+            {/* Ownership + ceremony cues (Phase 6). */}
+            {row.stuck ? (
+              <span className="shrink-0 text-[10px] font-sans text-warn border border-warn/40 rounded px-1.5">stuck — claim?</span>
+            ) : row.owner?.id && !row.owner.isYou ? (
+              <span className="shrink-0 text-[10px] font-sans text-stone-400" title={`owned by ${row.owner.name}`}>watching</span>
+            ) : row.owner?.isYou ? (
+              <span className="shrink-0 text-[10px] font-sans text-ok">yours</span>
+            ) : null}
+            {(row.unreadComments ?? 0) > 0 && (
+              <span className="shrink-0 text-[10px] font-mono text-gate" title="unread comments block sign-off">💬 {row.unreadComments}</span>
+            )}
             {row.tier === 'live' && <EscalationChip since={row.since} escalated={row.escalated} />}
             <time className="font-sans text-xs text-stone-400 shrink-0">{age(row.since)}</time>
           </button>
@@ -109,8 +132,9 @@ export function Queue() {
               {overlay.kind === 'batch-screen' ? (
                 <BatchScreenCard card={overlay} onAnswer={(text) => answer(overlay.id, text)} busy={busy} />
               ) : (
-                <GateCard card={overlay} onAnswer={(text) => answer(overlay.id, text)} busy={busy} />
+                <GateCard card={overlay} onAnswer={(text) => answer(overlay.id, text)} busy={busy} onClaim={() => claim(overlay.id)} />
               )}
+              {answerNote && <p className="px-2 pb-1 text-xs font-sans text-warn">{answerNote}</p>}
               <button
                 className="text-xs font-sans text-nav hover:underline px-2 pb-2"
                 onClick={() => navigate(`/s/${overlay.session.bridgeSessionId}`)}

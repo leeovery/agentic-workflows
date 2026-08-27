@@ -19,6 +19,9 @@ import { loadOrMintToken } from './auth.js';
 import { generateAllowlist } from './allowlist.js';
 import { SessionManager, SdkDriver } from './sessions.js';
 import { AttentionCoordinator } from './attention-coordinator.js';
+import { Identity } from './identity.js';
+import { CaptureRunner } from './capture.js';
+import { assignOwnerOnOpen } from './ownership.js';
 import { Replayer } from './replay.js';
 import { convertTranscript, deriveAnswers, snapshotWorld } from './convert.js';
 import { Journal } from './journal.js';
@@ -173,6 +176,12 @@ async function runLive(projectRoot: string): Promise<void> {
   let mirror: { host: string } | null = null;
   let sessions: SessionManager | null = null;
   let attention: AttentionCoordinator | null = null;
+  let capture: CaptureRunner | null = null;
+  // Identity resolves every request to a human. Single-user (default) is the
+  // Phase 0 sentinel and needs nothing; github mode verifies push access with
+  // the server's GITHUB_TOKEN (never in argv, never over chat).
+  const identity = new Identity(db, config.auth, { serverToken: process.env.GITHUB_TOKEN });
+  const stuckMs = config.notifications.stuckHours * 3600 * 1000;
   if (hs.mode === 'full') {
     const lease = acquireLease(projectRoot, bridgeId);
     if (!lease.held) {
@@ -193,6 +202,16 @@ async function runLive(projectRoot: string): Promise<void> {
       // Idle-timeout sweep (spec 2): retire sessions idle past 4h.
       const idleTimer = setInterval(() => sessions?.reapIdle(Date.now()), 10 * 60 * 1000);
       idleTimer.unref?.();
+
+      // The capture-gesture runner — an ephemeral headless session per park,
+      // fire-and-reconcile with a durable-failure lobby row. Only when driving
+      // (a read-only mirror has no session authority).
+      capture = new CaptureRunner(db, new SdkDriver(arg('session-model')), {
+        projectRoot,
+        project,
+        allowedTools: generateAllowlist(projectRoot),
+        displayWidth: WIDTH,
+      });
 
       // The attention system (Phase 3): ceremony, escalation, digests. Push
       // delivery is the web-push sink; in the prototype it also logs on the
@@ -239,6 +258,10 @@ async function runLive(projectRoot: string): Promise<void> {
       digests: () => attention?.lobbyStrip() ?? [],
       markActivity: (sig) => attention?.markActivity(sig),
       isEscalated: (gateId) => attention?.isEscalated(gateId) ?? false,
+      identity,
+      capture,
+      project,
+      stuckMs,
     },
     health: (): HealthState => ({
       ok: true,
@@ -345,6 +368,9 @@ async function runLive(projectRoot: string): Promise<void> {
       payload,
     });
     sessions.on('gate', (ev: { type: string; card?: any; gateId?: string; via?: string; bridgeSessionId: string }) => {
+      // Assign the owner the moment a gate opens (precedence: session driver →
+      // channel default). UI-side routing only; the engine never sees this.
+      if (ev.type === 'gate.opened' && ev.card) assignOwnerOnOpen(db, project, ev.card);
       const payload = ev.card ? { card: ev.card } : { gateId: ev.gateId, via: ev.via ?? 'ui' };
       const type = ev.type === 'gate.opened' || ev.type === 'gate.answered' || ev.type === 'gate.resolved' ? ev.type : 'gate.resolved';
       server.broadcast([mkLive(type, ev.card?.address ?? {}, payload) as any]);

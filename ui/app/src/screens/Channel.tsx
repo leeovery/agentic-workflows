@@ -90,7 +90,13 @@ export function Channel() {
             {starting ? 'starting…' : channelSessions.length > 0 ? 'open session' : 'drive from here'}
           </button>
         </header>
-        {data.presence && <PresenceStrip rows={data.presence} />}
+        {(data.presence || data.humansViewing || data.inferredSessions) && (
+          <PresenceStrip
+            rows={data.presence ?? []}
+            humansViewing={data.humansViewing ?? []}
+            inferred={data.inferredSessions ?? []}
+          />
+        )}
 
         <section>
           <div className="region-label mb-1">Spine</div>

@@ -75,7 +75,62 @@ describe('GateCard', () => {
     render(<GateCard card={card({ state: 'resolved-externally' })} onAnswer={onAnswer} />);
     fireEvent.click(screen.getByText(/Wrap up/));
     expect(onAnswer).not.toHaveBeenCalled();
-    expect(screen.getByText(/answered outside this card/)).toBeTruthy();
+    // Phase 6: a resolved-externally card renders the spec's own "answered
+    // outside the UI" copy (done-means), replacing the old footer note.
+    expect(screen.getByText(/Answered outside the UI/)).toBeTruthy();
+  });
+
+  // --- Phase 6: ownership routing + the comment ceremony -------------------
+
+  it('a watcher cannot answer; the owner badge names who owns it, claim is offered', () => {
+    const onAnswer = vi.fn();
+    const onClaim = vi.fn();
+    render(
+      <GateCard
+        card={card({ owner: { id: 'gh:alice', name: 'alice', isYou: false }, watching: true, canAnswer: false })}
+        onAnswer={onAnswer}
+        onClaim={onClaim}
+      />,
+    );
+    expect(screen.getByText(/owned by alice/)).toBeTruthy();
+    fireEvent.click(screen.getByText(/Wrap up/)); // a tap must not answer while watching
+    expect(onAnswer).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('claim'));
+    expect(onClaim).toHaveBeenCalled();
+  });
+
+  it('a stuck owner surfaces a claim? prompt', () => {
+    render(
+      <GateCard
+        card={card({ owner: { id: 'gh:alice', name: 'alice', isYou: false, stuck: true }, watching: true })}
+        onAnswer={() => {}}
+        onClaim={() => {}}
+      />,
+    );
+    expect(screen.getByText(/stuck/)).toBeTruthy();
+    expect(screen.getByText('claim?')).toBeTruthy();
+  });
+
+  it('unread comments block the confirm until the thread is opened (the ceremony)', () => {
+    const onAnswer = vi.fn();
+    // Stub the network the comment thread touches (token + mark-read + list).
+    const g = globalThis as any;
+    g.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ token: null, comments: [] }) }));
+    render(
+      <GateCard
+        card={card({ owner: { id: 'me', name: 'You', isYou: true }, canAnswer: true, unreadComments: 2, commentCount: 2 })}
+        onAnswer={onAnswer}
+      />,
+    );
+    // The answer button is disabled while comments are unseen.
+    fireEvent.click(screen.getByText(/Wrap up/));
+    expect(onAnswer).not.toHaveBeenCalled();
+    expect(screen.getByTestId('unread-block')).toBeTruthy();
+    // Opening the thread clears the block; the option now answers.
+    fireEvent.click(screen.getByTestId('unread-block'));
+    fireEvent.click(screen.getByText(/Wrap up/));
+    expect(onAnswer).toHaveBeenCalledWith('w');
+    delete g.fetch;
   });
 
   it('shows the relay-divergence notice when the model paraphrased the menu', () => {

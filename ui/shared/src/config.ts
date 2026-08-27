@@ -26,6 +26,19 @@ export const NotificationConfig = z.object({
   graceMinutes: z.number().int().positive().default(5),
 });
 
+// Phase 6 auth. `single` (default) is zero-config — every request is the Phase 0
+// sentinel human, the bearer token is the whole trust boundary. `github` layers
+// identity on top: a human authenticates as a GitHub login, and membership =
+// push access to the origin repo, checked at login and cached per auth session.
+export const AuthConfig = z.object({
+  mode: z.enum(['single', 'github']).default('single'),
+  // owner/repo of the origin whose push-access defines membership (github mode).
+  repo: z.string().optional(),
+  // GitHub API base — overridable for Enterprise; never carries a token.
+  apiBase: z.string().default('https://api.github.com'),
+});
+export type AuthConfig = z.infer<typeof AuthConfig>;
+
 export const BridgeConfig = z.object({
   projects: z.array(ProjectConfig).default([]),
   // Every engine invocation pins this width — renders are terminal-width-sensitive.
@@ -34,5 +47,6 @@ export const BridgeConfig = z.object({
   port: z.number().int().positive().default(4870),
   // Daily session cost budget warning, USD (spec 2 lifecycle rules).
   dailyBudgetUsd: z.number().positive().optional(),
+  auth: AuthConfig.default({}),
 });
 export type BridgeConfig = z.infer<typeof BridgeConfig>;

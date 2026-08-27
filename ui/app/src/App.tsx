@@ -11,6 +11,8 @@ import { Queue } from './screens/Queue';
 import { SessionThread } from './screens/SessionThread';
 import { Roadmap } from './screens/Roadmap';
 import { Palette } from './Palette';
+import { IdentityBadge } from './components/IdentityBadge';
+import { CaptureButton } from './components/CaptureButton';
 
 // Storage and matchMedia can be absent or throwing (privacy modes, test
 // environments) — the theme must still resolve.
@@ -167,16 +169,22 @@ export default function App() {
           </NavLink>
         ))}
         {units.length === 0 && <div className="px-2 text-xs text-stone-400 font-sans">no active work</div>}
-        <div className="mt-auto flex items-center justify-between px-2 pt-3 border-t border-stone-200 dark:border-stone-800">
-          <button onClick={toggleTheme} className="text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300">
-            {dark ? 'light' : 'dark'}
-          </button>
-          <button
-            onClick={() => setPaletteOpen(true)}
-            className="text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
-          >
-            ⌘K
-          </button>
+        <div className="mt-auto flex flex-col gap-2 px-2 pt-3 border-t border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between">
+            <IdentityBadge />
+            <CaptureButton />
+          </div>
+          <div className="flex items-center justify-between">
+            <button onClick={toggleTheme} className="text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300">
+              {dark ? 'light' : 'dark'}
+            </button>
+            <button
+              onClick={() => setPaletteOpen(true)}
+              className="text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
+            >
+              ⌘K
+            </button>
+          </div>
         </div>
       </nav>
 

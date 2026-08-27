@@ -20,8 +20,29 @@ import { planDag } from './plan-dag.js';
 import { checkToken } from './auth.js';
 import type { SessionManager } from './sessions.js';
 import type { Db } from './db.js';
-import { HUMAN_SENTINEL } from './db.js';
 import { SPINE_EVENT_TYPES } from '@workflow-ui/shared';
+import { Identity, SENTINEL_HUMAN, AUTH_COOKIE, type Human } from './identity.js';
+import { CaptureRunner, type CaptureKind } from './capture.js';
+import {
+  assignOwnerOnOpen,
+  claimGate,
+  reassignChannel,
+  ensureChannelDefault,
+  recordSessionDriver,
+  noteOwnerActivity,
+  ownerInfo,
+  mayAnswer,
+  externallyResolvedAt,
+} from './ownership.js';
+import { beatViewing, humansViewing, inferredWorkingSessions } from './presence-humans.js';
+import {
+  addComment,
+  listComments,
+  markTargetRead,
+  unreadForGate,
+  countForGate,
+  type CommentTarget,
+} from './comments.js';
 
 export type ApiDeps = {
   projectRoot: string;
@@ -35,7 +56,18 @@ export type ApiDeps = {
   digests?: () => unknown; // lobby digest strip provider (Phase 3)
   markActivity?: (sig: { appConnected?: boolean; focusedThread?: string | null; interaction?: boolean }) => void;
   isEscalated?: (gateId: string) => boolean; // Phase 3 escalation join for the queue
+  // Phase 6 multiplayer.
+  identity?: Identity | null; // human resolution + GitHub member check
+  capture?: CaptureRunner | null; // the ephemeral capture-gesture runner
+  project?: string; // the project name (presence/comment scoping)
+  stuckMs?: number; // T_stuck for owner-inactivity (config.stuckHours)
 };
+
+// The current human for a request. Absent identity (or a read-only mirror
+// without it) resolves to the Phase 0 sentinel — single-user stays zero-config.
+function currentHuman(deps: ApiDeps, req: http.IncomingMessage): Human {
+  return deps.identity ? deps.identity.resolve(req.headers.cookie) : SENTINEL_HUMAN;
+}
 
 type Json = Record<string, unknown>;
 
@@ -105,14 +137,37 @@ export async function handleApi(
       await lobby(res, deps);
       return true;
     }
+    if (url.pathname === '/api/captures') {
+      send(res, 200, { failed: deps.capture ? deps.capture.list() : [] });
+      return true;
+    }
     if (url.pathname === '/api/token') {
       // Same-origin pages only (Host+Origin checked upstream) — hands the
       // SPA its bearer token for mutating calls.
       send(res, 200, { token: deps.token ?? null });
       return true;
     }
+    if (url.pathname === '/api/whoami') {
+      const human = currentHuman(deps, req);
+      send(res, 200, {
+        mode: deps.identity?.mode ?? 'single',
+        human: { id: human.id, name: human.name, member: human.member, sentinel: human.sentinel, githubLogin: human.githubLogin },
+        repo: deps.identity?.mode === 'github' ? undefined : undefined,
+      });
+      return true;
+    }
+    if (url.pathname === '/api/comments') {
+      const target = commentTargetFromQuery(url);
+      if (!target || !deps.db) {
+        send(res, 400, { error: 'a gateId or artifact target is required' });
+        return true;
+      }
+      const viewer = currentHuman(deps, req);
+      send(res, 200, { comments: listComments(deps.db, deps.project ?? '', target, viewer.id) });
+      return true;
+    }
     if (url.pathname === '/api/queue') {
-      await queueView(res, deps);
+      await queueView(res, deps, currentHuman(deps, req));
       return true;
     }
     if (url.pathname === '/api/digests') {
@@ -127,9 +182,10 @@ export async function handleApi(
     if (thread && deps.sessions) {
       const t = deps.sessions.transcript(decodeURIComponent(thread[1]!));
       const row = deps.sessions.get(decodeURIComponent(thread[1]!));
+      const viewer = currentHuman(deps, req);
       send(res, 200, {
         state: row?.state ?? 'dead',
-        openGate: row?.openGate ?? null,
+        openGate: row?.openGate ? gateWithOwnership(deps, row.openGate, viewer) : null,
         lastError: row?.lastError,
         records: t.records,
         asks: t.asks.map((a) => ({ ordinal: a.ordinal, gateId: a.gateId, answered: a.answered, kind: a.detection.kind, turn: a.turn })),
@@ -143,7 +199,7 @@ export async function handleApi(
         send(res, 400, { error: 'work unit name refused' });
         return true;
       }
-      await channelView(res, deps, wu);
+      await channelView(res, deps, wu, currentHuman(deps, req));
       return true;
     }
     const artifact = url.pathname.match(/^\/api\/artifact\/([^/]+)$/);
@@ -153,7 +209,7 @@ export async function handleApi(
         send(res, 400, { error: 'work unit name refused' });
         return true;
       }
-      artifactView(res, deps, wu, url.searchParams.get('path') ?? '');
+      artifactView(res, deps, wu, url.searchParams.get('path') ?? '', currentHuman(deps, req).id);
       return true;
     }
     const history = url.pathname.match(/^\/api\/history\/([^/]+)$/);
@@ -217,14 +273,14 @@ function headSha(projectRoot: string): string | null {
   return sha;
 }
 
-function readRef(db: Db, projectRoot: string, artifact: string): { sha: string; state: string } | null {
+function readRef(db: Db, projectRoot: string, artifact: string, humanId: string): { sha: string; state: string } | null {
   const row = db.sqlite
     .prepare('SELECT sha, state FROM artifact_read_refs WHERE human_id = ? AND project = ? AND artifact = ?')
-    .get(HUMAN_SENTINEL, path.basename(path.resolve(projectRoot)), artifact) as { sha: string; state: string } | undefined;
+    .get(humanId, path.basename(path.resolve(projectRoot)), artifact) as { sha: string; state: string } | undefined;
   return row ?? null;
 }
 
-function recordReadRef(db: Db, projectRoot: string, wu: string, rel: string): void {
+function recordReadRef(db: Db, projectRoot: string, wu: string, rel: string, humanId: string): void {
   const sha = headSha(projectRoot);
   if (!sha) return;
   const artifact = `${wu}/${rel}`;
@@ -234,7 +290,24 @@ function recordReadRef(db: Db, projectRoot: string, wu: string, rel: string): vo
        VALUES (?, ?, ?, ?, 'current', ?)
        ON CONFLICT(human_id, project, artifact) DO UPDATE SET sha = excluded.sha, state = 'current', rendered_at = excluded.rendered_at`,
     )
-    .run(HUMAN_SENTINEL, path.basename(path.resolve(projectRoot)), artifact, sha, new Date().toISOString());
+    .run(humanId, path.basename(path.resolve(projectRoot)), artifact, sha, new Date().toISOString());
+}
+
+/** A comment target from ?gateId= or ?artifact= (mutually exclusive). */
+function commentTargetFromQuery(url: URL): CommentTarget | null {
+  const gateId = url.searchParams.get('gateId');
+  if (gateId && /^[0-9a-f]{16}$/.test(gateId)) return { gateId };
+  const artifact = url.searchParams.get('artifact');
+  if (artifact) return { artifact };
+  return null;
+}
+
+/** A comment target from a POST body (gateId or artifact). */
+function bodyCommentTarget(body: Record<string, unknown>): CommentTarget | null {
+  const gateId = body.gateId ? String(body.gateId) : '';
+  if (/^[0-9a-f]{16}$/.test(gateId)) return { gateId };
+  if (body.artifact) return { artifact: String(body.artifact) };
+  return null;
 }
 
 function publicSessions(deps: ApiDeps): unknown[] {
@@ -267,7 +340,30 @@ async function roadmapView(res: http.ServerResponse, deps: ApiDeps): Promise<voi
   });
 }
 
-async function queueView(res: http.ServerResponse, deps: ApiDeps): Promise<void> {
+/**
+ * The ownership + comment overlay for a gate card, for `viewer`. Returns the
+ * card with owner/stuck/unread/canAnswer sibling fields the SPA reads to route
+ * submit/watch and badge the card. Never mutates the card's engine-derived core.
+ */
+function gateWithOwnership(deps: ApiDeps, card: any, viewer: Human): any {
+  if (!deps.db) return card;
+  const stuckMs = deps.stuckMs ?? 24 * 3600 * 1000;
+  const escalated = deps.isEscalated?.(card.id) ?? false;
+  const info = ownerInfo(deps.db, card.id, { escalated, now: Date.now(), stuckMs });
+  const unread = unreadForGate(deps.db, deps.project ?? '', card.id, viewer.id);
+  const commentCount = countForGate(deps.db, deps.project ?? '', card.id);
+  const perm = mayAnswer(deps.db, card.id, viewer.id, { escalated, now: Date.now(), stuckMs });
+  return {
+    ...card,
+    owner: { id: info.ownerId, name: info.ownerName, stuck: info.stuck, isYou: info.ownerId === viewer.id },
+    canAnswer: perm.ok,
+    watching: !perm.ok,
+    unreadComments: unread,
+    commentCount,
+  };
+}
+
+async function queueView(res: http.ServerResponse, deps: ApiDeps, viewer: Human): Promise<void> {
   const snap = snapshotTree(deps.projectRoot);
   if (deps.engine) await attachDerived(snap, deps.engine);
   // Build order per epic (spec item `order` fields) — the queue's within-epic
@@ -282,6 +378,22 @@ async function queueView(res: http.ServerResponse, deps: ApiDeps): Promise<void>
     }
   }
   const rows = buildQueue(durableRows(snap, deps.projectRoot), deps.sessions ?? null, deps.store, buildOrder, deps.isEscalated);
+  // Overlay ownership + unread onto live (gate-bearing) rows. A stuck gate
+  // surfaces in EVERYONE's queue (the "stuck — claim?" chip); a watcher's row
+  // is marked so the SPA shows read-only.
+  if (deps.db) {
+    const stuckMs = deps.stuckMs ?? 24 * 3600 * 1000;
+    for (const row of rows as any[]) {
+      if (row.tier !== 'live' || !row.gateId) continue;
+      const escalated = deps.isEscalated?.(row.gateId) ?? false;
+      const info = ownerInfo(deps.db, row.gateId, { escalated, now: Date.now(), stuckMs });
+      const perm = mayAnswer(deps.db, row.gateId, viewer.id, { escalated, now: Date.now(), stuckMs });
+      row.owner = { id: info.ownerId, name: info.ownerName, isYou: info.ownerId === viewer.id };
+      row.stuck = info.stuck;
+      row.watching = !perm.ok;
+      row.unreadComments = unreadForGate(deps.db, deps.project ?? '', row.gateId, viewer.id);
+    }
+  }
   send(res, 200, { rows });
 }
 
@@ -292,15 +404,16 @@ async function handleMutation(
   deps: ApiDeps,
 ): Promise<void> {
   const body = await readBody(req);
+  const human = currentHuman(deps, req);
 
   // Advance the artifact read-ref — a deliberate, focused view, not a side
-  // effect of every GET (round-10 finding).
+  // effect of every GET (round-10 finding). Per-human (Phase 6 multiplayer).
   const read = url.pathname.match(/^\/api\/artifact\/([^/]+)\/read$/);
   if (read && deps.db) {
     const wu = decodeURIComponent(read[1]!);
     const rel = String(body.path ?? '');
     if (validUnitName(wu) && rel.endsWith('.md') && !rel.split('/').includes('..')) {
-      recordReadRef(deps.db, deps.projectRoot, wu, rel);
+      recordReadRef(deps.db, deps.projectRoot, wu, rel, human.id);
       send(res, 200, { ok: true });
     } else {
       send(res, 400, { error: 'artifact path refused' });
@@ -309,13 +422,125 @@ async function handleMutation(
   }
 
   // Activity signalling needs no session manager (a read-only mirror still
-  // reports focus for suppression).
+  // reports focus for suppression). It also beats the human's VIEWING presence
+  // (Phase 6) — the channel is the focused thread (or '' for the lobby).
   if (url.pathname === '/api/activity') {
     deps.markActivity?.({
       appConnected: body.appConnected !== false,
       focusedThread: (body.focusedThread as string | null) ?? null,
       interaction: body.interaction === true,
     });
+    if (deps.db && deps.project) {
+      beatViewing(deps.db, deps.project, human.id, String(body.focusedThread ?? ''));
+    }
+    send(res, 200, { ok: true });
+    return;
+  }
+
+  // --- Phase 6 auth (github mode) ------------------------------------------
+  if (url.pathname === '/api/login') {
+    if (!deps.identity) {
+      send(res, 503, { error: 'auth unavailable' });
+      return;
+    }
+    const result = await deps.identity.login(String(body.githubLogin ?? ''), body.token ? String(body.token) : undefined);
+    if ('error' in result) {
+      send(res, 400, { error: result.error });
+      return;
+    }
+    // HttpOnly, SameSite=Strict, Path=/ — the cookie never reaches script and
+    // never rides a cross-site request. Not Secure: the bridge is localhost.
+    res.setHeader(
+      'set-cookie',
+      `${AUTH_COOKIE}=${result.cookie}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000`,
+    );
+    send(res, result.human.member ? 200 : 403, {
+      human: { id: result.human.id, name: result.human.name, member: result.human.member },
+      ...(result.human.member ? {} : { warning: `${result.human.name} is not a member (no push access to the origin repo)` }),
+    });
+    return;
+  }
+  if (url.pathname === '/api/logout') {
+    deps.identity?.logout(req.headers.cookie);
+    res.setHeader('set-cookie', `${AUTH_COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
+    send(res, 200, { ok: true });
+    return;
+  }
+
+  // --- Phase 6 comments (never push; the ceremony gates the confirm) --------
+  if (url.pathname === '/api/comments' && deps.db) {
+    const target = commentTargetFromQuery(url) ?? (bodyCommentTarget(body));
+    const bodyText = String(body.body ?? '').trim();
+    if (!target || bodyText === '') {
+      send(res, 400, { error: 'a target and non-empty body are required' });
+      return;
+    }
+    const id = addComment(deps.db, deps.project ?? '', human.id, target, bodyText);
+    send(res, 200, { id });
+    return;
+  }
+  if (url.pathname === '/api/comments/read' && deps.db) {
+    const target = bodyCommentTarget(body);
+    if (!target) {
+      send(res, 400, { error: 'a target is required' });
+      return;
+    }
+    markTargetRead(deps.db, deps.project ?? '', target, human.id);
+    send(res, 200, { ok: true });
+    return;
+  }
+
+  // --- Phase 6 gate ownership (routing, not authority) ----------------------
+  const claim = url.pathname.match(/^\/api\/gate\/([0-9a-f]{16})\/claim$/);
+  if (claim && deps.db) {
+    claimGate(deps.db, claim[1]!, human.id);
+    send(res, 200, { ok: true, ownerId: human.id });
+    return;
+  }
+  const claimChannel = url.pathname.match(/^\/api\/channel\/([^/]+)\/claim$/);
+  if (claimChannel && deps.db) {
+    const wu = decodeURIComponent(claimChannel[1]!);
+    if (!validUnitName(wu)) {
+      send(res, 400, { error: 'work unit name refused' });
+      return;
+    }
+    reassignChannel(deps.db, deps.project ?? '', wu, human.id);
+    send(res, 200, { ok: true, ownerId: human.id });
+    return;
+  }
+
+  // --- Phase 6 capture gesture ---------------------------------------------
+  if (url.pathname === '/api/capture') {
+    if (!deps.capture) {
+      send(res, 503, { error: 'capture unavailable (read-only mirror)' });
+      return;
+    }
+    const kind = String(body.kind ?? 'idea') as CaptureKind;
+    const payload = String(body.payload ?? '').trim();
+    if (!['idea', 'bug', 'quickfix', 'roadmap'].includes(kind) || payload === '') {
+      send(res, 400, { error: 'a kind and non-empty payload are required' });
+      return;
+    }
+    // The route AWAITS the ephemeral session; the SPA has already shown its
+    // optimistic toast, so this response is the reconcile. A failure is a
+    // durable row, not an error the user must catch.
+    const result = await deps.capture.run({
+      kind,
+      payload,
+      provenance: (body.provenance as any) ?? { source: 'bridge' },
+      humanId: human.id,
+    });
+    send(res, 200, result);
+    return;
+  }
+  const retry = url.pathname.match(/^\/api\/capture\/([^/]+)\/retry$/);
+  if (retry && deps.capture) {
+    send(res, 200, await deps.capture.retry(decodeURIComponent(retry[1]!)));
+    return;
+  }
+  const discardCap = url.pathname.match(/^\/api\/capture\/([^/]+)\/discard$/);
+  if (discardCap && deps.capture) {
+    deps.capture.discard(decodeURIComponent(discardCap[1]!));
     send(res, 200, { ok: true });
     return;
   }
@@ -331,6 +556,14 @@ async function handleMutation(
       ? body.entryPrompt
       : '/workflow-start';
     const row = await deps.sessions.start(address, entryPrompt);
+    // Record the launching human — the primary input to gate-ownership
+    // precedence ("a gate a named human launched belongs to that human").
+    if (deps.db) recordSessionDriver(deps.db, row.bridgeSessionId, human.id);
+    // And seed the channel default owner (first-write-wins) so a gate this
+    // session raises falls to a real owner even before anyone claims it.
+    if (deps.db && deps.project && address.workUnit) ensureChannelDefault(deps.db, deps.project, address.workUnit, human.id);
+    // A gate that opened synchronously on start gets its owner assigned now.
+    if (deps.db && deps.project && row.openGate) assignOwnerOnOpen(deps.db, deps.project, row.openGate);
     send(res, 200, {
       bridgeSessionId: row.bridgeSessionId,
       state: row.state,
@@ -353,6 +586,30 @@ async function handleMutation(
     if (!holder) {
       send(res, 404, { error: 'no session holds this gate' });
       return;
+    }
+    // Ownership routing (UI-side, never process authority): a watcher's submit
+    // is refused unless the owner is stuck. The engine enforces none of this —
+    // a terminal answer bypasses it entirely (and resolves the card externally).
+    if (deps.db) {
+      const stuckMs = (deps.stuckMs ?? 24 * 3600 * 1000);
+      const perm = mayAnswer(deps.db, gateId, human.id, {
+        escalated: deps.isEscalated?.(gateId) ?? false,
+        now: Date.now(),
+        stuckMs,
+      });
+      if (!perm.ok) {
+        send(res, 403, { error: perm.reason ?? 'not the gate owner' });
+        return;
+      }
+      // The comment ceremony: a sign-off cannot be finalised over UNSEEN
+      // comments on the gate (the walkthrough caught a blocking concern signed
+      // over unseen). The human must open the thread (mark read) first.
+      const unread = unreadForGate(deps.db, deps.project ?? '', gateId, human.id);
+      if (unread > 0) {
+        send(res, 409, { error: `${unread} unread comment${unread > 1 ? 's' : ''} on this gate — read them before answering`, unreadComments: unread });
+        return;
+      }
+      noteOwnerActivity(deps.db, gateId, human.id);
     }
     const result = await deps.sessions.answer(holder.bridgeSessionId, gateId, text, 'ui');
     const row = deps.sessions.get(holder.bridgeSessionId);
@@ -415,6 +672,9 @@ async function lobby(res: http.ServerResponse, deps: ApiDeps): Promise<void> {
     overviewRender: overview,
     knowledge: knowledgeState(projectRoot, deps.knowledgePath),
     durable: { counts: durableCounts(rows), rows },
+    // Failed captures — a durable lobby row ("N captures failed — retry"), the
+    // payload retained until it succeeds or is discarded (never a lost toast).
+    failedCaptures: deps.capture ? deps.capture.list() : [],
     roadmap: roadmap?.exists
       ? { horizons: roadmap.horizons ?? [], totals: roadmap.totals ?? {}, itemCount: roadmap.totals?.items ?? 0 }
       : null,
@@ -422,7 +682,7 @@ async function lobby(res: http.ServerResponse, deps: ApiDeps): Promise<void> {
   });
 }
 
-async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string): Promise<void> {
+async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string, viewer: Human): Promise<void> {
   const { projectRoot, engine, store } = deps;
   const manifestPath = path.join(projectRoot, '.workflows', wu, 'manifest.json');
   let manifest: any = null;
@@ -442,15 +702,25 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
     (e) => (SPINE_EVENT_TYPES as readonly string[]).includes(e.type) && e.address.workUnit === wu,
   );
   if (deps.sessions) {
+    // Durable resolving signals on this unit — the "answered outside the UI"
+    // join (a terminal sign-off flips the manifest; the card resolves within
+    // one watcher cycle rather than hanging open forever).
+    const durableForWu = all.filter(
+      (e) => (e.type === 'phase.completed' || e.type === 'workunit.status-changed') && e.address.workUnit === wu,
+    );
     for (const s of deps.sessions.list()) {
       const g = s.openGate;
       if (g && g.state === 'open' && g.address.workUnit === wu) {
+        const extAt = externallyResolvedAt(g, durableForWu as any);
+        const card = extAt
+          ? { ...gateWithOwnership(deps, g, viewer), state: 'resolved-externally', resolvedExternallyAt: extAt }
+          : gateWithOwnership(deps, g, viewer);
         spine.push({
           id: g.id,
           type: 'gate.opened',
           ts: g.openedAt,
           address: g.address,
-          payload: { card: g },
+          payload: { card },
           live: true,
         });
       }
@@ -504,6 +774,11 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
     const scan = (await engine.scanPresence(wu).catch(() => null)) as { sessions?: unknown[] } | null;
     presence = scan?.sessions ?? [];
   }
+  // Phase 6 presence, the two honest kinds: humans VIEWING (UI heartbeat) and
+  // best-effort INFERRED working sessions for the non-heartbeat phases
+  // (labelled inferred, never presented as certain).
+  const humansHere = deps.db && deps.project ? humansViewing(deps.db, deps.project, wu, Date.now(), viewer.id) : [];
+  const inferred = inferredWorkingSessions(projectRoot, wu, Date.now());
 
   // Delivery telemetry (Phase 5) — one surface per implementation topic, all
   // from the manifest per the source inventory. Dep-blocked comes from the
@@ -537,6 +812,8 @@ async function channelView(res: http.ServerResponse, deps: ApiDeps, wu: string):
     embed,
     artifacts,
     presence,
+    humansViewing: humansHere,
+    inferredSessions: inferred,
     // Channel-wide agent activity (any phase) — deep-dives/perspectives in
     // research/discussion show here, not only implementation (round-11).
     agentsReading: countAgentsAllPhases(projectRoot, wu),
@@ -630,7 +907,7 @@ function listUnitArtifacts(projectRoot: string, wu: string): { path: string; pha
   return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: string): void {
+function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: string, humanId: string): void {
   // Path safety: the artifact must resolve inside the unit's own directory —
   // lexically AND after resolving symlinks (a hostile repo can commit a .md
   // symlink pointing anywhere on the host).
@@ -662,7 +939,7 @@ function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: 
   // The what-moved ribbon reads the ref BEFORE this view overwrites it.
   const phase = rel.split('/')[0] ?? '';
   const artifactKey = `${wu}/${rel}`;
-  const priorRef = deps.db ? readRef(deps.db, deps.projectRoot, artifactKey) : null;
+  const priorRef = deps.db ? readRef(deps.db, deps.projectRoot, artifactKey, humanId) : null;
   const moved = priorRef
     ? whatMoved(deps.projectRoot, path.join('.workflows', wu, rel), priorRef.sha, priorRef.state)
     : { state: 'none' as const };
