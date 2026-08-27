@@ -747,19 +747,26 @@ describe('epic projections: presence join', () => {
     assert.match(rendered.replace(/\n\u00a0+/g, ' '), /~~[^~]*~~ · code session in ship\/checkout-flow \(last active 5m ago\)/,
       `the struck row names the holder:\n${rendered}`);
     assert.ok(!code.recommended, 'a struck row is never the recommendation');
+    assert.strictEqual(code.code_session, true, 'the marker says the slot, so this menu never gates it');
     assert.ok(!keys.some((k) => k.action !== 'start_implementation' && k.in_session),
       'doc entries are untouched by the code slot');
   });
 
-  it('the code gate\'s wording replaces the doc consequence for a code entry', () => {
+  it('a code entry is marked by its own held topic too, and still carries the slot marker', () => {
     const d = readyToImplementDetail();
-    const codeRow = { work_unit: 'ship', phase: 'review', topic: 'checkout-flow', age_seconds: 60, held: true, live: true, session_id: 'peer' };
+    const codeRow = { work_unit: 'v1', phase: 'implementation', topic: 'topic-a', age_seconds: 30, held: true, live: true, session_id: 'peer' };
     const { keys } = epicMenu('v1', d, { presence: [], codeHeld: [codeRow] });
-    const gate = epicInSessionGate('v1', keys.find((k) => k.action === 'start_implementation'));
-    assert.match(gate, /Another session is reviewing "Checkout Flow" \(ship\) — last active 60s ago\./);
-    assert.match(gate, /Code phases run one at a time — concurrent sessions write the same files/);
-    assert.match(gate, /presence clear ship review checkout-flow/, 'the release names the holder, not the entrant');
-    assert.doesNotMatch(gate, /second concurrent session on the same/, 'the doc consequence is not used for code');
+    const code = keys.find((k) => k.action === 'start_implementation');
+    assert.strictEqual(code.in_session, true);
+    assert.strictEqual(code.code_session, true, 'own-topic or elsewhere, a code hold is the one slot');
+  });
+
+  it('the in-session gate speaks for document phases alone — a code entry never reaches it', () => {
+    const d = twoTopicDetail();
+    const { keys } = epicMenu('v1', d, { presence: [heldRow] });
+    const gate = epicInSessionGate('v1', keys.find((k) => k.in_session));
+    assert.match(gate, /second concurrent session on the same discussion/, 'the doc consequence is the only one left');
+    assert.doesNotMatch(gate, /Code phases run one at a time/, 'the code wording belongs to the code-gate surface');
   });
 
   it('the dashboard cues held map rows on their ↳ state lines (no key legend needed)', () => {

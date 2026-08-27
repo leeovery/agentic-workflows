@@ -4,7 +4,7 @@
 
 ---
 
-Implementation and review write the code tree and the git index, and neither partitions by topic the way documents do — so they run one session at a time per checkout, whatever work unit or topic the other session sits in. The engine reads the whole project's heartbeats and answers with the gate; an empty response means the slot is free.
+Implementation and review run one session at a time per checkout, whatever work unit or topic the other session sits in — so the check reads the whole project, not this work unit. An empty response means the slot is free.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render code-gate {work_unit}.{phase}.{topic}

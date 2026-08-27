@@ -42,6 +42,7 @@ const { buildOrderLive } = require('../build-order.cjs');
  * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
  * @property {number} [session_age]    that session's last-active age in seconds
  * @property {{work_unit: string, phase: string, topic: string}} [session_holder] the held code row taking the slot, when it is not this entry's own topic
+ * @property {boolean} [code_session]  the hold is the checkout's code slot — gated at the entry skill, never by this menu
  */
 
 /** @typedef {import('../presence.cjs').PresenceRow} PresenceRow */
@@ -710,6 +711,10 @@ function markHeldEntries(numbered, held, codeHeld = []) {
     if (!row) continue;
     e.in_session = true;
     e.session_age = row.age_seconds;
+    // A code entry's hold is the checkout's one slot, and its gate lives at
+    // the entry skill — the marker says so, so the menu's own in-session gate
+    // never fires for it and the user meets one gate per attempt.
+    if (CODE_PHASES.includes(phase)) e.code_session = true;
     if (foreign) {
       e.session_holder = { work_unit: foreign.work_unit, phase: foreign.phase, topic: foreign.topic };
     }
@@ -799,24 +804,20 @@ function epicMenu(workUnit, detail, opts = {}) {
  * served by the gateway's `in-session-gate` verb, fetched by the flow at the
  * gate that displays it. Never blocks: the machine can verify that a process
  * still runs, never that its session still matters, so the gate states the
- * fact, names the consequence and the release, and lets the user decide. One
- * shape, two consequences — a doc phase risks conflicting work on one topic,
- * a code phase risks two writers on one tree.
- * @param {string} workUnit  this epic — the holder whenever the entry's own topic is the held one
+ * fact, names the consequence and the release, and lets the user decide.
+ * Document phases only — a code entry's hold is the checkout's one slot, and
+ * the `code-gate` surface at the entry skill owns that conversation, so the
+ * user meets one gate per attempt.
+ * @param {string} workUnit  this epic — the holder of the topic this entry would open
  * @param {MenuKey} entry
  * @returns {string} one labelled MENU section
  */
 function epicInSessionGate(workUnit, entry) {
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (entry.action)];
-  const holder = entry.session_holder || { work_unit: workUnit, phase, topic: entry.topic || '' };
-  const age = fmtAge(entry.session_age ?? 0);
-  const fact = entry.session_holder
-    ? `Another session is ${holder.phase === 'review' ? 'reviewing' : 'implementing'} "${titlecase(holder.topic)}" (${holder.work_unit}) — last active ${age} ago.`
-    : `"${titlecase(entry.topic || '')}" is open in another session — last active ${age} ago.`;
-  const consequence = CODE_PHASES.includes(phase)
-    ? 'Code phases run one at a time — concurrent sessions write the same files, and even worktrees end in merge conflicts.'
-    : `Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`;
-  const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${holder.work_unit} ${holder.phase} ${holder.topic}`;
+  const topic = entry.topic || '';
+  const fact = `"${titlecase(topic)}" is open in another session — last active ${fmtAge(entry.session_age ?? 0)} ago.`;
+  const consequence = `Proceeding starts a second concurrent session on the same ${phase}; its work could conflict with that session's.`;
+  const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${workUnit} ${phase} ${topic}`;
   return section(
     `MENU: in-session gate — ${entry.key}`,
     "emit verbatim as markdown, then STOP for the user's response",

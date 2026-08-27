@@ -81,9 +81,11 @@ Match the user's input to its `ACTIONS` entry by `key` — a number, or a comman
 
 #### Otherwise
 
+A `(code session: …)` marker needs no gate here — implementation and review are gated at their entry skill, which reads the whole checkout's code slot; the marked row routes like any other.
+
 **If the selected entry carries an `(in session: …)` marker:**
 
-A live session holds what this entry would open — this topic for a document phase, or the one code slot for implementation and review. Fetch and emit the `MENU: in-session gate — {key}` section for the selected entry:
+Another live session holds this topic open. Fetch and emit the `MENU: in-session gate — {key}` section for the selected entry:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {work_unit} {key}
