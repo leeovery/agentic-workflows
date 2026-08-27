@@ -54,11 +54,10 @@ File what they chose, taking the next available number in each directory:
 
 Each file carries the finding's summary, the failure or gap it names, the files it concerns, and where it came from — `{work_unit}` review, and the source finding ids. An item arriving in the inbox months later is read by someone with none of this session's context, so it states the problem rather than referring to it.
 
-Commit any filed items — the inbox sits outside the work unit, so the scoped helper cannot cover it:
+Commit any filed items — the inbox has its own scope:
 
 ```bash
-git add -- .workflows/.inbox
-git commit -m "review({work_unit}): file out-of-scope findings to inbox"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "review({work_unit}): file out-of-scope findings to inbox"
 ```
 
 Delete the field — offered and decided, whichever way each went:

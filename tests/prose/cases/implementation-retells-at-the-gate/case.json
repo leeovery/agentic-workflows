@@ -62,6 +62,7 @@
       "task complete pay pay pay-1-2 --phase 1 --next-task ~",
       "--phase-complete",
       "impl(pay): Tpay-1-1",
+      "commit --paths",
       "impl(pay): Tpay-1-2",
       "manifest get pay.implementation.pay consolidation_gate_mode",
       "manifest push pay.implementation.pay consolidated_phases 1"

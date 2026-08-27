@@ -35,7 +35,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit
 
 Commit:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): complete implementation"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): complete implementation" --topic implementation/{topic}
 ```
 
 **Pipeline continuation**:

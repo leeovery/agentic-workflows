@@ -27,7 +27,7 @@ The prose should have taken this path:
    remain, the work type is feature, the phase label is
    plan-authored, and consolidated_phases is absent — so the
    plan-side phase completion is deferred, the engine call carries
-   --next-task ~ WITHOUT --phase-complete, one raw git commit lands
+   --next-task ~ WITHOUT --phase-complete, the code commit lands
    as impl(pay): Tpay-1-2, and the stage routes to the consolidation
    pass
 9. the pass announces itself, reads consolidation_gate_mode (gated)
@@ -62,8 +62,8 @@ The prose should have taken this path:
     consolidated_phases contains 1 with the approved staged task
     present in the plan, so the disposition is `completing` — the
     plan-side phase completion runs (no action in this format), the
-    engine call carries --phase-complete, and one raw git commit
-    lands as impl(pay): Tpay-1-3
+    engine call carries --phase-complete, and the code commit lands
+    as impl(pay): Tpay-1-3
 17. retrieval finds no available and no open tasks, reports all
     tasks complete, and returns to the caller — the walk stops
     before the analysis loop

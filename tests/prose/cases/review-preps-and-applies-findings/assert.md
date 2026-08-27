@@ -25,7 +25,8 @@ The prose should have taken this path:
 7. the do-now apply announces the corrections in prose, dispatches an
    applier — stubbed: both applied, nothing skipped — then the verifier
    over the uncommitted diff — stubbed: nothing to repair, suite green —
-   and commits the corrections with raw git as one body of work
+   and commits the corrections through the engine's code commit as
+   one body of work
 8. the review report is produced from the action list with a Pass
    verdict, its corrected section recording what was applied, and
    committed
