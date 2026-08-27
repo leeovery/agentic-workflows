@@ -20,7 +20,8 @@ describe('loop telemetry — manifest-sourced', () => {
             completed_tasks: ['t1-1-1'],
             consolidation_gate_mode: 'gated',
             bank: [{ opportunity: 'x' }],
-            staging: { p2: [{ task: 'consolidate-a' }] },
+            // The real shape: staging.{cycle}.tasks.{n} = decision.
+            staging: { c1: { tasks: { '1': 'approved' } } },
             consolidated_phases: ['1'],
           },
         },
@@ -43,7 +44,7 @@ describe('loop telemetry — manifest-sourced', () => {
     expect(t.completedPhases).toEqual(['1']);
     expect(t.consolidation.gated).toBe(true);
     expect(t.consolidation.bank).toHaveLength(1);
-    expect(t.consolidation.staging.p2).toHaveLength(1);
+    expect(t.consolidation.staging.c1).toEqual([{ task: '1', decision: 'approved' }]);
     expect(t.depBlocked).toEqual([{ topic: 'other', reason: 'unmet' }]);
     expect(t.commitsLanded[0]!.subject).toBe('feat: x');
     expect(t.agentsActive).toBe(2);

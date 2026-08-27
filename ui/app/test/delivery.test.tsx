@@ -43,12 +43,12 @@ describe('ConsolidationCard', () => {
   it('renders the bank and staged tasks as one decide-shaped read view', () => {
     render(
       <ConsolidationCard
-        t={tele({ consolidation: { gated: true, bank: [{ opportunity: 'dedupe X' }], staging: { p2: [{ task: 'consolidate-a' }] }, consolidatedPhases: [] } })}
+        t={tele({ consolidation: { gated: true, bank: [{ opportunity: 'dedupe X' }], staging: { c1: [{ task: '1', decision: 'approved' }] }, consolidatedPhases: [] } })}
       />,
     );
     expect(screen.getByText(/banked opportunities/)).toBeTruthy();
     expect(screen.getByText('dedupe X')).toBeTruthy();
-    expect(screen.getByText(/consolidate-a/)).toBeTruthy();
+    expect(screen.getByText(/approved/)).toBeTruthy();
     expect(screen.getByText(/Decide this in the session/)).toBeTruthy();
   });
   it('renders nothing when there is no consolidation moment', () => {

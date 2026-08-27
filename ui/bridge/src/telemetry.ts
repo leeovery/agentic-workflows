@@ -42,9 +42,16 @@ export function buildTelemetry(
   if (!item) return null;
 
   const gateMode = item.consolidation_gate_mode;
+  // The real staging shape is `staging.{cycle}.tasks.{n} = <decision>`
+  // (fields.cjs) — NOT an array. Flatten each cycle's task decisions to a
+  // list the surface can render.
   const staging: Record<string, unknown[]> = {};
-  for (const [k, v] of Object.entries<any>(item.staging ?? {})) {
-    if (Array.isArray(v)) staging[k] = v;
+  for (const [cycle, v] of Object.entries<any>(item.staging ?? {})) {
+    if (Array.isArray(v)) {
+      staging[cycle] = v; // tolerate the array form CLAUDE.md documents too
+    } else if (v && typeof v.tasks === 'object') {
+      staging[cycle] = Object.entries<any>(v.tasks).map(([n, decision]) => ({ task: n, decision }));
+    }
   }
 
   const commits = events

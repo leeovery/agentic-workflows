@@ -103,7 +103,8 @@ export function ConsolidationCard({ t }: { t: TopicTelemetry }) {
           <div className="region-label mb-1">staged for this phase ({staged.length})</div>
           {staged.slice(0, 5).map((s, i) => (
             <div key={i} className="text-xs font-mono text-stone-500 truncate">
-              {s.phase}: {s.task.task ?? s.task.title ?? JSON.stringify(s.task).slice(0, 50)}
+              {s.phase}: {s.task.title ?? `task ${s.task.task}`}
+              {s.task.decision && <span className="text-stone-400"> — {s.task.decision}</span>}
             </div>
           ))}
         </div>
