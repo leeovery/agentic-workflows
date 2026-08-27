@@ -63,12 +63,13 @@ describe('engine presence', () => {
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.live, 1);
+    assert.strictEqual(res.live_sources, 1, 'a discussion session is source material an analysis reads');
     assert.strictEqual(res.stale_after_seconds, 900);
     assert.strictEqual(res.sessions[0].phase, 'discussion');
     assert.strictEqual(res.sessions[0].topic, 'alpha');
     assert.strictEqual(res.sessions[0].live, true);
     assert.ok(sections.includes(
-      '=== DISPLAY: presence deferral (only at the analysis-dispatch deferral: emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: presence deferral (only at an analysis deferral: emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
     ), `deferral marker carries its qualifier and the continuation instruction: ${sections}`);
     assert.ok(sections.includes('  ⚑ Analyses deferred — 1 live session(s): discussion/alpha.'), 'callout flag line');
     // The body is a callout: wrapped at the display width, continuations at
@@ -78,6 +79,24 @@ describe('engine presence', () => {
       if (line.startsWith('===')) continue;
       assert.ok(line.length <= displayWidth(), `deferral line overflows: ${line}`);
     }
+  });
+
+  it('a live session outside the source phases defers no analysis', () => {
+    // The analyses read research and discussion; a planning or code session
+    // holds nothing they look at.
+    for (const phase of ['planning', 'specification', 'implementation', 'review', 'scoping', 'investigation']) {
+      engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']);
+    }
+    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
+    assert.strictEqual(res.live, 6, 'every session is live');
+    assert.strictEqual(res.live_sources, 0, 'none of them is source material');
+    assert.strictEqual(sections, '', 'nothing to defer, nothing rendered');
+
+    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta']);
+    const second = engine(dir, ['presence', 'scan', 'pay']);
+    assert.strictEqual(second.res.live_sources, 1);
+    assert.ok(second.sections.includes('research/beta'), second.sections);
+    assert.ok(!second.sections.includes('planning/'), `the callout names source rows alone: ${second.sections}`);
   });
 
   it('an aged heartbeat reads stale — no deferral section', () => {

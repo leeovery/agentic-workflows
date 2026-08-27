@@ -4,7 +4,29 @@
 
 ---
 
-## A. Gather Analysis Context
+## A. Live Source Check
+
+The analysis reads the completed discussions and rewrites `.state/` staging that is work-unit-wide — a live peer session is mid-conversation on material it would read, and the pass would overwrite whatever an earlier one staged. Check first:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}
+```
+
+#### If the response has `live_sources` greater than `0`
+
+Hold off — the analysis reads the settled record, so it waits for those sessions and runs at the next entry. Emit the response's `DISPLAY: presence deferral` section verbatim at this moment.
+
+The stop is the whole answer wherever this fires, and there is nothing to fall through to: a re-analysis the user chose has no older pass to show instead, and the automatic rerun route only ever arrives with no groupings and no specifications on the manifest — a live discussion blocks that route before it reaches here, leaving live research as its only way in.
+
+**STOP.** Do not proceed — terminal condition.
+
+#### Otherwise
+
+→ Proceed to **B. Gather Analysis Context**.
+
+---
+
+## B. Gather Analysis Context
 
 > *Output the next fenced block as a code block:*
 
@@ -22,11 +44,11 @@ Your context (or 'none'):
 
 **STOP.** Wait for user response.
 
-→ Proceed to **B. Analyze Discussions**.
+→ Proceed to **C. Analyze Discussions**.
 
 ---
 
-## B. Analyze Discussions
+## C. Analyze Discussions
 
 **This step is critical. You MUST read every completed discussion document thoroughly.**
 
@@ -70,7 +92,7 @@ Record each as a consult reference on the **receiving** grouping (never as a sou
 
 **Note Cross-Source Tensions**
 
-The full read also surfaces places where two documents' decided ground disagrees, or a term rests on something another document has since moved — tensions construction will meet when it extracts. Record each on the grouping whose sources carry it as a `**Tension**` line in the cache (**D**): the documents, the collision, one line. Advisory only — never a gate, never resolved here; the specification session holds them from its setup and raises each per its Resolve Source Incoherence discipline when the topic that touches it arrives.
+The full read also surfaces places where two documents' decided ground disagrees, or a term rests on something another document has since moved — tensions construction will meet when it extracts. Record each on the grouping whose sources carry it as a `**Tension**` line in the cache (**E**): the documents, the collision, one line. Advisory only — never a gate, never resolved here; the specification session holds them from its setup and raises each per its Resolve Source Incoherence discipline when the topic that touches it arrives.
 
 **Knowledge-Base Advisory Query**
 
@@ -84,11 +106,11 @@ Phrase the query as a natural-language description of the grouping's concern, no
 
 Treat hits as **candidate** consult references — a hit from a discussion outside this grouping that names a correction it owes is worth promoting onto the receiving grouping. **Advisory only**: never auto-add, never gate. You decide which candidates to record; the user confirms at the grouping menu.
 
-→ Proceed to **C. Reconcile Proposed Groupings**.
+→ Proceed to **D. Reconcile Proposed Groupings**.
 
 ---
 
-## C. Reconcile Proposed Groupings
+## D. Reconcile Proposed Groupings
 
 Persist the analysis by reconciling the manifest's specification items against the freshly-formed groupings. The manifest is the source of truth: each purely-proposed grouping becomes a `proposed` specification item carrying its members as `pending` sources and **no file on disk**. Every mutation uses `set`/`delete` — never `init-phase`. Anchors are preserved; proposed items are freely regenerated.
 
@@ -132,11 +154,11 @@ Work through these steps in order:
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/specification/reconcile-ops.json
    ```
 
-→ Proceed to **D. Write the Cache**.
+→ Proceed to **E. Write the Cache**.
 
 ---
 
-## D. Write the Cache
+## E. Write the Cache
 
 Write the cache **after** all manifest mutations. The checksum is written last — a mid-reconcile crash then leaves a stale checksum, forcing a clean re-reconcile on the next run.
 
