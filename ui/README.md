@@ -15,6 +15,18 @@ queue, threads) · **attention** (escalation, digests) · **artifact lenses**
 ownership, capture, presence, comments) · **MCP Apps** (the gate card inside
 Claude).
 
+## Design artefacts
+
+Self-contained HTML design/presentation pages (open directly in a browser) —
+snapshots of the visual language and screen designs the build follows:
+
+- [`artefacts/the-workflow-bridge.html`](artefacts/the-workflow-bridge.html) —
+  the overview: what the bridge is and the design intent behind it.
+- [`artefacts/workflow-bridge-screens.html`](artefacts/workflow-bridge-screens.html)
+  — the screen mockups (lobby, channel, queue, thread, lenses, and the rest).
+- [`artefacts/agentic-workflows-field-guide.html`](artefacts/agentic-workflows-field-guide.html)
+  — a field guide to the workflow system the bridge surfaces.
+
 ## Layout
 
 - `bridge/` — the bridge daemon: turns the project's existing surfaces (engine

@@ -1,0 +1,741 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>The Workflow Bridge</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#EDF0EA; --panel:#F7F9F4; --panel-2:#E4E9E1;
+    --ink:#1C2620; --muted:#58675D; --line:#C9D2C7; --line-soft:#DAE0D6;
+    --accent:#2E6E96;            /* the bridge */
+    --accent-wash:rgba(46,110,150,.10);
+    --gold:#9A6E0F;              /* reserved: the human's gate */
+    --gold-wash:rgba(185,134,30,.12);
+    --term-bg:#141B16; --term-ink:#D7E2D8; --term-dim:#7E8F83; --term-gold:#E2B95B; --term-blue:#8FBEDD;
+    --shadow:0 1px 2px rgba(28,38,32,.06), 0 8px 24px rgba(28,38,32,.05);
+    --display:"Bricolage Grotesque","Avenir Next","Helvetica Neue",sans-serif;
+    --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+    --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#10150F; --panel:#171E17; --panel-2:#1D251D;
+      --ink:#DFE7DC; --muted:#94A396; --line:#2E382E; --line-soft:#242D24;
+      --accent:#6FB2D8; --accent-wash:rgba(111,178,216,.12);
+      --gold:#E0B356; --gold-wash:rgba(224,179,86,.13);
+      --term-bg:#0B0F0C; --term-ink:#CBD8CC; --term-dim:#6C7C70; --term-gold:#DDB258; --term-blue:#7FB4D6;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#10150F; --panel:#171E17; --panel-2:#1D251D;
+    --ink:#DFE7DC; --muted:#94A396; --line:#2E382E; --line-soft:#242D24;
+    --accent:#6FB2D8; --accent-wash:rgba(111,178,216,.12);
+    --gold:#E0B356; --gold-wash:rgba(224,179,86,.13);
+    --term-bg:#0B0F0C; --term-ink:#CBD8CC; --term-dim:#6C7C70; --term-gold:#DDB258; --term-blue:#7FB4D6;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+  .frame{display:flex;min-height:100vh;max-width:1180px;margin:0 auto}
+  .rail{width:236px;flex:0 0 236px;border-right:1px solid var(--line);padding:36px 20px 36px 28px;position:sticky;top:0;align-self:flex-start;height:100vh;display:flex;flex-direction:column;gap:28px}
+  .brand{font-family:var(--display);line-height:1.15}
+  .brand .mark{color:var(--accent);font-family:var(--mono);font-size:15px;letter-spacing:.08em}
+  .brand .name{font-size:19px;font-weight:700;margin-top:6px}
+  .brand .sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px;letter-spacing:.04em}
+  nav.pages{display:flex;flex-direction:column;gap:2px}
+  nav.pages a{display:flex;gap:10px;align-items:baseline;padding:8px 10px;border-radius:6px;color:var(--muted);text-decoration:none;font-family:var(--display);font-size:14.5px;font-weight:600;border-left:2px solid transparent}
+  nav.pages a .no{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);width:20px;flex:0 0 20px}
+  nav.pages a:hover{color:var(--ink);background:var(--panel-2)}
+  nav.pages a[aria-current="page"]{color:var(--ink);background:var(--panel);border-left-color:var(--accent)}
+  nav.pages a[aria-current="page"] .no{color:var(--accent)}
+  .rail-foot{margin-top:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.7}
+  main{flex:1;min-width:0;padding:52px 48px 96px}
+  section.page{display:none}
+  section.page.active{display:block;animation:rise .35s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,4.4vw,44px);line-height:1.08;margin:0 0 18px;text-wrap:balance;letter-spacing:-.01em}
+  h2{font-family:var(--display);font-weight:700;font-size:23px;line-height:1.2;margin:52px 0 14px;text-wrap:balance}
+  h3{font-family:var(--display);font-weight:600;font-size:17px;margin:30px 0 8px}
+  p{max-width:66ch;margin:0 0 16px}
+  .lede{font-size:20px;line-height:1.55;max-width:58ch}
+  .lede em{color:var(--accent);font-style:italic}
+  ul{max-width:66ch;padding-left:22px;margin:0 0 16px}
+  li{margin-bottom:8px}
+  li::marker{color:var(--accent)}
+  strong{font-weight:600}
+  code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px}
+  figure{margin:28px 0}
+  figcaption{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px;max-width:70ch;line-height:1.6}
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;overflow-x:auto}
+  .diagram svg{display:block;min-width:560px;max-width:100%;height:auto;color:var(--ink)}
+  .pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:30px 0 8px}
+  .pillar{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 18px 14px}
+  .pillar h3{margin:0 0 8px;font-size:16px}
+  .pillar p{font-size:14.5px;color:var(--muted);margin:0;line-height:1.6}
+  .pillar .glyph{font-family:var(--mono);color:var(--accent);font-size:13px;letter-spacing:.1em;display:block;margin-bottom:10px}
+  .cmds{width:100%;border-collapse:collapse;margin:22px 0;font-size:15px}
+  .cmds th{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 14px 8px 0;border-bottom:1px solid var(--line)}
+  .cmds td{padding:10px 14px 10px 0;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  .cmds td:first-child{font-family:var(--mono);font-size:13px;white-space:nowrap;color:var(--accent)}
+  .table-scroll{overflow-x:auto}
+  .callout{border-left:3px solid var(--accent);background:var(--accent-wash);border-radius:0 8px 8px 0;padding:14px 18px;margin:24px 0;max-width:66ch}
+  .callout p{margin:0;font-size:15px}
+  .callout.gate{border-left-color:var(--gold);background:var(--gold-wash)}
+  .pagenav{display:flex;justify-content:space-between;gap:16px;margin-top:64px;border-top:1px solid var(--line);padding-top:20px}
+  .pagenav a{font-family:var(--display);font-weight:600;font-size:14.5px;text-decoration:none;color:var(--ink)}
+  .pagenav a span{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+  .pagenav a:hover{color:var(--accent)}
+  .pagenav .next{text-align:right;margin-left:auto}
+
+  /* gate-card mock */
+  .gatecard{max-width:560px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:12px;box-shadow:var(--shadow);margin:26px 0;overflow:hidden}
+  .gatecard .gc-head{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line-soft);font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .gatecard .gc-head .dot{width:8px;height:8px;border-radius:50%;background:var(--gold)}
+  .gatecard .gc-ctx{padding:16px 18px 4px;font-size:15px;color:var(--ink)}
+  .gatecard .gc-q{padding:2px 18px 12px;font-family:var(--mono);font-size:14px;font-weight:600}
+  .gatecard .gc-q .glyph{color:var(--gold)}
+  .gatecard .gc-opts{display:flex;flex-direction:column;gap:8px;padding:0 18px 14px}
+  .gatecard button.opt{display:flex;gap:12px;align-items:baseline;text-align:left;width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-family:var(--serif);font-size:15px;color:var(--ink);cursor:pointer}
+  .gatecard button.opt:hover{border-color:var(--accent)}
+  .gatecard button.opt .k{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--accent);white-space:nowrap}
+  .gatecard button.opt.rec{border-color:var(--gold)}
+  .gatecard button.opt.rec .tag{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--gold);white-space:nowrap}
+  .gatecard .gc-free{display:flex;gap:8px;padding:0 18px 18px}
+  .gatecard .gc-free input{flex:1;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-family:var(--serif);font-size:14.5px;color:var(--ink)}
+  .gatecard .gc-free .send{background:var(--accent);color:var(--paper);border:0;border-radius:8px;padding:9px 16px;font-family:var(--display);font-weight:600;font-size:14px;cursor:pointer}
+  .gatecard .gc-note{padding:10px 18px;border-top:1px dashed var(--line);font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+  /* phase timeline */
+  .phaserow{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line-soft);padding:12px 2px}
+  .phaserow .pn{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);flex:0 0 22px}
+  .phaserow .pt{font-family:var(--display);font-weight:600;font-size:15.5px;flex:0 0 180px}
+  .phaserow .pd{font-size:14.5px;color:var(--muted);flex:1;min-width:200px}
+  .phaserow .pe{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap}
+  .phasewrap{margin:26px 0}
+  .chip{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--muted);margin:0 4px 4px 0}
+  .chip.now{border-color:var(--accent);color:var(--accent)}
+  .chip.later{border-color:var(--gold);color:var(--gold)}
+  .chip.no{text-decoration:line-through}
+
+  /* wireframes */
+  .wire{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;font-family:var(--mono);font-size:10.5px;color:var(--muted);margin:22px 0;max-width:680px}
+  .wire .wrow{display:flex;gap:8px;align-items:stretch}
+  .wire .wcol{display:flex;flex-direction:column;gap:8px}
+  .wire .wbox{border:1.5px dashed var(--line);border-radius:6px;padding:8px 10px;background:var(--paper);min-width:0}
+  .wire .wbox .lbl{display:block;letter-spacing:.06em;text-transform:uppercase;font-size:9.5px;color:var(--ink);margin-bottom:3px}
+  .wire .wbox small{display:block;line-height:1.5}
+  .wire .wbox.gate{border-color:var(--gold)}
+  .wire .wbox.gate .lbl{color:var(--gold)}
+  .wire .wbox.accent{border-color:var(--accent)}
+  .wire .wbox.accent .lbl{color:var(--accent)}
+  .wire .wbox.solid{border-style:solid}
+  .wire figcaption{margin-top:10px}
+  .provrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:22px 0}
+  .prov{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 16px}
+  .prov .who{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:8px}
+  .prov .sample{font-size:15px;line-height:1.5}
+  .prov .sample.mono{font-family:var(--mono);font-size:12.5px}
+  .prov .sample.serif{font-family:var(--serif)}
+  .prov .sample.sans{font-family:var(--display);font-weight:600}
+
+  /* state boards */
+  .board{margin:26px 0}
+  .board h3{margin-bottom:10px}
+  .staterow{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+  .state{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px;min-width:150px;max-width:240px;font-size:12.5px;line-height:1.5}
+  .state .sl{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .state.gold{border-left:3px solid var(--gold)}
+  .state .m{font-family:var(--mono);font-size:11px}
+  .schip{display:inline-block;font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin:0 4px 4px 0;color:var(--muted)}
+  .schip.ok{border-color:#35855A;color:#35855A}
+  .schip.warn{border-color:var(--gold);color:var(--gold)}
+  .schip.bad{border-color:#B54545;color:#B54545}
+  .schip.acc{border-color:var(--accent);color:var(--accent)}
+  .oneliners{font-size:14px;max-width:70ch}
+  .oneliners .m{font-family:var(--mono);font-size:12px}
+
+  @media (max-width:820px){
+    .frame{flex-direction:column}
+    .rail{position:static;width:auto;height:auto;flex:none;border-right:0;border-bottom:1px solid var(--line);padding:24px 20px;gap:16px}
+    nav.pages{flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px}
+    nav.pages a{white-space:nowrap;border-left:0;border-bottom:2px solid transparent;border-radius:6px 6px 0 0}
+    nav.pages a[aria-current="page"]{border-bottom-color:var(--accent)}
+    .rail-foot{display:none}
+    main{padding:32px 20px 72px}
+  }
+</style>
+
+<div class="frame">
+  <aside class="rail">
+    <div class="brand">
+      <span class="mark">◆──┤ ├──▸</span>
+      <div class="name">The Workflow<br>Bridge</div>
+      <div class="sub">ui/plans · agentic-workflows</div>
+    </div>
+    <nav class="pages" aria-label="Pages">
+      <a href="#overview" data-page="overview"><span class="no">01</span>Overview</a>
+      <a href="#surfaces" data-page="surfaces"><span class="no">02</span>The four surfaces</a>
+      <a href="#screens" data-page="screens"><span class="no">03</span>Screens &amp; components</a>
+      <a href="#stateboards" data-page="stateboards"><span class="no">04</span>State boards</a>
+      <a href="#architecture" data-page="architecture"><span class="no">05</span>Architecture</a>
+      <a href="#channels" data-page="channels"><span class="no">06</span>Channels &amp; the lobby</a>
+      <a href="#attention" data-page="attention"><span class="no">07</span>The attention system</a>
+      <a href="#build" data-page="build"><span class="no">08</span>The build</a>
+      <a href="#hardening" data-page="hardening"><span class="no">09</span>Hardening</a>
+    </nav>
+    <div class="rail-foot">
+      plans &amp; specs<br><code>ui/plans/</code> · branch <code>ui-plans</code><br><br>
+      status: specs written,<br>ten review passes in
+    </div>
+  </aside>
+
+  <main>
+
+  <!-- 01 OVERVIEW -->
+  <section class="page" id="overview" aria-labelledby="ov-h">
+    <p class="eyebrow">01 · Overview</p>
+    <h1 id="ov-h">A web UI for a process that already knows when it needs you</h1>
+    <p class="lede">The agentic-workflows system computes exactly when a human is needed and what kind of act is owed. The bridge's whole job is to <em>deliver that knowledge</em> — to a browser, a phone, a teammate — without adding any noise of its own.</p>
+
+    <p>The product is a phased engineering process for Claude Code: discuss, specify, plan, then a gated build loop, with a deterministic engine owning every state transition. Today you drive it from a terminal. The Workflow Bridge puts a channel-based web app in front of it — one channel per work unit, decision cards for its gates, an attention system derived from the process's own classifications — while changing nothing underneath.</p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <span class="glyph">◆ rule 1</span>
+        <h3>Zero new workflow state</h3>
+        <p>The repo, the manifests, and the engine stay the record. The bridge is a veneer; everything it persists is UI-native (cursors, ownership, digests). If the UI and the terminal ever disagree, the UI is wrong.</p>
+      </div>
+      <div class="pillar">
+        <span class="glyph">◆ rule 2</span>
+        <h3>Gates are never guessed</h3>
+        <p>A turn the bridge can't confidently parse as a structured ask renders as plain chat with a reply box. Pass-through is a correct rendering of an unstructured question, not a failure mode.</p>
+      </div>
+      <div class="pillar">
+        <span class="glyph">◆ rule 3</span>
+        <h3>Ceremony, never disposition</h3>
+        <p>The UI decides what pings, badges, or waits for a digest. It never answers anything on the human's behalf — every stop in the process stays a stop here.</p>
+      </div>
+    </div>
+
+    <h2>Where the project stands</h2>
+    <p>Fully planned, not yet built — deliberately. Eight phase plans, five pre-code specification artifacts, and an upstream-proposal ledger live in <code>ui/plans/</code>, and the whole set has been through ten adversarial review passes (intent, ground truth, scope, coverage, sufficiency ×2, consistency, failure modes, a two-persona walkthrough, and an upstream-fit review) with every confirmed finding folded back in. Phase 0 is buildable by its own reviewers' standard.</p>
+    <div class="callout"><p><strong>The thesis in one line:</strong> the system already knows exactly when it needs a human and how much ceremony the moment deserves; the UI's only job is to deliver that knowledge without adding any of its own.</p></div>
+
+    <div class="pagenav">
+      <a class="next" href="#surfaces"><span>Next · 02</span>The four surfaces →</a>
+    </div>
+  </section>
+
+  <!-- 02 SURFACES -->
+  <section class="page" id="surfaces" aria-labelledby="sf-h">
+    <p class="eyebrow">02 · Value</p>
+    <h1 id="sf-h">Four surfaces carry all the value</h1>
+    <p class="lede">Everything else — SPA shell, chat rendering, markdown, graphs, auth — is off the shelf. The build spends its effort on exactly four things.</p>
+
+    <h2>1 · The gate card</h2>
+    <p>Every decision the process asks for arrives as a structured card: the ask told in product terms, the engine's own option rows as buttons, free text always available (the menus map prose by design). Answered from a browser or a phone, the answer feeds back into the live session as an ordinary user turn.</p>
+
+    <div class="gatecard" role="img" aria-label="Mock of a gate card: a spec sign-off question with three option buttons, the recommended one marked, a free-text input, and a typed-confirmation note">
+      <div class="gc-head"><span class="dot"></span>payments-overhaul · retry-policy · specification <span style="margin-left:auto">gate · open</span></div>
+      <div class="gc-ctx">The specification for retry-policy is constructed: 14 decisions extracted from the discussion, both sources incorporated, one consult reference addressed. Three review passes are clean.</div>
+      <div class="gc-q"><span class="glyph">◆</span> Sign off this specification?</div>
+      <div class="gc-opts">
+        <button class="opt rec"><span class="k">y/yes</span> Sign off — the spec becomes the contract <span class="tag">recommended</span></button>
+        <button class="opt"><span class="k">r/review</span> Open the spec surface first</button>
+        <button class="opt"><span class="k">c/comment</span> Something's off — tell the session</button>
+      </div>
+      <div class="gc-free"><input type="text" aria-label="Free-text answer" placeholder="or say it in your own words…"><button class="send">Send</button></div>
+      <div class="gc-note">never-auto gate — signing off requires typing the confirmation, not one tap</div>
+    </div>
+
+    <p>Cards are parsed, not invented: for bridge-driven sessions the engine's demarcated menu sections arrive byte-exact in the tool-result stream, and the card renders from that ground truth. Gold marks the human's moment — everywhere in the UI, gold means <em>a gate</em>.</p>
+
+    <h2>2 · The needs-you queue</h2>
+    <p>One cross-work-unit list of everything waiting on a human, honestly split in two tiers: <strong>live open asks</strong> from bridge-driven sessions, and <strong>durable waiting-state</strong> derived from the manifests — reconcile flags, blocked specs, undrained review reports — which covers terminal sessions too. Ordered by what answering unblocks: escalated first, live before durable, earlier phases first (the cone says early decisions are the cheap-to-fix ones), oldest never sinking.</p>
+
+    <h2>3 · The attention policy</h2>
+    <p>Mechanical rules for what may interrupt, derived from the process's own classification of findings and a designed table for everything else — covered in full on <a href="#attention">page 07</a>. The one-line version: everything badges, almost nothing pushes, and nothing is ever silently disposed of.</p>
+
+    <h2>4 · The artifact lenses</h2>
+    <p>Every document gets three views: <strong>Read</strong> (typeset, with the firmness gradient as chrome — research casual, discussion working, specification golden), <strong>Structure</strong> (a register sourced from wherever structure actually lives — the manifest for discussion maps and spec sources, stable headings for investigations, reviews, and briefs), and <strong>History</strong> (git timeline, with "what moved since your sign-off" as a real diff). The spec sign-off surface joins sources, consult references, and measured claims live from the manifest — a sign-off is decidable entirely in the browser.</p>
+
+    <div class="pagenav">
+      <a href="#overview"><span>Back · 01</span>← Overview</a>
+      <a class="next" href="#screens"><span>Next · 03</span>Screens &amp; components →</a>
+    </div>
+  </section>
+
+  <!-- 03 SCREENS -->
+  <section class="page" id="screens" aria-labelledby="sc-h">
+    <p class="eyebrow">03 · Design</p>
+    <h1 id="sc-h">Six screens, one traceability rule</h1>
+    <p class="lede">Every region, component, and visual rule must cite one of the intent commitments — <em>a design element that can't is cut before it ships</em>. The full contract is <code>specs/components-layouts.md</code>; these are its load-bearing sketches.</p>
+
+    <h2>The app frame, and the lobby</h2>
+    <div class="wire" role="img" aria-label="Wireframe: project rail on the left with lobby, queue and channels; the lobby surface showing needs-you strip, today digest strip, work-unit cards, and start entries">
+      <div class="wrow">
+        <div class="wcol" style="flex:0 0 130px">
+          <div class="wbox solid"><span class="lbl">project rail</span><small>lobby<br>queue <b style="color:var(--gold)">●3</b><br>─────<br>features<br>&nbsp;#api-rate-limit<br>epics<br>&nbsp;#payments <b style="color:var(--gold)">●</b><br>─────<br>archived ▸</small></div>
+        </div>
+        <div class="wcol" style="flex:1">
+          <div class="wbox"><span class="lbl">header</span><small>project · bridge health · knowledge state</small></div>
+          <div class="wbox gate"><span class="lbl">needs you</span><small>top queue rows, cross-unit → /queue</small></div>
+          <div class="wbox"><span class="lbl">today</span><small>digest strip — what landed, per channel</small></div>
+          <div class="wrow">
+            <div class="wbox" style="flex:1"><span class="lbl">work</span><small>unit cards: phase · waiting · ●</small></div>
+            <div class="wbox accent" style="flex:1"><span class="lbl">start</span><small>shaping thread · inbox (n) · roadmap · baseline</small></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>S1 · the lobby — the morning answer (intent 3), and the home of everything that exists before a channel does: shaping, inbox, roadmap, baseline (the pre-durability tier). Below 900px the queue becomes the phone's home screen.</figcaption>
+    </div>
+
+    <h2>The channel</h2>
+    <div class="wire" role="img" aria-label="Wireframe: channel header with presence, a spine of gates and phase completions grouped into topic threads, and a context panel with open gates, build-order mini-map and activity drawer">
+      <div class="wcol">
+        <div class="wbox"><span class="lbl">header</span><small>#payments-overhaul [epic] · phase state <i>(engine, mono)</i> · presence strip</small></div>
+        <div class="wrow">
+          <div class="wcol" style="flex:1.6">
+            <div class="wbox"><span class="lbl">spine — four item types only</span><small><b style="color:var(--gold)">◆ gate</b> · phase completion · unit status change · tombstone</small></div>
+            <div class="wbox"><span class="lbl">thread · retry-policy</span><small>density: conversation (Discussion)</small></div>
+            <div class="wbox"><span class="lbl">thread · idempotency ⚑</span><small>density: telemetry (Delivery, collapsed)</small></div>
+          </div>
+          <div class="wcol" style="flex:1">
+            <div class="wbox gate"><span class="lbl">open gates here</span><small>cards, in context</small></div>
+            <div class="wbox"><span class="lbl">build-order mini-map</span><small>epics only</small></div>
+            <div class="wbox"><span class="lbl">activity drawer ▸</span><small>commits · artifacts — exiled from the spine</small></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>S3 · the channel — the spine stays legible (intent 5) because commits live in the drawer, and the cone is a per-thread property (intent 4): one epic can be conversation-dense and telemetry-quiet at once.</figcaption>
+    </div>
+
+    <h2>The artifact viewer</h2>
+    <div class="wire" role="img" aria-label="Wireframe: artifact viewer with a type-specific left rail, lens tabs for Read, Structure and History, and a what-moved ribbon; a gate card docked bottom right">
+      <div class="wcol">
+        <div class="wbox"><span class="lbl">header</span><small>retry-policy · specification · <b>[golden]</b> · tabs: Read | Structure | History</small></div>
+        <div class="wrow">
+          <div class="wbox" style="flex:0 0 150px"><span class="lbl">rail (by type)</span><small>spec → sources + consult refs + claim chips<br>discussion → map rail<br>review → verdict + buckets</small></div>
+          <div class="wbox" style="flex:1"><span class="lbl">lens content</span><small>Read: typeset (firmness chrome)<br>Structure: the type's register<br>History: timeline + diffs</small></div>
+          <div class="wbox accent" style="flex:0 0 110px"><span class="lbl">what moved</span><small>diff since your last read</small></div>
+        </div>
+        <div class="wrow" style="justify-content:flex-end">
+          <div class="wbox gate" style="flex:0 0 220px"><span class="lbl">◆ gate card, docked</span><small>deep-linked to the section it concerns</small></div>
+        </div>
+      </div>
+      <figcaption>S5 · the artifact viewer — deciding and reading share one screen (intent 2): the sign-off card docks beside the section it questions, sources and claims join live from the manifest.</figcaption>
+    </div>
+
+    <h2>Provenance typography — who is speaking</h2>
+    <p>The visual system's load-bearing rule: a reader can tell the deterministic core, the dialogue, and the UI apart from the letterforms alone, before reading a word.</p>
+    <div class="provrow">
+      <div class="prov"><span class="who">mono · engine truth</span><div class="sample mono">specification · in-progress<br>sources: 2 incorporated</div></div>
+      <div class="prov"><span class="who">serif · the conversation</span><div class="sample serif">I'd cap retries at five unless delivery volume says otherwise — what changes your mind?</div></div>
+      <div class="prov"><span class="who">sans · the bridge's chrome</span><div class="sample sans">Open queue · Sign off · View history</div></div>
+    </div>
+    <p>Two more reserved meanings: <strong>gold is only ever a gate</strong> — cards, spine gate items, open-ask glyphs; the bridge's steel blue carries navigation; semantic status is a third, muted family that competes with neither. And motion settles, it never performs: resolved cards collapse with a single ease, telemetry swaps without transition, nothing pulses while working.</p>
+
+    <h2>The catalog, in one pass</h2>
+    <p>Twenty-six components with one-line contracts, named states, and — after the design's own adversarial review — an intent citation each: from <code>GateCard</code> (six states, comment indicator on the confirm control) and <code>BatchScreenCard</code> (the lanes' batch shapes, a stop never auto-advanced) through <code>EngineEmbed</code> (verbatim, width-pinned, never restyled) and <code>WhatMovedRibbon</code> (including "history rewritten — diff base lost"), down to <code>BridgeBanner</code>, whose closed list names every degraded state the bridge can be in. Degradation is always a rendered state, never a silent absence. The review also forced the useful discipline into writing: one interactive card at a time, badges derived rather than counted, a keyboard model where a typed <code>y</code> answers a focused card and focus never lands on the recommended row — pre-selection by focus ring is still pre-selection.</p>
+
+    <div class="pagenav">
+      <a href="#surfaces"><span>Back · 02</span>← The four surfaces</a>
+      <a class="next" href="#stateboards"><span>Next · 04</span>State boards →</a>
+    </div>
+  </section>
+
+  <!-- 04 STATE BOARDS -->
+  <section class="page" id="stateboards" aria-labelledby="sb-h">
+    <p class="eyebrow">04 · State boards</p>
+    <h1 id="sb-h">Every state, rendered once</h1>
+    <p class="lede">Visual design succeeds or fails in the state variation — a resolved card collapsing, an escalated row, a banner that must be impossible to miss. Each state-rich component's full set, side by side, for approval. The six full screens live on the <a href="https://claude.ai/code/artifact/2e1c354f-8aad-41ee-89b2-e2b88d27c0cb">design canvas</a>.</p>
+
+    <div class="board">
+      <h3>GateCard — six states</h3>
+      <div class="staterow">
+        <div class="state gold"><span class="sl">open</span><span style="color:var(--gold)" class="m">◆</span> Sign off this specification?<br><span class="m" style="color:var(--accent)">y/yes</span> · <span class="m" style="color:var(--accent)">r/review</span> · free text<br><span class="schip warn">recommended marked</span></div>
+        <div class="state gold"><span class="sl">answering</span><span style="color:var(--gold)" class="m">◆</span> Sign off…<br><span class="m">→ submitting as your turn</span><br><span class="schip">options locked</span></div>
+        <div class="state"><span class="sl">resolved · one line</span><span style="color:var(--gold)" class="m">◆ resolved</span> — signed off · you · 14:02</div>
+        <div class="state"><span class="sl">resolved-externally</span><span class="m">◆ answered outside the UI</span><br>outcome shown · ledger row unattributed</div>
+        <div class="state"><span class="sl">stale</span><span class="m">session ended with this ask unanswered</span></div>
+        <div class="state"><span class="sl">orphaned</span><span class="m" style="color:#B54545">resume failed</span> — fallback chat offered</div>
+      </div>
+    </div>
+
+    <div class="board">
+      <h3>BatchScreenCard &amp; PassThroughAsk</h3>
+      <div class="staterow">
+        <div class="state gold" style="max-width:300px"><span class="sl">batch screen · open</span><span class="m">DISPLAY: finding batch</span><br>1 · 2 · 3 numbered findings, two-line readings<br><span class="m" style="color:var(--accent)">y/yes</span> approve screen · veto by number<br><span class="schip">≤5 per screen</span><span class="schip">never pings on open</span></div>
+        <div class="state" style="max-width:300px"><span class="sl">pass-through ask</span><em>"…what would change your mind on capping at five?"</em><br>thread tail + reply box — no card fabricated</div>
+      </div>
+    </div>
+
+    <div class="board">
+      <h3>QueueRow — two anatomies, four states</h3>
+      <div class="staterow">
+        <div class="state gold" style="max-width:280px"><span class="sl">live</span><span style="color:var(--gold)" class="m">◆</span> <span class="m">payments · retry-policy</span> — Sign off? · you · 2h</div>
+        <div class="state" style="max-width:280px"><span class="sl">durable</span><span class="m">⚑ payments · webhooks-spec</span> — input moved · 1d</div>
+        <div class="state" style="max-width:280px"><span class="sl">escalated</span><span class="schip bad">idle-at-ask 2h</span> outranks everything</div>
+        <div class="state" style="max-width:280px"><span class="sl">stuck (P6)</span><span class="schip warn">stuck — claim?</span> enters every member's view</div>
+      </div>
+    </div>
+
+    <div class="board">
+      <h3>SessionHealthBadge · SpineItem · lifecycle chips</h3>
+      <div class="staterow">
+        <div class="state" style="max-width:420px"><span class="sl">session health</span><span class="schip ok">live</span><span class="schip warn">idle-at-ask</span><span class="schip">stalled 4m</span><span class="schip bad">errored · resume</span><span class="schip">dead · resumable</span></div>
+        <div class="state" style="max-width:420px"><span class="sl">spine items</span><span class="schip warn">◆ gate</span><span class="schip ok">phase completed</span><span class="schip">unit status change</span><span class="schip">◦ tombstone → successor</span></div>
+        <div class="state" style="max-width:420px"><span class="sl">sources panel</span><span class="schip ok">incorporated</span><span class="schip">pending</span><span class="schip bad">stale</span><span class="schip ok">addressed (consult)</span></div>
+        <div class="state" style="max-width:420px"><span class="sl">map rail (discussion)</span><span class="schip">pending</span><span class="schip acc">exploring</span><span class="schip acc">converging</span><span class="schip ok">decided</span></div>
+      </div>
+    </div>
+
+    <div class="board">
+      <h3>BridgeBanner — the closed list</h3>
+      <div class="staterow">
+        <div class="state" style="max-width:230px"><span class="sl">version skew</span><span class="m">product v0.9 &gt; supported — read-only, raw embeds</span></div>
+        <div class="state" style="max-width:230px"><span class="sl">pending migrations</span><span class="m">run a session to migrate — bridge never does</span></div>
+        <div class="state" style="max-width:230px"><span class="sl">read-only mirror</span><span class="m">driven from another machine (lease held)</span></div>
+        <div class="state" style="max-width:230px"><span class="sl">bridge unreachable</span><span class="m" style="color:#B54545">silent since 14:20 — sessions may be waiting</span></div>
+        <div class="state" style="max-width:230px"><span class="sl">live-only</span><span class="m">shallow clone — history spine unavailable</span></div>
+      </div>
+    </div>
+
+    <div class="board">
+      <h3>WhatMovedRibbon · TelemetrySurface · Tombstone/Archive</h3>
+      <div class="staterow">
+        <div class="state" style="max-width:280px"><span class="sl">what moved</span><span class="schip acc">unread · 2 sections ▸</span><span class="schip">none</span><span class="schip bad">history rewritten — diff base lost</span></div>
+        <div class="state" style="max-width:300px"><span class="sl">telemetry</span><span class="m">task 4/9 · attempt 2 · gate: auto · 6 commits</span><br><span class="schip ok">running</span><span class="schip warn">◆ consult</span><span class="schip acc">consolidating</span></div>
+        <div class="state" style="max-width:280px"><span class="sl">tombstone / archive</span><span class="schip">◦ absorbed → epic topic</span><span class="schip">◦ promoted → new channel</span><span class="schip ok">completed</span><span class="schip">cancelled</span></div>
+      </div>
+    </div>
+
+    <div class="board">
+      <h3>ClaimChip · attention chips · capture</h3>
+      <div class="staterow">
+        <div class="state" style="max-width:300px"><span class="sl">claim chip</span><span class="m">grep -rn deliver_webhook | wc -l → 3</span><br><span class="m" style="color:var(--muted)">copy to verify in a terminal</span> <span class="schip ok">review pass: held</span></div>
+        <div class="state" style="max-width:300px"><span class="sl">escalation &amp; owner</span><span class="schip bad">idle 2h · pushed once</span><span class="schip">quiet hours — accruing</span><span class="schip acc">owner: you</span><span class="schip warn">stuck — claim?</span></div>
+        <div class="state" style="max-width:300px"><span class="sl">capture retry (P6)</span><span class="m" style="color:#B54545">1 capture failed — payload kept</span><br><span class="m" style="color:var(--accent)">retry</span> · <span class="m">discard</span></div>
+      </div>
+    </div>
+
+    <h2>Single-state components</h2>
+    <p class="oneliners">The rest carry one rendered form each, shown in context on the canvas: <span class="m">EngineEmbed</span> (terminal-framed, verbatim — thread board), <span class="m">LensTabs</span> and <span class="m">VerdictBanner</span> (artifact board), <span class="m">PresenceStrip</span> (channel header — held/live for research and discussion, "inferred" elsewhere), <span class="m">ConsolidationCard</span> (one decide screen), <span class="m">BriefCard</span> (three panels, badged regenerable), <span class="m">DigestCard</span> (its own board), <span class="m">CommentThread</span> (the unread indicator rides the GateCard's confirm control), <span class="m">MapRail</span>, <span class="m">OwnerChip</span>, and <span class="m">TopicThread</span>, whose three modes — conversation, drain, telemetry — are the thread board's subject.</p>
+
+    <div class="callout"><p><strong>Approval scope:</strong> approving these boards approves the component vocabulary — names, states, and the meaning each visual carries. Layout approval belongs to the canvas; both trace to <code>specs/components-layouts.md</code>.</p></div>
+
+    <div class="pagenav">
+      <a href="#screens"><span>Back · 03</span>← Screens &amp; components</a>
+      <a class="next" href="#architecture"><span>Next · 05</span>Architecture →</a>
+    </div>
+  </section>
+
+  <!-- 05 ARCHITECTURE -->
+  <section class="page" id="architecture" aria-labelledby="ar-h">
+    <p class="eyebrow">05 · Architecture</p>
+    <h1 id="ar-h">A daemon between two worlds</h1>
+    <p class="lede">One new piece of software: the bridge. Above it, a SPA speaking the AG-UI protocol. Below it, only surfaces the product already has — headless sessions, the engine's in-process read surface, files, and git.</p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 400" role="img" aria-label="Architecture: browser SPA and MCP apps talk AG-UI and MCP to the bridge daemon, whose components are the session manager, gate parser, watcher, engine adapter, attention engine and SQLite. The bridge drives Claude Agent SDK sessions and reads the engine's lib.cjs and the .workflows directory plus git. The product is unchanged.">
+          <defs><marker id="a1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11.5">
+            <rect x="60" y="10" width="280" height="44" rx="8" fill="none" stroke="currentColor"/>
+            <text x="200" y="30" text-anchor="middle" fill="currentColor">SPA — channels · cards · lenses</text>
+            <text x="200" y="45" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">Vite + React · assistant-ui · shadcn</text>
+            <rect x="420" y="10" width="280" height="44" rx="8" fill="none" stroke="currentColor" stroke-dasharray="5 4"/>
+            <text x="560" y="30" text-anchor="middle" fill="currentColor">MCP Apps — gates in Claude</text>
+            <text x="560" y="45" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">phase 7 · optional</text>
+            <line x1="200" y1="54" x2="200" y2="92" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+            <text x="212" y="78" fill="currentColor" opacity=".6" font-size="10">AG-UI over WS · gate answers</text>
+            <line x1="560" y1="54" x2="560" y2="92" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a1)"/>
+            <text x="572" y="78" fill="currentColor" opacity=".6" font-size="10">MCP · authenticated</text>
+
+            <rect x="40" y="94" width="680" height="132" rx="10" fill="var(--accent-wash)" stroke="var(--accent)"/>
+            <text x="60" y="116" fill="currentColor" font-weight="600">the bridge — Node daemon · single instance per project (lease)</text>
+            <rect x="60" y="130" width="150" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="135" y="153" text-anchor="middle" fill="currentColor" font-size="10.5">session manager</text>
+            <rect x="222" y="130" width="130" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="287" y="153" text-anchor="middle" fill="currentColor" font-size="10.5">gate parser</text>
+            <rect x="364" y="130" width="130" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="429" y="153" text-anchor="middle" fill="currentColor" font-size="10.5">watcher · spine</text>
+            <rect x="506" y="130" width="194" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="603" y="153" text-anchor="middle" fill="currentColor" font-size="10.5">attention engine · digests</text>
+            <rect x="60" y="176" width="292" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="206" y="199" text-anchor="middle" fill="currentColor" font-size="10.5">engine adapter — lib.cjs in-process</text>
+            <rect x="364" y="176" width="336" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="532" y="199" text-anchor="middle" fill="currentColor" font-size="10.5">SQLite — cursors · ledgers · sessions · journals</text>
+
+            <line x1="135" y1="226" x2="135" y2="264" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+            <text x="147" y="250" fill="currentColor" opacity=".6" font-size="10">Agent SDK · scoped allowlist</text>
+            <line x1="429" y1="226" x2="429" y2="264" stroke="currentColor" stroke-width="1.4" marker-end="url(#a1)"/>
+            <text x="441" y="250" fill="currentColor" opacity=".6" font-size="10">reads · never writes directly</text>
+
+            <rect x="40" y="266" width="300" height="52" rx="8" fill="none" stroke="currentColor"/>
+            <text x="190" y="288" text-anchor="middle" fill="currentColor">workflow sessions</text>
+            <text x="190" y="304" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">headless Claude Code · the skills unchanged</text>
+            <rect x="360" y="266" width="360" height="52" rx="8" fill="none" stroke="currentColor"/>
+            <text x="540" y="288" text-anchor="middle" fill="currentColor">.workflows/ + git + engine</text>
+            <text x="540" y="304" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">the record — one authority, untouched</text>
+
+            <text x="380" y="352" text-anchor="middle" fill="currentColor" opacity=".7" font-size="11">every write reaches the record through a session — the bridge itself only reads</text>
+            <line x1="190" y1="318" x2="380" y2="340" stroke="currentColor" stroke-opacity=".35"/>
+            <line x1="540" y1="318" x2="420" y2="340" stroke="currentColor" stroke-opacity=".35"/>
+            <text x="380" y="384" text-anchor="middle" fill="currentColor" opacity=".55" font-size="10">127.0.0.1 + bearer token from day one · OAuth at phase 6 · bridge never runs migrations</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>The bridge is the only new software. Sessions are ordinary workflow sessions — the skills, gates, and engine behave exactly as they do in a terminal.</figcaption>
+    </figure>
+
+    <h2>The round trip that proves the thesis</h2>
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 210" role="img" aria-label="Gate round trip: a session's engine call returns a demarcated MENU section in the tool result; the parser takes it as ground truth and diffs the model's relay; a card renders in the browser; the human's answer returns as an ordinary user turn; the session resumes.">
+          <defs><marker id="a2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11">
+            <rect x="16" y="40" width="140" height="52" rx="8" fill="none" stroke="currentColor"/>
+            <text x="86" y="62" text-anchor="middle" fill="currentColor">session</text>
+            <text x="86" y="78" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">engine renders a gate</text>
+            <line x1="156" y1="66" x2="212" y2="66" stroke="currentColor" stroke-width="1.4" marker-end="url(#a2)"/>
+            <text x="184" y="56" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">tool result:</text>
+            <text x="184" y="82" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">MENU §</text>
+            <rect x="214" y="40" width="150" height="52" rx="8" fill="none" stroke="currentColor"/>
+            <text x="289" y="62" text-anchor="middle" fill="currentColor">parser</text>
+            <text x="289" y="78" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">STOP § only · relay diffed</text>
+            <line x1="364" y1="66" x2="420" y2="66" stroke="currentColor" stroke-width="1.4" marker-end="url(#a2)"/>
+            <rect x="422" y="40" width="130" height="52" rx="8" fill="var(--gold-wash)" stroke="var(--gold)"/>
+            <text x="487" y="62" text-anchor="middle" fill="currentColor">gate card</text>
+            <text x="487" y="78" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">browser · phone</text>
+            <line x1="552" y1="66" x2="608" y2="66" stroke="currentColor" stroke-width="1.4" marker-end="url(#a2)"/>
+            <text x="580" y="56" text-anchor="middle" fill="var(--gold)" font-size="9.5">the human</text>
+            <rect x="610" y="40" width="134" height="52" rx="8" fill="none" stroke="currentColor"/>
+            <text x="677" y="62" text-anchor="middle" fill="currentColor">answer</text>
+            <text x="677" y="78" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">key or prose</text>
+            <path d="M677 92 L677 140 L86 140 L86 94" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#a2)"/>
+            <text x="380" y="132" text-anchor="middle" fill="currentColor" opacity=".65" font-size="10">an ordinary user turn — no privileged path, serialized per session (no double answers)</text>
+            <text x="380" y="180" text-anchor="middle" fill="currentColor" opacity=".55" font-size="10">unparseable ask → the raw conversation tail + a reply box; auto-mode menus ("do not stop") are never cards</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>The parser's ground truth is the engine's own byte-exact section in the tool-result stream — the model's relay is checked against it, never trusted.</figcaption>
+    </figure>
+
+    <h2>Buy vs build</h2>
+    <div class="table-scroll">
+    <table class="cmds">
+      <thead><tr><th>Layer</th><th>Choice</th></tr></thead>
+      <tbody>
+        <tr><td>wire protocol</td><td>AG-UI — run lifecycle and streamed messages for live sessions; domain events ride CUSTOM (repo-scoped state doesn't fit run-scoped interrupts)</td></tr>
+        <tr><td>sessions</td><td>Claude Agent SDK, headless, resumable, scoped tool allowlist generated from the skills' own frontmatter</td></tr>
+        <tr><td>threads</td><td>assistant-ui primitives — we don't build message rendering</td></tr>
+        <tr><td>components</td><td>Tailwind + shadcn/ui; React Flow for the plan graph; react-diff-view for history</td></tr>
+        <tr><td>distribution</td><td>MCP Apps (SEP-1865) for gates inside Claude — phase 7, reusing the same card schema</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="pagenav">
+      <a href="#stateboards"><span>Back · 04</span>← State boards</a>
+      <a class="next" href="#channels"><span>Next · 06</span>Channels &amp; the lobby →</a>
+    </div>
+  </section>
+
+  <!-- 04 CHANNELS -->
+  <section class="page" id="channels" aria-labelledby="ch-h">
+    <p class="eyebrow">06 · Channels</p>
+    <h1 id="ch-h">Channel = work unit, plus a lobby for everything else</h1>
+    <p class="lede">A channel is born at discovery's shaping commit — the moment the product makes work durable — and archived at close. Epic topics are threads. The spine carries <em>gates and phase completions only</em>; commits and machinery live in threads and a drawer.</p>
+
+    <h2>The project lobby</h2>
+    <p>A whole tier of the product lives outside any work unit, so it gets a project-level home: the start overview, the inbox working set, the product roadmap, the baseline assessment — and the <strong>pre-durability shaping conversation</strong>. Shaping happens as a lobby thread; at the type-confirm commit the thread is promoted into the newborn channel. Abandon it and it simply ends — mirroring the product's own zero-residue rule.</p>
+
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 170" role="img" aria-label="A lobby shaping thread becomes a channel at the type-confirm commit; before the commit nothing exists on disk and abandoning leaves no residue.">
+          <defs><marker id="a3" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="11">
+            <rect x="20" y="34" width="240" height="60" rx="8" fill="none" stroke="currentColor" stroke-dasharray="5 4"/>
+            <text x="140" y="58" text-anchor="middle" fill="currentColor">lobby · shaping thread</text>
+            <text x="140" y="76" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">ephemeral — nothing on disk yet</text>
+            <line x1="260" y1="64" x2="332" y2="64" stroke="currentColor" stroke-width="1.4" marker-end="url(#a3)"/>
+            <rect x="334" y="34" width="120" height="60" rx="8" fill="var(--gold-wash)" stroke="var(--gold)"/>
+            <text x="394" y="58" text-anchor="middle" fill="currentColor">y/yes</text>
+            <text x="394" y="76" text-anchor="middle" fill="var(--gold)" font-size="9.5">the one hinge</text>
+            <line x1="454" y1="64" x2="526" y2="64" stroke="currentColor" stroke-width="1.4" marker-end="url(#a3)"/>
+            <text x="490" y="54" text-anchor="middle" fill="currentColor" opacity=".6" font-size="9.5">one commit</text>
+            <rect x="528" y="34" width="212" height="60" rx="8" fill="none" stroke="currentColor"/>
+            <text x="634" y="58" text-anchor="middle" fill="currentColor">#smart-retry</text>
+            <text x="634" y="76" text-anchor="middle" fill="currentColor" opacity=".55" font-size="9.5">channel born · thread promoted in</text>
+            <path d="M140 94 L140 134" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#a3)"/>
+            <text x="152" y="128" fill="currentColor" opacity=".6" font-size="10">abandoned → simply ends, zero residue (parks &amp; inbox notes confirmed mid-shaping survive in the lobby record)</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>The UI's unit of place tracks the product's durability boundary exactly — no channel exists for work that doesn't.</figcaption>
+    </figure>
+
+    <h2>Identity through reshaping</h2>
+    <ul>
+      <li><strong>Pivot</strong> (feature → epic): same channel, new type badge, history kept.</li>
+      <li><strong>Absorb</strong>: the feature's channel archives with a tombstone pointing at the epic topic thread that continues it.</li>
+      <li><strong>Quick-fix promotion</strong>: the channel ends with a tombstone into the new feature/bugfix channel.</li>
+      <li><strong>Spec promotion</strong>: a new cross-cutting channel, linked from the originating thread.</li>
+    </ul>
+    <p>Tombstones are UI-native metadata, never workflow state — and the event stream carries a <code>workunit.removed</code> event (with its successor inferred from the same commit) so the tombstone has a trigger.</p>
+
+    <h2>Mixed-stage density</h2>
+    <p>The collaboration cone is the layout — but it's a <strong>per-topic-thread</strong> property, not a channel one. An epic is routinely in Discovery and Delivery at once; each thread carries its own density (conversation-dense early, telemetry-quiet late), the channel frame stays stage-neutral, and delivery telemetry collapses per thread.</p>
+
+    <div class="pagenav">
+      <a href="#architecture"><span>Back · 05</span>← Architecture</a>
+      <a class="next" href="#attention"><span>Next · 07</span>The attention system →</a>
+    </div>
+  </section>
+
+  <!-- 05 ATTENTION -->
+  <section class="page" id="attention" aria-labelledby="at-h">
+    <p class="eyebrow">07 · Attention</p>
+    <h1 id="at-h">Everything badges, almost nothing pushes</h1>
+    <p class="lede">Four ceremony levels — push, in-app alert, badge, digest. Every pending act gets a queue row the moment it exists; policy only decides which ones also <em>interrupt</em>. Severity never drives it; the kind of act owed does.</p>
+
+    <h2>What pushes</h2>
+    <div class="table-scroll">
+    <table class="cmds">
+      <thead><tr><th>Situation</th><th>Ceremony</th></tr></thead>
+      <tbody>
+        <tr><td>walk-lane findings return</td><td>One push at report-landing, opening the drain — never per finding; the walk is one seated conversation</td></tr>
+        <tr><td>batch screens (apply / decide / route)</td><td>Badge + digest — made calls arrive for a scan and a veto, not an interruption</td></tr>
+        <tr><td>three-strike consult · replan verdict</td><td>Push — the loop has genuinely stopped needing judgment</td></tr>
+        <tr><td>typed-confirm (never-auto) gates</td><td>Push — the product itself refuses to proceed without the human</td></tr>
+        <tr><td>task-loop gates · bootstrap asks</td><td>Badge; escalation is the safety net</td></tr>
+        <tr><td>any session idle at a stop &gt; 15 min</td><td>Escalates to a push, once per attendance — a stopped session is spent attention nothing is buying</td></tr>
+        <tr><td>teammate comment on an open gate</td><td>Badge on the card + an unread indicator on the confirm control — a sign-off can't be finalised past an unseen concern</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>The rules that keep it honest</h2>
+    <ul>
+      <li><strong>Two-level activity.</strong> App open → OS pushes downgrade to in-app alerts. Focus is scoped to the <em>topic thread</em>, so attention to one topic never suppresses a sibling's urgency — and a session you just left gets a grace period before it escalates at you.</li>
+      <li><strong>Quiet hours.</strong> Overnight, pushes accrue into one morning roll-up. Nothing is so urgent it beats sleep; the queue has it either way.</li>
+      <li><strong>A durable push ledger.</strong> Every push decision is recorded — a bridge restart re-pushes nothing.</li>
+      <li><strong>A watchdog for the watcher.</strong> Escalation lives in the bridge, so the SPA's service worker alarms when the bridge itself goes silent: a dead notifier is a visible state, not a quiet one.</li>
+      <li><strong>The floor guarantee.</strong> With every notification off, queue + badges alone suffice. Push is acceleration, never the only path to a pending decision.</li>
+    </ul>
+
+    <div class="callout gate"><p><strong>The overnight test</strong> (a walkthrough finding, now a done-criterion): a background reviewer returning at 2am produces no night-time push, one <code>report-pending</code> queue row, and one morning roll-up that opens directly onto the drain.</p></div>
+
+    <div class="pagenav">
+      <a href="#channels"><span>Back · 06</span>← Channels &amp; the lobby</a>
+      <a class="next" href="#build"><span>Next · 08</span>The build →</a>
+    </div>
+  </section>
+
+  <!-- 06 BUILD -->
+  <section class="page" id="build" aria-labelledby="bd-h">
+    <p class="eyebrow">08 · The build</p>
+    <h1 id="bd-h">Five specs, then eight phases</h1>
+    <p class="lede">The sufficiency review found the two hardest phases unbuildable without a spec pass — so five specification artifacts were written <em>before</em> any code, and reviewed as hard as the plans.</p>
+
+    <h2>The spec pass</h2>
+    <div class="table-scroll">
+    <table class="cmds">
+      <thead><tr><th>Spec</th><th>What it pins</th></tr></thead>
+      <tbody>
+        <tr><td>gate-card schema</td><td>Card fields, stable identity (invariant across SDK resumes), kind taxonomy, serialized state machine, never-auto match keys, the parse grammar</td></tr>
+        <tr><td>session lifecycle</td><td>SDK invocation, generated tool allowlist + prompt fallout, the session journal, ask detection (STOP sections only), answer-while-dead, the bridge lease</td></tr>
+        <tr><td>events</td><td>A two-layer stream — durable commit-derived events with occurrence-unique ids, an ephemeral live layer — under an epoch that detects history rewrites</td></tr>
+        <tr><td>fixture format</td><td>Recorded worlds + session journals, replay with ask-marker pauses, the adversarial corpus, path-safety so a replay can never write the real repo</td></tr>
+        <tr><td>needs-you ordering</td><td>The queue's sort key, the two tiers' named sources, and the full attention policy of page 05</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>The phases</h2>
+    <div class="phasewrap">
+      <div class="phaserow"><span class="pn">00</span><span class="pt">Rails</span><span class="pd">Monorepo, bridge skeleton, event stream + spine, fixture converter, version handshake, observability floor</span><span class="pe">2–3 wks</span></div>
+      <div class="phaserow"><span class="pn">01</span><span class="pt">The mirror</span><span class="pd">Read-only SPA following a terminal-driven project live — proves the read model before interaction exists</span><span class="pe">1–2 wks</span></div>
+      <div class="phaserow"><span class="pn">02</span><span class="pt">Gates</span><span class="pd">The thesis: cards round-tripping through live sessions; the lobby; the two-tier queue; the trust boundary. Schema freezes here</span><span class="pe">4–5 wks</span></div>
+      <div class="phaserow"><span class="pn">03</span><span class="pt">Attention</span><span class="pd">The ceremony tables go live: pushes, digests, quiet hours, the watchdog</span><span class="pe">1–2 wks</span></div>
+      <div class="phaserow"><span class="pn">04</span><span class="pt">Artifact lenses</span><span class="pd">Structure + History views; the discussion map; the spec sign-off surface; the roadmap surface</span><span class="pe">2–3 wks</span></div>
+      <div class="phaserow"><span class="pn">05</span><span class="pt">Delivery</span><span class="pd">Manifest-sourced loop telemetry, the plan dependency graph, the review board</span><span class="pe">1–2 wks</span></div>
+      <div class="phaserow"><span class="pn">06</span><span class="pt">Multiplayer</span><span class="pd">Auth, gate ownership as routing (never authority), the capture gesture, comments with ceremony</span><span class="pe">~2 wks</span></div>
+      <div class="phaserow"><span class="pn">07</span><span class="pt">MCP Apps</span><span class="pd">Gate cards inside Claude — authenticated, gesture-attested for typed confirms. Optional</span><span class="pe">~1 wk</span></div>
+    </div>
+    <p>Sequencing logic: specs → 0 → 2 is the shortest path to a gate answered without a terminal; attention (3) precedes deep reading surfaces (4) because policy matters more; 7 is last because it reuses rather than invents. Two decision checkpoints: the schema freeze and the assistant-ui-vs-CopilotKit call at the end of phase 2, and the live-discussion-map decision at the end of phase 4 — both judged on dogfooding evidence.</p>
+
+    <div class="pagenav">
+      <a href="#attention"><span>Back · 07</span>← The attention system</a>
+      <a class="next" href="#hardening"><span>Next · 09</span>Hardening →</a>
+    </div>
+  </section>
+
+  <!-- 07 HARDENING -->
+  <section class="page" id="hardening" aria-labelledby="hd-h">
+    <p class="eyebrow">09 · Hardening</p>
+    <h1 id="hd-h">Ten review passes before a line of code</h1>
+    <p class="lede">The plan set was attacked the way the product attacks its own work: parallel adversarial reviewers, findings verified against the codebase before acceptance, every confirmed finding folded back in — and a ledger recording all of it.</p>
+
+    <h2>The campaign</h2>
+    <p>Round one hit the plans from five angles: intent fidelity, technical ground truth, scope and sequencing, a 54-item coverage inventory, and buildability. Round two hit the freshly written specs with consistency and sufficiency passes, then failure-modes-and-concurrency, a two-persona day-in-the-life walkthrough, and an upstream-fit review. Roughly ninety findings survived verification; the best of them changed the design:</p>
+    <ul>
+      <li><strong>The phantom-gate bug</strong> — the engine renders auto-mode menus explicitly marked "do not stop"; naive ask detection would have carded gates the product had already sailed past, and answering one injects a stray key. Caught by the consistency review; killed by the STOP-instruction rule.</li>
+      <li><strong>Dedupe swallowing reality</strong> — content-hashed event ids made a reopened-and-recompleted topic invisible. Fixed with occurrence-unique discriminants and a two-layer stream.</li>
+      <li><strong>The missing epoch</strong> — a rebase or branch switch would have silently shifted every cursor and diff base. Now detected at boot; degradation is visible.</li>
+      <li><strong>The MCP injection hole</strong> — a model in any MCP host could have synthesized a typed confirmation. Typed-confirm gates now require user-gesture attestation, with a negative parity test.</li>
+      <li><strong>The overnight strand</strong> — a returned review report had no queue row and its push was structurally impossible. Both fixed; the case is a done-criterion now.</li>
+      <li><strong>The recorder circularity</strong> — Phase 0's fixtures needed Phase 2's parser. Resolved: v0 converts a terminal session; the live recorder waits for phase 2.</li>
+    </ul>
+    <p>Full ledger with dispositions: <code>ui/plans/REVIEW.md</code>.</p>
+
+    <h2>Giving back upstream</h2>
+    <p>The reviews also judged what the product itself should gain — as its own maintainers would, against its own doctrine:</p>
+    <p>
+      <span class="chip now">propose now · broader presence</span>
+      <span class="chip now">propose now · read-only currency verb</span>
+      <span class="chip now">propose now · never-auto surface export</span>
+      <span class="chip later">later · lane recording at agent ack</span>
+      <span class="chip later">later · render journal (the reshaped outbox)</span>
+      <span class="chip no">withdrawn · park origin token</span>
+      <span class="chip no">withdrawn · engine tasks verb</span>
+    </p>
+    <p>The pattern in the keepers: each closes a gap the product has <em>independently of any UI</em> — heartbeats its own reliability page already promises, a version surface its own boot story implies, an invariant its own gates already encode. Proposals that only served the bridge didn't survive the review.</p>
+
+    <div class="callout"><p><strong>Next milestone:</strong> Phase 0 — the specs are its entry criterion and they're written; first code is the monorepo, the event spine, and a fixture converted from a real terminal session.</p></div>
+
+    <div class="pagenav">
+      <a href="#build"><span>Back · 08</span>← The build</a>
+      <a class="next" href="#overview"><span>Start over · 01</span>Overview →</a>
+    </div>
+  </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  var pages = document.querySelectorAll("section.page");
+  var links = document.querySelectorAll("nav.pages a");
+  function show(id, scroll){
+    var found = false;
+    pages.forEach(function(s){ var on = s.id === id; s.classList.toggle("active", on); if (on) found = true; });
+    if (!found) { pages[0].classList.add("active"); id = pages[0].id; }
+    links.forEach(function(a){
+      if (a.getAttribute("data-page") === id) a.setAttribute("aria-current","page");
+      else a.removeAttribute("aria-current");
+    });
+    if (scroll) window.scrollTo({top:0, behavior:"auto"});
+  }
+  function fromHash(scroll){ show((location.hash || "#overview").slice(1), scroll); }
+  window.addEventListener("hashchange", function(){ fromHash(true); });
+  fromHash(false);
+})();
+</script>
+
+</body></html>
