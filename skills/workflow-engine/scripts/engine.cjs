@@ -235,6 +235,17 @@ Commands:
   render candidate-gate   <wu> --file <payload.json>
   render topic-collision-gate
   render triage-closed-target <wu.discovery.target>
+  render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
+  render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
+  render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]
+  render checkpoint-files-gate <wu.implementation.topic>
+  render executor-block-gate <wu.implementation.topic>
+  render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph|resolution
+  render task-count-gate  <wu.planning.topic>
+  render plan-format-gate
+  render plan-review-gate <wu.planning.topic> --variant continue|reloop
+  render correction-gate  <wu.specification.topic>
+  render analysis-proceed-gate <wu>
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
   render cancel-cascade-gate <wu.phase.topic>

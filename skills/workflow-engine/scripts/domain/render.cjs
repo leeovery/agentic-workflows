@@ -14,7 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadManifest } = require('./reads.cjs');
+const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
 const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
@@ -2279,6 +2279,336 @@ function triageClosedTarget(cwd, { dotpath }) {
   ], { glyphLabel: false }));
 }
 
+// ---------------------------------------------------------------------------
+// The phase gates. Each of these stops a flow the same way a shipped surface
+// does — the option set in code, the prose carrying the fetch and the
+// emission. Wording is the flow's own; the frame, the alignment and the
+// register are this catalogue's.
+// ---------------------------------------------------------------------------
+
+// conclude-gate — the closing consent of the four phases whose conclusion is
+// a user's call. One surface, keyed by the address's own phase segment: the
+// shape is identical (a question, a yes, a way back), and only the wording
+// each phase has always used differs, so it lives in one table rather than
+// four copies of the same frame. Research's conclude gate is its own surface
+// — it carries a conditional dead-end row no other phase has.
+const CONCLUDE_GATES = {
+  discussion: {
+    question: 'Conclude this discussion and mark as completed?',
+    options: () => [
+      cmdOption('y', 'yes', 'Conclude discussion'),
+      cmdOption('n', 'no', 'Continue discussing'),
+    ],
+  },
+  investigation: {
+    question: 'Investigation complete. Ready to conclude?',
+    options: () => [
+      cmdOption('y', 'yes', 'Conclude investigation'),
+      promptOption('Keep going', 'Tell me what else to explore'),
+    ],
+  },
+  implementation: {
+    question: 'Ready to mark implementation as completed?',
+    options: () => [
+      cmdOption('y', 'yes', 'Mark as completed'),
+      cmdOption('n', 'no', 'Go back and make changes'),
+    ],
+  },
+  planning: {
+    question: 'Ready to conclude?',
+    options: () => [
+      cmdOption('y', 'yes', 'Conclude plan and mark as completed'),
+      cmdOption('n', 'no', 'Go back and make changes'),
+    ],
+  },
+};
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function concludeGate(cwd, { dotpath }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'conclude-gate');
+  const gate = CONCLUDE_GATES[phase];
+  if (!gate) {
+    throw new Error(`render conclude-gate: phase must be one of ${Object.keys(CONCLUDE_GATES).join(', ')}, got "${phase}"`);
+  }
+  return section('MENU: conclude gate', STOP_FOR_RESPONSE, menu('', gate.options(), { question: gate.question }));
+}
+
+// summary-backfill-gate — the epic's provenance recovery, both stops. The
+// batch variant is static (the proposed lines are displayed above it); the
+// unsourced variant names the topics no source file could be drafted from,
+// so its list rides as a payload.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string, file?: string}} args
+ * @returns {string}
+ */
+function summaryBackfillGate(cwd, { dotpath, variant, file }) {
+  if (variant !== 'batch' && variant !== 'unsourced') {
+    throw new Error(`render summary-backfill-gate: --variant must be "batch" or "unsourced", got "${variant}"`);
+  }
+  resolveWorkUnit(cwd, dotpath, 'summary-backfill-gate');
+  if (variant === 'batch') {
+    return section('MENU: summary batch gate', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('y', 'yes', 'Accept all summaries as drafted (description is auto-drafted silently)'),
+      cmdOption('e', 'edit', 'Edit one or more summary lines before accepting'),
+      cmdOption('s', 'skip', 'Skip the whole batch (leave fields blank)'),
+    ], { question: 'Accept these summaries?' }));
+  }
+  if (!file) throw new Error('render summary-backfill-gate: --file <payload.json> is required for --variant unsourced');
+  const p = readJsonPayload(cwd, file, 'summary-backfill-gate');
+  if (!Array.isArray(p.names) || p.names.length === 0 || p.names.some((n) => !isFilled(n))) {
+    throw new Error('render summary-backfill-gate: "names" must be a non-empty array of topic names');
+  }
+  return section('MENU: unsourced topics gate', STOP_FOR_RESPONSE, menuFrame([
+    `${p.names.length} topic(s) have no source file to draft from:`,
+    '',
+    ...p.names.map((n) => `- ${titlecase(n)}`),
+    '',
+    cmdOption('p', 'provide', "Tell me the summary for each and I'll write it"),
+    cmdOption('d', 'dismiss', 'Write a minimal name-derived summary noting the missing source, so this stops re-prompting'),
+    cmdOption('l', 'leave', 'Leave them unset; this flow re-offers next time'),
+  ]));
+}
+
+/**
+ * Pin a planning address, refusing any other phase by name.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{workUnit: string, phase: string, topic: string, manifest: object}}
+ */
+function resolvePlanning(cwd, dotpath, surface) {
+  const resolved = resolveAddress(cwd, dotpath, surface);
+  if (resolved.phase !== 'planning') {
+    throw new Error(`render ${surface}: address must be <work_unit>.planning.<topic>, got phase "${resolved.phase}"`);
+  }
+  return resolved;
+}
+
+// external-dependency-gate — implementation entry's two stops over a plan's
+// external dependencies: what to do about the blocking set, and which of them
+// the user has satisfied outside the pipeline. Which dependencies block is
+// judgment — it comes from reading each one's plan through its output format
+// — so the pick variant is told the set by name; each row's description is
+// manifest state and is read here, so the menu can never name a dependency
+// the plan does not declare.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string, blocking?: string}} args
+ * @returns {string}
+ */
+function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
+  if (variant !== 'blocking' && variant !== 'pick') {
+    throw new Error(`render external-dependency-gate: --variant must be "blocking" or "pick", got "${variant}"`);
+  }
+  const { manifest, topic } = resolvePlanning(cwd, dotpath, 'external-dependency-gate');
+  if (variant === 'blocking') {
+    return section('MENU: blocking dependencies gate', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('s', 'satisfied', 'Mark a dependency as satisfied externally'),
+      cmdOption('i', 'implement', 'Exit to implement blocking dependencies first'),
+    ], { question: 'How would you like to proceed?' }));
+  }
+  const names = String(blocking || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (names.length === 0) {
+    throw new Error('render external-dependency-gate: --blocking <topic,topic,…> is required for --variant pick — the blocking set, in offer order');
+  }
+  const declared = ((((manifest.phases || {}).planning || {}).items || {})[topic] || {}).external_dependencies || {};
+  const rows = names.map((name, i) => {
+    const dep = declared[name];
+    if (!dep || typeof dep !== 'object') {
+      throw new Error(`render external-dependency-gate: "${name}" is not an external dependency of "${topic}"`);
+    }
+    if (!isFilled(dep.description)) {
+      throw new Error(`render external-dependency-gate: "${name}" carries no description — the row has nothing to say`);
+    }
+    return cmdOption(String(i + 1), null, `${titlecase(name)} — ${dep.description}`);
+  });
+  return section('MENU: dependency pick', STOP_FOR_RESPONSE, menu('', rows, { question: 'Which dependency has been satisfied?' }));
+}
+
+// checkpoint-files-gate — the analysis loop's pre-analysis checkpoint. The
+// unexpected files are listed above by the flow; the gate only asks what the
+// commit should carry.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function checkpointFilesGate(cwd, { dotpath }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'checkpoint-files-gate');
+  if (phase !== 'implementation') {
+    throw new Error(`render checkpoint-files-gate: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
+  }
+  return section('MENU: checkpoint files gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', 'Include all'),
+    cmdOption('s', 'skip', 'Exclude unexpected files, commit only implementation files'),
+    promptOption('Comment', 'Specify which to include'),
+  ], { question: 'Include unexpected files in the checkpoint commit?' }));
+}
+
+// executor-block-gate — the task loop's stop after an executor returns
+// blocked or failed. The executor's own ISSUES text is echoed above; the
+// three ways out are fixed.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function executorBlockGate(cwd, { dotpath }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'executor-block-gate');
+  if (phase !== 'implementation') {
+    throw new Error(`render executor-block-gate: address must be <work_unit>.implementation.<topic>, got phase "${phase}"`);
+  }
+  return section('MENU: executor block gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('r', 'retry', 'Re-invoke the executor with your comments (provide below)'),
+    cmdOption('s', 'skip', 'Skip this task and move to the next'),
+    cmdOption('t', 'stop', 'Stop implementation entirely'),
+  ], { question: 'How would you like to proceed?' }));
+}
+
+// dependency-approval-gate — planning's three approvals over dependency
+// work: the graph as first analysed, the graph after it was applied, and the
+// external-dependency resolutions. One shape — approve, or say what to
+// change — with each variant's own wording.
+const DEPENDENCY_APPROVALS = {
+  graph: { question: 'Approve the dependency graph?', change: 'which priorities or dependencies to adjust' },
+  'updated-graph': { question: 'Approve the updated graph?', change: 'which priorities or dependencies to adjust' },
+  resolution: { question: 'Approve the dependency resolution?', change: 'which resolutions to adjust or links to add' },
+};
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string}} args
+ * @returns {string}
+ */
+function dependencyApprovalGate(cwd, { dotpath, variant }) {
+  const spec = variant === undefined ? undefined : DEPENDENCY_APPROVALS[variant];
+  if (!spec) {
+    throw new Error(`render dependency-approval-gate: --variant must be one of ${Object.keys(DEPENDENCY_APPROVALS).join(', ')}, got "${variant}"`);
+  }
+  resolvePlanning(cwd, dotpath, 'dependency-approval-gate');
+  return section('MENU: dependency approval gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('y', 'yes', 'Proceed'),
+    promptOption('Tell me what to change', spec.change),
+  ], { question: spec.question }));
+}
+
+// task-count-gate — the authoring loop's stop when the detail file and the
+// task table still disagree after two attempts.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function taskCountGate(cwd, { dotpath }) {
+  resolvePlanning(cwd, dotpath, 'task-count-gate');
+  return section('MENU: task count gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('r', 'retry', 'Re-invoke the author agent once more'),
+    promptOption('Adjust', "Tell me what to correct (the task table or the detail file), and I'll apply it and re-validate"),
+  ], { question: 'How would you like to proceed?' }));
+}
+
+// plan-format-gate — the plan's format offer, reached only when a project
+// default exists. The format is project-manifest state, so the surface reads
+// it rather than being told: an offer naming a format nobody set would be a
+// gate over nothing. The address is the project's, not a work unit's — the
+// planning item does not exist yet when this gate renders.
+
+/**
+ * @param {string} cwd
+ * @returns {string}
+ */
+function planFormatGate(cwd) {
+  const project = loadProjectManifest(cwd);
+  const format = ((project || {}).defaults || {}).plan_format;
+  if (!isFilled(format)) {
+    throw new Error('render plan-format-gate: no project default plan_format — the offer only renders over an existing default');
+  }
+  return section('MENU: plan format gate', STOP_FOR_RESPONSE, menu(
+    `Project default format is **${format}**. Use the same format?`,
+    [
+      cmdOption('y', 'yes', `Use ${format}`),
+      cmdOption('n', 'no', 'See all available formats'),
+    ],
+  ));
+}
+
+// plan-review-gate — the plan review loop's two gates, the sibling of
+// spec-review-gate: continue = the cycle-count escape hatch, reloop = another
+// full round of both reviews.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string}} args
+ * @returns {string}
+ */
+function planReviewGate(cwd, { dotpath, variant }) {
+  if (variant !== 'continue' && variant !== 'reloop') {
+    throw new Error('render plan-review-gate: --variant must be "continue" or "reloop"');
+  }
+  resolvePlanning(cwd, dotpath, 'plan-review-gate');
+  if (variant === 'continue') {
+    return section('MENU: plan review continue gate', STOP_FOR_RESPONSE, menu('', [
+      cmdOption('p', 'proceed', 'Continue review'),
+      cmdOption('s', 'skip', 'Skip review, proceed to completion'),
+    ], { question: 'Continue with review?' }));
+  }
+  return section('MENU: plan review reloop gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('r', 'reanalyse', 'Run another round (traceability + integrity)'),
+    cmdOption('p', 'proceed', 'Proceed to conclusion'),
+  ], { question: 'Run another review round?' }));
+}
+
+// correction-gate — the consent stop before editing another work unit's
+// completed specification. The path is the address's own, derived here so the
+// gate can never name a file the correction protocol would not touch; the
+// owning unit must be completed, which is the one state the protocol edits.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function correctionGate(cwd, { dotpath }) {
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'correction-gate');
+  if (phase !== 'specification') {
+    throw new Error(`render correction-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
+  }
+  if (manifest.status !== 'completed') {
+    throw new Error(`render correction-gate: "${workUnit}" is "${manifest.status}" — the corrigendum protocol serves completed work units`);
+  }
+  const specPath = `.workflows/${workUnit}/specification/${topic}/specification.md`;
+  return section('MENU: correction gate', STOP_FOR_RESPONSE, menu(
+    `Apply the correction protocol to ${specPath}?`,
+    [
+      cmdOption('y', 'yes', 'Edit in place + corrigendum + knowledge re-index'),
+      cmdOption('v', 'view', 'Show the full correction list'),
+      cmdOption('n', 'no', 'Leave the specification as-is'),
+    ],
+  ));
+}
+
+// analysis-proceed-gate — specification entry's consent before the grouping
+// analysis runs. The cache-aware message above it differs by cache state; the
+// ask does not.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function analysisProceedGate(cwd, { dotpath }) {
+  resolveWorkUnit(cwd, dotpath, 'analysis-proceed-gate');
+  return section('MENU: analysis proceed gate', STOP_FOR_RESPONSE, menu('', YES_NO, { question: 'Proceed with analysis?' }));
+}
+
 // finding-announce — the surfacing protocol's opt-in gate: a background
 // agent's return announced as a count and a lane shape, never a preview.
 // The chrome is fixed; the payload carries only judgment content (the
@@ -3928,6 +4258,17 @@ const SURFACES = {
   'candidate-gate': candidateGate,
   'topic-collision-gate': topicCollisionGate,
   'triage-closed-target': triageClosedTarget,
+  'conclude-gate': concludeGate,
+  'summary-backfill-gate': summaryBackfillGate,
+  'external-dependency-gate': externalDependencyGate,
+  'checkpoint-files-gate': checkpointFilesGate,
+  'executor-block-gate': executorBlockGate,
+  'dependency-approval-gate': dependencyApprovalGate,
+  'task-count-gate': taskCountGate,
+  'plan-format-gate': planFormatGate,
+  'plan-review-gate': planReviewGate,
+  'correction-gate': correctionGate,
+  'analysis-proceed-gate': analysisProceedGate,
   'proposed-task': proposedTask,
   'incoherence-gate': incoherenceGate,
   'cancel-cascade-gate': cancelCascadeGate,
