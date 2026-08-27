@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { git } = require('../kernel/git.cjs');
-const { commitScopedLocked, KB_DIR } = require('./commit.cjs');
+const { commitPathspecScoped, KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
 const { labelConfigStatus, repairSessionLabels, configDir } = require('./session-label.cjs');
 const { baselineState } = require('./baseline.cjs');
@@ -158,17 +158,16 @@ function boot(cwd) {
   // (permission/hook plumbing) and the repo-root .gitignore. The skill's
   // .workflows-scoped migration commit misses those, leaving them dirty after
   // boot for some later unrelated commit to sweep up. When migrations changed,
-  // commit whichever of the two exist on disk — existence-guarded, since a
-  // `git add` on a nonexistent path errors (the same lesson commit.cjs's
-  // KB_DIR guard encodes) and an all-clean stage simply commits nothing. The
-  // migration files are already applied, so a commit failure is a warning,
-  // never a block.
+  // commit whichever of the two exist on disk, confined to them — a boot runs
+  // beside live sessions and beside the user's own staged work, and neither
+  // belongs in a migration commit. The migration files are already applied,
+  // so a commit failure is a warning, never a block.
   if (migrations.changed) {
     try {
       const configSpecs = ['.claude/settings.json', '.gitignore']
         .filter((p) => fs.existsSync(path.join(cwd, p)));
       if (configSpecs.length > 0) {
-        commitScopedLocked(cwd, configSpecs, 'chore: apply workflow migration config changes');
+        commitPathspecScoped(cwd, configSpecs, 'chore: apply workflow migration config changes');
       }
     } catch (err) {
       warnings.push(`migration config commit failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -211,7 +210,7 @@ function boot(cwd) {
         const message = status.split('\n').some((l) => l.startsWith('??'))
           ? 'chore(knowledge): initialise store'
           : 'chore(knowledge): compact store';
-        kbCommitted = commitScopedLocked(cwd, KB_DIR, message);
+        kbCommitted = commitPathspecScoped(cwd, KB_DIR, message);
       }
     } catch (err) {
       warnings.push(`knowledge store commit failed: ${err instanceof Error ? err.message : String(err)}`);

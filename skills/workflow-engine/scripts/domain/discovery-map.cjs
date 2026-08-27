@@ -23,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
 const { computeTopicLifecycle, phaseItems } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
@@ -175,7 +175,7 @@ function sequenceMap(cwd, workUnit, orders) {
 
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}`, `discovery(${workUnit}): sequence topic map`, warnings);
+  const outcome = commitTailPathspec(cwd, discoveryScope(workUnit), `discovery(${workUnit}): sequence topic map`, warnings);
   /** @type {SequenceResult} */
   const result = { ordered: orders, committed: outcome.committed };
   if (outcome.failed) result.warnings = warnings;
@@ -409,13 +409,13 @@ function removeItem(cwd, workUnit, name) {
   // back to the map on removal — the stretch-scope wrap's revert. Lazy
   // require and after the work-unit lock closes, mirroring the cancel hop —
   // and like that hop the project manifest is staged in its own commit (the
-  // map op itself stays cadence-committed, wu-scoped, which never covers the
+  // map op itself stays cadence-committed, and no work-unit scope reaches the
   // project manifest).
   const { revertJoins } = require('./roadmap.cjs');
   const reverted = revertJoins(cwd, workUnit, { topic: name });
   if (reverted.length > 0) {
     result.roadmap_reverted = reverted;
-    const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+    const { PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
     /** @type {string[]} */
     const warnings = [];
     commitTailPathspec(cwd, PROJECT_MANIFEST_SPEC, `roadmap: un-pull ${reverted.join(', ')} (${name} removed from ${workUnit})`, warnings);

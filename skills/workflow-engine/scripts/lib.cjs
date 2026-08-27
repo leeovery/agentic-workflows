@@ -99,6 +99,7 @@ module.exports = {
   },
   presence: {
     scanPresence: presence.scanPresence,
+    scanProject: presence.scanProject,
     fmtAge: presence.fmtAge,
   },
   detail: {

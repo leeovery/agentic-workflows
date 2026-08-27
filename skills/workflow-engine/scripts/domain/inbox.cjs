@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const { removeFiles } = require('../kernel/git.cjs');
-const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
+const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 
 const INBOX = '.workflows/.inbox';
 const FOLDERS = ['ideas', 'bugs', 'quickfixes'];
@@ -115,7 +115,7 @@ function moveAndCommit(cwd, items, destDir, verb) {
   }
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailWithKb(cwd, INBOX, commitMessage(verb, items), warnings);
+  const outcome = commitTailPathspec(cwd, INBOX, commitMessage(verb, items), warnings);
   /** @type {{moved: string[], committed: string|null, note?: string, warnings?: string[]}} */
   const result = { moved, committed: outcome.committed };
   if (outcome.failed) {
@@ -161,9 +161,9 @@ function deleteItems(cwd, paths) {
   /** @type {string[]} */
   const warnings = [];
   // The git rm stages index changes, so it belongs inside the same commit
-  // lock as the commit that lands them — a concurrent whole-index commit
-  // must never sweep the deletions under its own message.
-  const outcome = commitTailWithKb(cwd, INBOX, commitMessage('delete', items), warnings, () => {
+  // lock as the commit that lands them — no peer's add+commit sequence may
+  // interleave between the two.
+  const outcome = commitTailPathspec(cwd, INBOX, commitMessage('delete', items), warnings, () => {
     removeFiles(cwd, items.map((i) => i.given));
   });
   /** @type {{deleted: string[], committed: string|null, note?: string, warnings?: string[]}} */

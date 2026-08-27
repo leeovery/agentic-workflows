@@ -202,6 +202,9 @@ class Sim {
     git(this.dir, ['config', 'user.name', 'Sim']);
     git(this.dir, ['config', 'commit.gpgsign', 'false']);
     fs.mkdirSync(path.join(this.dir, '.workflows'), { recursive: true });
+    // The nested gitignore every booted project carries (migration 049): the
+    // cache is ephemeral session machinery, mechanical heartbeats included.
+    fs.writeFileSync(path.join(this.dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n');
     this.step = 0;
     // Hermetic session-label environment: the config dir pins into the
     // sandbox and the tmux identity is stripped, so `session label` can
@@ -385,6 +388,18 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
+  // The task's code commit: declared paths, validated and confined, with the
+  // residual dirt answered back so nothing the task touched is left behind.
+  // Code has no layout to derive a scope from — this is the one commit whose
+  // paths Claude names.
+  sim.write(`src/${topic}.js`, `module.exports = ${JSON.stringify(topic)};\n`);
+  sim.write(`src/${topic}-untouched.js`, '// a file this task did not write\n');
+  const codeCommit = sim.run(['commit', '--paths', `src/${topic}.js`, '-m', `feat(${topic}): the task`,
+    '--for', wu, `implementation/${topic}`]);
+  assert.deepStrictEqual(codeCommit.left_dirty, [`src/${topic}-untouched.js`],
+    'the forgotten path comes back as the reconcile signal');
+  sim.run(['commit', '--paths', `src/${topic}-untouched.js`, '-m', `chore(${topic}): the rest`,
+    '--for', wu, `implementation/${topic}`]);
   // Each executor and reviewer report's BANK entries deposit the moment the
   // report arrives (task-loop B/D) — durable on the manifest, drained at the
   // phase boundary.
@@ -620,6 +635,9 @@ describe('pipeline simulation', () => {
     sim.run(['discovery-map', 'edit', wu, 'gamma', '--summary', 'Gamma, sharpened']);
     sim.run(['discovery-map', 'rename', wu, 'gamma', 'gamma-prime']);
     sim.run(['discovery-map', 'reroute', wu, 'gamma-prime', 'research']);
+    // The discovery session's cadence commit: its own paths only — a live
+    // research or discussion session's topic file is never swept.
+    sim.run(['commit', wu, '--discovery', '-m', `discovery(${wu}): shape the map`]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
 
     // Alpha: research then discussion; regenerated-brief reconcile flag rides.
@@ -790,17 +808,24 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'absorb', wu, 'research', 'beta',
       '--file', '001-feasibility-question.md', '-m', `research(${wu}/beta): absorb 001-feasibility-question (from alpha)`]);
     sim.run(['agent', 'dispatch', wu, 'research', 'beta', '--kind', 'review']);
-    // Presence: a beat reads live and held (deferral territory for the
-    // bridge, in-session territory for the epic view), the orderly clear
-    // empties the scan.
+    // Presence: heartbeats are mechanical, so the verbs already run on this
+    // work unit's topics have stamped them — no prose ever beats.
+    const rowOf = (scan, phase, topic) => scan.sessions.find((r) => r.phase === phase && r.topic === topic);
+    assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'research', 'beta'),
+      'the verbs a session runs on its own topic leave a heartbeat behind');
+    // A beat reads live and held (deferral territory for the bridge,
+    // in-session territory for the epic view); the orderly clear drops it.
     sim.run(['presence', 'beat', wu, 'research', 'alpha']);
     const present = sim.run(['presence', 'scan', wu]);
-    assert.strictEqual(present.live, 1);
-    assert.strictEqual(present.held, 1);
-    assert.strictEqual(present.sessions[0].topic, 'alpha');
-    assert.strictEqual(present.sessions[0].held, true);
+    assert.strictEqual(rowOf(present, 'research', 'alpha').live, true);
+    assert.strictEqual(rowOf(present, 'research', 'alpha').held, true);
     sim.run(['presence', 'clear', wu, 'research', 'alpha']);
-    assert.strictEqual(sim.run(['presence', 'scan', wu]).live, 0);
+    assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'research', 'alpha'), undefined);
+    // The project-wide scan is the code gate's read: every work unit's rows,
+    // each naming its own.
+    const project = sim.run(['presence', 'scan']);
+    assert.strictEqual(project.scope, 'project');
+    assert.ok(project.sessions.every((r) => typeof r.work_unit === 'string'), 'every row names its work unit');
     // The SessionEnd cleanup sweeps by owning session id — a peer session's
     // heartbeat survives.
     sim.write(`.workflows/.cache/${wu}/discussion/beta/presence`,
@@ -809,9 +834,9 @@ describe('pipeline simulation', () => {
       JSON.stringify({ pid: null, pid_start: null, session_id: 'peer-sess' }) + '\n');
     const swept = sim.run(['presence', 'cleanup', 'sim-sess']);
     assert.deepStrictEqual(swept.cleared, [{ work_unit: wu, phase: 'discussion', topic: 'beta' }]);
-    assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions.map((r) => r.topic), ['gamma']);
+    assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'gamma'), 'the peer\'s heartbeat is left alone');
     sim.run(['presence', 'cleanup', 'peer-sess']);
-    assert.strictEqual(sim.run(['presence', 'scan', wu]).sessions.length, 0);
+    assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'gamma'), undefined);
     // Session labels, as every process skill's Step 0 issues them: an
     // unconfigured opt-in answers a disabled no-op — even on a bad argument,
     // since the enable check precedes validation; opted in but outside tmux

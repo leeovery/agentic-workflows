@@ -5,16 +5,27 @@
 // cache directory. Awareness, never mutual exclusion: the epic view marks
 // topics another session holds open, the analysis dispatch defers an epic-wide
 // analysis while a peer session is live, the conclude sweep leaves a held
-// peer's dirt alone, and the spec-side resolution flow checks the target
-// discussion before editing its document in place. The file records the
+// peer's dirt alone, the code gate reads the whole project's rows, and the
+// spec-side resolution flow checks the target discussion before editing its
+// document in place. The file records the
 // owning Claude process's identity
 // (pid + start time + session id); `held` is true while that exact process
 // still runs — however long it sits idle — and the mtime is the activity
 // signal (`live` = held and beaten within the staleness window). A record
 // without identity (no CLAUDE_PID at beat time) degrades to mtime-only.
-// Sessions beat at their per-turn check, clear at conclusion; the SessionEnd
-// hook on the session skills sweeps by session id for the exits that keep
-// the process alive (/clear, logout).
+//
+// Beats are mechanical: the engine stamps them as a side effect of the verbs
+// a session already runs on its own topic (`beatQuietly`), and the terminal
+// conclusion commit clears (`clearQuietly`). A beat writes THIS process's
+// identity, so only a structurally self-referential verb may beat — stamping
+// it from a verb acting on another topic manufactures a false hold. The
+// SessionEnd hook on the session skills sweeps by session id for the exits
+// that keep the process alive (/clear, logout).
+//
+// Every phase a session sits in carries presence except discovery:
+// `discovery-session open` already refuses a second session per epic
+// (`active_session`), so it is engine-serialised with nothing for a heartbeat
+// to add.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -23,7 +34,7 @@ const { processStartTime, processAlive } = require('../kernel/process.cjs');
 const { section, CONTINUE_INSTRUCTION, callout } = require('./projections/surfaces.cjs');
 
 const STALE_AFTER_SECONDS = 900;
-const PHASES = ['research', 'discussion'];
+const PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
@@ -100,6 +111,32 @@ function clearPresence(cwd, workUnit, phase, topic) {
 }
 
 /**
+ * The mechanical beat: a verb's heartbeat as a side effect, never observable.
+ * Silent on every failure — a phase outside PHASES, a work unit with no
+ * directory, an unwritable cache — because no verb's outcome may turn on
+ * whether its heartbeat landed.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function beatQuietly(cwd, workUnit, phase, topic) {
+  try {
+    if (!PHASES.includes(phase)) return;
+    beatPresence(cwd, workUnit, phase, topic);
+  } catch { /* liveness is advisory — never fail a verb over it */ }
+}
+
+/**
+ * `beatQuietly`'s terminal sibling: drop the heartbeat as a side effect of the
+ * verb that ends the session's work on the topic. Same silence.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function clearQuietly(cwd, workUnit, phase, topic) {
+  try {
+    if (!PHASES.includes(phase)) return;
+    clearPresence(cwd, workUnit, phase, topic);
+  } catch { /* liveness is advisory — never fail a verb over it */ }
+}
+
+/**
  * @typedef {object} PresenceRow
  * @property {string} phase
  * @property {string} topic
@@ -111,22 +148,27 @@ function clearPresence(cwd, workUnit, phase, topic) {
  */
 
 /**
- * Every heartbeat in the work unit's cache, with liveness applied — the one
- * read every consumer shares. `held` answers "does a session hold this topic
- * open" (unbounded by time); `live` answers "is it actively working".
- * @param {string} cwd @param {string} workUnit
- * @returns {{work_unit: string, stale_after_seconds: number, live: number, held: number, sessions: PresenceRow[]}}
+ * Memoised process start times — one `ps` per pid across a whole scan.
+ * @returns {(pid: number) => string|null|undefined}
  */
-function scanPresence(cwd, workUnit) {
-  assertArgs(cwd, workUnit, undefined);
-  /** @type {PresenceRow[]} */
-  const sessions = [];
+function startTimeReader() {
   /** @type {Map<number, string|null>} */
-  const startCache = new Map();
-  const startOf = (/** @type {number} */ pid) => {
-    if (!startCache.has(pid)) startCache.set(pid, processStartTime(pid));
-    return startCache.get(pid);
+  const cache = new Map();
+  return (pid) => {
+    if (!cache.has(pid)) cache.set(pid, processStartTime(pid));
+    return cache.get(pid);
   };
+}
+
+/**
+ * Every heartbeat under one work unit's cache, liveness applied.
+ * @param {string} cwd @param {string} workUnit
+ * @param {(pid: number) => string|null|undefined} startOf
+ * @returns {PresenceRow[]}
+ */
+function collectRows(cwd, workUnit, startOf) {
+  /** @type {PresenceRow[]} */
+  const rows = [];
   for (const phase of PHASES) {
     const dir = path.join(cwd, '.workflows', '.cache', workUnit, phase);
     /** @type {string[]} */
@@ -148,16 +190,59 @@ function scanPresence(cwd, workUnit) {
       } else {
         held = age < STALE_AFTER_SECONDS;
       }
-      sessions.push({
+      rows.push({
         phase, topic, age_seconds: age,
         held, live: held && age < STALE_AFTER_SECONDS,
         session_id: record ? record.session_id || null : null,
       });
     }
   }
-  sessions.sort((a, b) => a.age_seconds - b.age_seconds);
+  return rows;
+}
+
+/**
+ * Every heartbeat in the work unit's cache, with liveness applied — the one
+ * read every consumer shares. `held` answers "does a session hold this topic
+ * open" (unbounded by time); `live` answers "is it actively working".
+ * @param {string} cwd @param {string} workUnit
+ * @returns {{work_unit: string, stale_after_seconds: number, live: number, held: number, sessions: PresenceRow[]}}
+ */
+function scanPresence(cwd, workUnit) {
+  assertArgs(cwd, workUnit, undefined);
+  const sessions = collectRows(cwd, workUnit, startTimeReader()).sort((a, b) => a.age_seconds - b.age_seconds);
   return {
     work_unit: workUnit,
+    stale_after_seconds: STALE_AFTER_SECONDS,
+    live: sessions.filter((r) => r.live).length,
+    held: sessions.filter((r) => r.held).length,
+    sessions,
+  };
+}
+
+/**
+ * Every heartbeat in the project, work unit named per row — the read the code
+ * gate needs, which asks "is any session anywhere in a code phase" and has no
+ * work unit to scope by. Same row shape and same totals as the per-work-unit
+ * scan, plus `work_unit`; `scope` names the form.
+ * @param {string} cwd
+ * @returns {{scope: string, stale_after_seconds: number, live: number, held: number, sessions: (PresenceRow & {work_unit: string})[]}}
+ */
+function scanProject(cwd) {
+  const cacheRoot = path.join(cwd, '.workflows', '.cache');
+  /** @type {string[]} */
+  let workUnits = [];
+  try {
+    workUnits = fs.readdirSync(cacheRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch { /* nothing cached yet */ }
+  const startOf = startTimeReader();
+  /** @type {(PresenceRow & {work_unit: string})[]} */
+  const sessions = [];
+  for (const wu of workUnits.sort()) {
+    for (const row of collectRows(cwd, wu, startOf)) sessions.push({ work_unit: wu, ...row });
+  }
+  sessions.sort((a, b) => a.age_seconds - b.age_seconds);
+  return {
+    scope: 'project',
     stale_after_seconds: STALE_AFTER_SECONDS,
     live: sessions.filter((r) => r.live).length,
     held: sessions.filter((r) => r.held).length,
@@ -223,4 +308,8 @@ function deferralSection(scan) {
   );
 }
 
-module.exports = { beatPresence, clearPresence, scanPresence, cleanupPresence, deferralSection, fmtAge, STALE_AFTER_SECONDS };
+module.exports = {
+  beatPresence, clearPresence, beatQuietly, clearQuietly,
+  scanPresence, scanProject, cleanupPresence, deferralSection,
+  fmtAge, PHASES, STALE_AFTER_SECONDS,
+};

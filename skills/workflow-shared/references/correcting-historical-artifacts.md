@@ -67,7 +67,7 @@ Present the full correction list — each wrong claim, its evidence, and its pro
    node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {specification path}
    ```
 
-4. **Commit.** Scoped to the owning unit; the store rides along (every engine commit stages `.workflows/.knowledge`):
+4. **Commit.** Scoped to the owning unit; the store rides along (the work-unit commit carries `.workflows/.knowledge` when it exists):
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {owning_work_unit} -m "specification({owning_work_unit}): corrigendum from {correcting_work_unit}"
