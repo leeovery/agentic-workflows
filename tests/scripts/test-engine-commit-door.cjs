@@ -304,6 +304,69 @@ describe('engine commit --discovery: the discovery session\'s scope', () => {
   });
 });
 
+describe('engine commit --state: the analysis scopes', () => {
+  let dir;
+  beforeEach(() => { dir = setupTwoTopicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('the work unit form takes its analysis dir, its manifest, and the store', () => {
+    writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
+    writeFile(dir, '.workflows/payments/.state/discussion-consolidation-analysis.md', '# Groupings\n');
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    // A live peer mid-write, in the same work unit — the theft this scope closes.
+    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+    writeFile(dir, '.workflows/payments/specification/topic-a/specification.md', '# Spec\nhalf written\n');
+
+    const res = engine(dir, ['commit', 'payments', '--state', '-m', 'spec(payments): grouping analysis']);
+
+    assert.match(res.committed, /^[0-9a-f]+$/);
+    const files = headFiles(dir);
+    assert.ok(files.includes('.workflows/payments/.state/discussion-consolidation-analysis.md'), 'the analysis rides');
+    assert.ok(files.includes('.workflows/payments/manifest.json'), 'so does the manifest it wrote');
+    assert.ok(files.includes('.workflows/.knowledge/metadata.json'), 'and the store its stamp dirtied');
+    assert.deepStrictEqual(
+      statusLines(dir).sort(),
+      [' M .workflows/payments/discussion/topic-b.md', '?? .workflows/payments/specification/'],
+      'both live peers keep every byte they had not committed',
+    );
+  });
+
+  it('the global form takes .workflows/.state and nothing else', () => {
+    writeFile(dir, '.workflows/.state/environment-setup.md', '# Environment\n');
+    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+
+    const res = engine(dir, ['commit', '--state', '-m', 'chore: record environment setup']);
+
+    assert.deepStrictEqual(headFiles(dir), ['.workflows/.state/environment-setup.md']);
+    assert.match(res.committed, /^[0-9a-f]+$/);
+    assert.deepStrictEqual(
+      statusLines(dir).sort(),
+      [' M .workflows/payments/discussion/topic-b.md', ' M .workflows/payments/manifest.json'],
+      'a work unit is none of the global state dir\'s business',
+    );
+  });
+
+  it('reports nothing to commit on a clean scope, and refuses a second scope flag', () => {
+    const clean = engine(dir, ['commit', 'payments', '--state', '-m', 'noop']);
+    assert.strictEqual(clean.committed, null);
+    assert.strictEqual(clean.note, 'nothing to commit');
+
+    assert.match(engineFails(dir, ['commit', 'payments', '--state', '--discovery', '-m', 'x']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', 'payments', '--state', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', 'payments', '--state', '-m', 'x', '--plan', 'topic-a']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', '--state', '--inbox', '-m', 'x']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', '--state', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
+    assert.match(engineFails(dir, ['commit', 'no-such-unit', '--state', '-m', 'x']).error, /no work unit directory/);
+  });
+
+  it('never beats — an analysis is not a session sitting in a topic', () => {
+    writeFile(dir, '.workflows/payments/.state/discussion-consolidation-analysis.md', '# Groupings\n');
+    engine(dir, ['commit', 'payments', '--state', '-m', 'spec(payments): grouping analysis']);
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/payments')), 'no heartbeat anywhere');
+  });
+});
+
 describe('engine commit --plan: the planning topic plus the plan\'s storage', () => {
   let dir;
   beforeEach(() => { dir = setupTwoTopicFixture(); });
@@ -360,6 +423,20 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
       'the peer planning session keeps its own dirt');
   });
 
+  it('leaves the knowledge store alone — the rider is for forms that dirty it', () => {
+    const manifest = epicManifest();
+    manifest.phases.planning = { items: { 'topic-a': { status: 'in-progress', storage_paths: [] } } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    // A conclusion in a peer session left the store mid-index.
+    writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
+    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan\n');
+
+    engine(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
+
+    assert.ok(!headFiles(dir).some((f) => f.startsWith('.workflows/.knowledge/')), 'a plan pass never touched the store');
+    assert.ok(statusLines(dir).some((l) => l.includes('.workflows/.knowledge')), 'so the store dirt stays with whoever made it');
+  });
+
   it('refuses a planning topic name that is a path', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', '../escapee']).error, /invalid planning topic name/);
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'a/b']).error, /invalid planning topic name/);
@@ -388,6 +465,9 @@ describe('engine commit --paths: the code commit', () => {
   let dir;
   beforeEach(() => {
     dir = setupTwoTopicFixture();
+    const manifest = epicManifest();
+    manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     writeFile(dir, 'src/app.js', 'const x = 1;\n');
     writeFile(dir, 'src/other.js', 'const y = 1;\n');
     writeFile(dir, 'src/gone.js', 'const z = 1;\n');
@@ -442,6 +522,30 @@ describe('engine commit --paths: the code commit', () => {
     assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '--for', 'payments', 'review/topic-a']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', 'payments', '--paths', 'src/app.js', '-m', 'x', ...forTopic]).error, /Usage/);
     assert.strictEqual(statusLines(dir).length, 0, 'a refusal touches nothing');
+  });
+
+  it('refuses a --for target that does not exist — the phantom-hold repro', () => {
+    // The commit beats what --for names. A typo there mints a hold on a topic
+    // no session owns and no session-end sweeps, and the checkout's code slot
+    // then reads taken forever. It must refuse before anything is staged.
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+
+    assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '-m', 'x',
+      '--for', 'payments', 'implementation/topic-typo']).error,
+    /no implementation item "topic-typo" in "payments"/);
+    assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '-m', 'x',
+      '--for', 'no-such-unit', 'implementation/topic-a']).error,
+    /no work unit directory/);
+    assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '-m', 'x',
+      '--for', 'payments', 'implementation/..']).error,
+    /invalid topic name/);
+    assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '-m', 'x',
+      '--for', '../escapee', 'implementation/topic-a']).error,
+    /invalid work unit name/);
+
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/payments/implementation/topic-typo')),
+      'no ghost heartbeat is minted');
+    assert.deepStrictEqual(statusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
   });
 });
 
@@ -500,8 +604,6 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
     engine(dir, ['topic', 'start', 'payments', 'planning', 'topic-a']);
     assert.ok(beaten('planning', 'topic-a'), 'start opens the session\'s own topic');
-    engine(dir, ['topic', 'complete', 'payments', 'planning', 'topic-a']);
-    assert.ok(beaten('planning', 'topic-a'), 'complete is the session\'s own close');
 
     writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md', '### First\nbody\n');
     commitAll(dir, 'a delivered concern');
@@ -517,9 +619,12 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     assert.ok(!beaten('discussion', 'topic-b'), 'triage never beats the target');
   });
 
-  it('a topic-addressed manifest set beats; the batch apply does not', () => {
+  it('no field write beats — a three-segment set is often a cross-phase write', () => {
+    // Storage-path backfills, review's `updated` stamp and the epic menu's
+    // unblock all write one phase's item from another phase's session. A beat
+    // there mints a hold on a topic nobody is in.
     engine(dir, ['manifest', 'set', 'payments.discussion.topic-a', 'status', 'in-progress']);
-    assert.ok(beaten('discussion', 'topic-a'), 'every state transition heartbeats');
+    assert.ok(!beaten('discussion', 'topic-a'), 'a field write is not a session claiming the topic');
 
     engine(dir, ['manifest', 'set', 'payments.discussion', 'gate_mode', 'gated']);
     assert.ok(!beaten('discussion', 'topic-b'), 'a phase-level write names no topic');
@@ -528,6 +633,52 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     writeFile(dir, '.workflows/.cache/scratch/ops.json', ops);
     engine(dir, ['manifest', 'apply', 'payments', '--file', '.workflows/.cache/scratch/ops.json']);
     assert.ok(!beaten('discussion', 'topic-b'), 'apply writes across topics — the analysis session holds none of them');
+  });
+
+  it('the close releases the slot, and every commit after it keeps it released', () => {
+    engine(dir, ['topic', 'start', 'payments', 'planning', 'topic-a']);
+    assert.ok(beaten('planning', 'topic-a'), 'start opens the topic');
+
+    engine(dir, ['topic', 'complete', 'payments', 'planning', 'topic-a']);
+    assert.ok(!beaten('planning', 'topic-a'), 'complete is the release');
+
+    // The conclude-plan commit that follows must not re-take what the close
+    // let go — a terminal item is finished, whatever the session does next.
+    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan\nconcluded\n');
+    engine(dir, ['commit', 'payments', '-m', 'planning(payments): conclude topic-a', '--topic', 'planning/topic-a']);
+    assert.ok(!beaten('planning', 'topic-a'), 'a post-completion cadence commit stays released');
+  });
+
+  it('the review sequence leaves no held row behind', () => {
+    // `topic complete review` then the session's own artifact commit — the
+    // shape review's conclusion runs. Under a held row the checkout's code
+    // slot would read taken until the process died.
+    engine(dir, ['topic', 'start', 'payments', 'review', 'topic-a']);
+    assert.ok(beaten('review', 'topic-a'));
+
+    writeFile(dir, '.workflows/payments/review/topic-a/report.md', '# Report\n');
+    engine(dir, ['topic', 'complete', 'payments', 'review', 'topic-a']);
+    engine(dir, ['commit', 'payments', '-m', 'review(payments): complete topic-a', '--topic', 'review/topic-a']);
+
+    assert.ok(!beaten('review', 'topic-a'), 'the code slot is free the moment review closes');
+  });
+
+  it('a reopened item beats again', () => {
+    engine(dir, ['topic', 'start', 'payments', 'specification', 'topic-a']);
+    writeFile(dir, '.workflows/payments/specification/topic-a/specification.md', '# Spec\n');
+    engine(dir, ['topic', 'complete', 'payments', 'specification', 'topic-a']);
+    assert.ok(!beaten('specification', 'topic-a'), 'closed and released');
+
+    engine(dir, ['topic', 'reopen', 'payments', 'specification', 'topic-a']);
+    writeFile(dir, '.workflows/payments/specification/topic-a/specification.md', '# Spec\nreopened\n');
+    engine(dir, ['commit', 'payments', '-m', 'spec(payments/topic-a): reconcile', '--topic', 'specification/topic-a']);
+    assert.ok(beaten('specification', 'topic-a'), 'a live item\'s cadence commit is its heartbeat again');
+  });
+
+  it('a --topic commit on a topic with no manifest item neither beats nor clears', () => {
+    writeFile(dir, '.workflows/payments/research/never-registered.md', '# Notes\n');
+    engine(dir, ['commit', 'payments', '-m', 'research(payments/never-registered): notes', '--topic', 'research/never-registered']);
+    assert.ok(!beaten('research', 'never-registered'), 'no item, nothing to hold');
   });
 
   it('agent-store writes beat the topic they address', () => {
@@ -607,6 +758,16 @@ describe('commit door: transaction tails commit their own scope', () => {
     assert.match(res.committed, /^[0-9a-f]+$/, 'the staged deletion commits even though nothing is left on disk');
     assert.ok(headFiles(dir).includes('.workflows/.inbox/.archived/ideas/a-thought.md'), 'the deletion is in the commit');
     assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-b.md'], 'the live session\'s dirt is untouched');
+  });
+
+  it('the inbox scope leaves the knowledge store alone', () => {
+    writeFile(dir, '.workflows/.inbox/ideas/a-thought.md', '# A thought\n');
+    writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
+
+    engine(dir, ['commit', '--inbox', '-m', 'chore(inbox): capture an idea']);
+
+    assert.deepStrictEqual(headFiles(dir), ['.workflows/.inbox/ideas/a-thought.md']);
+    assert.ok(statusLines(dir).some((l) => l.includes('.workflows/.knowledge')), 'the store dirt is a peer session\'s');
   });
 
   it('a topic cancel commits the manifest write alone', () => {
@@ -719,7 +880,9 @@ describe('commit door: transaction-tail degrade', () => {
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'cancelled');
     assert.strictEqual(res.committed, null);
-    assert.strictEqual(res.note, 'commit pending — state saved; retry with engine commit');
+    assert.strictEqual(res.note,
+      'commit pending — state saved; retry with: engine commit payments --topic research/auth-flow --sweep -m "<message>"',
+      'the retry names the scope the cancel actually wrote, and never beats a topic the menu is not in');
     assert.ok(res.warnings.some((w) => w.includes('commit failed')), `warnings carry the git error: ${JSON.stringify(res.warnings)}`);
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
     assert.strictEqual(manifest.phases.research.items['auth-flow'].status, 'cancelled', 'state landed despite the failed commit');
@@ -750,5 +913,34 @@ describe('commit door: transaction-tail degrade', () => {
     assert.strictEqual(absorbed.committed, null);
     assert.match(absorbed.note, /--topic research\/topic-b -m/, 'the owning session\'s retry carries no suppression');
     assert.ok(!absorbed.note.includes('--sweep'));
+  });
+
+  it('every narrowed tail prescribes its own scope, never a work-unit sweep', () => {
+    const manifest = epicManifest();
+    manifest.phases.discovery.active_session = '001';
+    manifest.phases.specification = { items: {
+      'topic-a': { status: 'in-progress', sources: [] },
+      'topic-b': { status: 'in-progress', sources: [] },
+    } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n');
+    commitAll(dir, 'a discovery session and two specs');
+    const blocked = { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' };
+    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'topic-b']);
+    fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
+
+    const reactivated = engine(dir, ['topic', 'reactivate', 'payments', 'discussion', 'topic-b'], blocked);
+    assert.match(reactivated.note, /engine commit payments --topic discussion\/topic-b --sweep -m/,
+      'reactivate runs from the epic menu, like the cancel it undoes');
+
+    const sequenced = engine(dir, ['build-order', 'sequence', 'payments', 'topic-a=1', 'topic-b=2'], blocked);
+    assert.match(sequenced.note, /engine commit payments --state -m/,
+      'build-order writes the manifest alone — the work unit\'s state scope covers it');
+
+    const mapped = engine(dir, ['discovery-map', 'sequence', 'payments', 'topic-a=1'], blocked);
+    assert.match(mapped.note, /engine commit payments --discovery -m/, 'the map lives in the discovery scope');
+
+    const closed = engine(dir, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): close'], blocked);
+    assert.match(closed.note, /engine commit payments --discovery -m/, 'so does the session log it just finalised');
   });
 });

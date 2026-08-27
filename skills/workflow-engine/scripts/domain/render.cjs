@@ -7,6 +7,10 @@
 // and each surface returns demarcated sections the calling flow emits
 // verbatim at its prescribed moment. Gate-mode branching renders inside the
 // surface: the caller never chooses between gated and auto output.
+//
+// Surfaces read; they never write — with one exception. `code-gate`'s empty
+// path beats the addressed topic, because claiming the code slot and reading
+// it are the same act: the read that finds the slot free is what takes it.
 
 const fs = require('fs');
 const path = require('path');
@@ -106,10 +110,19 @@ function resumeGate(cwd, args) {
       ],
     ));
   }
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
   const t = titlecase(topic);
   if (variant === 'plan') {
     const item = itemOf(manifest, 'planning', topic) || {};
+    // A restart deletes the planning directory first and the manifest entry
+    // second. Between the two commits the entry survives a crash with nothing
+    // left to continue — so the gate offers the restart alone.
+    if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, 'planning', topic))) {
+      return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
+        `Found a planning entry for **${t}**, but the prior run's files are already cleared.`,
+        [cmdOption('r', 'restart', 'Clear what is left and plan from scratch')],
+      ));
+    }
     // Partial fill is a real state — define-phases advances `phase` and nulls
     // `task`; keep the known phase anchor rather than dropping the whole
     // parenthetical.
@@ -3216,6 +3229,13 @@ function codeGate(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'code-gate');
   if (!CODE_PHASES.includes(phase)) {
     throw new Error(`render code-gate: the code rule covers ${CODE_PHASES.join('|')} only, got "${phase}"`);
+  }
+  // The empty path beats this address, and a beat is silent on a name it
+  // cannot write — so a malformed topic would claim nothing while rendering a
+  // free slot. The item itself may not exist yet (a fresh entry gates before
+  // it initialises anything); the name must still be a name.
+  if (/[\\/]/.test(topic) || topic.includes('..')) {
+    throw new Error(`render code-gate: invalid topic name "${topic}" — no separators or ".."`);
   }
   const holders = heldCodeSessions(cwd);
   if (holders.length === 0) {

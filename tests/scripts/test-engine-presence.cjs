@@ -140,6 +140,13 @@ describe('engine presence', () => {
     assert.match(engineFails(dir, ['presence', 'bogus']).error, /Usage/);
   });
 
+  it('an empty work unit refuses; only an absent one means the project', () => {
+    // `scan "$wu"` with the variable unset. Silently widening to the whole
+    // project would answer a question nobody asked.
+    assert.match(engineFails(dir, ['presence', 'scan', '']).error, /empty work unit is refused/);
+    assert.strictEqual(engine(dir, ['presence', 'scan']).res.scope, 'project');
+  });
+
   it('the work-unit-less scan walks the whole cache root, naming each row\'s work unit', () => {
     fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
@@ -257,6 +264,29 @@ describe('engine presence', () => {
     } finally {
       if (before === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
       else process.env.CLAUDE_CODE_SESSION_ID = before;
+    }
+  });
+
+  it('the code-slot read excludes a row carrying the caller\'s pid under another session id', () => {
+    // A resumed conversation keeps the process and takes a new session id, so
+    // pid ownership is the second arm of the same question — without it the
+    // session gates against a hold it is standing in.
+    const { heldCodeSessions } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+    craftRecord(dir, 'implementation', 'alpha', { pid: process.pid, pid_start: null, session_id: 'an-earlier-conversation' });
+
+    const beforeSession = process.env.CLAUDE_CODE_SESSION_ID;
+    const beforePid = process.env.CLAUDE_PID;
+    process.env.CLAUDE_CODE_SESSION_ID = 'this-conversation';
+    process.env.CLAUDE_PID = String(process.pid);
+    try {
+      assert.deepStrictEqual(heldCodeSessions(dir), [], 'the caller\'s own process holds it, whatever the session id says');
+      process.env.CLAUDE_PID = String(process.pid + 1);
+      assert.strictEqual(heldCodeSessions(dir).length, 1, 'another process\'s hold is a holder');
+    } finally {
+      if (beforeSession === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+      else process.env.CLAUDE_CODE_SESSION_ID = beforeSession;
+      if (beforePid === undefined) delete process.env.CLAUDE_PID;
+      else process.env.CLAUDE_PID = beforePid;
     }
   });
 

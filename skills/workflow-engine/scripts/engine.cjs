@@ -31,7 +31,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
-const { beatPresence, clearPresence, beatQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, beatQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, setLabelConfig } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -302,24 +302,13 @@ Commands:
 // their exit-code convention (2 = expected miss) — while mutations
 // (set/push/pull/delete) answer with the engine's one-line JSON response.
 //
-// A topic-addressed `set` heartbeats: every state transition a session
-// records on its own topic is a sign of life. `apply` never does — it is the
-// batch door, written across topics by the analyses that reshape a whole
-// work unit, and a beat would stamp the analysis session onto topics it does
-// not hold.
+// No field write heartbeats. A three-segment `set` looks self-referential and
+// frequently is not: the storage-path backfills, review's `updated` stamp and
+// the epic menu's unblock all write one phase's item from another phase's
+// session, and a beat there manufactures a hold on a topic nobody is in (P8).
+// The session's cadence commit is its heartbeat; `apply`, the cross-topic
+// batch door, never beat either.
 // ---------------------------------------------------------------------------
-
-/**
- * The heartbeat a topic-addressed field write earns. Three dot-path segments
- * naming a presence phase is the session-on-its-own-topic shape; anything
- * shorter (work unit, phase) or the `project` prefix is not.
- * @param {string} dotpath
- */
-function beatForDotpath(dotpath) {
-  const parts = String(dotpath).split('.');
-  if (parts.length !== 3) return;
-  beatQuietly(process.cwd(), parts[0], parts[1], parts[2]);
-}
 
 /** @param {string[]} argv */
 function runManifest(argv) {
@@ -335,8 +324,7 @@ function runManifest(argv) {
     return;
   }
   try {
-    const result = /** @type {{path?: string}} */ (runFieldCommand(process.cwd(), command ?? '', rest));
-    if (command === 'set' && result && typeof result.path === 'string') beatForDotpath(result.path);
+    const result = runFieldCommand(process.cwd(), command ?? '', rest);
     respond(/** @type {object} */ (result));
   } catch (err) {
     failJson(err);
@@ -664,21 +652,22 @@ function runDiscoverySession(argv) {
 // happened — no follow-up read needed.
 //
 // Heartbeats ride the self-referential verbs — the session acting on its own
-// topic: `start` (opening it), `complete` (closing it; the conclusion commit
-// that follows carries `--kb` and clears), `absorb` (folding a concern into
-// its own document), and `queue` (the findings check polls it every turn, so
-// a turn with no writes still registers). `triage` never beats — delivery
-// acts on the TARGET topic from the origin's session, and a beat there would
-// stamp the origin process onto a topic it does not hold. Nor do `requeue`,
-// `cancel`, `reactivate`, `supersede` or `reopen`: those are analysis and
-// navigation actors reaching across topics.
+// topic: `start` (opening it), `absorb` (folding a concern into its own
+// document), and `queue` (the findings check polls it every turn, so a turn
+// with no writes still registers). `complete` is the release: the topic is
+// closed, so the slot it held opens at that moment rather than at some later
+// commit. `triage` never beats — delivery acts on the TARGET topic from the
+// origin's session, and a beat there would stamp the origin process onto a
+// topic it does not hold. Nor do `requeue`, `cancel`, `reactivate`,
+// `supersede` or `reopen`: those are analysis and navigation actors reaching
+// across topics.
 // ---------------------------------------------------------------------------
 
 const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
 // The self-referential verbs among those dispatched through TOPIC_COMMANDS;
 // `queue` and `absorb` beat at their own branches.
-const TOPIC_BEATS = ['start', 'complete'];
+const TOPIC_BEATS = ['start'];
 
 /**
  * A SessionEnd hook target's session id: the argument when given, else the
@@ -709,6 +698,12 @@ function runPresence(argv) {
     if (command === 'scan') {
       const [workUnit] = rest;
       if (rest.length > 1) throw new Error('Usage: engine presence scan [work-unit]');
+      // An empty argument is an unset shell variable (`scan "$wu"`), not a
+      // request for the project read — refuse it loudly rather than silently
+      // widening the scope. Only a genuinely absent argument takes that path.
+      if (rest.length === 1 && !workUnit) {
+        throw new Error('Usage: engine presence scan [work-unit] — an empty work unit is refused; omit the argument for the project-wide read');
+      }
       // Work-unit-less: the project-wide read the code gate takes. The
       // deferral section is the analysis dispatch's, which always scans one
       // work unit — a project scan renders nothing.
@@ -892,6 +887,10 @@ function runTopic(argv) {
     }
     const result = fn(process.cwd(), workUnit, phase, topic);
     if (TOPIC_BEATS.includes(command)) beatQuietly(process.cwd(), workUnit, phase, topic);
+    // The close releases the slot. Everything after it — the conclusion
+    // commit, a plan or implementation wrap-up — is a session tidying a topic
+    // it has finished, and none of it should re-take the hold.
+    if (command === 'complete') clearQuietly(process.cwd(), workUnit, phase, topic);
     respond(result);
   } catch (err) {
     failJson(err);
@@ -1251,9 +1250,38 @@ const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: str
   review: (wu, t) => [`.workflows/${wu}/review/${t}`],
 });
 
-// The code-commit verb's phases: implementation and review are the only ones
-// that write the tree, and one session holds them at a time.
-const CODE_PHASES = ['implementation', 'review'];
+// A topic whose item reads one of these is finished: nothing further a
+// session does to it is work on a live topic, so its commits release the slot
+// rather than hold it.
+const TERMINAL_TOPIC_STATUSES = ['completed', 'cancelled', 'superseded', 'promoted'];
+
+/**
+ * A phase item straight off disk, or null when there is none — a direct read,
+ * because the beat/clear decision must cost nothing and must never fail a
+ * commit that has already landed.
+ * @param {string} cwd @param {string} wu @param {string} phase @param {string} topic
+ * @returns {Record<string, unknown>|null}
+ */
+function topicItem(cwd, wu, phase, topic) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', wu, 'manifest.json'), 'utf8'));
+    const item = manifest?.phases?.[phase]?.items?.[topic];
+    return item && typeof item === 'object' ? item : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The phase item's recorded status, or null when the item or the field is
+ * absent.
+ * @param {string} cwd @param {string} wu @param {string} phase @param {string} topic
+ * @returns {string|null}
+ */
+function topicStatus(cwd, wu, phase, topic) {
+  const status = topicItem(cwd, wu, phase, topic)?.status;
+  return typeof status === 'string' ? status : null;
+}
 
 /**
  * Validate one declared code path. Code has no layout to derive a pathspec
@@ -1285,6 +1313,26 @@ function codePathSpec(cwd, given) {
 }
 
 /**
+ * The `--for` target must be real. It is what the commit beats, and a beat on
+ * a mistyped topic mints a hold no session owns and nothing clears — the code
+ * slot then reads taken until the machine reboots. Every prose site that
+ * commits code does so from inside a live code phase, so the item always
+ * exists by then; a miss is a typo, and it fails loudly.
+ * @param {string} cwd @param {{workUnit: string, phase: string, topic: string}} target
+ */
+function assertCodeTarget(cwd, target) {
+  const { workUnit, phase, topic } = target;
+  if (workUnit.includes('/') || workUnit.includes('..')) throw new Error(`invalid work unit name "${workUnit}"`);
+  if (topic.includes('..')) throw new Error(`invalid topic name "${topic}"`);
+  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
+    throw new Error(`commit --paths: no work unit directory: .workflows/${workUnit}`);
+  }
+  if (topicItem(cwd, workUnit, phase, topic) === null) {
+    throw new Error(`commit --paths: no ${phase} item "${topic}" in "${workUnit}" — check the --for target`);
+  }
+}
+
+/**
  * The code commit: the declared paths, committed confined under the commit
  * lock, answering with what the working tree still holds. `left_dirty` is the
  * backstop for a forgotten path — every tracked modification and untracked
@@ -1294,6 +1342,7 @@ function codePathSpec(cwd, given) {
  * @param {{workUnit: string, phase: string, topic: string}} target
  */
 function commitCodePaths(cwd, paths, message, target) {
+  assertCodeTarget(cwd, target);
   const specs = paths.map((p) => codePathSpec(cwd, p));
   const committed = commitPathspecScoped(cwd, specs, message);
   beatQuietly(cwd, target.workUnit, target.phase, target.topic);
@@ -1304,7 +1353,7 @@ function commitCodePaths(cwd, paths, message, target) {
   respond(result);
 }
 
-const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --topic <phase>/<topic> [--kb] [--sweep]] | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message>';
+const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --state | --topic <phase>/<topic> [--kb] [--sweep]] | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message>';
 
 /** @param {string[]} argv */
 function runCommit(argv) {
@@ -1317,6 +1366,7 @@ function runCommit(argv) {
     /** @type {string[]} */ const forSpec = [];
     let paths = false;
     let discovery = false;
+    let stateScope = false;
     let inbox = false;
     let workflows = false;
     let roadmapScope = false;
@@ -1334,6 +1384,7 @@ function runCommit(argv) {
       else if (a === '--kb') kb = true;
       else if (a === '--sweep') sweep = true;
       else if (a === '--discovery') discovery = true;
+      else if (a === '--state') stateScope = true;
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
       else if (a === '--roadmap') roadmapScope = true;
@@ -1350,15 +1401,18 @@ function runCommit(argv) {
       const parts = (forTopicSpec || '').split('/');
       if (!message || files.length === 0 || forSpec.length !== 2 || !forWorkUnit || parts.length !== 2
           || !CODE_PHASES.includes(parts[0]) || !parts[1] || plan !== null || topicSpec !== null
-          || discovery || inbox || workflows || roadmapScope || kb || sweep || workUnit !== null) {
+          || discovery || stateScope || inbox || workflows || roadmapScope || kb || sweep || workUnit !== null) {
         throw new Error(COMMIT_USAGE);
       }
       commitCodePaths(cwd, files, message, { workUnit: forWorkUnit, phase: parts[0], topic: parts[1] });
       return;
     }
 
-    const scopeCount = [inbox, workflows, roadmapScope, workUnit !== null].filter(Boolean).length;
-    const workUnitFlags = [plan !== null, topicSpec !== null, discovery].filter(Boolean).length;
+    // `--state` names two scopes by whether a work unit rides with it: the
+    // unit's own analysis dir, or the global one.
+    const globalState = stateScope && workUnit === null;
+    const scopeCount = [inbox, workflows, roadmapScope, globalState, workUnit !== null].filter(Boolean).length;
+    const workUnitFlags = [plan !== null, topicSpec !== null, discovery, stateScope && workUnit !== null].filter(Boolean).length;
     if (!message || scopeCount !== 1 || forSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
         workUnitFlags > 1 || plan === '' || plan === undefined ||
         topicSpec === '' || topicSpec === undefined ||
@@ -1366,10 +1420,22 @@ function runCommit(argv) {
       throw new Error(COMMIT_USAGE);
     }
     /** @type {string|string[]} */ let scope;
-    if (workflows) {
+    // The knowledge store rides only where the form's own action can dirty
+    // it: a work unit's cadence commits, the whole-tree migration commit, and
+    // the product session's. A plan authoring pass, an inbox transaction and
+    // the global state dir never touch the store, so sweeping its dirt in
+    // would be the theft the confinement removes.
+    let rider = true;
+    if (globalState) {
+      // `.workflows/.state` — migrations, environment setup: project-level
+      // bookkeeping written from inside whatever session happened to need it.
+      scope = '.workflows/.state';
+      rider = false;
+    } else if (workflows) {
       scope = '.workflows';
     } else if (inbox) {
       scope = '.workflows/.inbox';
+      rider = false;
     } else if (roadmapScope) {
       // The product session's cadence commit: the roadmap dir (sessions,
       // imports) plus the project manifest (the roadmap node lives there).
@@ -1409,19 +1475,41 @@ function runCommit(argv) {
           ...(kb ? [KB_DIR] : []),
         ]);
         const committed = specs.length === 0 ? null : commitPathspecScoped(cwd, specs, message);
-        // The session's own cadence commit is its heartbeat. `--kb` is the
-        // terminal one (the conclusion, right after `topic complete`): it
-        // clears instead, or the topic would read held forever.
+        // `--sweep` outranks everything. It marks a commit on a topic this
+        // session is not working — the conclude sweep's leavings, a
+        // foreign-topic delivery's retry, a correction landed in another
+        // phase's document — and presence there is somebody else's. Stamping
+        // it would manufacture a hold; clearing it would destroy a live
+        // peer's.
         //
-        // `--sweep` outranks both. It marks a commit on a topic this session
-        // is not working — the conclude sweep's leavings, a foreign-topic
-        // delivery's retry, a correction landed in another phase's document —
-        // and presence there is somebody else's. Stamping it would manufacture
-        // a hold; clearing it would destroy a live peer's.
+        // Otherwise the item's own status decides. A terminal item is
+        // finished, so every commit that follows its close — the conclusion,
+        // the plan wrap-up, review's complete-then-commit — releases the slot
+        // rather than re-taking it until the process dies. `--kb` clears for
+        // the same reason at the conclusion moment. Anything else is the
+        // session's own cadence commit, and that is its heartbeat.
         if (!sweep) {
-          if (kb) clearQuietly(cwd, wu, phase, topic);
-          else beatQuietly(cwd, wu, phase, topic);
+          const status = topicStatus(cwd, wu, phase, topic);
+          if (status !== null) {
+            if (kb || TERMINAL_TOPIC_STATUSES.includes(status)) clearQuietly(cwd, wu, phase, topic);
+            else beatQuietly(cwd, wu, phase, topic);
+          }
         }
+        if (committed === null) respond({ committed: null, note: 'nothing to commit' });
+        else respond({ committed });
+        return;
+      }
+      if (stateScope) {
+        // --state: the work unit's analysis dir plus its manifest — the scope
+        // the epic-wide analyses write (grouping, consolidation, the gap
+        // analysis, build-order sequencing). Every one of them runs beside
+        // live topic sessions whose half-written documents sit in the same
+        // work unit, so the analysis slices its own paths and never theirs.
+        // The store rides: an analysis that stamped its cache indexed it.
+        const committed = commitPathspecWithKb(cwd, [
+          `.workflows/${wu}/.state`,
+          `.workflows/${wu}/manifest.json`,
+        ], message);
         if (committed === null) respond({ committed: null, note: 'nothing to commit' });
         else respond({ committed });
         return;
@@ -1472,9 +1560,12 @@ function runCommit(argv) {
           '.workflows/manifest.json',
           ...declared,
         ]);
+        rider = false;
       }
     }
-    const committed = commitPathspecWithKb(cwd, scope, message);
+    const committed = rider
+      ? commitPathspecWithKb(cwd, scope, message)
+      : commitPathspecScoped(cwd, scope, message);
     if (committed === null) respond({ committed: null, note: 'nothing to commit' });
     else respond({ committed });
   } catch (err) {

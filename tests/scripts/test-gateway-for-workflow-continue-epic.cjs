@@ -1912,6 +1912,33 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.ok(gate.stdout.includes('the code slot is gated at the entry skill'), gate.stdout);
   });
 
+  it('the caller\'s own hold marks nothing — a session never strikes through itself', () => {
+    const fs = require('fs');
+    epicFixture();
+    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'mine' }) + '\n');
+
+    // From the holding session — stepping back to the menu mid-discussion.
+    const own = spawnSync('node', [GATEWAY, 'view', 'v1'], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'mine' },
+    });
+    assert.strictEqual(own.status, 0, own.stderr);
+    assert.ok(own.stdout.includes('sessions_in_progress: (none)'), own.stdout);
+    assert.ok(!own.stdout.includes('in session'), `its own topic reads free:\n${own.stdout}`);
+    const ownGate = spawnSync('node', [GATEWAY, 'in-session-gate', 'v1', '1'], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'mine' },
+    });
+    assert.ok(ownGate.stdout.includes('is not held by another session'), ownGate.stdout);
+
+    // From anywhere else, the same row is a peer's hold.
+    const peer = spawnSync('node', [GATEWAY, 'view', 'v1'], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_CODE_SESSION_ID: 'someone-else', CLAUDE_PID: '' },
+    });
+    assert.ok(peer.stdout.includes('sessions_in_progress: discussion/auth'), peer.stdout);
+    assert.ok(peer.stdout.includes('(in session:'), peer.stdout);
+  });
+
   it('view without a work unit errors instead of rendering the first epic', () => {
     epicFixture();
     const res = run(['view']);

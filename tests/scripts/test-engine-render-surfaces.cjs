@@ -355,8 +355,15 @@ describe('render resume-gate variants', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => teardown(dir));
 
+  /** The prior run's planning files — what makes `continue` an option. */
+  const planFiles = (workUnit, topic) => {
+    fs.mkdirSync(path.join(dir, '.workflows', workUnit, 'planning', topic), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', workUnit, 'planning', topic, 'planning.md'), '# Plan\n');
+  };
+
   it('plan derives the position parenthetical from the planning item', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
+    planFiles('pay', 'portal');
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
     assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3, task 2).'));
     assert.ok(/\*\*`c\/continue`\*\* +→ Walk through the plan from the start\. You can review, amend, or navigate at any point — including straight to the leading edge\./.test(unwrap(out)));
@@ -365,6 +372,7 @@ describe('render resume-gate variants', () => {
 
   it('plan omits the parenthetical when the position fields are absent', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
+    planFiles('pay', 'portal');
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
     assert.ok(out.includes('Found existing plan for **Portal**.\n'));
     assert.ok(!out.includes('previously reached'));
@@ -372,8 +380,21 @@ describe('render resume-gate variants', () => {
 
   it('plan keeps the phase anchor when only the phase is known (post-advance interrupt)', () => {
     writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: null } } } } });
+    planFiles('pay', 'portal');
     const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
     assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3).'));
+  });
+
+  it('plan offers the restart alone when the prior run\'s files are already gone', () => {
+    // A restart deletes the planning directory, then the manifest entry. A
+    // crash between the two commits leaves an entry with nothing to continue,
+    // and offering `continue` there sends the session at an empty directory.
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    assert.ok(out.includes("Found a planning entry for **Portal**, but the prior run's files are already cleared."));
+    assert.ok(out.includes('r/restart'));
+    assert.ok(!out.includes('c/continue'), 'there is nothing to continue');
+    assert.ok(!out.includes('previously reached'), 'and no position to report');
   });
 
   it('review renders the coverage menu while unreviewed tasks remain', () => {
@@ -2895,6 +2916,24 @@ describe('render code-gate', () => {
   it('refuses an address outside the code phases', () => {
     assert.throws(() => renderSurface(dir, 'code-gate', { dotpath: 'pay.discussion.pay' }),
       /the code rule covers implementation\|review only/);
+  });
+
+  it('refuses an unknown work unit and a topic that is not a name', () => {
+    // The empty path claims the slot by beating this address, and a beat is
+    // silent on a name it cannot write — so a bad address would render a free
+    // slot and hold nothing.
+    assert.throws(() => renderSurface(dir, 'code-gate', { dotpath: 'ghost.implementation.pay' }),
+      /work unit "ghost" not found/);
+    assert.throws(() => renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.a/b' }),
+      /invalid topic name "a\/b"/);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows/.cache/pay/implementation')), false,
+      'a refusal claims nothing');
+  });
+
+  it('gates before the item exists — a fresh entry has initialised nothing', () => {
+    assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.never-inited' }), '');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/pay/implementation/never-inited/presence')),
+      'and the slot is claimed all the same');
   });
 });
 

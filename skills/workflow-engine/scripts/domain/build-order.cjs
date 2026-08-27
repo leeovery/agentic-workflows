@@ -115,7 +115,8 @@ function sequenceBuildOrder(cwd, workUnit, orders) {
   /** @type {BuildOrderSequenceResult} */
   const result = { ordered: orders, committed: outcome.committed };
   if (outcome.failed) result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
+  // The manifest-only scope the work unit's `--state` form covers.
+  noteCommitOutcome(result, outcome, `${workUnit} --state`);
   return result;
 }
 

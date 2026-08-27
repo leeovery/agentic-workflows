@@ -669,7 +669,9 @@ function pickRecommendation(detail, numbered, options, hasMap) {
     if (discoveryOpt) discoveryOpt.recommended = true;
     return null;
   }
-  const proposedEntry = numbered.find((e) => e.action === 'start_specification');
+  // Same rule as the settled branch: a struck row is never the
+  // recommendation, or the display argues with itself.
+  const proposedEntry = numbered.find((e) => e.action === 'start_specification' && !e.in_session);
   if (proposedEntry) return proposedEntry;
 
   const discussion = detail.phases.discussion || [];
@@ -680,15 +682,15 @@ function pickRecommendation(detail, numbered, options, hasMap) {
   }
 
   const specs = liveItems(detail, 'specification');
-  const planEntry = numbered.find((e) => e.action === 'start_planning' && !e.input_moved);
+  const planEntry = numbered.find((e) => e.action === 'start_planning' && !e.input_moved && !e.in_session);
   if (specs.length > 0 && specs.every((i) => i.status === 'completed') && planEntry) return planEntry;
 
   const plans = liveItems(detail, 'planning');
-  const implEntry = numbered.find((e) => e.action === 'start_implementation' && !e.input_moved);
+  const implEntry = numbered.find((e) => e.action === 'start_implementation' && !e.input_moved && !e.in_session);
   if (plans.length > 0 && plans.every((i) => i.status === 'completed') && implEntry) return implEntry;
 
   const impls = liveItems(detail, 'implementation');
-  const reviewEntry = numbered.find((e) => e.action === 'start_review' && !e.input_moved);
+  const reviewEntry = numbered.find((e) => e.action === 'start_review' && !e.input_moved && !e.in_session);
   if (impls.length > 0 && impls.every((i) => i.status === 'completed') && reviewEntry) return reviewEntry;
 
   return null;
@@ -785,10 +787,14 @@ function epicMenu(workUnit, detail, opts = {}) {
 
   const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
+    // The word names what holds the row: `code session` for the checkout's
+    // one code slot, wherever it is held, plus the holder when it is somebody
+    // else's — a hold on this very topic needs no address.
+    const holder = e.code_session
+      ? `code session${e.session_holder ? ` in ${e.session_holder.work_unit}/${e.session_holder.topic}` : ''}`
+      : 'in session';
     const label = e.in_session
-      ? `~~${e.label}~~ · ${e.session_holder
-        ? `code session in ${e.session_holder.work_unit}/${e.session_holder.topic}`
-        : 'in session'} (last active ${fmtAge(e.session_age ?? 0)} ago)`
+      ? `~~${e.label}~~ · ${holder} (last active ${fmtAge(e.session_age ?? 0)} ago)`
       : e.label;
     lines.push(cmdOption(e.key, null, `${label}${e.recommended ? ' (recommended)' : ''}`));
   }

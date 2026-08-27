@@ -360,7 +360,7 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   label(sim, wu, 'implementation', topic);
   const init = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
-  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
+  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   // Phase boundary: the completion defers its flag, the consolidation pass
   // finds nothing, and the re-record closes the phase (consolidation-pass.md F).
@@ -383,7 +383,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'incorporated']);
   }
   sim.write(`.workflows/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
-  sim.run(['commit', wu, '-m', `spec(${wu}): construct`]);
+  sim.run(['commit', wu, '-m', `spec(${wu}): construct`, '--topic', `specification/${topic}`]);
   sim.run(['topic', 'complete', wu, 'specification', topic]);
 
   // Planning.
@@ -423,7 +423,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   label(sim, wu, 'implementation', topic);
   const implInit = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
-  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
+  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   // The task's code commit: declared paths, validated and confined, with the
   // residual dirt answered back so nothing the task touched is left behind.
@@ -485,7 +485,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.render(['review-gate', `${wu}.review.${topic}`, '--verdict', 'pass', '--out-of-scope', '1'], { expect: 'content' });
   sim.run(['manifest', 'delete', `${wu}.review.${topic}`, 'out_of_scope']);
   sim.run(['topic', 'complete', wu, 'review', topic]);
-  sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`]);
+  sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`, '--topic', `review/${topic}`]);
 }
 
 // ---------------------------------------------------------------------------
@@ -551,7 +551,7 @@ describe('pipeline simulation', () => {
     const closed = sim.run(['agent', 'incorporate', wu, 'investigation', wu, val.id]);
     assert.strictEqual(closed.status, 'incorporated');
 
-    sim.run(['commit', wu, '-m', `investigation(${wu}): root cause`]);
+    sim.run(['commit', wu, '-m', `investigation(${wu}): root cause`, '--topic', `investigation/${wu}`]);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
 
     // The bugfix spec source name is pinned to the topic.
@@ -623,7 +623,7 @@ describe('pipeline simulation', () => {
     // Implementation (verification workflow) + review — task init creates.
     const init = sim.run(['task', 'init', wu, wu]);
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
-    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
+    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${wu}`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     // Quick-fix takes no consolidation boundary (its plan never grows), so the
     // completion keeps the fused --phase-complete.
@@ -907,7 +907,7 @@ describe('pipeline simulation', () => {
     assert.match(porcelain, /research\/delta\.md/, 'peer topic dirt survives a --topic commit');
     const headPaths = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
     assert.ok(!headPaths.includes('research/delta.md'), 'peer topic path absent from the --topic commit');
-    sim.run(['commit', wu, '-m', `research(${wu}): sweep delta dirt for the next steps`]);
+    sim.run(['commit', wu, '-m', `research(${wu}): sweep delta dirt for the next steps`, '--topic', 'research/delta', '--sweep']);
     const reparked = sim.run(['topic', 'triage', wu, 'research', 'delta']);
     assert.strictEqual(reparked.created, false);
     assert.strictEqual(reparked.status, 'triaged');
@@ -939,7 +939,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(drained.status, 'in-progress');
     assert.strictEqual(drained.created, false);
     sim.write(`.workflows/${wu}/research/delta.md`, '# Research — Delta\n\nDrained the parked concern.\n');
-    sim.run(['commit', wu, '-m', `research(${wu}): delta`]);
+    sim.run(['commit', wu, '-m', `research(${wu}): delta`, '--topic', 'research/delta']);
     sim.run(['topic', 'complete', wu, 'research', 'delta']);
 
     // Dead end: the conclude gate's second arm marks the map item, and the
@@ -998,7 +998,7 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.specification.unified`,
       'sources.alpha.status=incorporated', 'sources.beta.status=incorporated']);
     sim.write(`.workflows/${wu}/specification/unified/specification.md`, '# Spec — Unified\n');
-    sim.run(['commit', wu, '-m', `spec(${wu}): unified`]);
+    sim.run(['commit', wu, '-m', `spec(${wu}): unified`, '--topic', 'specification/unified']);
     sim.run(['topic', 'complete', wu, 'specification', 'unified']);
 
     // A completed epic specification flags the build order stale; the
@@ -1505,7 +1505,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Outgrew itself', '--session-log-file', log]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion\n');
-    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`]);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
 
     sim.run(['workunit', 'pivot', wu]);
     assert.strictEqual(sim.manifest(wu).work_type, 'epic');
@@ -1523,7 +1523,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'A stray feature', '--session-log-file', sessionLog(sim, feat)]);
     sim.run(['topic', 'start', feat, 'discussion', feat]);
     sim.write(`.workflows/${feat}/discussion/${feat}.md`, '# Discussion — Stray\n');
-    sim.run(['commit', feat, '-m', `discussion(${feat}): capture`]);
+    sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
     // A standing do-not-report call on this topic's material.
     sim.run(['manifest', 'push', `${feat}.discussion.${feat}`, 'dismissed_grounds',
       'the migration path is settled and out of scope']);
@@ -1554,7 +1554,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'logging']);
     sim.run(['topic', 'start', wu, 'specification', 'logging']);
     sim.write(`.workflows/${wu}/specification/logging/specification.md`, '# Spec — Logging\n');
-    sim.run(['commit', wu, '-m', `spec(${wu}): logging`]);
+    sim.run(['commit', wu, '-m', `spec(${wu}): logging`, '--topic', 'specification/logging']);
     sim.run(['topic', 'complete', wu, 'specification', 'logging']);
 
     sim.run(['workunit', 'promote', wu, 'logging', '--to', 'logging-cc', '--description', 'Logging, project-wide']);
@@ -1588,7 +1588,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
     assert.strictEqual(init.gates.consolidation_gate_mode, 'gated', 'the boundary walk gate ships gated');
-    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`]);
+    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${wu}`]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     // The brief announces the dispatch — the shared task header plus summary and watch.
     const briefPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
@@ -2255,6 +2255,7 @@ describe('pipeline simulation', () => {
     // A research session died mid-write: its document is uncommitted and its
     // heartbeat names a process that is gone. A concluding session sweeps it.
     const ghostPid = reapedPid();
+    sim.run(['topic', 'start', wu, 'research', 'metrics']);
     sim.write(`.workflows/${wu}/research/metrics.md`, '# Research — Metrics\n\nHalf a paragraph.\n');
     sim.write(`.workflows/.cache/${wu}/research/metrics/presence`,
       JSON.stringify({ pid: ghostPid, pid_start: null, session_id: 'ghost-session' }) + '\n');
@@ -2292,5 +2293,19 @@ describe('pipeline simulation', () => {
       'the terminal commit drops the heartbeat');
     assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'specification', 'ingest'),
       "and leaves every peer session's hold standing");
+
+    // --- the code slot's release -------------------------------------------
+    // Review closes its topic and commits the report; the checkout's one code
+    // slot must be free the moment the topic is finished, not when the
+    // process eventually dies.
+    codeSession.run(['topic', 'complete', wu, 'implementation', 'dispatch']);
+    codeSession.write(`.workflows/${wu}/implementation/dispatch/report.md`, '# Implementation — Dispatch\n\nDone.\n');
+    codeSession.run(['commit', wu, '--topic', 'implementation/dispatch',
+      '-m', `impl(${wu}): conclude dispatch`]);
+    assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'implementation', 'dispatch'), undefined,
+      'the close released the slot, and the commit after it did not take it back');
+    assert.strictEqual(
+      require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/presence.cjs')).heldCodeSessions(sim.dir).length, 0,
+      'so the next code session walks straight in');
   });
 });
