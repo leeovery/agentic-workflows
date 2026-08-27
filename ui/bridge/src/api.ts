@@ -539,9 +539,13 @@ function artifactView(res: http.ServerResponse, deps: ApiDeps, wu: string, rel: 
     ? whatMoved(deps.projectRoot, path.join('.workflows', wu, rel), priorRef.sha, priorRef.state)
     : { state: 'none' as const };
 
-  // Structure (manifest-owned or heading-keyed) and claim chips.
+  // Structure (manifest-owned or heading-keyed) and claim chips. The topic is
+  // the path's phase-relative segment (`{phase}/{topic}/…`) — for epics the
+  // topic differs from the work unit; for single-topic types they coincide.
+  const parts = rel.split('/');
+  const topic = parts.length >= 3 ? parts[1]! : wu;
   const manifest = deps.engine?.readUnitManifest(wu) ?? null;
-  const structure = buildStructure(phase, wu, manifest, content);
+  const structure = buildStructure(phase, topic, manifest, content);
 
   // Record the read-ref: HEAD-at-render is Phase 4's diff base (spec, phase-0
   // §8). Read is idempotent — a GET recording a receipt is a deliberate,
