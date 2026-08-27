@@ -9,6 +9,7 @@ import { Channel } from './screens/Channel';
 import { Artifact } from './screens/Artifact';
 import { Queue } from './screens/Queue';
 import { SessionThread } from './screens/SessionThread';
+import { Roadmap } from './screens/Roadmap';
 import { Palette } from './Palette';
 
 // Storage and matchMedia can be absent or throwing (privacy modes, test
@@ -134,6 +135,9 @@ export default function App() {
             )}
           </span>
         </NavLink>
+        <NavLink to="/roadmap" className={({ isActive }) => `rail-link ${isActive ? 'rail-link-active' : ''}`}>
+          Roadmap
+        </NavLink>
         <div className="region-label px-2 pt-3 pb-1">Channels</div>
         {units.map((u) => (
           <NavLink
@@ -185,6 +189,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/lobby" replace />} />
           <Route path="/lobby" element={<Lobby />} />
           <Route path="/queue" element={<Queue />} />
+          <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/s/:id" element={<SessionThread />} />
           <Route path="/c/:wu" element={<Channel />} />
           <Route path="/c/:wu/a/*" element={<Artifact />} />

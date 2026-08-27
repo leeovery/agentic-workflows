@@ -38,7 +38,41 @@ export type ChannelData = {
   presence?: { phase?: string; topic?: string; held?: boolean; live?: boolean; session_id?: string }[];
 };
 
-export type ArtifactData = { workUnit: string; path: string; phase: string; content: string };
+export type StructureNode = { label: string; status?: string; anchor?: string; detail?: string };
+export type ClaimChipData = { command: string; result?: string; anchor?: string };
+export type ArtifactStructure = {
+  kind: string;
+  sections: StructureNode[];
+  sources?: StructureNode[];
+  consultReferences?: StructureNode[];
+  claims: ClaimChipData[];
+  available: boolean;
+};
+export type WhatMovedData =
+  | { state: 'none' }
+  | { state: 'unread'; base: string; diff: string }
+  | { state: 'lost' };
+
+export type ArtifactData = {
+  workUnit: string;
+  path: string;
+  phase: string;
+  content: string;
+  structure: ArtifactStructure;
+  whatMoved: WhatMovedData;
+};
+
+export type HistoryEntry = { sha: string; date: string; subject: string; author: string };
+export type RoadmapData =
+  | { exists: false }
+  | {
+      exists: true;
+      horizons: any[];
+      items: any[];
+      totals: Record<string, number>;
+      sessions: any[];
+      activeSession: any;
+    };
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -133,6 +167,9 @@ export const api = {
   channel: (wu: string) => getJson<ChannelData>(`/api/channel/${encodeURIComponent(wu)}`),
   artifact: (wu: string, path: string) =>
     getJson<ArtifactData>(`/api/artifact/${encodeURIComponent(wu)}?path=${encodeURIComponent(path)}`),
+  history: (wu: string, path: string) =>
+    getJson<{ timeline: HistoryEntry[] }>(`/api/history/${encodeURIComponent(wu)}?path=${encodeURIComponent(path)}`),
+  roadmap: () => getJson<RoadmapData>('/api/roadmap'),
   queue: () => getJson<{ rows: QueueRowData[] }>('/api/queue'),
   sessions: () => getJson<{ sessions: SessionData[] }>('/api/sessions'),
   thread: (id: string) => getJson<ThreadData>(`/api/session/${encodeURIComponent(id)}/thread`),

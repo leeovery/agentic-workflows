@@ -42,6 +42,8 @@ const ARTIFACT = {
   path: 'specification/rate-limiting/specification.md',
   phase: 'specification',
   content: '# Spec\n\n## Decisions\n\nHardened text.',
+  structure: { kind: 'specification', sections: [], sources: [], consultReferences: [], claims: [], available: false },
+  whatMoved: { state: 'none' },
 };
 
 const CHANNEL = {
@@ -92,7 +94,15 @@ beforeEach(() => {
             ? CHANNEL
             : String(url).startsWith('/api/artifact/')
               ? ARTIFACT
-              : null;
+              : String(url).startsWith('/api/history/')
+                ? { timeline: [] }
+                : String(url).startsWith('/api/roadmap')
+                  ? { exists: false }
+                  : String(url).startsWith('/api/digests')
+                    ? { strip: [] }
+                    : String(url).startsWith('/api/queue')
+                      ? { rows: [] }
+                      : null;
       if (!body) return { ok: false, status: 404, json: async () => ({}) } as any;
       return { ok: true, status: 200, json: async () => body } as any;
     }),
