@@ -32,7 +32,8 @@ The prose should have taken this path:
 8. the fourth scripted answer opts into auto: task_gate_mode is set
    to auto and progress lands in the same turn — frontmatter flips to
    completed, the engine records completion naming pay-1-2 as next,
-   and one raw git commit lands as impl(pay): Tpay-1-1
+   and the task's commits land — the state through --plan, the code
+   through --paths as impl(pay): Tpay-1-1
 9. the loop returns to retrieval and selects pay-1-2, starts it,
    marks it in-progress, and renders its brief before the dispatch
 10. the executor completes pay-1-2; the reviewer's first firing for
@@ -48,7 +49,7 @@ The prose should have taken this path:
     continuation section emitted, and the commit proceeds in the same
     turn — the phase disposition comes out `boundary` (no open tasks,
     consolidated_phases lacks phase 1), so the engine call carries
-    next task ~ WITHOUT --phase-complete, one raw git commit lands as
+    next task ~ WITHOUT --phase-complete, the code commit lands as
     impl(pay): Tpay-1-2, and the stage routes to the consolidation
     pass
 12. the pass announces itself, reads consolidation_gate_mode and the

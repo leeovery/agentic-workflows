@@ -181,7 +181,7 @@ Revise the staged task in the staging file based on the user's feedback (content
 Commit the staging record:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): ad hoc tasks declined"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): ad hoc tasks declined" --topic implementation/{topic}
 ```
 
 → Return to caller.

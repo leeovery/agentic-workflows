@@ -48,6 +48,7 @@
       "impl(pay): T",
       "push pay.review.pay reviewed_tasks",
       "review(pay): verification and prep",
+      "commit --paths",
       "render review-presentation pay.review.pay",
       "render review-gate pay.review.pay",
       "review(pay): complete review",

@@ -58,6 +58,7 @@
       "render task-gate pay.implementation.pay",
       "task complete pay pay pay-1-2 --phase 1 --next-task ~",
       "impl(pay): Tpay-1-2",
+      "commit --paths",
       "manifest get pay.implementation.pay consolidation_gate_mode",
       "phase 1 consolidation — findings",
       "staging.p1.tasks.1=pending",

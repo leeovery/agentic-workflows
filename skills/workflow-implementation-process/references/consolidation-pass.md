@@ -78,7 +78,7 @@ The pass ran; only the phase record is outstanding.
 When the finder wrote its file, commit the findings (the scoped commit covers the file and the manifest):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidation — findings"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidation — findings" --topic implementation/{topic}
 ```
 
 #### If `STATUS` is `clean`

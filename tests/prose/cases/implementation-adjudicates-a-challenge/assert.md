@@ -37,7 +37,7 @@ The prose should have taken this path:
 10. progress lands for pay-1-1: frontmatter flips to completed,
     tasks remain in the phase (pay-1-2 is open) so the disposition
     is `continuing` — the engine records completion naming pay-1-2
-    as next with no --phase-complete, and one raw git commit lands
+    as next with no --phase-complete, and the code commit lands
     as impl(pay): Tpay-1-1
 11. the walk stops — pay-1-2 is never started
 

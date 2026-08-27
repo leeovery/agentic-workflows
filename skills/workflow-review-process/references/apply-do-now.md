@@ -74,12 +74,13 @@ Every action was skipped or reverted — there is nothing to commit. Carry that 
 
 #### Otherwise
 
-Commit the work as one body. The fixes touch project files outside the work unit, so the scoped helper cannot cover them — stage the touched files with raw git:
+Commit the work as one body — the code commit takes the paths you name, validates each, and answers with `left_dirty`:
 
 ```bash
-git add -- {files the fixes touched}
-git commit -m "review({work_unit}): apply do-now findings"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {files the fixes touched} -m "review({work_unit}): apply do-now findings" --for {work_unit} review/{topic}
 ```
+
+Anything in `left_dirty` that these fixes touched is a path you forgot: commit it now with a second `--paths` call before carrying the outcome forward.
 
 Carry the outcome forward for the report and the presentation: applied count, anything skipped or reverted with its reason, and the suite's final state.
 
