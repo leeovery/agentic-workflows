@@ -28,6 +28,8 @@ What a review looks for follows the document's maturity. The orchestrator passes
 
 At every maturity, a candidate that fails — an interesting adjacency nobody needs, depth beyond what a decision turns on, a dimension the work was never scoped to cover — goes in **Observations** and is never raised with the user. Observations are part of the report and are read; they are not work.
 
+An open decision is not a gap, at any maturity. Research surfaces the option landscape; the choosing is discussion's, and a decision still open at conclusion is the expected state. The finding is under-exploration — a cost asserted but never investigated, a tradeoff named but never weighed, an assumption stated as settled but never verified. Where the options and their tradeoffs are adequately surfaced, that nobody has chosen between them is no deficiency, and the candidate goes to Observations with the rest.
+
 ## Lanes
 
 Every finding carries a lane naming the move it asks for:
