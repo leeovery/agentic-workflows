@@ -4,7 +4,7 @@
 
 ---
 
-This step dispatches a `workflow-review-findings-synthesizer` agent to read review findings, deduplicate, group, and normalize them into proposed tasks.
+This step dispatches a `workflow-review-findings-synthesizer` agent to read review findings, deduplicate, group, and normalize them into proposals for the approval walk.
 
 ---
 
@@ -44,7 +44,7 @@ If the agent fails (error, timeout), record the failure and report "synthesis fa
 
 ## Commit Findings
 
-**If `STATUS` is `tasks_proposed`**, initialise the cycle's gate state — one batched write, one `pending` per task from `TASKS_PROPOSED`:
+**If `STATUS` is `tasks_proposed`**, initialise the cycle's gate state — one batched write, `gate_mode` plus one `pending` per task from `TASKS_PROPOSED`. A spec-defect-only synthesis proposes none: write `gate_mode` alone, and the approval overview initialises whatever its spec-defect settling stages.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.gate_mode=gated staging.c{N}.tasks.1=pending … staging.c{N}.tasks.{TASKS_PROPOSED}=pending
@@ -68,6 +68,9 @@ TASKS_PROPOSED: {N}
 SUMMARY: {1-2 sentences}
 ```
 
-The full report is at `.workflows/{work_unit}/implementation/{topic}/review-report-c{N}.md`. If tasks were proposed, the staging file is at `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`.
+- `tasks_proposed`: proposals written to the staging file, or at least one spec defect recorded in the report — present for approval
+- `clean`: neither — no actionable findings and no spec defects
+
+The full report is at `.workflows/{work_unit}/implementation/{topic}/review-report-c{N}.md`. If proposals were staged, the staging file is at `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`.
 
 → Return to caller.
