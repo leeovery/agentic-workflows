@@ -7,6 +7,7 @@
 **Type**: Incomplete coverage
 **Spec Reference**: Requirements — capture is confirmed by gateway webhook, never by polling
 **Plan Reference**: Phase 2 / Handle Capture Webhooks
+**Move**: settled
 **Change Type**: update-task
 
 **Details**:
@@ -28,6 +29,7 @@ Consume gateway capture webhooks and mark the order paid; no polling path.
 **Type**: Incomplete coverage
 **Spec Reference**: Requirements — checkout creates a payment intent against the existing gateway account
 **Plan Reference**: Phase 1 / Attach Intent To Order
+**Move**: settled
 **Change Type**: update-task
 
 **Details**:
