@@ -216,7 +216,7 @@ Settle the spec defects first — each `## Spec Defects` entry in `analysis-repo
 
 → Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** and follow **B. This Work Unit's Specification** with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
 
-A record-settled entry lands there silently. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict becomes one whose Solution says what is settled and whose **Decision** carries the question and two to four sides in the order they should be offered. Add each under the next `## Task {n}` heading in `analysis-tasks-c{N}.md`, shaped like the proposals beside it — `severity:` and `sources:` control lines, then **Problem**, **Solution**, and the **Decision** where there is one — and initialise its row:
+A record-settled entry lands there silently. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict becomes one whose Solution says what is settled and whose **Decision** carries the question and two to four sides in the order they should be offered. Add each under the next `## Task {n}` heading in `analysis-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Analysis Tasks: {Topic} (Cycle {N})` header — shaped like the proposals beside it — `severity:` and `sources:` control lines, then **Problem**, **Solution**, and the **Decision** where there is one — and initialise its row:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} pending
