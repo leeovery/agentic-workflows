@@ -35,7 +35,7 @@ Invoke `workflow-planning-task-designer` with these file paths:
 
 ### Present the Output
 
-The agent returns a task overview and task table. Write the task table to the planning file under the phase.
+The agent returns a task overview and task table. Write the task table to the planning file under the phase. Where the overview names work deferred to another phase, add that deferral to the receiving phase's **Acceptance** list in the same write.
 
 Update the manifest planning position:
 ```bash

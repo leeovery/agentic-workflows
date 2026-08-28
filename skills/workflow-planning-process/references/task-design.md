@@ -28,6 +28,12 @@ Cross-cutting references are context, not scope. They shape how tasks are writte
 
 ---
 
+## Cross-Phase Deferrals
+
+A deferral is a phase-level fact. When a task defers work to another phase, the deferral belongs in the receiving phase's acceptance criteria — never held only in the deferring task's edge cases. Later phases' task designers and the plan review read phase definitions, not sibling phases' task tables, so a deferral recorded only in a task goes unseen and the receiving phase allocates nothing for it.
+
+---
+
 ## Tasks That Edit Historical Artifacts
 
 A task whose edits land on another work unit's specification under `.workflows/` corrects a historical artifact. Fold the completed-unit protocol from **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** into the task itself — in-place edit, corrigenda entry, knowledge re-index, scoped commit — as **Do** steps and **Acceptance Criteria**. The re-index is part of the task, never an afterthought. No task edits any other phase artifact of another work unit — non-spec artifacts are superseded by current work, never corrected.

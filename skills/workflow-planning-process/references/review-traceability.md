@@ -31,6 +31,7 @@ Is everything from the specification represented in the plan?
    - Every data model or schema → appears in the relevant tasks
    - Every integration point → has a task that addresses it
    - Every validation rule → has a task with test coverage
+   - Every cross-phase deferral recorded in a task → appears in the receiving phase's acceptance criteria
 
 2. **Check depth of coverage** — It's not enough that a spec topic is *mentioned* in a task. The task must contain enough detail that an implementer wouldn't need to go back to the specification. Summarizing and rewording is fine, but the essence and instruction must be preserved.
 
