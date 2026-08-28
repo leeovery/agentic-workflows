@@ -1713,14 +1713,22 @@ describe('pipeline simulation', () => {
     const bankEntry = `{"task":"${wu}-1-2","source":"reviewer","summary":"near-miss helpers","detail":"src/x.js:3 vs src/y.js:9","files":["src/x.js","src/y.js"]}`;
     sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank', bankEntry]);
     sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--phase', '1', '--next-task', '~']);
-    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1=pending']);
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`,
+      'staging.p1.tasks.1=pending', 'staging.p1.tasks.2=pending', 'staging.p1.tasks.3=pending']);
     sim.refuses(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'perhaps'], /Invalid staging task status/);
     const overviewPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/tasks-overview.json`,
-      { label: 'Phase 1 consolidation', tasks: [{ title: 'Merge the near-miss helpers', severity: 'near-miss', status: 'pending' }] });
+      { label: 'Phase 1 consolidation', tasks: [
+        { title: 'Merge the near-miss helpers', severity: 'near-miss', status: 'pending' },
+        { title: 'Drop the dead formatter', severity: 'dead-code', status: 'pending' },
+        { title: 'Settle the page size', severity: 'behaviour', status: 'pending' },
+      ] });
     assert.match(sim.render(['tasks-overview', `${wu}.implementation.${wu}`, '--file', overviewPayload], { expect: 'content' }),
       /Phase 1 consolidation/, 'the boundary walk renders the shared overview surface');
+    // One payload file, rewritten per item — the walk's three shapes over it:
+    // full detail, a proposal (no Do/Criteria/Tests, no outcome), and a
+    // proposal carrying an open decision.
     const consolidationPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
-      current: 1, total: 1, title: 'Merge the near-miss helpers', severity: 'near-miss',
+      current: 1, total: 3, title: 'Merge the near-miss helpers', severity: 'near-miss',
       placement: 'phase 1', problem: 'p', solution: 's', outcome: 'o',
       steps: ['1. x'], criteria: ['- c'], tests: ['- t'],
     });
@@ -1728,6 +1736,28 @@ describe('pipeline simulation', () => {
       '--file', consolidationPayload, '--gate', 'gated', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' }),
       /Placement: phase 1/, 'the boundary walk renders the shared per-task surface');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'approved']);
+    sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+      current: 2, total: 3, title: 'Drop the dead formatter', severity: 'dead-code',
+      placement: 'phase 1', problem: 'p', solution: 's',
+    });
+    const proposalGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
+      '--file', consolidationPayload, '--gate', 'gated', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' });
+    assert.match(proposalGate, /MENU: task approval/, 'a proposal keeps the walk\'s approval gate');
+    assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:|\*\*Tests\*\*:|\*\*Outcome\*\*/.test(proposalGate),
+      'proposal altitude renders only what the payload carries');
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.2', 'skipped']);
+    sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+      current: 3, total: 3, title: 'Settle the page size', severity: 'behaviour',
+      placement: 'phase 1', problem: 'p', solution: 's',
+      decision: { question: 'Which page size stands?', options: ['A4 on the renderer', 'preferCssPageSize'] },
+    });
+    const decisionGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
+      '--file', consolidationPayload, '--gate', 'auto', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' });
+    assert.match(decisionGate, /MENU: task decision/, 'an open decision stops the walk even under auto');
+    assert.match(decisionGate, /\*\*`1`\*\* +→ A4 on the renderer/, 'the sides are the menu options');
+    assert.ok(!/a\/auto|DISPLAY: task auto-approved/.test(decisionGate),
+      'approving a decision blind is not one of the calls auto makes');
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.3', 'skipped']);
     // The pass marks itself landed before the plan write — a crash after this
     // point resumes at task creation, never a re-sweep.
     sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'consolidated_phases', '1']);

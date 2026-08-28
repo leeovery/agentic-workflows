@@ -319,6 +319,14 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 // Gate mode rides as a flag, not an address read: the flows carry it in a
 // cycle response or the manifest's staging subtree — the surface guarantees
 // the form of the output, the flow owns the mode.
+// Two altitudes, picked by the payload: a proposal carries title, problem and
+// solution (outcome only when it adds something the solution doesn't); a task
+// adds the Do/Acceptance Criteria/Tests blocks. Judging comes before
+// authoring, and detail that doesn't exist yet can't be rendered.
+// A proposal carrying an open decision renders that decision's sides as its
+// menu, at either gate mode: a bare `y` would hand the call to the executor,
+// and auto never settles a point the record leaves open (the spec phase's
+// settleable-point rule) — a decision item always stops.
 // ---------------------------------------------------------------------------
 
 /**
@@ -335,17 +343,31 @@ function proposedTask(cwd, args) {
 
   if (!Number.isInteger(p.current) || p.current < 1) throw new Error('render proposed-task: "current" must be a positive integer');
   if (!Number.isInteger(p.total) || p.total < p.current) throw new Error('render proposed-task: "total" must be an integer ≥ "current"');
-  for (const field of ['title', 'problem', 'solution', 'outcome']) {
+  for (const field of ['title', 'problem', 'solution']) {
     if (!isFilled(p[field])) throw new Error(`render proposed-task: "${field}" must be a non-empty string`);
   }
-  for (const field of ['severity', 'sources', 'placement', 'priority', 'depends_on']) {
+  for (const field of ['outcome', 'severity', 'sources', 'placement', 'priority', 'depends_on']) {
     if (p[field] !== undefined && !isFilled(p[field])) throw new Error(`render proposed-task: "${field}" must be a non-empty string when present`);
   }
+  /** @type {Record<string, string[]>} */
   const blocks = {};
   for (const field of ['steps', 'criteria', 'tests']) {
+    if (p[field] === undefined) continue;
     const lines = stringLines(p[field], 'proposed-task', field);
     if (lines.length === 0) throw new Error(`render proposed-task: "${field}" must be non-empty`);
     blocks[field] = lines;
+  }
+  if (p.decision !== undefined) {
+    if (p.decision === null || typeof p.decision !== 'object' || Array.isArray(p.decision)) {
+      throw new Error('render proposed-task: "decision" must be an object carrying "question" and "options"');
+    }
+    if (!isFilled(p.decision.question)) throw new Error('render proposed-task: "decision.question" must be a non-empty string');
+    if (!Array.isArray(p.decision.options) || p.decision.options.length < 2 || p.decision.options.length > 4) {
+      throw new Error('render proposed-task: "decision.options" must be an array of 2–4 sides');
+    }
+    p.decision.options.forEach((/** @type {unknown} */ o, /** @type {number} */ i) => {
+      if (!isFilled(o)) throw new Error(`render proposed-task: decision.options[${i}] must be a non-empty string`);
+    });
   }
 
   const meta = [];
@@ -363,20 +385,26 @@ function proposedTask(cwd, args) {
     '',
     `**Problem**: ${p.problem}`,
     `**Solution**: ${p.solution}`,
-    `**Outcome**: ${p.outcome}`,
-    '',
-    '**Do**:',
-    ...blocks.steps,
-    '',
-    '**Acceptance Criteria**:',
-    ...blocks.criteria,
-    '',
-    '**Tests**:',
-    ...blocks.tests,
   ];
+  if (isFilled(p.outcome)) body.push(`**Outcome**: ${p.outcome}`);
+  for (const [field, heading] of [['steps', 'Do'], ['criteria', 'Acceptance Criteria'], ['tests', 'Tests']]) {
+    if (!blocks[field]) continue;
+    body.push('', `**${heading}**:`, ...blocks[field]);
+  }
   const parts = [section('DISPLAY: proposed task', 'emit verbatim as markdown', body.join('\n'))];
 
-  if (gate === 'auto') {
+  const hint = isFilled(args['comment-hint']) ? args['comment-hint'] : 'Tell me what to change';
+  if (p.decision) {
+    parts.push(section(
+      'MENU: task decision',
+      STOP_FOR_RESPONSE,
+      menu('', [
+        ...p.decision.options.map((/** @type {string} */ o, /** @type {number} */ i) => cmdOption(String(i + 1), null, o)),
+        cmdOption('d', 'decline', 'Decline this task — it will not be built'),
+        promptOption('Comment', hint),
+      ], { question: p.decision.question }),
+    ));
+  } else if (gate === 'auto') {
     parts.push(section(
       'DISPLAY: task auto-approved',
       `after recording the approval: ${AUTO_GATE_INSTRUCTION}`,
@@ -385,10 +413,9 @@ function proposedTask(cwd, args) {
         : `${p.title} — approved [auto].`,
     ));
   } else {
-    const hint = isFilled(args['comment-hint']) ? args['comment-hint'] : 'Tell me what to change';
     parts.push(section(
       'MENU: task approval',
-      'emit verbatim as markdown, then STOP for the user\'s response',
+      STOP_FOR_RESPONSE,
       menu('Approve this task?', [
         cmdOption('y', 'yes', 'Approve this task'),
         cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
