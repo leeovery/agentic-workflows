@@ -220,3 +220,35 @@ supersession → the class decision 5 makes silent).
 
 - **2026-08-28** — Log opened. Decisions 1–6 settled in conversation;
   stack shape approved.
+- **2026-08-28** — Stack built and opened: #1042 (engine) → #1043
+  (author agent) → #1045 (consolidation prose) → #1046 (synthesis
+  loops) → #1047 (prose cases), linked as stack #1044. Decisions made
+  in the build:
+  - **Author test contract inverted**: the refactor framing applies
+    only to the six named refactor classes; *any* other tag authors as
+    a deliberate behaviour change. Safe under both the consolidation
+    class vocabulary and the synthesis loops' high/medium/low grades —
+    an unknown tag can never author a genuine fix as a refactor.
+  - **Finder restructured, not bypassed**: the `behaviour` finding
+    class absorbs the deleted plan-authorable demotion, and spec
+    defects arrive as a structured `## Spec Defects` report section
+    (claim / observed / the finder's read) — the judge classifies
+    authoritatively. Observations stay sub-bar and unraised.
+  - **Spec-corrections summary is inline prose, not a fenced display**:
+    the conventions lint ratchet pins new templated fences at 0; the
+    corpus one-line-total idiom (`background-agent-surfacing.md`)
+    serves instead.
+  - **Zero-proposal cycles**: both synthesis loops gained a
+    stages-no-proposal branch (the empty overview was a dead end
+    against `render tasks-overview`'s non-empty requirement), and the
+    settle steps create the staging file when a defect-only synthesis
+    wrote none.
+  - **Known residue, accepted**: a crash in the narrow window after a
+    spec-defect-only synthesis commit and before the settle costs one
+    redundant analysis cycle, or orphans a bare review `gate_mode` row
+    — corrections themselves are never lost (each lands with its own
+    commit). Closing it wants an engine-side marker written at
+    synthesis time regardless of task count; deliberately not built.
+  - **Banked tidy**: `workflow-planning-task-author` still inlines its
+    copy of `task-design.md`'s template; drop it once the shared
+    reference is authoritative for both authors.
