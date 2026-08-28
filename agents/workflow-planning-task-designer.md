@@ -76,3 +76,4 @@ Phase {N}: {Phase Name}
 7. **Cross-cutting specs inform** — apply their decisions to task design without adding scope
 8. **Awareness of other phases** — avoid duplicating work planned in other phases; ensure proper ordering
 9. **Task tables only — no full task detail** — your output is a task overview and task table (Internal ID, Name, Edge Cases). Full task specifications (Problem, Solution, Do steps, Acceptance Criteria, Tests, etc.) are written by a separate authoring agent in a later step. Never include them.
+10. **Name cross-phase deferrals in the overview** — when a task's scope defers work to another phase, state the deferral explicitly in the overview so the orchestrator can lift it into the receiving phase's acceptance criteria. Never leave it only in the Edge Cases column.
