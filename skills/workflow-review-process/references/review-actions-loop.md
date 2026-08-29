@@ -295,7 +295,7 @@ Commit the staging file with this topic's implementation artifacts, then the pla
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): stage review remediation" --topic implementation/{topic} --sweep
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): add review remediation ({K} tasks)" --plan {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): add review remediation — {K} task(s)" --plan {topic}
 ```
 
 → On return, proceed to **G. Re-open Implementation**.
