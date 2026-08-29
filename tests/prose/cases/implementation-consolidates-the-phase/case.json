@@ -33,7 +33,8 @@
     "skills/workflow-implementation-process/references/consolidation-pass.md",
     "skills/workflow-implementation-process/references/invoke-consolidation-finder.md",
     "skills/workflow-implementation-process/references/invoke-task-author.md",
-    "skills/workflow-shared/references/reconcile-advisory.md"
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-implementation-process/references/report-register.md"
   ],
   "answers": [
     "y — skip project skills again",

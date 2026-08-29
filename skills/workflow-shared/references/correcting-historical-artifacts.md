@@ -135,7 +135,7 @@ Apply it silently — no gate, no raise. This is the one place a downstream phas
    node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {specification path}
    ```
 
-4. **Commit.** Scoped to the corrected topic — one specification file and the store the re-index dirtied. `--kb` carries the store; `--sweep` says the specification topic is not the one this session is working:
+4. **Commit.** Scoped to the corrected topic — one specification file and the store the re-index dirtied. `--kb` carries the store; `--sweep` always rides here — the session's working topic is its own implementation or review topic, never this specification topic:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {owning_work_unit} -m "specification({owning_work_unit}): corrigendum from {correcting_phase}" --topic specification/{topic} --kb --sweep

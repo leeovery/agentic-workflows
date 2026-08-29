@@ -18,16 +18,18 @@ Each finding arrives carrying its scope (`[in-scope]` or `[out-of-scope]`), its 
 
 Give each finding a stable id of `{phase_id}-{task_id}-{n}` — its report's task suffix plus its position in that report's list, so an action always traces back to the verifier that raised it.
 
-Write two payloads with the Write tool:
-
-- `.workflows/.cache/{work_unit}/review/{topic}/findings.txt` — one block per finding, opening with `[{id}]`, carrying the finding verbatim
-- `.workflows/.cache/{work_unit}/review/{topic}/findings-index.txt` — the same findings grouped under `### {file}` headings by the file each targets, one summary line each
-
 #### If no findings were collected
+
+Nothing is written — the payloads exist only for findings.
 
 → Return to caller.
 
 #### Otherwise
+
+Write two payloads with the Write tool:
+
+- `.workflows/.cache/{work_unit}/review/{topic}/findings.txt` — one block per finding, opening with `[{id}]`, carrying the finding verbatim
+- `.workflows/.cache/{work_unit}/review/{topic}/findings-index.txt` — the same findings grouped under `### {file}` headings by the file each targets, one summary line each
 
 → Proceed to **B. Assess**.
 

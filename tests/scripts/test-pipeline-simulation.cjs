@@ -474,6 +474,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
+  assert.strictEqual(sim.manifest(wu).phases.implementation.items[topic].current_task, null,
+    'a closed phase leaves no task in flight');
   // The analysis loop's synthesizer consumes the residue (invoke-synthesizer.md);
   // conclude's hygiene covers a loop that never got its verdicts in.
   sim.run(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank']);

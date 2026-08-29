@@ -419,6 +419,27 @@ describe('engine task complete', () => {
     assert.deepStrictEqual(implItem(dir).completed_phases, [2]);
   });
 
+  it('--phase-complete clears a pointer still holding the completed task — a closed phase leaves nothing in flight', () => {
+    engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-2']);
+    const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase', '1', '--phase-complete']);
+    assert.strictEqual(res.recorded.current_task, null);
+    assert.strictEqual(implItem(dir).current_task, null);
+  });
+
+  it('--phase-complete leaves a pointer holding a different task untouched', () => {
+    engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-2-1']);
+    const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase', '1', '--phase-complete']);
+    assert.strictEqual(res.recorded.current_task, undefined);
+    assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
+  });
+
+  it('--phase-complete defers to an explicit --next-task', () => {
+    engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-2']);
+    const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase', '1', '--next-task', 'auth-flow-2-1', '--phase-complete']);
+    assert.strictEqual(res.recorded.current_task, 'auth-flow-2-1');
+    assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
+  });
+
   it('appends to existing progress arrays', () => {
     engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1']);
     engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase-complete']);

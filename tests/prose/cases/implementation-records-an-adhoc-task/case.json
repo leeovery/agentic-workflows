@@ -72,7 +72,6 @@
       "staging.ad-hoc-1.tasks.1 approved",
       "write:.workflows/pay/planning/pay/tasks/pay-1-4",
       "write:.workflows/pay/planning/pay/planning.md",
-      "task_map.pay-1-4",
       "impl(pay): add 1 ad hoc task(s)",
       "render task-gate pay.implementation.pay"
     ],
