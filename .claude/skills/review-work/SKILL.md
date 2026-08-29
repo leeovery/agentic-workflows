@@ -139,7 +139,21 @@ saying out loud rather than converting into a clean bill of health.
 one at a time, conversationally.** Each finding is its own exchange: the
 problem and enough context to weigh it, why it exists, your
 recommendation with its reasoning, the defensible alternative and why
-you would not take it — then stop and wait. The next finding is not
+you would not take it — then stop and wait.
+
+**Ground every finding from zero.** Days may separate the user from the
+design discussion, and none of the session's vocabulary, codenames, or
+mid-build decisions can be assumed remembered. Each presentation
+re-establishes the world before naming the defect: what the touched
+mechanism is and does, in plain words; where this finding sits in it;
+only then what is wrong. Show, don't describe — render the actual
+artefact (the menu, the output, the prose) bracketed in ▼/▲ markers,
+as it is and as each option would make it; where the problem is
+structural — flows, callers, orderings — draw a compact ASCII diagram
+built from the real edges. The bar is a reader returning after a week
+who follows it cold; a presentation the user has to ask to have
+re-explained has failed, and the re-explanation starts from zero, not
+from a compressed restatement of the last one. The next finding is not
 presented until the current one is settled; the discussion of one
 routinely reshapes the questions behind it, and answers given against a
 wall of parallel questions are answers to summaries, not to problems.
