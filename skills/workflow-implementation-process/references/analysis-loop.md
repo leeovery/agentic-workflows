@@ -93,15 +93,15 @@ You MUST NOT choose on the user's behalf.
 
 ## B. Git Checkpoint
 
-Ensure a clean working tree before analysis. Run `git status`.
+Ensure clean code before analysis. Run `git status` and set aside every `.workflows/` path — those belong to their own phase's scope, and the loop's own commits carry them.
 
-#### If the working tree is clean
+#### If nothing outside `.workflows/` is dirty
 
 → Proceed to **C. Dispatch Analysis Agents**.
 
-#### If there are unstaged changes or untracked files
+#### Otherwise
 
-Categorize them:
+Categorize the dirty code files:
 
 - **Implementation files** (files touched by `impl({work_unit}):` commits) — name these in the checkpoint commit automatically.
 - **Unexpected files** (files not touched during implementation) — present to the user:
@@ -122,7 +122,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-The checkpoint is a code commit — name the files, and the engine confines the commit to them. A `.workflows` path among the unexpected files is never named here: those belong to their own phase's scope, and the loop's own commits carry them.
+The checkpoint is a code commit — name the files, and the engine confines the commit to them.
 
 **If `yes`:**
 
