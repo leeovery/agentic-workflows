@@ -11,10 +11,10 @@ A. Cycle gate (record the cycle, warn if over the session limit)
 B. Git checkpoint
 C. Dispatch analysis agents → invoke-analysis.md
 D. Dispatch synthesis agent → invoke-synthesizer.md
-E. Approval overview
+E. Approval overview (spec defects settled first)
 F. Process task (per-task approval loop)
 G. Route on results
-H. Create tasks in plan → invoke-task-writer.md
+H. Create tasks in plan → invoke-task-author.md, invoke-task-writer.md
 → Route on result
 ```
 
@@ -93,15 +93,15 @@ You MUST NOT choose on the user's behalf.
 
 ## B. Git Checkpoint
 
-Ensure a clean working tree before analysis. Run `git status`.
+Ensure clean code before analysis. Run `git status` and set aside every `.workflows/` path — those belong to their own phase's scope, and the loop's own commits carry them.
 
-#### If the working tree is clean
+#### If nothing outside `.workflows/` is dirty
 
 → Proceed to **C. Dispatch Analysis Agents**.
 
-#### If there are unstaged changes or untracked files
+#### Otherwise
 
-Categorize them:
+Categorize the dirty code files:
 
 - **Implementation files** (files touched by `impl({work_unit}):` commits) — name these in the checkpoint commit automatically.
 - **Unexpected files** (files not touched during implementation) — present to the user:
@@ -122,7 +122,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-The checkpoint is a code commit — name the files, and the engine confines the commit to them. A `.workflows` path among the unexpected files is never named here: those belong to their own phase's scope, and the loop's own commits carry them.
+The checkpoint is a code commit — name the files, and the engine confines the commit to them.
 
 **If `yes`:**
 
@@ -212,7 +212,27 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 
 ## E. Approval Overview
 
-Read the staging file from `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md` (task content) and the cycle's statuses from `manifest get {work_unit}.implementation.{topic} staging.c{N}`.
+Settle the spec defects first — each `## Spec Defects` entry in `analysis-report-c{N}.md` is classified before the overview renders, so the tasks are authored against a correct specification. Once per entry:
+
+→ Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
+
+A record-settled entry lands there silently. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict becomes one whose Solution says what is settled and whose **Decision** carries the question and two to four sides in the order they should be offered. An entry the reference returns unsettled (the item back in its own phase, or held by a live session) is left exactly as reported — never re-classified here. Add each staged verdict under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Analysis Tasks: {Topic} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem**, **Solution**, and the **Decision** where there is one — and initialise its row:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} pending
+```
+
+An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed, confirm in one line total — `{count} spec correction(s) recorded.` — never a per-correction recap; nothing when none did.
+
+#### If the cycle stages no proposal
+
+The synthesis staged none and the record settled every defect.
+
+→ Proceed to **G. Route on Results**.
+
+#### Otherwise
+
+Read the staging file from `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md` (proposal content) and the cycle's statuses from `manifest get {work_unit}.implementation.{topic} staging.c{N}`.
 
 Write the overview payload to `.workflows/.cache/{work_unit}/implementation/{topic}/tasks-overview.json` with the Write tool (`{"label": "Analysis cycle {N}", "tasks": [{"title": "…", "severity": "…", "status": "…"}]}` — each task's `status` is its `staging.c{N}.tasks.{n}` value: `pending`, `approved`, or `skipped`), render, and emit the section verbatim at its marked instruction:
 
@@ -232,7 +252,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {wo
 
 #### Otherwise
 
-Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…", "outcome": "…", "steps": […], "criteria": […], "tests": […]}` from the staging file — then render with `{analysis_gate_mode}` (`auto` from the moment the user opts in mid-cycle), and emit each section verbatim at its marked instruction:
+Present the next pending proposal. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one and `"decision": {"question": "…", "options": ["{side}", …]}` when it carries a Decision, its sides in the staged order — then render with `{analysis_gate_mode}` (`auto` from the moment the user opts in mid-cycle), and emit each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {analysis_gate_mode} --comment-hint "Provide feedback to adjust"
@@ -272,7 +292,29 @@ Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs mani
 
 **If comment:**
 
-Revise the task content in the staging file based on the user's feedback.
+Revise the staged proposal in the staging file based on the user's feedback (content only), and rewrite the payload.
+
+→ Return to **F. Process Task**.
+
+#### If the response carried `MENU: task decision`
+
+**STOP.** Wait for user response.
+
+**If a numbered side:**
+
+Rewrite the proposal in the staging file — Solution becomes the settled direction carrying the chosen side, and the Decision block goes — then record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`.
+
+→ Return to **F. Process Task**.
+
+**If `decline`:**
+
+Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} skipped`.
+
+→ Return to **F. Process Task**.
+
+**If comment:**
+
+Revise the staged proposal in the staging file based on the user's feedback (content only) — feedback that settles the question settles it the same way a chosen side does — and rewrite the payload. The revision is an interpretation of the user's words: re-render this item with `--gate gated` whatever the walk's mode, so it lands with an explicit approval.
 
 → Return to **F. Process Task**.
 
@@ -284,12 +326,12 @@ Revise the task content in the staging file based on the user's feedback.
 
 → Proceed to **H. Create Tasks in Plan**.
 
-#### If all tasks were declined
+#### Otherwise
 
-Commit the cycle's decisions (the scoped commit covers the manifest):
+Nothing is approved — the cycle's proposals were declined, or it staged none. Commit the cycle's decisions (the scoped commit covers the manifest):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — tasks declined" --topic implementation/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — no tasks approved" --topic implementation/{topic}
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 8**.
@@ -297,6 +339,30 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 ---
 
 ## H. Create Tasks in Plan
+
+The approved proposals carry no bodies — the author expands exactly those, in the staging file, before the writer transcribes them:
+
+→ Load **[invoke-task-author.md](invoke-task-author.md)** and follow its instructions as written, with staging file path = `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md`, findings file paths = the cycle's `analysis-report-c{N}.md` and the `analysis-duplication-c{N}.md`, `analysis-standards-c{N}.md` and `analysis-architecture-c{N}.md` files that exist, approved task numbers = the task numbers whose `staging.c{N}` rows are `approved`.
+
+> **CHECKPOINT**: Do not proceed until the task author has returned.
+
+#### If the author's `STATUS` is `failed`
+
+Nothing was authored. State the author's reason plainly; the staging stays untouched.
+
+**STOP.** Wait for user response.
+
+**If the user resolves the input:**
+
+→ Return to **H. Create Tasks in Plan** — re-invocation is idempotent.
+
+**If the user abandons the tasks:**
+
+Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} skipped`).
+
+→ Return to **G. Route on Results**.
+
+#### Otherwise
 
 → Load **[invoke-task-writer.md](invoke-task-writer.md)** and follow its instructions as written.
 
