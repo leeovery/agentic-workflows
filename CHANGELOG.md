@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.15] - 2026-08-29
+
+🔧 Changed
+- Implementation and review now take turns on a checkout — starting one while the other holds a topic stops with who's holding it and how long ago, with an override if you're sure it's done.
+- Task commits during implementation and review's zero-risk fixes now name their files explicitly and report back anything left uncommitted, so nothing another session had in flight gets swept in.
+- Cross-phase task deferrals must now be named in the phase overview and carried into the receiving phase's acceptance criteria, so planning and review no longer miss work deferred across phases.
+- Research review no longer flags an option landscape with no decision yet as a gap — that's discussion's job, not research's.
+
 ## [0.7.14] - 2026-08-27
 
 ✨ Added
