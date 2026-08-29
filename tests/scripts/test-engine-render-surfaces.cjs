@@ -2182,6 +2182,160 @@ describe('render proposed-task', () => {
     assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: emptySeverity, gate: 'gated' }), /"severity" must be a non-empty string when present/);
   });
 
+  // Proposal altitude — the judge's output, before any authoring: problem and
+  // solution alone, the three blocks and outcome absent.
+  const proposal = {
+    current: 1, total: 4, title: 'Merge the near-miss helpers', severity: 'near-miss',
+    placement: 'phase 3',
+    problem: 'Two helpers differ only in their error text.',
+    solution: 'Fold them into one and take the caller-supplied message.',
+  };
+
+  it('renders a proposal — no blocks, no outcome, the approval menu unchanged, byte-exactly', () => {
+    const file = writePayload(dir, 'pr.json', proposal);
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    assert.strictEqual(out, [
+      '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
+      '**`▪ Merge the near-miss helpers (1 of 4)`** (near-miss)',
+      'Placement: phase 3',
+      '',
+      '**Problem**: Two helpers differ only in their error text.',
+      '**Solution**: Fold them into one and take the caller-supplied message.',
+      '',
+      '=== MENU: task approval (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
+      '**`◆ Approve this task?`**',
+      '',
+      '**`y/yes`**     → Approve this task',
+      '**`a/auto`**    → Approve this and all remaining tasks automatically',
+      '**`d/decline`** → Decline this task — it will not be built',
+      '**Comment**   → Tell me what to change',
+      '',
+    ].join('\n'));
+  });
+
+  it('mixes present and absent blocks — each renders under its own heading, none leaves a hole', () => {
+    const file = writePayload(dir, 'mx.json', {
+      current: 2, total: 4, title: 'Drop the dead formatter', severity: 'dead-code',
+      problem: 'Nothing calls it.', solution: 'Delete it.', outcome: 'One fewer surface to keep true.',
+      tests: ['- the suite stays green'],
+    });
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    assert.ok(out.startsWith([
+      '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
+      '**`▪ Drop the dead formatter (2 of 4)`** (dead-code)',
+      '',
+      '**Problem**: Nothing calls it.',
+      '**Solution**: Delete it.',
+      '**Outcome**: One fewer surface to keep true.',
+      '',
+      '**Tests**:',
+      '- the suite stays green',
+      '',
+      '=== MENU: task approval',
+    ].join('\n')), out);
+    assert.ok(!out.includes('**Do**:'), 'an absent block leaves no heading behind');
+    assert.ok(!out.includes('**Acceptance Criteria**:'));
+    assert.ok(!/\n\n\n/.test(out), 'an omitted block leaves no doubled blank line');
+  });
+
+  it('outcome is optional both ways, and the detail blocks stay non-empty when present', () => {
+    const withOutcome = writePayload(dir, 'o1.json', { ...proposal, outcome: 'One helper, one message path.' });
+    assert.ok(renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: withOutcome, gate: 'gated' })
+      .includes('**Solution**: Fold them into one and take the caller-supplied message.\n**Outcome**: One helper, one message path.\n'));
+    const without = writePayload(dir, 'o2.json', proposal);
+    assert.ok(!renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: without, gate: 'gated' }).includes('**Outcome**'));
+    const emptyOutcome = writePayload(dir, 'o3.json', { ...proposal, outcome: '' });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: emptyOutcome, gate: 'gated' }), /"outcome" must be a non-empty string when present/);
+    for (const field of ['steps', 'criteria', 'tests']) {
+      const empty = writePayload(dir, `e-${field}.json`, { ...proposal, [field]: [] });
+      assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: empty, gate: 'gated' }), new RegExp(`"${field}" must be non-empty`));
+      const notLines = writePayload(dir, `n-${field}.json`, { ...proposal, [field]: 'one long string' });
+      assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: notLines, gate: 'gated' }), new RegExp(`"${field}" must be an array of strings`));
+    }
+  });
+
+  it('a decision item presents the sides as the menu — numbered, decline, comment, no auto — byte-exactly', () => {
+    const file = writePayload(dir, 'dc.json', {
+      current: 3, total: 4, title: 'Settle the page size', severity: 'behaviour',
+      problem: 'Two page sizes are configured at once.', solution: 'Pick one and record it.',
+      decision: { question: 'Which page size stands?', options: ['A4 on the PDF renderer', 'preferCssPageSize from the stylesheet'] },
+    });
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    assert.strictEqual(out, [
+      '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
+      '**`▪ Settle the page size (3 of 4)`** (behaviour)',
+      '',
+      '**Problem**: Two page sizes are configured at once.',
+      '**Solution**: Pick one and record it.',
+      '**Decision**: Which page size stands?',
+      '',
+      '=== MENU: task decision (emit verbatim as markdown, then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
+      '**`◆ Which way?`**',
+      '',
+      '**`1`**         → A4 on the PDF renderer',
+      '**`2`**         → preferCssPageSize from the stylesheet',
+      '**`d/decline`** → Decline this task — it will not be built',
+      '**Comment**   → Tell me what to change',
+      '',
+    ].join('\n'));
+    assert.ok(!out.includes('a/auto'), 'an open decision is never one of the calls auto makes');
+    assert.ok(!out.includes('Auto is on'), 'a gated decision carries no auto-override line — there is nothing being overridden');
+  });
+
+  it('a decision stops under --gate auto — and takes the comment hint', () => {
+    const file = writePayload(dir, 'dc2.json', {
+      current: 1, total: 1, title: 'Settle the page size',
+      problem: 'p', solution: 's',
+      decision: { question: 'Which page size stands?', options: ['A4', 'preferCssPageSize', 'Neither — leave it configurable'] },
+    });
+    const auto = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'auto', 'comment-hint': 'Provide feedback to adjust' });
+    assert.ok(auto.includes('MENU: task decision'), 'a decision item always stops');
+    assert.ok(!auto.includes('DISPLAY: task auto-approved'));
+    assert.ok(!auto.includes('MENU: task approval'));
+    assert.ok(auto.includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'),
+      'a stop that fires over the auto opt-in says so, in the engine\'s one voice');
+    assert.ok(auto.includes('**Decision**: Which page size stands?'), 'the question renders in the body, never the glyphed chrome');
+    assert.ok(/\*\*`3`\*\* +→ Neither — leave it configurable/.test(auto));
+    assert.ok(/\*\*Comment\*\* +→ Provide feedback to adjust/.test(auto));
+  });
+
+  it('a decision excludes authored blocks, and the malformed shapes are refused by name', () => {
+    for (const [field, value] of [['steps', ['1. x']], ['criteria', ['- c']], ['tests', ['- t']]]) {
+      const file = writePayload(dir, `dx-${field}.json`, {
+        ...proposal, [field]: value,
+        decision: { question: 'Which way?', options: ['a', 'b'] },
+      });
+      assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' }),
+        /"decision" excludes steps\/criteria\/tests/);
+    }
+    for (const [name, decision] of [['null', null], ['a bare string', 'yes']]) {
+      const file = writePayload(dir, `dshape-${name.replace(/ /g, '-')}.json`, { ...proposal, decision });
+      assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' }),
+        /"decision" must be an object carrying "question" and "options"/, `decision as ${name} is refused`);
+    }
+  });
+
+  it('a malformed decision is refused by name', () => {
+    const cases = [
+      [{ options: ['a', 'b'] }, /"decision\.question" must be a non-empty string/],
+      [{ question: '  ', options: ['a', 'b'] }, /"decision\.question" must be a non-empty string/],
+      [{ question: 'Which?' }, /"decision\.options" must be an array of 2–4 sides/],
+      [{ question: 'Which?', options: ['only one'] }, /"decision\.options" must be an array of 2–4 sides/],
+      [{ question: 'Which?', options: ['a', 'b', 'c', 'd', 'e'] }, /"decision\.options" must be an array of 2–4 sides/],
+      [{ question: 'Which?', options: ['a', ''] }, /decision\.options\[1\] must be a non-empty string/],
+      [{ question: 'Which?', options: ['a', { summary: 'b' }] }, /decision\.options\[1\] must be a non-empty string/],
+    ];
+    cases.forEach(([decision, re], i) => {
+      const file = writePayload(dir, `dbad-${i}.json`, { ...proposal, decision });
+      assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' }), re);
+    });
+    const notObject = writePayload(dir, 'dbad-shape.json', { ...proposal, decision: ['a', 'b'] });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: notObject, gate: 'gated' }),
+      /"decision" must be an object carrying "question" and "options"/);
+  });
+
   it('incoherence-gate conflict: payload-driven display then the menu, recommended side first, byte-exact', () => {
     const file = writePayload(dir, 'ig.json', {
       doc: 'synonym-handling',
@@ -2461,6 +2615,8 @@ describe('render tasks-overview', () => {
     assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file }), /task 1 needs "title" and "severity"/);
     const bad = writePayload(dir, 'b.json', { label: 'X', tasks: [{ title: 't', severity: 's', status: 'done' }] });
     assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: bad }), /render tasks-overview: task 1 carries unknown status "done" \(expected pending\/approved\/skipped\)/);
+    const empty = writePayload(dir, 'empty.json', { label: 'X', tasks: [] });
+    assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: empty }), /"tasks" must be a non-empty array/, 'an empty overview refuses — the zero-proposal branches route around this surface');
   });
 });
 
