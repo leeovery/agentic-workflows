@@ -252,3 +252,45 @@ supersession → the class decision 5 makes silent).
   - **Banked tidy**: `workflow-planning-task-author` still inlines its
     copy of `task-design.md`'s template; drop it once the shared
     reference is authoritative for both authors.
+- **2026-08-29** — Eight-dimension review pass over the stack; fixes
+  folded per-PR, children restacked. Rulings:
+  - **The silent route verifies its ground**: entry B reads the spec
+    item's status (anything but `completed` routes out) and scans
+    presence (a held-and-live spec session defers the entry) — the
+    resolve-source-incoherence precedent, both checks.
+  - **The decision question leaves the chrome**: it renders as the
+    display body's `**Decision**:` line; the menu asks the engine's
+    fixed "Which way?" with `AUTO_OVERRIDE_LINE` over an auto opt-in —
+    the conflict-menu idiom the log named, now actually followed. A
+    decision payload excludes authored blocks (engine-refused).
+  - **A comment that settles a decision re-renders gated** once,
+    whatever the mode — the revision is an interpretation of the
+    user's words and lands only with an explicit approval.
+  - **The review synthesizer's never-re-judge rule names its spec-
+    defect exception**, and a failed review completing on silent
+    corrections alone stands (the pre-existing clean-synthesis
+    completion semantics, with a better-documented cause).
+  - **The ad-hoc caller's lost loud-payload guard is accepted** — the
+    price of payload-picked altitude; display-only exposure.
+  - **Crash-seam repair in both loops**: a proposal in the staging
+    file without its manifest row is initialised, never re-appended;
+    a defect-only synthesis creates the staging file it appends to.
+  - **Coverage**: the analysis loop gained its first case
+    (`implementation-runs-the-analysis-walk` — settle, gated walk,
+    author, write); the review-walk case is queued with its arms
+    named. Authoring it surfaced and fixed a pre-existing dead
+    branch: the analysis checkpoint's clean-tree arm could never
+    match (stage A always dirties the manifest) — the categorisation
+    now sets `.workflows/` paths aside upfront.
+  - Docs aligned (proposal walk, always-stopping decisions, the task
+    author, the silent correction); `commands.md`'s payload contract
+    made self-consistent; `specification-format.md` carries the
+    corrigenda section as phase-conclusion furniture a spec session
+    leaves standing.
+  - **Reported, left as-is**: H's "analysis phase {N}" commit
+    messages say phase where the loop means cycle (pre-existing,
+    pinned by the new case as written); the `(1 tasks)` plural;
+    `run.cjs select`'s misleading `expects` line for claims cases;
+    the KB-query entry into the silent route from any implementation
+    or review session (consistent with the design's trigger
+    condition — ratified as intended).
