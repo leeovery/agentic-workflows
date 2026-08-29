@@ -46,7 +46,9 @@ The prose should have taken this path:
 10. the spec defect is settled before the overview renders. The
     specification is this work unit's own and this session's phase is
     implementation, so the correction routes through that arm: the item's
-    status reads completed and the presence scan returns no rows, so
+    status reads completed and the presence scan shows no
+    specification-topic row (the session's own implementation
+    heartbeat may appear), so
     neither early return fires. The record settles the claim — the path
     is a value the tree measures — so it lands silently: the wrong path
     replaced in place, one dated corrigendum attributed to

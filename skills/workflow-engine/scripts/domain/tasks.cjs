@@ -381,6 +381,13 @@ function completeTask(cwd, workUnit, topic, { internalId = null, externalId = nu
       const n = phase !== undefined ? phase : phaseOfInternalId(id);
       pushTo(item, 'completed_phases', n);
       recorded.completed_phase = n;
+      // A completed phase leaves no task in flight — the closing record
+      // clears a pointer still holding this task, unless the caller set
+      // the next task explicitly.
+      if (nextTask === undefined && item.current_task === id) {
+        item.current_task = null;
+        recorded.current_task = null;
+      }
     }
     saveWorkUnitManifest(cwd, workUnit, manifest);
 
