@@ -1,0 +1,34 @@
+{
+  "turn:2": {
+    "answer": "The coordinator sent a message while you were working:\nThe user's answer to the \"Ready to continue?\" gate: c\n\nContinue the walk from exactly where you stopped. Same rules as before: stop at the NEXT menu or question the prose puts to the user, emit it verbatim, and end your turn without answering it.\n\nAddress this before completing your current task.",
+    "matchMode": "exact"
+  },
+  "turn:3": {
+    "answer": "The coordinator sent a message while you were working:\nThe user's answer to the \"What would you like to start?\" menu: f\n\nContinue the walk from exactly where you stopped. Stop at the NEXT menu or question the prose puts to the user, emit it verbatim, and end your turn without answering it.\n\nAddress this before completing your current task.",
+    "matchMode": "exact"
+  },
+  "turn:4": {
+    "answer": "The coordinator sent a message while you were working:\nThe user's answer to the feature opener:\n\nI want to add rate limiting to the API client in src/client.js. Right now callers can hammer the API — getWithRetry retries immediately with no backoff, and there's no throttle on concurrent requests. I'm thinking a token-bucket limiter with configurable requests-per-second, plus exponential backoff on retries. Not sure yet whether the limiter should be per-host or global, and whether 429 responses should count against the retry budget.\n\nContinue the walk. Stop at the NEXT menu or question the prose puts to the user, emit it verbatim, and end your turn without answering it.\n\nAddress this before completing your current task.",
+    "matchMode": "exact"
+  },
+  "turn:5": {
+    "answer": "The coordinator sent a message while you were working:\nThe user's answer to the \"Have I read this right?\" gate: y\n\nContinue the walk from exactly where you stopped. Stop at the NEXT menu or question the prose puts to the user, emit it verbatim, and end your turn without answering it.\n\nAddress this before completing your current task.",
+    "matchMode": "exact"
+  },
+  "turn:6": {
+    "answer": "The coordinator sent a message while you were working:\nThe user's answer to the \"Is this name okay?\" gate: y\n\nContinue the walk from exactly where you stopped. Stop at the NEXT menu or question the prose puts to the user, emit it verbatim, and end your turn without answering it.\n\nAddress this before completing your current task.",
+    "matchMode": "exact"
+  },
+  "turn:7": {
+    "answer": "The coordinator sent a message while you were working:\nThe user's answer to the research-vs-discussion choice: d\n\nContinue the walk from exactly where you stopped. Stop at the NEXT menu or question the prose puts to the user, emit it verbatim, and end your turn without answering it.\n\nAddress this before completing your current task.",
+    "matchMode": "exact"
+  },
+  "turn:8": {
+    "answer": "The coordinator sent a message while you were working:\nThe user APPROVES the presented plan (\"Start Discussion: rate-limiting\"). For this walk, the ExitPlanMode presentation is NOT the terminal stop — the payload's task continues through it, exactly as a live session would on approval: follow the approved plan's handoff. Read the skill file it routes to (workflow-discussion-entry under the world's .claude/skills/, with the stated arguments) and continue the walk from its beginning.\n\nSame turn-by-turn rules as before: stop at the NEXT menu or question the prose puts to the user, emit it verbatim, and end your turn without answering it.\n\nAddress this before completing your current task.",
+    "matchMode": "exact"
+  },
+  "turn:9": {
+    "answer": "The coordinator sent a message while you were working:\nThe user's answer:\n\nPer-host. The pain we've actually had is one strict upstream getting hammered while others were idle — a global pool would just couple unrelated hosts. The aggregate-load worry is real but secondary; let's note a configurable global ceiling as a possible later addition rather than building it now.\n\nContinue the walk. Stop at the NEXT menu or question the prose puts to the user, emit it verbatim, and end your turn without answering it.\n\nAddress this before completing your current task.",
+    "matchMode": "exact"
+  }
+}

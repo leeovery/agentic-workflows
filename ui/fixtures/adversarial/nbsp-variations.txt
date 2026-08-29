@@ -1,0 +1,7 @@
+=== MENU: check-in gate (emit verbatim as markdown, then STOP for the user's response) ===
+· · ·
+**`◆ Keep going?`**
+
+**`c/continue`**   → Proceed with the very long label that wraps
+                onto a continuation line
+**`p/park`** → Park it

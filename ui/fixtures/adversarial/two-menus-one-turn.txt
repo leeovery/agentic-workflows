@@ -1,0 +1,16 @@
+=== MENU: plan gate (emit verbatim as markdown, then STOP for the user's response) ===
+· · · · · · · · · · · ·
+**`◆ Earlier gate?`**
+
+**`a/apply`** → The earlier menu
+**`s/skip`** → Skip
+
+=== DISPLAY (emit verbatim as a code block) ===
+Something landed between the menus.
+
+=== MENU: check-in gate (emit verbatim as markdown, then STOP for the user's response) ===
+· · · · · · · · · · · ·
+**`◆ The real ask?`**
+
+**`c/continue`** → Continue (recommended)
+**`w/wrap`** → Wrap up
