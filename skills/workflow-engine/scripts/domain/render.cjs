@@ -323,10 +323,14 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 // solution (outcome only when it adds something the solution doesn't); a task
 // adds the Do/Acceptance Criteria/Tests blocks. Judging comes before
 // authoring, and detail that doesn't exist yet can't be rendered.
-// A proposal carrying an open decision renders that decision's sides as its
-// menu, at either gate mode: a bare `y` would hand the call to the executor,
-// and auto never settles a point the record leaves open (the spec phase's
-// settleable-point rule) — a decision item always stops.
+// A proposal carrying an open decision renders the question as the body's
+// last line and the sides as its menu under a fixed engine question — the
+// conflict-menu idiom: model-authored text never enters the glyphed chrome.
+// The menu fires at either gate mode: a bare `y` would hand the call to the
+// executor, and auto never settles a point the record leaves open (the spec
+// phase's settleable-point rule) — a decision item always stops, and over an
+// auto opt-in it says so. A decision excludes the authored blocks: the
+// direction is settled before bodies exist.
 // ---------------------------------------------------------------------------
 
 /**
@@ -368,6 +372,9 @@ function proposedTask(cwd, args) {
     p.decision.options.forEach((/** @type {unknown} */ o, /** @type {number} */ i) => {
       if (!isFilled(o)) throw new Error(`render proposed-task: decision.options[${i}] must be a non-empty string`);
     });
+    if (blocks.steps || blocks.criteria || blocks.tests) {
+      throw new Error('render proposed-task: "decision" excludes steps/criteria/tests — the direction is settled before bodies are authored');
+    }
   }
 
   const meta = [];
@@ -387,6 +394,7 @@ function proposedTask(cwd, args) {
     `**Solution**: ${p.solution}`,
   ];
   if (isFilled(p.outcome)) body.push(`**Outcome**: ${p.outcome}`);
+  if (p.decision) body.push(`**Decision**: ${p.decision.question}`);
   for (const [field, heading] of [['steps', 'Do'], ['criteria', 'Acceptance Criteria'], ['tests', 'Tests']]) {
     if (!blocks[field]) continue;
     body.push('', `**${heading}**:`, ...blocks[field]);
@@ -398,11 +406,11 @@ function proposedTask(cwd, args) {
     parts.push(section(
       'MENU: task decision',
       STOP_FOR_RESPONSE,
-      menu('', [
+      menu(gate === 'auto' ? AUTO_OVERRIDE_LINE : '', [
         ...p.decision.options.map((/** @type {string} */ o, /** @type {number} */ i) => cmdOption(String(i + 1), null, o)),
         cmdOption('d', 'decline', 'Decline this task — it will not be built'),
         promptOption('Comment', hint),
-      ], { question: p.decision.question }),
+      ], { question: 'Which way?' }),
     ));
   } else if (gate === 'auto') {
     parts.push(section(

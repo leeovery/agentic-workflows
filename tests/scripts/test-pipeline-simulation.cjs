@@ -1725,16 +1725,18 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['tasks-overview', `${wu}.implementation.${wu}`, '--file', overviewPayload], { expect: 'content' }),
       /Phase 1 consolidation/, 'the boundary walk renders the shared overview surface');
     // One payload file, rewritten per item — the walk's three shapes over it:
-    // full detail, a proposal (no Do/Criteria/Tests, no outcome), and a
+    // a proposal carrying its outcome, a bare proposal (no outcome), and a
     // proposal carrying an open decision.
     const consolidationPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
       current: 1, total: 3, title: 'Merge the near-miss helpers', severity: 'near-miss',
       placement: 'phase 1', problem: 'p', solution: 's', outcome: 'o',
-      steps: ['1. x'], criteria: ['- c'], tests: ['- t'],
     });
-    assert.match(sim.render(['proposed-task', `${wu}.implementation.${wu}`,
-      '--file', consolidationPayload, '--gate', 'gated', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' }),
-      /Placement: phase 1/, 'the boundary walk renders the shared per-task surface');
+    const outcomeGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
+      '--file', consolidationPayload, '--gate', 'gated', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' });
+    assert.match(outcomeGate, /Placement: phase 1/, 'the boundary walk renders the shared per-task surface');
+    assert.match(outcomeGate, /\*\*Outcome\*\*: o/, 'a proposal may carry its outcome');
+    assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:|\*\*Tests\*\*:/.test(outcomeGate),
+      'the boundary walk never renders authored blocks');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'approved']);
     sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
       current: 2, total: 3, title: 'Drop the dead formatter', severity: 'dead-code',
@@ -1754,6 +1756,8 @@ describe('pipeline simulation', () => {
     const decisionGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
       '--file', consolidationPayload, '--gate', 'auto', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' });
     assert.match(decisionGate, /MENU: task decision/, 'an open decision stops the walk even under auto');
+    assert.match(decisionGate, /\*\*Decision\*\*: Which page size stands\?/, 'the question renders in the body, never the glyphed chrome');
+    assert.match(decisionGate, /Auto is on — stopping anyway/, 'the stop over the auto opt-in announces itself');
     assert.match(decisionGate, /\*\*`1`\*\* +→ A4 on the renderer/, 'the sides are the menu options');
     assert.ok(!/a\/auto|DISPLAY: task auto-approved/.test(decisionGate),
       'approving a decision blind is not one of the calls auto makes');

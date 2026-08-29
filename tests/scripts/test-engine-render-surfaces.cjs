@@ -2268,10 +2268,11 @@ describe('render proposed-task', () => {
       '',
       '**Problem**: Two page sizes are configured at once.',
       '**Solution**: Pick one and record it.',
+      '**Decision**: Which page size stands?',
       '',
       '=== MENU: task decision (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
-      '**`◆ Which page size stands?`**',
+      '**`◆ Which way?`**',
       '',
       '**`1`**         → A4 on the PDF renderer',
       '**`2`**         → preferCssPageSize from the stylesheet',
@@ -2280,6 +2281,7 @@ describe('render proposed-task', () => {
       '',
     ].join('\n'));
     assert.ok(!out.includes('a/auto'), 'an open decision is never one of the calls auto makes');
+    assert.ok(!out.includes('Auto is on'), 'a gated decision carries no auto-override line — there is nothing being overridden');
   });
 
   it('a decision stops under --gate auto — and takes the comment hint', () => {
@@ -2292,8 +2294,27 @@ describe('render proposed-task', () => {
     assert.ok(auto.includes('MENU: task decision'), 'a decision item always stops');
     assert.ok(!auto.includes('DISPLAY: task auto-approved'));
     assert.ok(!auto.includes('MENU: task approval'));
+    assert.ok(auto.includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'),
+      'a stop that fires over the auto opt-in says so, in the engine\'s one voice');
+    assert.ok(auto.includes('**Decision**: Which page size stands?'), 'the question renders in the body, never the glyphed chrome');
     assert.ok(/\*\*`3`\*\* +→ Neither — leave it configurable/.test(auto));
     assert.ok(/\*\*Comment\*\* +→ Provide feedback to adjust/.test(auto));
+  });
+
+  it('a decision excludes authored blocks, and the malformed shapes are refused by name', () => {
+    for (const [field, value] of [['steps', ['1. x']], ['criteria', ['- c']], ['tests', ['- t']]]) {
+      const file = writePayload(dir, `dx-${field}.json`, {
+        ...proposal, [field]: value,
+        decision: { question: 'Which way?', options: ['a', 'b'] },
+      });
+      assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' }),
+        /"decision" excludes steps\/criteria\/tests/);
+    }
+    for (const [name, decision] of [['null', null], ['a bare string', 'yes']]) {
+      const file = writePayload(dir, `dshape-${name.replace(/ /g, '-')}.json`, { ...proposal, decision });
+      assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' }),
+        /"decision" must be an object carrying "question" and "options"/, `decision as ${name} is refused`);
+    }
   });
 
   it('a malformed decision is refused by name', () => {
@@ -2594,6 +2615,8 @@ describe('render tasks-overview', () => {
     assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file }), /task 1 needs "title" and "severity"/);
     const bad = writePayload(dir, 'b.json', { label: 'X', tasks: [{ title: 't', severity: 's', status: 'done' }] });
     assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: bad }), /render tasks-overview: task 1 carries unknown status "done" \(expected pending\/approved\/skipped\)/);
+    const empty = writePayload(dir, 'empty.json', { label: 'X', tasks: [] });
+    assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file: empty }), /"tasks" must be a non-empty array/, 'an empty overview refuses — the zero-proposal branches route around this surface');
   });
 });
 
