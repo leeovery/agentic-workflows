@@ -18,8 +18,8 @@ Pass via the orchestrator's prompt:
 2. **Topic name** — the implementation topic
 3. **Staging file path** — the staging file the walk ran over
 4. **Approved task numbers** — the task numbers whose staging rows are `approved`
-5. **Findings file path(s)** — the findings the proposals were judged from; omit when the flow has none
-6. **Specification path** — from the specification (if available)
+5. **Findings file path(s)** — the findings the proposals were judged from
+6. **Specification path** — `.workflows/{work_unit}/specification/{topic}/specification.md` (if the unit has one)
 7. **task-design.md path** — `../../workflow-planning-process/references/task-design.md`
 
 ---
@@ -31,9 +31,12 @@ The agent authors exactly the approved tasks in place; a re-invocation after a c
 Returns a brief status:
 
 ```
-STATUS: complete
+STATUS: complete | failed
 TASKS_AUTHORED: {N}
 SUMMARY: {1 sentence}
 ```
+
+- `complete`: every approved task carries its full body
+- `failed`: nothing usable was authored — `SUMMARY` names what blocked the run; the caller's failure branch handles it
 
 → Return to caller.
