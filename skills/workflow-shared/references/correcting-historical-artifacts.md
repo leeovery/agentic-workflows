@@ -4,9 +4,27 @@
 
 ---
 
-Load this when **another work unit's specification** — surfaced by a knowledge query or read directly — carries a claim you have verified is wrong or has shifted. The specification is the golden record: completed, its knowledge-base chunks stay live at full confidence, so a wrong claim left standing is re-served as validated context to every future query — and an edit that skips the re-index leaves the store serving the old content indefinitely. No other phase artifact is ever corrected — research, discussion, and investigation feed the spec and decay in the knowledge base; a wrong claim in one is superseded by current work and left to age out.
+Load this when a **concluded specification** — surfaced by a knowledge query, read directly, or named in a downstream phase's findings — carries a claim you have verified is wrong or has shifted. The specification is the golden record: its knowledge-base chunks stay live at full confidence, so a wrong claim left standing is re-served as validated context to every future query — and an edit that skips the re-index leaves the store serving the old content indefinitely. No other phase artifact is corrected this way — research, discussion, and investigation feed the spec and decay in the knowledge base; a wrong claim in one is superseded by current work and left to age out.
 
-Derive the owning work unit and the topic from the specification's path (`.workflows/{owning_work_unit}/specification/{topic}/specification.md`), then read the unit's status:
+Derive the owning work unit and the topic from the specification's path (`.workflows/{owning_work_unit}/specification/{topic}/specification.md`). Whose specification it is, and where this session stands to it, pick the route.
+
+**If the owning work unit is not the one this session is working:**
+
+→ Proceed to **A. Another Work Unit's Specification**.
+
+**If it is this work unit's own specification and this session's phase is implementation or review:**
+
+→ Proceed to **B. This Work Unit's Specification**.
+
+**If it is this work unit's own specification and this session's phase is anything else:**
+
+Corrections flow through the owning phase: re-entering that topic's specification reopens the item, and re-completion re-indexes the knowledge base. Tell the user what you found and where it belongs.
+
+→ Return to caller.
+
+## A. Another Work Unit's Specification
+
+Read the unit's status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {owning_work_unit} status
@@ -69,5 +87,72 @@ Present the full correction list — each wrong claim, its evidence, and its pro
    ```
 
 The owning unit's manifest is never touched — no reopen, no status change; the unit stays completed.
+
+→ Return to caller.
+
+## B. This Work Unit's Specification
+
+A downstream phase found the defect. The route edits a golden record with no gate, so it verifies its ground first — read the item's status and scan presence, then check in order:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {owning_work_unit}.specification.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {owning_work_unit}
+```
+
+#### If the status is anything but `completed`
+
+The document is live in its own phase — corrections flow through it. Tell the user what was found and where it belongs; the entry stays unsettled.
+
+→ Return to caller.
+
+#### If a presence row matches `specification`/`{topic}` with `held` and `live` both true
+
+A session holds that document. Leave the entry alone this pass — it stays unsettled, and a later pass re-finds it.
+
+→ Return to caller.
+
+#### Otherwise
+
+Classify the defect; only one class is yours to correct, and **if in doubt, treat it as open**. First match below wins.
+
+#### If the record settles it
+
+An approved, landed change supersedes the claim, or the repair is a factual value derivable by direct measurement against the tree.
+
+Apply it silently — no gate, no raise. This is the one place a downstream phase edits another phase's artifact: the corrigenda entry and the re-index are the audit trail that replaces the gate. `{correcting_phase}` below is the phase that found it — `implementation/{topic}` or `review/{topic}`.
+
+1. **Edit in place.** Replace the wrong claim in its section with corrected content. The live file is current truth; git history is the historical record — never keep wrong content in the body for posterity.
+
+2. **Corrigenda section.** Append the entry to the end of the `## Corrigenda` section at the bottom of the file, appending the section as the file's last when absent. One entry per correction — and a mechanical, uniform substitution landing across many lines (a rename, a moved path) is a single correction: one entry stating the mapping — old term → new term, throughout — never an entry per edited line:
+
+   ```markdown
+   > **Corrigendum {YYYY-MM-DD}** (from `{correcting_phase}`): {original claim, quoted} — corrected: {what is true}.
+   ```
+
+3. **Re-index.** Replaces the file's existing chunks in one idempotent call:
+
+   ```bash
+   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {specification path}
+   ```
+
+4. **Commit.** Scoped to the corrected topic — one specification file and the store the re-index dirtied. `--kb` carries the store; `--sweep` says the specification topic is not the one this session is working:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {owning_work_unit} -m "specification({owning_work_unit}): corrigendum from {correcting_phase}" --topic specification/{topic} --kb --sweep
+   ```
+
+The specification item is never touched — no reopen, no status change.
+
+→ Return to caller.
+
+#### If the code is wrong and the specification is right
+
+Not a specification correction — the tree owes the change. Return that verdict; the caller routes it as the work it is.
+
+→ Return to caller.
+
+#### If it is genuinely open
+
+Correcting either side would make a decision neither the record nor a measurement settles. Return that verdict; the caller puts the decision to the user.
 
 → Return to caller.

@@ -4,7 +4,7 @@
 
 ---
 
-One pass per phase, bounded by construction: a finder sweeps the phase's combined surface, the survivors become ordinary plan tasks in the still-open phase, and the phase records complete — there is no re-check after those tasks land. `{N}` throughout is the manifest's `current_phase`. The walk's gate mode is `consolidation_gate_mode` (session-reset by `task init`); read it here:
+One pass per phase, bounded by construction: a finder sweeps the phase's combined surface, the survivors are walked as proposals and the approved ones become ordinary plan tasks in the still-open phase, and the phase records complete — there is no re-check after those tasks land. `{N}` throughout is the manifest's `current_phase`. The walk's gate mode is `consolidation_gate_mode` (session-reset by `task init`); read it here:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} consolidation_gate_mode
@@ -49,7 +49,7 @@ The walk is mid-approval.
 
 #### If `staging.p{N}` holds no `pending` task and at least one `approved` row's task is missing from the plan
 
-The session died between the walk and the plan write — or partway through the task writer's run.
+The session died between the walk and the plan write — or partway through the task author's or the task writer's run.
 
 → Proceed to **E. Create Tasks in Plan**.
 
@@ -101,10 +101,15 @@ Consolidation sweep: nothing owed.
 
 Read the findings file. The finder proposes; this stage disposes, with the session context the finder lacks:
 
-1. **Re-apply the bar** — drop findings the session already settled: an ad hoc change that made one moot, a deferral the user chose, ground a finding would trample. Anything that could have been in the plan — a missed requirement, a design gap — is not consolidation: keep it out of the staging — the exit steps (**E**/**F**) surface it and offer **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)**.
-2. **Fold the survivors into tasks** — related findings about one pattern become one task; anything giant splits. Normal planning granularity, the count dictated by the work. Every task is a pure refactor: behaviour unchanged, tests stay green, test semantics untouched. Give each task a one-word class tag (its dominant finding class — e.g. `duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `comments`).
-3. **Settle each bank verdict** — the findings file carries the finder's verdict per banked entry, with the entry's JSON quoted verbatim. Record each disposition in the staging file's `## Bank Disposition` section: `folded into task {n}`, `mooted — {reason}`, or `residue — {reason}` (pre-existing debt and out-of-phase entries ride to the end-of-implementation analysis).
-4. **Bank the finder's pre-existing debt** — push each `## Pre-existing Debt` entry the bank does not already hold (read it back first — a re-entry must not double-deposit); it rides to the end-of-implementation analysis:
+1. **Re-apply the bar** — drop findings the session already settled: an ad hoc change that made one moot, a deferral the user chose, ground a finding would trample. Then list the plan's open tasks with the format's **reading.md** and drop any finding whose ground a pending task already owns — that work is owed either way, so every proposal reaching the walk is one nothing upcoming covers.
+2. **Settle the spec defects** — each `## Spec Defects` entry is classified before a proposal is written, so the tasks are authored against a correct specification. Once per entry:
+
+   → Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
+
+   A record-settled entry lands there silently. A code-wrong verdict returns for the fold below as a `behaviour` finding; an open verdict returns as a finding whose proposal carries the decision. An entry the reference returns unsettled (the item back in its own phase, or held by a live session) is left exactly as reported — never re-classified here. An entry the specification already reads as corrected — its corrigendum present — was settled by an earlier run: skip it. When at least one correction landed, confirm in one line total — `{count} spec correction(s) recorded.` — never a per-correction recap; nothing when none did.
+3. **Fold the survivors into proposals** — related findings about one pattern become one proposal; anything giant splits. Normal planning granularity, the count dictated by the work. Give each a one-word class tag: its dominant finding class (`duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `comments`), or `behaviour` where it changes what the code does. A proposal carries the problem and the direction — the bodies are authored after the walk. Where the direction is genuinely open, approving it bare would hand the call to the executor: the proposal keeps a Solution saying what is settled and adds a **Decision** — the question, and two to four sides in the order they should be offered.
+4. **Settle each bank verdict** — the findings file carries the finder's verdict per banked entry, with the entry's JSON quoted verbatim. Record each disposition in the staging file's `## Bank Disposition` section: `folded into task {n}`, `mooted — {reason}`, or `residue — {reason}` (pre-existing debt and out-of-phase entries ride to the end-of-implementation analysis).
+5. **Bank the finder's pre-existing debt** — push each `## Pre-existing Debt` entry the bank does not already hold (read it back first — a re-entry must not double-deposit); it rides to the end-of-implementation analysis:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} bank '{"source":"finder","pre_existing":true,"summary":"{one line}","detail":"{what and where, file:line}","files":["{path}"]}'
@@ -119,16 +124,21 @@ Write the staging file to `.workflows/{work_unit}/implementation/{topic}/consoli
 placement: phase {N}
 severity: {class tag}
 
-**Problem**: {what the phase left duplicated, drifted, dead, or stale}
-**Solution**: {the consolidation}
-**Outcome**: {what the phase's surface looks like after}
-**Do**: {step-by-step implementation instructions}
-**Acceptance Criteria**:
-- {criterion — behaviour unchanged, existing tests green}
-**Tests**:
-- {the existing coverage that proves the refactor safe; new tests only where an extracted helper earns its own}
+**Problem**: {what the phase left duplicated, drifted, dead, stale, or wrong}
+**Solution**: {what will be done}
+**Outcome**: {what the phase's surface looks like after — only when it adds what Solution does not}
 
-## Task 2: ...
+## Task 2: {title}
+placement: phase {N}
+severity: {class tag}
+
+**Problem**: {what the phase left wrong}
+**Solution**: {what is settled — the part the decision does not touch}
+**Decision**: {the question}
+1. {side}
+2. {side}
+
+## Task 3: ...
 
 ## Bank Disposition
 
@@ -136,13 +146,13 @@ severity: {class tag}
   {the entry's JSON, verbatim as banked}
 ```
 
-#### If no task survives
+#### If no proposal survives
 
 → Proceed to **F. Record the Phase**.
 
 #### Otherwise
 
-Initialise the walk's gate state — one batched write, one `pending` per staged task:
+Initialise the walk's gate state — one batched write, one `pending` per staged proposal:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.p{N}.tasks.1=pending … staging.p{N}.tasks.{K}=pending
@@ -178,7 +188,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {wo
 
 #### Otherwise
 
-Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "{class tag}", "placement": "phase {N}", "problem": "…", "solution": "…", "outcome": "…", "steps": […], "criteria": […], "tests": […]}` from the staging file — then render with `{consolidation_gate_mode}` (`auto` from the moment the user opts in mid-walk), and emit each section verbatim at its marked instruction:
+Present the next pending proposal. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "{class tag}", "placement": "phase {N}", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one and `"decision": {"question": "…", "options": ["{side}", …]}` when it carries a Decision, its sides in the staged order — then render with `{consolidation_gate_mode}` (`auto` from the moment the user opts in mid-walk), and emit each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {consolidation_gate_mode} --comment-hint "Provide feedback to adjust"
@@ -218,7 +228,29 @@ Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs mani
 
 **If comment:**
 
-Revise the staged task in the staging file based on the user's feedback (content only), and rewrite the payload.
+Revise the staged proposal in the staging file based on the user's feedback (content only), and rewrite the payload.
+
+→ Return to **D. Process Task**.
+
+#### If the response carried `MENU: task decision`
+
+**STOP.** Wait for user response.
+
+**If a numbered side:**
+
+Rewrite the proposal in the staging file — Solution becomes the settled direction carrying the chosen side, and the Decision block goes — then record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.p{N}.tasks.{n} approved`.
+
+→ Return to **D. Process Task**.
+
+**If `decline`:**
+
+Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.p{N}.tasks.{n} skipped`.
+
+→ Return to **D. Process Task**.
+
+**If comment:**
+
+Revise the staged proposal in the staging file based on the user's feedback (content only) — feedback that settles the question settles it the same way a chosen side does — and rewrite the payload. The revision is an interpretation of the user's words: re-render this item with `--gate gated` whatever the walk's mode, so it lands with an explicit approval.
 
 → Return to **D. Process Task**.
 
@@ -232,6 +264,30 @@ Record the pass as landed before the plan write — a crash after this point res
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} consolidated_phases {N}
 ```
 
+The approved proposals carry no bodies — the author expands exactly those, in the staging file, before the writer transcribes them:
+
+→ Load **[invoke-task-author.md](invoke-task-author.md)** and follow its instructions as written, with staging file path = `.workflows/{work_unit}/implementation/{topic}/consolidation-tasks-p{N}.md`, findings file path = `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md`, approved task numbers = the task numbers whose `staging.p{N}` rows are `approved`.
+
+> **CHECKPOINT**: Do not proceed until the task author has returned.
+
+#### If the author's `STATUS` is `failed`
+
+Nothing was authored. State the author's reason plainly; the staging and the bank stay untouched.
+
+**STOP.** Wait for user response.
+
+**If the user resolves the input:**
+
+→ Return to **E. Create Tasks in Plan** — re-invocation is idempotent.
+
+**If the user abandons the tasks:**
+
+Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.p{N}.tasks.{n} skipped`).
+
+→ Proceed to **F. Record the Phase**.
+
+#### Otherwise
+
 Invoke the task-writer agent.
 
 **Agent path**: `../../../agents/workflow-implementation-task-writer.md`
@@ -240,7 +296,7 @@ Pass via the orchestrator's prompt:
 
 1. **Work unit** — the work unit name (for path construction)
 2. **Topic name** — the implementation topic (scopes tasks to the correct plan)
-3. **Staging file path** — the `consolidation-tasks-p{N}.md` file from **B**
+3. **Staging file path** — the `consolidation-tasks-p{N}.md` file: proposals folded at **B**, bodies authored above
 4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
 5. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
 6. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
@@ -251,7 +307,7 @@ The agent creates exactly the approved tasks; a crash-resume re-invocation is sa
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
-#### If `STATUS` is `failed`
+#### If the writer's `STATUS` is `failed`
 
 Nothing was created. State the writer's reason plainly; the staging and the bank stay untouched.
 
@@ -267,7 +323,7 @@ Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engi
 
 → Proceed to **F. Record the Phase**.
 
-#### If `STATUS` is `complete`
+#### If the writer's `STATUS` is `complete`
 
 ```
 STATUS: complete
@@ -291,8 +347,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidation — {K} task(s)" --plan {topic}
 ```
 
-**Surface anything set aside at B** — present each plan-authorable finding and offer **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)**; it returns here.
-
 The loop's next task fetch sees the consolidation tasks; the phase records complete when they land (stage **H**'s `completing` disposition). Any task totals held in session context are stale — re-derive them at the next display.
 
 → Return to caller.
@@ -307,7 +361,7 @@ Close the phase:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest pull {work_unit}.implementation.{topic} bank '{entry json exactly as banked}'
    ```
-2. **Bank the finder's pre-existing debt** — push each `## Pre-existing Debt` entry the bank does not already hold, as at **B** step 4. A no-op when the findings file is absent or the entries are already deposited.
+2. **Bank the finder's pre-existing debt** — push each `## Pre-existing Debt` entry the bank does not already hold, as at **B** step 5. A no-op when the findings file is absent or the entries are already deposited.
 3. **Mark the boundary** — skip the push when `consolidated_phases` already contains `{N}`:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} consolidated_phases {N}
@@ -322,6 +376,5 @@ Close the phase:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidated" --plan {topic}
    ```
-8. **Surface anything set aside at B**, when it ran — present each plan-authorable finding and offer **[ad-hoc-plan-changes.md](ad-hoc-plan-changes.md)**; it returns here.
 
 → Return to caller.

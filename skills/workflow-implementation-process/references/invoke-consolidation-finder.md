@@ -54,7 +54,7 @@ BANK: {confirmed M, mooted K, residue R | no entries}
 SUMMARY: {1 sentence}
 ```
 
-- `findings`: consolidation is owed — proposals and bank verdicts are in the findings file
-- `clean`: nothing above the bar and no confirmed bank entries. The findings file is still written when bank verdicts, pre-existing debt, or Observations exist, and not at all otherwise
+- `findings`: consolidation is owed, or a spec defect is recorded — findings, spec defects and bank verdicts are in the findings file
+- `clean`: nothing above the bar, no spec defects and no confirmed bank entries. The findings file is still written when bank verdicts, pre-existing debt, or Observations exist, and not at all otherwise
 
 → Return to caller.
