@@ -124,15 +124,15 @@ No actionable tasks synthesized. Review complete.
 
 Settle the spec defects first — each `## Spec Defects` entry in `review-report-c{N}.md` is classified before the overview renders, so the tasks are authored against a correct specification. Once per entry:
 
-→ Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** and follow **B. This Work Unit's Specification** with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `review/{topic}`.
+→ Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `review/{topic}`.
 
-A record-settled entry lands there silently. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict becomes one whose Solution says what is settled and whose **Decision** carries the question and two to four sides in the order they should be offered. Add each under the next `## Task {n}` heading in `review-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Review Tasks: {Scope} (Cycle {N})` header — shaped like the proposals beside it — `severity:` and `sources:` control lines, then **Problem**, **Solution**, and the **Decision** where there is one — and initialise its row:
+A record-settled entry lands there silently. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict becomes one whose Solution says what is settled and whose **Decision** carries the question and two to four sides in the order they should be offered. An entry the reference returns unsettled (the item back in its own phase, or held by a live session) is left exactly as reported — never re-classified here. Add each staged verdict under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Review Tasks: {topic:(titlecase)} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem**, **Solution**, and the **Decision** where there is one — and initialise its row:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} pending
 ```
 
-An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped. When at least one correction landed, confirm in one line total — `{N} spec correction(s) recorded.` — never a per-correction recap; nothing when none did.
+An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed, confirm in one line total — `{count} spec correction(s) recorded.` — never a per-correction recap; nothing when none did.
 
 #### If the cycle stages no proposal
 
@@ -220,7 +220,7 @@ Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs mani
 
 **If comment:**
 
-Revise the staged proposal in the staging file based on the user's feedback (content only) — feedback that settles the question settles it the same way a chosen side does — and rewrite the payload.
+Revise the staged proposal in the staging file based on the user's feedback (content only) — feedback that settles the question settles it the same way a chosen side does — and rewrite the payload. The revision is an interpretation of the user's words: re-render this item with `--gate gated` whatever the walk's mode, so it lands with an explicit approval.
 
 → Return to **D. Process Task**.
 
@@ -240,10 +240,11 @@ Nothing is approved — the cycle's proposals were declined, or it staged none. 
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
 ```
 
-Commit the cycle's decisions (the scoped commit covers the manifest):
+Commit the cycle's staging material, then its decisions (the second scoped commit covers the manifest):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — tasks declined" --topic review/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — staging" --topic implementation/{topic} --sweep
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — no tasks approved" --topic review/{topic}
 ```
 
 **Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
@@ -256,7 +257,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 
 The approved proposals carry no bodies — the author expands exactly those, in the staging file, before the writer transcribes them:
 
-→ Load **[invoke-task-author.md](../../workflow-implementation-process/references/invoke-task-author.md)** and follow its instructions as written, with staging file path = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, findings file paths = the per-task `report-*.md` files in `.workflows/{work_unit}/review/{topic}/`, approved task numbers = the task numbers whose `staging.c{N}` rows are `approved`.
+→ Load **[invoke-task-author.md](../../workflow-implementation-process/references/invoke-task-author.md)** and follow its instructions as written, with staging file path = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, findings file paths = the cycle's `review-report-c{N}.md` and the per-task `report-*.md` files in `.workflows/{work_unit}/review/{topic}/`, approved task numbers = the task numbers whose `staging.c{N}` rows are `approved`.
 
 > **CHECKPOINT**: Do not proceed until the task author has returned.
 

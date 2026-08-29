@@ -123,7 +123,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 ## Documentation
 
-The [full documentation](docs/README.md) covers every phase in detail, the engine beneath them, the knowledge base, all twenty-five agents, and the history of the project. Start with these:
+The [full documentation](docs/README.md) covers every phase in detail, the engine beneath them, the knowledge base, all thirty-four agents, and the history of the project. Start with these:
 
 | Page | Contents |
 |---|---|
@@ -133,7 +133,7 @@ The [full documentation](docs/README.md) covers every phase in detail, the engin
 | [Implementation](docs/implementation.md) | The TDD loop, gates, the fix threshold, and the consolidation sweep |
 | [The engine](docs/engine.md) | What the deterministic core does, and why |
 | [The knowledge base](docs/knowledge-base.md) | Recall, provenance, decay |
-| [The agents](docs/agents.md) | All twenty-five, organised by when they act |
+| [The agents](docs/agents.md) | All thirty-four, organised by when they act |
 | [Configuration](docs/configuration.md) | Install, project defaults, gate modes |
 | [History](docs/history.md) | Where this came from and how it evolved |
 
