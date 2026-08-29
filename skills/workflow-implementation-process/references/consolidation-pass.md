@@ -104,9 +104,9 @@ Read the findings file. The finder proposes; this stage disposes, with the sessi
 1. **Re-apply the bar** — drop findings the session already settled: an ad hoc change that made one moot, a deferral the user chose, ground a finding would trample. Then list the plan's open tasks with the format's **reading.md** and drop any finding whose ground a pending task already owns — that work is owed either way, so every proposal reaching the walk is one nothing upcoming covers.
 2. **Settle the spec defects** — each `## Spec Defects` entry is classified before a proposal is written, so the tasks are authored against a correct specification. Once per entry:
 
-   → Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** and follow **B. This Work Unit's Specification** with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
+   → Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
 
-   A record-settled entry lands there silently. A code-wrong verdict returns for the fold below as a `behaviour` finding; an open verdict returns as a finding whose proposal carries the decision. An entry the specification already reads as corrected — its corrigendum present — was settled by an earlier run: skip it. When at least one correction landed, confirm in one line total — `{N} spec correction(s) recorded.` — never a per-correction recap; nothing when none did.
+   A record-settled entry lands there silently. A code-wrong verdict returns for the fold below as a `behaviour` finding; an open verdict returns as a finding whose proposal carries the decision. An entry the reference returns unsettled (the item back in its own phase, or held by a live session) is left exactly as reported — never re-classified here. An entry the specification already reads as corrected — its corrigendum present — was settled by an earlier run: skip it. When at least one correction landed, confirm in one line total — `{count} spec correction(s) recorded.` — never a per-correction recap; nothing when none did.
 3. **Fold the survivors into proposals** — related findings about one pattern become one proposal; anything giant splits. Normal planning granularity, the count dictated by the work. Give each a one-word class tag: its dominant finding class (`duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `comments`), or `behaviour` where it changes what the code does. A proposal carries the problem and the direction — the bodies are authored after the walk. Where the direction is genuinely open, approving it bare would hand the call to the executor: the proposal keeps a Solution saying what is settled and adds a **Decision** — the question, and two to four sides in the order they should be offered.
 4. **Settle each bank verdict** — the findings file carries the finder's verdict per banked entry, with the entry's JSON quoted verbatim. Record each disposition in the staging file's `## Bank Disposition` section: `folded into task {n}`, `mooted — {reason}`, or `residue — {reason}` (pre-existing debt and out-of-phase entries ride to the end-of-implementation analysis).
 5. **Bank the finder's pre-existing debt** — push each `## Pre-existing Debt` entry the bank does not already hold (read it back first — a re-entry must not double-deposit); it rides to the end-of-implementation analysis:
@@ -250,7 +250,7 @@ Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs mani
 
 **If comment:**
 
-Revise the staged proposal in the staging file based on the user's feedback (content only) — feedback that settles the question settles it the same way a chosen side does — and rewrite the payload.
+Revise the staged proposal in the staging file based on the user's feedback (content only) — feedback that settles the question settles it the same way a chosen side does — and rewrite the payload. The revision is an interpretation of the user's words: re-render this item with `--gate gated` whatever the walk's mode, so it lands with an explicit approval.
 
 → Return to **D. Process Task**.
 
@@ -296,7 +296,7 @@ Pass via the orchestrator's prompt:
 
 1. **Work unit** — the work unit name (for path construction)
 2. **Topic name** — the implementation topic (scopes tasks to the correct plan)
-3. **Staging file path** — the `consolidation-tasks-p{N}.md` file from **B**
+3. **Staging file path** — the `consolidation-tasks-p{N}.md` file: proposals folded at **B**, bodies authored above
 4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
 5. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
 6. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
@@ -307,7 +307,7 @@ The agent creates exactly the approved tasks; a crash-resume re-invocation is sa
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
-**If the writer's `STATUS` is `failed`:**
+#### If the writer's `STATUS` is `failed`
 
 Nothing was created. State the writer's reason plainly; the staging and the bank stay untouched.
 
@@ -323,7 +323,7 @@ Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engi
 
 → Proceed to **F. Record the Phase**.
 
-**If the writer's `STATUS` is `complete`:**
+#### If the writer's `STATUS` is `complete`
 
 ```
 STATUS: complete

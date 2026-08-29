@@ -12,11 +12,11 @@ Derive the owning work unit and the topic from the specification's path (`.workf
 
 → Proceed to **A. Another Work Unit's Specification**.
 
-**If it is this work unit's own specification and this session is downstream of it — implementation or review:**
+**If it is this work unit's own specification and this session's phase is implementation or review:**
 
 → Proceed to **B. This Work Unit's Specification**.
 
-**If it is this work unit's own specification and this session is not downstream of it:**
+**If it is this work unit's own specification and this session's phase is anything else:**
 
 Corrections flow through the owning phase: re-entering that topic's specification reopens the item, and re-completion re-indexes the knowledge base. Tell the user what you found and where it belongs.
 
@@ -92,7 +92,28 @@ The owning unit's manifest is never touched — no reopen, no status change; the
 
 ## B. This Work Unit's Specification
 
-The unit's specification phase concluded, and a downstream phase — implementation or review — found the defect. Classify it before anything moves; only one class is yours to correct, and **if in doubt, treat it as open**.
+A downstream phase found the defect. The route edits a golden record with no gate, so it verifies its ground first — read the item's status and scan presence, then check in order:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {owning_work_unit}.specification.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {owning_work_unit}
+```
+
+#### If the status is anything but `completed`
+
+The document is live in its own phase — corrections flow through it. Tell the user what was found and where it belongs; the entry stays unsettled.
+
+→ Return to caller.
+
+#### If a presence row matches `specification`/`{topic}` with `held` and `live` both true
+
+A session holds that document. Leave the entry alone this pass — it stays unsettled, and a later pass re-finds it.
+
+→ Return to caller.
+
+#### Otherwise
+
+Classify the defect; only one class is yours to correct, and **if in doubt, treat it as open**. First match below wins.
 
 #### If the record settles it
 

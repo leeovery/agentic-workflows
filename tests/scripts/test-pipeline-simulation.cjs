@@ -1713,6 +1713,15 @@ describe('pipeline simulation', () => {
     const bankEntry = `{"task":"${wu}-1-2","source":"reviewer","summary":"near-miss helpers","detail":"src/x.js:3 vs src/y.js:9","files":["src/x.js","src/y.js"]}`;
     sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank', bankEntry]);
     sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--phase', '1', '--next-task', '~']);
+    // B's spec-defect settle, before any proposal is staged: a record-settled
+    // correction lands on the same unit's concluded spec — in-place edit +
+    // corrigendum — then the same-unit route's scoped commit (--kb carries the
+    // store, --sweep leaves the spec topic's presence untouched), with the
+    // work unit still in-progress and implementation live.
+    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`,
+      `# Spec — ${wu}\n\n## Corrigenda\n\n> **Corrigendum 2026-01-01** (from \`implementation/${wu}\`): "intent.js" — corrected: payment-intent.js.\n`);
+    sim.run(['commit', wu, '-m', `specification(${wu}): corrigendum from implementation/${wu}`,
+      '--topic', `specification/${wu}`, '--kb', '--sweep']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`,
       'staging.p1.tasks.1=pending', 'staging.p1.tasks.2=pending', 'staging.p1.tasks.3=pending']);
     sim.refuses(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'perhaps'], /Invalid staging task status/);

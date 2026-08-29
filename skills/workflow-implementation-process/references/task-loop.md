@@ -421,7 +421,7 @@ Include the user's feedback when re-invoking.
 - `completing` — none remain and the boundary is not owed. Any of:
   · the work type is `quick-fix` — its plan never grows;
   · the phase's label (the planning file's `Phase {N}:` heading) starts with `Analysis (Cycle` or `Review Remediation`;
-  · `consolidated_phases` contains the phase number (`manifest get {work_unit}.implementation.{topic} consolidated_phases`; absent is empty) and every `approved` row of `staging.p{N}` has its task in the plan — a missing one marks a partial task-writer run, which is `boundary`.
+  · `consolidated_phases` contains the phase number (`manifest get {work_unit}.implementation.{topic} consolidated_phases`; absent is empty) and every `approved` row of `staging.p{N}` has its task in the plan — a missing one marks a partial task-author or task-writer run, which is `boundary`.
 - `boundary` — none remain and no `completing` condition holds: the consolidation pass is owed, or unfinished. Leave the phase open in the plan — **J. Consolidation Pass** completes it once the pass has landed.
 
 **If `{disposition}` is `completing`:** follow the format's **updating.md** instructions for phase completion.

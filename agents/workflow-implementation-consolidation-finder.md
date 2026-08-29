@@ -1,6 +1,6 @@
 ---
 name: workflow-implementation-consolidation-finder
-description: Sweeps one implementation phase's combined surface at the phase boundary for cross-task consolidation — duplication, near-miss helpers, drift, accretion complexity, dead code, stale comments — and verdicts every banked opportunity against the phase's final state. Invoked by workflow-implementation-process at each phase boundary.
+description: Sweeps one implementation phase's combined surface at the phase boundary for cross-task consolidation — duplication, near-miss helpers, drift, accretion complexity, dead code, stale comments, behaviour-changing improvements the phase made owed — verdicts every banked opportunity against the phase's final state, and reports specification claims the landed work reveals as defective. Invoked by workflow-implementation-process at each phase boundary.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---
