@@ -1,5 +1,5 @@
 {
-  "origin": "the consolidation boundary's findings path had no walk — every prior case took the clean sweep. This walks the whole drain: the reviewer banks a cross-scope opportunity mid-loop, the finder confirms it as a finding, the orchestrator folds it into a staged proposal carrying no body, the gated walk approves it, the task author expands it in the staging file and only then does the task-writer land it in the still-open phase, the bank entry is pulled, the consolidation task builds through the ordinary loop, and only then does the phase record complete",
+  "origin": "the boundary walk's two new moves had no coverage: a proposal whose direction the record leaves open stops the walk even under auto, and a spec defect the record settles is corrected silently mid-judge. This walks both in one pass — a plain refactor approved with the auto opt-in, a decision proposal that stops anyway and folds the chosen side into its Solution, and a stale path in the concluded specification repaired with a corrigendum and a re-index, no gate anywhere",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -33,22 +33,22 @@
     "skills/workflow-implementation-process/references/consolidation-pass.md",
     "skills/workflow-implementation-process/references/invoke-consolidation-finder.md",
     "skills/workflow-implementation-process/references/invoke-task-author.md",
+    "skills/workflow-shared/references/correcting-historical-artifacts.md",
     "skills/workflow-shared/references/reconcile-advisory.md"
   ],
   "answers": [
     "y — skip project skills again",
     "y — skip linters again",
     "y — approve the task",
-    "y — approve this consolidation task",
-    "y — approve the task"
+    "a — approve this one and take the rest automatically",
+    "2 — settle it the way the second side reads"
   ],
   "stubs": {
     "executor-task-complete": "when the workflow-implementation-task-executor agent is dispatched for task pay-1-2 — create that task's source and test files as the stub gives them and return that task's STATUS block; one firing",
-    "executor-consolidation-task": "when the workflow-implementation-task-executor agent is dispatched for the consolidation task pay-1-3 — create the helper's source and test files, apply the call-site edits, and return the stub's STATUS block; one firing",
-    "reviewer-banks-then-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — first firing (pay-1-2's review) returns the approved-with-BANK block, any later firing (the consolidation task's review) returns the plain approved block; write no file",
-    "finder-sweep-findings": "when the workflow-implementation-consolidation-finder agent is dispatched — write the findings file at the dispatched path via the .txt-then-rename mechanism, quoting the banked entry's JSON verbatim as received, and return the stub's status block",
-    "task-author-expands-consolidation": "when the workflow-implementation-task-author agent is dispatched — add the stub's blocks under the approved proposal in the staging file and return the stub's status block; one firing",
-    "task-writer-creates-consolidation": "when the workflow-implementation-task-writer agent is dispatched — create the approved consolidation task from the staging file exactly as the stub directs, record the task_map entry, and return the stub's status block"
+    "reviewer-task-approves": "when the workflow-implementation-task-reviewer agent is dispatched for pay-1-2 — return the approved block with the task's title filled in; write no file; one firing",
+    "finder-sweep-decision-and-defect": "when the workflow-implementation-consolidation-finder agent is dispatched — write the findings file at the dispatched path via the .txt-then-rename mechanism and return the stub's status block; one firing",
+    "task-author-expands-approved-pair": "when the workflow-implementation-task-author agent is dispatched — add each approved proposal's blocks under its heading in the staging file and return the stub's status block; one firing",
+    "task-writer-creates-approved-pair": "when the workflow-implementation-task-writer agent is dispatched — create both approved consolidation tasks from the staging file exactly as the stub directs, record both task_map entries, and return the stub's status block; one firing"
   },
   "invariants": {
     "engine_before_write": true,
@@ -57,52 +57,62 @@
       "task init pay pay",
       "task start pay pay pay-1-2",
       "render task-brief pay.implementation.pay",
-      "manifest push pay.implementation.pay bank",
       "render task-gate pay.implementation.pay",
       "task complete pay pay pay-1-2 --phase 1 --next-task ~",
       "impl(pay): Tpay-1-2",
-      "commit --paths",
       "manifest get pay.implementation.pay consolidation_gate_mode",
       "phase 1 consolidation — findings",
+      "knowledge.cjs index .workflows/pay/specification/pay/specification.md",
+      "specification(pay): corrigendum from implementation/pay",
+      "--topic specification/pay",
+      "--sweep",
       "staging.p1.tasks.1=pending",
+      "staging.p1.tasks.2=pending",
       "render tasks-overview pay.implementation.pay",
       "render proposed-task pay.implementation.pay",
       "staging.p1.tasks.1 approved",
+      "consolidation_gate_mode auto",
+      "--gate auto",
+      "staging.p1.tasks.2 approved",
       "manifest push pay.implementation.pay consolidated_phases 1",
-      "manifest set pay.planning.pay task_map.pay-1-3 pay-1-3",
-      "manifest pull pay.implementation.pay bank",
-      "task start pay pay pay-1-3",
-      "impl(pay): Tpay-1-3",
-      "--phase-complete"
+      "manifest set pay.planning.pay task_map.pay-1-3",
+      "manifest set pay.planning.pay task_map.pay-1-4",
+      "phase 1 consolidation — staged tasks"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",
-      "task init pay pay",
       "task start pay pay pay-1-2",
-      "manifest push pay.implementation.pay bank",
-      "task complete pay pay pay-1-2",
       "impl(pay): Tpay-1-2",
+      "phase 1 consolidation — findings",
+      "knowledge.cjs index .workflows/pay/specification/pay/specification.md",
+      "specification(pay): corrigendum from implementation/pay",
       "staging.p1.tasks.1=pending",
       "staging.p1.tasks.1 approved",
+      "consolidation_gate_mode auto",
+      "--gate auto",
+      "staging.p1.tasks.2 approved",
       "manifest push pay.implementation.pay consolidated_phases 1",
-      "write:.workflows/pay/planning/pay/tasks/pay-1-3.md",
-      "manifest pull pay.implementation.pay bank",
-      "task start pay pay pay-1-3",
-      "--phase-complete",
-      "impl(pay): Tpay-1-3"
+      "write:.workflows/pay/planning/pay/tasks/pay-1-4.md",
+      "phase 1 consolidation — staged tasks",
+      "--plan pay"
     ],
     "calls_exclude": [
+      "topic start pay specification",
+      "topic reopen pay specification",
+      "topic complete pay specification",
+      "render incoherence-gate",
       "task start pay pay pay-1-1",
+      "task start pay pay pay-1-3",
+      "task start pay pay pay-1-4",
       "task fix-attempt",
-      "analysis-cycle",
-      "topic complete pay implementation",
-      "consolidation_gate_mode auto",
       "task_gate_mode auto",
       "fix_gate_mode auto",
-      "--skipped",
+      "--phase-complete",
+      "analysis-cycle",
+      "topic complete pay implementation",
       "git add -A",
       "git add --all",
-      "knowledge.cjs index"
+      "render correction-gate"
     ]
   }
 }

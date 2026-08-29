@@ -37,20 +37,31 @@ The prose should have taken this path:
 10. the finder stub writes the findings file and returns STATUS
     findings with the banked entry confirmed; the findings commit
     runs (the file was written) and picks it up
-11. the orchestrator judges: the one finding folds into one staged
-    task, the bank disposition records the entry as folded, no
-    pre-existing debt exists to push, and the staging file is
-    written to consolidation-tasks-p1.md
+11. the orchestrator judges: the findings file records no spec
+    defect, so nothing is routed to the historical-artifact
+    correction and no specification file is touched; the one finding
+    folds into one staged proposal — title, placement, class tag,
+    Problem and Solution only, with no Do, Acceptance Criteria or
+    Tests, since nothing has yet been agreed to build — the bank
+    disposition records the entry as folded, no pre-existing debt
+    exists to push, and the staging file is written to
+    consolidation-tasks-p1.md
 12. the walk's gate state initialises (staging.p1.tasks.1 pending),
-    the tasks-overview renders, the proposed task renders gated, and
-    the fourth scripted answer approves — recorded as
-    staging.p1.tasks.1 approved; consolidation_gate_mode never
-    flips to auto
+    the tasks-overview renders, and the proposed task renders gated
+    at proposal altitude — the payload carries problem and solution,
+    never steps, criteria or tests, and the rendered body shows no
+    Do, Acceptance Criteria or Tests blocks; the fourth scripted
+    answer approves — recorded as staging.p1.tasks.1 approved;
+    consolidation_gate_mode never flips to auto
 13. E records the pass as landed — consolidated_phases gains 1 —
-    then invokes the task writer with the per-task
-    consolidation-boundary placement; the writer stub creates
-    tasks/pay-1-3.md, appends the planning row, and records
-    task_map.pay-1-3
+    then invokes the task author over the staging file with the one
+    approved task number; the author stub adds the Do, Acceptance
+    Criteria and Tests blocks beneath Task 1's existing heading and
+    leaves its title, control lines, Problem and Solution as staged.
+    Only once the author has returned is the task writer invoked,
+    with the per-task consolidation-boundary placement; the writer
+    stub creates tasks/pay-1-3.md carrying the authored body,
+    appends the planning row, and records task_map.pay-1-3
 14. the folded bank entry is pulled — the bank empties — and the
     consolidation commits land via the engine: the staging file under
     the implementation topic, the tasks with --plan
@@ -73,8 +84,10 @@ Further claims:
 - exactly two fresh executor dispatches fired (pay-1-2, pay-1-3) and
   exactly two reviewer dispatches; pay-1-1 was never re-executed or
   re-reviewed
-- exactly one consolidation-finder dispatch and exactly one
-  task-writer dispatch fired
+- exactly one consolidation-finder dispatch, exactly one task-author
+  dispatch and exactly one task-writer dispatch fired, in that order:
+  the author ran only after the walk settled the proposal, and the
+  writer only after the author returned
 - the manifest's implementation item ends with all three internal
   ids in completed_tasks, current_task null, phase 1 in both
   completed_phases and consolidated_phases, every gate mode gated,
@@ -82,7 +95,11 @@ Further claims:
 - staging.p1.tasks.1 ends approved; no other staging.p1 row exists
 - consolidation-findings-p1.md and consolidation-tasks-p1.md both
   exist in the implementation directory, the staging file carrying
-  the task and a Bank Disposition marking the entry folded
+  the task and a Bank Disposition marking the entry folded; the
+  task's Do, Acceptance Criteria and Tests blocks are there because
+  the author added them after approval, never from the judge
+- the specification is byte-identical to the fixture's — no
+  corrigenda section, no edit, and no knowledge re-index of it
 - tasks/pay-1-3.md exists with status: completed and the planning
   file's Phase 1 table carries its row
 - the helper source and test files exist as the stub gave them;
