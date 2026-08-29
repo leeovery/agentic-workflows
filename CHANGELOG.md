@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.16] - 2026-08-29
+
+✨ Added
+- New `workflow-implementation-task-author` agent expands approved consolidation, analysis, and review proposals into full task bodies only after you've approved them at the walk.
+- Consolidation, analysis, and review synthesis findings can now propose an open decision — presented as a numbered menu of sides instead of a bare approve/decline.
+- Findings that indict the specification itself are now reported and routed — settled corrections land silently, code-wrong or open calls come back as proposals for you to approve.
+
+🔧 Changed
+- Consolidation, analysis, and review synthesis now stage lightweight proposals (problem + direction) for the approval walk instead of full task bodies — you decide on the shortlist before the detail is written.
+- A completed implementation phase now clears its in-flight task pointer automatically instead of leaving it stale.
+- Renamed "phase" to "cycle" in analysis commit messages and task counts to match what's actually being tracked.
+
 ## [0.7.15] - 2026-08-29
 
 🔧 Changed
