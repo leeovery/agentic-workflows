@@ -431,6 +431,54 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.next_phase, 'discussion');
     });
 
+    it('an experiment present and unconcluded owns the slot between research and discussion', () => {
+      const feature = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
+        research: { items: { test: { status: 'completed' } } },
+        experiment: { items: { test: { status: 'in-progress' } } },
+      } });
+      assert.strictEqual(feature.next_phase, 'experiment');
+      assert.strictEqual(feature.phase_label, 'experiment (in-progress)');
+      const epic = computeNextPhase({ work_type: 'epic', phases: {
+        research: { items: { explore: { status: 'completed' } } },
+        experiment: { items: { explore: { status: 'in-progress' } } },
+      } });
+      assert.strictEqual(epic.next_phase, 'experiment');
+    });
+
+    it('concluded evidence routes to discussion', () => {
+      const r = computeNextPhase({ work_type: 'epic', phases: {
+        experiment: { items: { explore: { status: 'completed' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'discussion');
+      assert.strictEqual(r.phase_label, 'ready for discussion');
+    });
+
+    it('a discussion holding a live evidence wait routes back to the experiment', () => {
+      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
+        experiment: { items: { test: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
+        discussion: { items: { test: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+      } });
+      assert.strictEqual(r.next_phase, 'experiment');
+      assert.strictEqual(r.phase_label, 'experiment (awaiting evidence)');
+    });
+
+    it('epic: the waiting discussion routes to the experiment too — the coarse ladder agrees', () => {
+      const r = computeNextPhase({ work_type: 'epic', phases: {
+        discussion: { items: { explore: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+      } });
+      assert.strictEqual(r.next_phase, 'experiment');
+      assert.strictEqual(r.phase_label, 'experiment (awaiting evidence)');
+    });
+
+    it('a reopened research still owns the next action ahead of a waiting discussion', () => {
+      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
+        research: { items: { test: { status: 'in-progress' } } },
+        experiment: { items: { test: { status: 'in-progress' } } },
+        discussion: { items: { test: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+      } });
+      assert.strictEqual(r.next_phase, 'research');
+    });
+
     it('returns in-progress planning', () => {
       const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { planning: { items: { test: { status: 'in-progress' } } } } });
       assert.strictEqual(r.next_phase, 'planning');
@@ -1046,6 +1094,58 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(r, { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: null, triage_parked: false, reconcile_pending: false });
     });
 
+    it('returns experimenting when the experiment item is in-progress', () => {
+      const m = loadWithPhases('auth', { research: 'completed', experiment: 'in-progress' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'experimenting', tier: '◐', current_phase: 'experiment', research_state: 'completed', triage_parked: false, reconcile_pending: false });
+    });
+
+    it('returns evidence_ready when the experiment completed and no discussion item yet', () => {
+      const m = loadWithPhases('auth', { experiment: 'completed' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'evidence_ready', tier: '→', current_phase: 'experiment', research_state: null, triage_parked: false, reconcile_pending: false });
+    });
+
+    it('returns experimenting when a reopened experiment sits beneath a completed discussion', () => {
+      const m = loadWithPhases('auth', { experiment: 'in-progress', discussion: 'completed' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'experimenting', tier: '◐', current_phase: 'experiment', research_state: null, triage_parked: false, reconcile_pending: false });
+    });
+
+    it('returns researching when reopened research sits beneath concluded evidence', () => {
+      const m = loadWithPhases('auth', { research: 'in-progress', experiment: 'completed' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: 'in-progress', triage_parked: false, reconcile_pending: false });
+    });
+
+    it('a discussing topic outranks its completed experiment', () => {
+      const m = loadWithPhases('auth', { experiment: 'completed', discussion: 'in-progress' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.strictEqual(r.lifecycle, 'discussing');
+    });
+
+    it('a triaged experiment stub rides as triage_parked, lifecycle fresh', () => {
+      const m = loadWithPhases('auth', { experiment: 'triaged' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.strictEqual(r.lifecycle, 'fresh');
+      assert.strictEqual(r.triage_parked, true);
+    });
+
+    it('an experiment item alone cancelled renders cancelled', () => {
+      const m = loadWithPhases('auth', { experiment: 'cancelled' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.strictEqual(r.lifecycle, 'cancelled');
+    });
+
+    it('a live reconcile flag on the experiment item rides as reconcile_pending', () => {
+      createManifest(dir, 'alpha', { phases: {
+        experiment: { items: { auth: { status: 'completed', reconcile_needed: 'research' } } },
+      } });
+      const r = computeTopicLifecycle(loadManifest(dir, 'alpha'), 'auth');
+      assert.strictEqual(r.lifecycle, 'evidence_ready');
+      assert.strictEqual(r.reconcile_pending, true);
+    });
+
     it('returns cancelled only when BOTH research and discussion items are cancelled', () => {
       const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
@@ -1213,6 +1313,20 @@ describe('reads + derivations', () => {
 
     it('fresh + discussion → start_discussion', () => {
       assert.strictEqual(computeNextAction('discussion', 'fresh'), 'start_discussion');
+    });
+
+    it('fresh + experiment → start_experiment', () => {
+      assert.strictEqual(computeNextAction('experiment', 'fresh'), 'start_experiment');
+    });
+
+    it('experimenting → continue_experiment', () => {
+      assert.strictEqual(computeNextAction('experiment', 'experimenting'), 'continue_experiment');
+      assert.strictEqual(computeNextAction('discussion', 'experimenting'), 'continue_experiment');
+    });
+
+    it('evidence_ready → start_discussion_after_experiment', () => {
+      assert.strictEqual(computeNextAction('experiment', 'evidence_ready'), 'start_discussion_after_experiment');
+      assert.strictEqual(computeNextAction('discussion', 'evidence_ready'), 'start_discussion_after_experiment');
     });
 
     it('researching → continue_research', () => {

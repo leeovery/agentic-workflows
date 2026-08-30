@@ -31,7 +31,7 @@ Output sections are one-directional: `DATA` is for reasoning and is never displa
 
 ## Reference
 
-- **[commands.md](references/commands.md)** — the CLI catalogue: command grammar, the response contract, and every noun's full signature and behaviour (`boot`, `manifest`, `workunit`, `topic`, `sources`, `discovery-map`, `build-order`, `discovery-session`, `discussion-map`, `task`, `inbox`, `roadmap`, `cache`, `presence`, `session`, `agent`, `commit`, `render`).
+- **[commands.md](references/commands.md)** — the CLI catalogue: command grammar, the response contract, and every noun's full signature and behaviour (`boot`, `manifest`, `workunit`, `topic`, `experiment`, `sources`, `discovery-map`, `build-order`, `discovery-session`, `discussion-map`, `task`, `inbox`, `roadmap`, `cache`, `presence`, `session`, `agent`, `commit`, `render`).
 - **[library-and-gateway.md](references/library-and-gateway.md)** — the `lib.cjs` surface (render kernel, manifest IO, conventions, detail builders, projections) and the gateway contract adapter scripts implement.
 
 ## Tests

@@ -522,7 +522,7 @@ describe('engine topic triage', () => {
     const withDir = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
     assert.strictEqual(withDir.count, 2, 'a directory named *.md is not a concern');
 
-    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'planning', 'edge-cases']).error, /research\|discussion\|investigation only/);
+    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'planning', 'edge-cases']).error, /research\|experiment\|discussion\|investigation only/);
     assert.match(engineFails(dir, ['topic', 'queue', 'ghost', 'discussion', 'edge-cases']).error, /no work unit directory/);
     assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'discussion']).error, /Usage/);
   });

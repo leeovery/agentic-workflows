@@ -13,7 +13,7 @@
 const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'cross-cutting', 'quick-fix'];
 
 const VALID_PHASES = [
-  'discovery', 'research', 'discussion', 'investigation', 'scoping',
+  'discovery', 'research', 'experiment', 'discussion', 'investigation', 'scoping',
   'specification', 'planning', 'implementation',
   'review'
 ];
@@ -24,11 +24,11 @@ const VALID_PHASES = [
 // dashboards, gateways, and the simulation all read these arrays, never a
 // local copy.
 const WORK_TYPE_PIPELINES = {
-  epic:            ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'],
-  feature:         ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'],
+  epic:            ['research', 'experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
+  feature:         ['research', 'experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
   bugfix:          ['investigation', 'specification', 'planning', 'implementation', 'review'],
   'quick-fix':     ['scoping', 'implementation', 'review'],
-  'cross-cutting': ['research', 'discussion', 'specification'],
+  'cross-cutting': ['research', 'experiment', 'discussion', 'specification'],
 };
 
 const VALID_PHASE_STATUSES = {
@@ -39,6 +39,9 @@ const VALID_PHASE_STATUSES = {
   // undefined — the silent permissive path this table exists to prevent.
   discovery:      /** @type {string[]} */ ([]),
   research:       ['triaged', 'in-progress', 'completed', 'superseded', 'cancelled'],
+  // No `superseded`: supersession is the grouping analysis absorbing research
+  // lineages — an experiment series is never absorbed into a sibling topic.
+  experiment:     ['triaged', 'in-progress', 'completed', 'cancelled'],
   discussion:     ['triaged', 'in-progress', 'completed', 'cancelled'],
   investigation:  ['triaged', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
@@ -51,7 +54,19 @@ const VALID_PHASE_STATUSES = {
 // Where a discovery-map item routes when work starts on it. Also the legal
 // `--phase` choices when a topic spawn seeds its first phase item — the
 // routable phases ARE the routing vocabulary.
-const VALID_ROUTINGS = ['research', 'discussion'];
+const VALID_ROUTINGS = ['research', 'experiment', 'discussion'];
+
+// One experiment in a topic's series (`phases.experiment.items.{topic}
+// .experiments.{id}.status`): the design-before-data lifecycle. `approved` is
+// the freeze — the confirm gate; `concluded` and `abandoned` are terminal
+// (verdict and reason recorded beside the status). Consumed by the field
+// surface's validators and the experiment domain ops, so the two enforcers
+// can never drift.
+const VALID_EXPERIMENT_STATUSES = ['conceived', 'designed', 'approved', 'running', 'concluded', 'abandoned'];
+
+// The series statuses that end an experiment's life: nothing advances past
+// them, and reaching either releases any evidence wait pointing at the record.
+const EXPERIMENT_TERMINAL_STATUSES = ['concluded', 'abandoned'];
 
 const VALID_GATE_MODES = ['gated', 'auto'];
 
@@ -75,6 +90,8 @@ module.exports = {
   WORK_TYPE_PIPELINES,
   VALID_PHASE_STATUSES,
   VALID_ROUTINGS,
+  VALID_EXPERIMENT_STATUSES,
+  EXPERIMENT_TERMINAL_STATUSES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
   TERMINAL_STATUSES,

@@ -1264,6 +1264,127 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'reactivate', wu, 'discussion', 'beta']);
   });
 
+  it('feature: mid-discussion experiment — evidence wait, series continuation, release, delivery', () => {
+    const wu = 'metrics';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Metrics feature', '--session-log-file', sessionLog(sim, wu)]);
+
+    // Discussion opens; a point hits the empirical wall — the exit flow
+    // creates the same-topic experiment item and records the evidence wait.
+    label(sim, wu, 'discussion', wu);
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    label(sim, wu, 'experiment', wu);
+    sim.run(['topic', 'start', wu, 'experiment', wu]);
+    const e1 = sim.run(['experiment', 'create', wu, wu, '--slug', 'p95-latency']);
+    assert.strictEqual(e1.id, 'E1');
+    assert.strictEqual(e1.dir, `.workflows/${wu}/experiment/${wu}/E1-p95-latency`);
+    sim.run(['experiment', 'await', wu, wu, 'E1']);
+    assert.deepStrictEqual(JSON.parse(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'awaiting_experiments'])), ['E1']);
+
+    // The wait holds engine-side: the discussion cannot conclude, and the
+    // derived route lands on the experiment with the awaiting-evidence reason.
+    sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits experiment evidence \(E1\)/);
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'experiment');
+
+    // Design before data: the skeleton is written, the briefing confirm
+    // freezes it (approve — never a step advance drifts past), the run starts.
+    sim.run(['experiment', 'advance', wu, wu, 'E1']);
+    sim.refuses(['experiment', 'advance', wu, wu, 'E1'], /experiment approve/);
+    sim.run(['experiment', 'approve', wu, wu, 'E1']);
+    sim.run(['experiment', 'advance', wu, wu, 'E1']);
+    sim.write(`.workflows/${wu}/experiment/${wu}/E1-p95-latency/design.md`, '# Design — E1\n');
+    sim.write(`.workflows/${wu}/experiment/${wu}/E1-p95-latency/report.md`, '# Report — E1\n');
+    sim.run(['commit', wu, '-m', `experiment(${wu}): run E1`, '--topic', `experiment/${wu}`]);
+    const concluded = sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'p95 under budget; adopt']);
+    assert.deepStrictEqual(concluded.released_wait, { discussion: wu, released: ['E1'], remaining: [] });
+
+    // Series continuation: E2 is born from E1's learnings, then abandoned
+    // with its reason — a first-class terminal the register keeps; the phase
+    // cannot conclude over an unfinished row.
+    const e2 = sim.run(['experiment', 'create', wu, wu, '--slug', 'cold-start']);
+    assert.strictEqual(e2.id, 'E2');
+    sim.refuses(['topic', 'complete', wu, 'experiment', wu], /unfinished experiments \(E2: conceived\)/);
+    sim.run(['experiment', 'abandon', wu, wu, 'E2', '--reason', 'cold start swamped by network noise']);
+    sim.run(['topic', 'complete', wu, 'experiment', wu]);
+    sim.run(['commit', wu, '-m', `experiment(${wu}): conclude phase`, '--topic', `experiment/${wu}`]);
+
+    // The discussion re-enters flagged, reads the evidence, clears the flag,
+    // and now concludes.
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'reconcile_needed']), 'experiment');
+    sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): complete`, '--topic', `discussion/${wu}`, '--kb']);
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
+
+    walkDeliveryPhasesToImplementation(sim, wu, wu);
+    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete (review skipped)`]);
+    assert.strictEqual(sim.manifest(wu).status, 'completed');
+  });
+
+  it('epic: experiment routing, evidence waits, abandon and cancel releases', () => {
+    const wu = 'sim-lab';
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Lab epic', '--session-log-file', sessionLog(sim, wu)]);
+    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+      { name: 'timing', routing: 'experiment', summary: 'Timing behaviour' },
+      { name: 'policy', routing: 'discussion', summary: 'Policy call' },
+      { name: 'probe', routing: 'experiment', summary: 'Probe accuracy' },
+    ]);
+    const batch = sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
+    assert.strictEqual(batch.map_total, 3);
+    sim.run(['discovery-map', 'sequence', wu, 'timing=1', 'policy=2', 'probe=3']);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
+
+    // Timing: the mainline — E1 designed, approved, run, concluded with its
+    // verdict; the discussion then reads the evidence and decides.
+    label(sim, wu, 'experiment', 'timing');
+    sim.run(['topic', 'start', wu, 'experiment', 'timing']);
+    sim.run(['experiment', 'create', wu, 'timing', '--slug', 'window-placement']);
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
+    sim.run(['experiment', 'approve', wu, 'timing', 'E1']);
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
+    sim.write(`.workflows/${wu}/experiment/timing/E1-window-placement/design.md`, '# Design — E1\n');
+    sim.write(`.workflows/${wu}/experiment/timing/E1-window-placement/report.md`, '# Report — E1\n');
+    sim.run(['experiment', 'conclude', wu, 'timing', 'E1', '--verdict', 'layout 4 failed; not adopted']);
+    sim.run(['commit', wu, '-m', `experiment(${wu}/timing): E1`, '--topic', 'experiment/timing']);
+    sim.run(['topic', 'complete', wu, 'experiment', 'timing']);
+    sim.run(['topic', 'start', wu, 'discussion', 'timing']);
+    sim.write(`.workflows/${wu}/discussion/timing.md`, '# Discussion — Timing\n');
+    sim.run(['commit', wu, '-m', `discussion(${wu}/timing): decide`, '--topic', 'discussion/timing']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'timing']);
+
+    // Policy: the mid-discussion wall — the wait blocks conclusion until the
+    // abandonment releases it, reason on the response, entry flagged.
+    sim.run(['topic', 'start', wu, 'discussion', 'policy']);
+    sim.run(['topic', 'start', wu, 'experiment', 'policy']);
+    sim.run(['experiment', 'create', wu, 'policy', '--slug', 'ab-check']);
+    sim.run(['experiment', 'await', wu, 'policy', 'E1']);
+    sim.refuses(['topic', 'complete', wu, 'discussion', 'policy'], /awaits experiment evidence \(E1\)/);
+    const released = sim.run(['experiment', 'abandon', wu, 'policy', 'E1', '--reason', 'not measurable at this scale']);
+    assert.deepStrictEqual(released.released_wait, { discussion: 'policy', released: ['E1'], remaining: [] });
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.policy.reconcile_needed, 'experiment');
+    sim.run(['manifest', 'delete', `${wu}.discussion.policy`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'experiment', 'policy']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'policy']);
+
+    // Probe: an awaited experiment cancelled from outside — the bare cancel
+    // refuses naming the waiting discussion; --cascade releases the wait and
+    // stashes the map order exactly as a research cancel does.
+    sim.run(['topic', 'start', wu, 'experiment', 'probe']);
+    sim.run(['topic', 'start', wu, 'discussion', 'probe']);
+    sim.run(['experiment', 'create', wu, 'probe', '--slug', 'sensor-drift']);
+    sim.run(['experiment', 'await', wu, 'probe', 'E1']);
+    sim.refuses(['topic', 'cancel', wu, 'experiment', 'probe'], /releases the evidence wait on discussion "probe" \(awaiting E1\)/);
+    const cancelled = sim.run(['topic', 'cancel', wu, 'experiment', 'probe', '--cascade']);
+    assert.deepStrictEqual(cancelled.released_wait, { discussion: 'probe', released: ['E1'], remaining: [] });
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.probe.awaiting_experiments, undefined);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.probe.reconcile_needed, 'experiment');
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.probe.previous_order, 3, 'the map order is stashed');
+    sim.run(['topic', 'reactivate', wu, 'experiment', 'probe']);
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.probe.status, 'in-progress');
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.probe.order, 3, 'reactivate restores the map order');
+  });
+
   it('backwards: reopen a completed discussion, re-complete, and the map keeps deriving', () => {
     const wu = 'revisit';
     const log = sessionLog(sim, wu);

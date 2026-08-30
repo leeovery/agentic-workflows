@@ -519,6 +519,34 @@ describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
       /Invalid candidate status/);
   });
 
+  it('experiment record statuses take only the series vocabulary; the container refuses wholesale writes', () => {
+    writeWorkUnit(dir, 'lab', 'epic', { phases: {
+      experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
+      discussion: { items: { timing: { status: 'in-progress' } } },
+    } });
+    runJson(dir, ['set', 'lab.experiment.timing', 'experiments.E1.status', 'designed']);
+    assert.match(runFails(dir, ['set', 'lab.experiment.timing', 'experiments.E1.status', 'finished']).error,
+      /Invalid experiment status "finished"/);
+    assert.match(runFails(dir, ['set', 'lab.experiment.timing', 'experiments', '{"E1":{"status":"bogus"}}']).error,
+      /guarded state container/);
+    assert.match(runFails(dir, ['push', 'lab.experiment.timing', 'experiments.E1.notes', 'x']).error,
+      /guarded state container/);
+  });
+
+  it('awaiting_experiments takes only arrays of experiment ids, on set and push alike', () => {
+    writeWorkUnit(dir, 'lab', 'epic', { phases: {
+      discussion: { items: { timing: { status: 'in-progress' } } },
+    } });
+    runJson(dir, ['set', 'lab.discussion.timing', 'awaiting_experiments', '["E1","E2"]']);
+    assert.match(runFails(dir, ['set', 'lab.discussion.timing', 'awaiting_experiments', '["one"]']).error,
+      /Invalid awaiting_experiments/);
+    assert.match(runFails(dir, ['set', 'lab.discussion.timing', 'awaiting_experiments', '"E1"']).error,
+      /Invalid awaiting_experiments/);
+    assert.match(runFails(dir, ['push', 'lab.discussion.timing', 'awaiting_experiments', 'nope']).error,
+      /Invalid awaiting_experiments/);
+    runJson(dir, ['push', 'lab.discussion.timing', 'awaiting_experiments', 'E3']);
+  });
+
   it('tracking flips take only in-progress|complete', () => {
     runJson(dir, ['set', 'pay.planning.pay', 'tracking.review-traceability-tracking-c1', 'in-progress']);
     runJson(dir, ['set', 'pay.planning.pay', 'tracking.review-traceability-tracking-c1', 'complete']);

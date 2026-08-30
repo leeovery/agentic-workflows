@@ -27,18 +27,18 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { computeTopicLifecycle } = require('./derivations.cjs');
+const { computeTopicLifecycle, awaitedExperiments } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 
-// The discovery map's lifecycle is computed from research and discussion
-// items alone (`computeTopicLifecycle`), so only those phases can move a map
-// row in or out of the live set — and only they may touch its execution
-// order. Spec topic names collide with map topic names by construction (an
-// independent discussion becomes a grouping of one), so an ungated write
-// here strips a still-live topic's position.
-const MAP_LIFECYCLE_PHASES = ['research', 'discussion'];
+// The discovery map's lifecycle is computed from research, experiment, and
+// discussion items alone (`computeTopicLifecycle`), so only those phases can
+// move a map row in or out of the live set — and only they may touch its
+// execution order. Spec topic names collide with map topic names by
+// construction (an independent discussion becomes a grouping of one), so an
+// ungated write here strips a still-live topic's position.
+const MAP_LIFECYCLE_PHASES = ['research', 'experiment', 'discussion'];
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
 // items (no lifecycle status — computed at render time); they are created and
@@ -70,12 +70,13 @@ function assertLegalWrite(phase, status) {
  * @property {string[]} [cascaded]  started spec items cancelled with their source (cancel --cascade)
  * @property {string[]} [discarded] proposed groupings deleted with their source (cancel --cascade)
  * @property {string[]} [roadmap_reverted] roadmap items handed back to waiting by the cancel-revert hop
+ * @property {WaitReleaseResult} [released_wait] the evidence wait an experiment cancel released (cancel --cascade)
  */
 
 /**
  * The phase item for `topic`, or a loud error.
  * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string, superseded_by?: string, order?: number, previous_order?: number, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
+ * @returns {{status?: string, previous_status?: string, superseded_by?: string, order?: number, previous_order?: number, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>, experiments?: Record<string, {slug?: string, status?: string}>, awaiting_experiments?: string[]}}
  */
 function phaseItem(manifest, phase, topic) {
   assertLegalWrite(phase, 'cancelled');
@@ -291,9 +292,51 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
 
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
   const at = pipeline.indexOf(phase);
-  const next = at === -1 ? undefined : pipeline[at + 1];
-  if (next) flag(next, topic, (itemsOf(next) || {})[topic]);
+  // The hop targets the nearest downstream consumer: walk forward past
+  // phases the topic never entered (the optional research and experiment
+  // slots), flag the first phase holding a same-named item, and stop there —
+  // still one hop.
+  for (let i = at + 1; at !== -1 && i < pipeline.length; i++) {
+    const item = (itemsOf(pipeline[i]) || {})[topic];
+    if (!item || typeof item !== 'object') continue;
+    flag(pipeline[i], topic, item);
+    break;
+  }
   return result;
+}
+
+/**
+ * @typedef {object} WaitReleaseResult
+ * @property {string} discussion  the waiting discussion (the topic — waits are same-topic)
+ * @property {string[]} released
+ * @property {string[]} remaining
+ */
+
+/**
+ * Release a discussion's evidence waits on `topic`'s experiments — the edge
+ * every terminal experiment transition rides (conclude, abandon, the epic
+ * cancel), so a wait can never dangle. Removes `ids` (or every id) from the
+ * same-named discussion item's `awaiting_experiments`, deletes the emptied
+ * field, and flags a non-terminal discussion with `reconcile_needed:
+ * "experiment"` (an existing flag never clobbered) so its next entry surfaces
+ * the evidence — or the abandonment — before the waiting point settles.
+ * Mutates the loaded manifest; the caller saves under its own lock.
+ * @param {object} manifest @param {string} topic
+ * @param {{ids?: string[]}} [opts]  specific ids; omitted releases them all
+ * @returns {WaitReleaseResult|null}  null when nothing was waiting
+ */
+function releaseExperimentWaits(manifest, topic, opts = {}) {
+  const awaiting = awaitedExperiments(manifest, topic);
+  const releasing = opts.ids === undefined ? awaiting : awaiting.filter((id) => /** @type {string[]} */ (opts.ids).includes(id));
+  if (releasing.length === 0) return null;
+  const item = manifest.phases.discussion.items[topic];
+  const remaining = awaiting.filter((id) => !releasing.includes(id));
+  if (remaining.length === 0) delete item.awaiting_experiments;
+  else item.awaiting_experiments = remaining;
+  if (!TERMINAL_STATUSES.includes(item.status) && item.reconcile_needed === undefined) {
+    item.reconcile_needed = 'experiment';
+  }
+  return { discussion: topic, released: releasing, remaining };
 }
 
 /**
@@ -474,8 +517,8 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
  * @returns {TopicQueueResult}
  */
 function queueStatus(cwd, workUnit, phase, topic) {
-  if (phase !== 'research' && phase !== 'discussion' && phase !== 'investigation') {
-    throw new Error(`triage queues exist for research|discussion|investigation only — got "${phase}"`);
+  if (!['research', 'experiment', 'discussion', 'investigation'].includes(phase)) {
+    throw new Error(`triage queues exist for research|experiment|discussion|investigation only — got "${phase}"`);
   }
   assertLegalTopicName(topic);
   if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
@@ -527,7 +570,12 @@ function absorbConcern(cwd, workUnit, phase, topic, { file, message }) {
   fs.unlinkSync(path.join(cwd, rel));
   /** @type {TopicAbsorbResult} */
   const result = { phase, topic, absorbed: file, remaining: queue.count - 1 };
-  const artifactRel = `.workflows/${workUnit}/${phase}/${topic}.md`;
+  // The fold lands in the topic's phase artifact: a flat file for the
+  // single-document phases, the topic's directory for experiment (the series
+  // lives in per-experiment subdirectories).
+  const artifactRel = phase === 'experiment'
+    ? `.workflows/${workUnit}/experiment/${topic}`
+    : `.workflows/${workUnit}/${phase}/${topic}.md`;
   /** @type {string[]} */
   const warnings = [];
   const outcome = commitTailPathspec(
@@ -712,6 +760,26 @@ function completeTopic(cwd, workUnit, phase, topic) {
         .map(([name]) => name);
       if (blocking.length > 0) {
         throw new Error(`specification "${topic}" has unresolved source rows (${blocking.join(', ')}) — extract pending sources and reconcile stale ones before concluding`);
+      }
+    }
+    if (phase === 'discussion') {
+      // The evidence wait holds the conclusion shut engine-side — the
+      // decision is live and its input isn't in. Conclude or abandon the
+      // experiment(s) to release it.
+      const awaiting = awaitedExperiments(manifest, topic);
+      if (awaiting.length > 0) {
+        throw new Error(`discussion "${topic}" awaits experiment evidence (${awaiting.join(', ')}) — the wait releases when the experiment concludes or is abandoned`);
+      }
+    }
+    if (phase === 'experiment') {
+      // The register stays truthful: every experiment ends concluded (with
+      // its verdict) or abandoned (with its reason) before the phase closes —
+      // which also guarantees no evidence wait outlives the phase.
+      const unfinished = Object.entries(item.experiments || {})
+        .filter(([, r]) => r && typeof r === 'object' && !EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)))
+        .map(([id, r]) => `${id}: ${r.status ?? 'none'}`);
+      if (unfinished.length > 0) {
+        throw new Error(`experiment "${topic}" has unfinished experiments (${unfinished.join(', ')}) — conclude or abandon each before concluding the phase`);
       }
     }
     item.status = 'completed';
@@ -907,6 +975,12 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
  * Cancelling a discussion a live specification sources collapses that spec:
  * the bare cancel refuses, naming the affected spec item(s); `cascade: true`
  * cancels the discussion and those spec items in one transaction.
+ *
+ * Cancelling an experiment the same-topic discussion awaits releases the
+ * wait — softer than the spec cascade, nothing collapses: the bare cancel
+ * refuses naming the waiting discussion; `cascade: true` cancels the
+ * experiment and releases the wait in one transaction (the waiting point
+ * reverts to open, the release surfaced at the discussion's next entry).
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -919,11 +993,21 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   const cascaded = [];
   /** @type {string[]} */
   const discarded = [];
+  /** @type {WaitReleaseResult|null} */
+  let releasedWait = null;
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is already cancelled`);
+    }
+
+    if (phase === 'experiment') {
+      const awaiting = awaitedExperiments(manifest, topic);
+      if (awaiting.length > 0 && !opts.cascade) {
+        throw new Error(`cancelling experiment "${topic}" releases the evidence wait on discussion "${topic}" (awaiting ${awaiting.join(', ')}) — confirm the release (--cascade cancels the experiments and releases the wait; the waiting point reverts to open)`);
+      }
+      releasedWait = releaseExperimentWaits(manifest, topic);
     }
 
     if (phase === 'discussion' || phase === 'investigation') {
@@ -1005,6 +1089,7 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   if (cascaded.length > 0) result.cascaded = cascaded;
   if (discarded.length > 0) result.discarded = discarded;
   if (reverted.length > 0) result.roadmap_reverted = reverted;
+  if (releasedWait) result.released_wait = releasedWait;
   // `--sweep`, because the cancel runs from the epic menu: the session doing
   // it is not the session in the topic. A revert widened the commit past the
   // topic scope, so that retry stays generic.
@@ -1084,4 +1169,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows };
+module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows, flagDownstream, releaseExperimentWaits };

@@ -981,7 +981,7 @@ function flagJoined(cwd, name) {
     const topic = join.topic;
     withWorkUnitLock(cwd, join.work_unit, () => {
       const manifest = loadWorkUnitManifest(cwd, join.work_unit);
-      for (const phase of ['research', 'discussion']) {
+      for (const phase of ['research', 'experiment', 'discussion']) {
         const items = (manifest.phases && manifest.phases[phase] && manifest.phases[phase].items) || {};
         const phaseItem = items[topic];
         if (!phaseItem || typeof phaseItem !== 'object') continue;

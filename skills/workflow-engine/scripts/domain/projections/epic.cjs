@@ -55,7 +55,7 @@ const BUILD_PHASES = EPIC_PIPELINE.slice(EPIC_PIPELINE.indexOf('specification'))
 // pipeline in order by this labelling, so the dividers can never hold a phase
 // the pipeline lacks.
 const STAGE_OF = {
-  research: 'DISCOVERY', discussion: 'DISCOVERY',
+  research: 'DISCOVERY', experiment: 'DISCOVERY', discussion: 'DISCOVERY',
   specification: 'DEFINITION', planning: 'DEFINITION',
   implementation: 'DELIVERY', review: 'DELIVERY',
 };
@@ -73,6 +73,7 @@ const STATUS_ORDER = ['proposed', 'triaged', 'in-progress', 'completed', 'cancel
 
 const PHASE_ENTRY_SKILL = {
   research: 'workflow-research-entry',
+  experiment: 'workflow-experiment-entry',
   discussion: 'workflow-discussion-entry',
   specification: 'workflow-specification-entry',
   planning: 'workflow-planning-entry',
@@ -83,8 +84,11 @@ const PHASE_ENTRY_SKILL = {
 const ACTION_PHASE = {
   start_research: 'research',
   continue_research: 'research',
+  start_experiment: 'experiment',
+  continue_experiment: 'experiment',
   start_discussion: 'discussion',
   start_discussion_after_research: 'discussion',
+  start_discussion_after_experiment: 'discussion',
   continue_discussion: 'discussion',
   start_specification: 'specification',
   continue_specification: 'specification',
@@ -456,8 +460,11 @@ function discoveryEntryLabel(action, name, researchState, triageParked) {
   const t = titlecase(name);
   switch (action) {
     case 'start_research': return triageParked ? `Start research for "${t}" — *triage waiting*` : `Start research for "${t}"`;
+    case 'start_experiment': return triageParked ? `Start experiments for "${t}" — *triage waiting*` : `Start experiments for "${t}"`;
     case 'start_discussion': return triageParked ? `Start discussion for "${t}" — *triage waiting*` : `Start discussion for "${t}"`;
     case 'continue_research': return `Continue "${t}" — *research*`;
+    case 'continue_experiment': return `Continue "${t}" — *experiment*`;
+    case 'start_discussion_after_experiment': return `Start discussion for "${t}" — *evidence ready*`;
     case 'continue_discussion': return `Continue "${t}" — *discussion*`;
     // start_discussion_after_research — superseded research is named as such,
     // never as completed (same rule as discoveryLifecycleLabel).
@@ -640,7 +647,7 @@ function pickRecommendation(detail, numbered, options, hasMap) {
       // first map row with a non-null next_action. Decided rows lead the map
       // but carry no action, so the actionable order is → then ◐ then ○.
       // A topic another session holds open is never the recommendation.
-      const discoveryActions = ['start_research', 'start_discussion', 'continue_research', 'continue_discussion', 'start_discussion_after_research'];
+      const discoveryActions = ['start_research', 'start_experiment', 'start_discussion', 'continue_research', 'continue_experiment', 'continue_discussion', 'start_discussion_after_research', 'start_discussion_after_experiment'];
       return numbered.find((e) => discoveryActions.includes(e.action) && !e.in_session) || null;
     }
     // settled — first build-phase next_phase_ready entry in pipeline order.

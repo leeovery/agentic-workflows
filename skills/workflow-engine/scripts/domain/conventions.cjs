@@ -120,7 +120,9 @@ function title({ glyph, label, tag: term } = {}) {
 // Discovery-tier glyph vocabulary — the single source of the tier symbol set.
 const DISCOVERY_GLYPH = {
   ready_for_discussion: '→',
+  evidence_ready: '→',
   researching: '◐',
+  experimenting: '◐',
   discussing: '◐',
   decided: '✓',
   fresh: '○',
@@ -153,6 +155,8 @@ function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked
         : 'research complete · ready for discussion';
       break;
     case 'researching': label = 'researching'; break;
+    case 'experimenting': label = 'experimenting'; break;
+    case 'evidence_ready': label = 'evidence ready · ready for discussion'; break;
     case 'discussing': label = 'discussing'; break;
     case 'decided': label = 'decided'; break;
     case 'handled': label = 'dead end'; break;

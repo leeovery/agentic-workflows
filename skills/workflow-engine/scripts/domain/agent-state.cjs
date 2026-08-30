@@ -316,7 +316,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
     throw new Error('--final bypasses a discussion review\'s movement gate — legal only with --kind review in the discussion phase');
   }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    if (kind === 'review' && (phase === 'research' || phase === 'discussion')) {
+    if (kind === 'review' && ['research', 'experiment', 'discussion'].includes(phase)) {
       const queueDir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
       let queued = 0;
       try {

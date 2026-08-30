@@ -27,6 +27,7 @@ const {
   VALID_PHASE_STATUSES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
+  VALID_EXPERIMENT_STATUSES,
 } = require('../kernel/manifest-schema.cjs');
 
 // Phases whose artifacts the knowledge base indexes — `resolve`'s scope.
@@ -269,6 +270,26 @@ function validateSet(segments, value, fieldSegments = segments) {
       return;
     }
 
+    // An experiment record's status (field experiments.<id>.status) — the
+    // series vocabulary, enforced on the field surface exactly as the
+    // experiment ops enforce it.
+    if (segments.length === 7 && segments[2] === 'items' && segments[4] === 'experiments'
+      && segments[6] === 'status') {
+      if (typeof value !== 'string' || !VALID_EXPERIMENT_STATUSES.includes(value)) {
+        fail(`Invalid experiment status ${JSON.stringify(value)}. Must be one of: ${VALID_EXPERIMENT_STATUSES.join(', ')}`);
+      }
+      return;
+    }
+
+    // phases.discussion.items.<item>.awaiting_experiments — the engine-owned
+    // waiting marker (written by `experiment await`, released by conclude/
+    // abandon/cancel). Guarded so a hand write can never land a shape the
+    // release edges cannot read.
+    if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'awaiting_experiments') {
+      validateAwaitingExperiments(value);
+      return;
+    }
+
     // Staging task decisions (field staging.<cycle>.tasks.<n>)
     if (fieldSegments[0] === 'staging' && fieldSegments.length >= 2
         && fieldSegments[fieldSegments.length - 2] === 'tasks') {
@@ -335,10 +356,19 @@ function refuseShadowField(phase, topic, fieldSegments) {
 // Vocabulary-guarded state containers take leaf writes only — a wholesale
 // set could land any shape unvalidated. Delete clears them; apply/set write
 // their leaves.
+const GUARDED_CONTAINERS = ['staging', 'tracking', 'analysis_staging', 'experiments'];
+
 /** @param {string[]} fieldSegments */
 function refuseContainerWrite(fieldSegments) {
-  if (fieldSegments.length === 1 && ['staging', 'tracking', 'analysis_staging'].includes(fieldSegments[0])) {
+  if (fieldSegments.length === 1 && GUARDED_CONTAINERS.includes(fieldSegments[0])) {
     fail(`"${fieldSegments[0]}" is a guarded state container — write its leaf fields (or delete to clear); a wholesale set would bypass validation`);
+  }
+}
+
+/** @param {*} value */
+function validateAwaitingExperiments(value) {
+  if (!Array.isArray(value) || value.some((id) => typeof id !== 'string' || !/^E[1-9][0-9]*$/.test(id))) {
+    fail(`Invalid awaiting_experiments ${JSON.stringify(value)}. Must be an array of experiment ids (E1, E2, …)`);
   }
 }
 
@@ -894,14 +924,18 @@ function cmdPush(cwd, args) {
 
   refuseEmptyFieldSegments(args[1], fieldSegments);
   refuseShadowField(phase, topic, fieldSegments);
-  if (['staging', 'tracking', 'analysis_staging'].includes(fieldSegments[0])) {
+  if (GUARDED_CONTAINERS.includes(fieldSegments[0])) {
     fail(`"${fieldSegments[0]}" is a guarded state container — its fields take vocabulary values via set, never array pushes`);
   }
   const segments = resolveSegments(phase, topic, fieldSegments);
   // storage_paths is guarded at write time on every route — set validates the
-  // whole array; push validates the one entry it appends.
+  // whole array; push validates the one entry it appends. awaiting_experiments
+  // takes the same treatment.
   if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'storage_paths') {
     validateStoragePaths([value]);
+  }
+  if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'awaiting_experiments') {
+    validateAwaitingExperiments([value]);
   }
   // `order` is a scalar — pushing would land an array every reader treats as
   // unordered. Refuse the route rather than the value.

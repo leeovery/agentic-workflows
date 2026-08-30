@@ -35,6 +35,8 @@ const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 function lifecyclePhrase(lifecycle, researchState) {
   switch (lifecycle) {
     case 'researching': return 'research is in flight on it';
+    case 'experimenting': return 'an experiment is in flight on it';
+    case 'evidence_ready': return 'its experiments have concluded and discussion is queued';
     case 'discussing': return 'discussion is in flight on it';
     case 'ready_for_discussion':
       return researchState === 'superseded'
@@ -117,7 +119,7 @@ function mapItem(manifest, name) {
  */
 function assertFresh(manifest, name, verbPhrase) {
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, name);
-  const phaseWork = ['research', 'discussion'].flatMap(
+  const phaseWork = ['research', 'experiment', 'discussion'].flatMap(
     (phase) => phaseItems(manifest, phase).filter((it) => it.name === name),
   );
   if (lifecycle === 'fresh' && phaseWork.length === 0) return;
