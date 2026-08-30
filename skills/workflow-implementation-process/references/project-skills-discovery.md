@@ -14,9 +14,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 #### If `project_skills` is populated
 
-Set `source` = `topic`.
+The set was confirmed when this topic stored it — use it without re-asking.
 
-→ Proceed to **B. Confirm Skills**.
+→ Return to caller.
 
 #### Otherwise
 
@@ -32,8 +32,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 → Proceed to **C. Discovery**.
 
 **If `true` and project default is populated:**
-
-Set `source` = `project`.
 
 → Proceed to **B. Confirm Skills**.
 
@@ -59,7 +57,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {wo
 
 ## B. Confirm Skills
 
-Write the skills returned by the `source` level manifest query to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — `{"skills": [{"name": "{skill-name}", "detail": "{path}"}]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
+Write the skill names from the project default — each path's last segment — to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — `{"skills": ["{skill-name}", ...]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json --variant confirm
@@ -69,8 +67,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {wo
 
 #### If `yes`
 
-**If `source` is `project`:**
-
 Copy to topic level:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[{project-level values}]'
@@ -78,16 +74,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 → Return to caller.
 
-**If `source` is `topic`:**
-
-→ Return to caller.
-
 #### If `no`
-
-Clear topic-level `project_skills` before re-discovery:
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[]'
-```
 
 → Proceed to **C. Discovery**.
 

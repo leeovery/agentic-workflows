@@ -18,7 +18,7 @@ const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
 const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
-const { worklist } = require('./projections/worklist.cjs');
+const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
@@ -1094,13 +1094,33 @@ function validationReport(cwd, { dotpath, file, variant }) {
 }
 
 // ---------------------------------------------------------------------------
-// project-skills / linters — implementation's two setup discoveries. Each is
-// asked twice: confirm a set already stored, or approve one just discovered.
-// Same list shape both times, so the difference is the menu and, for a fresh
-// linter discovery, the installed-state tag and the install recommendations.
+// project-skills / linters — implementation's two setup discoveries. A fresh
+// discovery renders the full worklist (name — detail rows, plus the
+// installed-state tag and install recommendations for linters); confirming a
+// project default renders compact — a count line over one comma run of
+// names, because the set was already approved once and only needs to be
+// seen, not studied.
 // ---------------------------------------------------------------------------
 
 const SETUP_VARIANTS = ['confirm', 'discovery', 'skipped'];
+
+/**
+ * Validate a name list and render the compact confirm body — the stored,
+ * already-approved set as one comma run under a count line.
+ * @param {unknown} v @param {string} surface @param {string} field @param {string} label
+ * @returns {string}
+ */
+function setupNameRun(v, surface, field, label) {
+  if (!Array.isArray(v) || v.length === 0) {
+    throw new Error(`render ${surface}: "${field}" must be a non-empty array of names`);
+  }
+  const names = v.map((row, i) => {
+    if (!isFilled(row)) throw new Error(`render ${surface}: ${field}[${i}] must be a non-empty string`);
+    return escapeMarkdown(row);
+  });
+  // One authored line — the display's renderer soft-wraps the run.
+  return [`**${label}** — ${names.length} from the project default`, '', names.join(', ')].join('\n');
+}
 
 /**
  * Validate a `{name, detail}` list and render it as the batch worklist.
@@ -1147,8 +1167,10 @@ function projectSkills(cwd, { dotpath, file, variant }) {
   }
   if (!file) throw new Error('render project-skills: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'project-skills');
-  const body = setupList(p.skills, 'project-skills', 'skills', 'Project skills', 'skill');
   const confirm = variant === 'confirm';
+  const body = confirm
+    ? setupNameRun(p.skills, 'project-skills', 'skills', 'Project skills')
+    : setupList(p.skills, 'project-skills', 'skills', 'Project skills', 'skill');
   return [
     section(`DISPLAY: project skills ${variant}`, 'emit verbatim as markdown', body),
     section(`MENU: project skills ${variant} gate`, STOP_FOR_RESPONSE, confirm
@@ -1190,16 +1212,15 @@ function linters(cwd, { dotpath, file, variant }) {
   const p = readJsonPayload(cwd, file, 'linters');
   const discovery = variant === 'discovery';
   // A fresh discovery reports what is actually on the machine; a stored set
-  // was already approved, so its rows carry no installed state to re-assert.
-  const body = setupList(p.linters, 'linters', 'linters', discovery ? 'Linter discovery' : 'Linters', 'linter',
-    discovery
-      ? (row) => {
-        if (typeof row.installed !== 'boolean') {
-          throw new Error('render linters: every row of a discovery needs "installed" (true or false)');
-        }
-        return row.installed ? 'installed' : 'missing';
+  // was already approved, so it renders compact with nothing to re-assert.
+  const body = discovery
+    ? setupList(p.linters, 'linters', 'linters', 'Linter discovery', 'linter', (row) => {
+      if (typeof row.installed !== 'boolean') {
+        throw new Error('render linters: every row of a discovery needs "installed" (true or false)');
       }
-      : undefined);
+      return row.installed ? 'installed' : 'missing';
+    })
+    : setupNameRun(p.linters, 'linters', 'linters', 'Linters');
   const parts = [body];
   if (discovery && p.recommendations !== undefined) {
     if (!isFilled(p.recommendations)) throw new Error('render linters: "recommendations" must be a non-empty string when present');
