@@ -18,9 +18,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 #### If `linters` is populated
 
-Set `source` = `topic`.
+The set was confirmed when this topic stored it — use it without re-asking.
 
-→ Proceed to **B. Confirm Linters**.
+→ Return to caller.
 
 #### Otherwise
 
@@ -35,8 +35,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 → Proceed to **C. Discovery**.
 
 **If output is a populated array:**
-
-Set `source` = `project`.
 
 → Proceed to **B. Confirm Linters**.
 
@@ -62,7 +60,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit
 
 ## B. Confirm Linters
 
-Write the linters returned by the `source` level manifest query to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `{"linters": [{"name": "{name}", "detail": "{command}"}]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
+Write the linter names from the project default to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `{"linters": ["{name}", ...]}` — then fetch the gate, emitting each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/linters.json --variant confirm
@@ -72,8 +70,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit
 
 #### If `yes`
 
-**If `source` is `project`:**
-
 Copy to topic level:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[{project-level values}]'
@@ -81,16 +77,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 → Return to caller.
 
-**If `source` is `topic`:**
-
-→ Return to caller.
-
 #### If `no`
-
-Clear topic-level `linters` before re-discovery:
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[]'
-```
 
 → Proceed to **C. Discovery**.
 

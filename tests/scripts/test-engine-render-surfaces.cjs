@@ -1759,13 +1759,15 @@ describe('render project-skills / linters', () => {
     dotpath: imp, variant, file: payload && writePayload(dir, `${surface}-${variant}.json`, payload),
   });
 
-  it('project skills: a stored set is confirmed, a fresh scan is chosen from', () => {
-    const c = render('project-skills', 'confirm', { skills: [{ name: 'laravel-conventions', detail: '.claude/skills/laravel-conventions' }] });
-    assert.ok(c.includes('**Project skills** — 1 skill'));
-    assert.ok(c.includes('1\\. laravel-conventions — .claude/skills/laravel-conventions'));
+  it('project skills: a stored set confirms compact, a fresh scan is chosen from the full list', () => {
+    const c = render('project-skills', 'confirm', { skills: ['laravel-conventions', 'laravel-testing'] });
+    assert.ok(c.includes('**Project skills** — 2 from the project default'));
+    assert.ok(c.includes('laravel-conventions, laravel-testing'));
+    assert.ok(!c.includes('1\\.'), 'a confirm is a comma run, not a numbered worklist');
     assert.ok(c.includes('**`◆ Use these project skills?`**'));
     const d = render('project-skills', 'discovery', { skills: [{ name: 'a', detail: 'x' }, { name: 'b', detail: 'y' }] });
     assert.ok(d.includes('**Project skills** — 2 skills'));
+    assert.ok(d.includes('1\\. a — x'));
     assert.ok(d.includes('**`◆ Which project skills should be used?`**'));
     assert.ok(unwrap(d).includes('**List the ones you want** → Name them — e.g. "golang-pro, react-patterns"'));
   });
@@ -1783,9 +1785,10 @@ describe('render project-skills / linters', () => {
     assert.ok(/\*\*`s\/skip`\*\* +→ Skip linter setup \(no linting during TDD\)/.test(out));
   });
 
-  it('linters: a stored set re-asserts no installed state and carries no recommendations', () => {
-    const out = render('linters', 'confirm', { linters: [{ name: 'pint', detail: 'vendor/bin/pint' }] });
-    assert.ok(out.includes('**Linters** — 1 linter'));
+  it('linters: a stored set confirms compact with no installed state and no recommendations', () => {
+    const out = render('linters', 'confirm', { linters: ['pint', 'phpstan'] });
+    assert.ok(out.includes('**Linters** — 2 from the project default'));
+    assert.ok(out.includes('pint, phpstan'));
     assert.ok(!out.includes('`[installed]`'), 'an approved set was already checked');
     assert.ok(out.includes('**`◆ Use these linters?`**'));
     assert.throws(
@@ -1809,8 +1812,9 @@ describe('render project-skills / linters', () => {
     assert.throws(() => renderSurface(dir, 'linters', { dotpath: imp }), /--variant must be one of confirm\/discovery\/skipped/);
     assert.throws(() => renderSurface(dir, 'linters', { dotpath: imp, variant: 'confirm' }), /--file <payload\.json> is required/);
     assert.throws(() => render('linters', 'confirm', { linters: [] }), /"linters" must be a non-empty array/);
-    assert.throws(() => render('project-skills', 'confirm', { skills: [{ name: 'a' }] }), /skills\[0\] is missing "detail"/);
-    assert.throws(() => render('project-skills', 'confirm', { skills: [{ detail: 'a' }] }), /skills\[0\] is missing "name"/);
+    assert.throws(() => render('project-skills', 'confirm', { skills: [{ name: 'a', detail: 'b' }] }), /skills\[0\] must be a non-empty string/);
+    assert.throws(() => render('project-skills', 'discovery', { skills: [{ name: 'a' }] }), /skills\[0\] is missing "detail"/);
+    assert.throws(() => render('project-skills', 'discovery', { skills: [{ detail: 'a' }] }), /skills\[0\] is missing "name"/);
     writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { planning: { items: { crash: { status: 'in-progress' } } } } });
     assert.throws(
       () => renderSurface(dir, 'project-skills', { dotpath: 'hooks.planning.crash', variant: 'skipped' }),

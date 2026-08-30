@@ -140,4 +140,4 @@ function worklist({ heading, intro, items, walked = false, walkLine = false }) {
   return lines.join('\n');
 }
 
-module.exports = { worklist };
+module.exports = { worklist, escapeMarkdown };
