@@ -16,7 +16,7 @@
 // is the phase's closing consent, blocked while any row is unfinished.
 // ---------------------------------------------------------------------------
 
-const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
+const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
 const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 
@@ -77,21 +77,31 @@ function experimentApprovalGate(id) {
 }
 
 /**
- * The conclude gate's blocked shape — unfinished rows on screen instead of a
+ * The conclude gate's blocked shape — a true blocker (the red register, the
+ * triage-block precedent) with the unfinished rows on screen instead of a
  * dead-end: the phase closes only over a truthful register.
  * @param {SeriesRow[]} unfinished
  * @returns {string}
  */
 function experimentConcludeBlocked(unfinished) {
-  const opener = wrapWithPrefix(
-    "The series isn't finished — every experiment ends concluded (with its verdict) or abandoned (with its reason) before the phase closes:",
-    { width: TREE_WIDTH, prefix: '' },
-  ).join('\n');
-  return section(
-    'DISPLAY: experiment conclude blocked',
-    CONTINUE_INSTRUCTION,
-    opener + '\n' + renderTree(registerNodes(unfinished), { width: TREE_WIDTH }),
-  );
+  const n = unfinished.length;
+  return [
+    section(
+      'DISPLAY: experiment conclude blocked',
+      'emit verbatim as a properties code block — ```properties fence',
+      `⚑ The series isn't finished — ${n} experiment${n === 1 ? '' : 's'} still open`,
+    ),
+    section(
+      'DISPLAY: unfinished experiments',
+      CONTINUE_INSTRUCTION,
+      renderTree(registerNodes(unfinished), { width: TREE_WIDTH }),
+    ),
+    section(
+      'DISPLAY: conclude block guidance',
+      'emit verbatim as markdown',
+      '> Conclude each with its verdict or abandon it with its reason — every row ends before the phase closes.',
+    ),
+  ].join('\n');
 }
 
 /**

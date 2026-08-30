@@ -4317,7 +4317,7 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
     assert.match(out, /\*\*`w\/wait`\*\*/);
   });
 
-  it('both validate their own input; the deep dive stays research-only, the gate stays on the pair', () => {
+  it('both validate their own input; the deep dive stays research-only, the gate stays on the dispatching phases', () => {
     const file = writePayload(dir, 'd.json', { thread: 'x' });
     assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.discussion.checkout', file }),
       /render deep-dive-offer: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
@@ -4705,12 +4705,15 @@ describe('render experiment-conclude-gate', () => {
       E3: { slug: 'focus-probe', status: 'conceived' },
     });
     const out = renderSurface(dir, 'experiment-conclude-gate', { dotpath: 'lab.experiment.timing' });
-    assert.match(out, /=== DISPLAY: experiment conclude blocked \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===/);
-    // The opener wraps inside the code block — squash the hard breaks to
-    // assert the wording whole.
-    assert.match(out.replace(/\n/g, ' '), /The series isn't finished — every experiment ends concluded \(with its verdict\) or abandoned \(with its reason\) before the phase closes:/);
+    // The blocker rides the red register (the triage-block precedent): the
+    // ⚑ fact, the unfinished rows, then markdown guidance.
+    assert.match(out, /=== DISPLAY: experiment conclude blocked \(emit verbatim as a properties code block — ```properties fence\) ===/);
+    assert.match(out, /⚑ The series isn't finished — 2 experiments still open/);
+    assert.match(out, /=== DISPLAY: unfinished experiments/);
     assert.match(out, /E2 multi-monitor\s+\[running\]/);
     assert.match(out, /E3 focus-probe\s+\[conceived\]/);
+    assert.match(out, /=== DISPLAY: conclude block guidance \(emit verbatim as markdown\) ===/);
+    assert.match(out, /> Conclude each with its verdict or abandon it with its reason — every row ends before the phase closes\./);
     assert.ok(!out.includes('E1 window-placement'), 'finished rows stay off the blocked list');
     assert.ok(!out.includes('c/conclude'), 'no conclude option while rows are unfinished');
   });

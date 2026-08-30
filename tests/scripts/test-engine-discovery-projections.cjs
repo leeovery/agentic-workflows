@@ -360,3 +360,39 @@ describe('gateway.cjs adapter: map-view', () => {
     assert.match(res.stderr, /work unit name required/);
   });
 });
+
+describe('discoveryMapView — experiment rows', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('the session map carries the experiment lifecycles and the awaiting cue', () => {
+    createManifest(dir, 'lab', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            timing: { routing: 'experiment', source: 'discovery' },
+            policy: { routing: 'discussion', source: 'discovery' },
+          },
+        },
+        experiment: {
+          items: {
+            timing: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } },
+            policy: { status: 'in-progress', experiments: { E1: { slug: 'y', status: 'running' } } },
+          },
+        },
+        discussion: { items: { policy: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+      },
+    });
+    assert.strictEqual(discoveryMapView('lab', mapOf(dir, 'lab')), [
+      'Discovery Map (2 topics)',
+      '  ├─ ◐ Policy',
+      '  │     ↳ Discussing · awaiting E1',
+      '  │',
+      '  └─ ◐ Timing',
+      '        ↳ Experimenting',
+      '',
+    ].join('\n'));
+  });
+});
