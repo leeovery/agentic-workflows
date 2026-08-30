@@ -37,7 +37,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
    ```
 
-   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on.
+   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on. A point of this topic's own that only measurement can settle routes through **J. The Empirical Wall**.
 3. **Navigate** — When a subtopic feels explored or a decision lands, record the transition and guide the user to what's still open:
 
    ```bash
@@ -74,6 +74,8 @@ Subtopics move through states as the conversation progresses. The judgment call 
 **deferred** → Deliberately set aside. Written by the defer gate in **G. Concluding** — and by a triage fold that re-parks previously-`deferred` ground a rerouted concern reopened (the raise showed the user what is being set aside, and the fold writes the Open Threads note itself) — and nowhere else: never set it during the session loop, however plainly the user parks something. When they say a subtopic stays open, leave it in the state the conversation reached and carry on; the defer gate sweeps it at conclusion. Setting it early makes `all_decided` true, so the gate never renders — the user is never shown what is being set aside, and the Open Threads entry the gate writes never lands.
 
 **State transitions are judgement calls.** Move a subtopic to `converging` when the viable options are narrowed and the discussion is heading toward resolution. Move to `decided` when there's a clear outcome with rationale — even if provisional. Don't wait for absolute certainty. Any state can move to any other — judgment may revisit. The one exception is `deferred`: it belongs to the defer gate, not to session judgement.
+
+A point waiting on experiment evidence is not `deferred` — deferral is parked by choice, the wait is blocked pending input. It keeps the state the conversation reached; the wait itself is engine-owned (`awaiting_experiments`, recorded by the experiment session **J** exits into) with a note in the document, and the evidence surfaces at re-entry when it lands.
 
 Child subtopics can exist under parents. A parent might be `exploring` while one of its children is already `decided`. The parent reaches `decided` when all its meaningful children are resolved and the overall concern is addressed.
 
@@ -154,6 +156,18 @@ One ceremony, two ways in — enter when either, or both at once, holds:
 
 - **Convergence read** — every subtopic on the Discussion Map is `decided` (or `deferred`), and neither you nor the user can identify new subtopics without breaking scope. Convergence is the natural end state, never a forced conclusion.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
+
+Check the evidence wait first:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} awaiting_experiments
+```
+
+**If non-empty:** the conclusion is unavailable — the decision is live and its input isn't in (the engine refuses `topic complete` over a live wait). State plainly, in one or two lines, which experiment(s) the discussion awaits and which points wait on them (the document's waiting notes name them), and that the wait releases when each concludes or is abandoned.
+
+→ Return to **B. Session Loop**.
+
+**If empty:** continue.
 
 A non-empty calls queue flushes first — follow **I. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and conclusion resumes by its standing conditions once the queue drains. An unlanded call is undocumented knowledge.
 
@@ -276,3 +290,37 @@ Answer it — the derivation in full, what it rests on. Expanding is not objecti
 Nothing lands; the queue survives on disk. Follow them — the next natural break re-offers the flush.
 
 → Return to **B. Session Loop**.
+
+---
+
+## J. The Empirical Wall
+
+A point of this topic's own that only measurement can settle — no amount of talking answers it. The user may say so outright, or you propose it; per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)** the answer comes from them, so the gate always asks.
+
+Write the gate payload to `.workflows/.cache/{work_unit}/discussion/{topic}/experiment-exit.json` with the Write tool (`{"point": "…"}` — the point as one line), then render the gate and emit its MENU section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-exit-gate {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/experiment-exit.json
+```
+
+**STOP.** Wait for user response.
+
+**If `no`:**
+
+The point stays open — settle it another way in conversation, or leave it on the map; the experiment topic can still be entered later from the menu.
+
+→ Return to **B. Session Loop**.
+
+**If `yes`:**
+
+1. **Document the waiting point.** In the owning subtopic's section (create the block with its `### Context` if none exists yet), a dated note: *Waiting on experiment evidence — {the point}.* Note the thread in Summary → Open Threads too, so the wait is visible at a glance. The subtopic's map state stays where the conversation left it — never `deferred` (see **C**).
+
+2. **Commit the discussion artefacts:**
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): mark {point:(kebabcase)} waiting on experiment"
+   ```
+
+3. **Exit into the experiment design — context hot, no bridge, no context clear.** Hold the point in context as `spawning_point`: the experiment entry's handoff carries it as its `Spawned from:` line, and the experiment session's first conceive records the engine-side evidence wait from it (`awaiting_experiments` on this discussion item — **G**'s check and the engine's conclude refusal then hold until the experiment concludes or is abandoned).
+
+   Invoke `/workflow-experiment-entry {work_type} {work_unit} {topic}`.

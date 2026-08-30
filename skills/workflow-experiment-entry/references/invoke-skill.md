@@ -8,6 +8,8 @@ The output directory is `.workflows/{work_unit}/experiment/{topic}/`.
 
 This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill. The handoff carries session identity plus any interview answers — the durable inputs (carrier description, discovery brief, completed research) are read by the processing skill at initialisation, never added to the handoff.
 
+One exception rides every variant: when the invoking context holds a `spawning_point` — a discussion's empirical-wall exit landed here — the handoff's `Spawned from:` line carries it, and the processing skill's first conceive records the discussion's evidence wait from it. Omit the line otherwise.
+
 ---
 
 ## Handoff
@@ -23,6 +25,7 @@ Work type: {work_type}
 
 Source: existing experiments
 Output: .workflows/{work_unit}/experiment/{topic}/
+@if(spawning_point) Spawned from: discussion — {spawning_point} @endif
 ```
 
 #### If the context was gathered by interview
@@ -37,6 +40,7 @@ Work unit: {work_unit}
 Work type: {work_type}
 
 Output: .workflows/{work_unit}/experiment/{topic}/
+@if(spawning_point) Spawned from: discussion — {spawning_point} @endif
 
 Context:
 - Question: {what the experiment should answer, and the decision it feeds}
@@ -57,4 +61,5 @@ Work unit: {work_unit}
 Work type: {work_type}
 
 Output: .workflows/{work_unit}/experiment/{topic}/
+@if(spawning_point) Spawned from: discussion — {spawning_point} @endif
 ```

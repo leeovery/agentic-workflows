@@ -62,7 +62,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `keep`:**
 
-Keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, fold it into the research file as a thread.
+Keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, fold it into the research file as a thread; on `experiment`, note it on the live experiment's record — or, when it's a measurable question of its own, conceive it as the next experiment when its turn comes.
 
 → Return to caller for **B. Session Loop**.
 

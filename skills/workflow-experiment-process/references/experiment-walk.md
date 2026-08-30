@@ -18,6 +18,15 @@ node .claude/skills/workflow-engine/scripts/engine.cjs experiment create {work_u
 
 Hold `id` and `dir` from the response.
 
+**If the handoff carries a `Spawned from:` line and its wait is not yet recorded** — this is the walk's first conceive after a discussion's empirical-wall exit, and this experiment is the one the waiting point waits on. Record the evidence wait and commit immediately, so create and await land together:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs experiment await {work_unit} {topic} {id}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} conceived — evidence wait recorded"
+```
+
+The same-topic discussion now cannot conclude until {id} concludes or is abandoned.
+
 → Proceed to **B. Design**.
 
 ## B. Design

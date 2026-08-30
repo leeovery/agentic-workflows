@@ -37,6 +37,11 @@ Emit the call's MENU section verbatim per its marker.
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} discussion {topic}
    ```
+
+   **If the response is `ok: false` naming awaited experiment evidence:** the wait holds the conclusion shut. Surface the refusal verbatim and point to the experiment it names — concluding or abandoning it releases the wait.
+
+   → Return to **[the skill](../SKILL.md)** for **Step 5**.
+
 3. Final commit:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} --kb -m "discussion({work_unit}): complete {topic} discussion"

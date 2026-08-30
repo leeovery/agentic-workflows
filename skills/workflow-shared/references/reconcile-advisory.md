@@ -40,6 +40,32 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
+#### If output is `experiment` (experiment evidence arrived, or the series moved)
+
+This topic's experiments concluded, were abandoned, or reopened after this work last moved — the evidence a waiting point needs, or ground its decisions may rest on. Surface the advisory, read the record, and clear the flag.
+
+> *Output the next fenced block as a code block:*
+
+```
+  ⚑ This topic's experiments moved after this work last did —
+    evidence has arrived, or a run was abandoned. Read the
+    reports before continuing. Nothing has been overwritten.
+```
+
+Render the register and emit its DISPLAY section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
+```
+
+Read each concluded experiment's report in full — `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}/report.md` — the evidence a waiting point was blocked on. An abandoned row surfaces with its reason from the register (read its report too where the file exists): its waiting point reverts to open, to settle on what evidence exists or another way. Then clear the flag:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+```
+
+→ Return to caller.
+
 #### If output is `investigation` (upstream investigation reopened)
 
 The investigation reopened after this specification concluded — the root cause may have shifted beneath it. Surface the advisory, read the investigation file fresh into context, and clear the flag.

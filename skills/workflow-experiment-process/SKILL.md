@@ -25,6 +25,7 @@ The confirmatory phase, entered from discovery, research, or a discussion that h
 - **Output directory** (required) - The topic's series directory from the handoff
 - **Work type** (required) - `epic`, `feature`, or `cross-cutting`. Determines session behaviour — epic sessions reroute off-topic concerns to sibling topics; feature and cross-cutting log or pivot
 - **Context** (optional) - The question, prior sightings, expectations, what to measure against
+- **Spawned from** (optional) - The discussion point whose settlement waits on this series (the empirical-wall exit); when present, the walk's first conceive records the evidence wait
 
 ---
 
