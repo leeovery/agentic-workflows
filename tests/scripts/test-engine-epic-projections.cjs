@@ -430,19 +430,20 @@ describe('epic projections: menu', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**           → Start specification for "Billing Grouping" —',
-      `${NB(14)}*grouping ready* (recommended)`,
-      '**`2`**           → Continue "Auth Spec" — *specification [in-progress]*',
-      '**`s/spec`**      → Analyze / regroup discussions — *2 discussion(s) not*',
-      `${NB(14)}*yet grouped*`,
-      '**`d/discuss`**   → Start a discussion on a new topic',
-      '**`r/research`**  → Start research on a new topic',
-      '**`i/discovery`** → Continue discovery',
-      '**`c/completed`** → Resume a completed topic',
-      '**`a/cancel`**    → Cancel a topic (phase work)',
-      '**`u/unblock`**   → Unblock a plan — mark a dependency as satisfied',
-      `${NB(14)}externally`,
-      '**`o/order`**     → Re-sequence the build order',
+      '**`1`**            → Start specification for "Billing Grouping" —',
+      `${NB(15)}*grouping ready* (recommended)`,
+      '**`2`**            → Continue "Auth Spec" — *specification [in-progress]*',
+      '**`s/spec`**       → Analyze / regroup discussions — *2 discussion(s)*',
+      `${NB(15)}*not yet grouped*`,
+      '**`d/discuss`**    → Start a discussion on a new topic',
+      '**`r/research`**   → Start research on a new topic',
+      '**`x/experiment`** → Start experiments on a new topic',
+      '**`i/discovery`**  → Continue discovery',
+      '**`c/completed`**  → Resume a completed topic',
+      '**`a/cancel`**     → Cancel a topic (phase work)',
+      '**`u/unblock`**    → Unblock a plan — mark a dependency as satisfied',
+      `${NB(15)}externally`,
+      '**`o/order`**      → Re-sequence the build order',
     ].join('\n'));
   });
 
@@ -456,6 +457,7 @@ describe('epic projections: menu', () => {
         ['s', 'analyze_discussions', null, '/workflow-specification-entry epic quiz-competition-v1'],
         ['d', 'new_discussion', null, '/workflow-discussion-entry epic quiz-competition-v1'],
         ['r', 'new_research', null, '/workflow-research-entry epic quiz-competition-v1'],
+        ['x', 'new_experiment', null, '/workflow-experiment-entry epic quiz-competition-v1'],
         ['i', 'continue_discovery', null, '/workflow-discovery epic quiz-competition-v1'],
         ['c', 'resume_completed', null, null],
         ['a', 'cancel_topic', null, null],
@@ -577,7 +579,7 @@ describe('epic projections: menu', () => {
       },
     });
     const { rendered } = epicMenu('v1', d);
-    assert.ok(rendered.includes(`→ Continue "Roles" — *implementation (Phase 2, Task*\n${NB(14)}*r-2-2)*`), rendered);
+    assert.ok(rendered.includes(`→ Continue "Roles" — *implementation (Phase 2, Task*\n${NB(15)}*r-2-2)*`), rendered);
     assert.ok(!rendered.includes('Task 3'), 'completed count must not masquerade as a task position');
   });
 
@@ -592,7 +594,7 @@ describe('epic projections: menu', () => {
       },
     });
     const { rendered } = epicMenu('v1', d);
-    assert.ok(rendered.includes(`→ Continue "Roles" — *implementation (Phase 2, 3*\n${NB(14)}*task(s) completed)*`), rendered);
+    assert.ok(rendered.includes(`→ Continue "Roles" — *implementation (Phase 2, 3*\n${NB(15)}*task(s) completed)*`), rendered);
   });
 
   it('a triaged stub is offered as Start with the triage waiting suffix — never Continue', () => {
@@ -636,14 +638,15 @@ describe('epic projections: menu', () => {
   it('brand-new epic menu leads with recommended discovery', () => {
     const d = detailFor(dir, 'fresh', { work_type: 'epic' });
     const { keys, rendered } = epicMenu('fresh', d);
-    assert.deepStrictEqual(keys.map((k) => k.key), ['i', 'd', 'r']);
+    assert.deepStrictEqual(keys.map((k) => k.key), ['i', 'd', 'r', 'x']);
     assert.strictEqual(rendered, [
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`i/discovery`** → Run discovery — shape the topic map (recommended)',
-      '**`d/discuss`**   → Start new discussion',
-      '**`r/research`**  → Start new research',
+      '**`i/discovery`**  → Run discovery — shape the topic map (recommended)',
+      '**`d/discuss`**    → Start new discussion',
+      '**`r/research`**   → Start new research',
+      '**`x/experiment`** → Start new experiments',
     ].join('\n'));
   });
 });

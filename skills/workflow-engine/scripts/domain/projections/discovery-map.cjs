@@ -42,7 +42,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
 /**
  * @typedef {object} ProposedTopic
  * @property {string} name
- * @property {string} routing   research|discussion
+ * @property {string} routing   research|experiment|discussion
  * @property {string} summary   one line, from the exploration
  */
 

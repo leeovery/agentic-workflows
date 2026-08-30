@@ -835,11 +835,12 @@ describe('render research-conclude-gate', () => {
       /render research-conclude-gate: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
   });
 
-  it('renders conclude/keep without the flag — no dead-end row', () => {
+  it('renders conclude/experiment/keep without the flag — no dead-end row', () => {
     const out = renderSurface(dir, 'research-conclude-gate', { dotpath: 'pay.research.checkout' });
     assert.match(out, /=== MENU: research conclude gate/);
     assert.match(out, /\*\*`◆ This topic looks ready to conclude\.`\*\*/);
-    assert.match(out, /\*\*`c\/conclude`\*\* → Mark this topic as complete, ready for discussion/);
+    assert.match(out, /\*\*`c\/conclude`\*\*\s+→ Mark this topic as complete, ready for/);
+    assert.match(out, /\*\*`e\/experiment`\*\* → Conclude, then measure — a finding here/);
     assert.match(out, /\*\*`k\/keep`\*\*\s+→ Keep digging, there's more to understand/);
     assert.ok(!out.includes('dead end'), 'no dead-end row without the flag');
   });
@@ -848,7 +849,7 @@ describe('render research-conclude-gate', () => {
     const out = renderSurface(dir, 'research-conclude-gate', { dotpath: 'pay.research.checkout', 'dead-end': '1' });
     assert.match(out, /\*\*`d\/dead-end`\*\*\s+→ Close it as a dead end — completed/);
     assert.match(out, /no discussion owed/);
-    assert.match(out, /reversible from the map/);
+    assert.match(out, /reversible from the\s+map/);
   });
 });
 
@@ -3333,7 +3334,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-conclude-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-conclude-gate, experiment-exit-gate, first-phase-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -4777,5 +4778,86 @@ describe('render cancel-cascade-gate (experiment)', () => {
     });
     assert.throws(() => renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'calm.experiment.probe' }),
       /render cancel-cascade-gate: discussion "probe" holds no evidence wait — the bare cancel proceeds/);
+  });
+});
+
+describe('render experiment-exit-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'lab', {
+      phases: {
+        discussion: { items: { probe: { status: 'in-progress' } } },
+        research: { items: { probe: { status: 'completed' } } },
+      },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the wall — the point named, the y/n pair stating the move', () => {
+    const file = writePayload(dir, 'exit.json', { point: 'Whether polling beats the watcher at p95' });
+    const out = renderSurface(dir, 'experiment-exit-gate', { dotpath: 'lab.discussion.probe', file });
+    assert.match(out, /=== MENU: experiment exit gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(unwrap(out), /\*\*Whether polling beats the watcher at p95\*\* can only be settled by measurement/);
+    assert.match(out, /\*\*`◆ Take it to an experiment\?`\*\*/);
+    assert.match(unwrap(out), /\*\*`y\/yes`\*\* → Mark the point as waiting and design the experiment now — this session moves there/);
+    assert.match(unwrap(out), /\*\*`n\/no`\*\* {2}→ Keep talking — the point stays open/);
+  });
+
+  it('pins the discussion address — the wall is nowhere else', () => {
+    const file = writePayload(dir, 'exit.json', { point: 'P' });
+    assert.throws(() => renderSurface(dir, 'experiment-exit-gate', { dotpath: 'lab.research.probe', file }),
+      /render experiment-exit-gate: address must be <work_unit>\.discussion\.<topic>, got phase "research"/);
+  });
+
+  it('refuses a discussion that is not in-progress — the wall is hit mid-discussion', () => {
+    writeManifest(dir, 'done', { phases: { discussion: { items: { probe: { status: 'completed' } } } } });
+    const file = writePayload(dir, 'exit.json', { point: 'P' });
+    assert.throws(() => renderSurface(dir, 'experiment-exit-gate', { dotpath: 'done.discussion.probe', file }),
+      /discussion "probe" in "done" is not in-progress/);
+  });
+
+  it('requires the payload and its point', () => {
+    assert.throws(() => renderSurface(dir, 'experiment-exit-gate', { dotpath: 'lab.discussion.probe' }),
+      /--file <payload\.json> is required/);
+    const file = writePayload(dir, 'exit.json', { point: '  ' });
+    assert.throws(() => renderSurface(dir, 'experiment-exit-gate', { dotpath: 'lab.discussion.probe', file }),
+      /"point" must be a non-empty string/);
+  });
+});
+
+describe('render first-phase-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'auth-flow', { work_type: 'feature', phases: {} });
+    writeManifest(dir, 'error-policy', { work_type: 'cross-cutting', phases: {} });
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: {} });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the three-way choice under the payload read — read, measure, or talk', () => {
+    const file = writePayload(dir, 'fp.json', { read: "The shape's clear and the open questions are trade-offs — I'd start with discussion." });
+    const out = renderSurface(dir, 'first-phase-gate', { dotpath: 'auth-flow', file });
+    assert.match(out, /=== MENU: first phase gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(unwrap(out), /The shape's clear and the open questions are trade-offs — I'd start with discussion\./);
+    assert.match(unwrap(out), /\*\*`r\/research`\*\* {3}→ Explore feasibility and options first, no decisions yet/);
+    assert.match(unwrap(out), /\*\*`e\/experiment`\*\* → Measure first — design and run experiments before deciding/);
+    assert.match(unwrap(out), /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
+  });
+
+  it('serves cross-cutting too, and refuses the fixed-first-phase types', () => {
+    const file = writePayload(dir, 'fp.json', { read: 'An open unknown — research first.' });
+    assert.match(renderSurface(dir, 'first-phase-gate', { dotpath: 'error-policy', file }), /=== MENU: first phase gate/);
+    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'pay', file }),
+      /work type must be feature or cross-cutting \(the other types have fixed first phases\), got "epic"/);
+  });
+
+  it('requires the payload and its read line', () => {
+    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'auth-flow' }),
+      /--file <payload\.json> is required/);
+    const file = writePayload(dir, 'fp.json', {});
+    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'auth-flow', file }),
+      /"read" must be a non-empty string/);
   });
 });

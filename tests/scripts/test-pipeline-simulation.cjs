@@ -1268,18 +1268,31 @@ describe('pipeline simulation', () => {
     const wu = 'metrics';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Metrics feature', '--session-log-file', sessionLog(sim, wu)]);
 
-    // Discussion opens; a point hits the empirical wall — the exit flow
-    // creates the same-topic experiment item and records the evidence wait.
+    // Discussion opens; a point hits the empirical wall — the exit gate asks,
+    // the waiting point is documented and committed, and the session exits
+    // into the experiment entry (prose order: doc note → commit → invoke).
     label(sim, wu, 'discussion', wu);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    const exitPayload = sim.write(`.workflows/.cache/${wu}/discussion/${wu}/experiment-exit.json`,
+      { point: 'Whether p95 stays under budget' });
+    assert.match(sim.render(['experiment-exit-gate', `${wu}.discussion.${wu}`, '--file', exitPayload], { expect: 'content' }),
+      /Take it to an experiment\?/);
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n\nWaiting on experiment evidence: p95 budget.\n`);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): mark p95 point waiting`, '--topic', `discussion/${wu}`]);
+
+    // The experiment session initialises, and the walk's first conceive
+    // records the evidence wait — create and await land in one commit, so the
+    // crash window is one tool call wide.
     label(sim, wu, 'experiment', wu);
     sim.run(['topic', 'start', wu, 'experiment', wu]);
+    sim.run(['commit', wu, '-m', `experiment(${wu}): initialize ${wu} experiments`, '--topic', `experiment/${wu}`]);
     const e1 = sim.run(['experiment', 'create', wu, wu, '--slug', 'p95-latency']);
     assert.strictEqual(e1.id, 'E1');
     assert.strictEqual(e1.dir, `.workflows/${wu}/experiment/${wu}/E1-p95-latency`);
     sim.run(['experiment', 'await', wu, wu, 'E1']);
+    sim.run(['commit', wu, '-m', `experiment(${wu}/${wu}): E1 conceived — evidence wait recorded`, '--topic', `experiment/${wu}`]);
     assert.deepStrictEqual(JSON.parse(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'awaiting_experiments'])), ['E1']);
 
     // The wait holds engine-side: the discussion cannot conclude, and the
@@ -1399,6 +1412,61 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'reactivate', wu, 'experiment', 'probe']);
     assert.strictEqual(sim.manifest(wu).phases.experiment.items.probe.status, 'in-progress');
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.probe.order, 3, 'reactivate restores the map order');
+  });
+
+  it('epic: research concludes into experiments, and the menu births a new experiment topic', () => {
+    const wu = 'spawn-lab';
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Spawn epic', '--session-log-file', sessionLog(sim, wu)]);
+    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+      { name: 'homing', routing: 'research', summary: 'Homing behaviour' },
+    ]);
+    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 1 topic`]);
+
+    // Research runs; its conclude gate always carries the e/experiment row —
+    // taking it concludes normally (the evidence trail is unbroken), then the
+    // session routes straight into the same-topic experiment entry.
+    label(sim, wu, 'research', 'homing');
+    sim.run(['topic', 'start', wu, 'research', 'homing']);
+    sim.write(`.workflows/${wu}/research/homing.md`, '# Research — Homing\n');
+    sim.run(['commit', wu, '-m', `research(${wu}/homing): notes`, '--topic', 'research/homing']);
+    assert.match(sim.render(['research-conclude-gate', `${wu}.research.homing`], { expect: 'content' }),
+      /e\/experiment[\s\S]*Conclude, then measure/);
+    sim.run(['topic', 'complete', wu, 'research', 'homing']);
+    sim.run(['commit', wu, '-m', `research(${wu}): complete homing research`, '--topic', 'research/homing', '--kb']);
+
+    // The straight-through entry: same topic, experiment item created and
+    // seeded from the completed research; the lifecycle walks
+    // researching → experimenting → discussing.
+    label(sim, wu, 'experiment', 'homing');
+    sim.run(['topic', 'start', wu, 'experiment', 'homing']);
+    sim.run(['commit', wu, '-m', `experiment(${wu}): initialize homing experiments`, '--topic', 'experiment/homing']);
+    assert.strictEqual(derivations.computeTopicLifecycle(sim.manifest(wu), 'homing').lifecycle, 'experimenting');
+    sim.run(['experiment', 'create', wu, 'homing', '--slug', 'space-homing']);
+    sim.run(['experiment', 'advance', wu, 'homing', 'E1']);
+    sim.run(['experiment', 'approve', wu, 'homing', 'E1']);
+    sim.run(['experiment', 'advance', wu, 'homing', 'E1']);
+    sim.write(`.workflows/${wu}/experiment/homing/E1-space-homing/design.md`, '# Design — E1\n');
+    sim.write(`.workflows/${wu}/experiment/homing/E1-space-homing/report.md`, '# Report — E1\n');
+    sim.run(['experiment', 'conclude', wu, 'homing', 'E1', '--verdict', 'homing holds across layouts']);
+    sim.run(['commit', wu, '-m', `experiment(${wu}/homing): E1 concluded`, '--topic', 'experiment/homing']);
+    sim.run(['topic', 'complete', wu, 'experiment', 'homing']);
+    assert.strictEqual(derivations.computeTopicLifecycle(sim.manifest(wu), 'homing').lifecycle, 'evidence_ready');
+
+    // The epic menu's x/experiment command births a new experiment topic —
+    // the entry names it, ensure-discovery-item lands it as direct-start,
+    // and the first session starts it.
+    const viewRes = spawnSync('node', [path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'), 'view', wu],
+      { cwd: sim.dir, encoding: 'utf8', env: sim.env });
+    assert.strictEqual(viewRes.status, 0, viewRes.stderr);
+    assert.match(viewRes.stdout, /new_experiment/);
+    assert.match(viewRes.stdout, /\/workflow-experiment-entry epic spawn-lab/);
+    assert.match(viewRes.stdout, /Start experiments on a new topic/);
+    sim.run(['discovery-map', 'add', wu, 'drift-probe', 'experiment', '--summary', 'Drift probe accuracy', '--source', 'direct-start', '--force-dismissed']);
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items['drift-probe'].routing, 'experiment');
+    sim.run(['topic', 'start', wu, 'experiment', 'drift-probe']);
+    sim.run(['commit', wu, '-m', `experiment(${wu}): initialize drift-probe experiments`, '--topic', 'experiment/drift-probe']);
+    assert.strictEqual(derivations.computeTopicLifecycle(sim.manifest(wu), 'drift-probe').lifecycle, 'experimenting');
   });
 
   it('backwards: reopen a completed discussion, re-complete, and the map keeps deriving', () => {

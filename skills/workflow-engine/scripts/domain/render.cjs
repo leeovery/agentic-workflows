@@ -1894,7 +1894,9 @@ function rerouteOffer(cwd, { dotpath, file }) {
 // research-conclude-gate — the topic-completion consent gate. The dead-end
 // row renders only when the session's own conclusion is that the topic gives
 // the product nothing to carry forward under its own name — the judgment
-// travels as the --dead-end flag, never derived here.
+// travels as the --dead-end flag, never derived here. The experiment row
+// renders always — every research-bearing work type carries the phase; the
+// session's own judgment guides whether to recommend it in conversation.
 
 /**
  * @param {string} cwd
@@ -1905,6 +1907,7 @@ function researchConcludeGate(cwd, args) {
   resolveResearch(cwd, args.dotpath, 'research-conclude-gate');
   const options = [
     cmdOption('c', 'conclude', 'Mark this topic as complete, ready for discussion'),
+    cmdOption('e', 'experiment', 'Conclude, then measure — a finding here needs a designed experiment before discussion'),
   ];
   if (args['dead-end']) {
     options.push(cmdOption('d', 'dead-end', 'Close it as a dead end — completed and kept as record, no discussion owed; reversible from the map'));
@@ -2483,6 +2486,65 @@ function experimentConcludeGateSurface(cwd, args) {
   const unfinished = rows.filter((r) => !EXPERIMENT_TERMINAL_STATUSES.includes(r.status));
   if (unfinished.length > 0) return experimentConcludeBlocked(unfinished);
   return experimentConcludeGate(Boolean(args['dead-end']));
+}
+
+// experiment-exit-gate — the discussion's empirical wall. A point only
+// measurement can settle is the user's call (ask-or-decide): the gate names
+// the point and the move — the point marked as waiting, the session exiting
+// into the experiment design with context hot. Only an in-progress
+// discussion renders — the wall is hit mid-discussion, nowhere else.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function experimentExitGate(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render experiment-exit-gate: --file <payload.json> is required');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'experiment-exit-gate');
+  if (phase !== 'discussion') {
+    throw new Error(`render experiment-exit-gate: address must be <work_unit>.discussion.<topic>, got phase "${phase}"`);
+  }
+  const item = itemOf(manifest, 'discussion', topic);
+  if (!item || typeof item !== 'object' || item.status !== 'in-progress') {
+    throw new Error(`render experiment-exit-gate: discussion "${topic}" in "${workUnit}" is not in-progress — the wall is hit mid-discussion`);
+  }
+  const p = readJsonPayload(cwd, file, 'experiment-exit-gate');
+  if (!isFilled(p.point)) throw new Error('render experiment-exit-gate: "point" must be a non-empty string — the waiting point, one line');
+  return section('MENU: experiment exit gate', STOP_FOR_RESPONSE, menu(
+    `**${p.point}** can only be settled by measurement — the discussion holds this point open while an experiment answers it.`,
+    [
+      cmdOption('y', 'yes', 'Mark the point as waiting and design the experiment now — this session moves there'),
+      cmdOption('n', 'no', 'Keep talking — the point stays open'),
+    ],
+    { question: 'Take it to an experiment?' },
+  ));
+}
+
+// first-phase-gate — the three-way first-phase choice for single-phase
+// research-bearing work (discovery's endpoint, and the quick-fix promotion):
+// do we answer this by reading, by talking, or by measuring? The one-line
+// read is judgment content and arrives in the payload; the options are the
+// routing vocabulary.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function firstPhaseGate(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render first-phase-gate: --file <payload.json> is required');
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'first-phase-gate');
+  if (manifest.work_type !== 'feature' && manifest.work_type !== 'cross-cutting') {
+    throw new Error(`render first-phase-gate: work type must be feature or cross-cutting (the other types have fixed first phases), got "${manifest.work_type}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'first-phase-gate');
+  if (!isFilled(p.read)) throw new Error('render first-phase-gate: "read" must be a non-empty string — the one-line read + reason that opens the menu');
+  return section('MENU: first phase gate', STOP_FOR_RESPONSE, menu(String(p.read).trim(), [
+    cmdOption('r', 'research', 'Explore feasibility and options first, no decisions yet'),
+    cmdOption('e', 'experiment', 'Measure first — design and run experiments before deciding'),
+    cmdOption('d', 'discussion', 'Ready to discuss and make decisions'),
+  ]));
 }
 
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
@@ -4424,6 +4486,8 @@ const SURFACES = {
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-conclude-gate': experimentConcludeGateSurface,
+  'experiment-exit-gate': experimentExitGate,
+  'first-phase-gate': firstPhaseGate,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,

@@ -106,7 +106,7 @@ const ACTION_PHASE = {
 // stop a gate firing.
 const SOFT_GATE_ACTIONS = [
   ...Object.keys(ACTION_PHASE),
-  'analyze_discussions', 'new_discussion', 'new_research', 'continue_discovery',
+  'analyze_discussions', 'new_discussion', 'new_research', 'new_experiment', 'continue_discovery',
 ];
 
 const START_GATE = {
@@ -608,6 +608,11 @@ function commandOptions(workUnit, detail, hasMap) {
     key: 'r', word: 'research', action: 'new_research', topic: null,
     route: `/workflow-research-entry epic ${workUnit}`,
     label: hasMap ? 'Start research on a new topic' : 'Start new research',
+  });
+  opts.push({
+    key: 'x', word: 'experiment', action: 'new_experiment', topic: null,
+    route: `/workflow-experiment-entry epic ${workUnit}`,
+    label: hasMap ? 'Start experiments on a new topic' : 'Start new experiments',
   });
   if (hasMap && !detail.active_session) opts.push(discoveryOpt);
   if (detail.completed.length > 0) {
