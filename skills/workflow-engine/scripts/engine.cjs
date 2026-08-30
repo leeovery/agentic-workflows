@@ -133,14 +133,14 @@ Commands:
   discussion-map set <work-unit> <topic> <subtopic>=<state> [<subtopic>=<state> …]
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-map add <work-unit> <name> <research|discussion>
+  discovery-map add <work-unit> <name> <research|experiment|discussion>
                 (--summary <text> [--description <text>] | --backfill)
                 [--source <tag>] [--force-dismissed]
   discovery-map add-batch <work-unit> --file <topics.json>
   discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
   discovery-map remove <work-unit> <name>
   discovery-map rename <work-unit> <old> <new>
-  discovery-map reroute <work-unit> <name> <research|discussion>
+  discovery-map reroute <work-unit> <name> <research|experiment|discussion>
   discovery-map handle <work-unit> <name>
   discovery-map unhandle <work-unit> <name>
   discovery-session open  <work-unit> --session-log-file <path>
@@ -187,7 +187,7 @@ Commands:
   roadmap remove <name>
   roadmap pull <name> [<name> …] --into <work-unit>
   roadmap bind <name> --topic <topic>
-  roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]
+  roadmap pull-forward <name> --into <epic> --routing <research|experiment|discussion> [--force-dismissed]
   roadmap flag <name>
   roadmap session open --session-log-file <path>
   roadmap session close -m <message>
@@ -1186,7 +1186,7 @@ function runRoadmap(argv) {
       respond(roadmap.bindItem(cwd, positional[0], { topic: opts.topic }));
     } else if (command === 'pull-forward') {
       if (positional.length !== 1 || !opts.into || !opts.routing) {
-        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]');
+        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <research|experiment|discussion> [--force-dismissed]');
       }
       respond(roadmap.pullForwardItem(cwd, positional[0], {
         into: opts.into,

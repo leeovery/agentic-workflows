@@ -1971,6 +1971,12 @@ describe('engine usage banner', () => {
       'topic supersede <work-unit> <phase> <topic> --by <topic>',
       'topic cancel <work-unit> <phase> <topic> [--cascade]',
       'topic reactivate <work-unit> <phase> <topic>',
+      'experiment create <work-unit> <topic> --slug <kebab>',
+      'experiment advance <work-unit> <topic> <id>',
+      'experiment approve <work-unit> <topic> <id>',
+      'experiment conclude <work-unit> <topic> <id> --verdict <one line>',
+      'experiment abandon <work-unit> <topic> <id> --reason <one line>',
+      'experiment await <work-unit> <topic> <id>',
     ]) {
       assert.ok(res.stderr.includes(`  ${line}\n`), `usage banner missing "${line}"`);
     }

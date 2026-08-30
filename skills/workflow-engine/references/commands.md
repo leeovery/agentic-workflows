@@ -96,12 +96,12 @@ The per-item map operations write the manifest with no git commit (the calling s
 
 ```bash
 engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]   # suggested execution order, scoped commit
-engine discovery-map add <work-unit> <name> <research|discussion> (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]
+engine discovery-map add <work-unit> <name> <research|experiment|discussion> (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]
 engine discovery-map add-batch <work-unit> --file <topics.json>   # whole topic set, one lock/save — atomic; entries {name, routing, summary, description?, brief_path?, force_dismissed?}; source always `discovery`
 engine discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
 engine discovery-map remove <work-unit> <name>       # fresh only; name lands on the dismissed list
 engine discovery-map rename <work-unit> <old> <new>  # fresh only; every field preserved, brief file + brief_path follow
-engine discovery-map reroute <work-unit> <name> <research|discussion>   # fresh only
+engine discovery-map reroute <work-unit> <name> <research|experiment|discussion>   # fresh only
 engine discovery-map handle <work-unit> <name>       # any lifecycle except handled/cancelled
 engine discovery-map unhandle <work-unit> <name>     # handled only
 ```
@@ -246,7 +246,7 @@ engine roadmap move <name> --horizon <h>           # waiting items only; JIT-cre
 engine roadmap remove <name>                       # waiting items only; no dismissed list — git history keeps the story
 engine roadmap pull <name> [<name> …] --into <work-unit>   # the commitment point; remainder named per horizon
 engine roadmap bind <name> --topic <topic>         # record the topic a pulled item crystallised as
-engine roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]   # map topic + join, one commit
+engine roadmap pull-forward <name> --into <epic> --routing <research|experiment|discussion> [--force-dismissed]   # map topic + join, one commit
 engine roadmap flag <name>                         # reconcile_needed: "roadmap" on the joined topic's live phase items
 engine roadmap session open --session-log-file <path>   # install the drafted log, set the marker — no commit
 engine roadmap session close -m "<message>"             # clear the marker, index, commit roadmap dir + project manifest
