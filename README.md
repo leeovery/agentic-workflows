@@ -40,11 +40,11 @@ That's the whole interface. Describe what you want to build and the right pipeli
 Work comes in five shapes, each with a pipeline suited to its size, from months of multi-topic discovery down to a one-file fix. Mid-conversation capture too: say "log that as an idea" and keep working.
 
 ```
-epic           Discovery → (Research) → Discussion → Specification → Planning → Implementation → Review
-feature        Discovery → (Research) → Discussion → Specification → Planning → Implementation → Review
+epic           Discovery → (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review
+feature        Discovery → (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review
 bugfix         Discovery → Investigation → Specification → Planning → Implementation → Review
 quick-fix      Discovery → Scoping → Implementation → Review
-cross-cutting  Discovery → (Research) → Discussion → Specification
+cross-cutting  Discovery → (Research) → (Experiment) → Discussion → Specification
 ```
 
 Parenthesised phases are optional.
@@ -83,7 +83,7 @@ Implementation runs task by task: an executor writes the code test-first, a revi
 
 ## The knowledge base
 
-Every completed artifact is indexed: research, discussions, investigations, specifications, the discovery record, the product roadmap's session logs. Later phases query it in plain language and get answers with provenance. Dead ends count too; a rejected approach stops the next work unit exploring the same ground. Relevance decays with shipped work rather than wall-clock time, and specifications never decay.
+Every completed artifact is indexed: research, experiment reports, discussions, investigations, specifications, the discovery record, the product roadmap's session logs. Later phases query it in plain language and get answers with provenance. Dead ends count too; a rejected approach stops the next work unit exploring the same ground. Relevance decays with shipped work rather than wall-clock time, and specifications never decay.
 
 ## Starting in an existing codebase
 
@@ -112,7 +112,8 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Graduated autonomy.** Every approval gate accepts auto mode; hand over as much or as little of the loop as you trust, per work unit, reversibly.
 - **Durable by construction.** State transitions are transactions: validated first, refused cleanly, committed atomically. A crash mid-anything leaves files byte-identical.
 - **Full audit trail.** Every phase, decision, and review finding lands in git through engine-owned commits; the manifest is versioned alongside your code.
-- **Self-healing epics.** A background analysis re-reads completed research and discussions to surface emergent topics, gaps between artifacts, and work that should exist but doesn't.
+- **Designed experiments.** A question settled by measuring rather than reading or talking gets its own phase: question, prediction, and decision rule frozen before the first measurement, an append-only report, and a discussion that reads the evidence — the experiment measures, it never decides.
+- **Self-healing epics.** A background analysis re-reads completed research, experiment reports, and discussions to surface emergent topics, gaps between artifacts, and work that should exist but doesn't.
 - **Provenance everywhere.** Every topic records how it landed on the map, every knowledge answer cites its source, every review finding names the concrete failure it prevents and traces to the verifier that raised it.
 - **Nothing falls on the floor.** Off-topic concerns raised mid-session are triaged into the right topic's queue and block that topic's conclusion until drained.
 - **Many sessions, one checkout.** Run as many document phases in parallel as you like — every commit stages only its own topic's files, so nothing gets swept into someone else's record. Writing code is the exception a working tree forces: implementation and review run one at a time, and a second one meets a red stop naming who holds the slot, which you can override.

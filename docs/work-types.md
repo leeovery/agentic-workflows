@@ -8,11 +8,11 @@ You do not have to know which shape your work is. You describe it in your own wo
 
 | Type | What it is | Pipeline |
 |---|---|---|
-| **Epic** | A large initiative that fans out into several distinct concerns; multi-topic, multi-session. | Discovery → per topic: (Research) → Discussion → Specification → Planning → Implementation → Review |
-| **Feature** | One coherent, shippable thing. | Discovery → (Research) → Discussion → Specification → Planning → Implementation → Review |
+| **Epic** | A large initiative that fans out into several distinct concerns; multi-topic, multi-session. | Discovery → per topic: (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
+| **Feature** | One coherent, shippable thing. | Discovery → (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
 | **Bugfix** | Something that used to work is now failing. | Discovery → Investigation → Specification → Planning → Implementation → Review |
 | **Quick-fix** | A small, known, mechanical change. | Discovery → Scoping → Implementation → Review |
-| **Cross-cutting** | A pattern, policy, or convention to define — nothing shippable at the end. | Discovery → (Research) → Discussion → Specification |
+| **Cross-cutting** | A pattern, policy, or convention to define — nothing shippable at the end. | Discovery → (Research) → (Experiment) → Discussion → Specification |
 
 Parenthesised phases are optional. Every shape begins in discovery, because that is where the shape itself is decided — see [why every work type starts in discovery](discovery.md).
 
@@ -22,7 +22,7 @@ The differences are not cosmetic. A **feature** runs the full arc from a decisio
 
 Whatever the shape, its phases group into three stages — the arc every piece of work travels:
 
-- **Discovery** — explore and decide. Settling what the work is, then exploring it: research, discussion, investigation.
+- **Discovery** — explore and decide. Settling what the work is, then exploring it: research, experiments, discussion, investigation.
 - **Definition** — specify and plan. Turning decisions into a standalone specification and a concrete plan; quick-fix scoping lives here too.
 - **Delivery** — build and verify. Implementation, then review.
 
