@@ -393,3 +393,52 @@ PR0 is this document, standalone. The stack:
 5. **PR5 — cross-cutting + docs.** Gap analysis, absorption, cancel
    edges, KB wiring, CLAUDE.md/README, prose cases, `select --diff`
    sweep.
+
+## Implementation record — 2026-08-30
+
+Landed as stack #1060 off main (this design PR stays standalone):
+#1058 engine state → #1059 render surfaces → #1061 skills →
+#1062 integration prose → #1063 cross-cutting + docs. Decisions made
+at implementation time:
+
+- **Series records** are a keyed map (`experiments.{E{n}}: {slug,
+  status[, verdict][, reason]}`, spec-sources precedent), guarded
+  container on the field surface; ids per-topic, order derived from the
+  id. `approve` is its own verb — the briefing freeze is never a step
+  `advance` drifts past.
+- **The wait** is `awaiting_experiments` on the same-topic discussion
+  item. Conclude/abandon release it and set `reconcile_needed:
+  "experiment"` (existing flag never clobbered); a bare `topic cancel`
+  on an awaited experiment refuses naming the waiting discussion,
+  `--cascade` cancels and releases in one transaction. `topic complete`
+  on the experiment phase refuses while any row is unfinished — no wait
+  can outlive the phase.
+- **`flagDownstream` walks past phases the topic never entered**,
+  flagging the nearest downstream item — inserting an optional phase
+  must not sever the research→discussion hop.
+- **The mid-discussion exit's write order**: doc note + discussion
+  commit → straight-through entry invocation carrying the spawning
+  point → the walk's first conceive runs `create` → `await` → one
+  commit. The unrecorded-wait window is one tool call wide and the
+  pre-await crash state is benign (open point, conclusion blocked by
+  the unresolved subtopic).
+- **Research's arm concludes fully first** (completed, indexed,
+  committed), then routes into the experiment entry — the evidence
+  trail is never truncated by the route.
+- **Amendment re-confirm is a conversational ask** (no enumerated
+  options), not an engine surface; a dedicated surface is banked until
+  usage argues for it. Likewise a document-review analogue at series
+  conclusion — deliberately absent ahead of evidence.
+- **KB identity**: both record files share the topic's identity;
+  replacement is keyed per canonical source path, not per identity
+  (indexing a report must not wipe its design's chunks). Confidence
+  medium, investigation's sibling.
+- **Adopted along the way** under the touch-adopts-menus rule:
+  the quick-fix complexity promotion menu (`complexity-gate`) and the
+  feature/cross-cutting first-phase choice (`first-phase-gate`) became
+  engine surfaces; the map header renamed `DISCOVERY MAP`.
+- **Deliberately still two-way**: the requeue pair (no flow produces an
+  experiment requeue; the widened landing judgment aims concerns up
+  front) and the frozen migrations. Prose walks not run pre-merge, per
+  convention; four experiment cases authored and green on the
+  deterministic perimeter.
