@@ -964,7 +964,7 @@ describe('render reroute-candidates', () => {
       candidates: [{ name: 'a', lifecycle: 'in-progress' }],
     });
     assert.throws(() => renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file }),
-      /candidate 1 carries unknown lifecycle "in-progress" \(expected ready_for_discussion\/researching\/discussing\/decided\/fresh\/handled\/cancelled\)/);
+      /candidate 1 carries unknown lifecycle "in-progress" \(expected ready_for_discussion\/evidence_ready\/researching\/experimenting\/discussing\/decided\/fresh\/handled\/cancelled\)/);
   });
 
   it('the discussion recommendation flips the wording and the override example', () => {
