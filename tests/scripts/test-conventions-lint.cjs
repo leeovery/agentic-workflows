@@ -697,8 +697,6 @@ const RATCHET_PINS = {
   'skills/workflow-research-process/references/deep-dive-agent.md': 1,
   'skills/workflow-roadmap/references/session-loop.md': 1,
   'skills/workflow-scoping-process/SKILL.md': 2,
-  'skills/workflow-scoping-process/references/complexity-check.md': 2,
-  'skills/workflow-discovery/references/first-phase-routing.md': 1,
   'skills/workflow-scoping-process/references/gather-context.md': 1,
   'skills/workflow-scoping-process/references/select-format.md': 1,
   'skills/workflow-scoping-process/references/write-specification.md': 1,
