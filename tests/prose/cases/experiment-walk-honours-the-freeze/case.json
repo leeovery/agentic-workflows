@@ -1,0 +1,67 @@
+{
+  "origin": "the walk of one experiment had no prose coverage — the conceive→design→brief→approve→run→conclude mainline, with the design-before-data invariant carried by the prose: the design written and briefed before the freeze, the approval gate rendered before measurement, no measurement recorded before approve, and the conclusion executing the pre-registered rule; the phase then closing through the conclude gate with the engine-refused unfinished-series backstop never tripped",
+  "entry": "workflow-experiment-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-experiment-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-experiment-entry/references/invoke-skill.md",
+    "skills/workflow-experiment-process/SKILL.md",
+    "skills/workflow-experiment-process/references/initialize-experiments.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-experiment-process/references/conduct.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-experiment-process/references/session.md",
+    "skills/workflow-experiment-process/references/experiment-walk.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-experiment-process/references/design-template.md",
+    "skills/workflow-experiment-process/references/report-template.md",
+    "skills/workflow-experiment-process/references/amendment-protocol.md",
+    "skills/workflow-experiment-process/references/topic-completion.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-experiment-process/references/conclude-experiments.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "conduct": "The user is here to settle the duplicate-webhook doubt with a number. The question crystallises fast: what fraction of the sandbox's capture webhooks arrive more than once? They suspect a few percent — they have seen the gateway redeliver after slow acks — and they state the rule before anyone looks: if more than one in a hundred deliveries is a duplicate, idempotent webhook handling goes into v1; at or under that, it is deferred with a note. The instrument is the export at logs/webhooks.log and standard line-counting tools, and they name it when asked. At the briefing they listen, ask one clarifying question about what counts as a duplicate — same event id delivered twice — fold the answer in, and confirm the design as presented. They give the go to measure immediately after the freeze. They accept what the count says without relitigating the rule, agree the reading is exactly what the rule prescribes, and once the verdict is recorded they are done — one experiment answered the question, and the evidence should go to the capture-flow conversation. They are agreeable to required steps, decline optional extras, add no second question, and never call the topic a dead end.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.experiment.pay status",
+      "topic start pay experiment pay",
+      "render experiment-register pay.experiment.pay",
+      "experiment create pay pay",
+      "render experiment-approval-gate pay.experiment.pay --id E1",
+      "experiment approve pay pay E1",
+      "experiment conclude pay pay E1",
+      "topic queue pay experiment pay",
+      "render experiment-conclude-gate pay.experiment.pay",
+      "topic complete pay experiment pay",
+      "knowledge.cjs index .workflows/pay/experiment/pay/E1-",
+      "--kb"
+    ],
+    "calls_in_order": [
+      "experiment create pay pay",
+      "experiment advance pay pay E1",
+      "render experiment-approval-gate pay.experiment.pay --id E1",
+      "experiment approve pay pay E1",
+      "experiment advance pay pay E1",
+      "experiment conclude pay pay E1",
+      "topic complete pay experiment pay"
+    ],
+    "calls_exclude": [
+      "experiment await",
+      "experiment abandon",
+      "--dead-end",
+      "discovery-map handle",
+      "topic reopen",
+      "topic start pay discussion"
+    ]
+  }
+}

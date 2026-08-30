@@ -1,0 +1,74 @@
+{
+  "origin": "the research conclude gate's needs-measuring arm had no prose coverage — the always-rendered e/experiment row, the session's one-line recommendation judged from the file's own finding, the conclusion running complete-and-index exactly as the discussion arm does (the evidence trail unbroken), and the straight-through route into the same-topic experiment entry with context hot instead of the bridge",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/review-agent.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-research-process/references/topic-completion.md",
+    "skills/workflow-research-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-research-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-research-process/references/conclude-research.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user comes back to close out the synonym question and has nothing left to explore — the file already says what they think: behaviour-driven expansion is the leading candidate, and the pair-coverage number is the whole decision. Pressed on whether the discussion could just weigh it now, they are firm the other way: nobody should choose the list's replacement on a hunch about coverage, the logs are sitting right there, and a number that is going to bear the decision deserves to be collected properly — the rule for reading it written down before anyone looks. Asked what happens next, that measurement is what they want to do now, on this same question, before any discussion reads the findings. They are agreeable to required steps — a mandatory review or check gets a yes — and decline optional extras: no deep dive, no further threads. They introduce no new material, never call the topic a dead end, and never ask to keep digging.",
+  "stubs": {
+    "research-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.research.synonym-handling status",
+      "topic queue search-relevance research synonym-handling",
+      "agent dispatch search-relevance research synonym-handling --kind review",
+      "agent ack search-relevance research synonym-handling review-001 --clean",
+      "render research-conclude-gate search-relevance.research.synonym-handling",
+      "topic complete search-relevance research synonym-handling",
+      "research(search-relevance): complete synonym-handling research"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.research.synonym-handling status",
+      "agent dispatch search-relevance research synonym-handling --kind review",
+      "render research-conclude-gate search-relevance.research.synonym-handling",
+      "topic complete search-relevance research synonym-handling"
+    ],
+    "calls_exclude": [
+      "--dead-end",
+      "discovery-map handle",
+      "discovery-map remove",
+      "topic start search-relevance experiment",
+      "topic start search-relevance discussion",
+      "experiment create",
+      "topic cancel",
+      "topic supersede",
+      "--kind deep-dive"
+    ]
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "origin": "the experiment phase's mid-discussion birth route had no prose coverage — a point of the topic's own that only measurement can settle, the engine-rendered exit gate, the documented waiting note, the straight-through hand-off into the experiment entry with context hot, and the walk's first conceive recording the engine-owned evidence wait so the discussion cannot conclude past it",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-experiment-entry/SKILL.md",
+    "skills/workflow-experiment-entry/references/invoke-skill.md",
+    "skills/workflow-experiment-process/SKILL.md",
+    "skills/workflow-experiment-process/references/initialize-experiments.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-experiment-process/references/conduct.md",
+    "skills/workflow-experiment-process/references/session.md",
+    "skills/workflow-experiment-process/references/experiment-walk.md",
+    "skills/workflow-experiment-process/references/design-template.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user comes back to settle webhook timing and goes straight at it: how long should the checkout wait on the capture webhook before falling back to polling? Pressed for what the window rests on, they surface the ground truth — the vendor claims sub-second delivery, the design leans on that claim, and nobody has measured it against the real sandbox. They are clear that no amount of talking settles it: the number has to be collected properly before the window is worth choosing, and they want that measurement run before this point is decided — not parked, not guessed. Offered a way to take it there, they take it without hesitation. Once the measurement's record is opened they are out of time: they confirm the question is worth a run, say the design conversation happens next sitting, and leave. They introduce no other topics, defer nothing, and never ask to conclude the discussion.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "render experiment-exit-gate pay.discussion.pay",
+      "topic start pay experiment pay",
+      "experiment create pay pay",
+      "experiment await pay pay E1",
+      "render experiment-register pay.experiment.pay"
+    ],
+    "calls_in_order": [
+      "render experiment-exit-gate pay.discussion.pay",
+      "waiting on experiment",
+      "experiment create pay pay",
+      "experiment await pay pay E1",
+      "evidence wait recorded"
+    ],
+    "calls_exclude": [
+      "experiment advance",
+      "experiment approve",
+      "experiment abandon",
+      "topic complete pay discussion pay",
+      "topic complete pay experiment pay",
+      "render conclude-gate pay.discussion.pay"
+    ]
+  }
+}
