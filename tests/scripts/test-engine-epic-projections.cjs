@@ -308,8 +308,8 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
       [
         'No work started yet.',
         '',
-        '  ⚑ Run discovery to shape the topic map — research and',
-        '    discussion start from there.',
+        '  ⚑ Run discovery to shape the topic map — research, experiments,',
+        '    and discussion start from there.',
         '',
       ].join('\n')
     );
