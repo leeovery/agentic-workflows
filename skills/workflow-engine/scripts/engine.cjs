@@ -237,7 +237,7 @@ Commands:
   render deep-dive-offer  <wu.research.topic> --file <payload.json>
   render in-flight-agents-gate <wu.research.topic> --count N
   render reroute-candidates <wu.phase.topic> --file <payload.json>
-  render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
+  render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion|experiment]
   render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>
   render candidate-gate   <wu> --file <payload.json>
   render topic-collision-gate

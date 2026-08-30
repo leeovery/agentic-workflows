@@ -2004,22 +2004,25 @@ function inFlightAgentsGate(cwd, { dotpath, count }) {
  */
 function offTopicOffer(cwd, { dotpath, file, variant }) {
   if (!file) throw new Error('render off-topic-offer: --file <payload.json> is required');
-  if (variant !== undefined && variant !== 'discussion') {
-    throw new Error('render off-topic-offer: --variant takes "discussion" (omit it for the research shape)');
+  if (variant !== undefined && variant !== 'discussion' && variant !== 'experiment') {
+    throw new Error('render off-topic-offer: --variant takes "discussion" or "experiment" (omit it for the research shape)');
   }
   const { manifest } = resolveAddress(cwd, dotpath, 'off-topic-offer');
   const p = readJsonPayload(cwd, file, 'off-topic-offer');
   if (!isFilled(p.concern)) throw new Error('render off-topic-offer: "concern" must be a non-empty string');
   const discussion = variant === 'discussion';
   const options = [cmdOption('l', 'log', 'Capture it as an idea in the inbox for later')];
-  // The roadmap park is discussion's valve — research has no roadmap route.
+  // The roadmap park is discussion's valve — research and experiment have no roadmap route.
   if (discussion) {
     options.push(cmdOption('r', 'roadmap', 'Park it on the product roadmap with a horizon'));
   }
   if (manifest.work_type === 'feature') {
     options.push(cmdOption('p', 'pivot', 'Convert this work to an epic so it can hold the concern as its own topic'));
   }
-  options.push(cmdOption('i', 'ignore', discussion ? 'Note it in the Summary and move on' : 'Note it in the research file and move on'));
+  const ignoreLabel = discussion ? 'Note it in the Summary and move on'
+    : variant === 'experiment' ? "Note it on the live experiment's record and move on"
+      : 'Note it in the research file and move on';
+  options.push(cmdOption('i', 'ignore', ignoreLabel));
   return section(
     'MENU: off-topic offer',
     "emit verbatim as markdown, then STOP for the user's response",

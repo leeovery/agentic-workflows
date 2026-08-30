@@ -3873,12 +3873,32 @@ describe('render off-topic-offer', () => {
     ].join('\n'));
   });
 
+  it('the experiment variant notes the concern on the live record, no roadmap row', () => {
+    writeManifest(dir, 'pay', {
+      work_type: 'feature',
+      phases: { experiment: { items: { pay: { status: 'in-progress' } } } },
+    });
+    const file = writePayload(dir, 'o.json', { concern: 'Gift cards' });
+    const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.experiment.pay', file, variant: 'experiment' });
+    assert.strictEqual(out, [
+      "=== MENU: off-topic offer (emit verbatim as markdown, then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      "**Gift cards** is beyond this topic's scope.",
+      '',
+      '**`l/log`**    → Capture it as an idea in the inbox for later',
+      '**`p/pivot`**  → Convert this work to an epic so it can hold the',
+      `${NB(11)}concern as its own topic`,
+      "**`i/ignore`** → Note it on the live experiment's record and move on",
+      '',
+    ].join('\n'));
+  });
+
   it('refuses an unknown variant', () => {
     feature();
     const file = writePayload(dir, 'o.json', { concern: 'X' });
     assert.throws(
       () => renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file, variant: 'nope' }),
-      /--variant takes "discussion"/,
+      /--variant takes "discussion" or "experiment"/,
     );
   });
 });
