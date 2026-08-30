@@ -6,7 +6,7 @@
 
 **Parameters** (provided by caller via Load directive):
 
-- `closure` — which closure applies: `discussion` (the findings feed a discussion) or `dead-end` (the topic is closed as a dead end)
+- `closure` — which closure applies: `discussion` (the findings feed a discussion), `experiment` (a finding needs measuring — the session routes into the same-topic experiments), or `dead-end` (the topic is closed as a dead end)
 
 First check the topic's triage queue:
 
@@ -55,7 +55,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
    → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `research`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-5. Closure signpost:
+5. Closure signpost and handoff:
 
 **If `closure` is `discussion`:**
 
@@ -65,6 +65,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 > Research complete. The discussion phase will use these findings to make decisions about architecture and approach.
 ```
 
+Invoke `/workflow-bridge {work_unit} research`.
+
 **If `closure` is `dead-end`:**
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -73,4 +75,16 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 > Research complete — the topic is closed as a dead end, so no discussion follows. It stays on the map and in the knowledge base as record and seed material, and reopening it from the map makes it actionable again.
 ```
 
-6. Invoke `/workflow-bridge {work_unit} research`.
+Invoke `/workflow-bridge {work_unit} research`.
+
+**If `closure` is `experiment`:**
+
+The straight-through route — context is hot, so no bridge and no context clear: the experiment entry takes over directly, and its processing skill reads this completed research at initialisation.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Research complete — routing into experiments. What the research surfaced gets a designed, measured run before the discussion reads it.
+```
+
+Invoke `/workflow-experiment-entry {work_type} {work_unit} {topic}`.

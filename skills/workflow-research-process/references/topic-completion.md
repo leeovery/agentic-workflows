@@ -34,6 +34,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 Judge the dead-end question before rendering: pass `--dead-end` **only** when `work_type` is `epic` and the session's own conclusion is that this topic gives the product nothing to carry forward under its own name — the thread didn't pan out, or its useful facts serve only other topics, where provenance and the knowledge base already deliver them. In the common case — the research surfaced material this topic's discussion will ratify — the flag is omitted and the row never appears.
 
+The gate's `e/experiment` row always renders — the "needs measuring" arm. Judge it too: did the research surface a hypothesis that needs measuring before it is discussion-worthy — a decision-bearing claim only a controlled run can settle? When it did, recommend the route in one line before the gate; when it didn't, render without comment.
+
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render research-conclude-gate {work_unit}.research.{topic} [--dead-end]
 ```
@@ -45,6 +47,12 @@ Emit the call's MENU section verbatim per its marker.
 #### If `conclude`
 
 → Load **[conclude-research.md](conclude-research.md)** with closure = `discussion`.
+
+#### If `experiment`
+
+The research concludes normally — completed, indexed, committed, the evidence trail unbroken — then routes straight into the same-topic experiments with context hot.
+
+→ Load **[conclude-research.md](conclude-research.md)** with closure = `experiment`.
 
 #### If `dead-end`
 
