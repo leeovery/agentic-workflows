@@ -260,10 +260,10 @@ function lastCompletedPhase(manifest, pipeline) {
 
 /**
  * The sorted set of existing completed input files for one analysis kind —
- * completed research plus completed discussion files for `gap-analysis`. The
- * one collection both cache sides use: the read (computeAnalysisCacheStatus)
- * and the write (engine cache stamp) checksum the same list, so they can never
- * drift. Returns absolute paths, sorted.
+ * completed research, completed experiment reports, and completed discussion
+ * files for `gap-analysis`. The one collection both cache sides use: the read
+ * (computeAnalysisCacheStatus) and the write (engine cache stamp) checksum
+ * the same list, so they can never drift. Returns absolute paths, sorted.
  */
 function collectAnalysisInputs(manifest, workflowsDir, kind) {
   if (!manifest || !manifest.name) return [];
@@ -272,9 +272,19 @@ function collectAnalysisInputs(manifest, workflowsDir, kind) {
     .filter(it => it.status === 'completed')
     .map(it => path.join(wuDir, phase, `${it.name}.md`))
     .filter(p => fileExists(p));
+  // A completed experiment topic contributes its reports — the measured
+  // evidence with the rule's verdict — one per series record where the file
+  // exists (a record abandoned before running may have none). Designs stay
+  // out: the report carries the question and the answer.
+  const completedExperimentReports = () => phaseItems(manifest, 'experiment')
+    .filter(it => it.status === 'completed')
+    .flatMap(it => Object.entries(it.experiments && typeof it.experiments === 'object' ? it.experiments : {})
+      .filter(([, r]) => r && typeof r === 'object' && typeof r.slug === 'string' && r.slug !== '')
+      .map(([id, r]) => path.join(wuDir, 'experiment', it.name, `${id}-${r.slug}`, 'report.md')))
+    .filter(p => fileExists(p));
 
   if (kind === 'gap-analysis') {
-    return [...completedFiles('research'), ...completedFiles('discussion')].sort();
+    return [...completedFiles('research'), ...completedExperimentReports(), ...completedFiles('discussion')].sort();
   }
   return [];
 }
@@ -287,8 +297,8 @@ const ANALYSIS_KINDS = {
   'gap-analysis': {
     cacheOf: (manifest) => ((manifest.phases || {}).discovery || {}).gap_analysis_cache,
     filesField: 'input_files',
-    reasonNoInputs: 'no completed research or discussion files',
-    reasonStale: 'completed research/discussion has changed since gap analysis was generated',
+    reasonNoInputs: 'no completed research, experiment, or discussion files',
+    reasonStale: 'completed research/experiment/discussion has changed since gap analysis was generated',
   },
 };
 

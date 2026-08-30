@@ -42,7 +42,7 @@ const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 const CODE_PHASES = ['implementation', 'review'];
 // The corpora the epic-wide analyses read. A live session in any other phase
 // is no reason to defer an analysis that never looks at its material.
-const SOURCE_PHASES = ['research', 'discussion'];
+const SOURCE_PHASES = ['research', 'experiment', 'discussion'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
@@ -224,9 +224,9 @@ function scanPresence(cwd, workUnit) {
     work_unit: workUnit,
     stale_after_seconds: STALE_AFTER_SECONDS,
     live: sessions.filter((r) => r.live).length,
-    // The analyses read research and discussion; `live_sources` is the count
-    // that decides a deferral, so a live planning or spec session never holds
-    // one up.
+    // The analyses read research, experiment reports, and discussion;
+    // `live_sources` is the count that decides a deferral, so a live planning
+    // or spec session never holds one up.
     live_sources: sessions.filter((r) => r.live && SOURCE_PHASES.includes(r.phase)).length,
     held: sessions.filter((r) => r.held).length,
     sessions,

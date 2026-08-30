@@ -1600,8 +1600,9 @@ function runCommit(argv) {
       }
       if (discovery) {
         // --discovery: the discovery session's cadence commit. Discovery runs
-        // beside live research and discussion sessions, so it slices its own
-        // paths — session logs, briefs, the manifest the map lives in.
+        // beside live research, experiment, and discussion sessions, so it
+        // slices its own paths — session logs, briefs, the manifest the map
+        // lives in.
         const specs = stageableSpecs(cwd, discoveryScope(wu));
         const committed = specs.length === 0 ? null : commitPathspecScoped(cwd, specs, message);
         if (committed === null) respond({ committed: null, note: 'nothing to commit' });

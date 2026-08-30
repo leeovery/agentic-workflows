@@ -249,7 +249,7 @@ Emit the TITLE section (markdown), then the DISPLAY section, then the MENU secti
 
 #### If user chose a numbered topic
 
-Store the selected entry's `phase` and `topic`. Run the reactivate transaction — one command restores the stashed status and execution order (a build-order number returns only while no live topic holds it — otherwise the next sequencing pass seats the topic), removes `previous_status`, re-indexes the artifact into the knowledge base when the restored status is `completed` in an indexed phase (research / discussion / investigation / specification), and commits:
+Store the selected entry's `phase` and `topic`. Run the reactivate transaction — one command restores the stashed status and execution order (a build-order number returns only while no live topic holds it — otherwise the next sequencing pass seats the topic), removes `previous_status`, re-indexes the artifact into the knowledge base when the restored status is `completed` in an indexed phase (research / experiment / discussion / investigation / specification), and commits:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {phase} {topic}

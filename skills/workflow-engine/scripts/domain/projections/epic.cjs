@@ -332,7 +332,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
   if (!hasMap && phaseNames.length === 0) {
     return ''
       + 'No work started yet.\n\n'
-      + flaggedCallout('Run discovery to shape the topic map — research and discussion start from there.')
+      + flaggedCallout('Run discovery to shape the topic map — research, experiments, and discussion start from there.')
       + '\n';
   }
 

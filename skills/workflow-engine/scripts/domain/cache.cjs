@@ -30,7 +30,7 @@ const KIND_CONFIG = {
     phase: 'discovery',
     field: 'gap_analysis_cache',
     filesField: 'input_files',
-    emptyError: 'nothing to stamp: no completed research or discussion files',
+    emptyError: 'nothing to stamp: no completed research, experiment, or discussion files',
   },
 };
 
@@ -79,7 +79,13 @@ function stampAnalysisCache(cwd, workUnit, kind) {
 
     const checksum = /** @type {string} */ (filesChecksum(inputs));
     const generated = new Date().toISOString();
-    const names = inputs.map((p) => path.basename(p));
+    // Flat-phase inputs record their basename; an experiment report's
+    // basename is always `report.md`, so it records its path relative to the
+    // phase directory (`{topic}/{Eid}-{slug}/report.md`) to stay distinct.
+    const names = inputs.map((p) => {
+      const rel = path.relative(path.join(cwd, '.workflows', workUnit), p).split(path.sep).join('/');
+      return rel.startsWith('experiment/') ? rel.slice('experiment/'.length) : path.basename(p);
+    });
 
     phaseObject(manifest, cfg.phase)[cfg.field] = { checksum, generated, [cfg.filesField]: names };
 

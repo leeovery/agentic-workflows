@@ -20,12 +20,13 @@ The caller passes:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discovery items missing summary or description. Drafting them from the existing research and discussion files for review.
+> Discovery items missing summary or description. Drafting them from the existing research, experiment, and discussion files for review.
 ```
 
 For each item in `items_to_recover`:
 
 - If `routing` is `research`: read `.workflows/{work_unit}/research/{item.name}.md`
+- If `routing` is `experiment`: read each record's `design.md` and `report.md` under `.workflows/{work_unit}/experiment/{item.name}/`
 - If `routing` is `discussion`: read `.workflows/{work_unit}/discussion/{item.name}.md`
 - If the file is missing or empty (rare — the topic exists in the manifest but the file is gone), record `derived_summary: null` and `derived_description: null` and a note `(source file missing)` for that item
 

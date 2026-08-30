@@ -22,7 +22,7 @@ Hold the output as **the most recent discovery output** — sections B–E read 
 
 ## B. Topic Discovery
 
-A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the most recent discovery output, then load **[topic-discovery-dispatch.md](../../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
+A research, experiment, or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the most recent discovery output, then load **[topic-discovery-dispatch.md](../../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
 On return, `new_arrivals` is populated — section F reads it to render the callout above the discovery map.
 

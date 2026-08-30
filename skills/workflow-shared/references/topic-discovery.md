@@ -8,7 +8,7 @@ Drives cache-based dispatch of `discovery-gap-analysis` against an epic. When th
 
 The gate runs before the dashboard — it is the boot-time review surface for both callers. Hosting the orchestration here covers both boot callers (`workflow-continue-epic` Step 6 and `workflow-bridge` section B) via the shared dispatch.
 
-The analysis self-gates on a precondition (at least one completed research OR discussion item). When the precondition fails it returns without staging, gating, or stamping — dispatching on `stale` is safe even when no qualifying inputs exist yet.
+The analysis self-gates on a precondition (at least one completed research, experiment, OR discussion item). When the precondition fails it returns without staging, gating, or stamping — dispatching on `stale` is safe even when no qualifying inputs exist yet.
 
 Skipping every candidate (decline-all) still stamps the cache, so the analysis won't re-fire until its inputs change.
 
@@ -65,7 +65,7 @@ This tracker captures topic names **approved and written** during this run — t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading all completed research and discussions together for what fell between them — themes no discussion picked up, deferred threads, and decisions that interact where no topic covers the join. Approved candidates join the map as new topics.
+> Reading all completed research, experiment reports, and discussions together for what fell between them — themes no discussion picked up, evidence nothing consumed, deferred threads, and decisions that interact where no topic covers the join. Approved candidates join the map as new topics.
 ```
 
 → Load **[discovery-gap-analysis.md](discovery-gap-analysis.md)** with work_unit = `{work_unit}`.

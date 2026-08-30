@@ -118,6 +118,36 @@ describe('engine cache stamp: gap-analysis', () => {
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'stale');
   });
 
+  it('completed experiment reports join the inputs — one per record with a report, named past the basename', () => {
+    const m = readManifest(dir);
+    m.phases.experiment = {
+      items: {
+        'net-hop': {
+          status: 'completed',
+          experiments: {
+            E1: { slug: 'p95-latency', status: 'concluded', verdict: 'under budget; adopt' },
+            E2: { slug: 'cold-start', status: 'abandoned', reason: 'swamped by noise' }, // no report on disk
+          },
+        },
+        'in-flight-exp': { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } }, // not completed → excluded
+      },
+    };
+    fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2));
+    createFile(dir, '.workflows/payments/experiment/net-hop/E1-p95-latency/report.md', '# Report — E1\n');
+    createFile(dir, '.workflows/payments/experiment/net-hop/E1-p95-latency/design.md', '# Design — E1 (never an input)\n');
+    createFile(dir, '.workflows/payments/experiment/in-flight-exp/E1-x/report.md', '# not an input\n');
+
+    const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
+    assert.strictEqual(res.files, 4);
+    assert.deepStrictEqual(readManifest(dir).phases.discovery.gap_analysis_cache.input_files,
+      ['auth-flow.md', 'net-hop/E1-p95-latency/report.md', 'kitchen-hardware.md', 'menu-admin.md']);
+    assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
+
+    // A changed report makes the stamp stale, like any other input.
+    createFile(dir, '.workflows/payments/experiment/net-hop/E1-p95-latency/report.md', '# Report — E1 revised\n');
+    assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'stale');
+  });
+
   it('stamps via the library entry too, sharing the read side collection', () => {
     const res = stampAnalysisCache(dir, 'payments', 'gap-analysis');
     const inputs = collectAnalysisInputs(readManifest(dir), path.join(dir, '.workflows'), 'gap-analysis');
@@ -162,7 +192,7 @@ describe('engine cache stamp: validation', () => {
     const before = fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8');
     assert.match(
       engineFails(dir, ['cache', 'stamp', 'payments', 'gap-analysis']).error,
-      /nothing to stamp: no completed research or discussion files/);
+      /nothing to stamp: no completed research, experiment, or discussion files/);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'), before);
   });
 });
