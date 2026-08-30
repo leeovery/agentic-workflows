@@ -1,6 +1,6 @@
 # Ensure Discovery Item
 
-*Shared reference. Loaded by `workflow-research-entry`, `workflow-discussion-entry`, and any flow that needs to auto-create a direct-entry discovery item.*
+*Shared reference. Loaded by `workflow-research-entry`, `workflow-experiment-entry`, `workflow-discussion-entry`, and any flow that needs to auto-create a direct-entry discovery item.*
 
 ---
 
@@ -15,7 +15,7 @@ The caller provides these via context before loading:
 - `work_type` — the work unit's type. The reference no-ops for any value other than `epic`.
 - `work_unit` — the epic's work unit name. Always present.
 - `topic` — the kebab-case topic name. Always present.
-- `routing` — the literal `research` or `discussion`. Set by the caller based on which entry verb the user picked.
+- `routing` — the literal `research`, `experiment`, or `discussion`. Set by the caller based on which entry verb the user picked.
 - `summary` — optional one-line summary. Written only on creation, only when provided and non-empty.
 - `description` — optional paragraph or two of richer context. Written only on creation, only when provided and non-empty.
 

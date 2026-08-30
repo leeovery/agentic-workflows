@@ -1,0 +1,47 @@
+# Validate Phase
+
+*Reference for **[workflow-experiment-entry](../SKILL.md)***
+
+---
+
+Branch on the `phase_status` the caller read in Step 2 — no re-read.
+
+#### If status is `triaged`
+
+Rerouted concerns are parked on this topic, but no session has ever run — this is a first start, not a resume. No reopen, no phase note, no reconcile advisory; leave `source` unset.
+
+→ Return to caller.
+
+#### If status is `completed`
+
+Reopen it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} experiment {topic}
+```
+
+Render and emit the section verbatim:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Reopening
+```
+
+Set source="continue".
+
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `experiment`.
+
+→ Return to caller.
+
+#### If status is `in-progress`
+
+Render and emit the section verbatim:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Resuming
+```
+
+Set source="continue".
+
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `experiment`.
+
+→ Return to caller.
