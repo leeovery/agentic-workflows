@@ -1,0 +1,52 @@
+{
+  "origin": "resuming an in-progress implementation re-rendered both setup confirm gates, re-asking a question the topic had already answered when it stored its values; a populated topic value now returns silently. This resumes past both setup steps and holds them to silence — no gate, no render, no default consulted",
+  "entry": "workflow-implementation-entry",
+  "conduct": "Has nothing to add and answers any confirmation with yes.",
+  "files": [
+    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-implementation-entry/references/validate-phase.md",
+    "skills/workflow-implementation-entry/references/validate-dependencies.md",
+    "skills/workflow-shared/references/code-session-gate.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-implementation-entry/references/invoke-skill.md",
+    "skills/workflow-implementation-process/SKILL.md",
+    "skills/workflow-implementation-process/references/environment-setup.md",
+    "skills/workflow-implementation-process/references/load-plan-adapter.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/updating.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
+    "skills/workflow-implementation-process/references/project-skills-discovery.md",
+    "skills/workflow-implementation-process/references/linter-setup.md"
+  ],
+  "invariants": {
+    "calls_include": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "manifest get pay.implementation.pay project_skills",
+      "manifest get pay.implementation.pay linters"
+    ],
+    "calls_exclude": [
+      "render project-skills",
+      "render linters",
+      "project.defaults.project_skills",
+      "project.defaults.linters",
+      "manifest set pay.implementation.pay project_skills",
+      "manifest set pay.implementation.pay linters",
+      "impl(pay): start implementation",
+      "task start",
+      "knowledge.cjs query"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.implementation.pay",
+      "task init pay pay",
+      "manifest get pay.implementation.pay project_skills",
+      "manifest get pay.implementation.pay linters"
+    ]
+  }
+}
