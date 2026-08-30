@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
-const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { knowledge, INDEXED_ARTIFACTS, experimentArtifactPaths } = require('./kb.cjs');
 const { computeTopicLifecycle, awaitedExperiments } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 
@@ -802,6 +802,9 @@ function completeTopic(cwd, workUnit, phase, topic) {
   if (artifact) {
     knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
   }
+  // Experiment carries no row above on purpose: the series is multi-file, and
+  // the conclude prose indexes each record's design and report itself
+  // (conclude-experiments.md), handling a failure in the session.
 
   return { topic, phase, status: 'completed', warnings };
 }
@@ -1159,6 +1162,13 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   const artifact = INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)];
   if (restored === 'completed' && artifact) {
     knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
+  }
+  if (restored === 'completed' && phase === 'experiment') {
+    // The cancel removed the topic's chunks; the series is multi-file, so the
+    // restore indexes each record's design and report from the register.
+    for (const rel of experimentArtifactPaths(cwd, loadWorkUnitManifest(cwd, workUnit), workUnit, topic)) {
+      knowledge(cwd, ['index', rel], `knowledge index (${rel})`, warnings);
+    }
   }
 
   const outcome = commitTailWithKb(cwd, `.workflows/${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${phase})`, warnings);

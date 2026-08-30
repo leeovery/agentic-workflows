@@ -20,7 +20,7 @@ const setupForms = require('./setup-forms');
 // Constants
 // ---------------------------------------------------------------------------
 
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery', 'baseline', 'roadmap'];
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'experiment', 'imports', 'seeds', 'analysis', 'discovery', 'baseline', 'roadmap'];
 
 // Baseline docs are project-level (`.workflows/.baseline/{topic}.md`) — they
 // belong to no work unit, so their chunks carry this reserved pseudo-identity
@@ -36,8 +36,16 @@ const ROADMAP_IDENTITY = 'roadmap';
 
 // Phases whose artifact is a flat `{phase}/{basename}.md` file — one identical
 // derivation (topic = basename, no subdirectories). specification (nested under
-// a per-topic dir) and discovery (nested under sessions/) derive differently.
+// a per-topic dir), experiment (a per-topic series of record directories), and
+// discovery (nested under sessions/) derive differently.
 const FLAT_PHASES = new Set(['research', 'discussion', 'investigation', 'imports', 'seeds']);
+
+// One experiment record's indexable files inside its topic directory:
+// `{Eid}-{slug}/design.md` or `{Eid}-{slug}/report.md`. Ids and slugs follow
+// the engine's rules (`domain/experiment.cjs`); anything else under the topic
+// — data/ extracts, harness scripts — is run material, never indexed on its
+// own (the report cites it).
+const EXPERIMENT_FILE = /^(E[1-9][0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*)\/(design|report)\.md$/;
 
 // Whitelist of indexable filenames in .workflows/{wu}/.state/, mapping each
 // on-disk basename to its KB topic identity. The .state/ directory also holds
@@ -410,7 +418,7 @@ function deriveIdentity(filePath) {
   }
 
   // Match .workflows/{work_unit}/{phase}/{rest}
-  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|imports|seeds|discovery)\/(.+)$/.exec(norm);
+  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|experiment|imports|seeds|discovery)\/(.+)$/.exec(norm);
   if (!match) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
@@ -458,6 +466,20 @@ function deriveIdentity(filePath) {
       );
     }
     topic = flatMatch[1];
+  } else if (phase === 'experiment') {
+    // .workflows/{wu}/experiment/{topic}/{Eid}-{slug}/(design|report).md — a
+    // topic holds a series of experiments, and every design and report in the
+    // series shares the topic's identity. The record directory stays in the
+    // chunk's source path, which is what keeps the files distinct in the
+    // store (see indexSingleFile's per-file replacement).
+    const expMatch = /^([^/]+)\/(.+)$/.exec(rest);
+    if (!expMatch || !EXPERIMENT_FILE.test(expMatch[2])) {
+      throw new UserError(
+        `Unexpected experiment path structure: ${rest}\n` +
+          'Expected: .workflows/{work_unit}/experiment/{topic}/{Eid}-{slug}/design.md or report.md'
+      );
+    }
+    topic = expMatch[1];
   } else if (phase === 'discovery') {
     // .workflows/{wu}/discovery/sessions/session-NNN.md — one file per session,
     // nested under sessions/. Topic is the session basename so each session is
@@ -478,6 +500,23 @@ function deriveIdentity(filePath) {
   rejectDottedSegment('topic', topic);
 
   return { workUnit, phase, topic };
+}
+
+/**
+ * The canonical `.workflows/…`-anchored form of an artifact path — the one
+ * form experiment chunks store as `source_file`, whatever path shape the
+ * caller passed (absolute, subdir-relative). Experiment identities span
+ * several files, so their replace-on-reindex is keyed by this string; a
+ * caller-verbatim value would duplicate chunks whenever two calls spelled
+ * the same file differently.
+ */
+function canonicalArtifactPath(filePath) {
+  const norm = filePath.replace(/\\/g, '/');
+  const at = norm.indexOf('.workflows/');
+  if (at < 0) {
+    throw new UserError(`Cannot derive canonical path from: ${filePath}`);
+  }
+  return norm.slice(at);
 }
 
 /**
@@ -785,17 +824,37 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
   // (set below) stays wall-clock; that one genuinely means "store last built".
   const docTimestamp = fs.statSync(absSource).mtimeMs;
   const confidence = chunkConfig.confidence || 'medium';
+
+  // An experiment identity spans several files (each record's design and
+  // report), so its docs key on the file, not the identity alone: the id
+  // carries the record dir and doc name (ids must be unique store-wide), the
+  // stored source_file is the canonical `.workflows/…` form, and replacement
+  // removes this file's chunks only — never the sibling files'.
+  let idPrefix = `${identity.workUnit}-${identity.phase}-${identity.topic}`;
+  let storedSource = sourceFile;
+  let replaceScope = null; // null → whole identity (removeByIdentity)
+  if (identity.phase === 'experiment') {
+    const canonical = canonicalArtifactPath(sourceFile);
+    const expMatch = /\/experiment\/[^/]+\/(E[1-9][0-9]*-[^/]+)\/(design|report)\.md$/.exec(canonical);
+    if (!expMatch) {
+      throw new UserError(`Cannot derive experiment record from path: ${sourceFile}`);
+    }
+    idPrefix += `-${expMatch[1]}-${expMatch[2]}`;
+    storedSource = canonical;
+    replaceScope = canonical;
+  }
+
   const docs = chunks.map((chunk, idx) => {
     const seq = String(idx + 1).padStart(3, '0');
     const doc = {
-      id: `${identity.workUnit}-${identity.phase}-${identity.topic}-${seq}`,
+      id: `${idPrefix}-${seq}`,
       content: chunk.content,
       work_unit: identity.workUnit,
       work_type: workType,
       phase: identity.phase,
       topic: identity.topic,
       confidence,
-      source_file: sourceFile,
+      source_file: storedSource,
       timestamp: docTimestamp,
     };
     if (embeddings) {
@@ -829,11 +888,19 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
       }
     }
 
-    await store.removeByIdentity(db, {
-      work_unit: identity.workUnit,
-      phase: identity.phase,
-      topic: identity.topic,
-    });
+    if (replaceScope) {
+      await store.removeBySourceFile(db, {
+        work_unit: identity.workUnit,
+        phase: identity.phase,
+        topic: identity.topic,
+      }, replaceScope);
+    } else {
+      await store.removeByIdentity(db, {
+        work_unit: identity.workUnit,
+        phase: identity.phase,
+        topic: identity.topic,
+      });
+    }
 
     for (const doc of docs) {
       await store.insertDocument(db, doc);
@@ -915,9 +982,13 @@ function listWorkUnits(context) {
 }
 
 /**
- * Check if chunks exist for the given identity triple.
+ * Check if chunks exist for the given identity triple. Experiment identities
+ * span several files, so their check narrows to one file: pass `sourceFile`
+ * (the canonical `.workflows/…` path the chunks store) and only that file's
+ * chunks count — without it, the topic's first indexed file would mark every
+ * sibling as already indexed.
  */
-async function isIndexed(db, workUnit, phase, topic) {
+async function isIndexed(db, workUnit, phase, topic, sourceFile) {
   const res = await store.searchFulltext(db, {
     term: '',
     where: {
@@ -925,9 +996,10 @@ async function isIndexed(db, workUnit, phase, topic) {
       phase: { eq: phase },
       topic: { eq: topic },
     },
-    limit: 1,
+    limit: sourceFile ? 1000 : 1,
   });
-  return res.length > 0;
+  if (!sourceFile) return res.length > 0;
+  return res.some((r) => r.source_file === sourceFile);
 }
 
 // Per-topic artifact path shapes, keyed by phase. The shapes are static, so a
@@ -935,8 +1007,9 @@ async function isIndexed(db, workUnit, phase, topic) {
 // engine round-trip. This MIRRORS the INDEXED_ARTIFACTS table in the engine's
 // domain/kb.cjs (the counterpart used by reindexWorkUnit) — the two must stay
 // in sync; a phase added there needs a row here and a `resolve` branch there.
-// Only these four phases are per-topic manifest items; imports/seeds/analysis/
-// discovery are file-based and discovered by their own traversals below.
+// Experiment is per-topic too but multi-file (the series), so it has its own
+// traversal below, mirroring kb.cjs's experimentArtifactPaths; imports/seeds/
+// analysis/discovery are file-based and discovered by their own traversals.
 const ARTIFACT_PATHS = {
   research: (wu, topic) => `.workflows/${wu}/research/${topic}.md`,
   discussion: (wu, topic) => `.workflows/${wu}/discussion/${topic}.md`,
@@ -1075,6 +1148,32 @@ function discoverArtifacts(workUnits) {
       }
     }
 
+    // Experiment series — per-topic like the phases above, but each completed
+    // topic yields several files: every record's design.md and report.md that
+    // exists on disk (a record abandoned before running may have no report).
+    // Records come from the manifest's series (`experiments.{Eid}.slug`), the
+    // same register the engine writes; a malformed record is skipped, matching
+    // deriveIdentity's refusal to index it.
+    {
+      const expData = wu.phases && wu.phases.experiment;
+      const expItems = expData && expData.items ? expData.items : {};
+      for (const [topicName, topicData] of Object.entries(expItems)) {
+        if (!topicData || topicData.status !== 'completed') continue;
+        const records = topicData.experiments && typeof topicData.experiments === 'object'
+          ? topicData.experiments : {};
+        for (const [id, record] of Object.entries(records)) {
+          const slug = record && typeof record === 'object' ? record.slug : null;
+          const dir = `${id}-${slug}`;
+          for (const doc of ['design', 'report']) {
+            if (!EXPERIMENT_FILE.test(`${dir}/${doc}.md`)) continue;
+            const filePath = path.posix.join('.workflows', wuName, 'experiment', topicName, dir, `${doc}.md`);
+            if (!fs.existsSync(resolveArtifactPath(filePath))) continue;
+            items.push({ file: filePath, workUnit: wuName, phase: 'experiment', topic: topicName });
+          }
+        }
+      }
+    }
+
     // Imports (reference material) and seeds (the work's origin: promoted inbox
     // items) — top-level arrays, no per-item status, same flat-file shape and
     // dedupe rule. Kept as distinct phases so a seed stays deterministically
@@ -1154,9 +1253,11 @@ async function cmdIndexBulk(options, cfg, provider) {
   let skipped = 0;
 
   for (const item of artifacts) {
-    // Check if already indexed.
+    // Check if already indexed. Experiment identities span several files, so
+    // their check is per-file (discoverArtifacts yields one entry per file).
     if (db) {
-      const indexed = await isIndexed(db, item.workUnit, item.phase, item.topic);
+      const indexed = await isIndexed(db, item.workUnit, item.phase, item.topic,
+        item.phase === 'experiment' ? item.file : undefined);
       if (indexed) {
         skipped++;
         continue;
@@ -1174,10 +1275,11 @@ async function cmdIndexBulk(options, cfg, provider) {
       totalNew++;
       totalChunks += count;
       // No db reload here. discoverArtifacts yields one entry per identity
-      // (imports/seeds deduped, phase topics distinct), so indexing this file
-      // can never flip a LATER item's isIndexed answer — every isIndexed check
-      // is against a different identity. Reloading the store each file was one
-      // full load per file that never changed an outcome.
+      // (imports/seeds deduped, phase topics distinct) — except experiment,
+      // where entries share an identity but check per-file — so indexing this
+      // file can never flip a LATER item's isIndexed answer. Reloading the
+      // store each file was one full load per file that never changed an
+      // outcome.
     } catch (err) {
       // All retries exhausted — add to pending queue. Write the stack to
       // stderr so debugging does not depend on users capturing it later.
@@ -2094,7 +2196,8 @@ async function cmdStatus() {
     const artifacts = discoverArtifacts(workUnits);
     const unindexed = [];
     for (const a of artifacts) {
-      const indexed = await isIndexed(db, a.workUnit, a.phase, a.topic);
+      const indexed = await isIndexed(db, a.workUnit, a.phase, a.topic,
+        a.phase === 'experiment' ? a.file : undefined);
       if (!indexed) unindexed.push(a.file);
     }
     if (unindexed.length > 0) {

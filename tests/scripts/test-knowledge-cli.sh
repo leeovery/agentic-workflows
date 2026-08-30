@@ -3294,6 +3294,144 @@ assert_eq "bulk index skips session state" "true" \
   "$(echo "$output" | grep -q 'dossier-core' && echo false || echo true)"
 teardown_project
 
+# ============================================================================
+# EXPERIMENT SERIES TESTS
+# ============================================================================
+
+echo "=== Experiment Series Tests ==="
+
+# Fixture: an experiment record's design and report under a topic dir.
+create_experiment_files() {
+  local wu="$1" topic="$2" record="$3"
+  mkdir -p "$TEST_ROOT/.workflows/$wu/experiment/$topic/$record"
+  cat > "$TEST_ROOT/.workflows/$wu/experiment/$topic/$record/design.md" <<'MD'
+# E1: Latency
+
+## Question
+
+Does the p95 latency hold under the sync budget?
+
+## Prediction
+
+We expect the p95 to sit under 200ms because the hop count is fixed.
+
+## Decision rule
+
+If p95 under 200ms, adopt the sync path; otherwise keep async.
+
+## Setup
+
+Vegeta 12.8 against staging, 400rps for 10 minutes.
+MD
+  cat > "$TEST_ROOT/.workflows/$wu/experiment/$topic/$record/report.md" <<'MD'
+# E1: Latency — Report
+
+## Results
+
+The p95 measured 143ms across three runs. Raw output in data/runs.md.
+
+## Deviations
+
+none
+
+## Reading
+
+The hop count dominates; the budget holds with headroom.
+
+## Conclusion
+
+Rule said adopt if under 200ms; 143ms — adopted.
+
+## Reproduce
+
+vegeta attack -rate=400 -duration=10m < targets.txt
+MD
+}
+
+# --- Test E1: Index both files of a record under one topic identity ---
+echo "Test E1: experiment design + report index under the topic identity"
+setup_project
+create_work_unit "exp-wu" "feature" "Experiment host"
+write_stub_config
+create_experiment_files "exp-wu" "exp-wu" "E1-latency"
+output=$(run_kb index .workflows/exp-wu/experiment/exp-wu/E1-latency/design.md 2>&1)
+assert_eq "design indexes" "true" "$(echo "$output" | grep -qE 'Indexed [0-9]+ chunks' && echo true || echo false)"
+output=$(run_kb index .workflows/exp-wu/experiment/exp-wu/E1-latency/report.md 2>&1)
+assert_eq "report indexes" "true" "$(echo "$output" | grep -qE 'Indexed [0-9]+ chunks' && echo true || echo false)"
+query=$(run_kb query "p95 latency budget" 2>&1)
+assert_eq "experiment provenance line present" "true" \
+  "$(echo "$query" | grep -q 'experiment | exp-wu/exp-wu' && echo true || echo false)"
+assert_eq "experiment tier is medium" "true" \
+  "$(echo "$query" | grep -q 'experiment | exp-wu/exp-wu | medium' && echo true || echo false)"
+# Both files' chunks coexist under the one identity.
+assert_eq "design chunks survive the report's index" "true" \
+  "$(echo "$query" | grep -q 'E1-latency/design.md' && echo true || echo false)"
+assert_eq "report chunks present" "true" \
+  "$(echo "$query" | grep -q 'E1-latency/report.md' && echo true || echo false)"
+# Re-indexing one file replaces that file's chunks only.
+run_kb index .workflows/exp-wu/experiment/exp-wu/E1-latency/report.md >/dev/null 2>&1
+requery=$(run_kb query "p95 latency budget" 2>&1)
+assert_eq "design chunks survive the report's re-index" "true" \
+  "$(echo "$requery" | grep -q 'E1-latency/design.md' && echo true || echo false)"
+teardown_project
+
+# --- Test E2: Run material under the record refuses to index ---
+echo "Test E2: data extracts under the record dir are refused"
+setup_project
+create_work_unit "exp-wu" "feature" "Experiment host"
+write_stub_config
+create_experiment_files "exp-wu" "exp-wu" "E1-latency"
+mkdir -p "$TEST_ROOT/.workflows/exp-wu/experiment/exp-wu/E1-latency/data"
+echo "# runs" > "$TEST_ROOT/.workflows/exp-wu/experiment/exp-wu/E1-latency/data/runs.md"
+exit_code=0
+output=$(run_kb index .workflows/exp-wu/experiment/exp-wu/E1-latency/data/runs.md 2>&1) || exit_code=$?
+assert_eq "data file refused" "1" "$exit_code"
+assert_eq "refusal names the expected shape" "true" \
+  "$(echo "$output" | grep -q 'Unexpected experiment path structure' && echo true || echo false)"
+teardown_project
+
+# --- Test E3: remove --phase experiment scopes, with and without --topic ---
+echo "Test E3: remove scopes experiment chunks by phase and topic"
+setup_project
+create_work_unit "exp-wu" "feature" "Experiment host"
+write_stub_config
+create_experiment_files "exp-wu" "exp-wu" "E1-latency"
+create_discussion_file "exp-wu" "exp-wu"
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set exp-wu.discussion.exp-wu status in-progress >/dev/null 2>&1
+run_kb index .workflows/exp-wu/experiment/exp-wu/E1-latency/design.md >/dev/null 2>&1
+run_kb index .workflows/exp-wu/experiment/exp-wu/E1-latency/report.md >/dev/null 2>&1
+run_kb index .workflows/exp-wu/discussion/exp-wu.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit exp-wu --phase experiment --topic exp-wu 2>&1)
+assert_eq "remove reports chunks" "true" "$(echo "$output" | grep -qE 'Removed [1-9][0-9]* chunks' && echo true || echo false)"
+after=$(run_kb query "p95 latency budget" 2>&1)
+assert_eq "experiment chunks gone" "true" \
+  "$(echo "$after" | grep -q 'experiment | exp-wu/exp-wu' && echo false || echo true)"
+after_disc=$(run_kb query "topic" 2>&1)
+assert_eq "discussion chunks survive the phase-scoped remove" "true" \
+  "$(echo "$after_disc" | grep -q 'discussion | exp-wu/exp-wu' && echo true || echo false)"
+teardown_project
+
+# --- Test E4: Bulk index discovers a completed series from the manifest ---
+echo "Test E4: bulk index discovers completed experiment topics"
+setup_project
+create_work_unit "exp-wu" "feature" "Experiment host"
+write_stub_config
+create_experiment_files "exp-wu" "exp-wu" "E1-latency"
+cd "$TEST_ROOT"
+node "$ENGINE_JS" manifest set exp-wu.experiment.exp-wu status in-progress >/dev/null 2>&1
+node "$ENGINE_JS" manifest set exp-wu.experiment.exp-wu 'experiments.E1.slug=latency' 'experiments.E1.status=concluded' 'experiments.E1.verdict=adopted' >/dev/null 2>&1
+node "$ENGINE_JS" manifest set exp-wu.experiment.exp-wu status completed >/dev/null 2>&1
+output=$(run_kb index 2>&1)
+assert_eq "bulk index processes the design" "true" \
+  "$(echo "$output" | grep -q 'E1-latency/design.md' && echo true || echo false)"
+assert_eq "bulk index processes the report" "true" \
+  "$(echo "$output" | grep -q 'E1-latency/report.md' && echo true || echo false)"
+# A second bulk run skips both files — the per-file check holds.
+rerun=$(run_kb index 2>&1)
+assert_eq "second bulk run indexes nothing new" "true" \
+  "$(echo "$rerun" | grep -q 'Indexed 0 files' && echo true || echo false)"
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

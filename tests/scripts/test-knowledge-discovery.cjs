@@ -57,6 +57,16 @@ function buildFixture(root) {
         ledger: { status: 'completed' },
         refunds: { status: 'in-progress' },       // not completed → excluded
       } },
+      experiment: { items: {
+        'net-hop': { status: 'completed', experiments: {
+          E1: { slug: 'p95-latency', status: 'concluded', verdict: 'adopt' },   // design + report on disk
+          E2: { slug: 'cold-start', status: 'abandoned', reason: 'noise' },      // design only on disk
+          E3: { slug: 'Bad Slug', status: 'concluded', verdict: 'x' },           // malformed slug → excluded
+        } },
+        retries: { status: 'in-progress', experiments: {                          // not completed → excluded
+          E1: { slug: 'backoff', status: 'running' },
+        } },
+      } },
     },
     imports: [
       { path: 'imports/oauth-notes.md' },
@@ -76,6 +86,12 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', 'discussion', 'refunds.md'), '# Refunds\n');
   writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec\n');
   writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth\n');
+  writeFile(path.join(wf, 'payments', 'experiment', 'net-hop', 'E1-p95-latency', 'design.md'), '# Design — E1\n');
+  writeFile(path.join(wf, 'payments', 'experiment', 'net-hop', 'E1-p95-latency', 'report.md'), '# Report — E1\n');
+  writeFile(path.join(wf, 'payments', 'experiment', 'net-hop', 'E2-cold-start', 'design.md'), '# Design — E2\n');
+  // (no E2 report — abandoned before running)
+  writeFile(path.join(wf, 'payments', 'experiment', 'net-hop', 'E1-p95-latency', 'data', 'runs.md'), '# run data — never discovered\n');
+  writeFile(path.join(wf, 'payments', 'experiment', 'retries', 'E1-backoff', 'design.md'), '# in-progress topic — excluded\n');
   writeFile(path.join(wf, 'payments', 'seeds', 'original-idea.md'), '# Idea\n');
   writeFile(path.join(wf, 'payments', '.state', 'research-analysis.md'), '# retired cache — not indexable\n');
   writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
@@ -160,6 +176,9 @@ const EXPECTED = [
   { workUnit: 'payments', phase: 'discovery', topic: 'session-002', file: '.workflows/payments/discovery/sessions/session-002.md' },
   { workUnit: 'payments', phase: 'discussion', topic: 'ledger', file: '.workflows/payments/discussion/ledger.md' },
   { workUnit: 'payments', phase: 'discussion', topic: 'refunds', file: '.workflows/payments/discussion/refunds.md' },
+  { workUnit: 'payments', phase: 'experiment', topic: 'net-hop', file: '.workflows/payments/experiment/net-hop/E1-p95-latency/design.md' },
+  { workUnit: 'payments', phase: 'experiment', topic: 'net-hop', file: '.workflows/payments/experiment/net-hop/E1-p95-latency/report.md' },
+  { workUnit: 'payments', phase: 'experiment', topic: 'net-hop', file: '.workflows/payments/experiment/net-hop/E2-cold-start/design.md' },
   { workUnit: 'payments', phase: 'imports', topic: 'oauth-notes', file: '.workflows/payments/imports/oauth-notes.md' },
   { workUnit: 'payments', phase: 'research', topic: 'fx-rates', file: '.workflows/payments/research/fx-rates.md' },
   { workUnit: 'payments', phase: 'research', topic: 'ledger', file: '.workflows/payments/research/ledger.md' },
@@ -269,5 +288,33 @@ describe('deriveIdentity: the roadmap carve-out', () => {
   it('never captures a lookalike directory — .roadmapX is an ordinary bad path', () => {
     assert.throws(() => deriveIdentity('.workflows/.roadmapX/sessions/session-001.md'),
       (err) => err instanceof UserError && !/roadmap path structure/.test(err.message));
+  });
+});
+
+describe('deriveIdentity: the experiment series', () => {
+  const { deriveIdentity, UserError } = require('../../src/knowledge/index');
+
+  it('derives the topic identity for both files of a record — the record dir stays in the path alone', () => {
+    assert.deepStrictEqual(deriveIdentity('.workflows/payments/experiment/net-hop/E1-p95-latency/design.md'),
+      { workUnit: 'payments', phase: 'experiment', topic: 'net-hop' });
+    assert.deepStrictEqual(deriveIdentity('.workflows/payments/experiment/net-hop/E12-cold-start/report.md'),
+      { workUnit: 'payments', phase: 'experiment', topic: 'net-hop' });
+  });
+
+  it('refuses everything else under the record loudly — data extracts, harness scripts, bad ids', () => {
+    const structural = (err) => err instanceof UserError && /Unexpected experiment path structure/.test(err.message);
+    assert.throws(() => deriveIdentity('.workflows/payments/experiment/net-hop/E1-p95-latency/data/runs.md'), structural);
+    assert.throws(() => deriveIdentity('.workflows/payments/experiment/net-hop/E1-p95-latency/harness.md'), structural);
+    assert.throws(() => deriveIdentity('.workflows/payments/experiment/net-hop/E0-zero/design.md'), structural);
+    assert.throws(() => deriveIdentity('.workflows/payments/experiment/net-hop/E1-Bad_Slug/design.md'), structural);
+    assert.throws(() => deriveIdentity('.workflows/payments/experiment/net-hop/design.md'), structural);
+    assert.throws(() => deriveIdentity('.workflows/payments/experiment/net-hop.md'), structural);
+  });
+
+  it('validates the topic segment like every other phase', () => {
+    assert.throws(() => deriveIdentity('.workflows/payments/experiment/.hidden/E1-x/design.md'),
+      (err) => err instanceof UserError && /Invalid topic name/.test(err.message));
+    assert.throws(() => deriveIdentity('.workflows/payments/experiment/dotted.name/E1-x/design.md'),
+      (err) => err instanceof UserError && /dots are not allowed/.test(err.message));
   });
 });

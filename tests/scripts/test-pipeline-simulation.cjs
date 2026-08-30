@@ -1796,6 +1796,77 @@ describe('pipeline simulation', () => {
       /Absorbed into Epic/, 'absorb receipt renders from the epic post-state');
   });
 
+  it('absorption: a feature mid-experiment folds in whole — series, wait, and release edges keep holding', () => {
+    const epic = 'umbrella-lab';
+    const feat = 'wander';
+    sim.run(['workunit', 'create', epic, 'epic', '--description', 'The lab umbrella', '--session-log-file', sessionLog(sim, epic)]);
+    sim.run(['workunit', 'create', feat, 'feature', '--description', 'A wandering feature', '--session-log-file', sessionLog(sim, feat)]);
+    sim.run(['topic', 'start', feat, 'discussion', feat]);
+    sim.write(`.workflows/${feat}/discussion/${feat}.md`, '# Discussion — Wander\n\nWaiting on experiment evidence: p95 budget.\n');
+    sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
+    // The mid-discussion wall: the experiment spawned, the wait recorded, the
+    // design authored — absorbed mid-flight.
+    sim.run(['topic', 'start', feat, 'experiment', feat]);
+    sim.run(['experiment', 'create', feat, feat, '--slug', 'p95-check']);
+    sim.run(['experiment', 'await', feat, feat, 'E1']);
+    sim.run(['experiment', 'advance', feat, feat, 'E1']);
+    sim.write(`.workflows/${feat}/experiment/${feat}/E1-p95-check/design.md`, '# Design — E1\n');
+    sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 designed`, '--topic', `experiment/${feat}`]);
+
+    const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'wander-topic']);
+    assert.deepStrictEqual(absorbed.experiment, { path: 'experiment/wander-topic', status: 'in-progress', experiments: ['E1'] });
+    const m = sim.manifest(epic);
+    assert.strictEqual(m.phases.experiment.items['wander-topic'].status, 'in-progress');
+    assert.deepStrictEqual(m.phases.experiment.items['wander-topic'].experiments,
+      { E1: { slug: 'p95-check', status: 'designed' } }, 'the series records travel whole');
+    assert.deepStrictEqual(m.phases.discussion.items['wander-topic'].awaiting_experiments, ['E1'],
+      'the evidence wait rides the discussion item');
+    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'experiment', 'wander-topic', 'E1-p95-check', 'design.md')),
+      'series directory moved whole');
+    assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows', feat)), 'feature directory removed');
+
+    // The moved wait keeps its teeth in the epic: conclusion refuses, the
+    // release edge opens it, and both topics then close.
+    sim.refuses(['topic', 'complete', epic, 'discussion', 'wander-topic'], /awaits experiment evidence \(E1\)/);
+    const released = sim.run(['experiment', 'abandon', epic, 'wander-topic', 'E1', '--reason', 'superseded by production numbers']);
+    assert.deepStrictEqual(released.released_wait, { discussion: 'wander-topic', released: ['E1'], remaining: [] });
+    assert.strictEqual(sim.manifest(epic).phases.discussion.items['wander-topic'].reconcile_needed, 'experiment');
+    sim.run(['manifest', 'delete', `${epic}.discussion.wander-topic`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', epic, 'experiment', 'wander-topic']);
+    sim.run(['topic', 'complete', epic, 'discussion', 'wander-topic']);
+  });
+
+  it('pivot: a feature with an experiment series becomes an epic and the series keeps working', () => {
+    const wu = 'grew-lab';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Outgrew itself, measured', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion\n');
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    sim.run(['topic', 'start', wu, 'experiment', wu]);
+    sim.run(['experiment', 'create', wu, wu, '--slug', 'probe']);
+    sim.run(['commit', wu, '-m', `experiment(${wu}/${wu}): E1 conceived`, '--topic', `experiment/${wu}`]);
+
+    sim.run(['workunit', 'pivot', wu]);
+    assert.strictEqual(sim.manifest(wu).work_type, 'epic');
+    // Inherited as-is: the item, its records, and the lifecycle join (the
+    // in-progress discussion outranks the open series).
+    assert.deepStrictEqual(sim.manifest(wu).phases.experiment.items[wu].experiments,
+      { E1: { slug: 'probe', status: 'conceived' } });
+    assert.strictEqual(derivations.computeTopicLifecycle(sim.manifest(wu), wu).lifecycle, 'discussing');
+
+    // The series keeps walking under the epic, to the phase's close.
+    sim.run(['experiment', 'advance', wu, wu, 'E1']);
+    sim.run(['experiment', 'approve', wu, wu, 'E1']);
+    sim.run(['experiment', 'advance', wu, wu, 'E1']);
+    sim.write(`.workflows/${wu}/experiment/${wu}/E1-probe/design.md`, '# Design — E1\n');
+    sim.write(`.workflows/${wu}/experiment/${wu}/E1-probe/report.md`, '# Report — E1\n');
+    sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'holds; adopt']);
+    sim.run(['commit', wu, '-m', `experiment(${wu}/${wu}): E1 concluded`, '--topic', `experiment/${wu}`]);
+    assert.match(sim.render(['experiment-register', `${wu}.experiment.${wu}`], { expect: 'content' }),
+      /E1 probe[\s\S]*Holds; adopt/);
+    sim.run(['topic', 'complete', wu, 'experiment', wu]);
+  });
+
   it('spec promotion: a cross-cutting concern leaves the epic and the spec item goes terminal', () => {
     const wu = 'host';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Hosts a cc concern', '--session-log-file', sessionLog(sim, wu)]);

@@ -2039,6 +2039,40 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
+echo -e "${YELLOW}Test: resolve experiment series (3-segment, on-disk files only)${NC}"
+setup_fixture
+create_wu payments epic "Payments"
+run_cli set payments.experiment.net-hop status in-progress >/dev/null 2>&1
+run_cli set payments.experiment.net-hop 'experiments.E1.slug=latency' 'experiments.E1.status=concluded' 'experiments.E1.verdict=adopted' >/dev/null 2>&1
+run_cli set payments.experiment.net-hop 'experiments.E2.slug=cold-start' 'experiments.E2.status=abandoned' 'experiments.E2.reason=noise' >/dev/null 2>&1
+mkdir -p "$TEST_DIR/.workflows/payments/experiment/net-hop/E1-latency"
+echo "# design" > "$TEST_DIR/.workflows/payments/experiment/net-hop/E1-latency/design.md"
+echo "# report" > "$TEST_DIR/.workflows/payments/experiment/net-hop/E1-latency/report.md"
+mkdir -p "$TEST_DIR/.workflows/payments/experiment/net-hop/E2-cold-start"
+echo "# design" > "$TEST_DIR/.workflows/payments/experiment/net-hop/E2-cold-start/design.md"
+# (no E2 report — abandoned before running)
+output=$(run_cli_stdout resolve payments.experiment.net-hop)
+
+assert_contains "$output" "payments/experiment/net-hop/E1-latency/design.md" "Lists E1 design"
+assert_contains "$output" "payments/experiment/net-hop/E1-latency/report.md" "Lists E1 report"
+assert_contains "$output" "payments/experiment/net-hop/E2-cold-start/design.md" "Lists E2 design"
+assert_not_contains "$output" "E2-cold-start/report.md" "Omits the report a record never wrote"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: resolve experiment requires a topic${NC}"
+setup_fixture
+create_wu payments epic "Payments"
+exit_code=$(run_cli_exit_code resolve payments.experiment)
+
+assert_equals "$exit_code" "1" "2-segment experiment resolve exits 1"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
 echo -e "${YELLOW}Test: resolve errors for non-existent work unit${NC}"
 setup_fixture
 exit_code=$(run_cli_exit_code resolve nonexistent.discussion.foo)

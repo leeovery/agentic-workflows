@@ -30,7 +30,7 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
-const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { knowledge, INDEXED_ARTIFACTS, experimentArtifactPaths } = require('./kb.cjs');
 const { dedupe } = require('./workunit-create.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { reaimJoins } = require('./roadmap.cjs');
@@ -46,6 +46,7 @@ const SPEC_OR_BEYOND = ['specification', 'planning', 'implementation', 'review']
  * @property {string} topic     the new topic's name in the epic
  * @property {{path: string, status: string}} discussion  the moved discussion (epic-relative path)
  * @property {{from: string, topic: string, status: string}[]} research  moved research items
+ * @property {{path: string, status: string, experiments: string[]}} [experiment]  the moved experiment series (epic-relative path), when the feature had one
  * @property {{path: string}[]} imports  moved import entries (epic-relative)
  * @property {{path: string, source: string}[]} seeds  moved seed entries (epic-relative)
  * @property {string} routing   the map item's routing (research when the feature did research, else discussion)
@@ -97,9 +98,11 @@ function planTrackedMoves(cwd, feature, epic, field, entries) {
 
 /**
  * Absorb a feature into an in-progress epic as `topic`: move the discussion
- * (and any research, imports, and seeds) into the epic — manifest entries
- * carry their original timestamps, filename collisions suffix like create
- * does, research-topic collisions suffix `-{feature}` — mirror each phase
+ * (and any research, experiment series, imports, and seeds) into the epic —
+ * manifest entries carry their original timestamps, filename collisions
+ * suffix like create does, research-topic collisions suffix `-{feature}`, the
+ * experiment item and its records travel whole with any evidence wait riding
+ * the discussion item — mirror each phase
  * item's status onto the epic, register the topic on the discovery map with
  * backfill semantics, remove the feature's knowledge-base chunks and index
  * the moved artifacts at their epic identities (warn-don't-block), delete the
@@ -119,7 +122,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   if (featureManifest.work_type !== 'feature') {
     throw new Error(`work unit "${feature}" is not a feature (work_type: ${featureManifest.work_type ?? 'none'}) — only features absorb into epics`);
   }
-  const { discussionStatus, researchMoves, importMoves, seedMoves, routing } = withWorkUnitLock(cwd, into, () => {
+  const { discussionStatus, researchMoves, importMoves, seedMoves, experimentMove, routing } = withWorkUnitLock(cwd, into, () => {
     const epicManifest = loadWorkUnitManifest(cwd, into);
     if (epicManifest.work_type !== 'epic') {
       throw new Error(`work unit "${into}" is not an epic (work_type: ${epicManifest.work_type ?? 'none'})`);
@@ -166,6 +169,19 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     const discussionDest = `.workflows/${into}/discussion/${topic}.md`;
     if (fs.existsSync(path.join(cwd, discussionDest))) {
       throw new Error(`${discussionDest} already exists — pick a different name`);
+    }
+
+    // The experiment series (when the feature ran one) travels whole — item,
+    // records, and directory. Same freedom checks as the discussion.
+    const experimentItem = phaseItems(featureManifest, 'experiment')[feature];
+    if (experimentItem) {
+      if (phaseItems(epicManifest, 'experiment')[topic]) {
+        throw new Error(`experiment topic "${topic}" already exists in ${into} — pick a different name`);
+      }
+      const experimentDest = `.workflows/${into}/experiment/${topic}`;
+      if (fs.existsSync(path.join(cwd, experimentDest))) {
+        throw new Error(`${experimentDest} already exists — pick a different name`);
+      }
     }
 
     // Research moves: every item's file must exist; target names dodge the
@@ -239,6 +255,14 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     };
     moveTrackedFiles('imports', importPlan);
     moveTrackedFiles('seeds', seedPlan);
+    // The series directory moves whole — record dirs, data extracts, harness
+    // scripts. A series still conceived-only may have no directory yet.
+    if (experimentItem && fs.existsSync(path.join(cwd, '.workflows', feature, 'experiment', feature))) {
+      fs.mkdirSync(path.join(cwd, '.workflows', into, 'experiment'), { recursive: true });
+      fs.renameSync(
+        path.join(cwd, '.workflows', feature, 'experiment', feature),
+        path.join(cwd, '.workflows', into, 'experiment', topic));
+    }
 
     // Epic manifest: phase items mirror the feature's statuses; tracked
     // entries carry their original timestamps (and seed provenance) with new
@@ -256,7 +280,18 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       status: discussionItem.status,
       ...(discussionItem.reconcile_needed !== undefined ? { reconcile_needed: discussionItem.reconcile_needed } : {}),
       ...(discussionItem.dismissed_grounds !== undefined ? { dismissed_grounds: discussionItem.dismissed_grounds } : {}),
+      // A live evidence wait travels with the discussion: the series it waits
+      // on moves in the same transaction, ids intact, so the engine's conclude
+      // refusal and release edges keep holding in the epic.
+      ...(discussionItem.awaiting_experiments !== undefined ? { awaiting_experiments: discussionItem.awaiting_experiments } : {}),
     };
+    if (experimentItem) {
+      const experiment = ensureContainer(epicPhases, 'experiment', 'phases.experiment');
+      // The item travels whole — status, series records (slug, status,
+      // verdict, reason), and any flags — the register is the record.
+      ensureContainer(experiment, 'items', 'phases.experiment.items')[topic] =
+        JSON.parse(JSON.stringify(experimentItem));
+    }
     if (researchPlan.length > 0) {
       const research = ensureContainer(epicPhases, 'research', 'phases.research');
       const researchItems = ensureContainer(research, 'items', 'phases.research.items');
@@ -282,6 +317,9 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       researchMoves: researchPlan,
       importMoves: importPlan,
       seedMoves: seedPlan,
+      experimentMove: experimentItem
+        ? { status: experimentItem.status, ids: Object.keys(experimentItem.experiments || {}) }
+        : null,
       routing: researchPlan.length > 0 ? 'research' : 'discussion',
     };
   });
@@ -321,6 +359,13 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       knowledge(cwd, ['index', INDEXED_ARTIFACTS.research(into, move.target)], `knowledge index (research/${move.target})`, warnings);
     }
   }
+  if (experimentMove && experimentMove.status === 'completed') {
+    // The series is multi-file — every record's design and report, from the
+    // register that just landed in the epic.
+    for (const rel of experimentArtifactPaths(cwd, loadWorkUnitManifest(cwd, into), into, topic)) {
+      knowledge(cwd, ['index', rel], `knowledge index (${rel})`, warnings);
+    }
+  }
   for (const move of importMoves) {
     knowledge(cwd, ['index', `.workflows/${into}/imports/${move.dest}`], `knowledge index (imports/${move.dest})`, warnings);
   }
@@ -347,6 +392,9 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     committed: outcome.committed,
     warnings,
   };
+  if (experimentMove) {
+    result.experiment = { path: `experiment/${topic}`, status: experimentMove.status, experiments: experimentMove.ids };
+  }
   if (reaimed.length > 0) result.roadmap_reaimed = reaimed;
   noteCommitOutcome(result, outcome);
   return result;

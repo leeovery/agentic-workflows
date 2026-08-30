@@ -218,6 +218,39 @@ async function removeByFilter(db, where) {
 }
 
 /**
+ * Remove the identity's documents whose `source_file` equals `sourceFile`.
+ * The multi-file identities (experiment: every design and report in a topic's
+ * series shares one identity triple) re-index per file, so their replacement
+ * must not sweep the sibling files' chunks. `source_file` is a plain string
+ * field — not filterable in an Orama where clause — so the identity's hits
+ * are fetched by the enum triple and narrowed in JS.
+ *
+ * @returns {Promise<number>} number of documents removed
+ */
+async function removeBySourceFile(db, identity, sourceFile) {
+  if (!identity || !identity.work_unit || !identity.phase || !identity.topic) {
+    throw new Error('removeBySourceFile: work_unit, phase, and topic are all required');
+  }
+  if (typeof sourceFile !== 'string' || sourceFile === '') {
+    throw new Error('removeBySourceFile: sourceFile is required');
+  }
+  const res = await orama.search(db, {
+    term: '',
+    where: {
+      work_unit: { eq: identity.work_unit },
+      phase: { eq: identity.phase },
+      topic: { eq: identity.topic },
+    },
+    limit: FILTERED_QUERY_LIMIT,
+  });
+  const ids = res.hits
+    .filter((h) => h.document && h.document.source_file === sourceFile)
+    .map((h) => h.id);
+  if (ids.length === 0) return 0;
+  return orama.removeMultiple(db, ids, ids.length);
+}
+
+/**
  * Count chunks matching `where` without deleting. Used by `remove --dry-run`.
  * Same query shape as removeByFilter so the count is guaranteed to match
  * what a non-dry-run invocation would actually remove.
@@ -535,6 +568,7 @@ module.exports = {
   insertDocument,
   removeByIdentity,
   removeByFilter,
+  removeBySourceFile,
   countByFilter,
   searchFulltext,
   searchAllFulltext,

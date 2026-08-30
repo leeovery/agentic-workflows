@@ -20,7 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const io = require('../kernel/manifest-io.cjs');
-const { INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { INDEXED_PHASES, experimentArtifactPaths } = require('./kb.cjs');
 const {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -31,9 +31,8 @@ const {
 } = require('../kernel/manifest-schema.cjs');
 
 // Phases whose artifacts the knowledge base indexes — `resolve`'s scope.
-// Derived from kb's INDEXED_ARTIFACTS, the one table declaring what the KB
-// indexes and where, so the resolve scope can never drift from it.
-const INDEXED_PHASES = Object.keys(INDEXED_ARTIFACTS);
+// kb.cjs's INDEXED_PHASES is the one declaration of what the KB indexes, so
+// the resolve scope can never drift from it.
 
 /**
  * @param {string} msg
@@ -772,6 +771,16 @@ function cmdResolve(cwd, args) {
 
   if (phase === 'specification') {
     process.stdout.write(path.join(wuDir, 'specification', topic, 'specification.md') + '\n');
+    return;
+  }
+
+  if (phase === 'experiment') {
+    // The topic's series is multi-file: every record's design.md and report.md
+    // that exists on disk, from the manifest's own register — one path per
+    // line, like research's 2-segment listing.
+    for (const rel of experimentArtifactPaths(cwd, manifest, workUnit, topic)) {
+      process.stdout.write(path.join(cwd, rel) + '\n');
+    }
     return;
   }
 }
