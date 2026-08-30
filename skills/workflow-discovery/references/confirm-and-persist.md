@@ -23,7 +23,7 @@ No new topics — this is an edits-only, parks-only, or browse-only session.
 Write the whole topic set to `.workflows/.cache/{work_unit}/discovery/topics.json` with the Write tool — one entry per topic, in synthesised order:
 
 ```json
-[{"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}", "description": "{paragraphs}", "brief_path": "discovery/briefs/{topic}.md"}]
+[{"name": "{topic}", "routing": "{research|experiment|discussion}", "summary": "{one-line summary}", "description": "{paragraphs}", "brief_path": "discovery/briefs/{topic}.md"}]
 ```
 
 Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Omit `description` for a topic whose synthesis produced none (the field is optional; never invent one).
@@ -61,7 +61,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file 
 **Pull-forward set** — one call per item (the map topic + its join, one commit each):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull-forward {name} --into {work_unit} --routing {research|discussion}
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull-forward {name} --into {work_unit} --routing {research|experiment|discussion}
 ```
 
 A refusal naming a previously dismissed topic is the user's earlier removal speaking — the gate's confirmation was the deliberate re-add, so re-run with `--force-dismissed`.
@@ -87,7 +87,7 @@ Populate **Topics Identified** with one section per topic, in synthesised order:
 ```markdown
 ### {topic-name}
 
-- Routing: {research|discussion}
+- Routing: {research|experiment|discussion}
 - Why: {one-line rationale from synthesis}
 ```
 

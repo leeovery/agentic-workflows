@@ -2521,6 +2521,39 @@ function experimentExitGate(cwd, { dotpath, file }) {
   ));
 }
 
+// complexity-gate — scoping's quick-fix reality check: the concern list is
+// judgment content (payload), the promotion menu is fixed. A promotion to
+// feature routes on to the first-phase gate below.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function complexityGate(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render complexity-gate: --file <payload.json> is required');
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'complexity-gate');
+  if (manifest.work_type !== 'quick-fix') {
+    throw new Error(`render complexity-gate: the complexity check belongs to quick-fix scoping, got work type "${manifest.work_type}"`);
+  }
+  const p = readJsonPayload(cwd, file, 'complexity-gate');
+  const concerns = stringLines(p.concerns, 'complexity-gate', 'concerns').filter((c) => c.trim() !== '');
+  if (concerns.length === 0) throw new Error('render complexity-gate: "concerns" must name at least one concern');
+  const display = section('DISPLAY: complexity check', CONTINUE_INSTRUCTION, [
+    'Complexity Check',
+    '',
+    'This change may be more involved than a quick-fix:',
+    '',
+    ...concerns.map((c) => `  • ${c}`),
+  ].join('\n'));
+  const gate = section('MENU: complexity gate', STOP_FOR_RESPONSE, menu('', [
+    cmdOption('c', 'continue', 'Continue as quick-fix anyway'),
+    cmdOption('f', 'feature', 'Promote to feature (full pipeline)'),
+    cmdOption('b', 'bugfix', 'Promote to bugfix (investigation pipeline)'),
+  ], { question: 'How would you like to proceed?' }));
+  return display + '\n' + gate;
+}
+
 // first-phase-gate — the three-way first-phase choice for single-phase
 // research-bearing work (discovery's endpoint, and the quick-fix promotion):
 // do we answer this by reading, by talking, or by measuring? The one-line
@@ -4487,6 +4520,7 @@ const SURFACES = {
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-conclude-gate': experimentConcludeGateSurface,
   'experiment-exit-gate': experimentExitGate,
+  'complexity-gate': complexityGate,
   'first-phase-gate': firstPhaseGate,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,

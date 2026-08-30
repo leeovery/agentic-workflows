@@ -24,28 +24,10 @@ Assess whether this change is genuinely quick-fix material. Evaluate against the
 
 ## B. Complexity Warning
 
-If any criterion fails, surface the concern:
+If any criterion fails, surface the concern. Write the concerns to `.workflows/.cache/{work_unit}/scoping/{topic}/complexity.json` with the Write tool (`{"concerns": ["…", …]}` — one line per failed criterion, e.g. "Requires design decisions about the new API surface"), then render the gate and emit its DISPLAY and MENU sections verbatim per their markers:
 
-> *Output the next fenced block as a code block:*
-
-```
-Complexity Check
-
-This change may be more involved than a quick-fix:
-
-  • {specific concern — e.g., "Requires design decisions about the new API surface"}
-  • {additional concern if applicable}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ How would you like to proceed?`**
-
-**`c/continue`** → Continue as quick-fix anyway
-**`f/feature`**  → Promote to feature (full pipeline)
-**`b/bugfix`**   → Promote to bugfix (investigation pipeline)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render complexity-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/complexity.json
 ```
 
 **STOP.** Wait for user response.
@@ -92,26 +74,21 @@ Set `next_phase` = `investigation`.
 
 ## C. First Phase
 
-Propose research-vs-discussion — the concerns that triggered promotion are the strongest cue:
+Propose the promoted feature's first phase — do we answer this by reading, by talking, or by measuring? The concerns that triggered promotion are the strongest cue:
 
 - **research** — open feasibility / "how does X work" / "what's possible" unknowns the work hasn't resolved.
+- **experiment** — the open question is empirical and decision-bearing: a claim that needs measuring against a real system before anything can be decided on it.
 - **discussion** — the shape is clear and the open questions are trade-offs and decisions, not unknowns.
 
-Lead with your read and one reason, then render the choice:
+Derive the one-line read + reason (e.g. "The concern is an open unknown — I'd start with research."), write it to `.workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json` with the Write tool (`{"read": "…"}`), then render the choice and emit its MENU section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-{One-line read + reason, e.g. "The concern is an open unknown — I'd start with research."}
-
-**`r/research`**   → Explore feasibility and options first, no decisions yet
-**`d/discussion`** → Ready to discuss and make decisions
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render first-phase-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json
 ```
 
 **STOP.** Wait for user response.
 
-Set `next_phase` to the choice (`research` or `discussion`).
+Set `next_phase` to the choice (`research`, `experiment`, or `discussion`).
 
 → Proceed to **D. Bridge**.
 

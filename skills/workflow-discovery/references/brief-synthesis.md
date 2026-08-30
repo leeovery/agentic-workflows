@@ -78,17 +78,18 @@ Flag downstream work, never overwrite it.
 
 #### Otherwise
 
-Read both downstream phases once — every topic's items in two calls, however many briefs were written:
+Read the downstream phases once — every topic's items in three calls, however many briefs were written:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion
 ```
 
-For each brief written in **A**, check the subtrees for that topic's item — a topic routes to one of the two. A hit is in-flight downstream work the fresh brief post-dates: a regenerated brief changed content the phase may have read; a first-written brief covers work that started brief-less and has never been read at all. Skip items whose status is `triaged` — a stub of parked concerns has read nothing; its first start reads the fresh brief anyway. Collect a flag op for every hit, then persist them in one call (skip when none; write the ops file with the Write tool):
+For each brief written in **A**, check the subtrees for that topic's item(s). A hit is in-flight downstream work the fresh brief post-dates: a regenerated brief changed content the phase may have read; a first-written brief covers work that started brief-less and has never been read at all. Skip items whose status is `triaged` — a stub of parked concerns has read nothing; its first start reads the fresh brief anyway. Collect a flag op for every hit, then persist them in one call (skip when none; write the ops file with the Write tool):
 
 ```json
-[{"op": "set", "path": "{work_unit}.{research|discussion}.{topic}", "fields": {"reconcile_needed": true}}]
+[{"op": "set", "path": "{work_unit}.{research|experiment|discussion}.{topic}", "fields": {"reconcile_needed": true}}]
 ```
 
 ```bash

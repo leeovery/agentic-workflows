@@ -3334,7 +3334,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-conclude-gate, experiment-exit-gate, first-phase-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-conclude-gate, experiment-exit-gate, complexity-gate, first-phase-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -4859,5 +4859,38 @@ describe('render first-phase-gate', () => {
     const file = writePayload(dir, 'fp.json', {});
     assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'auth-flow', file }),
       /"read" must be a non-empty string/);
+  });
+});
+
+describe('render complexity-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'typo-fix', { work_type: 'quick-fix', phases: {} });
+    writeManifest(dir, 'auth-flow', { work_type: 'feature', phases: {} });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the concern display and the promotion menu', () => {
+    const file = writePayload(dir, 'cx.json', { concerns: ['Requires design decisions about the new API surface', 'Touches three subsystems'] });
+    const out = renderSurface(dir, 'complexity-gate', { dotpath: 'typo-fix', file });
+    assert.match(out, /=== DISPLAY: complexity check/);
+    assert.match(out, /This change may be more involved than a quick-fix:/);
+    assert.match(out, /• Requires design decisions about the new API surface/);
+    assert.match(out, /• Touches three subsystems/);
+    assert.match(out, /=== MENU: complexity gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
+    assert.match(out, /\*\*`◆ How would you like to proceed\?`\*\*/);
+    assert.match(out, /\*\*`c\/continue`\*\* → Continue as quick-fix anyway/);
+    assert.match(out, /\*\*`f\/feature`\*\*\s+→ Promote to feature \(full pipeline\)/);
+    assert.match(out, /\*\*`b\/bugfix`\*\*\s+→ Promote to bugfix \(investigation pipeline\)/);
+  });
+
+  it('serves quick-fix alone, and requires a non-empty concern list', () => {
+    const file = writePayload(dir, 'cx.json', { concerns: ['One concern'] });
+    assert.throws(() => renderSurface(dir, 'complexity-gate', { dotpath: 'auth-flow', file }),
+      /the complexity check belongs to quick-fix scoping, got work type "feature"/);
+    const empty = writePayload(dir, 'cx-empty.json', { concerns: ['  '] });
+    assert.throws(() => renderSurface(dir, 'complexity-gate', { dotpath: 'typo-fix', file: empty }),
+      /"concerns" must name at least one concern/);
   });
 });

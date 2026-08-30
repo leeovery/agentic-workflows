@@ -264,7 +264,7 @@ Reached only for single-phase work — feature, cross-cutting, bugfix, quick-fix
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discovery's done — routing this work to its first phase. Feature and cross-cutting pick research or discussion; bugfix goes to investigation, quick-fix to scoping.
+> Discovery's done — routing this work to its first phase. Feature and cross-cutting pick research, experiment, or discussion; bugfix goes to investigation, quick-fix to scoping.
 ```
 
 Load **[first-phase-routing.md](references/first-phase-routing.md)** and follow its instructions as written.

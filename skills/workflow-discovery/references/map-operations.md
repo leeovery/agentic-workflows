@@ -56,7 +56,7 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 
 | Operation       | Allowed lifecycles | Disallowed                                                                  |
 | --------------- | ------------------ | --------------------------------------------------------------------------- |
-| Remove          | `fresh`            | `researching`, `discussing`, `ready_for_discussion`, `decided`, `handled`, `cancelled` |
+| Remove          | `fresh`            | `researching`, `experimenting`, `discussing`, `ready_for_discussion`, `evidence_ready`, `decided`, `handled`, `cancelled` |
 | Rename          | `fresh`            | all others                                                                  |
 | Change routing  | `fresh`            | all others (routing is implicit once a phase item exists)                   |
 | Close as dead end | any except `handled`, `cancelled` | `handled`, `cancelled`                                     |
@@ -66,7 +66,7 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 
 `cancelled` is also disallowed for Remove because the discovery item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a/cancel` flow in `/workflow-continue-epic` is the right tool for stopping in-flight work.
 
-`fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including a `triaged` stub of parked rerouted concerns (dump cue `triage=waiting`). Surface the engine's refusal as the rejection.
+`fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research, experiment, or discussion item on record refuses engine-side, including a `triaged` stub of parked rerouted concerns (dump cue `triage=waiting`). Surface the engine's refusal as the rejection.
 
 Close as dead end is non-destructive — it sets a display/convergence marker (`handled` in the manifest), for a topic with nothing to carry forward under its own name. It's allowed from any actionable lifecycle; only an already-closed or `cancelled` topic is rejected. Reopen is its inverse — allowed on `handled` only, clearing the marker.
 
@@ -84,8 +84,10 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 `{lifecycle_phrase}` examples (derive from the topic's actual research state — superseded research is named as such, never as completed):
 
 - `researching` — `research is in flight on it`
+- `experimenting` — `experiments are in flight on it`
 - `discussing` — `discussion is in flight on it`
 - `ready_for_discussion` — `research has completed and discussion is queued` (superseded research: `its research was superseded and discussion is queued`)
+- `evidence_ready` — `its experiments have concluded and discussion is queued`
 - `decided` — `discussion has concluded`
 - `handled` — `it is closed as a dead end and stays on the map as record`
 - `cancelled` — `it has phase work in cancelled state and stays on the map as historical record`
@@ -298,7 +300,7 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 #### If `yes`
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map reroute {work_unit} {name} {research|discussion}
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map reroute {work_unit} {name} {research|experiment|discussion}
 ```
 
 Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:

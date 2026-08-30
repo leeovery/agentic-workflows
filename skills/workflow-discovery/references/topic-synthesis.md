@@ -22,7 +22,7 @@ Cross-reference all three. The Exploration section is durable; conversation memo
 
 Read out the **distinct surfaces** the exploration named — the parts of the product that have their own user interaction, own decision space, own boundary. These are the candidates for topic-ness; they're not topics yet.
 
-A surface is something like *menu-management*, *kitchen-printers*, *operator-analytics*. It has a clear name, a clear edge, and would warrant its own future research or discussion.
+A surface is something like *menu-management*, *kitchen-printers*, *operator-analytics*. It has a clear name, a clear edge, and would warrant its own future research, experiments, or discussion.
 
 If the exploration touched on a surface only in passing and didn't develop it, note it but don't force it into a topic. Let it surface in a later session if it grows.
 
@@ -32,9 +32,9 @@ If the exploration touched on a surface only in passing and didn't develop it, n
 
 → Load **[topic-granularity.md](../../workflow-shared/references/topic-granularity.md)** and follow its instructions as written.
 
-Apply the independence test and anti-patterns. Two surfaces that share a domain, data model, user journey, or decision space should merge into one topic. One surface that has independent stakeholders or genuinely separate concerns can split — but resist splitting one product surface into its implementation concerns. The map item is the unit of *future research or discussion*, not the unit of *implementation*.
+Apply the independence test and anti-patterns. Two surfaces that share a domain, data model, user journey, or decision space should merge into one topic. One surface that has independent stakeholders or genuinely separate concerns can split — but resist splitting one product surface into its implementation concerns. The map item is the unit of *future research, experiments, or discussion*, not the unit of *implementation*.
 
-For continuing sessions, also check: does any new candidate overlap with an existing map item? If so, the exploration likely belongs *inside* that item's future discussion or research, not as a new sibling.
+For continuing sessions, also check: does any new candidate overlap with an existing map item? If so, the exploration likely belongs *inside* that item's future phase work, not as a new sibling.
 
 **The harvest sorts two ways.** A candidate the exploration staged beyond this epic — the user placed it (*"that's v2"*) or the record reads that way — is not a topic: set it aside to the **park set** (`{name, horizon, summary}`, capability-grain, the user's own horizon words). Parks not yet confirmed ride to the gate in **E** beside the topic proposal.
 
@@ -60,7 +60,7 @@ Every candidate folded into an existing map item, or the exploration surfaced no
 
 → Load **[routing-inference.md](routing-inference.md)** and follow its instructions as written.
 
-For each topic in the synthesised set, propose `research` or `discussion` based on cues from how the user framed it during exploration. The proposal is tentative — the user can flip it at the confirmation gate in **E**.
+For each topic in the synthesised set, propose `research`, `experiment`, or `discussion` — do we answer this by reading, by talking, or by measuring? — based on cues from how the user framed it during exploration. The proposal is tentative — the user can change it at the confirmation gate in **E**.
 
 → On return, proceed to **E. Render Proposal**.
 
@@ -70,7 +70,7 @@ Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topi
 
 ```json
 [
-  {"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}"}
+  {"name": "{topic}", "routing": "{research|experiment|discussion}", "summary": "{one-line summary}"}
 ]
 ```
 
@@ -130,7 +130,7 @@ Apply the named adjustments to the working set:
 - **Split** *"X is really two things — A and B"* — replace the topic with two
 - **Merge** *"X and Y are one"* — combine into one topic; propose a unifying name
 - **Rename** *"X should be called Z"* — swap the name
-- **Re-route** *"Y should be research"* — flip routing
+- **Re-route** *"Y should be research"* — change the routing
 - **Edit summary** *"Y's summary should be ..."* — replace the summary line
 - **Re-sort** *"X is this epic after all"* / *"actually Y can wait — v2"* — move between the working list and the park set (a parked item gains its horizon, an unparked one its routing)
 - **Drop** *"Forget Z entirely"* — remove from set (note: this means Claude misread the exploration; reflect on what was overweighted)

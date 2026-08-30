@@ -247,6 +247,7 @@ Commands:
   render experiment-approval-gate <wu.experiment.topic> --id E<n>
   render experiment-conclude-gate <wu.experiment.topic> [--dead-end]
   render experiment-exit-gate <wu.discussion.topic> --file <payload.json>
+  render complexity-gate <wu> --file <payload.json>    (quick-fix)
   render first-phase-gate <wu> --file <payload.json>   (feature|cross-cutting)
   render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]

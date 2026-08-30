@@ -73,12 +73,12 @@ existing map. Format:}
 
 ### {topic-name}
 
-- Routing: {research|discussion}
+- Routing: {research|experiment|discussion}
 - Why: {one-line rationale — what cue drove the routing}
 
 ### {topic-name}
 
-- Routing: {research|discussion}
+- Routing: {research|experiment|discussion}
 - Why: ...
 
 ## Conclusion

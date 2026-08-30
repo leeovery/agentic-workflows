@@ -146,7 +146,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    - **A roadmap item pulled forward** — *"actually, bring loyalty into this epic"*. One composed transaction lands it as a map topic (source `roadmap`) and writes its join; record it under **Edits** (`Pulled forward: {name}`):
 
      ```bash
-     node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull-forward {name} --into {work_unit} --routing {research|discussion}
+     node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull-forward {name} --into {work_unit} --routing {research|experiment|discussion}
      ```
 
      A refusal naming a previously dismissed topic needs the user's deliberate re-add — confirm it, then re-run with `--force-dismissed`.
