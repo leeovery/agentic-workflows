@@ -924,11 +924,19 @@ function checkConditionalOptions(files) {
 const PRESENCE_CLEANUP_HOOK =
   '\'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup\'';
 
+// Phases whose process skill is still landing (the experiment phase ships
+// engine-first; its process skill arrives in the stack's skills PR). Until
+// the skill exists no prose can put a session — or a heartbeat — in the
+// phase, so there is nothing for a cleanup hook to sweep. Each entry is
+// removed by the PR that creates its skill, and the hook requirement then
+// binds in full.
+const PROCESS_SKILLS_IN_FLIGHT = ['experiment'];
+
 function checkPresenceCleanupHook(files, root = REPO) {
   const { VALID_PHASES } = require(path.join(REPO, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
   const out = [];
   for (const phase of VALID_PHASES) {
-    if (phase === 'discovery') continue;
+    if (phase === 'discovery' || PROCESS_SKILLS_IN_FLIGHT.includes(phase)) continue;
     const file = path.join(root, 'skills', `workflow-${phase}-process`, 'SKILL.md');
     if (!files.includes(file)) {
       out.push({ file, line: 1, message: `no process skill for presence phase "${phase}" — the heartbeat has no owner to sweep it` });

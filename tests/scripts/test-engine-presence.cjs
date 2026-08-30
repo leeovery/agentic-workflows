@@ -128,7 +128,7 @@ describe('engine presence', () => {
     assert.strictEqual(scan.sessions.length, 8, 'every phase reports a row');
     assert.strictEqual(scan.live, 8);
     // Discovery is engine-serialised by `discovery-session open` — no heartbeat.
-    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is research\|discussion\|/);
+    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is research\|experiment\|discussion\|/);
   });
 
   it('refuses illegal phases, unknown work units, and malformed calls', () => {

@@ -291,7 +291,7 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('rejects a routing outside the enum, and missing required args with usage', () => {
-      assert.match(runFail(dir, ['add', 'payments', 'x', 'planning', '--summary', 's']).error, /unknown routing "planning" \(research\|discussion\)/);
+      assert.match(runFail(dir, ['add', 'payments', 'x', 'planning', '--summary', 's']).error, /unknown routing "planning" \(research\|experiment\|discussion\)/);
       assert.match(runFail(dir, ['add', 'payments', 'x', '--summary', 's']).error, /Usage: engine discovery-map add/);
       assert.match(runFail(dir, ['add', 'payments', 'x', 'research']).error, /Usage: engine discovery-map add/);
       // An unquoted payload spills into positionals — refused, not truncated.
@@ -554,7 +554,7 @@ describe('engine CLI: discovery-map operations', () => {
 
     it('rejects a routing outside the enum', () => {
       const err = runFail(dir, ['reroute', 'payments', 'fresh-topic', 'planning']);
-      assert.match(err.error, /unknown routing "planning" \(research\|discussion\)/);
+      assert.match(err.error, /unknown routing "planning" \(research\|experiment\|discussion\)/);
     });
   });
 
@@ -684,7 +684,7 @@ describe('engine CLI: discovery-map operations', () => {
       assert.match(runFail(dir, ['remove', 'payments']).error, /Usage: engine discovery-map remove/);
       assert.match(runFail(dir, ['remove', 'payments', 'fresh-topic', 'extra']).error, /Usage: engine discovery-map remove/);
       assert.match(runFail(dir, ['rename', 'payments', 'fresh-topic']).error, /Usage: engine discovery-map rename/);
-      assert.match(runFail(dir, ['reroute', 'payments', 'fresh-topic']).error, /Usage: engine discovery-map reroute <work-unit> <name> <research\|discussion>/);
+      assert.match(runFail(dir, ['reroute', 'payments', 'fresh-topic']).error, /Usage: engine discovery-map reroute <work-unit> <name> <research\|experiment\|discussion>/);
       assert.match(runFail(dir, ['handle', 'payments']).error, /Usage: engine discovery-map handle/);
       // An unquoted payload spills into positionals — refused, not truncated.
       assert.match(runFail(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'two', 'words']).error, /Usage: engine discovery-map edit/);
