@@ -68,7 +68,7 @@ describe('epic projections: dashboard (map branch)', () => {
     '',
     '  ⚑ 1 new topic(s) added to the map from gap-analysis.',
     '',
-    'RESEARCH & DISCUSSION (2 topics · 1 ready · 1 fresh)',
+    'DISCOVERY MAP (2 topics · 1 ready · 1 fresh)',
     '  ├─ → Kitchen Hardware',
     '  │     Receipt printing, KDS handoff, and the',
     '  │     fastest-cumulative-time-tiebreak-resolution-policy-and-of',
@@ -138,7 +138,7 @@ describe('epic projections: dashboard (map branch)', () => {
       [
         '── DISCOVERY ────────────────────────────────────────────────────',
         '',
-        'RESEARCH & DISCUSSION (1 topic · 1 fresh)',
+        'DISCOVERY MAP (1 topic · 1 fresh)',
         '  └─ ○ Topic',
         '        ↳ Fresh · routed to research',
         '',
@@ -244,7 +244,7 @@ describe('epic projections: dashboard (map branch)', () => {
       },
     });
     const out = epicDashboard('v1', d);
-    assert.ok(out.includes('RESEARCH & DISCUSSION (1 topic · 1 fresh)'), out);
+    assert.ok(out.includes('DISCOVERY MAP (1 topic · 1 fresh)'), out);
     assert.match(out, /  └─ ○ Parked\n[\s\S]*?↳ Fresh · routed to research · triage waiting/, out);
   });
 });
@@ -1132,5 +1132,88 @@ describe('epic projections: selection sub-views', () => {
       '**`b/back`** → Return to menu',
       '',
     ].join('\n'));
+  });
+});
+
+describe('epic projections: experiment phase', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function labDetail() {
+    return detailFor(dir, 'lab', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            timing: { routing: 'experiment', source: 'discovery', order: 1, summary: 'Timing behaviour' },
+            probe: { routing: 'experiment', source: 'discovery', order: 2, summary: 'Probe accuracy' },
+            policy: { routing: 'discussion', source: 'discovery', order: 3, summary: 'Policy call' },
+            spark: { routing: 'experiment', source: 'discovery', order: 4, summary: 'Spark idea' },
+          },
+        },
+        experiment: {
+          items: {
+            timing: { status: 'in-progress', experiments: { E1: { slug: 'window-placement', status: 'running' } } },
+            probe: { status: 'completed', experiments: { E1: { slug: 'sensor-drift', status: 'concluded', verdict: 'adopt' } } },
+            policy: { status: 'in-progress', experiments: { E1: { slug: 'ab-check', status: 'running' } } },
+          },
+        },
+        discussion: { items: { policy: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+      },
+    });
+  }
+
+  it('map rows carry the experiment lifecycles and the awaiting cue', () => {
+    const out = epicDashboard('lab', labDetail());
+    assert.ok(out.includes('DISCOVERY MAP (4 topics'), out);
+    assert.match(out, /→ Probe\n[\s\S]*?↳ Evidence ready · ready for discussion/, out);
+    assert.match(out, /◐ Timing\n[\s\S]*?↳ Experimenting/, out);
+    assert.match(out, /◐ Policy\n[\s\S]*?↳ Discussing · awaiting E1/, out);
+    assert.match(out, /○ Spark\n[\s\S]*?↳ Fresh · routed to experiment/, out);
+  });
+
+  it('menu entries route the experiment actions with their own labels; evidence-ready leads', () => {
+    const { keys } = epicMenu('lab', labDetail());
+    const byAction = (a) => keys.find((k) => k.action === a);
+    const probe = byAction('start_discussion_after_experiment');
+    assert.strictEqual(probe.topic, 'probe');
+    assert.strictEqual(probe.label, 'Start discussion for "Probe" — *evidence ready*');
+    assert.strictEqual(probe.route, '/workflow-discussion-entry epic lab probe');
+    assert.strictEqual(probe.recommended, true, 'the actionable map top is the recommendation');
+    const timing = byAction('continue_experiment');
+    assert.strictEqual(timing.label, 'Continue "Timing" — *experiment*');
+    assert.strictEqual(timing.route, '/workflow-experiment-entry epic lab timing');
+    const spark = byAction('start_experiment');
+    assert.strictEqual(spark.label, 'Start experiments for "Spark"');
+    assert.strictEqual(spark.route, '/workflow-experiment-entry epic lab spark');
+  });
+
+  it('a flagged experiment item cues input moved on its map row — the reconcile rider generalises', () => {
+    const d = detailFor(dir, 'flg', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { probe: { routing: 'experiment', source: 'discovery', order: 1 } } },
+        experiment: { items: { probe: { status: 'completed', reconcile_needed: 'research' } } },
+      },
+    });
+    assert.match(epicDashboard('flg', d), /→ Probe\n[\s\S]*?↳ Evidence ready · ready for discussion · input moved/);
+  });
+
+  it('no-map: the waiting discussion tags its row, the key earns the awaiting legend, the experiment block renders', () => {
+    const d = detailFor(dir, 'nm', {
+      work_type: 'epic',
+      phases: {
+        experiment: { items: { metrics: { status: 'in-progress' } } },
+        discussion: { items: { metrics: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] } } },
+      },
+    });
+    const out = epicDashboard('nm', d);
+    assert.match(out, /EXPERIMENT \(1 in-progress\)/, out);
+    assert.match(out, /Metrics\s+\[in-progress · awaiting E1, E2\]/, out);
+    const key = epicKey(d);
+    assert.ok(key.includes('awaiting E{n}'), key);
+    // With a map the cue's words live on the row's ↳ state line — no legend.
+    assert.ok(!epicKey(labDetail()).includes('awaiting E{n}'));
   });
 });

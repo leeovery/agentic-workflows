@@ -122,7 +122,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false);
+  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false, row.awaiting_experiments);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
@@ -157,9 +157,13 @@ function displayOrder(phase, items) {
 function phaseNodes(phase, items) {
   return displayOrder(phase, items).map((item) => {
     const depBlocked = Array.isArray(item.deps_blocking) && item.deps_blocking.length > 0;
-    const tagText = item.status === 'completed' && item.reconcile_needed !== undefined
+    // A waiting discussion names the experiment evidence it is blocked on.
+    const awaiting = Array.isArray(item.awaiting_experiments) && item.awaiting_experiments.length > 0
+      ? ` · awaiting ${item.awaiting_experiments.join(', ')}`
+      : '';
+    const tagText = (item.status === 'completed' && item.reconcile_needed !== undefined
       ? 'completed · input moved'
-      : (item.blocked_by !== undefined || depBlocked ? `${item.status} · blocked` : item.status);
+      : (item.blocked_by !== undefined || depBlocked ? `${item.status} · blocked` : item.status)) + awaiting;
     const head = title({ label: titlecase(item.name) });
     // The plan format rides inside the tag rather than after it: anything
     // appended past the tag column would break the alignment for every row.
@@ -349,7 +353,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     const callouts = arrivalCallouts(newArrivals);
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
     const total = detail.map_summary ? detail.map_summary.total : detail.discovery_map.length;
-    block += treeHeader(`RESEARCH & DISCUSSION (${total} topic${total === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
+    block += treeHeader(`DISCOVERY MAP (${total} topic${total === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
     block += renderTree(mapNodes(detail, heldTopics), { width: TREE_WIDTH, gap: true });
     stages.push(block);
   }
@@ -400,6 +404,12 @@ const CUE_RECONCILE =
   + '                              this item completed; the item\'s entry\n'
   + '                              flow reconciles it';
 
+const CUE_AWAITING =
+  '    awaiting E{n}           — the discussion is blocked pending\n'
+  + '                              experiment evidence; the wait\n'
+  + '                              releases when the experiment\n'
+  + '                              concludes or is abandoned';
+
 const CUE_BLOCKED =
   '    blocked (specification) — a source discussion is back\n'
   + '                              in-progress; re-conclude it and the\n'
@@ -434,10 +444,15 @@ function epicKey(detail) {
     .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined))
     || detail.discovery_map.some((r) => r.reconcile_pending === true);
   const specBlockedAny = (detail.phases.specification || []).some((i) => i.blocked_by !== undefined);
+  // With a map, waiting discussions cue on their map row's `↳` state line,
+  // which carries the words itself; only the no-map tag form earns a legend.
+  const anyAwaiting = !hasMap && (detail.phases.discussion || [])
+    .some((i) => Array.isArray(i.awaiting_experiments) && i.awaiting_experiments.length > 0);
   const blocks = [];
   if (!hasMap || BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) blocks.push(KEY_STATUS);
   const cueLines = [];
   if (anyFlagged) cueLines.push(CUE_RECONCILE);
+  if (anyAwaiting) cueLines.push(CUE_AWAITING);
   if (specBlockedAny) cueLines.push(CUE_BLOCKED);
   if (anyBlocked) cueLines.push(CUE_PLAN_BLOCKED);
   if (cueLines.length > 0) blocks.push('  Cue:\n' + cueLines.join('\n'));

@@ -45,6 +45,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} status
  * @property {string|boolean} [reconcile_needed]  a live reconcile flag — the upstream phase that
  *                                             moved, or `true` for a brief flag
+ * @property {string[]} [awaiting_experiments] discussion items — live evidence-wait ids
  * @property {SpecSource[]} [sources]          specification items
  * @property {string[]} [blocked_by]           specification items whose source is back in-progress
  * @property {string} [format]                 planning items
@@ -83,12 +84,13 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} source
  * @property {string|null} source_provenance
  * @property {number|null} order
- * @property {string} lifecycle  `fresh` | `researching` | `ready_for_discussion` | `discussing` | `decided` | `handled` | `cancelled`
+ * @property {string} lifecycle  `fresh` | `researching` | `experimenting` | `ready_for_discussion` | `evidence_ready` | `discussing` | `decided` | `handled` | `cancelled`
  * @property {string} tier       `→` | `◐` | `✓` | `○` | `⊙` | `⊘`
  * @property {string|null} current_phase
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {boolean} triage_parked  a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
+ * @property {string[]} awaiting_experiments  the discussion item's live evidence-wait ids (empty when none)
  * @property {string|null} next_action
  */
 
@@ -219,6 +221,12 @@ function epicDetail(cwd, manifest) {
       /** @type {PhaseEntry} */
       const entry = { name: item.name, status: item.status || 'unknown' };
       if (item.reconcile_needed !== undefined) entry.reconcile_needed = item.reconcile_needed;
+
+      // A discussion holding a live evidence wait carries the awaited ids —
+      // the dashboard's `awaiting E1` cue reads them.
+      if (phase === 'discussion' && Array.isArray(item.awaiting_experiments) && item.awaiting_experiments.length > 0) {
+        entry.awaiting_experiments = item.awaiting_experiments;
+      }
 
       if (phase === 'specification' && item.sources) {
         const sourcesArr = Array.isArray(item.sources)

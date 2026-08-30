@@ -1289,7 +1289,9 @@ describe('pipeline simulation', () => {
 
     // Design before data: the skeleton is written, the briefing confirm
     // freezes it (approve — never a step advance drifts past), the run starts.
+    sim.render(['experiment-register', `${wu}.experiment.${wu}`], { expect: 'content' });
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
+    sim.render(['experiment-approval-gate', `${wu}.experiment.${wu}`, '--id', 'E1'], { expect: 'content' });
     sim.refuses(['experiment', 'advance', wu, wu, 'E1'], /experiment approve/);
     sim.run(['experiment', 'approve', wu, wu, 'E1']);
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
@@ -1305,7 +1307,14 @@ describe('pipeline simulation', () => {
     const e2 = sim.run(['experiment', 'create', wu, wu, '--slug', 'cold-start']);
     assert.strictEqual(e2.id, 'E2');
     sim.refuses(['topic', 'complete', wu, 'experiment', wu], /unfinished experiments \(E2: conceived\)/);
+    // The conclude surface mirrors the refusal: unfinished rows on screen,
+    // never a clean conclude; abandoning E2 flips it to the clean gate.
+    assert.match(sim.render(['experiment-conclude-gate', `${wu}.experiment.${wu}`], { expect: 'content' }),
+      /experiment conclude blocked[\s\S]*E2 cold-start/);
     sim.run(['experiment', 'abandon', wu, wu, 'E2', '--reason', 'cold start swamped by network noise']);
+    assert.match(sim.render(['experiment-conclude-gate', `${wu}.experiment.${wu}`], { expect: 'content' }),
+      /experiment conclude gate/);
+    sim.render(['experiment-register', `${wu}.experiment.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'experiment', wu]);
     sim.run(['commit', wu, '-m', `experiment(${wu}): conclude phase`, '--topic', `experiment/${wu}`]);
 
@@ -1374,7 +1383,14 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'discussion', 'probe']);
     sim.run(['experiment', 'create', wu, 'probe', '--slug', 'sensor-drift']);
     sim.run(['experiment', 'await', wu, 'probe', 'E1']);
+    // The soft gate counts the unfinished experiment topics at a discussion
+    // entry, and the cascade gate renders the wait-release confirm the bare
+    // cancel's refusal routes to.
+    assert.match(sim.render(['epic-soft-gate', wu, '--action', 'new_discussion'], { expect: 'content' }),
+      /experiment topics still in-progress/);
     sim.refuses(['topic', 'cancel', wu, 'experiment', 'probe'], /releases the evidence wait on discussion "probe" \(awaiting E1\)/);
+    assert.match(sim.render(['cancel-cascade-gate', `${wu}.experiment.probe`], { expect: 'content' }),
+      /releases the evidence wait[\s\S]*awaiting E1/);
     const cancelled = sim.run(['topic', 'cancel', wu, 'experiment', 'probe', '--cascade']);
     assert.deepStrictEqual(cancelled.released_wait, { discussion: 'probe', released: ['E1'], remaining: [] });
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.probe.awaiting_experiments, undefined);

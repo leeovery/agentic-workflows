@@ -243,6 +243,9 @@ Commands:
   render topic-collision-gate
   render triage-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
+  render experiment-register <wu.experiment.topic>
+  render experiment-approval-gate <wu.experiment.topic> --id E<n>
+  render experiment-conclude-gate <wu.experiment.topic> [--dead-end]
   render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]
   render checkpoint-files-gate <wu.implementation.topic>

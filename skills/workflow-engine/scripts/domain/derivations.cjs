@@ -508,6 +508,7 @@ function computeSourceProvenance(source) {
  * @property {string|null} research_state
  * @property {boolean} triage_parked       a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {boolean} reconcile_pending   a phase item beneath the row carries a live reconcile flag
+ * @property {string[]} awaiting_experiments  the discussion item's live evidence-wait ids (empty when none)
  * @property {string|null} next_action
  */
 
@@ -548,6 +549,7 @@ function buildDiscoveryMap(manifest) {
       research_state,
       triage_parked,
       reconcile_pending,
+      awaiting_experiments: awaitedExperiments(manifest, item.name),
       next_action: computeNextAction(item.routing, lifecycle),
     };
   });

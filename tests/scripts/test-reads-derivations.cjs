@@ -1528,4 +1528,26 @@ describe('reads + derivations', () => {
     });
   });
 
+  describe('buildDiscoveryMap — the awaiting rider', () => {
+    const { createManifest } = require('./discovery-test-utils.cjs');
+    const { buildDiscoveryMap } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
+
+    it('a waiting discussion carries its awaited ids on the map row; every other row carries the empty set', () => {
+      createManifest(dir, 'lab', { phases: {
+        discovery: { items: {
+          policy: { routing: 'discussion', source: 'discovery', order: 1 },
+          timing: { routing: 'experiment', source: 'discovery', order: 2 },
+        } },
+        experiment: { items: { policy: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
+        discussion: { items: { policy: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+      } });
+      const { map } = buildDiscoveryMap(loadManifest(dir, 'lab'));
+      const policy = map.find((r) => r.name === 'policy');
+      assert.deepStrictEqual(policy.awaiting_experiments, ['E1']);
+      assert.strictEqual(policy.lifecycle, 'discussing');
+      const timing = map.find((r) => r.name === 'timing');
+      assert.deepStrictEqual(timing.awaiting_experiments, []);
+    });
+  });
+
 });

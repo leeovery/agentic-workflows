@@ -1559,6 +1559,19 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
     assert.ok(out.includes('  - ○ parked [fresh] routing=discussion summary=absent description=absent triage=waiting\n'), out);
   });
 
+  it('a waiting discussion carries the awaiting=ids cue on its map row', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { policy: { routing: 'discussion', source: 'discovery' } } },
+        experiment: { items: { policy: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' }, E2: { slug: 'y', status: 'running' } } } } },
+        discussion: { items: { policy: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] } } },
+      },
+    });
+    const out = formatScoped('v1', discover(dir, 'v1'));
+    assert.ok(out.includes('  - ◐ policy [discussing] routing=discussion summary=absent description=absent awaiting=E1,E2\n'), out);
+  });
+
   it('rows show routing=none for a legacy item with no routing', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',

@@ -530,3 +530,29 @@ describe('workunit projections: revisit phases section', () => {
     assert.deepStrictEqual(revisitablePhases('quick-fix', unit), ['scoping', 'implementation']);
   });
 });
+
+describe('workunit projections: experiment rows', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('a waiting discussion routes next_phase to the experiment, and the in-flight item keeps its ◐ row', () => {
+    createManifest(dir, 'metrics', {
+      phases: {
+        experiment: { items: { metrics: { status: 'in-progress', experiments: { E1: { slug: 'p95', status: 'running' } } } } },
+        discussion: { items: { metrics: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+      },
+    });
+    const unit = unitOf(dir, 'feature', 'metrics');
+    assert.strictEqual(unit.next_phase, 'experiment');
+    assert.strictEqual(unit.phase_label, 'experiment (awaiting evidence)');
+    // The label vocabulary doesn't say "(in-progress)", but the phase is in
+    // flight — the row must read ◐, never → ready.
+    assert.strictEqual(workUnitStatus('feature', unit), [
+      'PIPELINE (feature)',
+      '  ├─ ◐ Experiment    [in-progress]',
+      '  └─ ◐ Discussion    [in-progress]',
+      '',
+    ].join('\n'));
+  });
+});

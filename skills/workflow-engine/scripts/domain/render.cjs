@@ -39,8 +39,10 @@ const {
   roadmapConcludeGate,
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
+const { experimentRegister, experimentApprovalGate, experimentConcludeBlocked, experimentConcludeGate } = require('./projections/experiment.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase, computeTopicLifecycle } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle, awaitedExperiments } = require('./derivations.cjs');
+const { VALID_ROUTINGS, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -627,9 +629,7 @@ function carryNoteGate(cwd, { dotpath, file }) {
   const note = stringLines(p.note, 'carry-note-gate', 'note');
   if (note.length === 0) throw new Error('render carry-note-gate: "note" must be non-empty');
   if (!isFilled(p.target)) throw new Error('render carry-note-gate: "target" must be a non-empty string');
-  if (p.landing_phase !== 'research' && p.landing_phase !== 'discussion') {
-    throw new Error(`render carry-note-gate: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
-  }
+  assertRoutable('carry-note-gate', 'landing_phase', p.landing_phase);
   const display = section('DISPLAY: carry note', 'emit verbatim as markdown', [
     ...note,
     '',
@@ -1365,7 +1365,10 @@ function incoherenceGate(cwd, args) {
 // to: a live specification is built from the topic being cancelled, so the
 // cascade takes both. No payload — the collapse set is manifest state (the
 // same reverse join the refusal ran): started specs cancel with the topic
-// (reactivatable), proposed groupings are discarded. Always gated.
+// (reactivatable), proposed groupings are discarded. An experiment address
+// renders the softer wait-release confirm instead — nothing collapses; the
+// same-topic discussion's evidence wait releases and its waiting point
+// reverts to open. Always gated.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1374,7 +1377,21 @@ function incoherenceGate(cwd, args) {
  * @returns {string}
  */
 function cancelCascadeGate(cwd, { dotpath }) {
-  const { topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-cascade-gate');
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-cascade-gate');
+  if (phase === 'experiment') {
+    const awaiting = awaitedExperiments(manifest, topic);
+    if (awaiting.length === 0) {
+      throw new Error(`render cancel-cascade-gate: discussion "${topic}" holds no evidence wait — the bare cancel proceeds`);
+    }
+    return section('MENU: cancel cascade', "emit verbatim as markdown, then STOP for the user's response", menu(
+      `Cancelling **${titlecase(topic)}** releases the evidence wait its discussion holds (awaiting ${awaiting.join(', ')}): the waiting point reverts to open, and the release is surfaced at the discussion's next entry.`,
+      [
+        cmdOption('y', 'yes', 'Cancel the experiments and release the wait'),
+        cmdOption('n', 'no', 'Return to menu'),
+      ],
+      { question: 'Cancel and release?' },
+    ));
+  }
   const specItems = ((manifest.phases || {}).specification || {}).items || {};
   const collapses = Object.entries(specItems).filter(([, s]) =>
     s && typeof s === 'object' && !['cancelled', 'superseded', 'promoted'].includes(s.status)
@@ -1632,6 +1649,16 @@ function isFilled(v) {
   return typeof v === 'string' && v.trim() !== '';
 }
 
+// The map's routable phases are the routing/landing vocabulary everywhere a
+// surface validates one — schema-driven, so a widened pipeline can never
+// leave a gate refusing a value the write path accepts.
+/** @param {string} surface @param {string} field @param {unknown} value */
+function assertRoutable(surface, field, value) {
+  if (typeof value !== 'string' || !VALID_ROUTINGS.includes(value)) {
+    throw new Error(`render ${surface}: "${field}" must be one of ${VALID_ROUTINGS.join(', ')}, got "${value}"`);
+  }
+}
+
 /** @param {unknown} v @param {string} surface @param {string} field @returns {string[]} */
 function stringLines(v, surface, field) {
   if (!Array.isArray(v) || v.some((l) => typeof l !== 'string')) {
@@ -1835,9 +1862,7 @@ function rerouteOffer(cwd, { dotpath, file }) {
   if (hasTarget !== hasPhase) {
     throw new Error('render reroute-offer: "target" and "landing_phase" come together — both for a clear home, neither otherwise');
   }
-  if (hasPhase && !['research', 'discussion'].includes(p.landing_phase)) {
-    throw new Error(`render reroute-offer: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
-  }
+  if (hasPhase) assertRoutable('reroute-offer', 'landing_phase', p.landing_phase);
   const grown = p.grown === true;
   if (grown && !hasTarget) {
     throw new Error('render reroute-offer: "grown" needs "target" and "landing_phase" — a thread that grew into its own topic carries the name it grew into');
@@ -1934,8 +1959,9 @@ function deepDiveOffer(cwd, { dotpath, file }) {
 }
 
 // in-flight-agents-gate — the wait-or-conclude gate a session takes when
-// background agents are still running at conclusion. Research and discussion
-// both dispatch and both conclude, so the gate serves the pair. Served to the
+// background agents are still running at conclusion. Research, experiment,
+// and discussion all dispatch and all conclude, so the gate serves the
+// trio. Served to the
 // epic and feature sessions alike: the shape is one gate, and the count is
 // the session's own (this session's dispatches, an earlier session's dead
 // rows already closed), so it rides as a scalar flag rather than being
@@ -1950,8 +1976,8 @@ function deepDiveOffer(cwd, { dotpath, file }) {
  */
 function inFlightAgentsGate(cwd, { dotpath, count }) {
   const { phase } = resolveAddress(cwd, dotpath, 'in-flight-agents-gate');
-  if (phase !== 'research' && phase !== 'discussion') {
-    throw new Error(`render in-flight-agents-gate: address must be <work_unit>.research|discussion.<topic>, got phase "${phase}"`);
+  if (!['research', 'experiment', 'discussion'].includes(phase)) {
+    throw new Error(`render in-flight-agents-gate: address must be <work_unit>.research|experiment|discussion.<topic>, got phase "${phase}"`);
   }
   const n = Number(count);
   if (!Number.isInteger(n) || n < 1) {
@@ -2018,9 +2044,7 @@ function rerouteCandidates(cwd, { dotpath, file }) {
   resolveAddress(cwd, dotpath, 'reroute-candidates');
   const p = readJsonPayload(cwd, file, 'reroute-candidates');
   if (!isFilled(p.concern)) throw new Error('render reroute-candidates: "concern" must be a non-empty string');
-  if (!['research', 'discussion'].includes(p.landing_phase)) {
-    throw new Error(`render reroute-candidates: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
-  }
+  assertRoutable('reroute-candidates', 'landing_phase', p.landing_phase);
   if (!Array.isArray(p.candidates) || p.candidates.length === 0) {
     throw new Error('render reroute-candidates: "candidates" must be a non-empty array of {name, lifecycle}');
   }
@@ -2095,9 +2119,7 @@ function mapOpRows(p, field) {
 
 /** @param {string} value @param {string} field @returns {string} */
 function mapOpRouting(value, field) {
-  if (!['research', 'discussion'].includes(value)) {
-    throw new Error(`render map-op-gate: "${field}" must be "research" or "discussion", got "${value}"`);
-  }
+  assertRoutable('map-op-gate', field, value);
   return value;
 }
 
@@ -2250,9 +2272,7 @@ function candidateGate(cwd, { dotpath, file }) {
   }
   const p = readJsonPayload(cwd, file, 'candidate-gate');
   if (!isFilled(p.name)) throw new Error('render candidate-gate: "name" must be a non-empty string');
-  if (!['research', 'discussion'].includes(p.routing)) {
-    throw new Error(`render candidate-gate: "routing" must be "research" or "discussion", got "${p.routing}"`);
-  }
+  assertRoutable('candidate-gate', 'routing', p.routing);
   if (!isFilled(p.summary)) throw new Error('render candidate-gate: "summary" must be a non-empty string');
   const row = (staging.candidates || {})[p.name];
   if (!row || typeof row !== 'object' || row.status !== 'pending') {
@@ -2391,6 +2411,75 @@ function concludeGate(cwd, { dotpath }) {
     throw new Error(`render conclude-gate: phase must be one of ${Object.keys(CONCLUDE_GATES).join(', ')}, got "${phase}"`);
   }
   return section('MENU: conclude gate', STOP_FOR_RESPONSE, menu('', gate.options(), { question: gate.question }));
+}
+
+// ---------------------------------------------------------------------------
+// The experiment surfaces — the series register and the two gates that
+// bracket an experiment's life (projections/experiment.cjs renders; the
+// handlers resolve the item and refuse states the calling prose never
+// reaches). All address-backed: the series lives on the manifest
+// (`experiments.{id}` records), never in a hand-maintained file.
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve an experiment address to its phase item and its series rows in
+ * numeric id order — a loud error when the phase is wrong or the topic holds
+ * no experiment item.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{workUnit: string, topic: string, rows: import('./projections/experiment.cjs').SeriesRow[]}}
+ */
+function resolveExperiment(cwd, dotpath, surface) {
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
+  if (phase !== 'experiment') {
+    throw new Error(`render ${surface}: address must be <work_unit>.experiment.<topic>, got phase "${phase}"`);
+  }
+  const item = itemOf(manifest, 'experiment', topic);
+  if (!item || typeof item !== 'object') {
+    throw new Error(`render ${surface}: no experiment item "${topic}" in "${workUnit}"`);
+  }
+  const experiments = (item.experiments && typeof item.experiments === 'object') ? item.experiments : {};
+  const rows = Object.entries(experiments)
+    .map(([id, r]) => ({ id, ...(r && typeof r === 'object' ? r : {}) }))
+    .sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
+  return { workUnit, topic, rows };
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function experimentRegisterSurface(cwd, { dotpath }) {
+  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-register');
+  return experimentRegister(topic, rows);
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, id?: string}} args
+ * @returns {string}
+ */
+function experimentApprovalGateSurface(cwd, { dotpath, id }) {
+  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-approval-gate');
+  if (!isFilled(id)) throw new Error('render experiment-approval-gate: --id is required (E1, E2, …)');
+  const record = rows.find((r) => r.id === id);
+  if (!record) throw new Error(`render experiment-approval-gate: no experiment ${id} in "${topic}"'s series`);
+  if (record.status !== 'designed') {
+    throw new Error(`render experiment-approval-gate: ${id} is "${record.status}", not designed — the briefing confirm follows the written design`);
+  }
+  return experimentApprovalGate(/** @type {string} */ (id));
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, 'dead-end'?: string}} args
+ * @returns {string}
+ */
+function experimentConcludeGateSurface(cwd, args) {
+  const { rows } = resolveExperiment(cwd, args.dotpath, 'experiment-conclude-gate');
+  const unfinished = rows.filter((r) => !EXPERIMENT_TERMINAL_STATUSES.includes(r.status));
+  if (unfinished.length > 0) return experimentConcludeBlocked(unfinished);
+  return experimentConcludeGate(Boolean(args['dead-end']));
 }
 
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
@@ -3261,7 +3350,7 @@ function epicAllDoneGate(cwd, { dotpath }) {
 
 const { SOFT_GATE_ACTIONS } = require('./projections/epic.cjs');
 
-const SOFT_GATE_DISCUSSION_ACTIONS = ['start_discussion', 'start_discussion_after_research', 'continue_discussion', 'new_discussion'];
+const SOFT_GATE_DISCUSSION_ACTIONS = ['start_discussion', 'start_discussion_after_research', 'start_discussion_after_experiment', 'continue_discussion', 'new_discussion'];
 
 /** @param {object[]} items @returns {{inProgress: number, total: number}} */
 function softGateCounts(items) {
@@ -3314,16 +3403,30 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
   let message = null;
   let advisory = 'The system will re-analyse if you revisit later — proceeding now is safe, but may require rework.';
 
+  // One line per unfinished upstream phase — a discussion entry can owe both
+  // the research and the experiment count at once.
+  const countLine = (/** @type {string} */ phase, /** @type {string} */ tail) => {
+    const c = softGateCounts(phaseItems(manifest, phase));
+    return c.total > 0 && c.inProgress > 0
+      ? `${c.inProgress} of ${c.total} ${phase} topics still in-progress. ${tail}`
+      : null;
+  };
+
   if (SOFT_GATE_DISCUSSION_ACTIONS.includes(action)) {
-    const c = softGateCounts(phaseItems(manifest, 'research'));
-    if (c.total > 0 && c.inProgress > 0) {
-      message = `${c.inProgress} of ${c.total} research topics still in-progress. Topic analysis works best with all research available.`;
-    }
+    const lines = [
+      countLine('research', 'Topic analysis works best with all research available.'),
+      countLine('experiment', 'Discussions read the evidence — measured results work best complete.'),
+    ].filter((l) => l !== null);
+    if (lines.length > 0) message = lines.join('\n');
   } else if (action === 'start_specification') {
+    const lines = [];
     const c = softGateCounts(phaseItems(manifest, 'discussion'));
     if (c.total > 0 && c.inProgress > 0) {
-      message = `${c.inProgress} of ${c.total} discussions still in-progress. Later conclusions may reshape this grouping.`;
+      lines.push(`${c.inProgress} of ${c.total} discussions still in-progress. Later conclusions may reshape this grouping.`);
     }
+    const e = countLine('experiment', 'Evidence still being measured may reshape the discussions this grouping reads.');
+    if (e !== null) lines.push(e);
+    if (lines.length > 0) message = lines.join('\n');
   } else if (action === 'start_planning' || action === 'continue_planning') {
     if (!isFilled(topic)) throw new Error(`render epic-soft-gate: --topic is required for ${action}`);
     const ahead = buildOrderAhead(manifest, topic, 'planning');
@@ -4315,6 +4418,9 @@ const SURFACES = {
   'topic-collision-gate': topicCollisionGate,
   'triage-closed-target': triageClosedTarget,
   'conclude-gate': concludeGate,
+  'experiment-register': experimentRegisterSurface,
+  'experiment-approval-gate': experimentApprovalGateSurface,
+  'experiment-conclude-gate': experimentConcludeGateSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,

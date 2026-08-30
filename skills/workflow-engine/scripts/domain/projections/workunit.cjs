@@ -63,7 +63,10 @@ function pipelineNodes(cfg, unit) {
       const tag = flaggedPhases.has(phase) ? 'completed · input moved' : 'completed';
       nodes.push({ title: title({ glyph: '✓', label: titlecase(phase) }), tag });
     } else if (phase === unit.next_phase) {
-      const started = nextPhaseStarted(unit);
+      // The label vocabulary marks a started next phase, but not every
+      // started label says so — `experiment (awaiting evidence)` routes to a
+      // phase already in flight — so an in-progress item settles it too.
+      const started = nextPhaseStarted(unit) || (unit.in_progress_phases || []).includes(phase);
       nodes.push({
         title: title({ glyph: started ? '◐' : '→', label: titlecase(phase) }),
         tag: started ? 'in-progress' : 'ready',
