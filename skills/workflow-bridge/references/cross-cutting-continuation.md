@@ -6,7 +6,7 @@
 
 Route a cross-cutting concern to its next pipeline phase, with an option to revisit earlier phases.
 
-Cross-cutting pipeline: (Research) → Discussion → Specification (terminal)
+Cross-cutting pipeline: (Research) → (Experiment) → Discussion → Specification (terminal)
 
 ## A. Check Terminal
 

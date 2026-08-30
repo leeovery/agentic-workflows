@@ -17,7 +17,7 @@ The caller provides these via context before loading:
 - `concern` — the concern as a short title, plus the full context discussed about it.
 - `origin` — the topic the concern surfaced in (the current session's topic).
 - `phase` — the current session's phase, `research`, `experiment`, `discussion`, or `specification`. Recorded in the entry.
-- `landing_phase` — where the concern lands on the target, `research` or `discussion`: judged by the origin session per **Judging the Landing Phase** below, recommended and confirmed at the caller's gate. Any target state is legal — the delivery parks, leaves live work untouched, or reopens completed work as needed.
+- `landing_phase` — where the concern lands on the target, `research`, `experiment`, or `discussion`: judged by the origin session per **Judging the Landing Phase** below, recommended and confirmed at the caller's gate. Any target state is legal — the delivery parks, leaves live work untouched, or reopens completed work as needed.
 - `date` — today's date.
 
 After return, the caller reads these from conversation memory:
@@ -27,7 +27,7 @@ After return, the caller reads these from conversation memory:
 
 ## Judging the Landing Phase
 
-The concern's nature decides, never the target: an open question needing exploration → `research`; a decision owed → `discussion`; a correction lands in the phase whose document records the material it corrects — `discussion` when the target has recorded nothing yet. The target's map `routing` and live state have no vote — a question landing on a discussion-routed topic still lands research-side.
+The concern's nature decides, never the target: an open question needing exploration → `research`; a measurable question — an empirical, decision-bearing claim only a controlled run can settle → `experiment`; a decision owed → `discussion`; a correction lands in the phase whose document records the material it corrects — `discussion` when the target has recorded nothing yet. The target's map `routing` and live state have no vote — a question landing on a discussion-routed topic still lands research-side.
 
 ## Triage Entry Shape
 
@@ -110,7 +110,7 @@ Surface the engine's error verbatim — it names the recovery path (e.g. a cance
 
 **Otherwise:**
 
-Set `landed_topic = {target}` and `result = landed`. When the response carries `reconcile_flagged` or `sources_staled`, the landing marked completed downstream work to reconcile — on a research-side landing, the target's completed discussion (the landing reopened its ground); on a discussion-side landing, the specification(s) sourcing the target, named in `sources_staled`, whose extracted rows are now `stale` (`sources_staled` can arrive alone when the spec already carried a flag). The caller's landing line should say which.
+Set `landed_topic = {target}` and `result = landed`. When the response carries `reconcile_flagged` or `sources_staled`, the landing marked completed downstream work to reconcile — on a research- or experiment-side landing, the target's completed downstream item named in `reconcile_flagged` (its experiment or discussion — the landing reopened its ground); on a discussion-side landing, the specification(s) sourcing the target, named in `sources_staled`, whose extracted rows are now `stale` (`sources_staled` can arrive alone when the spec already carried a flag). The caller's landing line should say which.
 
 → Return to caller.
 
@@ -134,7 +134,7 @@ Reopen the topic — for `handled`:
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {target}
 ```
 
-For `cancelled` (an engine transaction — it commits itself) — reactivate the phase item that is actually cancelled, never the map `routing` (the initial intent may name a phase, or be absent, while the cancelled work sits elsewhere). Read both phase item statuses (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.{discussion|research}.{target} status`) and set `{cancelled_phase}` to the phase whose item is `cancelled` — when both are, `discussion` (the later phase):
+For `cancelled` (an engine transaction — it commits itself) — reactivate the phase item that is actually cancelled, never the map `routing` (the initial intent may name a phase, or be absent, while the cancelled work sits elsewhere). Read the three phase item statuses (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.{discussion|experiment|research}.{target} status`) and set `{cancelled_phase}` to the phase whose item is `cancelled` — when several are, the latest phase (discussion over experiment over research):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {cancelled_phase} {target}
