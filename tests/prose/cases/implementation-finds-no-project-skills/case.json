@@ -1,6 +1,7 @@
 {
-  "origin": "the project-skills discovery §C had no arm for the state every real install is in — .claude/skills/ populated with the workflow system and nothing project-specific. This walks first-time discovery through the scan-finds-none arm and linter discovery's skip, the path a first implementation takes in a real project",
+  "origin": "the two setup discoveries each need an arm for the state every bare install is in — .claude/skills/ holding only the workflow system, and a project with nothing to lint. This walks first-time discovery through both scan-finds-none arms, the path a first implementation takes in a bare real project",
   "entry": "workflow-implementation-entry",
+  "world": "claims",
   "files": [
     "skills/workflow-implementation-entry/SKILL.md",
     "skills/workflow-shared/references/framework.md",
@@ -21,9 +22,6 @@
     "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md",
     "skills/workflow-implementation-process/references/project-skills-discovery.md",
     "skills/workflow-implementation-process/references/linter-setup.md"
-  ],
-  "answers": [
-    "s — skip linter setup"
   ],
   "invariants": {
     "calls_include": [
@@ -46,6 +44,8 @@
       "manifest set pay.implementation.pay linters []"
     ],
     "calls_exclude": [
+      "render project-skills",
+      "render linters",
       "manifest push pay.implementation.pay project_skills",
       "task start",
       "task complete",

@@ -33,5 +33,14 @@ Further claims:
 - the project defaults were read, never written — the copy lands at
   the topic level only, with the exact values the defaults hold
 - the implementation item exists with gated gate modes; its
-  project_skills now records the two default paths and its linters the
-  two default entries
+  project_skills now records the two default paths
+  (`.claude/skills/laravel-conventions`,
+  `.claude/skills/laravel-testing`) and its linters the two default
+  entries (`pint` / `vendor/bin/pint --test`, `phpstan` /
+  `vendor/bin/phpstan analyse`)
+- the topic's cache directory holds the two payloads the confirms
+  wrote — a project-skills payload naming the two skill names and a
+  linters payload naming the two linter names — session scratch, left
+  behind because the walk stops mid-session
+- nothing else in the world moved: no artifact was written or edited,
+  and no other manifest field changed

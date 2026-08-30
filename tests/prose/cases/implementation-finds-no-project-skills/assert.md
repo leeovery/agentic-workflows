@@ -16,9 +16,10 @@ The prose should have taken this path:
    never candidates — with no menu and no question, and both the topic
    and project levels record the empty array
 7. linter discovery reads an unpopulated topic value and no project
-   default, so it proceeds to discovery; findings are presented and
-   the approval menu offered; the scripted answer skips, and both
-   levels record the empty array
+   default, so it proceeds to discovery; the analysis finds no
+   candidate linters — a project with no source code has nothing to
+   lint — so the no-linters notice is emitted with no menu and no
+   question, and both levels record the empty array
 8. the walk stops as the skill turns to its next concern — the
    knowledge guidance is never loaded and the task loop is never
    entered
@@ -29,5 +30,12 @@ Further claims:
   skills as candidates and never asked which skills to use
 - no individual skill paths were pushed to the manifest (the
   found-skills mechanism)
-- the implementation item exists with gated gate modes; the project
-  defaults now record empty arrays for both project_skills and linters
+- the implementation item exists with gated gate modes; the topic
+  records empty arrays for both project_skills and linters, and the
+  project defaults now record the same empty arrays
+- the start of implementation was committed through the engine's
+  scoped commit; no other manifest field changed and no artifact was
+  written or edited
+- neither discovery wrote a cache payload or fetched a render surface
+  — both scans found nothing to present, so the user was asked nothing
+  between the handoff and the stopping point
