@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Reference for **[workflow-knowledge](../SKILL.md)** — loaded by processing skills (research, discussion, investigation, scoping, planning, implementation, review).*
+*Reference for **[workflow-knowledge](../SKILL.md)** — loaded by processing skills (research, experiment, discussion, investigation, scoping, planning, implementation, review).*
 
 ---
 

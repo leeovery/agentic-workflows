@@ -1,12 +1,12 @@
 # Off-Topic Concern — Epic
 
-*Shared reference. Loaded by the research and discussion epic sessions when a concern belongs elsewhere on the map.*
+*Shared reference. Loaded by the research, experiment, and discussion epic sessions when a concern belongs elsewhere on the map.*
 
 ---
 
-The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` — the session's own phase), the `concern` with its discussed context, and `reason` — `off-topic` (the default when omitted: a concern this session judged not its own) or `grown-thread` (a thread grown inside this topic that has earned a topic of its own). Either way the concern's home on an epic is a sibling topic, existing or new. Offer the reroute, resolve the target yourself, and land the concern where it belongs.
+The caller provides `work_unit`, `topic`, `phase` (`research`, `experiment`, or `discussion` — the session's own phase), the `concern` with its discussed context, and `reason` — `off-topic` (the default when omitted: a concern this session judged not its own) or `grown-thread` (a thread grown inside this topic that has earned a topic of its own). Either way the concern's home on an epic is a sibling topic, existing or new. Offer the reroute, resolve the target yourself, and land the concern where it belongs.
 
-**If the concern is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. Park it (born at the first park; the verb validates and self-commits), note it in the session's running record, and continue — capture-weight, never shaping:
+**If the concern is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. Park it (born at the first park; the verb validates and self-commits), note it in the session's running record, and continue — capture-weight, never shaping. An `experiment` session's `--source` is the topic's series directory, `{work_unit}/experiment/{topic}`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon {horizon} --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/{phase}/{topic}.md
@@ -32,7 +32,7 @@ On a `grown-thread` entry the current topic is never the answer — the thread g
 
 #### If the resolved target is the current topic
 
-It was a detail of this session's own topic after all, not a reroute — keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, fold it into the research file as a thread.
+It was a detail of this session's own topic after all, not a reroute — keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, fold it into the research file as a thread; on `experiment`, note it on the live experiment's record — or, when it's a measurable question of its own, conceive it as the next experiment when its turn comes.
 
 → Return to caller for **B. Session Loop**.
 

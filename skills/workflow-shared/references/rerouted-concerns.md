@@ -1,6 +1,6 @@
 # Rerouted Concerns
 
-*Shared reference. Loaded by the session wrappers of `workflow-discussion-process` and `workflow-research-process` (whose session loops enter **A. Check** from their triage check each iteration) and by `workflow-investigation-process` at its resumed-session check and conclusion gate.*
+*Shared reference. Loaded by the session wrappers of `workflow-discussion-process`, `workflow-research-process`, and `workflow-experiment-process` (whose session loops enter **A. Check** from their triage check each iteration) and by `workflow-investigation-process` at its resumed-session check and conclusion gate.*
 
 ---
 
@@ -12,7 +12,7 @@ The caller provides these via context before loading:
 
 - `work_unit` — the work unit. Always present.
 - `topic` — the current topic, whose queue is surfaced.
-- `phase` — `discussion`, `research`, or `investigation`. Selects the artefact and the fold shape.
+- `phase` — `discussion`, `research`, `experiment`, or `investigation`. Selects the artefact and the fold shape.
 
 ## A. Check
 
@@ -196,6 +196,16 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_
 #### If `phase` is `research`
 
 Fold the concern into the freeform body as a `### {title}` thread opening with the provenance line, followed by the body and what the discussion made of it.
+
+→ Proceed to **E. Absorb**.
+
+#### If `phase` is `experiment`
+
+Fold the concern in the series' idiom, by where its outcome lands:
+
+- **It shapes an experiment not yet approved**: fold it into that experiment's `design.md` — the design is still open, and the concern's substance joins the section it informs, the provenance line beside it.
+- **It bears on a frozen or running experiment**: log it in that experiment's `report.md` — a dated note in Deviations, or Corrections when it indicts something already written, opening with the provenance line.
+- **It asks for a new measurement, or bears on a finished experiment**: conceive the successor (**A. Conceive** in **[experiment-walk.md](../../workflow-experiment-process/references/experiment-walk.md)**) and open its `design.md` with the provenance line, the concern's body, and what the discussion made of it — the walk completes the skeleton when its turn comes.
 
 → Proceed to **E. Absorb**.
 

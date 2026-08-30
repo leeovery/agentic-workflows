@@ -1,6 +1,6 @@
 # Closing Recap
 
-*Shared reference. Loaded by the conclude flows of research, discussion, and investigation.*
+*Shared reference. Loaded by the conclude flows of research, experiment, discussion, and investigation.*
 
 ---
 
@@ -17,6 +17,8 @@ Three beats:
 3. **What transformed along the way** — a problem that dissolved, scope that grew or shrank, a direction nobody expected at the start.
 
 **If phase is `research`:** frame the arc as questions in → findings out — what was unknown at the start and what is known now.
+
+**If phase is `experiment`:** frame the arc as predictions in → verdicts out — what the series set out to measure, which predictions held, and what the evidence hands the discussion.
 
 **If phase is `discussion`:** frame the arc around the decisions — what was settled and how the hard ones resolved.
 

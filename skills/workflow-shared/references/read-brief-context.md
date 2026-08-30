@@ -1,6 +1,6 @@
 # Read the Topic's Discovery Brief
 
-*Shared reference. Loaded by the research and discussion processing skills at initialisation, and by the reconcile advisory over a regenerated brief.*
+*Shared reference. Loaded by the research, experiment, and discussion processing skills at initialisation, and by the reconcile advisory over a regenerated brief.*
 
 ---
 

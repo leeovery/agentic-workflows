@@ -1,6 +1,6 @@
 # Triage Landing
 
-*Shared reference. Loaded by `workflow-discussion-process` (off-topic concerns), `workflow-research-process` (topic awareness), and `workflow-specification-process` (gaps and resolutions routed to a source discussion) when a concern must be rerouted to a different topic.*
+*Shared reference. Loaded by `workflow-discussion-process` (off-topic concerns), `workflow-research-process` (topic awareness), `workflow-experiment-process` (off-topic concerns), and `workflow-specification-process` (gaps and resolutions routed to a source discussion) when a concern must be rerouted to a different topic.*
 
 ---
 
@@ -16,7 +16,7 @@ The caller provides these via context before loading:
 - `target` — the destination topic the concern belongs to (an existing map name, or a new kebab-case name the caller proposed and confirmed).
 - `concern` — the concern as a short title, plus the full context discussed about it.
 - `origin` — the topic the concern surfaced in (the current session's topic).
-- `phase` — the current session's phase, `research`, `discussion`, or `specification`. Recorded in the entry.
+- `phase` — the current session's phase, `research`, `experiment`, `discussion`, or `specification`. Recorded in the entry.
 - `landing_phase` — where the concern lands on the target, `research` or `discussion`: judged by the origin session per **Judging the Landing Phase** below, recommended and confirmed at the caller's gate. Any target state is legal — the delivery parks, leaves live work untouched, or reopens completed work as needed.
 - `date` — today's date.
 
