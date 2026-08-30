@@ -91,6 +91,24 @@ Analyse the project to determine which linters are appropriate:
 2. **Check installed tooling** — verify availability of candidate linters via the command line (e.g., `--version`). Check common install locations including package managers (brew, npm global, pip, cargo, etc.).
 3. **Recommend a linter set** — based on project analysis and available tooling. Include install commands for any recommended tools that aren't yet installed.
 
+#### If the analysis finds no candidate linters
+
+> *Output the next fenced block as a code block:*
+
+```
+No linters found for this project. Proceeding without linting during TDD.
+```
+
+Store empty array at topic and project level:
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[]'
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.linters '[]'
+```
+
+→ Return to caller.
+
+#### If the analysis finds candidate linters
+
 Write the findings to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `installed` is what the check above actually found, and `recommendations` (omit it when there are none) carries any install commands as one line: `{"linters": [{"name": "{tool}", "detail": "{command}", "installed": true|false}], "recommendations": "{suggested tools with their install commands}"}` — then fetch the gate, emitting each section verbatim at its marked instruction:
 
 ```bash

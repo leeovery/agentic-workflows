@@ -16,9 +16,10 @@ The prose should have taken this path:
    never candidates — with no menu and no question, and both the topic
    and project levels record the empty array
 7. linter discovery reads an unpopulated topic value and no project
-   default, so it proceeds to discovery; findings are presented and
-   the approval menu offered; the scripted answer skips, and both
-   levels record the empty array
+   default, so it proceeds to discovery; the analysis finds no
+   candidate linters — a project with no source code has nothing to
+   lint — so the no-linters notice is emitted with no menu and no
+   question, and both levels record the empty array
 8. the walk stops as the skill turns to its next concern — the
    knowledge guidance is never loaded and the task loop is never
    entered
@@ -35,7 +36,6 @@ Further claims:
 - the start of implementation was committed through the engine's
   scoped commit; no other manifest field changed and no artifact was
   written or edited
-- the linter discovery's cache payload may remain in the topic's cache
-  directory — session scratch holding whatever candidate set the scan
-  presented; the skills side wrote none, its scan having found nothing
-  to present
+- neither discovery wrote a cache payload or fetched a render surface
+  — both scans found nothing to present, so the user was asked nothing
+  between the handoff and the stopping point
