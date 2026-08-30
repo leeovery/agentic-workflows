@@ -29,5 +29,13 @@ Further claims:
   skills as candidates and never asked which skills to use
 - no individual skill paths were pushed to the manifest (the
   found-skills mechanism)
-- the implementation item exists with gated gate modes; the project
-  defaults now record empty arrays for both project_skills and linters
+- the implementation item exists with gated gate modes; the topic
+  records empty arrays for both project_skills and linters, and the
+  project defaults now record the same empty arrays
+- the start of implementation was committed through the engine's
+  scoped commit; no other manifest field changed and no artifact was
+  written or edited
+- the linter discovery's cache payload may remain in the topic's cache
+  directory — session scratch holding whatever candidate set the scan
+  presented; the skills side wrote none, its scan having found nothing
+  to present
