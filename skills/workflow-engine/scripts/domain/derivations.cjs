@@ -365,9 +365,10 @@ function computeNeedsSequencing(mapItems) {
 // — a triaged stub renders as `fresh` by fall-through, and the rider survives
 // on every branch (a `discussing` topic can still hold a parked research
 // stub, which never drains from the discussion side). `reconcile_pending`
-// is the third rider: either phase item carries a live reconcile flag, so
+// is the third rider: any phase item carries a live reconcile flag, so
 // the map row can cue `input moved` — with a map, phase-item rows never
-// render for research/discussion, making this the topic's only surface.
+// render for research/experiment/discussion, making this the topic's only
+// surface.
 function computeTopicLifecycle(manifest, topicName) {
   const discovery = phaseItems(manifest, 'discovery').find(i => i.name === topicName);
   const research = phaseItems(manifest, 'research').find(i => i.name === topicName);

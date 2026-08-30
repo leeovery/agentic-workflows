@@ -269,10 +269,10 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // paths.
     const epicPhases = ensureContainer(epicManifest, 'phases', 'phases');
     const discussion = ensureContainer(epicPhases, 'discussion', 'phases.discussion');
-    // A live reconcile flag travels with the topic: research and discussion
-    // move together, so "research moved beneath this discussion" stays true
-    // in the epic — the map row cues it and the discussion's next entry
-    // clears it, same as any epic topic. The topic's dismissed grounds travel
+    // A live reconcile flag travels with the topic: research, experiments,
+    // and discussion move together, so "the upstream input moved beneath this
+    // discussion" stays true in the epic — the map row cues it and the
+    // discussion's next entry clears it, same as any epic topic. The topic's dismissed grounds travel
     // too: they are the user's standing do-not-report calls on this material,
     // and the material is what moved — dropping them re-raises findings the
     // user already turned down.

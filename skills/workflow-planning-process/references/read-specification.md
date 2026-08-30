@@ -44,4 +44,4 @@ Note where cross-cutting decisions apply to the work you are designing.
 - **Do not summarise** — your job is to use the spec directly, not to create a derivative
 - **Do not skip sections** — even sections that seem irrelevant may contain constraints or edge cases that affect your work
 - **Do not reinterpret decisions** — the spec contains validated decisions; translate them into plan structure, don't second-guess them
-- **Do not reference other source material** — the specification is the sole input; it already incorporates prior research and discussion
+- **Do not reference other source material** — the specification is the sole input; it already incorporates prior research, experiments, and discussion
