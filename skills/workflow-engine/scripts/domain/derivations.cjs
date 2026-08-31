@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { fileExists, filesChecksum } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -46,6 +46,47 @@ function phaseData(manifest, phase) {
   return (manifest.phases || {})[phase] || {};
 }
 
+/**
+ * One item's live evidence-wait ids (`awaiting_experiments` — the
+ * engine-owned lock a spawn places on the spawning phase's own item) — empty
+ * when the item or the field is absent.
+ * @param {object} manifest @param {string} phase @param {string} topic
+ * @returns {string[]}
+ */
+function awaitedExperiments(manifest, phase, topic) {
+  const item = (phaseData(manifest, phase).items || {})[topic];
+  return item && typeof item === 'object' && Array.isArray(item.awaiting_experiments)
+    ? item.awaiting_experiments
+    : [];
+}
+
+/**
+ * The topic's live evidence waits across both spawn phases — every id a
+ * non-terminal research or discussion item is blocked on. A terminal
+ * holder's wait is inert and never counted.
+ * @param {object} manifest @param {string} topic
+ * @returns {{phase: string, ids: string[]}[]}  holders with waits, spawn-phase order
+ */
+function experimentWaits(manifest, topic) {
+  const holders = [];
+  for (const phase of EXPERIMENT_SPAWN_PHASES) {
+    const item = (phaseData(manifest, phase).items || {})[topic];
+    if (!item || typeof item !== 'object' || TERMINAL_STATUSES.includes(item.status)) continue;
+    const ids = awaitedExperiments(manifest, phase, topic);
+    if (ids.length > 0) holders.push({ phase, ids });
+  }
+  return holders;
+}
+
+// Non-terminal items of one spawn phase holding a live evidence wait — the
+// state that blocks their conclusion and routes the linear pipeline to the
+// experiment.
+function waitingItems(manifest, phase) {
+  return phaseItems(manifest, phase)
+    .filter((i) => !TERMINAL_STATUSES.includes(i.status)
+      && Array.isArray(i.awaiting_experiments) && i.awaiting_experiments.length > 0);
+}
+
 function computeNextPhase(manifest) {
   const wt = manifest.work_type;
 
@@ -63,8 +104,20 @@ function computeNextPhase(manifest) {
     for (const phase of pipeline) {
       // The earliest in-flight phase owns the next action — a spec paused by
       // a gap routed into its reopened source must route to that source, not
-      // back into its own blocked entry.
+      // back into its own blocked entry. A research or discussion holding a
+      // live evidence wait cannot act, and an in-flight experiment slot is
+      // that wait's other side (a discussion's lock sits later in the
+      // pipeline than the laboratory it waits on): both route to the
+      // experiment. Linear types only — an epic's next_phase is
+      // phase-coarse, and its per-experiment menu entries carry the route
+      // instead.
       if (ps(phase) === 'in-progress') {
+        const awaiting = phase === 'experiment'
+          ? EXPERIMENT_SPAWN_PHASES.some((p) => waitingItems(manifest, p).length > 0)
+          : EXPERIMENT_SPAWN_PHASES.includes(phase) && waitingItems(manifest, phase).length > 0;
+        if (awaiting) {
+          return { next_phase: 'experiment', phase_label: 'experiment (awaiting evidence)' };
+        }
         return { next_phase: phase, phase_label: `${phase} (in-progress)` };
       }
       const flagged = phaseItems(manifest, phase)
@@ -149,10 +202,19 @@ function computeNextPhase(manifest) {
     return { next_phase: 'discussion', phase_label: 'discussion (in-progress)' };
   }
 
-  // Research is optional for both epic and feature (not bugfix)
+  // Research and experiment are the optional phases of the research-bearing
+  // types (not bugfix). Research in-progress leads the checks: a research
+  // whose experiment already concluded is still the earlier open
+  // conversation, and "ready for discussion" would skip it.
   if (wt !== 'bugfix') {
     if (ps('research') === 'in-progress') {
       return { next_phase: 'research', phase_label: 'research (in-progress)' };
+    }
+    if (ps('experiment') === 'in-progress') {
+      return { next_phase: 'experiment', phase_label: 'experiment (in-progress)' };
+    }
+    if (ps('experiment') === 'completed') {
+      return { next_phase: 'discussion', phase_label: 'ready for discussion' };
     }
     if (ps('research') === 'completed') {
       return { next_phase: 'discussion', phase_label: 'ready for discussion' };
@@ -443,6 +505,7 @@ function computeSourceProvenance(source) {
  * @property {string|null} research_state
  * @property {boolean} triage_parked       a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {boolean} reconcile_pending   a phase item beneath the row carries a live reconcile flag
+ * @property {string[]} awaiting_experiments  live evidence-wait ids across the topic's research and discussion items (empty when none)
  * @property {string|null} next_action
  */
 
@@ -483,6 +546,7 @@ function buildDiscoveryMap(manifest) {
       research_state,
       triage_parked,
       reconcile_pending,
+      awaiting_experiments: experimentWaits(manifest, item.name).flatMap((h) => h.ids),
       next_action: computeNextAction(item.routing, lifecycle),
     };
   });
@@ -494,6 +558,8 @@ module.exports = {
   phaseData,
   phaseItems,
   phaseStatus,
+  awaitedExperiments,
+  experimentWaits,
   computeNextPhase,
   computeInProgressPhases,
   computeUnitPhaseState,

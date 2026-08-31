@@ -27,6 +27,8 @@ const {
   VALID_PHASE_STATUSES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
+  VALID_EXPERIMENT_STATUSES,
+  EXPERIMENT_ID_PATTERN,
 } = require('../kernel/manifest-schema.cjs');
 
 // Phases whose artifacts the knowledge base indexes — `resolve`'s scope.
@@ -269,6 +271,23 @@ function validateSet(segments, value, fieldSegments = segments) {
       return;
     }
 
+    // The experiment series container (field experiments.<id>.<field>) —
+    // leaf repairs only, each validated as the experiment verbs would write
+    // it.
+    if (fieldSegments[0] === 'experiments') {
+      validateExperimentField(fieldSegments, value);
+      return;
+    }
+
+    // phases.<phase>.items.<item>.awaiting_experiments — the evidence lock a
+    // spawn places on the spawning item, released by the terminal experiment
+    // transitions. Guarded so a hand write can never land a shape the
+    // release edges cannot read.
+    if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'awaiting_experiments') {
+      validateAwaitingExperiments(value);
+      return;
+    }
+
     // Staging task decisions (field staging.<cycle>.tasks.<n>)
     if (fieldSegments[0] === 'staging' && fieldSegments.length >= 2
         && fieldSegments[fieldSegments.length - 2] === 'tasks') {
@@ -335,10 +354,63 @@ function refuseShadowField(phase, topic, fieldSegments) {
 // Vocabulary-guarded state containers take leaf writes only — a wholesale
 // set could land any shape unvalidated. Delete clears them; apply/set write
 // their leaves.
+const GUARDED_CONTAINERS = ['staging', 'tracking', 'analysis_staging', 'experiments'];
+
 /** @param {string[]} fieldSegments */
 function refuseContainerWrite(fieldSegments) {
-  if (fieldSegments.length === 1 && ['staging', 'tracking', 'analysis_staging'].includes(fieldSegments[0])) {
+  if (fieldSegments.length === 1 && GUARDED_CONTAINERS.includes(fieldSegments[0])) {
     fail(`"${fieldSegments[0]}" is a guarded state container — write its leaf fields (or delete to clear); a wholesale set would bypass validation`);
+  }
+}
+
+// An experiment record's writable leaves — everything else the record holds
+// is engine-derived.
+const EXPERIMENT_RECORD_FIELDS = ['slug', 'status', 'verdict', 'reason'];
+
+/**
+ * One experiment-record field write (`experiments.<id>.<leaf>`), validated
+ * exactly as the experiment verbs write it. Record-level sets are refused —
+ * a wholesale write would bypass the leaf vocabulary — and a sub-experiment
+ * is unreachable here by construction: its dotted id splits into path
+ * segments the surface cannot re-join, so those records stay engine-managed.
+ * @param {string[]} fieldSegments @param {*} value
+ */
+function validateExperimentField(fieldSegments, value) {
+  const [, id, leaf] = fieldSegments;
+  if (EXPERIMENT_ID_PATTERN.test(id ?? '') && /^[1-9][0-9]*$/.test(fieldSegments[2] ?? '')) {
+    fail(`sub-experiment records key by their dotted id ("${id}.${fieldSegments[2]}"), which the field surface cannot address — use the experiment verbs`);
+  }
+  if (fieldSegments.length === 2) {
+    fail(`"experiments.${id}" is a record — write its leaf fields (${EXPERIMENT_RECORD_FIELDS.join(', ')}); a wholesale set would bypass validation`);
+  }
+  if (fieldSegments.length !== 3 || !EXPERIMENT_RECORD_FIELDS.includes(leaf)) {
+    fail(`Invalid experiment field "${fieldSegments.slice(1).join('.')}" — records take ${EXPERIMENT_RECORD_FIELDS.join(', ')}`);
+  }
+  if (!EXPERIMENT_ID_PATTERN.test(id)) {
+    fail(`invalid experiment id "${id}" — ids are E1, E2, …`);
+  }
+  if (leaf === 'status') {
+    if (typeof value !== 'string' || !VALID_EXPERIMENT_STATUSES.includes(value)) {
+      fail(`Invalid experiment status ${JSON.stringify(value)}. Must be one of: ${VALID_EXPERIMENT_STATUSES.join(', ')}`);
+    }
+    return;
+  }
+  if (leaf === 'slug') {
+    if (typeof value !== 'string' || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(value)) {
+      fail(`Invalid experiment slug ${JSON.stringify(value)}. Must be kebab-case`);
+    }
+    return;
+  }
+  // verdict / reason — the register's one-line row form.
+  if (typeof value !== 'string' || value.trim() === '' || value.includes('\n')) {
+    fail(`Invalid experiment ${leaf} ${JSON.stringify(value)}. Must be one non-empty line`);
+  }
+}
+
+/** @param {*} value */
+function validateAwaitingExperiments(value) {
+  if (!Array.isArray(value) || value.some((id) => typeof id !== 'string' || !EXPERIMENT_ID_PATTERN.test(id) || id.includes('.'))) {
+    fail(`Invalid awaiting_experiments ${JSON.stringify(value)}. Must be an array of top-level experiment ids (E1, E2, …) — the lock is only ever the parent id`);
   }
 }
 
@@ -894,14 +966,18 @@ function cmdPush(cwd, args) {
 
   refuseEmptyFieldSegments(args[1], fieldSegments);
   refuseShadowField(phase, topic, fieldSegments);
-  if (['staging', 'tracking', 'analysis_staging'].includes(fieldSegments[0])) {
+  if (GUARDED_CONTAINERS.includes(fieldSegments[0])) {
     fail(`"${fieldSegments[0]}" is a guarded state container — its fields take vocabulary values via set, never array pushes`);
   }
   const segments = resolveSegments(phase, topic, fieldSegments);
   // storage_paths is guarded at write time on every route — set validates the
   // whole array; push validates the one entry it appends.
+  // awaiting_experiments takes the same treatment.
   if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'storage_paths') {
     validateStoragePaths([value]);
+  }
+  if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'awaiting_experiments') {
+    validateAwaitingExperiments([value]);
   }
   // `order` is a scalar — pushing would land an array every reader treats as
   // unordered. Refuse the route rather than the value.

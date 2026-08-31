@@ -27,7 +27,7 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { computeTopicLifecycle } = require('./derivations.cjs');
+const { computeTopicLifecycle, awaitedExperiments, experimentWaits } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 
 // The discovery map's lifecycle is computed from research and discussion
@@ -38,7 +38,7 @@ const { revertJoins } = require('./roadmap.cjs');
 // here strips a still-live topic's position.
 const MAP_LIFECYCLE_PHASES = ['research', 'discussion'];
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
 // items (no lifecycle status — computed at render time); they are created and
@@ -70,6 +70,7 @@ function assertLegalWrite(phase, status) {
  * @property {string[]} [cascaded]  started spec items cancelled with their source (cancel --cascade)
  * @property {string[]} [discarded] proposed groupings deleted with their source (cancel --cascade)
  * @property {string[]} [roadmap_reverted] roadmap items handed back to waiting by the cancel-revert hop
+ * @property {WaitRelease[]} [released_waits] the evidence waits an experiment cancel released (cancel --cascade)
  */
 
 /**
@@ -121,6 +122,9 @@ function phaseItem(manifest, phase, topic) {
  */
 function startTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
+  if (phase === 'experiment') {
+    throw new Error('the experiment item is derived bookkeeping — the spawn creates and reopens it (experiment create), never topic start');
+  }
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const phases = ensureContainer(manifest, 'phases', 'phases');
@@ -291,9 +295,62 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
 
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
   const at = pipeline.indexOf(phase);
-  const next = at === -1 ? undefined : pipeline[at + 1];
-  if (next) flag(next, topic, (itemsOf(next) || {})[topic]);
+  // The hop targets the nearest downstream consumer. The optional slots
+  // (research, experiment) may hold nothing the flag can land on — walk past
+  // an optional phase whose same-named item is absent or not completed — but
+  // only optional phases are walkable: the first mandatory phase ends the
+  // hop whatever it holds, so a research reopen stops at discussion and
+  // never reaches the specification behind it.
+  const OPTIONAL = ['research', 'experiment'];
+  for (let i = at + 1; at !== -1 && i < pipeline.length; i++) {
+    const next = pipeline[i];
+    const item = (itemsOf(next) || {})[topic];
+    const flaggable = item && typeof item === 'object' && item.status === 'completed';
+    if (flaggable || !OPTIONAL.includes(next)) {
+      flag(next, topic, item);
+      break;
+    }
+  }
   return result;
+}
+
+/**
+ * @typedef {object} WaitRelease
+ * @property {string} phase       the holder — the spawning research or discussion
+ * @property {string[]} released
+ * @property {string[]} remaining
+ */
+
+/**
+ * Release the evidence waits `topic`'s spawn-phase items hold on the named
+ * experiments — the edge every terminal experiment transition rides
+ * (conclude, abandon, the epic cancel), so a wait can never dangle. Removes
+ * `ids` (or every id) from each holder's `awaiting_experiments`, deletes the
+ * emptied field, and flags a non-terminal holder with `reconcile_needed:
+ * "experiment"` (an existing flag never clobbered) so its next entry
+ * surfaces the evidence — or the abandonment — before the waiting point
+ * settles. Mutates the loaded manifest; the caller saves under its own lock.
+ * @param {object} manifest @param {string} topic
+ * @param {{ids?: string[]}} [opts]  specific ids; omitted releases them all
+ * @returns {WaitRelease[]}  the holders that released something; empty when nothing was waiting
+ */
+function releaseExperimentWaits(manifest, topic, opts = {}) {
+  /** @type {WaitRelease[]} */
+  const releases = [];
+  for (const phase of EXPERIMENT_SPAWN_PHASES) {
+    const awaiting = awaitedExperiments(manifest, phase, topic);
+    const releasing = opts.ids === undefined ? awaiting : awaiting.filter((id) => /** @type {string[]} */ (opts.ids).includes(id));
+    if (releasing.length === 0) continue;
+    const item = manifest.phases[phase].items[topic];
+    const remaining = awaiting.filter((id) => !releasing.includes(id));
+    if (remaining.length === 0) delete item.awaiting_experiments;
+    else item.awaiting_experiments = remaining;
+    if (!TERMINAL_STATUSES.includes(item.status) && item.reconcile_needed === undefined) {
+      item.reconcile_needed = 'experiment';
+    }
+    releases.push({ phase, released: releasing, remaining });
+  }
+  return releases;
 }
 
 /**
@@ -689,6 +746,9 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
  */
 function completeTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'completed');
+  if (phase === 'experiment') {
+    throw new Error('the experiment item is derived bookkeeping — each experiment concludes or is abandoned (experiment conclude/abandon), and the item closes itself when the last record ends');
+  }
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -712,6 +772,14 @@ function completeTopic(cwd, workUnit, phase, topic) {
         .map(([name]) => name);
       if (blocking.length > 0) {
         throw new Error(`specification "${topic}" has unresolved source rows (${blocking.join(', ')}) — extract pending sources and reconcile stale ones before concluding`);
+      }
+    }
+    if (EXPERIMENT_SPAWN_PHASES.includes(phase)) {
+      // The evidence wait holds the conclusion shut engine-side — the phase
+      // raised a question it needs answered before it can honestly conclude.
+      const awaiting = awaitedExperiments(manifest, phase, topic);
+      if (awaiting.length > 0) {
+        throw new Error(`${phase} "${topic}" awaits experiment evidence (${awaiting.join(', ')}) — the wait releases when the experiment concludes or is abandoned`);
       }
     }
     item.status = 'completed';
@@ -762,6 +830,9 @@ function completeTopic(cwd, workUnit, phase, topic) {
  */
 function reopenTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
+  if (phase === 'experiment') {
+    throw new Error('the experiment item is derived bookkeeping — a new spawn reopens the series (experiment create), never topic reopen');
+  }
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -907,6 +978,13 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
  * Cancelling a discussion a live specification sources collapses that spec:
  * the bare cancel refuses, naming the affected spec item(s); `cascade: true`
  * cancels the discussion and those spec items in one transaction.
+ *
+ * Cancelling a topic's experiments while a spawning conversation awaits
+ * their evidence releases the wait — softer than the spec cascade, nothing
+ * collapses: the bare cancel refuses naming the waiting item(s); `cascade:
+ * true` cancels the experiments and releases the waits in one transaction
+ * (each waiting point reverts to open, the release surfaced at that
+ * conversation's next entry).
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -919,11 +997,22 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   const cascaded = [];
   /** @type {string[]} */
   const discarded = [];
+  /** @type {WaitRelease[]} */
+  let releasedWaits = [];
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is already cancelled`);
+    }
+
+    if (phase === 'experiment') {
+      const holders = experimentWaits(manifest, topic);
+      if (holders.length > 0 && !opts.cascade) {
+        const held = holders.map((h) => `its ${h.phase} awaits ${h.ids.join(', ')}`).join('; ');
+        throw new Error(`cancelling the "${topic}" experiments releases the evidence wait — ${held} — confirm the release (--cascade cancels the experiments and releases the waits; each waiting point reverts to open)`);
+      }
+      releasedWaits = releaseExperimentWaits(manifest, topic);
     }
 
     if (phase === 'discussion' || phase === 'investigation') {
@@ -981,7 +1070,11 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
 
   /** @type {string[]} */
   const warnings = [];
-  knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
+  // Experiments never enter the knowledge base — their cancel has no chunks
+  // to remove, so the store is left untouched.
+  if (phase !== 'experiment') {
+    knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
+  }
   for (const name of cascaded) {
     knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', 'specification', '--topic', name], 'knowledge remove', warnings);
   }
@@ -1005,6 +1098,7 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   if (cascaded.length > 0) result.cascaded = cascaded;
   if (discarded.length > 0) result.discarded = discarded;
   if (reverted.length > 0) result.roadmap_reverted = reverted;
+  if (releasedWaits.length > 0) result.released_waits = releasedWaits;
   // `--sweep`, because the cancel runs from the epic menu: the session doing
   // it is not the session in the topic. A revert widened the commit past the
   // topic scope, so that retry stays generic.
@@ -1084,4 +1178,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows };
+module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows, flagDownstream, releaseExperimentWaits };

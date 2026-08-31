@@ -26,6 +26,7 @@ const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
@@ -161,6 +162,11 @@ Commands:
   topic supersede <work-unit> <phase> <topic> --by <topic>
   topic cancel <work-unit> <phase> <topic> [--cascade]
   topic reactivate <work-unit> <phase> <topic>
+  experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> | --parent <E{n}>)
+  experiment advance <work-unit> <topic> <id>
+  experiment approve <work-unit> <topic> <id>
+  experiment conclude <work-unit> <topic> <id> --verdict <one line>
+  experiment abandon <work-unit> <topic> <id> --reason <one line>
   sources stale <work-unit> <discussion> [--except <spec-topic>]
   task init <work-unit> <topic>
   task start <work-unit> <topic> <internal-id>
@@ -236,6 +242,8 @@ Commands:
   render topic-collision-gate
   render triage-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
+  render experiment-register <wu.experiment.topic>
+  render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]
   render checkpoint-files-gate <wu.implementation.topic>
@@ -909,6 +917,64 @@ function runTopic(argv) {
 }
 
 // ---------------------------------------------------------------------------
+// experiment — the series lifecycle on a topic's experiment item
+// (domain/experiment.cjs): create is the spawn (id + item + the spawning
+// item's evidence lock — or a sub-experiment under a running parent);
+// advance/approve/conclude/abandon record one experiment's design-before-data
+// walk. Manifest writes with no git commit — the session's commit cadence
+// picks the change up.
+//
+// Beats follow the acting session: `create --from` is the spawning research
+// or discussion session recording the spawn on its own item, so it beats
+// that phase; every other verb (splits included) is the laboratory session
+// working its own topic, so it beats the experiment slot — and a top-level
+// conclude or abandon clears it: the record's close is the session's release.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runExperiment(argv) {
+  const [command, ...rest] = argv;
+  const cwd = process.cwd();
+  try {
+    const { opts, positional } = parseArgs(rest);
+    const [workUnit, topic, id] = positional;
+    if (command === 'create') {
+      if (!workUnit || !topic || positional.length !== 2 || !opts.slug) {
+        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> | --parent <E{n}>)');
+      }
+      const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent });
+      beatQuietly(cwd, workUnit, opts.from ?? 'experiment', topic);
+      respond(created);
+      return;
+    }
+    if (command === 'conclude' || command === 'abandon') {
+      const payload = command === 'conclude' ? opts.verdict : opts.reason;
+      if (!workUnit || !topic || !id || positional.length !== 3 || payload === undefined) {
+        throw new Error(`Usage: engine experiment ${command} <work-unit> <topic> <id> --${command === 'conclude' ? 'verdict' : 'reason'} <one line>`);
+      }
+      const result = command === 'conclude'
+        ? concludeExperiment(cwd, workUnit, topic, id, { verdict: payload })
+        : abandonExperiment(cwd, workUnit, topic, id, { reason: payload });
+      (id.includes('.') ? beatQuietly : clearQuietly)(cwd, workUnit, 'experiment', topic);
+      respond(result);
+      return;
+    }
+    if (command === 'advance' || command === 'approve') {
+      if (!workUnit || !topic || !id || positional.length !== 3) {
+        throw new Error(`Usage: engine experiment ${command} <work-unit> <topic> <id>`);
+      }
+      const result = (command === 'advance' ? advanceExperiment : approveExperiment)(cwd, workUnit, topic, id);
+      beatQuietly(cwd, workUnit, 'experiment', topic);
+      respond(result);
+      return;
+    }
+    throw new Error('Usage: engine experiment <create|advance|approve|conclude|abandon> <work-unit> <topic> …');
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // task — implementation-task bookkeeping: format-blind, manifest-side only.
 // The engine never touches a task backend; the session does the plan surgery,
 // these commands record it. No git commit — the per-task commit is the
@@ -1253,6 +1319,7 @@ function runBoot() {
 // ride the same commit.
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
   research: (wu, t) => [`.workflows/${wu}/research/${t}.md`, `.workflows/${wu}/research/.triage/${t}`],
+  experiment: (wu, t) => [`.workflows/${wu}/experiment/${t}`],
   discussion: (wu, t) => [`.workflows/${wu}/discussion/${t}.md`, `.workflows/${wu}/discussion/.triage/${t}`],
   investigation: (wu, t) => [`.workflows/${wu}/investigation/${t}.md`, `.workflows/${wu}/investigation/.triage/${t}`],
   specification: (wu, t) => [`.workflows/${wu}/specification/${t}`],
@@ -1668,6 +1735,9 @@ function runCli(argv) {
       break;
     case 'topic':
       runTopic(rest);
+      break;
+    case 'experiment':
+      runExperiment(rest);
       break;
     case 'sources':
       runSources(rest);

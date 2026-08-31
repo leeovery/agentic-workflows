@@ -13,7 +13,7 @@
 const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'cross-cutting', 'quick-fix'];
 
 const VALID_PHASES = [
-  'discovery', 'research', 'discussion', 'investigation', 'scoping',
+  'discovery', 'research', 'experiment', 'discussion', 'investigation', 'scoping',
   'specification', 'planning', 'implementation',
   'review'
 ];
@@ -24,11 +24,11 @@ const VALID_PHASES = [
 // dashboards, gateways, and the simulation all read these arrays, never a
 // local copy.
 const WORK_TYPE_PIPELINES = {
-  epic:            ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'],
-  feature:         ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'],
+  epic:            ['research', 'experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
+  feature:         ['research', 'experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
   bugfix:          ['investigation', 'specification', 'planning', 'implementation', 'review'],
   'quick-fix':     ['scoping', 'implementation', 'review'],
-  'cross-cutting': ['research', 'discussion', 'specification'],
+  'cross-cutting': ['research', 'experiment', 'discussion', 'specification'],
 };
 
 const VALID_PHASE_STATUSES = {
@@ -39,6 +39,12 @@ const VALID_PHASE_STATUSES = {
   // undefined — the silent permissive path this table exists to prevent.
   discovery:      /** @type {string[]} */ ([]),
   research:       ['triaged', 'in-progress', 'completed', 'superseded', 'cancelled'],
+  // Derived bookkeeping over the topic's experiment records: the spawn opens
+  // the item, the last record's terminal transition closes it — the user
+  // never starts or completes it by hand. No `triaged` (experiments take no
+  // rerouted concerns) and no `superseded` (a series is never absorbed into
+  // a sibling topic).
+  experiment:     ['in-progress', 'completed', 'cancelled'],
   discussion:     ['triaged', 'in-progress', 'completed', 'cancelled'],
   investigation:  ['triaged', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
@@ -52,6 +58,31 @@ const VALID_PHASE_STATUSES = {
 // `--phase` choices when a topic spawn seeds its first phase item — the
 // routable phases ARE the routing vocabulary.
 const VALID_ROUTINGS = ['research', 'discussion'];
+
+// One experiment record in a topic's series
+// (`phases.experiment.items.{topic}.experiments.{id}.status`): the
+// design-before-data lifecycle. `approved` is the freeze — the user-confirmed
+// briefing; `concluded` and `abandoned` are terminal (verdict and reason
+// recorded beside the status). Consumed by the field surface's validators and
+// the experiment domain ops, so the two enforcers can never drift.
+const VALID_EXPERIMENT_STATUSES = ['conceived', 'designed', 'approved', 'running', 'concluded', 'abandoned'];
+
+// The record statuses that end an experiment's life: nothing advances past
+// them, and a top-level record reaching either releases the evidence wait
+// pointing at it.
+const EXPERIMENT_TERMINAL_STATUSES = ['concluded', 'abandoned'];
+
+// The one home for the experiment id shape: `E{n}` for a series record,
+// `E{n}.{m}` for a sub-experiment under it. An evidence wait
+// (`awaiting_experiments`) only ever holds the parent form — a split is the
+// laboratory's internal method and never leaks into the spawning phase's
+// state.
+const EXPERIMENT_ID_PATTERN = /^E[1-9][0-9]*(\.[1-9][0-9]*)?$/;
+
+// The phases whose sessions spawn experiments — each spawn locks the
+// spawning phase's own item (`awaiting_experiments`), research and
+// discussion identically.
+const EXPERIMENT_SPAWN_PHASES = ['research', 'discussion'];
 
 const VALID_GATE_MODES = ['gated', 'auto'];
 
@@ -75,6 +106,10 @@ module.exports = {
   WORK_TYPE_PIPELINES,
   VALID_PHASE_STATUSES,
   VALID_ROUTINGS,
+  VALID_EXPERIMENT_STATUSES,
+  EXPERIMENT_TERMINAL_STATUSES,
+  EXPERIMENT_ID_PATTERN,
+  EXPERIMENT_SPAWN_PHASES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
   TERMINAL_STATUSES,

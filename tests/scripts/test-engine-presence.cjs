@@ -97,6 +97,13 @@ describe('engine presence', () => {
     assert.strictEqual(second.res.live_sources, 1);
     assert.ok(second.sections.includes('research/beta'), second.sections);
     assert.ok(!second.sections.includes('planning/'), `the callout names source rows alone: ${second.sections}`);
+
+    // A live experiment session is a source mid-measurement — it defers the
+    // analyses exactly as the conversation it will land in does.
+    engine(dir, ['presence', 'beat', 'pay', 'experiment', 'beta']);
+    const third = engine(dir, ['presence', 'scan', 'pay']);
+    assert.strictEqual(third.res.live_sources, 2);
+    assert.ok(third.sections.includes('experiment/beta'), third.sections);
   });
 
   it('an aged heartbeat reads stale — no deferral section', () => {
@@ -121,14 +128,14 @@ describe('engine presence', () => {
   });
 
   it('covers every phase a session sits in — discovery excepted', () => {
-    for (const phase of ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
+    for (const phase of ['research', 'experiment', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
       assert.strictEqual(engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']).res.beat, true, `${phase} beats`);
     }
     const scan = engine(dir, ['presence', 'scan', 'pay']).res;
-    assert.strictEqual(scan.sessions.length, 8, 'every phase reports a row');
-    assert.strictEqual(scan.live, 8);
+    assert.strictEqual(scan.sessions.length, 9, 'every phase reports a row');
+    assert.strictEqual(scan.live, 9);
     // Discovery is engine-serialised by `discovery-session open` — no heartbeat.
-    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is research\|discussion\|/);
+    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is research\|experiment\|discussion\|/);
   });
 
   it('refuses illegal phases, unknown work units, and malformed calls', () => {

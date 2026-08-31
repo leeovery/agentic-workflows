@@ -40,9 +40,13 @@ const STALE_AFTER_SECONDS = 900;
 const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 // The phases that write the tree and the index — the unpartitionable pair.
 const CODE_PHASES = ['implementation', 'review'];
-// The corpora the epic-wide analyses read. A live session in any other phase
-// is no reason to defer an analysis that never looks at its material.
-const SOURCE_PHASES = ['research', 'discussion'];
+// The source record's live sessions — the ones the epic-wide analyses wait
+// for. The analyses read completed research and discussion; a live
+// experiment session is a source mid-measurement, its verdict landing in the
+// spawning conversation's record, so it defers them the same way. A live
+// session in any other phase is no reason to defer an analysis that never
+// looks at its material.
+const SOURCE_PHASES = ['research', 'experiment', 'discussion'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {

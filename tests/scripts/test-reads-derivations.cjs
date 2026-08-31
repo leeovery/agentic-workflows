@@ -15,7 +15,8 @@ const {
   phaseStatus, phaseItems, phaseData, computeNextPhase,
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
-  compareMapRows, computeNeedsSequencing,
+  compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
+  awaitedExperiments, experimentWaits,
   TIER_RANK,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
@@ -1411,6 +1412,87 @@ describe('reads + derivations', () => {
         { name: 'alpha', tier: '○', order: null },
       ];
       assert.deepStrictEqual(sorted(items), ['alpha', 'beta']);
+    });
+  });
+
+  describe('experiment derivations — waits and the next-phase route', () => {
+    const waiting = (phase, extra = {}) => ({
+      name: 'pay', work_type: 'feature',
+      phases: {
+        [phase]: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
+        ...extra,
+      },
+    });
+
+    it('awaitedExperiments reads one item\'s lock; experimentWaits joins the live holders', () => {
+      const m = waiting('discussion');
+      assert.deepStrictEqual(awaitedExperiments(m, 'discussion', 'pay'), ['E1']);
+      assert.deepStrictEqual(awaitedExperiments(m, 'research', 'pay'), []);
+      assert.deepStrictEqual(experimentWaits(m, 'pay'), [{ phase: 'discussion', ids: ['E1'] }]);
+    });
+
+    it('experimentWaits drops a terminal holder — its wait is inert', () => {
+      const m = waiting('research');
+      m.phases.research.items.pay.status = 'cancelled';
+      assert.deepStrictEqual(experimentWaits(m, 'pay'), []);
+    });
+
+    it('a linear type\'s waiting conversation routes to the experiment — research and discussion alike', () => {
+      for (const phase of ['research', 'discussion']) {
+        const r = computeNextPhase(waiting(phase));
+        assert.strictEqual(r.next_phase, 'experiment');
+        assert.strictEqual(r.phase_label, 'experiment (awaiting evidence)');
+      }
+    });
+
+    it('the override is linear-work-types-only — an epic\'s next_phase stays phase-coarse', () => {
+      const m = waiting('discussion');
+      m.work_type = 'epic';
+      const r = computeNextPhase(m);
+      assert.strictEqual(r.next_phase, 'discussion', 'the epic ladder answers by aggregate, no experiment override');
+      assert.strictEqual(r.phase_label, 'discussion (in-progress)');
+    });
+
+    it('a released wait routes the linear type back to its conversation', () => {
+      const m = waiting('research');
+      delete m.phases.research.items.pay.awaiting_experiments;
+      m.phases.experiment.items.pay.experiments.E1.status = 'concluded';
+      m.phases.experiment.items.pay.status = 'completed';
+      const r = computeNextPhase(m);
+      assert.strictEqual(r.next_phase, 'research');
+      assert.strictEqual(r.phase_label, 'research (in-progress)');
+    });
+
+    it('epic ladder: research in-progress is checked before the experiment slots', () => {
+      const m = {
+        work_type: 'epic',
+        phases: {
+          research: { items: { alpha: { status: 'in-progress' } } },
+          experiment: { items: { beta: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } },
+        },
+      };
+      assert.strictEqual(computeNextPhase(m).next_phase, 'research');
+      m.phases.research.items.alpha.status = 'completed';
+      assert.strictEqual(computeNextPhase(m).next_phase, 'discussion', 'settled evidence reads ready for discussion');
+      m.phases.experiment.items.beta.status = 'in-progress';
+      m.phases.experiment.items.beta.experiments.E1.status = 'running';
+      const r = computeNextPhase(m);
+      assert.strictEqual(r.next_phase, 'experiment');
+      assert.strictEqual(r.phase_label, 'experiment (in-progress)');
+    });
+
+    it('the map row carries the topic\'s live waits for the awaiting cue', () => {
+      const m = {
+        name: 'lab', work_type: 'epic',
+        phases: {
+          discovery: { items: { timing: { routing: 'discussion', summary: 'Timing' } } },
+          research: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E2'] } } },
+          discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        },
+      };
+      const row = buildDiscoveryMap(m).map.find((t) => t.name === 'timing');
+      assert.deepStrictEqual(row.awaiting_experiments, ['E2', 'E1'], 'spawn-phase order, both holders');
     });
   });
 
