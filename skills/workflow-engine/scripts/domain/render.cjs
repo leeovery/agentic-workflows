@@ -328,14 +328,16 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 // question — the conflict-menu idiom: model-authored text never enters the
 // glyphed chrome. A decision is an irreducible product fork — never a
 // technical call an investigation would settle — and the required "stakes"
-// is the payload's argument for the stop: each side's product consequence,
-// and why no investigation settles the tie. The menu fires at either gate
-// mode, by design: a bare `y` would hand the call to the executor, and auto
-// never settles an irreducible product fork — a decision item always stops,
-// and over an auto opt-in it says so. A decision excludes the authored blocks: the direction
-// is settled before bodies exist. A side may mark itself recommended (at
-// most one); it orders first with a "(recommended)" suffix — the
-// findingChoice idiom.
+// (a top-level field beside "decision", never nested inside it) is the
+// payload's argument for the stop: each side's product consequence, why no
+// investigation settles the tie, and — where a side is marked — the grounds
+// for the recommendation. The menu fires at either gate mode, by design: a
+// bare `y` would hand the call to the executor, and auto never settles an
+// irreducible product fork — a decision item always stops, and over an
+// auto opt-in it says so. A decision excludes the authored blocks: the
+// direction is settled before bodies exist. A side may mark itself
+// recommended (at most one); it orders first with a "(recommended)"
+// suffix — the findingChoice idiom.
 // ---------------------------------------------------------------------------
 
 /**
