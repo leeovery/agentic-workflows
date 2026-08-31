@@ -40,6 +40,34 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
+#### If output is `experiment` (experiment evidence landed)
+
+An experiment this topic's conversation spawned has ended since this item last moved — concluded with its verdict, or abandoned with its reason. Surface the advisory, render the register, read the evidence in full, and clear the flag.
+
+> *Output the next fenced block as a code block:*
+
+```
+  ⚑ Experiment evidence landed for this topic. Read it before
+    settling anything it touches — experiments measure;
+    conversations decide. Nothing has been overwritten.
+```
+
+Render the series register and emit its DISPLAY section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
+```
+
+Then read the evidence: for every terminal row the conversation's document has not yet weighed — the newly concluded or abandoned records — read the report in full at `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}/report.md` (sub-experiment reports sit inside the parent's directory). Present each verdict as evidence the conversation now weighs — the verdict is the pre-registered rule's mechanical outcome, and the conversation can override it. An abandoned record surfaces its reason from the register (read whatever partial report exists); its waiting point reverts to open — the conversation settles it another way or spawns a successor.
+
+Clear the flag:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+```
+
+→ Return to caller.
+
 #### If output is `investigation` (upstream investigation reopened)
 
 The investigation reopened after this specification concluded — the root cause may have shifted beneath it. Surface the advisory, read the investigation file fresh into context, and clear the flag.
