@@ -6,7 +6,7 @@
 
 Specification makes decisions clear; it never makes them — and classification is yours. `{lane}` is the calling flow's lane — `construction` from spec construction, `review` from the findings walk — set by the caller's Load directive; its gate mode field (`construction_gate_mode` / `finding_gate_mode`) is the one every auto check here reads. `{doc}` throughout is the owning source's topic name; its artifact path resolves per the source ladder in **[spec-review.md](spec-review.md)** (sources can be investigations or research files, not only discussions). `{work_unit}` and `{topic}` are in context from the calling session. A caller routing a review finding also names its `category`; construction, which routes material rather than a finding, names none.
 
-Four moves, by effort — and derivation is exhausted before any stop: context, logic, sibling artifacts, measurement. What the record yields is settled here; a stop is the exception that argues its way in, naming what was searched and where the record ran out. The one thing never derived is product intent — the spec never invents it. A measured falsehood is never a silent derivation — reality corrects the record, and the correction lands in the owning document, never in the spec alone. Anything else the record settles is derived silently — that is the phase doing its job, and it earns no mention. A point only the user can settle stops for a brief exchange and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. Start at **A. Classify**.
+The moves, by effort — and derivation is exhausted before any stop: context, logic, sibling artifacts, measurement. What the record yields is settled here; a stop is the exception that argues its way in, naming what was searched and where the record ran out. The one thing never derived is product intent — the spec never invents it. A measured falsehood is never a silent derivation — reality corrects the record, and the correction lands in the owning document, never in the spec alone. A point the sources already decide — supersession, a derivable repair of a mismatch — is derived silently: that is the phase doing its job, and it earns no mention and touches no source document. A decision the sources never made but a derivation pins lands in the owning document with a one-line notify. A point only the user can settle stops for a brief exchange and lands their answer in the owning document. A gap needing real discussion work stops, routes back, and pauses the spec. Start at **A. Classify**.
 
 ## A. Classify
 
@@ -14,7 +14,7 @@ Pick by first match:
 
 #### If direct measurement contradicts it
 
-A claim about the codebase or toolchain fails against the tree. Re-run the measurement before classifying — quote the command and its result in the exchange that follows; a remembered figure, or one asserted as verified earlier in the session, is not a measurement.
+A claim about the codebase or toolchain fails against the tree — one side of a documented collision included, where a measurement or a trace shows it false. Re-run the measurement before classifying — quote the command and its result in the exchange that follows; a remembered figure, or one asserted as verified earlier in the session, is not a measurement.
 
 **If every conclusion, decision, and insight citing the claim survives the corrected value** — or nothing cites it at all:
 
@@ -44,13 +44,13 @@ A repair the record supports. Tell the user in one line what was measured and ho
 
 #### If the record settles it
 
-One side is acknowledged supersession — a dated Decision-block entry, or prose the newer decision names as changed — or the mismatch is derivable without any real choice (one document's prose leans on a value another has since moved, and the citing conclusion survives). Extract the governing decision and move on: no raise, no mention, no edit to any source document.
+One side is acknowledged supersession — a dated Decision-block entry, or prose the newer decision names as changed — or the mismatch is derivable without any real choice (one document's prose leans on a value another has since moved, and the citing conclusion survives). This branch is for points the sources already decide; a decision no source made, however derivable, is not this branch — it lands below, in the owning document. Extract the governing decision and move on: no raise, no mention, no edit to any source document.
 
 → Return to caller.
 
 #### If a brief exchange settles it and the sources document the sides
 
-The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. A collision a measurement, the record, or a trace can break belongs to the branches above, never here. The sides are quoted from the documents, never composed here: where you would have to write the alternatives yourself, they are not documented and this is not the branch. `category` = `Unsourced decision` excludes it outright — a point no source decides has no documented sides — and so does any material whose collision you cannot cite. Take a stance — one side carries `recommended`. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "lane": "{lane}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
+The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. A collision a measurement or a trace can break, or one the record settles, belongs to the branches above, never here. The sides are quoted from the documents, never composed here: where you would have to write the alternatives yourself, they are not documented and this is not the branch. `category` = `Unsourced decision` excludes it outright — a point no source decides has no documented sides — and so does any material whose collision you cannot cite. Take a stance — one side carries `recommended`. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "lane": "{lane}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim at its marked instruction (the numbered options render recommended-first; the branches below key on that order):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant conflict
@@ -80,7 +80,7 @@ An exchange showing nothing can stand without work the sources never did — nei
 
 #### If no sides are documented and a direct answer fills it
 
-The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. An **Unsourced decision** lands here: the specification decided something its sources never did, and the question is what the sources should have said.
+The material is unclear, or silent on a point a direct answer fills, and nothing in the record frames alternatives to choose between. An **Unsourced decision** lands here when a direct answer fills it: the specification decided something its sources never did, and the question is what the sources should have said.
 
 Attempt the derivation first — precedent, constraints, sibling artifacts, measurement.
 

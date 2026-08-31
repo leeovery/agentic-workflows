@@ -65,9 +65,9 @@ Some tracking files name the **Proposed Text** field **Proposed Change** or **Pr
 
 The move is what the reader has to do about the finding, and it alone decides how the finding is presented. Category describes what the reviewer found; it never picks the shape.
 
-- **settled** — the record admits exactly one defensible answer. The finding carries the call and what determined it; `auto` applies it without a stop.
-- **choice** — real options exist and picking between them is the reader's. The finding proposes nothing and presents the options; the stop holds even under `auto`, because `auto` means "don't pause me for what you can decide", never "decide what you can't".
-- **route** — nobody here can answer it. It goes back to the document that owns the ground.
+- **settled** — the sources or the specification's own decisions admit exactly one defensible answer. The finding carries the call and what determined it; `auto` applies it without a stop.
+- **choice** — real options exist and picking between them is the reader's — a verdict earned by searching, never a default: anything the sources yield is `settled`, and a point they are silent on that a measurement or sibling artifact pins is `route`. A staged choice names what was searched and where the record ran out. The finding proposes nothing and presents the options; the stop holds even under `auto` — the search left the pick to the reader.
+- **route** — the ground belongs to a source document, not this specification. It goes back to the document that owns it.
 
 A finding whose stated derivation does not hold, or that you cannot yourself stand behind, is a `choice` — never a `settled` call made on the reader's behalf. Reclassification only ever moves toward the reader.
 

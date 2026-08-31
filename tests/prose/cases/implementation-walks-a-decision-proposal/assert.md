@@ -140,6 +140,7 @@ Further claims:
   and the planning file's Phase 1 table carries both rows
 - no code was written for either consolidation task:
   src/gateway/result.js does not exist and src/webhooks/capture.js
-  still reads exactly as the fixture left it — no amount comparison,
-  no shortfall handling
+  still reads exactly as the executor stub wrote it mid-walk
+  (`orders.markPaid(event.intentId)` and nothing more) — no amount
+  comparison, no shortfall handling
 - no fix-tracking file and no attempt-findings cache file exist
