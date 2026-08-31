@@ -18,5 +18,5 @@ Work unit: {work_unit}
 Work type: {work_type}
 Experiment: {id}
 
-Record: .workflows/{work_unit}/experiment/{topic}/{id}-{slug}/
+Record: .workflows/{work_unit}/experiment/{topic}/{id}-{slug}
 ```

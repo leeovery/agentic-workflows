@@ -12,6 +12,8 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 You are entering the **laboratory** — one experiment record in a topic's series. Experiments are a tool research and discussion use: a conversation hits a question talking cannot settle, spawns the record, and the laboratory answers it — designed before it is measured, run as designed, reported with a one-line verdict. The spawn is the phase's one door; this skill only ever enters a record that already exists.
 
+Spawned from a Research or Discussion conversation; the verdict returns to the conversation that asked.
+
 **Stay in your lane**: Measure, don't decide. An experiment answers its pre-registered question; the decision belongs to the conversation that spawned it, which reads the report as evidence and can override the verdict.
 
 ---
@@ -26,7 +28,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2`, experiment id = `$3`.
 
-Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`. When work_type is not `epic` and `$2` matches the id shape (`E{n}` or `E{n}.{m}`), `$2` is the experiment id and topic = `$1` — topics are kebab-case names, never ids.
+Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
 
 Store work_unit and work_type for the handoff. Store the experiment id as `{id}` when one was supplied; Step 3 resolves it otherwise.
 
@@ -34,88 +36,39 @@ Store work_unit and work_type for the handoff. Store the experiment id as `{id}`
 
 ---
 
-## Step 2: Read the Series
+## Step 2: Validate the Series
 
-Read the topic's experiment item status and its series:
+Read the topic's experiment item status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} status
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
 ```
 
-#### If the status read is empty (no series)
+#### If the output is empty (no series)
 
-> *Output the next fenced block as markdown (not a code block):*
+Load **[validate-series.md](references/validate-series.md)** with series_state = `missing`.
 
-```
-# **`■ Experiment`**
-```
+#### If the output is `cancelled`
 
-> *Output the next fenced block as a properties code block (```properties fence):*
-
-```properties
-⚑ No experiment series exists for this topic
-```
-
-> Experiments are spawned from a research or discussion session — the spawn is the phase's one door. Raise the question in the conversation that needs it measured.
-
-**STOP.** Do not proceed — terminal condition.
-
-#### If the status read is `cancelled`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-# **`■ Experiment`**
-```
-
-> *Output the next fenced block as a properties code block (```properties fence):*
-
-```properties
-⚑ The experiment series for this topic is cancelled
-```
-
-> Reactivate it from the menu to work its records again.
-
-**STOP.** Do not proceed — terminal condition.
+Load **[validate-series.md](references/validate-series.md)** with series_state = `cancelled`.
 
 #### Otherwise
 
-Store the `experiments` subtree from the second read.
+Read the series, storing the `experiments` subtree:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
+```
 
 → Proceed to **Step 3**.
 
 ---
 
-## Step 3: Resolve the Record
+## Step 3: Select the Record
 
-#### If `{id}` was supplied
+Load **[select-record.md](references/select-record.md)** and follow its instructions as written.
 
-Look it up in the stored subtree. A sub-experiment id (`E{n}.{m}`) never enters directly — a split is walked inside its parent's run: say so in one line, and take the parent id (`E{n}`) as `{id}` instead. An id the series does not hold: say so in one line, then follow the ask below.
-
-When the record is found, store its `status` as `{record_status}` and its `slug` as `{slug}`.
-
-→ Proceed to **Step 4**.
-
-#### If no `{id}` was supplied
-
-Render the register and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Which experiment should this session enter? Give its id (E1, E2, …).
-```
-
-**STOP.** Wait for user response.
-
-Store the response as `{id}` and look it up in the stored subtree — an unknown or sub-experiment id is handled as above. Store the record's `status` as `{record_status}` and its `slug` as `{slug}`.
-
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
