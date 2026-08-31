@@ -43,12 +43,18 @@ The inputs just read are inherited ground, not a list of questions to re-ask —
 
 #### If `record_status` is `conceived`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 3**.
+→ Return to **[the skill](../SKILL.md)** for **Step 2**.
 
 #### If `record_status` is `designed`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 4**.
+→ Return to **[the skill](../SKILL.md)** for **Step 3**.
 
 #### If `record_status` is `approved` or `running`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+→ Return to **[the skill](../SKILL.md)** for **Step 4**.
+
+#### Otherwise
+
+The record went terminal between entry and setup — a peer session closed it, and its verdict or reason stands. Say so in one line.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.

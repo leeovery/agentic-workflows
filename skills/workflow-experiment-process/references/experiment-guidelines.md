@@ -1,10 +1,10 @@
-# Conduct
+# Experiment Guidelines
 
 *Reference for **[workflow-experiment-process](../SKILL.md)***
 
 ---
 
-These rules are peripheral vision, not a checkpoint. Carry this awareness throughout the entire session — they are what makes a result dependable enough to bear a decision.
+These guidelines are peripheral vision, not a checkpoint. Carry this awareness throughout the entire session — they are what makes a result dependable enough to bear a decision.
 
 ## The Invariant
 

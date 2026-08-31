@@ -14,16 +14,27 @@ Walk the user through what was measured and what the rule says it means — the 
 
 ## B. Record the Verdict
 
-Record the verdict — one line, the decision rule's outcome — then commit:
+Record the verdict — one line, the decision rule's outcome:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs experiment conclude {work_unit} {topic} {id} --verdict "{one line}"
+```
+
+#### If the engine refused over a live sub-experiment
+
+Its row ends first — the split walk finishes the open sub, and this conclude re-runs after.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 4**.
+
+#### Otherwise
+
+Commit:
+
+```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} concluded"
 ```
 
-The engine refuses while a sub-experiment is live — its row ends first: finish it per the run leg's split walk, then re-run the conclude.
-
-When the response carries `released_waits`, say in one line where the ball sits: the spawning conversation's wait on this experiment is released, and the evidence surfaces when it next opens. When it carries `reconcile_flagged`, name the flagged item the same way — evidence arrived after its decision, and its next entry reconciles.
+When the conclude response carried `released_waits`, say in one line where the ball sits: the spawning conversation's wait on this experiment is released, and the evidence surfaces when it next opens. When it carried `reconcile_flagged`, name the flagged item the same way — evidence arrived after its decision, and its next entry reconciles.
 
 Re-render the register — the series moved — and emit its DISPLAY section verbatim per its marker:
 

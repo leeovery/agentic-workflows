@@ -15,13 +15,31 @@ The design can change — as a recorded amendment, never a silent edit:
 
 **STOP.** Wait for user response.
 
-An amendment the user doesn't confirm doesn't stand — strike its entry (dated), or put the experiment down via **[abandon-experiment.md](abandon-experiment.md)**. Either way, commit:
+**If the user confirms:**
+
+The amendment stands. Commit:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} — design amended"
 ```
 
 → Return to caller.
+
+**If the user declines the amendment:**
+
+It doesn't stand — strike its entry (dated); the design holds as approved. Commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} — amendment struck"
+```
+
+→ Return to caller.
+
+**If the user puts the experiment down instead:**
+
+→ Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
+
+→ On return, return to caller.
 
 #### If results are visible
 

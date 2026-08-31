@@ -40,9 +40,15 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
-2. **Read the record's state.** Render the register (`node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}`) and read the record's documents under `{dir}` — `problem.md`, `design.md`, `report.md` where each exists, sub-experiment directories included. The register and the record files are the source of truth for where the experiment stands — a frozen design is frozen whatever the conversation remembered.
+2. **Read the record's state.** Re-derive `{dir}` when it is lost: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments` gives the id and slug — the record lives at `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}`. Read the record's documents under `{dir}` — `problem.md`, `design.md`, `report.md` where each exists, sub-experiment directories included. The record files are the source of truth for where the experiment stands — a frozen design is frozen whatever the conversation remembered.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-4. **Announce your position** to the user before continuing: emit the register's DISPLAY section verbatim, state the record's lifecycle status, and what comes next. Wait for confirmation.
+4. **Announce your position** to the user before continuing. Render the register and emit its DISPLAY section verbatim per its marker:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
+   ```
+
+   Then state the record's lifecycle status and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -68,15 +74,9 @@ Store the record's `status` as `{record_status}` — the manifest is authoritati
 
 ---
 
-## Step 1: Conduct
+## Step 1: Guidelines and Initialization
 
-Load **[conduct.md](references/conduct.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 2**.
-
----
-
-## Step 2: Initialize the Experiment
+Load **[experiment-guidelines.md](references/experiment-guidelines.md)** and follow its instructions as written.
 
 Load **[initialize-experiment.md](references/initialize-experiment.md)** and follow its instructions as written.
 
@@ -84,7 +84,7 @@ Load **[initialize-experiment.md](references/initialize-experiment.md)** and fol
 
 ---
 
-## Step 3: Design
+## Step 2: Design
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -100,11 +100,11 @@ Load **[initialize-experiment.md](references/initialize-experiment.md)** and fol
 
 Load **[design-experiment.md](references/design-experiment.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 4**.
+→ On return, proceed to **Step 3**.
 
 ---
 
-## Step 4: Briefing
+## Step 3: Briefing
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -120,11 +120,11 @@ Load **[design-experiment.md](references/design-experiment.md)** and follow its 
 
 Load **[briefing.md](references/briefing.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 5**.
+→ On return, proceed to **Step 4**.
 
 ---
 
-## Step 5: Run
+## Step 4: Run
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -140,11 +140,11 @@ Load **[briefing.md](references/briefing.md)** and follow its instructions as wr
 
 Load **[run-experiment.md](references/run-experiment.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 6**.
+→ On return, proceed to **Step 5**.
 
 ---
 
-## Step 6: Report and Verdict
+## Step 5: Report and Verdict
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -160,11 +160,11 @@ Load **[run-experiment.md](references/run-experiment.md)** and follow its instru
 
 Load **[conclude-experiment.md](references/conclude-experiment.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 7**.
+→ On return, proceed to **Step 6**.
 
 ---
 
-## Step 7: Return to the Menu
+## Step 6: Return to the Menu
 
 > *Output the next fenced block as markdown (not a code block):*
 
