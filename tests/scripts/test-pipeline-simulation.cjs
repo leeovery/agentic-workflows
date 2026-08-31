@@ -1764,12 +1764,27 @@ describe('pipeline simulation', () => {
       placement: 'phase 1', problem: 'p', solution: 's',
       decision: { question: 'Which page size stands?', options: ['A4 on the renderer', 'preferCssPageSize'] },
     });
+    // A decision without its stakes never renders — the argument for the stop
+    // is part of the payload contract.
+    sim.refuses(['render', 'proposed-task', `${wu}.implementation.${wu}`,
+      '--file', consolidationPayload, '--gate', 'auto'],
+      /"stakes" must be a non-empty string when "decision" is present/);
+    sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+      current: 3, total: 3, title: 'Settle the page size', severity: 'behaviour',
+      placement: 'phase 1', problem: 'p', solution: 's',
+      stakes: 'Each side changes the shipped output; no measurement picks between them.',
+      decision: { question: 'Which page size stands?', options: [
+        'A4 on the renderer', { summary: 'preferCssPageSize', recommended: true },
+      ] },
+    });
     const decisionGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
       '--file', consolidationPayload, '--gate', 'auto', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' });
     assert.match(decisionGate, /MENU: task decision/, 'an open decision stops the walk even under auto');
     assert.match(decisionGate, /\*\*Decision\*\*: Which page size stands\?/, 'the question renders in the body, never the glyphed chrome');
+    assert.match(decisionGate, /\*\*Stakes\*\*: Each side changes the shipped output/, 'the stakes argue the stop beneath the question');
     assert.match(decisionGate, /Auto is on — stopping anyway/, 'the stop over the auto opt-in announces itself');
-    assert.match(decisionGate, /\*\*`1`\*\* +→ A4 on the renderer/, 'the sides are the menu options');
+    assert.match(decisionGate, /\*\*`1`\*\* +→ preferCssPageSize \(recommended\)/, 'the recommended side orders first with its suffix');
+    assert.match(decisionGate, /\*\*`2`\*\* +→ A4 on the renderer/, 'the sides are the menu options');
     assert.ok(!/a\/auto|DISPLAY: task auto-approved/.test(decisionGate),
       'approving a decision blind is not one of the calls auto makes');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.3', 'skipped']);
