@@ -39,7 +39,7 @@ const {
   roadmapConcludeGate,
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
-const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate } = require('./projections/experiment.cjs');
+const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate, experimentWaitGate } = require('./projections/experiment.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits, awaitedExperiments } = require('./derivations.cjs');
@@ -2549,6 +2549,52 @@ function experimentNextGateSurface(cwd, { dotpath }) {
   return experimentNextGate(live);
 }
 
+/**
+ * Resolve a spawn-side address — the spawning research or discussion item —
+ * to its live evidence-wait ids. Loud when the phase is not a spawn phase.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{phase: string, topic: string, awaiting: string[]}}
+ */
+function resolveSpawnSide(cwd, dotpath, surface) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
+  if (!EXPERIMENT_SPAWN_PHASES.includes(phase)) {
+    throw new Error(`render ${surface}: address must be <work_unit>.<${EXPERIMENT_SPAWN_PHASES.join('|')}>.<topic> — the spawning conversation's own item; got phase "${phase}"`);
+  }
+  return { phase, topic, awaiting: awaitedExperiments(manifest, phase, topic) };
+}
+
+/**
+ * The now-or-later gate — refuses an id the addressed item holds no wait on:
+ * the gate follows the recorded spawn, never precedes it.
+ * @param {string} cwd
+ * @param {{dotpath: string, id?: string}} args
+ * @returns {string}
+ */
+function experimentSpawnGateSurface(cwd, { dotpath, id }) {
+  const { phase, topic, awaiting } = resolveSpawnSide(cwd, dotpath, 'experiment-spawn-gate');
+  if (!isFilled(id)) throw new Error('render experiment-spawn-gate: --id is required (E1, E2, …)');
+  if (!awaiting.includes(/** @type {string} */ (id))) {
+    throw new Error(`render experiment-spawn-gate: ${phase} "${topic}" holds no evidence wait on ${id} — the gate follows the recorded spawn (experiment create)`);
+  }
+  return experimentSpawnGate(phase, /** @type {string} */ (id));
+}
+
+/**
+ * The blocked-conclusion gate — refuses when the item holds no live wait:
+ * with nothing owed, nothing blocks conclusion and the calling flow's check
+ * should have passed it straight through.
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function experimentWaitGateSurface(cwd, { dotpath }) {
+  const { phase, topic, awaiting } = resolveSpawnSide(cwd, dotpath, 'experiment-wait-gate');
+  if (awaiting.length === 0) {
+    throw new Error(`render experiment-wait-gate: ${phase} "${topic}" holds no evidence wait — nothing blocks conclusion`);
+  }
+  return experimentWaitGate(phase, awaiting);
+}
+
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
 // batch variant is static (the proposed lines are displayed above it); the
 // unsourced variant names the topics no source file could be drafted from,
@@ -4484,6 +4530,8 @@ const SURFACES = {
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,
   'experiment-next-gate': experimentNextGateSurface,
+  'experiment-spawn-gate': experimentSpawnGateSurface,
+  'experiment-wait-gate': experimentWaitGateSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,

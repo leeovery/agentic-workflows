@@ -246,6 +246,8 @@ Commands:
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
+  render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
+  render experiment-wait-gate <wu.research|discussion.topic>
   render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]
   render checkpoint-files-gate <wu.implementation.topic>

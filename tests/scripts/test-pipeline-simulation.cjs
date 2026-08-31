@@ -2448,6 +2448,13 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `discussion(${wu}/timing): spawn E1 window-placement`, '--topic', 'discussion/timing']);
     sim.run(['commit', wu, '-m', `experiment(${wu}/timing): E1 problem statement`, '--topic', 'experiment/timing']);
 
+    // The now-or-later choice rides the recorded spawn — addressed to the
+    // spawning item, refused for an id it holds no wait on.
+    assert.match(sim.render(['experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' }),
+      /Work E1 now\?/);
+    sim.refuses(['render', 'experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E9'],
+      /holds no evidence wait on E9/);
+
     // A research spawn locks identically — the phases are symmetric — and
     // numbers the series onward.
     const e2 = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'grid-density', '--from', 'research',
@@ -2467,9 +2474,14 @@ describe('pipeline simulation', () => {
     assert.match(expEntries[0].label, /1 experiment queued/);
     sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
 
-    // Both waiting conversations refuse to conclude while their evidence is out.
+    // Both waiting conversations refuse to conclude while their evidence is
+    // out; the wait gate is the refusal's graceful face, and it renders only
+    // over a live wait.
     sim.refuses(['topic', 'complete', wu, 'discussion', 'timing'], /awaits experiment evidence \(E1\)/);
     sim.refuses(['topic', 'complete', wu, 'research', 'layout'], /awaits experiment evidence \(E1\)/);
+    assert.match(sim.render(['experiment-wait-gate', `${wu}.discussion.timing`], { expect: 'content' }),
+      /Conclusion blocked — this discussion awaits experiment evidence \(E1\)/);
+    sim.refuses(['render', 'experiment-wait-gate', `${wu}.discussion.layout`], /holds no evidence wait — nothing blocks conclusion/);
 
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders
