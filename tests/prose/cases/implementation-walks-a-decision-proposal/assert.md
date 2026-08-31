@@ -51,12 +51,16 @@ The prose should have taken this path:
 12. the two findings fold into two staged proposals carrying problem
     and direction only — no Do, no Acceptance Criteria, no Tests,
     because nothing has been agreed to build yet. The extraction is
-    an ordinary proposal; the naming finding's direction is genuinely
-    open, so its proposal keeps a Solution for the part that is
-    settled and adds a **Decision** — the question, and the two sides
-    in the order they should be offered. There are no bank verdicts
-    and no pre-existing debt to push (nothing was ever banked), and
-    the staging file is written to consolidation-tasks-p1.md
+    an ordinary proposal; the short-capture finding is an irreducible
+    product fork past the bar — product-level, mirrored costs no
+    measurement or spec entry breaks, the tie-break the user's — so
+    its proposal keeps a Solution for the part that is settled (the
+    amount comparison) and adds a **Decision** with the question, a
+    **Stakes** line arguing the stop, and the two sides — the
+    recommended side first, marked (recommended). There are no bank
+    verdicts and no pre-existing debt to push (nothing was ever
+    banked), and the staging file is written to
+    consolidation-tasks-p1.md
 13. the walk's gate state initialises in one batched write — both
     rows pending — and the tasks-overview renders
 14. the first proposal renders gated at proposal altitude: its
@@ -64,16 +68,23 @@ The prose should have taken this path:
     tests, and the rendered body shows none of those blocks. The
     fourth scripted answer takes auto — the row records approved and
     consolidation_gate_mode is set to auto
-15. the second proposal renders with --gate auto, and because it
-    carries a decision the response is MENU: task decision — the
-    question as the display body's **Decision** line, the menu under
-    the engine's fixed question with the auto-override announcement,
-    the two sides numbered, plus decline and comment — and the walk
-    STOPS for the user. No auto-approval continuation is emitted for
-    it: an open decision stops at either gate mode
-16. the fifth scripted answer picks the second side; the staged
-    proposal is rewritten so its Solution carries that side and its
-    Decision block is gone, and the row records approved
+15. the second proposal is re-derived against the bar first, with the
+    session's context, and holds — the fork is product-level and
+    nothing the session knows breaks the tie — so it is not settled
+    away. Its payload carries the stakes string and the decision with
+    its recommended-marked side; it renders with --gate auto, and
+    because it carries a decision the response is MENU: task decision
+    — the question as the display body's **Decision** line with the
+    **Stakes** line beneath it, the menu under the engine's fixed
+    question with the auto-override announcement, the two sides
+    numbered recommended-first (the first carrying the (recommended)
+    suffix), plus decline and comment — and the walk STOPS for the
+    user. No auto-approval continuation is emitted for it: an
+    irreducible product fork stops at either gate mode
+16. the fifth scripted answer picks the second side as the menu
+    rendered them; the staged proposal is rewritten so its Solution
+    carries that side and its Decision and Stakes lines are gone, and
+    the row records approved
 17. no pending row remains and both are approved, so the pass records
     itself as landed — consolidated_phases gains 1 — before anything
     reaches the plan, then invokes the task author over the staging
@@ -111,12 +122,13 @@ Further claims:
   task gate, the auto opt-in and the decision, in that order and
   nowhere else — the specification correction took no user turn
 - the proposed-task payload left under .workflows/.cache is the
-  second proposal's: it carries a decision with two sides and no
+  second proposal's: it carries a stakes string and a decision with
+  two sides — exactly one marked recommended, listed first — and no
   steps, criteria or tests keys
-- the staging file's second task carries the settled name in its
-  Solution — the side the rendered menu offered as 2 — and no
-  **Decision** block; both tasks carry the bodies the author added,
-  and neither carried them before the walk
+- the staging file's second task carries the settled short-capture
+  handling in its Solution — the side the rendered menu offered as 2
+  — and no **Decision** or **Stakes** lines; both tasks carry the
+  bodies the author added, and neither carried them before the walk
 - staging.p1 ends with both rows approved and no third row;
   consolidation_gate_mode ends auto while task_gate_mode and
   fix_gate_mode both stay gated
@@ -127,6 +139,8 @@ Further claims:
 - tasks/pay-1-3.md and tasks/pay-1-4.md exist with status: pending,
   and the planning file's Phase 1 table carries both rows
 - no code was written for either consolidation task:
-  src/gateway/result.js does not exist and both entry points still
-  spell the gateway identifier as the fixture left them
+  src/gateway/result.js does not exist and src/webhooks/capture.js
+  still reads exactly as the executor stub wrote it mid-walk
+  (`orders.markPaid(event.intentId)` and nothing more) — no amount
+  comparison, no shortfall handling
 - no fix-tracking file and no attempt-findings cache file exist

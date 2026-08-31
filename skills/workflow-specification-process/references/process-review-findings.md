@@ -57,7 +57,7 @@ Work through each unresolved finding **sequentially** — a finding whose Resolu
 
 → Proceed to **C. After All Findings Processed**.
 
-Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: the answer owned by a source document rather than by this specification → `route`; exactly one defensible answer in the record → `settled`; real options between which only the user can pick → `choice`.
+Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: the answer owned by a source document rather than by this specification → `route` — a point the sources are silent on that a measurement or a sibling artifact pins is this move too (an Unsourced decision: the derivation belongs in the owning document, never the spec alone); exactly one defensible answer the sources or the specification's own decisions yield → `settled`, the derivation carried as the Proposal's reasoning; real options the search genuinely leaves to the user → `choice`, naming what was searched.
 
 Then confirm that move against the live session. A `settled` finding whose stated derivation no longer holds — a decision made since the tracking file was written, ground the session has moved — or whose call you cannot yourself stand behind, is a `choice`: update the Move, replace its Proposal with Options, and present it that way. Reclassification only ever moves toward the user; a `choice` is never demoted to `settled` to save a stop.
 
@@ -77,7 +77,7 @@ A `route` finding — Category **Source defect** or **Unsourced decision** — i
 
 On return, land the outcome by what actually happened there:
 
-- **A resolution landed in the source document** (edited and reindexed): re-align the specification's affected content to it — the write lands the resolution the user just settled (or the measurement made), never new content, announced in one line. A re-aligned section invalidates any later finding's Current block that quotes it — re-derive from the file before presenting that finding.
+- **A resolution landed in the source document** (edited and reindexed): re-align the specification's affected content to it — the write lands the resolution the source now carries (the user's settlement, the measurement's, or the derivation the flow landed there), never content of this session's own invention, announced in one line. A re-aligned section invalidates any later finding's Current block that quotes it — re-derive from the file before presenting that finding.
 - **The record already settled the point** (no edit was needed): align the specification's affected content to the governing decision the record names, announced the same way.
 - **The resolution was queued to a session holding the document** (nothing landed): leave the specification's copy alone — the delivery flagged the source's extractions stale, and this specification cannot conclude while its row for `{doc}` is `pending` or `stale`; the reconcile runs when the source re-concludes.
 

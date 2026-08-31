@@ -84,7 +84,11 @@ line item. I would state that alongside the window.
 When the gateway's webhook delivery fails, nothing says how long the
 checkout keeps waiting before it treats the payment as unconfirmed. A
 customer whose bank is slow either gets their order or gets told the
-payment failed, and the record does not decide which.
+payment failed, and the record does not decide which. Searched the
+discussion's Gateway Integration and Refund Handling sections and the
+specification's payment flow — no source states a ceiling, no
+measurement pins one, and the trade is appetite: how long a customer
+waits against how long the checkout holds unresolved state.
 
 **Options**:
 - Give up after three delivery attempts and mark the payment unconfirmed — fastest feedback, and a slow bank loses the order (recommended)

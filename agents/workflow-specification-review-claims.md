@@ -63,7 +63,7 @@ Prioritise **load-bearing** claims — a decision, gate, scope boundary, or key 
 Every finding names the **move** it owes the reader — what they have to do about it. The move, never the category, decides how the finding is presented.
 
 - **settled** — the record admits exactly one defensible answer. Write the **Proposal**: the call and what determined it. Most findings are this.
-- **choice** — real options exist and only the reader can pick between them. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
+- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the sources yield is `settled`, that derivation its Proposal, and a point they are silent on that a measurement or sibling artifact pins is `route` — the derivation belongs in the owning document. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
 - **route** — the answer belongs to a source document rather than to the specification. Every Source defect and Unsourced decision is this move. Write neither Proposal nor Proposed Text: the fix belongs to the source record.
 
 A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. Classification only ever moves toward the reader.

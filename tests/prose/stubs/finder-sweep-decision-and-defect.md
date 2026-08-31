@@ -1,8 +1,8 @@
 # stub: finder-sweep-decision-and-defect
 
 A consolidation finder whose sweep returns two findings — one whose
-shape is settled, one whose direction the code does not settle — plus
-one specification defect the tree measures. Write the findings file to
+shape is settled, one an open product call the record does not settle —
+plus one specification defect the tree measures. Write the findings file to
 the path the dispatch names
 (`.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md`)
 via the `.txt`-then-rename mechanism, with the content below, then
@@ -23,10 +23,10 @@ The findings file:
 - **Evidence**: src/checkout/payment-intent.js:5 and src/webhooks/capture.js:4 — each unwraps the gateway's response inline
 - **Proposed shape**: extract a shared `src/gateway/result.js` helper and call it from both sites
 
-### F2: The gateway's identifier is named two ways across the phase
-- **Class**: drift
-- **Evidence**: src/checkout/payment-intent.js:5 passes the intent as `order`, while src/webhooks/capture.js:4 reads it back as `event.intentId` — one concept, two names, and their tests follow each site's spelling
-- **Proposed shape**: settle on one name across both entry points and their tests. Two spellings are viable and the phase's code prefers neither: `intentId`, the gateway's own name as the webhook payload carries it, or `intent`, the name the checkout side and the specification use. Whichever is chosen, the other site and its test rename to match
+### F2: A capture of any amount marks the order fully paid
+- **Class**: behaviour
+- **Evidence**: src/webhooks/capture.js:4 — `orders.markPaid(event.intentId)` reads nothing but the intent id. A capture event carries an amount, so a capture short of the order total marks an underpaid order paid and fulfillable. The specification decides webhook-confirmed capture, the discussion decides card-only, and the plan's tasks decide idempotency — searched all three; none says anything about capture amounts
+- **Proposed shape**: read the captured amount from the capture event and compare it against the order total — any handling needs that much. What a shortfall then does to the order is a product call the record leaves open, with real costs either way: hold the order unpaid and flag it for operator follow-up (an underpaid order never ships, at the cost of a follow-up queue v1 never planned), or mark it paid with the shortfall recorded on the order (checkout stays friction-free, and underpaid orders ship visibly short). No measurement settles which risk the product carries
 
 ## Spec Defects
 
@@ -46,5 +46,5 @@ The status block:
 STATUS: findings
 FINDINGS_COUNT: 2
 BANK: no entries
-SUMMARY: One extraction and one naming split to settle, plus a stale path in the specification.
+SUMMARY: One extraction to settle and one short-capture call the record leaves open, plus a stale path in the specification.
 ```

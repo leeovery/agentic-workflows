@@ -18,13 +18,13 @@ Under the extraction proposal:
 
 **Tests**: `gateway results unwrap through the shared helper` — behaviour identical at both call sites.
 
-Under the naming proposal, with `{settled name}` read from that task's Solution as the walk left it:
+Under the short-capture proposal, with `{settled handling}` read from that task's Solution as the walk left it:
 
-**Do**: Rename the gateway identifier to `{settled name}` at both entry points — `src/checkout/payment-intent.js` and `src/webhooks/capture.js` — and in `tests/checkout/payment-intent.test.js` and `tests/webhooks/capture.test.js`, leaving no occurrence of the other spelling.
+**Do**: In `src/webhooks/capture.js`, read the captured amount from the capture event and compare it against the order total before marking anything; a capture covering the total marks the order paid as today, and a shortfall takes `{settled handling}`. Extend `tests/webhooks/capture.test.js` to cover the shortfall path.
 
-**Acceptance Criteria**: One spelling — `{settled name}` — at both entry points and in both tests; behaviour unchanged and the existing tests stay green.
+**Acceptance Criteria**: A capture covering the order total marks it paid exactly as before; a short capture takes `{settled handling}` and nothing else; duplicate deliveries stay idempotent and the existing webhook test stays green.
 
-**Tests**: `the gateway identifier reads the same at both entry points` — the rename leaves nothing on the old spelling.
+**Tests**: `a short capture never silently fulfils the order` — the shortfall path behaves exactly as the settled handling states.
 
 The status block:
 
