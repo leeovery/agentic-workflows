@@ -6,13 +6,19 @@
 
 ## A. Begin Measurement
 
-**If the record is `approved`:** measurement begins on the user's go — usually right after the freeze, sometimes a later sitting. When it begins, record it:
+#### If the record is `approved`
+
+The go was given at the freeze — the approve option starts measurement, and a later sitting re-enters through the menu. Record that it begins:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {id}
 ```
 
-**If the record is already `running`:** a resumed run — pick the measurement up where `{dir}/report.md` leaves off. A live sub-experiment resumes its own miniature walk the same way, at whatever leg its status names.
+→ Proceed to **B. Measure as Designed**.
+
+#### If the record is `running`
+
+A resumed run — pick the measurement up where `{dir}/report.md` leaves off. A live sub-experiment resumes its own miniature walk the same way, at whatever leg its status names.
 
 → Proceed to **B. Measure as Designed**.
 
@@ -31,15 +37,21 @@ Author `{dir}/report.md` as the run goes — load **[report-template.md](report-
   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} — {what changed}"
   ```
 
-**If the question decomposes mid-run** — two primary questions where the design saw one:
+#### If the question decomposes mid-run
+
+Two primary questions where the design saw one.
 
 → Proceed to **C. Splits**.
 
-**If the user puts the run down:**
+#### If the user puts the run down
 
 → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
 
-**Otherwise**, when measurement is complete:
+→ On return, return to **B. Measure as Designed** — only a sub-experiment's abandonment returns; the parent's ends the session leg.
+
+#### Otherwise
+
+Measure until the design is satisfied, then close the report's results.
 
 → Return to caller.
 
