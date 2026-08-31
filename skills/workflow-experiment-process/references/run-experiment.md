@@ -47,7 +47,7 @@ Two primary questions where the design saw one.
 
 → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
 
-→ On return, return to **B. Measure as Designed** — only a sub-experiment's abandonment returns; the parent's ends the session leg.
+→ On return, return to **B. Measure as Designed**.
 
 #### Otherwise
 
