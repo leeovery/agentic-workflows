@@ -2263,6 +2263,7 @@ describe('render proposed-task', () => {
     const file = writePayload(dir, 'dc.json', {
       current: 3, total: 4, title: 'Settle the page size', severity: 'behaviour',
       problem: 'Two page sizes are configured at once.', solution: 'Pick one and record it.',
+      stakes: 'A4 fixes print output; preferCssPageSize hands it to themes. No measurement picks between them.',
       decision: { question: 'Which page size stands?', options: ['A4 on the PDF renderer', 'preferCssPageSize from the stylesheet'] },
     });
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
@@ -2273,6 +2274,7 @@ describe('render proposed-task', () => {
       '**Problem**: Two page sizes are configured at once.',
       '**Solution**: Pick one and record it.',
       '**Decision**: Which page size stands?',
+      '**Stakes**: A4 fixes print output; preferCssPageSize hands it to themes. No measurement picks between them.',
       '',
       '=== MENU: task decision (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
@@ -2288,10 +2290,43 @@ describe('render proposed-task', () => {
     assert.ok(!out.includes('Auto is on'), 'a gated decision carries no auto-override line — there is nothing being overridden');
   });
 
+  it('a recommended side orders first with its suffix; plain strings mix in unchanged', () => {
+    const file = writePayload(dir, 'dr.json', {
+      current: 1, total: 1, title: 'Settle the page size',
+      problem: 'p', solution: 's',
+      stakes: 'Each side changes what ships; nothing measurable breaks the tie.',
+      decision: { question: 'Which page size stands?', options: [
+        'A4 on the PDF renderer',
+        { summary: 'preferCssPageSize from the stylesheet', recommended: true },
+        { summary: 'Neither — leave it configurable' },
+      ] },
+    });
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    assert.ok(out.includes([
+      '**`1`**         → preferCssPageSize from the stylesheet (recommended)',
+      '**`2`**         → A4 on the PDF renderer',
+      '**`3`**         → Neither — leave it configurable',
+      '**`d/decline`** → Decline this task — it will not be built',
+    ].join('\n')), out);
+  });
+
+  it('a decision requires its stakes — absent, empty, or orphaned stakes refuse by name', () => {
+    const decision = { question: 'Which page size stands?', options: ['A4', 'preferCssPageSize'] };
+    const missing = writePayload(dir, 'st1.json', { ...proposal, decision });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: missing, gate: 'gated' }),
+      /"stakes" must be a non-empty string when "decision" is present/);
+    const empty = writePayload(dir, 'st2.json', { ...proposal, decision, stakes: '  ' });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: empty, gate: 'gated' }),
+      /"stakes" must be a non-empty string when "decision" is present/);
+    const orphan = writePayload(dir, 'st3.json', { ...proposal, stakes: 'each side matters' });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: orphan, gate: 'gated' }),
+      /"stakes" requires "decision"/);
+  });
+
   it('a decision stops under --gate auto — and takes the comment hint', () => {
     const file = writePayload(dir, 'dc2.json', {
       current: 1, total: 1, title: 'Settle the page size',
-      problem: 'p', solution: 's',
+      problem: 'p', solution: 's', stakes: 'the fork is product-shaped',
       decision: { question: 'Which page size stands?', options: ['A4', 'preferCssPageSize', 'Neither — leave it configurable'] },
     });
     const auto = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'auto', 'comment-hint': 'Provide feedback to adjust' });
@@ -2308,7 +2343,7 @@ describe('render proposed-task', () => {
   it('a decision excludes authored blocks, and the malformed shapes are refused by name', () => {
     for (const [field, value] of [['steps', ['1. x']], ['criteria', ['- c']], ['tests', ['- t']]]) {
       const file = writePayload(dir, `dx-${field}.json`, {
-        ...proposal, [field]: value,
+        ...proposal, [field]: value, stakes: 'the fork is product-shaped',
         decision: { question: 'Which way?', options: ['a', 'b'] },
       });
       assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' }),
@@ -2328,8 +2363,11 @@ describe('render proposed-task', () => {
       [{ question: 'Which?' }, /"decision\.options" must be an array of 2–4 sides/],
       [{ question: 'Which?', options: ['only one'] }, /"decision\.options" must be an array of 2–4 sides/],
       [{ question: 'Which?', options: ['a', 'b', 'c', 'd', 'e'] }, /"decision\.options" must be an array of 2–4 sides/],
-      [{ question: 'Which?', options: ['a', ''] }, /decision\.options\[1\] must be a non-empty string/],
-      [{ question: 'Which?', options: ['a', { summary: 'b' }] }, /decision\.options\[1\] must be a non-empty string/],
+      [{ question: 'Which?', options: ['a', ''] }, /decision\.options\[1\] must be a non-empty string or an object carrying "summary"/],
+      [{ question: 'Which?', options: ['a', { summary: '  ' }] }, /decision\.options\[1\] must be a non-empty string or an object carrying "summary"/],
+      [{ question: 'Which?', options: ['a', { recommended: true }] }, /decision\.options\[1\] must be a non-empty string or an object carrying "summary"/],
+      [{ question: 'Which?', options: ['a', 7] }, /decision\.options\[1\] must be a non-empty string or an object carrying "summary"/],
+      [{ question: 'Which?', options: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] }, /at most one option may be recommended/],
     ];
     cases.forEach(([decision, re], i) => {
       const file = writePayload(dir, `dbad-${i}.json`, { ...proposal, decision });
