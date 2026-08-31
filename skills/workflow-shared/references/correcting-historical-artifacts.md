@@ -113,7 +113,7 @@ A session holds that document. Leave the entry alone this pass — it stays unse
 
 #### Otherwise
 
-Classify the defect; only one class is yours to correct, and **if in doubt, treat it as open**. First match below wins.
+Classify the defect — **if in doubt, treat it as open**, and doubt inside the open class means return it open: a derivation or call you are unsure of is not one you can stand behind. First match below wins.
 
 #### If the record settles it
 
@@ -121,7 +121,7 @@ An approved, landed change supersedes the claim, or the repair is a factual valu
 
 Apply it silently — no gate, no raise. This is the one place a downstream phase edits another phase's artifact: the corrigenda entry and the re-index are the audit trail that replaces the gate. `{correcting_phase}` below is the phase that found it — `implementation/{topic}` or `review/{topic}`.
 
-1. **Edit in place.** Replace the wrong claim in its section with corrected content. The live file is current truth; git history is the historical record — never keep wrong content in the body for posterity.
+1. **Edit in place.** Replace the wrong claim in its section with corrected content — or, where the defect is an omission, add the missing content to the section that owns the ground. The live file is current truth; git history is the historical record — never keep wrong content in the body for posterity.
 
 2. **Corrigenda section.** Append the entry to the end of the `## Corrigenda` section at the bottom of the file, appending the section as the file's last when absent. One entry per correction — and a mechanical, uniform substitution landing across many lines (a rename, a moved path) is a single correction: one entry stating the mapping — old term → new term, throughout — never an entry per edited line:
 
@@ -153,6 +153,16 @@ Not a specification correction — the tree owes the change. Return that verdict
 
 #### If it is genuinely open
 
-Correcting either side would make a decision neither the record nor a measurement settles. Return that verdict; the caller puts the decision to the user.
+Neither the record nor a measurement settles it directly.
+
+**If a defensible derivation from precedent or constraints — or, for a technical point, an honest call you can stand behind — picks the side** (a derivable gap, or a technical parameter):
+
+Settle it here — apply the four record-settled steps above, the corrigendum entry recording the derivation or the call's reasoning; where the defect is an omission, the entry states the point the specification left open in place of a quoted claim.
+
+→ Return to caller.
+
+**Otherwise** — the tie-break is product intent (appetite, or a fact only the user holds), or the call is not one you can stand behind:
+
+Return the open verdict; the caller puts the decision to the user.
 
 → Return to caller.

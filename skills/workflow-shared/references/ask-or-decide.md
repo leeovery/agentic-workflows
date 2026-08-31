@@ -17,6 +17,8 @@ Three overrides send an otherwise-derivable call to the user, any one alone:
 - **Expensive to reverse** — structural; wrong means rework, not a patch.
 - **You don't believe it** — the derivation lands somewhere you wouldn't stand behind. Say so plainly; the discomfort is the question.
 
+The overrides govern questions you compose in open conversation. A phase reference that prescribes the landing for a derived or judged call — a document landing, a corrigendum route, a staged-proposal settlement — is the phase's own rule: follow it as written.
+
 When uncertain which side a point falls on, ask — a needless question costs one exchange; a wrong silent call is a decision the user never saw.
 
 A call landed from a derivation records its provenance where the phase's template defines a marker — the derivation is what a later reader checks the call against when it turns out wrong.

@@ -27,7 +27,7 @@ You receive via the orchestrator's prompt:
 2. **Consult the per-task reports** only where an action's sources need more context than it carries
 3. **Never re-judge** — routing is decided. Nothing routed `do-now`, `out-of-scope` or discarded becomes a task; a `replan` action is never dropped for looking small. The one exception is step 4's move: an action whose evidence indicts the specification is reported onward under `## Spec Defects`, never dropped — the orchestrator routes it from there
 4. **Read the specification where an action indicts it** — an action whose evidence shows the claim in `.workflows/{work_unit}/specification/{topic}/specification.md` is what's wrong, rather than the code, belongs under `## Spec Defects` rather than the staging file: record it with your read of which side is wrong. Nothing is dropped — the orchestrator classifies authoritatively and routes a code-wrong verdict back as a proposal; you report
-5. **Normalize into proposals** — convert each action into a proposal in the staging format below: the problem and the direction, no bodies, its guard condition carried in the Solution. Where the direction is genuinely open, approving it bare would hand the call to the executor: keep a Solution saying what is settled and add a **Decision** — the question, and two to four sides in the order they should be offered
+5. **Normalize into proposals** — convert each action into a proposal in the staging format below: the problem and the direction, no bodies, its guard condition carried in the Solution. Settle the direction: derivable from the record → derive; underivable but technical → your honest judgment call — either way the Solution carries the settled direction with its derivation in a clause. Your evidence gathering is the investigation: a fork it can settle is settled, never staged. Stage a **Decision** only when all three hold: the fork lives at product level (choosing changes what the product's user gets or how it behaves, not how the tree achieves it — test structure, helper extraction, naming, lint, internal bounds never qualify); the costs conflict irreducibly (both sides defensible, mirrored consequences, and no measurement, convention, or spec entry breaks the tie); and the tie-break is the user's (appetite, product intent, a fact only they hold). A staged Decision keeps a Solution saying what is settled and adds the question, a **Stakes** line (each side's product consequence, why no investigation settles the tie, and the grounds for your recommendation), and two to four sides — the recommended side first, marked `(recommended)`; omit the marker only for an honest no-lean fork. Most cycles stage zero Decisions
 6. **Write report** — output to `.workflows/{work_unit}/implementation/{topic}/review-report-c{cycle}.md`
 7. **Write staging file** — if actionable proposals exist, write them to `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle}.md` — pure markdown, no frontmatter and no status lines; the orchestrator tracks approvals in its own store
 
@@ -80,13 +80,14 @@ sources: report-1-3, report-2-1
 **Outcome**: {what the surface looks like after — only when it adds what Solution does not}
 
 ## Task 2: {title}
-severity: drift
+severity: high
 sources: report-2-4
 
 **Problem**: {what the review found}
 **Solution**: {what is settled — the part the decision does not touch}
 **Decision**: {the question}
-1. {side}
+**Stakes**: {each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation}
+1. {side} (recommended)
 2. {side}
 
 ## Task 3: ...

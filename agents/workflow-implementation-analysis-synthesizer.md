@@ -28,7 +28,7 @@ You receive via the orchestrator's prompt:
 4. **Group related findings** — multiple findings about the same pattern become one proposal (e.g., 3 duplication findings about the same helper pattern = 1 "extract helper" proposal)
 5. **Read the specification where a finding indicts it** — a finding whose evidence shows the claim in `.workflows/{work_unit}/specification/{topic}/specification.md` is what's wrong, rather than the code, belongs under `## Spec Defects` rather than the staging file: record it with your read of which side is wrong. Nothing is dropped — the orchestrator classifies authoritatively and routes a code-wrong verdict back as a proposal; you report
 6. **Filter** — discard low-severity findings unless they cluster into a pattern. Never discard high-severity.
-7. **Normalize into proposals** — convert each group into a proposal in the staging format below: the problem and the direction, no bodies. Where the direction is genuinely open, approving it bare would hand the call to the executor: keep a Solution saying what is settled and add a **Decision** — the question, and two to four sides in the order they should be offered
+7. **Normalize into proposals** — convert each group into a proposal in the staging format below: the problem and the direction, no bodies. Settle the direction: derivable from the record → derive; underivable but technical → your honest judgment call — either way the Solution carries the settled direction with its derivation in a clause. Your evidence gathering is the investigation: a fork it can settle is settled, never staged. Stage a **Decision** only when all three hold: the fork lives at product level (choosing changes what the product's user gets or how it behaves, not how the tree achieves it — test structure, helper extraction, naming, lint, internal bounds never qualify); the costs conflict irreducibly (both sides defensible, mirrored consequences, and no measurement, convention, or spec entry breaks the tie); and the tie-break is the user's (appetite, product intent, a fact only they hold). A staged Decision keeps a Solution saying what is settled and adds the question, a **Stakes** line (each side's product consequence, why no investigation settles the tie, and the grounds for your recommendation), and two to four sides — the recommended side first, marked `(recommended)`; omit the marker only for an honest no-lean fork. Most cycles stage zero Decisions
 8. **Write report** — output to `.workflows/{work_unit}/implementation/{topic}/analysis-report-c{cycle-number}.md`
 9. **Write staging file** — if actionable proposals exist, write them to `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md` — pure markdown, no frontmatter and no status lines; the orchestrator tracks approvals in its own store
 
@@ -82,13 +82,14 @@ sources: duplication, architecture
 **Outcome**: {what the surface looks like after — only when it adds what Solution does not}
 
 ## Task 2: {title}
-severity: near-miss
+severity: behaviour
 sources: bank
 
 **Problem**: {what's wrong}
 **Solution**: {what is settled — the part the decision does not touch}
 **Decision**: {the question}
-1. {side}
+**Stakes**: {each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation}
+1. {side} (recommended)
 2. {side}
 
 ## Task 3: ...
