@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.20] - 2026-08-31
+
+🔧 Changed
+- Consolidation and review-synthesis proposals now argue their stakes before staging a decision — each fork states both sides' consequences, why nothing else settles the tie, and leads with a recommended side.
+- Decisions are now reserved for irreducible product-level forks; anything a derivation or measurement can settle is resolved automatically instead of being put to a vote.
+- Specification review now derives an answer from precedent, measurement, or sibling documents before asking a question, and states what it searched when it still has to ask.
+- Spec-source conflicts get a wider range of automatic repairs — derivable gaps and record-supported corrections land silently, with only genuinely open product-intent calls stopping for input.
+
 ## [0.7.19] - 2026-08-30
 
 🔧 Changed
