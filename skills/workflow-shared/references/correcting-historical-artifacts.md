@@ -113,7 +113,7 @@ A session holds that document. Leave the entry alone this pass — it stays unse
 
 #### Otherwise
 
-Classify the defect; only one class is yours to correct, and **if in doubt, treat it as open**. First match below wins.
+Classify the defect — **if in doubt, treat it as open**. First match below wins.
 
 #### If the record settles it
 
@@ -153,6 +153,16 @@ Not a specification correction — the tree owes the change. Return that verdict
 
 #### If it is genuinely open
 
-Correcting either side would make a decision neither the record nor a measurement settles. Return that verdict; the caller puts the decision to the user.
+Neither the record nor a measurement settles it directly.
+
+**If a defensible derivation from precedent or constraints picks the side** (a derivable gap, or a technical parameter):
+
+Settle it here — apply the four record-settled steps above, the corrigendum entry recording the derivation; where the defect is an omission, the entry states the point the specification left open in place of a quoted claim.
+
+→ Return to caller.
+
+**If only product intent breaks the tie** (appetite, or a fact only the user holds):
+
+Return the open verdict; the caller puts the decision to the user.
 
 → Return to caller.
