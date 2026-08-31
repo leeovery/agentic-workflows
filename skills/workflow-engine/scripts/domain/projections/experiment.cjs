@@ -16,7 +16,7 @@
 
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
-const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, menuFrame, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 
 const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
 
@@ -81,10 +81,20 @@ function experimentRegister(topic, rows) {
  */
 function experimentApprovalGate(id) {
   return section('MENU: experiment approval gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('a', 'approve', 'Freeze the design and start measuring — changes before results are dated amendments re-confirmed here; once results are visible the design is frozen for good'),
+    cmdOption('a', 'approve', 'Freeze the design and start measuring'),
     cmdOption('p', 'park', `Put ${id} down — abandoned with its reason; the register keeps the row`),
     promptOption('Amend', 'Tell me what to change — the design folds it in before the freeze'),
   ], { question: `Approve ${id}'s design?` }));
 }
 
-module.exports = { experimentRegister, experimentApprovalGate };
+/**
+ * The record picker under the register — the entry skill's no-id path: the
+ * register shows the series, this menu takes the pick.
+ * @returns {string}
+ */
+function experimentPick() {
+  const body = menuFrame(['Which experiment? (enter its id — E1, E2, …)']);
+  return section('MENU: experiment pick', MENU_INSTRUCTION, body);
+}
+
+module.exports = { experimentRegister, experimentApprovalGate, experimentPick };

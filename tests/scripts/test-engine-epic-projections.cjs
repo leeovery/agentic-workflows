@@ -1177,11 +1177,11 @@ describe('epic projections: per-experiment menu entries', () => {
     assert.strictEqual(first.topic, 'timing');
     assert.strictEqual(first.experiment, 'E1');
     assert.strictEqual(first.route, '/workflow-experiment-entry epic lab timing E1');
-    assert.strictEqual(first.label, 'E1 window-placement — Timing · experiment');
+    assert.strictEqual(first.label, 'Enter E1 window-placement — *Timing · experiment*');
     assert.strictEqual(first.recommended, true, 'a live experiment outranks every other recommendation');
     assert.ok(!keys.some((k) => k.experiment === 'E2'), 'a concluded record has retired from the menu');
     assert.ok(!keys.some((k) => k.experiment === 'E1.1'), 'a sub-experiment is entered through its parent, never its own row');
-    assert.ok(rendered.replace(/\n +/g, ' ').includes('**`1`**           → E1 window-placement — Timing · experiment (recommended)'),
+    assert.ok(rendered.replace(/\n +/g, ' ').includes('**`1`**           → Enter E1 window-placement — *Timing · experiment* (recommended)'),
       `entry renders with the recommendation marker:\n${rendered}`);
   });
 

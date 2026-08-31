@@ -515,7 +515,7 @@ function experimentEntries(workUnit, detail) {
         topic: item.name,
         experiment: exp.id,
         route: `/workflow-experiment-entry epic ${workUnit} ${item.name} ${exp.id}`,
-        label: `${exp.id} ${exp.slug} — ${titlecase(item.name)} · experiment`,
+        label: `Enter ${exp.id} ${exp.slug} — *${titlecase(item.name)} · experiment*`,
       });
     }
   }

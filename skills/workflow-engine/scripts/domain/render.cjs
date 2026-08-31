@@ -39,7 +39,7 @@ const {
   roadmapConcludeGate,
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
-const { experimentRegister, experimentApprovalGate } = require('./projections/experiment.cjs');
+const { experimentRegister, experimentApprovalGate, experimentPick } = require('./projections/experiment.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
@@ -2504,6 +2504,23 @@ function experimentApprovalGateSurface(cwd, { dotpath, id }) {
   return experimentApprovalGate(/** @type {string} */ (id));
 }
 
+/**
+ * The record picker — the entry skill's no-id path, rendered directly
+ * beneath the register it picks from. Refuses an empty series: with no
+ * records there is nothing to pick, and the caller's series check should
+ * have refused first.
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function experimentPickSurface(cwd, { dotpath }) {
+  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-pick');
+  if (rows.length === 0) {
+    throw new Error(`render experiment-pick: "${topic}"'s series holds no experiments — nothing to pick`);
+  }
+  return experimentPick();
+}
+
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
 // batch variant is static (the proposed lines are displayed above it); the
 // unsourced variant names the topics no source file could be drafted from,
@@ -4423,6 +4440,7 @@ const SURFACES = {
   'conclude-gate': concludeGate,
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
+  'experiment-pick': experimentPickSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,
