@@ -57,7 +57,7 @@ Work through each unresolved finding **sequentially** — a finding whose Resolu
 
 → Proceed to **C. After All Findings Processed**.
 
-Read the next unresolved finding's **Move** before presenting it — it decides the shape. Where the finding names none, classify it and record it in the tracking file: exactly one defensible answer in the specification or the record → `settled`; real options between which only the user can pick → `choice`.
+Read the next unresolved finding's **Move** before presenting it — it decides the shape. Where the finding names none, classify it and record it in the tracking file: exactly one defensible answer the specification, the plan's own shape, or a measurement yields → `settled`, the derivation carried as the Proposal's reasoning; real options the search genuinely leaves to the user → `choice`, naming what was searched.
 
 Then confirm that move against the live session. A `settled` finding whose stated derivation no longer holds, or whose fix you cannot yourself stand behind, is a `choice`: update the Move, replace its fix with options, and present it that way. Reclassification only ever moves toward the user; a `choice` is never demoted to `settled` to save a stop.
 
