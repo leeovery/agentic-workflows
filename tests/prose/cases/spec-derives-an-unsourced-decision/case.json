@@ -1,0 +1,83 @@
+{
+  "origin": "the decision-bar stack gave the unsourced-decision branch a derivation arm: the record is searched before any stop, and where recorded rationale pins the missing point the derivation lands in the owning document with a one-line notify — no exchange. The stop-arm sibling walks the search running out; this pins it running in: input review flags the unsourced value, the orchestrator routes it, the derivation settles it from the record alone, the discussion gains the decision it never made, and the spec re-aligns",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. They know the record cold — one retry fired immediately, the whole attempt sequence inside the checkout's 6-second interstitial budget, the per-attempt cap there so a hung call never eats the retry's chance and sitting no tighter than the budget forces — and they treat whatever that shape determines as already decided, not theirs to re-litigate. They expect the discussion's own record to stay the source of truth and the specification to say what follows from it. At the re-loop prompt they proceed to completion rather than ordering another cycle. At sign-off they confirm. Throughout they answer concretely, decline any offer to approve things automatically, and never reopen decided questions.",
+  "stubs": {
+    "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool — each returns the content below and writes no file",
+    "spec-input-unsourced-timeout": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle=1",
+      "review_baseline_words=",
+      "tracking.review-input-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "presence scan pay",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "discussion(pay/pay):",
+      "--topic discussion/pay --kb --sweep",
+      "tracking.review-input-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
+      "topic complete pay specification pay",
+      "spec(pay): conclude specification"
+    ],
+    "calls_in_order": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle=1",
+      "tracking.review-input-tracking-c1 in-progress",
+      "presence scan pay",
+      "write:.workflows/pay/discussion/pay.md",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "--topic discussion/pay --kb --sweep",
+      "write:.workflows/pay/specification/pay/specification.md",
+      "tracking.review-input-tracking-c1 complete",
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "topic complete pay specification pay"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic triage",
+      "topic supersede",
+      "sources stale",
+      "render incoherence-gate",
+      "render finding pay.specification.pay",
+      "gap routed",
+      "construction_gate_mode auto",
+      "finding_gate_mode auto",
+      "workunit create"
+    ]
+  }
+}
