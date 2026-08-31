@@ -368,8 +368,8 @@ function proposedTask(cwd, args) {
     if (lines.length === 0) throw new Error(`render proposed-task: "${field}" must be non-empty`);
     blocks[field] = lines;
   }
-  /** @type {{summary: string, recommended: boolean}[]} */
-  let sides = [];
+  /** @type {string[]} */
+  let decisionRows = [];
   if (p.decision !== undefined) {
     if (p.decision === null || typeof p.decision !== 'object' || Array.isArray(p.decision)) {
       throw new Error('render proposed-task: "decision" must be an object carrying "question" and "options"');
@@ -378,7 +378,7 @@ function proposedTask(cwd, args) {
     if (!Array.isArray(p.decision.options) || p.decision.options.length < 2 || p.decision.options.length > 4) {
       throw new Error('render proposed-task: "decision.options" must be an array of 2–4 sides');
     }
-    sides = p.decision.options.map((/** @type {unknown} */ o, /** @type {number} */ i) => {
+    const sides = p.decision.options.map((/** @type {unknown} */ o, /** @type {number} */ i) => {
       const side = /** @type {{summary?: unknown, recommended?: unknown}} */ (
         typeof o === 'string' ? { summary: o } : (o && typeof o === 'object' && !Array.isArray(o) ? o : {}));
       const summary = side.summary;
@@ -387,9 +387,7 @@ function proposedTask(cwd, args) {
       }
       return { summary, recommended: side.recommended === true };
     });
-    if (sides.filter((o) => o.recommended).length > 1) {
-      throw new Error('render proposed-task: at most one option may be recommended');
-    }
+    decisionRows = recommendedMenuRows(sides, 'render proposed-task: at most one option may be recommended');
     if (!isFilled(p.stakes)) {
       throw new Error('render proposed-task: "stakes" must be a non-empty string when "decision" is present — the argument for the stop: each side\'s product consequence, and why no investigation settles the tie');
     }
@@ -426,12 +424,11 @@ function proposedTask(cwd, args) {
 
   const hint = isFilled(args['comment-hint']) ? args['comment-hint'] : 'Tell me what to change';
   if (p.decision) {
-    const ordered = [...sides].sort((a, b) => Number(b.recommended) - Number(a.recommended));
     parts.push(section(
       'MENU: task decision',
       STOP_FOR_RESPONSE,
       menu(gate === 'auto' ? AUTO_OVERRIDE_LINE : '', [
-        ...ordered.map((o, i) => cmdOption(String(i + 1), null, `${o.summary}${o.recommended ? ' (recommended)' : ''}`)),
+        ...decisionRows,
         cmdOption('d', 'decline', 'Decline this task — it will not be built'),
         promptOption('Comment', hint),
       ], { question: 'Which way?' }),
@@ -1351,13 +1348,8 @@ function incoherenceGate(cwd, args) {
           throw new Error(`render incoherence-gate: sides[${i}].summary must be a non-empty string`);
         }
       });
-      if (p.sides.filter((/** @type {{recommended?: boolean}} */ s) => s.recommended === true).length > 1) {
-        throw new Error('render incoherence-gate: at most one side may be recommended');
-      }
+      const options = recommendedMenuRows(p.sides, 'render incoherence-gate: at most one side may be recommended');
       const display = section('DISPLAY: incoherence conflict', 'emit verbatim as markdown', body.join('\n'));
-      const ordered = [...p.sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
-      const options = ordered.map((s, i) =>
-        cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
       options.push(promptOption('Comment', 'Tell me what you\'re thinking; we\'ll work it through'));
       return [display, section('MENU: incoherence conflict', INCOHERENCE_STOP,
         menu(overAuto ? AUTO_OVERRIDE_LINE : '', options, { question: 'Which decision stands?' }))].join('\n');
@@ -1662,6 +1654,20 @@ function stringLines(v, surface, field) {
     throw new Error(`render ${surface}: "${field}" must be an array of strings`);
   }
   return v;
+}
+
+/**
+ * The recommended-first menu rows shared by proposed-task's decision, the
+ * incoherence conflict, and the choice finding: at most one entry marked
+ * (the caller owns the error text), the marked one first, "(recommended)"
+ * as its suffix.
+ * @param {{summary: string, recommended?: boolean}[]} sides @param {string} atMostOne
+ * @returns {string[]}
+ */
+function recommendedMenuRows(sides, atMostOne) {
+  if (sides.filter((s) => s.recommended === true).length > 1) throw new Error(atMostOne);
+  const ordered = [...sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
+  return ordered.map((s, i) => cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
 }
 
 /**
@@ -2887,12 +2893,7 @@ function findingChoice(p, head, item) {
       throw new Error(`render finding: options[${i}].summary must be a non-empty string`);
     }
   });
-  if (p.options.filter((/** @type {{recommended?: boolean}} */ o) => o.recommended === true).length > 1) {
-    throw new Error('render finding: at most one option may be recommended');
-  }
-
-  const ordered = [...p.options].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
-  const rows = ordered.map((o, i) => cmdOption(String(i + 1), null, `${o.summary}${o.recommended === true ? ' (recommended)' : ''}`));
+  const rows = recommendedMenuRows(p.options, 'render finding: at most one option may be recommended');
   rows.push(promptOption('Comment', "Tell me what you're thinking; we'll work it through"));
 
   return [
