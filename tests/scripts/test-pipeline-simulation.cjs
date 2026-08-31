@@ -2529,14 +2529,17 @@ describe('pipeline simulation', () => {
     assert.ok(!epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
       .some((k) => k.action === 'continue_experiment'), 'terminal and cancelled records retire from the menu');
 
-    // Reopen: research going stale hops to its nearest downstream consumer —
-    // the settled experiment record sits between it and any conversation.
+    // Reopen: the staleness hop walks past the experiment slot — the series
+    // item is derived bookkeeping no entry flow reconciles, so the flag lands
+    // on the first real phase (layout has no discussion, so nowhere) and the
+    // settled series is left untouched.
     sim.run(['topic', 'reactivate', wu, 'experiment', 'layout']);
     const settled = sim.run(['experiment', 'abandon', wu, 'layout', 'E1', '--reason', 'cancelled with the sweep; not revived']);
     assert.strictEqual(settled.item_status, 'completed');
     const reopened = sim.run(['topic', 'reopen', wu, 'research', 'layout']);
-    assert.deepStrictEqual(reopened.reconcile_flagged, [{ phase: 'experiment', topic: 'layout' }]);
-    sim.run(['manifest', 'delete', `${wu}.experiment.layout`, 'reconcile_needed']);
+    assert.strictEqual(reopened.reconcile_flagged, undefined, 'no conversation downstream — nothing takes the flag');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.reconcile_needed, undefined,
+      'the series item never takes a reconcile flag');
     sim.run(['topic', 'complete', wu, 'research', 'layout']);
   });
 

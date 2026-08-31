@@ -481,20 +481,21 @@ describe('the staleness hop walks to the nearest downstream consumer', () => {
     assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.reconcile_needed, 'research');
   });
 
-  it('with a completed experiment between, the hop stops there — one hop, not two', () => {
+  it('a settled series between is walked past — the flag lands where an entry flow clears it', () => {
     world({
       research: { items: { timing: { status: 'completed' } } },
       experiment: { items: { timing: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } },
       discussion: { items: { timing: { status: 'completed' } } },
     });
     const res = engine(dir, ['topic', 'reopen', 'lab', 'research', 'timing']);
-    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'experiment', topic: 'timing' }]);
+    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'discussion', topic: 'timing' }]);
     const m = readManifest(dir, 'lab');
-    assert.strictEqual(m.phases.experiment.items.timing.reconcile_needed, 'research');
-    assert.strictEqual(m.phases.discussion.items.timing.reconcile_needed, undefined);
+    assert.strictEqual(m.phases.discussion.items.timing.reconcile_needed, 'research');
+    assert.strictEqual(m.phases.experiment.items.timing.reconcile_needed, undefined,
+      'the series item is derived bookkeeping — it never takes a reconcile flag');
   });
 
-  it('an item the flag cannot land on is walked past — an in-progress series never shadows the discussion', () => {
+  it('a live series between is walked past the same way', () => {
     world({
       research: { items: { timing: { status: 'completed' } } },
       experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
@@ -502,6 +503,7 @@ describe('the staleness hop walks to the nearest downstream consumer', () => {
     });
     const res = engine(dir, ['topic', 'reopen', 'lab', 'research', 'timing']);
     assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'discussion', topic: 'timing' }]);
+    assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.reconcile_needed, undefined);
   });
 
   it('the walk ends at discussion — a specification is never reached over an absent record', () => {

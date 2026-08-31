@@ -245,7 +245,9 @@ function sourceRow(sources, topic) {
  * join through spec `sources` (a grouped spec's own name may differ from the
  * source's); every other phase flags the same-named item in the work type's
  * next pipeline phase, as does an investigation no spec's sources name (the
- * legacy bugfix shape).
+ * legacy bugfix shape). The experiment slot is walked past unconditionally —
+ * a flag must land where an entry flow can clear it, and the series item
+ * has none.
  * Only a `completed` item takes the flag (value = the upstream phase name,
  * consumed and cleared by the entry skills' reconcile advisory; an existing
  * flag is never clobbered). An `incorporated` source row on any non-terminal
@@ -295,21 +297,19 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
 
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
   const at = pipeline.indexOf(phase);
-  // The hop targets the nearest downstream consumer. The optional slots
-  // (research, experiment) may hold nothing the flag can land on — walk past
-  // an optional phase whose same-named item is absent or not completed — but
-  // only optional phases are walkable: the first mandatory phase ends the
-  // hop whatever it holds, so a research reopen stops at discussion and
-  // never reaches the specification behind it.
-  const OPTIONAL = ['research', 'experiment'];
+  // One hop to the next pipeline phase — walking past the experiment slot
+  // unconditionally: a reconcile flag must land where an entry flow can
+  // clear it, and the series item is derived bookkeeping with no entry of
+  // its own (its only flag edges are the wait release, which flags the
+  // holder, and a parent conclusion, which runs this walk from the slot).
+  // So a research reopen flags the discussion whatever the series between
+  // them holds, and the hop still ends at the first real phase — never past
+  // it.
   for (let i = at + 1; at !== -1 && i < pipeline.length; i++) {
     const next = pipeline[i];
-    const item = (itemsOf(next) || {})[topic];
-    const flaggable = item && typeof item === 'object' && item.status === 'completed';
-    if (flaggable || !OPTIONAL.includes(next)) {
-      flag(next, topic, item);
-      break;
-    }
+    if (next === 'experiment') continue;
+    flag(next, topic, (itemsOf(next) || {})[topic]);
+    break;
   }
   return result;
 }
