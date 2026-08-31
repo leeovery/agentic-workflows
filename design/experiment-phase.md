@@ -243,14 +243,35 @@ lives with the record. Raw output is kept by default; genuinely bulky
 output may stay out of git with the report linking by path. Ephemeral
 working files use the cache (`.workflows/.cache/{wu}/experiment/{topic}/`).
 
-### Knowledge base
+### Not knowledge-base material
 
-Designs and reports index at the topic's phase conclusion under the
-`experiment` phase, with **standard decay** — no second golden class
-beside specs. A measurement describes the world at a commit; decay is
-correct behaviour. The append-only corrections discipline is a property
-of the file, independent of KB confidence.
-`correcting-historical-artifacts.md` stays spec-only.
+Experiments never enter the knowledge base — no indexing at any point,
+no removal scopes, no identity. Results take whatever shape the problem
+demands — tables, CSVs, images, JSON, zips, prose, any mix — and are
+consumed by the one consumer that exists: the spawning conversation,
+which digests them into its own artifact, and *that* artifact indexes
+when it concludes. Other sessions may read the files ad hoc; no
+machinery feeds experiments anywhere else — the gap analysis included.
+The append-only corrections discipline is a property of the report
+file. `correcting-historical-artifacts.md` stays spec-only.
+
+### Conclusion is per-experiment
+
+The experiment is the unit that concludes: the report is written, the
+verdict recorded, the record marked done, and the session routes back
+so the spawning phase can carry on with the results in hand. There is
+no ceremony above that — the topic's phase item is derived bookkeeping
+over the rows, never a thing the user closes. Nothing strands: every
+experiment locks its spawning conversation, and locks release only on
+terminal records, so all conversations concluded implies all
+experiments finished.
+
+### Availability
+
+The spawn is offered in research and discussion sessions — the work
+types that carry those phases (epic, feature, cross-cutting).
+Investigation and scoping never spawn; bugfix and quick-fix have no
+laboratory.
 
 ## What deliberately does not change
 
@@ -262,7 +283,11 @@ of the file, independent of KB confidence.
 - **`deferred` semantics** — untouched; the lock is a distinct state
   ("blocked pending evidence", never "parked by choice").
 - **Bugfix and quick-fix pipelines** — untouched.
-- **KB decay classes** — specs remain the only golden record.
+- **The knowledge base** — experiments never enter it; the store's
+  phases, decay classes, and golden-record rule are exactly what they
+  were.
+- **Gap analysis** — reads completed research and discussions, as
+  before; never experiments.
 - **No cost machinery** — anywhere, ever.
 - **The bridge** — phase-completion walls only; never a context
   carrier for spawns.
@@ -297,10 +322,10 @@ process substance carry forward; its routing, triage, and session-loop
 machinery does not):
 
 1. **PR1 — engine.** The surviving core (series records, verbs, locks,
-   register, gates, KB identity) plus: lock symmetry on research items,
+   register, approval gate) plus: lock symmetry on research items,
    sub-experiment ids, per-experiment menu entries, the review pass's
-   engine fixes, and the removal of routing/triage/lifecycle machinery
-   the model excludes. Simulation + suites.
+   engine fixes, and the removal of routing/triage/lifecycle/KB
+   machinery the model excludes. Simulation + suites.
 2. **PR2 — skills.** `workflow-experiment-entry` (per-record contract)
    and `workflow-experiment-process` (linear: initialize → design →
    briefing/freeze → run → report → verdict → bridge), authored fresh;
@@ -308,8 +333,8 @@ machinery does not):
 3. **PR3 — integration.** The spawn offer in research and discussion,
    the now-or-later exit, menu entries and recommendation ranking,
    re-entry evidence surfacing, release edges in the continue flows.
-4. **PR4 — cross-cutting.** KB wiring verification, absorption, docs
-   (full pass + experiments chapter), prose cases, CLAUDE.md/README.
+4. **PR4 — cross-cutting.** Absorption, docs (full pass + experiments
+   chapter), prose cases, CLAUDE.md/README.
 
 ## Implementation record — 2026-08-30 (superseded stack)
 
@@ -331,7 +356,9 @@ mid-session; the bridge is not the spawn's carrier; the menu is the
 router and the laboratory always begins fresh). The spawn became id +
 problem file + lock, recorded in the spawning session — design is the
 experiment phase's job (the laboratory model). Per-experiment menu
-entries. Research locks identically to discussion. The
+entries. Research locks identically to discussion — every spawn locks
+its spawning item, so a spawn at research's end pauses research rather
+than concluding around it; no lock-free path exists. The
 one-live-experiment-at-a-time rule deleted. Superseded machinery from
 the first stack: the `Spawned from:` handoff lines, the walk's
 spawn-await conditional, the session-loop spawned-arrival logic, both
@@ -356,3 +383,20 @@ this shape; the first stack's routing surfaces (three-way discovery
 routing, the first-phase gate's experiment arm, `x/experiment`,
 map-lifecycle routing legs, roadmap pull-forward widening) and its
 triage/off-topic machinery are superseded wholesale.
+
+## Amendment — 2026-08-31 (third): no knowledge base, conclusion per-experiment, sub-ids confirmed
+
+Owner rulings: experiments are torn out of the knowledge base entirely
+— no indexing at any point, no identity, no removal scopes; results
+take whatever shape the problem demands, the spawning conversation is
+their one consumer, and its own artifact is what indexes when it
+concludes; nothing else reads them mechanically, the gap analysis
+included. The experiment is the unit that concludes — report written,
+verdict recorded, route back; the topic's phase item is derived
+bookkeeping, never a user-closed thing, so the first stack's
+topic-level conclude gate, dead-end row, and conclude-time indexing are
+superseded. Sub-experiment ids (E{n}.{m}) confirmed — decomposition is
+the laboratory's prerogative, inside the one spawned experiment. The
+test footprint's KB bullets and the rebuild plan's KB scope were
+removed accordingly, and availability was made explicit: spawns exist
+in research and discussion sessions only.
