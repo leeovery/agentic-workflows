@@ -128,7 +128,7 @@ entered fresh.
 ### The menu is experiment-shaped
 
 Each queued or live experiment renders its own menu entry
-(`E1 {slug} — {Topic} · experiment`), appearing at spawn and retiring
+(`Enter E1 {slug} — {Topic} · experiment`), appearing at spawn and retiring
 at conclusion. Experiments rank above other recommendations; the pick
 stays the user's — working E1 then E2, or E1 then the half-unblocked
 conversation, are both legitimate orders. Cancelling a
