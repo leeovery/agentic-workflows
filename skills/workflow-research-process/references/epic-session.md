@@ -87,3 +87,13 @@ Watch for `agent scan` to promote each in-flight row to `pending`. When none rem
 → Load **[topic-completion.md](topic-completion.md)** and follow its instructions as written.
 
 → Return to **B. Session Loop**.
+
+---
+
+## F. The Experiment Offer
+
+When a number is about to bear a decision — a controlled measurement would settle a choice the conversation is weighing, not merely inform it — offer the laboratory. Hands-on sightings short of that bar stay in the session, labelled exploratory.
+
+→ Load **[experiment-spawn.md](../../workflow-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
+
+→ On return, proceed as the reference directed.

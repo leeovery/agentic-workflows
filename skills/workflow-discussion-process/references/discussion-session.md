@@ -37,7 +37,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
    ```
 
-   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on.
+   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on. A number about to bear a decision is the laboratory's cue — offer it through **J. The Experiment Offer**.
 3. **Navigate** — When a subtopic feels explored or a decision lands, record the transition and guide the user to what's still open:
 
    ```bash
@@ -276,3 +276,13 @@ Answer it — the derivation in full, what it rests on. Expanding is not objecti
 Nothing lands; the queue survives on disk. Follow them — the next natural break re-offers the flush.
 
 → Return to **B. Session Loop**.
+
+---
+
+## J. The Experiment Offer
+
+When a number is about to bear a decision — a controlled measurement would settle a choice the conversation is weighing, not merely inform it — offer the laboratory. Hands-on sightings short of that bar stay in the session, labelled exploratory.
+
+→ Load **[experiment-spawn.md](../../workflow-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`.
+
+→ On return, proceed as the reference directed.
