@@ -442,3 +442,81 @@ at implementation time:
   front) and the frozen migrations. Prose walks not run pre-merge, per
   convention; four experiment cases authored and green on the
   deterministic perimeter.
+
+## Amendment — 2026-08-31: the spawn seam rebuilt — menu-routed, problem-first, phase-symmetric
+
+The review pass exposed the mid-discussion exit as mis-designed, and the
+walk of it with the owner replaced the seam wholesale. What follows
+supersedes the birth-route 3 language in The model, the exit description
+in The waiting state, and the implementation record's exit write-order
+bullet. The wait machinery, the experiment process itself (design →
+freeze → run → report → verdict), the register, and the release edges
+all stand.
+
+**Direct invocation is retired.** Nothing enters another phase's
+processing skill mid-session: the straight-through §J invoke and the
+research conclude-arm's direct invoke were wrong — a session deep
+enough to hit an empirical wall is the session closest to compaction,
+and a second phase's instruction set does not belong in it. The bridge
+is not the carrier either: it crosses phase walls at phase completion
+with a deliberately minimal template, and enrichment poisons it. The
+router is the menu (epic) or the work type's continue machinery, and
+the experiment phase always begins in fresh context.
+
+**The spawn, symmetric across research and discussion.** A measurable
+point surfacing mid-conversation is *offered*, never prescribed.
+Declined → ad-hoc inline measurement remains valid, and stays labelled
+exploratory. Accepted → the session records the spawn right there:
+
+1. `experiment create` allocates the id — E{n}, increment off the
+   manifest series — with a kebab slug derived from the problem.
+2. A **problem file** lands in the record's directory: the problem in
+   plain terms — what we need to pick or learn, the space around it,
+   what we hope — with a provenance line naming the phase, topic,
+   point, and date it was born from. **No design content.** The
+   spawning phase is the client at the laboratory door: it states the
+   problem and stops. Question refinement, prediction, decision rule,
+   setup — all of it is the experiment phase's job.
+3. The **lock**: `awaiting_experiments` gains E{n} on the spawning
+   phase's own item — research and discussion identically. `topic
+   complete` refuses on both while any lock is live; conclude, abandon,
+   and cancel release per-id and flag the owning item. Research is not
+   a special case: the lock means "this phase raised a question it
+   needs answered before it can honestly conclude", which applies to a
+   research record exactly as to a discussion.
+4. The choice: **go now** — the session pauses mid-phase and routes
+   back to the menu, closing ceremony skipped — or **later** — the
+   session continues, conclusion stays blocked, and it pauses at a
+   natural end the same way. Both roads end at the menu with the
+   experiment queued.
+
+**The menu is experiment-shaped.** Each queued or live experiment
+renders its own entry (`E1 {slug} — {Topic} · experiment`), appearing
+at spawn and retiring at conclusion; the register remains the topic's
+full history. Experiments rank above other recommendations; the pick
+stays the user's — working E1 then E2, or E1 then the half-unblocked
+discussion, are both legitimate orders, and cancelling a
+no-longer-needed E2 releases its lock and unblocks conclusion. Once a
+phase's locks all release, the paused phase becomes the recommendation.
+
+**Entry is per-experiment.** `workflow-experiment-entry` takes the
+record id — the session enters to deal with E1, the way a discussion is
+entered for a topic. Initialisation reads the problem file, then —
+provenance-driven — the spawning artifact **on disk, in full**: the
+source document is mid-flight, unconcluded and unindexed, so the
+knowledge base cannot serve it. Linked research, briefs, and seeds
+surface as before. Design is then authored collaboratively in-phase —
+the laboratory asking its own questions — and the walk from the
+briefing gate onward is unchanged.
+
+**Concurrency.** The one-live-experiment-at-a-time rule is deleted; the
+engine never had it. Any number of records in any states; a session
+works the experiment it entered for.
+
+**Superseded machinery** (built by the stack, removed by this
+amendment): the `Spawned from:` handoff lines, the walk's spawn-await
+conditional and its recorded-wait disambiguator, the session-loop
+spawned-arrival logic, and both direct `/workflow-experiment-entry`
+invocations (discussion §J, research conclude-arm — the arm survives as
+a spawn without a lock-free special case, concluding research clean
+with its experiments queued on the menu).
