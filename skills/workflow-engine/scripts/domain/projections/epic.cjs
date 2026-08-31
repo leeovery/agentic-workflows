@@ -35,6 +35,7 @@ const { buildOrderLive } = require('../build-order.cjs');
  * @property {string} [word]          long form of a command option (`spec`, `map`, …)
  * @property {string} action          machine action key — skills route on this, never the label
  * @property {string|null} topic
+ * @property {string} [experiment]    continue_experiment entries — the record id the route enters
  * @property {string|null} route      skill invocation, or null for internal flows
  * @property {string} label
  * @property {boolean} [recommended]
@@ -55,7 +56,7 @@ const BUILD_PHASES = EPIC_PIPELINE.slice(EPIC_PIPELINE.indexOf('specification'))
 // pipeline in order by this labelling, so the dividers can never hold a phase
 // the pipeline lacks.
 const STAGE_OF = {
-  research: 'DISCOVERY', discussion: 'DISCOVERY',
+  research: 'DISCOVERY', experiment: 'DISCOVERY', discussion: 'DISCOVERY',
   specification: 'DEFINITION', planning: 'DEFINITION',
   implementation: 'DELIVERY', review: 'DELIVERY',
 };
@@ -73,6 +74,7 @@ const STATUS_ORDER = ['proposed', 'triaged', 'in-progress', 'completed', 'cancel
 
 const PHASE_ENTRY_SKILL = {
   research: 'workflow-research-entry',
+  experiment: 'workflow-experiment-entry',
   discussion: 'workflow-discussion-entry',
   specification: 'workflow-specification-entry',
   planning: 'workflow-planning-entry',
@@ -83,6 +85,7 @@ const PHASE_ENTRY_SKILL = {
 const ACTION_PHASE = {
   start_research: 'research',
   continue_research: 'research',
+  continue_experiment: 'experiment',
   start_discussion: 'discussion',
   start_discussion_after_research: 'discussion',
   continue_discussion: 'discussion',
@@ -118,7 +121,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false);
+  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false, row.awaiting_experiments);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
@@ -495,6 +498,30 @@ function startVerbLabel(n, srcFlagged) {
   return `Start ${phase} for "${t}" — *${n.label}*${cue}`;
 }
 
+/**
+ * One entry per live experiment — appearing at the spawn, retiring at
+ * conclusion, abandonment, or cancellation. Entry is per-record: the route
+ * carries the id the session enters to deal with.
+ * @param {string} workUnit @param {EpicDetail} detail @returns {MenuKey[]}
+ */
+function experimentEntries(workUnit, detail) {
+  /** @type {MenuKey[]} */
+  const out = [];
+  for (const item of detail.phases.experiment || []) {
+    for (const exp of item.experiments || []) {
+      out.push({
+        key: '',
+        action: 'continue_experiment',
+        topic: item.name,
+        experiment: exp.id,
+        route: `/workflow-experiment-entry epic ${workUnit} ${item.name} ${exp.id}`,
+        label: `${exp.id} ${exp.slug} — ${titlecase(item.name)} · experiment`,
+      });
+    }
+  }
+  return out;
+}
+
 /** Continue entries for one phase's in-progress items. @param {string} workUnit @param {EpicDetail} detail @param {string} phase @returns {MenuKey[]} */
 function continueEntries(workUnit, detail, phase) {
   return (detail.phases[phase] || [])
@@ -634,6 +661,13 @@ function pickRecommendation(detail, numbered, options, hasMap) {
     if (discoveryOpt) { discoveryOpt.recommended = true; return null; }
   }
 
+  // A live experiment outranks the rest: its verdict is what unblocks a
+  // waiting conversation, and a phase whose locks have all released becomes
+  // the recommendation again. The pick stays the user's — E1 then E2, or E1
+  // then the half-unblocked conversation, are both legitimate orders.
+  const experiment = numbered.find((e) => e.action === 'continue_experiment' && !e.in_session);
+  if (experiment) return experiment;
+
   if (hasMap) {
     if (detail.convergence_state === 'in-progress') {
       // Top of the actionable map — the first discovery entry mirrors the
@@ -737,6 +771,10 @@ function epicMenu(workUnit, detail, opts = {}) {
   /** @type {MenuKey[]} */
   let numbered = [];
 
+  // Live experiments lead the menu whatever the map state — each record its
+  // own row, ranked above every other entry.
+  numbered.push(...experimentEntries(workUnit, detail));
+
   if (hasMap) {
     // Discovery topics — one entry per map row with a non-null next_action
     // (✓/⊙/⊘ rows have none), in map order.
@@ -757,7 +795,10 @@ function epicMenu(workUnit, detail, opts = {}) {
     }
   } else {
     // Continue items — any in-progress item in any phase, pipeline order.
+    // The experiment phase is skipped: its per-record entries above already
+    // carry the series, and a generic item row would double it.
     for (const phase of EPIC_PIPELINE) {
+      if (phase === 'experiment') continue;
       numbered.push(...continueEntries(workUnit, detail, phase));
     }
     // Next-phase-ready items — specification first, then planning,

@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const {
   phaseItems,
   computeAnalysisCacheStatus,
@@ -40,11 +40,21 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  */
 
 /**
+ * @typedef {object} ExperimentRow
+ * @property {string} id      `E1`, `E2`, …
+ * @property {string} slug
+ * @property {string} status  one of the experiment record vocabulary
+ */
+
+/**
  * @typedef {object} PhaseEntry
  * @property {string} name
  * @property {string} status
  * @property {string|boolean} [reconcile_needed]  a live reconcile flag — the upstream phase that
  *                                             moved, or `true` for a brief flag
+ * @property {ExperimentRow[]} [experiments]   experiment items — the live (non-terminal)
+ *                                             top-level records, id order; the menu's
+ *                                             per-experiment entries read them
  * @property {SpecSource[]} [sources]          specification items
  * @property {string[]} [blocked_by]           specification items whose source is back in-progress
  * @property {string} [format]                 planning items
@@ -89,6 +99,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {boolean} triage_parked  a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
+ * @property {string[]} awaiting_experiments  live evidence-wait ids across the topic's research and discussion items (empty when none)
  * @property {string|null} next_action
  */
 
@@ -219,6 +230,20 @@ function epicDetail(cwd, manifest) {
       /** @type {PhaseEntry} */
       const entry = { name: item.name, status: item.status || 'unknown' };
       if (item.reconcile_needed !== undefined) entry.reconcile_needed = item.reconcile_needed;
+
+      // A live series' open experiments ride the entry — each renders its
+      // own menu row, appearing at the spawn and retiring at conclusion,
+      // abandonment, or cancellation. Top-level records only: a split is the
+      // laboratory's internal method, entered through its parent.
+      if (phase === 'experiment' && item.status === 'in-progress'
+          && item.experiments && typeof item.experiments === 'object') {
+        const live = Object.entries(item.experiments)
+          .filter(([id, r]) => !id.includes('.') && r && typeof r === 'object'
+            && !EXPERIMENT_TERMINAL_STATUSES.includes(r.status))
+          .map(([id, r]) => ({ id, slug: r.slug, status: r.status }))
+          .sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
+        if (live.length > 0) entry.experiments = live;
+      }
 
       if (phase === 'specification' && item.sources) {
         const sourcesArr = Array.isArray(item.sources)

@@ -179,6 +179,9 @@ function formatScoped(workUnit, result) {
     line += ` summary=${t.summary_present ? 'present' : 'absent'}`;
     line += ` description=${t.description_present ? 'present' : 'absent'}`;
     if (t.triage_parked) line += ` triage=waiting`;
+    if (Array.isArray(t.awaiting_experiments) && t.awaiting_experiments.length > 0) {
+      line += ` awaiting=${t.awaiting_experiments.join(',')}`;
+    }
     if (t.summary) line += ` — ${t.summary}`;
     lines.push(line);
   }

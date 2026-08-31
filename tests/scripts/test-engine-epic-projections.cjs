@@ -1134,3 +1134,86 @@ describe('epic projections: selection sub-views', () => {
     ].join('\n'));
   });
 });
+
+describe('epic projections: per-experiment menu entries', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function labDetail(overrides = {}) {
+    return detailFor(dir, 'lab', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            timing: { routing: 'discussion', source: 'discovery', order: 1, summary: 'Timing behaviour' },
+            layout: { routing: 'research', source: 'discovery', order: 2, summary: 'Layout rules' },
+          },
+        },
+        research: { items: { layout: { status: 'in-progress' } } },
+        discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        experiment: {
+          items: {
+            timing: {
+              status: 'in-progress',
+              experiments: {
+                E1: { slug: 'window-placement', status: 'running' },
+                'E1.1': { slug: 'single-monitor', status: 'conceived' },
+                E2: { slug: 'multi-monitor', status: 'concluded', verdict: 'held' },
+              },
+            },
+          },
+        },
+        ...overrides,
+      },
+    });
+  }
+
+  it('each live top-level experiment renders its own entry, leading the menu and recommended first', () => {
+    const { keys, rendered } = epicMenu('lab', labDetail());
+    const first = keys[0];
+    assert.strictEqual(first.key, '1');
+    assert.strictEqual(first.action, 'continue_experiment');
+    assert.strictEqual(first.topic, 'timing');
+    assert.strictEqual(first.experiment, 'E1');
+    assert.strictEqual(first.route, '/workflow-experiment-entry epic lab timing E1');
+    assert.strictEqual(first.label, 'E1 window-placement — Timing · experiment');
+    assert.strictEqual(first.recommended, true, 'a live experiment outranks every other recommendation');
+    assert.ok(!keys.some((k) => k.experiment === 'E2'), 'a concluded record has retired from the menu');
+    assert.ok(!keys.some((k) => k.experiment === 'E1.1'), 'a sub-experiment is entered through its parent, never its own row');
+    assert.ok(rendered.replace(/\n +/g, ' ').includes('**`1`**           → E1 window-placement — Timing · experiment (recommended)'),
+      `entry renders with the recommendation marker:\n${rendered}`);
+  });
+
+  it('the map row cues the waiting conversation beneath its lifecycle', () => {
+    const dash = epicDashboard('lab', labDetail());
+    assert.match(dash, /↳ Discussing · awaiting E1/);
+  });
+
+  it('a cancelled series retires its entries and the recommendation falls through', () => {
+    const detail = labDetail({
+      discussion: { items: { timing: { status: 'in-progress' } } },
+      experiment: {
+        items: {
+          timing: {
+            status: 'cancelled', previous_status: 'in-progress',
+            experiments: { E1: { slug: 'window-placement', status: 'running' } },
+          },
+        },
+      },
+    });
+    const { keys } = epicMenu('lab', detail);
+    assert.ok(!keys.some((k) => k.action === 'continue_experiment'), 'cancellation retires the entries');
+    const rec = keys.find((k) => k.recommended);
+    assert.notStrictEqual(rec && rec.action, 'continue_experiment');
+  });
+
+  it('a held laboratory session strikes the entry and hands the recommendation onward', () => {
+    const { keys } = epicMenu('lab', labDetail(), {
+      presence: [{ phase: 'experiment', topic: 'timing', age_seconds: 60, held: true, live: true, session_id: 'peer', pid: null }],
+    });
+    const entry = keys.find((k) => k.action === 'continue_experiment');
+    assert.strictEqual(entry.in_session, true);
+    assert.strictEqual(entry.recommended, undefined, 'a struck row is never the recommendation');
+  });
+});

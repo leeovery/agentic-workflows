@@ -39,8 +39,9 @@ const {
   roadmapConcludeGate,
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
+const { experimentRegister, experimentApprovalGate } = require('./projections/experiment.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase, computeTopicLifecycle } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -1390,7 +1391,25 @@ function incoherenceGate(cwd, args) {
  * @returns {string}
  */
 function cancelCascadeGate(cwd, { dotpath }) {
-  const { topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-cascade-gate');
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-cascade-gate');
+  // An experiment address renders the softer wait-release confirm — nothing
+  // collapses: each waiting conversation's evidence wait releases and its
+  // waiting point reverts to open.
+  if (phase === 'experiment') {
+    const holders = experimentWaits(manifest, topic);
+    if (holders.length === 0) {
+      throw new Error(`render cancel-cascade-gate: no live evidence wait on "${topic}"'s experiments — the bare cancel proceeds`);
+    }
+    const held = holders.map((h) => `its ${h.phase} holds (awaiting ${h.ids.join(', ')})`).join(' and ');
+    return section('MENU: cancel cascade', "emit verbatim as markdown, then STOP for the user's response", menu(
+      `Cancelling the **${titlecase(topic)}** experiments releases the evidence wait ${held}: each waiting point reverts to open, and the release is surfaced at that conversation's next entry.`,
+      [
+        cmdOption('y', 'yes', 'Cancel the experiments and release the wait'),
+        cmdOption('n', 'no', 'Return to menu'),
+      ],
+      { question: 'Cancel and release?' },
+    ));
+  }
   const specItems = ((manifest.phases || {}).specification || {}).items || {};
   const collapses = Object.entries(specItems).filter(([, s]) =>
     s && typeof s === 'object' && !['cancelled', 'superseded', 'promoted'].includes(s.status)
@@ -2421,6 +2440,68 @@ function concludeGate(cwd, { dotpath }) {
     throw new Error(`render conclude-gate: phase must be one of ${Object.keys(CONCLUDE_GATES).join(', ')}, got "${phase}"`);
   }
   return section('MENU: conclude gate', STOP_FOR_RESPONSE, menu('', gate.options(), { question: gate.question }));
+}
+
+// ---------------------------------------------------------------------------
+// The experiment surfaces — the series register and the briefing's approval
+// gate (projections/experiment.cjs renders; the handlers resolve the item
+// and refuse states the calling prose never reaches). Address-backed: the
+// series lives on the manifest (`experiments.{id}` records), never in a
+// hand-maintained file.
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve an experiment address to its series rows in id order — parents by
+ * number, each parent's sub-experiments beneath it. A loud error when the
+ * phase is wrong or the topic holds no series.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{workUnit: string, topic: string, rows: import('./projections/experiment.cjs').SeriesRow[]}}
+ */
+function resolveExperiment(cwd, dotpath, surface) {
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
+  if (phase !== 'experiment') {
+    throw new Error(`render ${surface}: address must be <work_unit>.experiment.<topic>, got phase "${phase}"`);
+  }
+  const item = itemOf(manifest, 'experiment', topic);
+  if (!item || typeof item !== 'object') {
+    throw new Error(`render ${surface}: no experiment series for "${topic}" in "${workUnit}"`);
+  }
+  const experiments = (item.experiments && typeof item.experiments === 'object') ? item.experiments : {};
+  const numbers = (/** @type {string} */ id) => id.slice(1).split('.').map(Number);
+  const rows = Object.entries(experiments)
+    .map(([id, r]) => ({ id, ...(r && typeof r === 'object' ? r : {}) }))
+    .sort((a, b) => {
+      const [an, am = 0] = numbers(a.id);
+      const [bn, bm = 0] = numbers(b.id);
+      return an - bn || am - bm;
+    });
+  return { workUnit, topic, rows };
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function experimentRegisterSurface(cwd, { dotpath }) {
+  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-register');
+  return experimentRegister(topic, rows);
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, id?: string}} args
+ * @returns {string}
+ */
+function experimentApprovalGateSurface(cwd, { dotpath, id }) {
+  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-approval-gate');
+  if (!isFilled(id)) throw new Error('render experiment-approval-gate: --id is required (E1, E1.1, …)');
+  const record = rows.find((r) => r.id === id);
+  if (!record) throw new Error(`render experiment-approval-gate: no experiment ${id} in "${topic}"'s series`);
+  if (record.status !== 'designed') {
+    throw new Error(`render experiment-approval-gate: ${id} is "${record.status}", not designed — the briefing confirm follows the written design`);
+  }
+  return experimentApprovalGate(/** @type {string} */ (id));
 }
 
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
@@ -4340,6 +4421,8 @@ const SURFACES = {
   'topic-collision-gate': topicCollisionGate,
   'triage-closed-target': triageClosedTarget,
   'conclude-gate': concludeGate,
+  'experiment-register': experimentRegisterSurface,
+  'experiment-approval-gate': experimentApprovalGateSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,
