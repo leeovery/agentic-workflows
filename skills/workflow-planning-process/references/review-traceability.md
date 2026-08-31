@@ -63,7 +63,7 @@ Is everything in the plan actually from the specification? This is the anti-hall
 Every finding names the **move** it owes the reader — what they have to do about it. The move, never the Type, decides how the finding is presented.
 
 - **settled** — the record admits exactly one defensible answer. Write the **Proposal**: the fix and what determined it. Most traceability findings are this: the specification already decided, and carrying its decision into the plan is not a new decision.
-- **choice** — real options exist and only the reader can pick between them. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
+- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the specification or the plan's own shape yields is `settled`, that derivation its Proposal. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
 - Planning findings never route: the plan is the document under review, and its answers live in the specification or the record.
 
 A fix you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. Classification only ever moves toward the reader.

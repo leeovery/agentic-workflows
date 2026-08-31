@@ -78,14 +78,14 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
 Every finding names the **move** it owes the reader — what they have to do about it. The move, never the category, decides how the finding is presented.
 
 - **settled** — the record admits exactly one defensible answer. Write the **Proposal**: the call and what determined it. Most findings are this.
-- **choice** — real options exist and only the reader can pick between them. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
+- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the specification, the plan's own conventions, or a measurement yields is `settled`, that derivation its Proposal. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
 - Planning findings never route: the plan is the document under review, and its answers live in the specification or the record.
 
 A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. Classification only ever moves toward the reader.
 
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them.
 
-A plan defect the specification or the plan's own conventions determine is **settled**. Where the plan could go two defensible ways — how to split a task, which phase owns a slice — it is a **choice**.
+A plan defect the specification or the plan's own conventions determine is **settled**. Where the plan could go two defensible ways that survive the search — how to split a task, which phase owns a slice — it is a **choice**: name what was searched, and take a stance.
 
 ## Tracking File
 
