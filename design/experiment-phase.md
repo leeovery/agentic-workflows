@@ -3,8 +3,7 @@
 A tool used by research and discussion: controlled experiments against
 real systems or processes, designed before they are measured, producing
 dependable results that feed back into the conversation that asked for
-them. This is the design log. Opened 2026-08-30; model rewritten
-2026-08-31 to the corrected shape (see the amendments for the record).
+them. This is the design log. Opened 2026-08-30.
 
 ## Motivation
 
@@ -245,13 +244,13 @@ working files use the cache (`.workflows/.cache/{wu}/experiment/{topic}/`).
 
 ### Not knowledge-base material
 
-Experiments never enter the knowledge base — no indexing at any point,
-no removal scopes, no identity. Results take whatever shape the problem
-demands — tables, CSVs, images, JSON, zips, prose, any mix — and are
-consumed by the one consumer that exists: the spawning conversation,
-which digests them into its own artifact, and *that* artifact indexes
-when it concludes. Other sessions may read the files ad hoc; no
-machinery feeds experiments anywhere else — the gap analysis included.
+Experiments deliberately never enter the knowledge base. Results take
+whatever shape the problem demands — tables, CSVs, images, JSON, zips,
+prose, any mix — which no chunker serves well, and they have exactly
+one consumer: the spawning conversation, which digests them into its
+own artifact — and *that* artifact indexes when it concludes. Other
+sessions may read the files ad hoc; no machinery feeds experiments
+anywhere else — the gap analysis included.
 The append-only corrections discipline is a property of the report
 file. `correcting-historical-artifacts.md` stays spec-only.
 
@@ -275,19 +274,17 @@ laboratory.
 
 ## What deliberately does not change
 
-- **Triage** — untouched entirely, in every direction. The phase
-  borrows the *idea* of a queue, nothing of the machinery.
+- **Triage** — the phase has no contact with it in either direction;
+  it borrows the *idea* of a queue, nothing of the machinery.
 - **Discovery** — routes topics to research or discussion only;
   unaware the laboratory exists.
 - **No experiment→spec edge.** Specs source discussions only.
 - **`deferred` semantics** — untouched; the lock is a distinct state
   ("blocked pending evidence", never "parked by choice").
 - **Bugfix and quick-fix pipelines** — untouched.
-- **The knowledge base** — experiments never enter it; the store's
-  phases, decay classes, and golden-record rule are exactly what they
-  were.
-- **Gap analysis** — reads completed research and discussions, as
-  before; never experiments.
+- **The knowledge base** — experiments never enter it.
+- **Gap analysis** — reads completed research and discussions; never
+  experiments.
 - **No cost machinery** — anywhere, ever.
 - **The bridge** — phase-completion walls only; never a context
   carrier for spawns.
@@ -316,87 +313,19 @@ laboratory.
 
 ## Implementation plan
 
-PR0 is this document, standalone. Rebuilt as a fresh stack (the first
-stack, #1058–#1063, is closed and superseded — its engine core and
-process substance carry forward; its routing, triage, and session-loop
-machinery does not):
+PR0 is this document, standalone. The stack:
 
-1. **PR1 — engine.** The surviving core (series records, verbs, locks,
-   register, approval gate) plus: lock symmetry on research items,
-   sub-experiment ids, per-experiment menu entries, the review pass's
-   engine fixes, and the removal of routing/triage/lifecycle/KB
-   machinery the model excludes. Simulation + suites.
+1. **PR1 — engine.** Series records and the guarded container, the
+   verb family (`approve` its own verb — the freeze is never a step a
+   loop drifts past), locks symmetric across research and discussion,
+   sub-experiment ids, the register and approval-gate surfaces,
+   per-experiment menu entries. Simulation + suites.
 2. **PR2 — skills.** `workflow-experiment-entry` (per-record contract)
    and `workflow-experiment-process` (linear: initialize → design →
-   briefing/freeze → run → report → verdict → bridge), authored fresh;
-   templates, conduct, amendment protocol carried forward.
+   briefing/freeze → run → report → verdict → bridge); templates,
+   conduct, amendment protocol.
 3. **PR3 — integration.** The spawn offer in research and discussion,
    the now-or-later exit, menu entries and recommendation ranking,
    re-entry evidence surfacing, release edges in the continue flows.
 4. **PR4 — cross-cutting.** Absorption, docs (full pass + experiments
    chapter), prose cases, CLAUDE.md/README.
-
-## Implementation record — 2026-08-30 (superseded stack)
-
-Landed as stack #1060 off main: #1058 engine state → #1059 render
-surfaces → #1061 skills → #1062 integration prose → #1063
-cross-cutting + docs. The stack implemented the model as first written;
-the review pass and the owner walk that followed corrected the model
-(see the amendments), and the stack was closed in favour of the rebuild
-above. Decisions from it that stand: the keyed series records and
-guarded container, `approve` as its own verb, the KB identity shape
-with per-canonical-path replacement, no migration needed, and the
-engine fixes the review pass verified.
-
-## Amendment — 2026-08-31: the spawn seam rebuilt — menu-routed, problem-first, phase-symmetric
-
-The review pass exposed the mid-discussion exit as mis-designed. Direct
-invocation retired (nothing enters another phase's processing skill
-mid-session; the bridge is not the spawn's carrier; the menu is the
-router and the laboratory always begins fresh). The spawn became id +
-problem file + lock, recorded in the spawning session — design is the
-experiment phase's job (the laboratory model). Per-experiment menu
-entries. Research locks identically to discussion — every spawn locks
-its spawning item, so a spawn at research's end pauses research rather
-than concluding around it; no lock-free path exists. The
-one-live-experiment-at-a-time rule deleted. Superseded machinery from
-the first stack: the `Spawned from:` handoff lines, the walk's
-spawn-await conditional, the session-loop spawned-arrival logic, both
-direct `/workflow-experiment-entry` invocations.
-
-## Amendment — 2026-08-31 (second): the umbrella ruling — narrow remit, no routing, no loop
-
-The owner walk that followed settled the phase's nature: an addendum
-tool used by research and discussion, separated for context isolation
-as a scientific control — not a peer phase. Rulings: the remit is
-instructions in → design → perform → results → feed back, nothing
-else — no off-topic rerouting, no roadmap parks, no inbox capture, no
-session loop; triage is untouched in every direction (a measurable
-concern rerouted between topics lands in research or discussion, which
-decides whether to spawn); discovery never routes to experiment — the
-spawn is the phase's one door; splits are sub-experiments (E{n}.{m})
-under the spawned id, the lock never churning; execution shape is the
-orchestrator's empowered choice (direct, deterministic code doing the
-work, background shells and monitors, ad-hoc sub-agents — no custom
-workflow agents). The model sections above were rewritten in place to
-this shape; the first stack's routing surfaces (three-way discovery
-routing, the first-phase gate's experiment arm, `x/experiment`,
-map-lifecycle routing legs, roadmap pull-forward widening) and its
-triage/off-topic machinery are superseded wholesale.
-
-## Amendment — 2026-08-31 (third): no knowledge base, conclusion per-experiment, sub-ids confirmed
-
-Owner rulings: experiments are torn out of the knowledge base entirely
-— no indexing at any point, no identity, no removal scopes; results
-take whatever shape the problem demands, the spawning conversation is
-their one consumer, and its own artifact is what indexes when it
-concludes; nothing else reads them mechanically, the gap analysis
-included. The experiment is the unit that concludes — report written,
-verdict recorded, route back; the topic's phase item is derived
-bookkeeping, never a user-closed thing, so the first stack's
-topic-level conclude gate, dead-end row, and conclude-time indexing are
-superseded. Sub-experiment ids (E{n}.{m}) confirmed — decomposition is
-the laboratory's prerogative, inside the one spawned experiment. The
-test footprint's KB bullets and the rebuild plan's KB scope were
-removed accordingly, and availability was made explicit: spawns exist
-in research and discussion sessions only.
