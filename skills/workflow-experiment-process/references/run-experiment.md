@@ -103,7 +103,7 @@ Walk each sub in miniature, holding its `id` and `dir` — from the create respo
    node .claude/skills/workflow-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {sub_id}
    ```
 
-   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`.
+   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`. A sub put down mid-measurement — → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{sub_id}` — ends `abandoned` on its own row; skip its verdict.
 4. **Verdict** — execute the sub's pre-registered decision rule and record it — a sub's terminal transition releases no wait; the parent's carries them:
 
    ```bash
