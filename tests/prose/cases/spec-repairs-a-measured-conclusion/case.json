@@ -1,0 +1,77 @@
+{
+  "origin": "the decision-bar stack narrowed the measurement branch: a corrected value that alone re-lands the leaning conclusion is a repair the record supports — a one-line notify, no stop, no gate. This walks that repair tier end to end: construction re-runs the recorded command, finds it false, repairs claim and conclusion in the discussion's own record, reindexes and sweep-commits, and the spec carries the corrected record",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/compliance-check.md"
+  ],
+  "conduct": "The user is turning their completed card-payments discussion into the specification and knows its record cold: the existing gateway account, webhook-confirmed capture with no polling, and backfill recovery as a queue-free single synchronous pass. They also know their own tree — the gateway client pages at 250, and the 500 in the record was wrong the day it was written — so corrected figures that just re-run the record's own arithmetic surprise them not at all and change nothing they decided: recovery stays a single pass, no queue. What they would reject is a correction patched only into the specification while the discussion keeps asserting the false figure, or any invented scope riding in with a correction. Otherwise they check each presented piece against what was decided — faithful content gets an explicit yes; anything invented or hedged beyond the record they correct before it is written. Offered a way to approve the rest automatically, they decline and keep approving one piece at a time. They answer concretely, never add scope, and never reopen decided questions. When asked to conclude, they confirm.",
+  "stubs": {
+    "spec-review-clean": "each time the prose dispatches a specification review agent via the Task tool — claims verification, input review, and gap analysis alike return the content below and write no file"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.specification.pay",
+      "manifest get pay.specification.pay status",
+      "topic start pay specification pay",
+      "sources.pay.status pending",
+      "sources.pay.status incorporated",
+      "review_cycle=0",
+      "finding_gate_mode=gated",
+      "presence scan pay",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "discussion(pay/pay):",
+      "--topic discussion/pay --kb --sweep",
+      "manifest set pay.specification.pay review_cycle=1",
+      "review_baseline_words=",
+      "render spec-completion-gate pay.specification.pay --variant signoff",
+      "topic complete pay specification pay",
+      "spec(pay): conclude specification"
+    ],
+    "calls_in_order": [
+      "topic start pay specification pay",
+      "presence scan pay",
+      "write:.workflows/pay/discussion/pay.md",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "--topic discussion/pay --kb --sweep",
+      "manifest set pay.specification.pay review_cycle=1",
+      "topic complete pay specification pay"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "topic triage",
+      "topic supersede",
+      "sources stale",
+      "render incoherence-gate",
+      "gap routed",
+      "construction_gate_mode auto",
+      "finding_gate_mode auto",
+      "workunit create"
+    ]
+  }
+}
