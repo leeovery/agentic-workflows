@@ -15,11 +15,13 @@ The prose should have taken this path:
    against the tree before extraction: the walk re-runs the recorded
    command (or an equivalent measurement) and finds it false —
    src/webhooks/refund.js does not retry
-5. because the no-reconciliation decision leans on the falsified claim,
-   the session STOPS conversationally: it puts the document's
-   assertion, the command and its measured result, and the leaning
-   decision to the user, and takes a stance on whether the decision
-   survives. It never extracts the claim as-is, never patches the
+5. because the no-reconciliation decision leans on the falsified claim
+   and no record-supported repair re-lands it — every way it could
+   re-land commits work the record never decided: wrap the refund
+   handler, add a sweeper, accept the gap — the session STOPS
+   conversationally: it puts the document's assertion, the command and
+   its measured result, and the leaning decision to the user, and
+   takes a stance on whether the decision survives. It never extracts the claim as-is, never patches the
    mismatch in the spec alone, and never renders the incoherence
    conflict gate — no sides are documented; this is an exchange, not a
    gate

@@ -16,11 +16,13 @@ The prose should have taken this path:
    at the finding gate and never applied — the orchestrator routes it,
    choosing the discussion as the source that should own the missing
    decision
-5. classification finds no measurement to run and no documented sides
-   — this is the exchange, not a gate: the session STOPS
-   conversationally, putting the unmade decision to the user (what the
-   spec asserts, what the record never decided) and taking a stance;
-   the incoherence conflict surface is never rendered
+5. classification finds no measurement to run and no documented sides,
+   and the derivation attempt runs out — nothing in the record or the
+   tree pins the mechanism or the tolerance — so this is the exchange,
+   not a gate: the session STOPS conversationally, putting the unmade
+   decision to the user (what the spec asserts, what was searched and
+   where the record ran out) and taking a stance; the incoherence
+   conflict surface is never rendered
 6. on the user's settlement (verify signatures with the gateway SDK's
    built-in verification and its default tolerance — no custom
    window), the walk checks presence, then lands the decision in the

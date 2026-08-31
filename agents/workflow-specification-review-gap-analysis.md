@@ -111,14 +111,14 @@ No source material — this phase looks inward only.
 Every finding names the **move** it owes the reader — what they have to do about it. The move, never the category, decides how the finding is presented.
 
 - **settled** — the record admits exactly one defensible answer. Write the **Proposal**: the call and what determined it. Most findings are this.
-- **choice** — real options exist and only the reader can pick between them. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
+- **choice** — real options exist and only the reader can pick between them — a verdict earned by searching, never a default: anything the record, a measurement, or a sibling section yields is `settled`, that derivation its Proposal. A staged choice names what was searched and where the record ran out. Write the **Options**, one line each, at most one marked `(recommended)`. Write no Proposal: a choice dressed as a decision already made is the failure this field exists to prevent.
 - **route** — the answer belongs to a source document rather than to the specification. Every Source defect and Unsourced decision is this move. Write neither Proposal nor Proposed Text: the fix belongs to the source record.
 
 A call you cannot yourself stand behind is a **choice**, never a settled answer written on the reader's behalf. Classification only ever moves toward the reader.
 
 The **Problem** is what is wrong in the terms the reader cares about — the product, the end result. Never the analysis that found it, and never the document's own wording read back at them. The reader has not read the specification and won't: **Affects** is the one home for section numbers, and a bare section reference never carries weight in Problem, Proposal, or Options — state the substance the section holds, so the finding reads whole on its own.
 
-An ambiguity the specification's own decisions resolve is **settled** — say which decision resolves it. An ambiguity that survives the whole document is a **choice**: frame the ways it could go and take a stance.
+An ambiguity the specification's own decisions resolve is **settled** — say which decision resolves it. An ambiguity that survives the whole document and the search is a **choice**: frame the ways it could go, name what was searched, and take a stance.
 
 ## Output File Format
 

@@ -57,7 +57,7 @@ Work through each unresolved finding **sequentially** — a finding whose Resolu
 
 → Proceed to **C. After All Findings Processed**.
 
-Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: the answer owned by a source document rather than by this specification → `route`; exactly one defensible answer in the record → `settled`; real options between which only the user can pick → `choice`.
+Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: the answer owned by a source document rather than by this specification → `route`; exactly one defensible answer in the record → `settled` — a derivation from the record, a measurement, or a sibling artifact counts, carried as the Proposal's reasoning; real options the search genuinely leaves to the user → `choice`, naming what was searched.
 
 Then confirm that move against the live session. A `settled` finding whose stated derivation no longer holds — a decision made since the tracking file was written, ground the session has moved — or whose call you cannot yourself stand behind, is a `choice`: update the Move, replace its Proposal with Options, and present it that way. Reclassification only ever moves toward the user; a `choice` is never demoted to `settled` to save a stop.
 
