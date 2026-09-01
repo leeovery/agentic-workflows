@@ -1,5 +1,5 @@
 {
-  "origin": "the boundary walk's two new moves had no coverage: a proposal carrying an irreducible product fork stops the walk even under auto, and a spec defect the record settles is corrected silently mid-judge. This walks both in one pass — a plain refactor approved with the auto opt-in, a Decision proposal — an irreducible product fork, its stakes argued and its recommended side first — that stops anyway and folds the chosen side into its Solution, and a stale path in the concluded specification repaired with a corrigendum and a re-index, no gate anywhere",
+  "origin": "the boundary walk's two new moves had no coverage: a proposal carrying an irreducible product fork stops the walk even under auto, and a spec defect the record settles is corrected silently mid-judge. This walks both in one pass — a plain refactor approved with the auto opt-in, a Decision proposal — an irreducible product fork, its stakes argued and its recommended side first — that stops anyway as a composed raise between the slim header and the decision menu, answers a technical request with a mechanism-first retelling and a re-rendered gate, and folds the chosen side into its Solution, and a stale path in the concluded specification repaired with a corrigendum and a re-index, no gate anywhere",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -31,6 +31,9 @@
     "skills/workflow-implementation-process/references/invoke-executor.md",
     "skills/workflow-implementation-process/references/invoke-reviewer.md",
     "skills/workflow-implementation-process/references/consolidation-pass.md",
+    "skills/workflow-shared/references/raising-a-decision.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-investigation-process/references/technical-lens.md",
     "skills/workflow-implementation-process/references/invoke-consolidation-finder.md",
     "skills/workflow-implementation-process/references/invoke-task-author.md",
     "skills/workflow-shared/references/correcting-historical-artifacts.md",
@@ -42,6 +45,7 @@
     "y — skip linters again",
     "y — approve the task",
     "a — approve this one and take the rest automatically",
+    "t — show me the technical retelling first",
     "2 — settle it the way the second side reads"
   ],
   "stubs": {
@@ -90,6 +94,7 @@
       "staging.p1.tasks.1=pending",
       "staging.p1.tasks.1 approved",
       "consolidation_gate_mode auto",
+      "--gate auto",
       "--gate auto",
       "staging.p1.tasks.2 approved",
       "manifest push pay.implementation.pay consolidated_phases 1",

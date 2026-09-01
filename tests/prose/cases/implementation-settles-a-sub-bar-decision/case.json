@@ -1,5 +1,5 @@
 {
-  "origin": "the dispose check on a staged Decision had no auto-lane coverage: a synthesizer can dress a technical fork as a Decision — stakes present, content sub-bar — and the session's own re-derivation must settle it rather than stop. This walks the analysis loop to that moment: a plain proposal takes the auto opt-in, then the staged naming Decision is re-derived against the bar, found technical, settled in the staging file with its derivation, and rendered plain under --gate auto — auto-approved, no decision menu, no user turn",
+  "origin": "the dispose check's moved-ground clauses had no coverage: a synthesizer can stage a Decision beside the very sibling whose approval forecloses one of its sides — the observed live failure — and the session's own re-derivation must catch the dead fork and settle it rather than stop. This walks the analysis loop to that moment: a plain webhook-guard proposal takes the auto opt-in, then the staged surfacing Decision is re-derived with the walk's own approvals in context and found one-sided — the approved guard acknowledges unmatched captures, so the redeliver side is unpickable — settled in the staging file with a derivation naming the sibling, and re-presented plain under --gate auto: auto-approved, no raise composed, no decision menu, no user turn",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -26,6 +26,7 @@
     "skills/workflow-implementation-process/references/task-loop.md",
     "skills/workflow-implementation-process/references/report-register.md",
     "skills/workflow-implementation-process/references/analysis-loop.md",
+    "skills/workflow-shared/references/raising-a-decision.md",
     "skills/workflow-implementation-process/references/invoke-analysis.md",
     "skills/workflow-implementation-process/references/invoke-synthesizer.md",
     "skills/workflow-implementation-process/references/invoke-task-author.md",
@@ -39,10 +40,10 @@
   ],
   "stubs": {
     "analysis-duplication-clean": "when the workflow-implementation-analysis-duplication agent is dispatched — write its findings file at the path the agent's own conventions name, via the .txt-then-rename mechanism, and return the stub's status block; one firing",
-    "analysis-standards-finds-a-naming-split": "when the workflow-implementation-analysis-standards agent is dispatched — write its findings file at the path the agent's own conventions name, via the .txt-then-rename mechanism, and return the stub's status block; one firing",
-    "analysis-architecture-finds-free-collaborators": "when the workflow-implementation-analysis-architecture agent is dispatched — write its findings file at the path the agent's own conventions name, via the .txt-then-rename mechanism, and return the stub's status block; one firing",
-    "synthesizer-stages-a-naming-decision": "when the workflow-implementation-analysis-synthesizer agent is dispatched — write the report and the staging file via the .txt-then-rename mechanism and return the stub's status block; one firing",
-    "task-author-expands-naming-pair": "when the workflow-implementation-task-author agent is dispatched — add each approved proposal's blocks under its heading in the staging file and return the stub's status block; one firing",
+    "analysis-standards-finds-an-unguarded-webhook": "when the workflow-implementation-analysis-standards agent is dispatched — write its findings file at the path the agent's own conventions name, via the .txt-then-rename mechanism, and return the stub's status block; one firing",
+    "analysis-architecture-clean": "when the workflow-implementation-analysis-architecture agent is dispatched — write its findings file at the path the agent's own conventions name, via the .txt-then-rename mechanism, and return the stub's status block; one firing",
+    "synthesizer-stages-a-dead-forked-decision": "when the workflow-implementation-analysis-synthesizer agent is dispatched — write the report and the staging file via the .txt-then-rename mechanism and return the stub's status block; one firing",
+    "task-author-expands-webhook-pair": "when the workflow-implementation-task-author agent is dispatched — add each approved proposal's blocks under its heading in the staging file and return the stub's status block; one firing",
     "task-writer-creates-analysis-pair": "when the workflow-implementation-task-writer agent is dispatched — create both approved analysis tasks and the new plan phase exactly as the stub directs, record both task_map entries, and return the stub's status block; one firing"
   },
   "invariants": {

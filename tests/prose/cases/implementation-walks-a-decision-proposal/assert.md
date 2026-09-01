@@ -56,8 +56,9 @@ The prose should have taken this path:
     measurement or spec entry breaks, the tie-break the user's — so
     its proposal keeps a Solution for the part that is settled (the
     amount comparison) and adds a **Decision** with the question, a
-    **Stakes** line arguing the stop, and the two sides — the
-    recommended side first, marked (recommended). There are no bank
+    **Stakes** line arguing the stop, and the two sides — each written
+    as the product end state if that side is chosen, never the work to
+    do, the recommended side first, marked (recommended). There are no bank
     verdicts and no pre-existing debt to push (nothing was ever
     banked), and the staging file is written to
     consolidation-tasks-p1.md
@@ -68,39 +69,63 @@ The prose should have taken this path:
     tests, and the rendered body shows none of those blocks. The
     fourth scripted answer takes auto — the row records approved and
     consolidation_gate_mode is set to auto
-15. the second proposal is re-derived against the bar first, with the
-    session's context, and holds — the fork is product-level and
-    nothing the session knows breaks the tie — so it is not settled
-    away. Its payload carries the stakes string and the decision with
-    its recommended-marked side; it renders with --gate auto, and
-    because it carries a decision the response is MENU: task decision
-    — the question as the display body's **Decision** line with the
-    **Stakes** line beneath it, the menu under the engine's fixed
-    question with the auto-override announcement, the two sides
+15. the second proposal carries a Decision, so the walk loads the
+    shared decision arm and starts at its dispose: the fork is
+    re-derived against the bar with the session's context — the
+    sibling extraction approved a moment earlier included — and holds:
+    it is product-level, nothing the session knows breaks the tie, and
+    both sides are still live (the approved extraction touches
+    neither), so it is not settled away and no plain rewrite happens
+16. the raise is composed before anything renders; only then is the
+    payload written and the render run. The payload carries the base
+    fields plus the stakes string and the decision with its two sides
+    — exactly one flagged recommended, listed first, the (recommended)
+    marker stripped from its summary — and the render runs with
+    --gate auto. Because it carries a decision the response is the
+    slim DISPLAY: proposed task — title, ordinal and severity with
+    the meta lines, no Problem, no Solution, no Stakes — plus
+    MENU: task decision, and the emission is three parts in one turn:
+    the display section verbatim, then the composed raise as
+    conversational markdown — the product before/after from zero with
+    one to three grounding devices, then the fork as two product end
+    states with the mirrored consequence neither side escapes and a
+    recommendation carrying the staged Stakes argument — then the
+    menu section verbatim: the question as its **Decision** statement
+    label with the auto-override line beneath it, the two sides
     numbered recommended-first (the first carrying the (recommended)
-    suffix), plus decline and comment — and the walk STOPS for the
-    user. No auto-approval continuation is emitted for it: an
-    irreducible product fork stops at either gate mode
-16. the fifth scripted answer picks the second side as the menu
-    rendered them; the staged proposal is rewritten so its Solution
-    carries that side and its Decision and Stakes lines are gone, and
-    the row records approved
-17. no pending row remains and both are approved, so the pass records
+    suffix), the technical row, decline and comment under the
+    engine's fixed question. The walk STOPS for the user; no
+    auto-approval continuation is emitted for it: an irreducible
+    product fork stops at either gate mode
+17. the fifth scripted answer asks for the technical retelling: the
+    session retells the fork from the staged record — mechanism-first,
+    real names with file:line, each mechanism tied back to what it
+    produces in the product — then re-runs the same render, unchanged:
+    the second render call is identical to the first, with no rewrite
+    of the payload or the staging file between the two renders, and
+    only the display and menu sections are re-emitted, the raise not
+    re-composed. The walk STOPS again
+18. the sixth scripted answer picks the second side as the menu
+    rendered them; the staged proposal is rewritten first — its
+    Solution carries that side as the settled direction and its
+    Decision and Stakes lines are gone — and only then does the row
+    record approved
+19. no pending row remains and both are approved, so the pass records
     itself as landed — consolidated_phases gains 1 — before anything
     reaches the plan, then invokes the task author over the staging
     file with both approved task numbers; the author stub adds each
     task's Do, Acceptance Criteria and Tests beneath its existing
     heading, leaving titles, control lines, Problem and Solution as
     staged
-18. only once the author has returned is the task writer invoked,
+20. only once the author has returned is the task writer invoked,
     with the per-task consolidation-boundary placement; the writer
     stub creates tasks/pay-1-3.md and tasks/pay-1-4.md, appends both
     planning rows, and records both task_map entries
-19. nothing is pulled from the bank — nothing was ever deposited —
+21. nothing is pulled from the bank — nothing was ever deposited —
     and the two consolidation commits land via the engine: the
     staging file under the implementation topic, the tasks with
     --plan
-20. the pass returns to the loop, retrieval sees the newly created
+22. the pass returns to the loop, retrieval sees the newly created
     work, and the walk stops there — no task is started and no phase
     completion is recorded
 
@@ -118,13 +143,16 @@ Further claims:
   to `implementation/pay`; nothing else in the file moved. The
   manifest's specification item is untouched — still completed, no
   reopen, no status change
-- the five scripted answers were consumed by the two setup gates, the
-  task gate, the auto opt-in and the decision, in that order and
-  nowhere else — the specification correction took no user turn
+- the six scripted answers were consumed by the two setup gates, the
+  task gate, the auto opt-in, the technical request and the decision,
+  in that order and nowhere else — the specification correction took
+  no user turn
 - the proposed-task payload left under .workflows/.cache is the
   second proposal's: it carries a stakes string and a decision with
-  two sides — exactly one marked recommended, listed first — and no
-  steps, criteria or tests keys
+  two sides — exactly one flagged recommended, listed first, its
+  summary free of the (recommended) marker — each summary reading as
+  a product end state, never a work plan, and no steps, criteria or
+  tests keys
 - the staging file's second task carries the settled short-capture
   handling in its Solution — the side the rendered menu offered as 2
   — and no **Decision** or **Stakes** lines; both tasks carry the

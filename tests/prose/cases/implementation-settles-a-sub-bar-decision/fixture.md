@@ -15,9 +15,10 @@ rather than creates. `analysis_cycle_total` and `analysis_cycle_session`
 are both `0`: no analysis cycle has ever run. `bank` is absent — nothing
 was ever deposited.
 
-The two modules spell the identifier that links them differently:
-`src/checkout/payment-intent.js` keys the payment as `order` while
-`src/webhooks/capture.js` reads it back as `event.intentId`.
+The webhook module trusts every capture it is handed:
+`handleCaptureWebhook` marks `event.intentId` paid without looking the
+intent up, and nothing in the plan, the specification, or the
+discussion says what a capture matching no order should do.
 
 As in the sibling loop cases, the previous pass also left:
 

@@ -7,11 +7,16 @@
 // to run and the session routes into the analysis loop instead. The
 // analysis counters are untouched: no cycle has ever run.
 //
-// No perturbation on top of the mainline: the naming split the analysis
-// will report is already in the mainline's own code — the checkout side
-// keys the payment as `order`, the webhook reads `event.intentId`.
-// Nothing is banked and nothing indicts the specification, so the bank
-// machinery and the corrigendum route both stay out of the walk.
+// The unguarded webhook the analysis will report is already in the
+// mainline's own code — `handleCaptureWebhook` marks `event.intentId`
+// paid without looking the intent up. The one divergence from the
+// mainline: this fixture's copies of pay-1-2's task file and capture
+// test drop the mainline's "an unknown intent is logged and ignored"
+// clause, so the record decides nothing about unmatched captures and
+// the staged fork's sides are foreclosed by nothing but the walk's own
+// approvals. Nothing is banked and nothing indicts the specification,
+// so the bank machinery and the corrigendum route both stay out of the
+// walk.
 
 const m = require('../../mainlines/feature.cjs');
 
@@ -82,12 +87,16 @@ module.exports = {
       '',
     ].join('\n'));
     h.write('tests/webhooks/capture.test.js', [
-      '// Webhook marks the order paid; duplicates are idempotent; an',
-      '// unknown intent is logged and ignored.',
+      '// Webhook marks the order paid; duplicates are idempotent.',
       "test('marks the order paid on capture webhook', () => {});",
       '',
     ].join('\n'));
-    h.write(`.workflows/${m.WU}/planning/${m.WU}/tasks/${m.WU}-1-2.md`, taskFile(m.TASKS[1], 'completed'));
+    // The mainline's tests line decides unknown-intent handling; this
+    // world leaves it open, so the copy drops that clause.
+    h.write(`.workflows/${m.WU}/planning/${m.WU}/tasks/${m.WU}-1-2.md`, taskFile(
+      { ...m.TASKS[1], tests: '`marks the order paid on capture webhook` — duplicates are idempotent.' },
+      'completed',
+    ));
     h.engine('task', 'complete', m.WU, m.WU, `${m.WU}-1-2`, '--phase', '1', '--next-task', '~');
     h.engine('manifest', 'push', `${m.WU}.implementation.${m.WU}`, 'consolidated_phases', '1');
     h.engine('task', 'complete', m.WU, m.WU, `${m.WU}-1-2`, '--phase', '1', '--phase-complete');
