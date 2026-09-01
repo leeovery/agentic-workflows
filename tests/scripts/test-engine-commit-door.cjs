@@ -155,7 +155,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nfold\n');
     writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
 
-    const res = engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md', '-m', 'discussion(payments/topic-a): absorb 001-first (from origin)']);
+    const res = engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md', '--subtopic', 'first', '-m', 'discussion(payments/topic-a): absorb 001-first (from origin)']);
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.absorbed, '001-first.md');
     assert.strictEqual(res.remaining, 1, 'answers the post-deletion count');
@@ -166,11 +166,11 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.ok(files.includes('.workflows/payments/discussion/.triage/topic-a/001-first.md'), 'the deletion rides the commit');
     assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'), 'peer topic not swept');
 
-    const last = engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '-m', 'discussion(payments/topic-a): absorb 002-second (from origin)']);
+    const last = engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '--subtopic', 'second', '-m', 'discussion(payments/topic-a): absorb 002-second (from origin)']);
     assert.strictEqual(last.remaining, 0, 'the emptied queue answers zero');
 
     assert.match(
-      engineFails(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '-m', 'x']).error,
+      engineFails(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '--subtopic', 'second', '-m', 'x']).error,
       /is not in the topic-a discussion triage queue/);
     assert.match(
       engineFails(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '../002-second.md', '-m', 'x']).error,
@@ -668,7 +668,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md', '### First\nbody\n');
     commitAll(dir, 'a delivered concern');
     engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md',
-      '-m', 'discussion(payments/topic-a): absorb 001-first (from topic-b)']);
+      '--subtopic', 'first', '-m', 'discussion(payments/topic-a): absorb 001-first (from topic-b)']);
     assert.ok(beaten('discussion', 'topic-a'), 'absorb folds a concern into the session\'s own document');
 
     // Delivery acts on the TARGET topic from the origin's session — a beat
