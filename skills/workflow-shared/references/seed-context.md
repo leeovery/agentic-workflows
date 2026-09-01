@@ -1,6 +1,6 @@
 # Read the Work's Seed
 
-*Shared reference for the research, discussion, investigation, and scoping processing skills.*
+*Shared reference for the research, experiment, discussion, investigation, and scoping processing skills.*
 
 ---
 

@@ -1204,7 +1204,7 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
 function reactivateTopic(cwd, workUnit, phase, topic) {
   // Post-cancel every record is terminal by construction, so the next spawn
   // from the conversation is what revives the item.
-  assertNotDerived(phase, `the experiment series is never reactivated — "${topic}"'s rows stand on the register, and a new spawn from its conversation (experiment create --from) revives the series`);
+  assertNotDerived(phase, `the experiment series is never reactivated — "${topic}"'s rows stand on the register, and a new spawn from its conversation (experiment create --from) revives the series; a concluded conversation is reopened first (topic reopen)`);
   const restored = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
