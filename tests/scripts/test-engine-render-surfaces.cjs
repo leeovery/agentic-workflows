@@ -248,7 +248,7 @@ describe('experiment spawn gate + wait gate — the spawning conversation\'s two
     assert.match(out, /=== DISPLAY: experiment wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits experiment evidence \(E1, E2\)/);
     assert.match(out, /=== DISPLAY: experiment wait guidance \(emit verbatim as markdown\) ===/);
-    assert.match(out, /> The wait releases when each experiment ends — concluded, abandoned, or cancelled\. The menu carries the route into each\./);
+    assert.match(out, /> The wait releases when each experiment ends — concluded, abandoned, or cancelled\. The menu carries the way in\./);
     assert.match(out, /=== MENU: experiment wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
     assert.match(unwrap(out), /Pause this discussion here — the session ends and the menu takes over with E1, E2 queued/);

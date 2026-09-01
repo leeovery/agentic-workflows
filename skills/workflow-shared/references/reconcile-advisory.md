@@ -40,16 +40,17 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
-#### If output is `experiment` (experiment evidence landed)
+#### If output is `experiment` (an experiment wait released)
 
-An experiment this topic's conversation spawned has ended since this item last moved — concluded with its verdict, or abandoned with its reason. Surface the advisory, render the register, read the evidence in full, and clear the flag.
+An evidence wait this topic's conversation held has released since this item last moved — an experiment concluded with its verdict, was abandoned with its reason, or the series was cancelled from the menu. Surface the advisory, render the register, read what the release left behind, and clear the flag.
 
 > *Output the next fenced block as a code block:*
 
 ```
-  ⚑ Experiment evidence landed for this topic. Read it before
-    settling anything it touches — experiments measure;
-    conversations decide. Nothing has been overwritten.
+  ⚑ An experiment wait on this topic released. Read what stands
+    on the register before settling anything it touches —
+    experiments measure; conversations decide. Nothing has been
+    overwritten.
 ```
 
 Render the series register and emit its DISPLAY section verbatim per its marker:
@@ -58,7 +59,13 @@ Render the series register and emit its DISPLAY section verbatim per its marker:
 node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
 ```
 
-Then read the evidence: for every terminal row the conversation's document has not yet weighed — the newly concluded or abandoned records — read the report in full at `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}/report.md` (sub-experiment reports sit inside the parent's directory). Present each verdict as evidence the conversation now weighs — the verdict is the pre-registered rule's mechanical outcome, and the conversation can override it. An abandoned record surfaces its reason from the register (read whatever partial report exists); its waiting point reverts to open — the conversation settles it another way or spawns a successor.
+Read the series — each record's `{id}` and `{slug}` come from this read, never from the rendered register:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
+```
+
+Then read the evidence: every terminal row (`concluded` or `abandoned`) gets its report read in full at `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}/report.md` (sub-experiment reports sit inside the parent's directory). Present each verdict as evidence the conversation now weighs — the verdict is the pre-registered rule's mechanical outcome, and the conversation can override it. An abandoned record surfaces its reason from the register — a partial report, or none at all, is what abandonment leaves — and its waiting point reverts to open: the conversation settles it another way or spawns a successor. When the read holds no terminal rows, the release came from the series' cancellation: nothing was measured, and every waiting point reverts to open the same way.
 
 Clear the flag:
 

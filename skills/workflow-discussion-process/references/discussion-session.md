@@ -157,7 +157,41 @@ One ceremony, two ways in — enter when either, or both at once, holds:
 
 A non-empty calls queue flushes first — follow **I. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and conclusion resumes by its standing conditions once the queue drains. An unlanded call is undocumented knowledge.
 
-Run the map call:
+The topic's evidence waits gate the ceremony next, before anything is parked — a point blocked pending evidence is never written `deferred` by the sweep below, because deferral is parked by choice and this point is blocked pending input. Read the waits (`get` prints empty when no wait is held; the engine would refuse the completion anyway):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} awaiting_experiments
+```
+
+#### If the wait output is non-empty
+
+Render the gate and emit its sections verbatim per their markers — the blocker line, its guidance, then the menu:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-wait-gate {work_unit}.discussion.{topic}
+```
+
+**STOP.** Wait for user response.
+
+**If `pause`:**
+
+Commit any uncommitted session work with the session's cadence commit, then say where the ball sits:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Paused with the experiment(s) queued — the closing ceremony waits for the evidence. Run `/clear`, then `/workflow-start`: the menu carries the way in, and this discussion concludes once the waits release.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+**If `keep`:**
+
+→ Return to **B. Session Loop**.
+
+#### If the wait output is empty
+
+Nothing blocks — run the map call:
 
 ```bash
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}

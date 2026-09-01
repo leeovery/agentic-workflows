@@ -49,7 +49,7 @@ Commit any uncommitted session work with the session's cadence commit, then say 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Paused with the experiment(s) queued — the closing ceremony waits for the evidence. Run `/clear`, then `/workflow-start`: the menu carries the route into each, and this research concludes once the waits release.
+> Paused with the experiment(s) queued — the closing ceremony waits for the evidence. Run `/clear`, then `/workflow-start`: the menu carries the way in, and this research concludes once the waits release.
 ```
 
 **STOP.** Do not proceed — terminal condition.

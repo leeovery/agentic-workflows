@@ -40,10 +40,10 @@ Continue the conversation. An inline measurement, no ceremony, stays part of the
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): spawn {id} {slug}"
    ```
 
-4. Commit the record:
+4. Commit the record — `--sweep`, because the experiment topic is the laboratory's, not this session's: the spawn hands the question over, it never claims the slot:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} problem statement"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} --sweep -m "experiment({work_unit}/{topic}): {id} problem statement"
    ```
 
 → Proceed to **C. Now or Later**.
@@ -65,7 +65,7 @@ The session pauses mid-phase — no closing ceremony, no document review, no com
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Paused with {id} queued — the closing ceremony is skipped, and this conversation concludes once the evidence lands. The laboratory starts in fresh context: run `/clear`, then `/workflow-start` — the menu carries the entry for {id}.
+> Paused with {id} queued — the closing ceremony is skipped, and this conversation concludes once the evidence lands. The laboratory starts in fresh context: run `/clear`, then `/workflow-start` — the menu carries the way into {id}.
 ```
 
 **STOP.** Do not proceed — terminal condition.

@@ -2453,7 +2453,9 @@ describe('pipeline simulation', () => {
     assert.ok(fs.existsSync(path.join(sim.dir, e1.dir, 'problem.md')), 'the create installs the problem statement');
     assert.ok(!fs.existsSync(path.join(sim.dir, e1Problem)), 'the scratch is consumed');
     sim.run(['commit', wu, '-m', `discussion(${wu}/timing): spawn E1 window-placement`, '--topic', 'discussion/timing']);
-    sim.run(['commit', wu, '-m', `experiment(${wu}/timing): E1 problem statement`, '--topic', 'experiment/timing']);
+    // The spawning session commits the record --sweep — the experiment topic
+    // is the laboratory's slot, never the spawner's to claim.
+    sim.run(['commit', wu, '-m', `experiment(${wu}/timing): E1 problem statement`, '--topic', 'experiment/timing', '--sweep']);
 
     // The now-or-later choice rides the recorded spawn — addressed to the
     // spawning item, refused for an id it holds no wait on.
