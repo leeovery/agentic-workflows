@@ -11,4 +11,4 @@ Consume gateway capture webhooks and mark the order paid; no polling path.
 
 **Acceptance Criteria**: The webhook consumer marks the order paid; duplicate deliveries are idempotent; no polling path exists anywhere.
 
-**Tests**: `marks the order paid on capture webhook` — duplicates are idempotent; an unknown intent is logged and ignored.
+**Tests**: `marks the order paid on capture webhook` — duplicates are idempotent.
