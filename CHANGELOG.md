@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.27] - 2026-09-01
+
+🔧 Changed
+- An abandoned or concluded experiment's awaiting note now records a dated entry when the wait settles, instead of leaving stale present-tense text behind.
+
 ## [0.7.26] - 2026-09-01
 
 🐛 Fixed
