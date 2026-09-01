@@ -128,7 +128,8 @@ entered fresh.
 ### The menu routes at topic grain
 
 The laboratory appears on every menu the way any phase does: one row
-per topic with live experiments, in the standard continue form,
+per topic with live experiments, in the house verb-and-tail form —
+the row's own verb; the shape, not the verb, is what's standard —
 appearing at the first spawn and retiring when the series holds no
 live record. No phase is special in the skeleton — the row's route is
 the uniform entry contract, and which experiment to work is the
