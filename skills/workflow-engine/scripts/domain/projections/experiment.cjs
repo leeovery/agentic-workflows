@@ -153,7 +153,7 @@ function experimentWaitGate(phase, ids) {
     section(
       'DISPLAY: experiment wait guidance',
       'emit verbatim as markdown',
-      '> The wait releases when each experiment ends — concluded, abandoned, or cancelled. The menu carries the way in.',
+      '> The wait releases when each experiment ends. The menu carries the way in.',
     ),
     section('MENU: experiment wait gate', MENU_INSTRUCTION, menu('', [
       cmdOption('p', 'pause', `Pause this ${phase} here — the session ends and the menu takes over with ${list} queued`),

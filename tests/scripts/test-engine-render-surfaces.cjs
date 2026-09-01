@@ -248,7 +248,7 @@ describe('experiment spawn gate + wait gate — the spawning conversation\'s two
     assert.match(out, /=== DISPLAY: experiment wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits experiment evidence \(E1, E2\)/);
     assert.match(out, /=== DISPLAY: experiment wait guidance \(emit verbatim as markdown\) ===/);
-    assert.match(out, /> The wait releases when each experiment ends — concluded, abandoned, or cancelled\. The menu carries the way in\./);
+    assert.match(out, /> The wait releases when each experiment ends\. The menu carries the way in\./);
     assert.match(out, /=== MENU: experiment wait gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Pause to the menu\?/);
     assert.match(unwrap(out), /Pause this discussion here — the session ends and the menu takes over with E1, E2 queued/);
@@ -2742,6 +2742,18 @@ describe('render proposed-task', () => {
     assert.ok(out.includes('**`◆ Cancel them together?`**'), out);
     writeManifest(dir, 'pay', { work_type: 'epic', phases: { discussion: { items: { beta: { status: 'completed' } } } } });
     assert.throws(() => renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.discussion.beta' }), /nothing cascades from "beta" \(discussion\)/);
+  });
+
+  it('cancel-cascade-gate at a spawner address joins every awaited id into the wait clause', () => {
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: {
+      research: { items: { beta: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] } } },
+      experiment: { items: { beta: { status: 'in-progress', experiments: {
+        E1: { slug: 'x', status: 'running' }, E2: { slug: 'y', status: 'conceived' },
+      } } } },
+    } });
+    const waitsOnly = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.research.beta' });
+    assert.ok(unwrap(waitsOnly).includes('Cancelling **Beta** abandons the experiments it awaits (E1, E2)'), waitsOnly);
+    assert.ok(unwrap(waitsOnly).includes('Cancel the conversation and abandon its awaited experiments'), waitsOnly);
   });
 
   it('the incoherence stops announce over their own lane\'s auto — and stay silent over the other lane\'s', () => {

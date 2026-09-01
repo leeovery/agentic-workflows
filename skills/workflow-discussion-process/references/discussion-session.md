@@ -30,14 +30,14 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    
    Both enforce the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly — always go through the agent files, which route to the shared protocol.** Skip only when no agents have been dispatched yet — the store decides, not the iteration count: a resumed session may hold agents from an earlier sitting.
 
-   Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **I. Flush the Calls Queue**, whose own branches cover the empty case. A resumed session's queue flushes here too.
-2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**H. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
+   Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **J. Flush the Calls Queue**, whose own branches cover the empty case. A resumed session's queue flushes here too.
+2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**I. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
    ```
 
-   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on. A number about to bear a decision is the laboratory's cue — offer it through **J. The Experiment Offer**.
+   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on. A number about to bear a decision is the laboratory's cue — offer it through **K. The Experiment Offer**.
 3. **Navigate** — When a subtopic feels explored or a decision lands, record the transition and guide the user to what's still open:
 
    ```bash
@@ -155,7 +155,7 @@ One ceremony, two ways in — enter when either, or both at once, holds:
 - **Convergence read** — every subtopic on the Discussion Map is `decided` (or `deferred`), and neither you nor the user can identify new subtopics without breaking scope. Convergence is the natural end state, never a forced conclusion.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
 
-A non-empty calls queue flushes first — follow **I. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and conclusion resumes by its standing conditions once the queue drains. An unlanded call is undocumented knowledge.
+A non-empty calls queue flushes first — follow **J. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and conclusion resumes by its standing conditions once the queue drains. An unlanded call is undocumented knowledge.
 
 The topic's evidence waits gate the ceremony next, before anything is parked — a point blocked pending evidence is never written `deferred` by the sweep below, because deferral is parked by choice and this point is blocked pending input. Read the waits (`get` prints empty when no wait is held; the engine would refuse the completion anyway):
 
@@ -191,7 +191,15 @@ Commit any uncommitted session work with the session's cadence commit, then say 
 
 #### If the wait output is empty
 
-Nothing blocks — run the map call:
+Nothing blocks the ceremony.
+
+→ Proceed to **H. The Map Gate**.
+
+---
+
+## H. The Map Gate
+
+Run the map call:
 
 ```bash
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
@@ -243,15 +251,15 @@ It isn't convergence — undecided subtopics remain. Keep exploring.
 
 ---
 
-## H. Settled Calls
+## I. Settled Calls
 
-The conversation's own derivable decisions — points **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)** puts on your side — accumulate in a queue and land through a batch screen at natural breaks (**I. Flush the Calls Queue**): never one-by-one asks, never silent writes.
+The conversation's own derivable decisions — points **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)** puts on your side — accumulate in a queue and land through a batch screen at natural breaks (**J. Flush the Calls Queue**): never one-by-one asks, never silent writes.
 
 The moment a call is made, add it to the `items` of `.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` (Write tool; the file is `{"items": […], "pulled": […]}` — create it with the new entry when absent, and always write the whole file back). An entry's `title` states the call as a decision; `detail` is one or two sentences naming the problem and what determined it. The file is the queue's only home — conversation memory does not survive compaction — and it is durable: commits are the record of what landed, the file holds only what hasn't. Then continue the thread. From **G. Concluding** onward, queue nothing — a call made during the closing ceremony is documented as part of the engagement that produced it.
 
 ---
 
-## I. Flush the Calls Queue
+## J. Flush the Calls Queue
 
 Entered from the session loop's check (natural break, nothing else open) or from **G. Concluding**, and re-entered after every screen. Route on the queue file:
 
@@ -291,19 +299,19 @@ Document each call in turn — into the subtopic that owns it (the template's fu
 
 Confirm in one line total — `All {N} documented.` — never a per-call recap. Nothing is pending, so the turn continues.
 
-→ Return to **I. Flush the Calls Queue** — its branches take the next screen, the pulled raises, or the exit.
+→ Return to **J. Flush the Calls Queue** — its branches take the next screen, the pulled raises, or the exit.
 
 **If the user names one to talk through** — the Discuss route, or any answer that rejects a call rather than asking about it (a bare number asks; a pull says the move — *discuss 3* — or rejects the call in words):
 
 Move it from `items` to `pulled` in the queue file — durable until its raise lands. Then check the survivors: any whose derivation rests on the ground the pulled call reopens moves with it. Nothing lands.
 
-→ Return to **I. Flush the Calls Queue**.
+→ Return to **J. Flush the Calls Queue**.
 
 **If the user asks about a number:**
 
 Answer it — the derivation in full, what it rests on. Expanding is not objecting; the screen stands.
 
-→ Return to **I. Flush the Calls Queue**.
+→ Return to **J. Flush the Calls Queue**.
 
 **If the user moves on without answering** — they bounce to another subtopic or pick up a new thread:
 
@@ -313,7 +321,7 @@ Nothing lands; the queue survives on disk. Follow them — the next natural brea
 
 ---
 
-## J. The Experiment Offer
+## K. The Experiment Offer
 
 When a number is about to bear a decision — a controlled measurement would settle a choice the conversation is weighing, not merely inform it — offer the laboratory. Hands-on sightings short of that bar stay in the session, labelled exploratory.
 

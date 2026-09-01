@@ -201,19 +201,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render cancel-gate {work_
 
 **If user chose `yes`:**
 
-Run the cancel transaction — one command stashes the current status, marks the item cancelled, stashes the topic's execution order (a research/discussion cancel stashes the discovery map's, a specification cancel the build order's), removes its knowledge-base chunks, and commits:
+Run the cancel transaction — one command stashes the current status, marks the item cancelled, stashes the execution order where the phase carries one (a research/discussion cancel the discovery map's, a specification cancel the build order's), removes its knowledge-base chunks where the phase is indexed (experiments have none), and commits. An experiment cancel also abandons every open record — the register keeps each row with the cancellation as its reason:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
 ```
 
-**If the response is `ok: false` naming specification(s) the cancel collapses** — a live spec is built from this topic; killing the source kills them together. Fetch the collapse confirm and emit its section verbatim at its marked instruction:
+**If the response is `ok: false` naming what the cancel takes with it** — specification(s) built from this topic collapsing, the evidence waits a series cancel releases, or the experiments a waiting conversation's cancel strands. Fetch the cascade confirm — the surface derives whichever apply from the manifest — and emit its section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render cancel-cascade-gate {work_unit}.{phase}.{topic}
 ```
 
-**STOP.** Wait for user response. On `no`: → Return to **A. State Display and Menu**. On `yes`, re-run with the cascade — one transaction cancels the topic and the named spec(s):
+**STOP.** Wait for user response. On `no`: → Return to **A. State Display and Menu**. On `yes`, re-run with the cascade — one transaction cancels the topic and everything the gate named:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic} --cascade
@@ -221,7 +221,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} 
 
 Then continue below with the receipt.
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty. When the response carries `cascaded` or `discarded`, tell the user in one line which specification(s) went with the topic:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response's `warnings` is non-empty. When the response carries `cascaded` or `discarded`, tell the user in one line which specification(s) went with the topic; when it carries `released_waits`, say where the ball sits — each waiting point reverts to open, surfaced at that conversation's next entry — and when it carries `abandoned`, name the records the cancel closed:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb cancel [--warn]
