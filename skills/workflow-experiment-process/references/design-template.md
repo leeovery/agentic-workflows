@@ -53,6 +53,6 @@ doesn't.}
 - **Frozen at the confirm gate.** After approval the design changes only by the amendment protocol — a dated `## Amendments` section appended when one lands, never a rewrite of what's above it.
 - Instruments named here freeze with the design — name the exact script, tool, and version that will do the measuring.
 - Experiment status is tracked in the work unit manifest, not in the document.
-- **Measured claims**: a load-bearing setup claim (what an instrument does, what the sample contains) is measured when written, the command recorded with its result, the command alone in its span so it re-runs by copy (`` `rg -l 'pattern' | wc -l` → 14 ``).
+- **Measured claims**: a load-bearing setup fact — what an instrument does, how large the sample is, what the environment holds — is measured when written, the command recorded with its result, the command alone in its span so it re-runs by copy (`` `rg -l 'pattern' | wc -l` → 14 ``). **The outcome is never one of them**: nothing the question, prediction, or decision rule turns on is measured before the freeze — the design predicts it, the run measures it.
 
 → Return to caller.

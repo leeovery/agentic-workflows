@@ -45,9 +45,11 @@ Further claims:
 - both records end `concluded`, each with a one-line verdict on its
   register row; the item's derived status is `completed`, and nothing
   above the records was completed by hand
-- each design froze before its own measurement: `approve` is the only
-  transition between designed and running on both records, and no
-  number from the log appears in either `design.md`
+- each design froze before its own outcome was measured: `approve` is
+  the only transition between designed and running on both records,
+  and no number either record's question, prediction, or decision rule
+  turns on appears in its `design.md` — setup facts may carry their
+  measuring commands
 - the research item's `awaiting_experiments` is gone — both waits
   released — and it carries `reconcile_needed: "experiment"`, its
   status still `in-progress`
