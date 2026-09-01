@@ -29,11 +29,11 @@ The prose should have taken this path:
    the experiment changes nothing about how the session works other
    material
 7. the user asks to wrap up. The concluding ceremony checks the
-   evidence waits before anything is parked, finds E1 still open, and
+   evidence waits before anything is deferred, finds E1 still open, and
    renders the wait gate — the blocker naming E1, the guidance, and
    the pause/keep menu — and stops. The defer gate never appears and
-   nothing is written `deferred`: a point blocked pending evidence is
-   never parked by choice. The closing gates are never loaded and no
+   nothing is written `deferred`: deferral is a choice, and this point
+   is blocked pending input. The closing gates are never loaded and no
    completion is attempted — the session never asks the engine to do
    what it would refuse
 8. the user takes the pause; uncommitted session work is committed with

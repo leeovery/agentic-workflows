@@ -49,7 +49,7 @@ Further claims:
 - the decision in the document is the user's judgment call, dated, and
   the document carries no fabricated timing measurement
 - the map's webhook-timing subtopic ends `decided` — not `deferred`:
-  the point was settled, not parked
+  the point was settled, not set aside
 - git history holds the decision commit before the completion commit
 
 EXPECTED WORLD — the fixture plus: the discussion item `completed`

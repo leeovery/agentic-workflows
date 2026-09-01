@@ -3,7 +3,7 @@
 // The `pay` feature paused on evidence that will never arrive: the
 // discussion spawned E1 to measure webhook delivery timing, the design
 // froze, measurement began — and the vendor rebuilt the sandbox mid-run,
-// so the record was put down with that reason. The abandonment released
+// so the record was abandoned with that reason. The abandonment released
 // the discussion's wait and flagged the item; nothing has re-entered the
 // discussion since, so the flag stands and webhook timing is still open.
 

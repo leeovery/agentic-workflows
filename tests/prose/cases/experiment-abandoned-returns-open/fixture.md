@@ -2,7 +2,7 @@ The `pay` feature, its discussion paused on evidence that will never
 arrive. Retry policy is decided; webhook timing was handed to the
 laboratory — E1 was designed, frozen, and mid-measurement when the
 vendor rebuilt the sandbox, so its delivery timing stopped mirroring
-production and the run was put down with that reason. The register
+production and the run was abandoned with that reason. The register
 keeps the row; the partial report holds the deviation and no results
 worth reading.
 
