@@ -98,7 +98,7 @@ describe('workunit projections: status display', () => {
     assert.ok(keys.some((k) => k.action === 'revisit_phase' && k.phase === 'research'),
       'the completed research is revisitable');
     assert.ok(!keys.some((k) => k.action === 'revisit_phase' && k.phase === 'experiment'),
-      'entry is per-record and a verdict stands — a new spawn is what reopens the series');
+      'a concluded verdict stands — a new spawn is what reopens the series');
   });
 
   it('feature: a flagged completed phase carries the cue, the ⚑ line, and takes next_phase', () => {

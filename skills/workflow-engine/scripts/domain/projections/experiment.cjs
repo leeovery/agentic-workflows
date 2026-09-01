@@ -90,7 +90,7 @@ function experimentApprovalGate(id) {
 }
 
 /**
- * The record picker under the register — the entry skill's no-id path: the
+ * The record picker under the register — the several-live-records path: the
  * register shows the series, this menu takes the pick.
  * @returns {string}
  */
@@ -99,4 +99,19 @@ function experimentPick() {
   return section('MENU: experiment pick', MENU_INSTRUCTION, body);
 }
 
-module.exports = { experimentRegister, experimentApprovalGate, experimentPick };
+/**
+ * The return leg's gate — a record just closed and the series still holds
+ * live experiments: work the next one in this session, or back to the menu.
+ * @param {SeriesRow[]} live  live top-level rows, id order
+ * @returns {string}
+ */
+function experimentNextGate(live) {
+  const names = live.map((r) => `${r.id} ${r.slug}`).join(', ');
+  const statement = `The series still holds ${names}.`;
+  return section('MENU: experiment next gate', MENU_INSTRUCTION, menu(statement, [
+    cmdOption('n', 'next', 'Work the next experiment'),
+    cmdOption('m', 'menu', 'Back to the menu'),
+  ], { question: 'Work the next experiment?' }));
+}
+
+module.exports = { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate };

@@ -109,7 +109,7 @@ function computeNextPhase(manifest) {
       // that wait's other side (a discussion's lock sits later in the
       // pipeline than the laboratory it waits on): both route to the
       // experiment. Linear types only — an epic's next_phase is
-      // phase-coarse, and its per-experiment menu entries carry the route
+      // phase-coarse, and its topic-grain experiment rows carry the route
       // instead.
       if (ps(phase) === 'in-progress') {
         const awaiting = phase === 'experiment'

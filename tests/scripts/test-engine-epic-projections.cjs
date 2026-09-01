@@ -1135,7 +1135,7 @@ describe('epic projections: selection sub-views', () => {
   });
 });
 
-describe('epic projections: per-experiment menu entries', () => {
+describe('epic projections: the topic-grain experiment entry', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -1169,20 +1169,45 @@ describe('epic projections: per-experiment menu entries', () => {
     });
   }
 
-  it('each live top-level experiment renders its own entry, leading the menu and recommended first', () => {
+  it('a topic with live records renders one entry, leading the menu and recommended first', () => {
     const { keys, rendered } = epicMenu('lab', labDetail());
     const first = keys[0];
     assert.strictEqual(first.key, '1');
     assert.strictEqual(first.action, 'continue_experiment');
     assert.strictEqual(first.topic, 'timing');
-    assert.strictEqual(first.experiment, 'E1');
-    assert.strictEqual(first.route, '/workflow-experiment-entry epic lab timing E1');
-    assert.strictEqual(first.label, 'Enter E1 window-placement — *Timing · experiment*');
+    assert.strictEqual(first.route, '/workflow-experiment-entry epic lab timing');
+    // 1 queued: the concluded E2 and the sub-experiment E1.1 stay out of the
+    // count — terminal rows have retired and a split is worked through its
+    // parent.
+    assert.strictEqual(first.label, 'Enter the laboratory for "Timing" — *1 experiment queued*');
     assert.strictEqual(first.recommended, true, 'a live experiment outranks every other recommendation');
-    assert.ok(!keys.some((k) => k.experiment === 'E2'), 'a concluded record has retired from the menu');
-    assert.ok(!keys.some((k) => k.experiment === 'E1.1'), 'a sub-experiment is entered through its parent, never its own row');
-    assert.ok(rendered.replace(/\n +/g, ' ').includes('**`1`**           → Enter E1 window-placement — *Timing · experiment* (recommended)'),
+    assert.strictEqual(keys.filter((k) => k.action === 'continue_experiment').length, 1,
+      'one row per topic — which record to work resolves inside the phase');
+    // The italic tail wraps at the pinned width; the span closes at the
+    // break and reopens on the continuation, so the flattened line carries
+    // the tail as two spans.
+    assert.ok(rendered.replace(/\n +/g, ' ').includes('**`1`**           → Enter the laboratory for "Timing" — *1 experiment* *queued* (recommended)'),
       `entry renders with the recommendation marker:\n${rendered}`);
+  });
+
+  it('the tail counts the live top-level records', () => {
+    const detail = labDetail({
+      experiment: {
+        items: {
+          timing: {
+            status: 'in-progress',
+            experiments: {
+              E1: { slug: 'window-placement', status: 'running' },
+              'E1.1': { slug: 'single-monitor', status: 'conceived' },
+              E2: { slug: 'multi-monitor', status: 'conceived' },
+              E3: { slug: 'stacking-order', status: 'concluded', verdict: 'held' },
+            },
+          },
+        },
+      },
+    });
+    const entry = epicMenu('lab', detail).keys.find((k) => k.action === 'continue_experiment');
+    assert.strictEqual(entry.label, 'Enter the laboratory for "Timing" — *2 experiments queued*');
   });
 
   it('the map row cues the waiting conversation beneath its lifecycle', () => {
@@ -1190,7 +1215,7 @@ describe('epic projections: per-experiment menu entries', () => {
     assert.match(dash, /↳ Discussing · awaiting E1/);
   });
 
-  it('a cancelled series retires its entries and the recommendation falls through', () => {
+  it('a cancelled series retires its entry and the recommendation falls through', () => {
     const detail = labDetail({
       discussion: { items: { timing: { status: 'in-progress' } } },
       experiment: {
@@ -1203,7 +1228,7 @@ describe('epic projections: per-experiment menu entries', () => {
       },
     });
     const { keys } = epicMenu('lab', detail);
-    assert.ok(!keys.some((k) => k.action === 'continue_experiment'), 'cancellation retires the entries');
+    assert.ok(!keys.some((k) => k.action === 'continue_experiment'), 'cancellation retires the entry');
     const rec = keys.find((k) => k.recommended);
     assert.notStrictEqual(rec && rec.action, 'continue_experiment');
   });

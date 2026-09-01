@@ -2449,14 +2449,16 @@ describe('pipeline simulation', () => {
     assert.strictEqual(e2.id, 'E1');
     assert.deepStrictEqual(e2.awaiting, { phase: 'research', ids: ['E1'] });
 
-    // The menu is experiment-shaped: each live record its own leading entry,
-    // ranked above every other recommendation.
+    // The menu is experiment-shaped: one leading entry per topic with live
+    // records, ranked above every other recommendation — which record to
+    // work resolves inside the phase, never in the route.
     const menu = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail);
     const expEntries = menu.keys.filter((k) => k.action === 'continue_experiment');
-    assert.deepStrictEqual(expEntries.map((k) => [k.key, k.topic, k.experiment]),
-      [['1', 'timing', 'E1'], ['2', 'layout', 'E1']]);
+    assert.deepStrictEqual(expEntries.map((k) => [k.key, k.topic]),
+      [['1', 'timing'], ['2', 'layout']]);
     assert.strictEqual(expEntries.some((k) => k.recommended), true, 'a live experiment leads the recommendations');
-    assert.match(expEntries[0].route, new RegExp(`^/workflow-experiment-entry epic ${wu} timing E1$`));
+    assert.match(expEntries[0].route, new RegExp(`^/workflow-experiment-entry epic ${wu} timing$`));
+    assert.match(expEntries[0].label, /1 experiment queued/);
     sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
 
     // Both waiting conversations refuse to conclude while their evidence is out.
@@ -2509,15 +2511,27 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'timing']);
     sim.run(['commit', wu, '-m', `discussion(${wu}): complete timing discussion`, '--topic', 'discussion/timing', '--kb']);
 
-    // Series continuation: the next question spawns E2 onto the completed
-    // series and reopens it; abandonment is the other release — the waiting
-    // point reverts to open, no downstream hop.
+    // Series continuation: the next questions spawn E2 and E3 onto the
+    // completed series and reopen it; abandonment is the other release — the
+    // waiting point reverts to open, no downstream hop.
     sim.run(['topic', 'reopen', wu, 'discussion', 'timing']);
     const next = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'multi-monitor', '--from', 'discussion']);
     assert.strictEqual(next.id, 'E2');
+    const third = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'stacking-order', '--from', 'discussion']);
+    assert.strictEqual(third.id, 'E3');
     const dropped = sim.run(['experiment', 'abandon', wu, 'timing', 'E2', '--reason', 'settled by E1 after all']);
-    assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: [] }]);
-    assert.strictEqual(dropped.item_status, 'completed', 'every record terminal closes the item');
+    assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: ['E3'] }]);
+    assert.strictEqual(dropped.item_status, 'in-progress', 'a live sibling keeps the item open');
+
+    // The return leg's gate: a record just closed and E3 still lives, so the
+    // session offers the next experiment or the menu; once the series is
+    // finished the gate refuses and the bridge exit follows.
+    assert.match(sim.render(['experiment-next-gate', `${wu}.experiment.timing`], { expect: 'content' }),
+      /The series still holds E3 stacking-order\./);
+    const last = sim.run(['experiment', 'abandon', wu, 'timing', 'E3', '--reason', 'settled by E1 after all']);
+    assert.deepStrictEqual(last.released_waits, [{ phase: 'discussion', released: ['E3'], remaining: [] }]);
+    assert.strictEqual(last.item_status, 'completed', 'every record terminal closes the item');
+    sim.refuses(['render', 'experiment-next-gate', `${wu}.experiment.timing`], /no live experiments/);
     sim.run(['manifest', 'delete', `${wu}.discussion.timing`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'discussion', 'timing']);
 

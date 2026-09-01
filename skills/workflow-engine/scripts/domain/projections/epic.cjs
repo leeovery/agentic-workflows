@@ -35,7 +35,6 @@ const { buildOrderLive } = require('../build-order.cjs');
  * @property {string} [word]          long form of a command option (`spec`, `map`, …)
  * @property {string} action          machine action key — skills route on this, never the label
  * @property {string|null} topic
- * @property {string} [experiment]    continue_experiment entries — the record id the route enters
  * @property {string|null} route      skill invocation, or null for internal flows
  * @property {string} label
  * @property {boolean} [recommended]
@@ -499,25 +498,24 @@ function startVerbLabel(n, srcFlagged) {
 }
 
 /**
- * One entry per live experiment — appearing at the spawn, retiring at
- * conclusion, abandonment, or cancellation. Entry is per-record: the route
- * carries the id the session enters to deal with.
+ * One entry per topic whose series holds a live top-level record — appearing
+ * at the first spawn, retiring when no live record remains. Entry is
+ * per-topic: which experiment to work is resolved inside the phase.
  * @param {string} workUnit @param {EpicDetail} detail @returns {MenuKey[]}
  */
 function experimentEntries(workUnit, detail) {
   /** @type {MenuKey[]} */
   const out = [];
   for (const item of detail.phases.experiment || []) {
-    for (const exp of item.experiments || []) {
-      out.push({
-        key: '',
-        action: 'continue_experiment',
-        topic: item.name,
-        experiment: exp.id,
-        route: `/workflow-experiment-entry epic ${workUnit} ${item.name} ${exp.id}`,
-        label: `Enter ${exp.id} ${exp.slug} — *${titlecase(item.name)} · experiment*`,
-      });
-    }
+    const live = item.experiments || [];
+    if (live.length === 0) continue;
+    out.push({
+      key: '',
+      action: 'continue_experiment',
+      topic: item.name,
+      route: `/workflow-experiment-entry epic ${workUnit} ${item.name}`,
+      label: `Enter the laboratory for "${titlecase(item.name)}" — *${live.length} experiment${live.length === 1 ? '' : 's'} queued*`,
+    });
   }
   return out;
 }
@@ -771,8 +769,8 @@ function epicMenu(workUnit, detail, opts = {}) {
   /** @type {MenuKey[]} */
   let numbered = [];
 
-  // Live experiments lead the menu whatever the map state — each record its
-  // own row, ranked above every other entry.
+  // Live experiments lead the menu whatever the map state — one row per
+  // topic with live records, ranked above every other entry.
   numbered.push(...experimentEntries(workUnit, detail));
 
   if (hasMap) {
@@ -795,8 +793,8 @@ function epicMenu(workUnit, detail, opts = {}) {
     }
   } else {
     // Continue items — any in-progress item in any phase, pipeline order.
-    // The experiment phase is skipped: its per-record entries above already
-    // carry the series, and a generic item row would double it.
+    // The experiment phase is skipped: its topic row above already carries
+    // the series, and a generic item row would double it.
     for (const phase of EPIC_PIPELINE) {
       if (phase === 'experiment') continue;
       numbered.push(...continueEntries(workUnit, detail, phase));

@@ -54,7 +54,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  *                                             moved, or `true` for a brief flag
  * @property {ExperimentRow[]} [experiments]   experiment items — the live (non-terminal)
  *                                             top-level records, id order; the menu's
- *                                             per-experiment entries read them
+ *                                             topic-grain entry reads them for its tail
  * @property {SpecSource[]} [sources]          specification items
  * @property {string[]} [blocked_by]           specification items whose source is back in-progress
  * @property {string} [format]                 planning items
@@ -231,10 +231,10 @@ function epicDetail(cwd, manifest) {
       const entry = { name: item.name, status: item.status || 'unknown' };
       if (item.reconcile_needed !== undefined) entry.reconcile_needed = item.reconcile_needed;
 
-      // A live series' open experiments ride the entry — each renders its
-      // own menu row, appearing at the spawn and retiring at conclusion,
-      // abandonment, or cancellation. Top-level records only: a split is the
-      // laboratory's internal method, entered through its parent.
+      // A live series' open experiments ride the entry — the topic's menu
+      // row counts them, appearing at the first spawn and retiring when no
+      // live record remains. Top-level records only: a split is the
+      // laboratory's internal method, worked through its parent.
       if (phase === 'experiment' && item.status === 'in-progress'
           && item.experiments && typeof item.experiments === 'object') {
         const live = Object.entries(item.experiments)

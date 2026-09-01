@@ -37,8 +37,8 @@ function entryRoute(cfg, phase, workUnit) {
 
 // Completed phases that come before next_phase in the pipeline — the revisit
 // candidates. A next_phase outside the pipeline (defensive) revisits any.
-// The experiment phase is never revisitable: entry is per-record, a
-// concluded verdict stands, and a new spawn is what reopens the series.
+// The experiment phase is never revisitable: a concluded verdict stands,
+// and a new spawn is what reopens the series.
 /** @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit @returns {string[]} */
 function earlierCompleted(cfg, unit) {
   const nextIdx = cfg.pipeline.indexOf(unit.next_phase);

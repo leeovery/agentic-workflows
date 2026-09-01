@@ -39,8 +39,8 @@ const {
   roadmapConcludeGate,
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
-const { experimentRegister, experimentApprovalGate, experimentPick } = require('./projections/experiment.cjs');
-const { compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate } = require('./projections/experiment.cjs');
+const { compareExperimentIds, isParentExperimentId, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
@@ -2501,7 +2501,7 @@ function experimentApprovalGateSurface(cwd, { dotpath, id }) {
 }
 
 /**
- * The record picker — the entry skill's no-id path, rendered directly
+ * The record picker — the several-live-records path, rendered directly
  * beneath the register it picks from. Refuses an empty series: with no
  * records there is nothing to pick, and the caller's series check should
  * have refused first.
@@ -2515,6 +2515,24 @@ function experimentPickSurface(cwd, { dotpath }) {
     throw new Error(`render experiment-pick: "${topic}"'s series holds no experiments — nothing to pick`);
   }
   return experimentPick();
+}
+
+/**
+ * The return leg's gate — fetched after a terminal record transition while
+ * live records remain: work the next experiment in this session, or back to
+ * the menu. Refuses when no live top-level record exists — the calling
+ * prose takes the bridge exit then, never this gate.
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function experimentNextGateSurface(cwd, { dotpath }) {
+  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-next-gate');
+  const live = rows.filter((r) => isParentExperimentId(r.id) && !EXPERIMENT_TERMINAL_STATUSES.includes(r.status));
+  if (live.length === 0) {
+    throw new Error(`render experiment-next-gate: "${topic}"'s series holds no live experiments — the bridge exit follows a finished series`);
+  }
+  return experimentNextGate(live);
 }
 
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
@@ -4444,6 +4462,7 @@ const SURFACES = {
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,
+  'experiment-next-gate': experimentNextGateSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,
