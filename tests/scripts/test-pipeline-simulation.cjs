@@ -538,6 +538,13 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    // The close's own consents render on the road to the conclude gate;
+    // the reason-bearing variant refuses without one.
+    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 're-review'], { expect: 'content' });
+    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'findings-owed'], { expect: 'content' });
+    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'final-review', '--reason', 'no review has run yet'], { expect: 'content' });
+    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'wrap-up'], { expect: 'content' });
+    sim.refuses(['render', 'closing-gate', `${wu}.discussion.${wu}`, '--variant', 'final-review'], /--reason is required/);
     sim.render(['conclude-gate', `${wu}.discussion.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`, '--kb']);

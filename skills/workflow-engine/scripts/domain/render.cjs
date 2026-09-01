@@ -2462,6 +2462,76 @@ function concludeGate(cwd, { dotpath }) {
   return section('MENU: conclude gate', STOP_FOR_RESPONSE, menu('', gate.options(), { question: gate.question }));
 }
 
+// closing-gate — the discussion close's own consents, on the road between
+// "we're done talking" and the conclude gate: the optional re-review offer,
+// the two faces of the mandatory review gate, and the wrap-up consent that
+// opens the reconciliation. One surface, variant-keyed; distinct from
+// conclude-gate, which is the final completion consent the same close
+// reaches later — the two stops coexist in one conclusion.
+const CLOSING_GATES = {
+  're-review': () => ({
+    name: 'MENU: re-review gate',
+    label: "The discussion has moved since the last final review. Another pass can catch what that movement opened — or conclude on the review you've already had.",
+    question: 'Run another final review?',
+    options: [
+      cmdOption('y', 'yes', 'Run another final review'),
+      cmdOption('s', 'skip', 'Conclude on the last review — the movement stays unreviewed'),
+      promptOption('Keep going', 'Tell me what else to explore'),
+    ],
+  }),
+  'findings-owed': () => ({
+    name: 'MENU: findings-owed gate',
+    label: 'Background findings have come back and are still to be walked — they must be heard before concluding.',
+    question: 'Walk them now?',
+    options: [
+      cmdOption('y', 'yes', 'Walk what came back'),
+      promptOption('Keep going', 'Tell me what else to explore'),
+    ],
+  }),
+  /** @param {string} reason */
+  'final-review': (reason) => ({
+    name: 'MENU: final-review gate',
+    label: `Next: a final gap review before concluding — ${reason}.`,
+    question: 'Proceed?',
+    options: [
+      cmdOption('y', 'yes', 'Run the final review'),
+      promptOption('Keep going', 'Tell me what else to explore'),
+    ],
+  }),
+  'wrap-up': () => ({
+    name: 'MENU: wrap-up gate',
+    label: "I'll reconcile the document against our conversation, then confirm before marking complete.",
+    question: 'Do you wish to conclude?',
+    options: [
+      cmdOption('y', 'yes', 'Conclude — begin wrap-up'),
+      cmdOption('n', 'no', 'Continue the conversation'),
+    ],
+  }),
+};
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string, reason?: string}} args
+ * @returns {string}
+ */
+function closingGate(cwd, { dotpath, variant, reason }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'closing-gate');
+  if (phase !== 'discussion') {
+    throw new Error(`render closing-gate: address must be <wu>.discussion.<topic> — the discussion close is the flow that runs these gates; got phase "${phase}"`);
+  }
+  const gate = variant !== undefined ? CLOSING_GATES[variant] : undefined;
+  if (!gate) {
+    throw new Error(`render closing-gate: --variant must be one of ${Object.keys(CLOSING_GATES).join(', ')}, got "${variant ?? ''}"`);
+  }
+  if (variant === 'final-review') {
+    if (!isFilled(reason)) throw new Error('render closing-gate: --reason is required with --variant final-review — the matched classification\'s quoted description');
+  } else if (reason !== undefined) {
+    throw new Error(`render closing-gate: --reason belongs to --variant final-review alone, not "${variant}"`);
+  }
+  const g = gate(/** @type {string} */ (reason));
+  return section(g.name, STOP_FOR_RESPONSE, menu(g.label, g.options, { question: g.question }));
+}
+
 // ---------------------------------------------------------------------------
 // The experiment surfaces — the laboratory's gates and displays over one
 // topic's series (projections/experiment.cjs renders; the handlers resolve
@@ -4526,6 +4596,7 @@ const SURFACES = {
   'topic-collision-gate': topicCollisionGate,
   'triage-closed-target': triageClosedTarget,
   'conclude-gate': concludeGate,
+  'closing-gate': closingGate,
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,

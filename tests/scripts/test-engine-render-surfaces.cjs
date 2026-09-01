@@ -3611,7 +3611,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, experiment-wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, experiment-wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-receipt, promote-receipt, pivot-continuation, session-receipt, absorb-target, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 
@@ -4667,6 +4667,55 @@ describe('render — the adopted phase gates', () => {
       /phase must be one of discussion, investigation, implementation, planning, got "research"/);
     assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning' }),
       /address must be <work_unit>\.<phase>\.<topic>/);
+  });
+
+  it('closing-gate: the discussion close\'s four consents, variant-keyed', () => {
+    const reReview = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 're-review' });
+    assert.match(reReview, /MENU: re-review gate/);
+    assert.match(unwrap(reReview), /The discussion has moved since the last final review\. Another pass can catch what that movement opened — or conclude on the review you've already had\./);
+    assert.match(reReview, /`◆ Run another final review\?`/);
+    assert.match(unwrap(reReview), /\*\*`y\/yes`\*\*\s+→ Run another final review/);
+    assert.match(unwrap(reReview), /\*\*`s\/skip`\*\*\s+→ Conclude on the last review — the movement stays unreviewed/);
+    assert.match(unwrap(reReview), /\*\*Keep going\*\* → Tell me what else to explore/);
+
+    const owed = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'findings-owed' });
+    assert.match(owed, /MENU: findings-owed gate/);
+    assert.match(unwrap(owed), /Background findings have come back and are still to be walked — they must be heard before concluding\./);
+    assert.match(owed, /`◆ Walk them now\?`/);
+    assert.match(unwrap(owed), /\*\*`y\/yes`\*\*\s+→ Walk what came back/);
+
+    const finalReview = renderSurface(dir, 'closing-gate', {
+      dotpath: 'pay.discussion.checkout', variant: 'final-review', reason: 'no review has run yet',
+    });
+    assert.match(finalReview, /MENU: final-review gate/);
+    assert.match(unwrap(finalReview), /Next: a final gap review before concluding — no review has run yet\./);
+    assert.match(finalReview, /`◆ Proceed\?`/);
+    assert.match(unwrap(finalReview), /\*\*`y\/yes`\*\*\s+→ Run the final review/);
+
+    assert.strictEqual(renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'wrap-up' }), [
+      "=== MENU: wrap-up gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      "I'll reconcile the document against our conversation, then confirm before marking complete.",
+      '',
+      '**`◆ Do you wish to conclude?`**',
+      '',
+      '**`y/yes`** → Conclude — begin wrap-up',
+      '**`n/no`**  → Continue the conversation',
+      '',
+    ].join('\n'));
+  });
+
+  it('closing-gate: refuses out of place — wrong phase, unknown variant, a reason misplaced or missing', () => {
+    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.research.checkout', variant: 'wrap-up' }),
+      /address must be <wu>\.discussion\.<topic> — the discussion close is the flow that runs these gates; got phase "research"/);
+    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout' }),
+      /--variant must be one of re-review, findings-owed, final-review, wrap-up, got ""/);
+    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'conclude' }),
+      /--variant must be one of/);
+    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'final-review' }),
+      /--reason is required with --variant final-review/);
+    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'wrap-up', reason: 'x' }),
+      /--reason belongs to --variant final-review alone, not "wrap-up"/);
   });
 
   it('summary-backfill-gate: the static batch gate and the payload-named unsourced set', () => {

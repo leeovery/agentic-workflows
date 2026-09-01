@@ -242,6 +242,7 @@ Commands:
   render topic-collision-gate
   render triage-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
+  render closing-gate     <wu.discussion.topic> --variant re-review|findings-owed|final-review|wrap-up [--reason <text>]
   render experiment-register <wu.experiment.topic>
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-pick <wu.experiment.topic>
