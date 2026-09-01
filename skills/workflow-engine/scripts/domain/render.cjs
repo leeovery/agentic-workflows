@@ -344,7 +344,10 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 // mode, by design: a bare `y` would hand the call to the executor, and
 // auto never settles an irreducible product fork — a decision item always
 // stops, and over an auto opt-in its label says so. A decision excludes
-// the authored blocks: the direction is settled before bodies exist. A
+// the authored blocks and outcome: the direction is settled before bodies
+// exist, and what the change would look like is the raise's to say. The
+// question and each side are single lines — they become the menu's label
+// and rows, and the head chrome is never scanned for the option column. A
 // side may mark itself recommended (at most one); it orders first with a
 // "(recommended)" suffix — the findingChoice idiom.
 // ---------------------------------------------------------------------------
@@ -384,6 +387,7 @@ function proposedTask(cwd, args) {
       throw new Error('render proposed-task: "decision" must be an object carrying "question" and "options"');
     }
     if (!isFilled(p.decision.question)) throw new Error('render proposed-task: "decision.question" must be a non-empty string');
+    if (/\n/.test(p.decision.question)) throw new Error('render proposed-task: "decision.question" must be a single line — it becomes the menu\'s statement label');
     if (!Array.isArray(p.decision.options) || p.decision.options.length < 2 || p.decision.options.length > 4) {
       throw new Error('render proposed-task: "decision.options" must be an array of 2–4 sides');
     }
@@ -394,6 +398,9 @@ function proposedTask(cwd, args) {
       if (!isFilled(summary)) {
         throw new Error(`render proposed-task: decision.options[${i}] must be a non-empty string or an object carrying "summary"`);
       }
+      if (/\n/.test(/** @type {string} */ (summary))) {
+        throw new Error(`render proposed-task: decision.options[${i}] must be a single line — a side is one menu row`);
+      }
       return { summary, recommended: side.recommended === true };
     });
     decisionRows = recommendedMenuRows(sides, 'render proposed-task: at most one option may be recommended');
@@ -402,6 +409,9 @@ function proposedTask(cwd, args) {
     }
     if (blocks.steps || blocks.criteria || blocks.tests) {
       throw new Error('render proposed-task: "decision" excludes steps/criteria/tests — the direction is settled before bodies are authored');
+    }
+    if (p.outcome !== undefined) {
+      throw new Error('render proposed-task: "decision" excludes outcome — the raise carries what the change would look like; the record keeps the rest');
     }
   } else if (p.stakes !== undefined) {
     throw new Error('render proposed-task: "stakes" requires "decision" — the argument for a stop needs an open fork to argue for');
@@ -437,7 +447,7 @@ function proposedTask(cwd, args) {
       STOP_FOR_RESPONSE,
       menu(`**Decision**: ${p.decision.question}${gate === 'auto' ? `\n\n${AUTO_OVERRIDE_LINE}` : ''}`, [
         ...decisionRows,
-        cmdOption('t', 'technical', 'Retell this technically — the mechanism and the staged record'),
+        cmdOption('t', 'technical', "Retell the fork from the code's perspective"),
         cmdOption('d', 'decline', 'Decline this task — it will not be built'),
         promptOption('Comment', hint),
       ], { question: 'Which way?' }),

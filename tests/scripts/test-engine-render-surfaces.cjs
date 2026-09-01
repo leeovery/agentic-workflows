@@ -2539,6 +2539,7 @@ describe('render proposed-task', () => {
   it('a decision emits its slim header and the sides as the menu — the record stays staged — byte-exactly', () => {
     const file = writePayload(dir, 'dc.json', {
       current: 3, total: 4, title: 'Settle the page size', severity: 'behaviour',
+      sources: 'finder cycle 1', placement: 'phase 1',
       problem: 'Two page sizes are configured at once.', solution: 'Pick one and record it.',
       stakes: 'A4 fixes print output; preferCssPageSize hands it to themes. No measurement picks between them.',
       decision: { question: 'Which page size stands?', options: ['A4 on the PDF renderer', 'preferCssPageSize from the stylesheet'] },
@@ -2547,6 +2548,8 @@ describe('render proposed-task', () => {
     assert.strictEqual(out, [
       '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
       '**`▪ Settle the page size (3 of 4)`** (behaviour)',
+      'Sources: finder cycle 1',
+      'Placement: phase 1',
       '',
       '=== MENU: task decision (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
@@ -2556,8 +2559,7 @@ describe('render proposed-task', () => {
       '',
       '**`1`**           → A4 on the PDF renderer',
       '**`2`**           → preferCssPageSize from the stylesheet',
-      '**`t/technical`** → Retell this technically — the mechanism and the',
-      `${NB(14)}staged record`,
+      "**`t/technical`** → Retell the fork from the code's perspective",
       '**`d/decline`**   → Decline this task — it will not be built',
       '**Comment**     → Tell me what to change',
       '',
@@ -2587,8 +2589,7 @@ describe('render proposed-task', () => {
       '**`1`**           → preferCssPageSize from the stylesheet (recommended)',
       '**`2`**           → A4 on the PDF renderer',
       '**`3`**           → Neither — leave it configurable',
-      '**`t/technical`** → Retell this technically — the mechanism and the',
-      `${NB(14)}staged record`,
+      "**`t/technical`** → Retell the fork from the code's perspective",
       '**`d/decline`**   → Decline this task — it will not be built',
     ].join('\n')), out);
   });
@@ -2619,7 +2620,7 @@ describe('render proposed-task', () => {
     assert.ok(auto.includes('**Decision**: Which page size stands?\n\n**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'),
       'the question is the menu\'s statement label, the auto-override line beneath it — never the glyphed chrome');
     assert.ok(/\*\*`3`\*\* +→ Neither — leave it configurable/.test(auto));
-    assert.ok(/\*\*`t\/technical`\*\* +→ Retell this technically/.test(auto), 'the technical arm rides the decision menu');
+    assert.ok(/\*\*`t\/technical`\*\* +→ Retell the fork from the code's perspective/.test(auto), 'the technical arm rides the decision menu');
     assert.ok(/\*\*Comment\*\* +→ Provide feedback to adjust/.test(auto));
   });
 
@@ -2637,12 +2638,52 @@ describe('render proposed-task', () => {
       assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' }),
         /"decision" must be an object carrying "question" and "options"/, `decision as ${name} is refused`);
     }
+    const withOutcome = writePayload(dir, 'dx-outcome.json', {
+      ...proposal, outcome: 'One page size everywhere.', stakes: 'the fork is product-shaped',
+      decision: { question: 'Which way?', options: ['a', 'b'] },
+    });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: withOutcome, gate: 'gated' }),
+      /"decision" excludes outcome/, 'a decision payload never carries a field the path would silently drop');
+    const noProblem = writePayload(dir, 'dx-problem.json', {
+      current: 1, total: 1, title: 'T', solution: 's', stakes: 'the fork is product-shaped',
+      decision: { question: 'Which way?', options: ['a', 'b'] },
+    });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noProblem, gate: 'gated' }),
+      /"problem" must be a non-empty string/, 'the record stays required on the decision path — the technical arm retells from it');
+  });
+
+  it('the question is head chrome — an option-shaped question never captures the arrow column', () => {
+    const file = writePayload(dir, 'dq.json', {
+      ...proposal, stakes: 'the fork is product-shaped',
+      decision: { question: 'Ship **now** → later?', options: ['A4 on the PDF renderer', 'preferCssPageSize'] },
+    });
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    assert.ok(out.includes('**Decision**: Ship **now** → later?'), 'the label passes through untouched');
+    assert.ok(out.includes('**`1`**           → A4 on the PDF renderer'),
+      'the arrow column is measured from the option rows alone — t/technical, at 11, stays the widest key');
+  });
+
+  it('a long end-state side wraps under its own row, the recommendation suffix riding the last segment', () => {
+    const side = 'Unmatched captures land on an operator-visible record and a person resolves each one — nothing redelivers, nothing vanishes';
+    const file = writePayload(dir, 'dw.json', {
+      ...proposal, stakes: 'the fork is product-shaped',
+      decision: { question: 'Where does an unmatched capture surface?', options: [{ summary: side, recommended: true }, 'Refused — the gateway redelivers'] },
+    });
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    const lines = out.split('\n');
+    const row = lines.findIndex((l) => l.startsWith('**`1`**'));
+    assert.ok(row > 0, out);
+    assert.ok(lines[row + 1].startsWith(NB(14)), 'continuations align under the label column in non-breaking spaces');
+    const wrapped = [lines[row], lines[row + 1], lines[row + 2] ?? ''].join(' ');
+    assert.ok(wrapped.includes('(recommended)'), 'the suffix survives the wrap');
   });
 
   it('a malformed decision is refused by name', () => {
     const cases = [
       [{ options: ['a', 'b'] }, /"decision\.question" must be a non-empty string/],
       [{ question: '  ', options: ['a', 'b'] }, /"decision\.question" must be a non-empty string/],
+      [{ question: 'Which?\nAnd how?', options: ['a', 'b'] }, /"decision\.question" must be a single line/],
+      [{ question: 'Which?', options: ['a', 'b\nfake row'] }, /decision\.options\[1\] must be a single line/],
       [{ question: 'Which?' }, /"decision\.options" must be an array of 2–4 sides/],
       [{ question: 'Which?', options: ['only one'] }, /"decision\.options" must be an array of 2–4 sides/],
       [{ question: 'Which?', options: ['a', 'b', 'c', 'd', 'e'] }, /"decision\.options" must be an array of 2–4 sides/],
