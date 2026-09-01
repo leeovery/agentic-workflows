@@ -26,6 +26,12 @@ Its row ends first — the split walk finishes the open sub, and this conclude r
 
 → Return to **[the skill](../SKILL.md)** for **Step 4**.
 
+#### If the engine refused for any other reason
+
+Nothing was recorded — no verdict, no commit, no release to narrate. Say why in one line, fix what it names (a multi-line verdict becomes its one-line outcome), and re-run.
+
+→ Return to **A. Complete the Report**.
+
 #### Otherwise
 
 Commit:

@@ -14,9 +14,9 @@ You are entering the **laboratory** — a topic's experiment series. Experiments
 
 | Work type | Pipeline |
 |---|---|
-| Epic | Discovery → Research → **(Experiment)** → Discussion → Specification → Planning → Implementation → Review |
-| Feature | Research (optional) → **(Experiment)** → Discussion → Specification → Planning → Implementation → Review |
-| Cross-cutting | Research (optional) → **(Experiment)** → Discussion → Specification (terminal) |
+| Epic | Discovery → Research → **Experiment** (optional) → Discussion → Specification → Planning → Implementation → Review |
+| Feature | Research (optional) → **Experiment** (optional) → Discussion → Specification → Planning → Implementation → Review |
+| Cross-cutting | Research (optional) → **Experiment** (optional) → Discussion → Specification (terminal) |
 
 Spawned from a Research or Discussion conversation; the verdict returns to the conversation that asked.
 

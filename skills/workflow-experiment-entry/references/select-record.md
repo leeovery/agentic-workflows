@@ -41,7 +41,7 @@ Every row is terminal — the series is finished.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The series' rows stand on the register; a new spawn from the topic's research or discussion starts the next experiment.
+> The series' rows stand on the register; a new spawn from the topic's research or discussion starts the next experiment — reopen that conversation first if it has concluded.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -62,23 +62,25 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-pick {w
 
 **STOP.** Wait for user response.
 
-**If `b/back`:**
+An id answer resolves to its top-level record first: a sub-experiment answer (`E{n}.{m}`) resolves to its parent `E{n}` — a split is walked inside its parent's run.
+
+**If `back`:**
 
 No record resolves.
 
 → Return to caller.
 
-**If the response names a sub-experiment (`E{n}.{m}`):**
+**If the series does not hold the resolved id, or its record is terminal (`concluded` or `abandoned`):**
 
-A split is walked inside its parent's run — say so in one line, then store the parent record: `{id}` = `E{n}`, its `status` as `{record_status}`, its `slug` as `{slug}`.
-
-→ Proceed to **C. Validate the Record**.
-
-**If the series does not hold the response, or the named record is terminal (`concluded` or `abandoned`):**
-
-Say so in one line.
+Unknown ids — parent or sub — and finished records alike: say so in one line.
 
 → Return to **B. Pick From the Register**.
+
+**If the answer named a sub-experiment:**
+
+Say the split is walked inside its parent's run in one line, then store the parent record: `{id}` = `E{n}`, its `status` as `{record_status}`, its `slug` as `{slug}`.
+
+→ Proceed to **C. Validate the Record**.
 
 **Otherwise:**
 

@@ -95,21 +95,34 @@ On a resume the parts are already on the register — create nothing; each live 
 
 Walk each sub in miniature, holding its `id` and `dir` — from the create response, or on a resume from the register and `{dir}`'s subdirectories — as `{sub_id}` and `{sub_dir}`:
 
-1. **Design** — → Load **[design-experiment.md](design-experiment.md)** with id = `{sub_id}`, dir = `{sub_dir}`. A sub abandoned here ends on its own row — skip its remaining legs.
-2. **Freeze** — → Load **[briefing.md](briefing.md)** with id = `{sub_id}`, dir = `{sub_dir}` — the gate renders over the sub's id. An abandon here ends the sub on its own row — skip its remaining legs.
+1. **Design** — a sub abandoned here ends on its own row; skip its remaining legs.
+
+   → Load **[design-experiment.md](design-experiment.md)** with id = `{sub_id}`, dir = `{sub_dir}`.
+
+2. **Freeze** — the gate renders over the sub's id; an abandon here ends the sub on its own row — skip its remaining legs.
+
+   → Load **[briefing.md](briefing.md)** with id = `{sub_id}`, dir = `{sub_dir}`.
+
 3. **Run** — record that the sub's measurement begins (a sub resumed already `running` skips this call):
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {sub_id}
    ```
 
-   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`, its measurement commits naming `{sub_id}` in the subject. A sub abandoned mid-measurement — → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{sub_id}` — ends on its own row; skip its verdict.
+   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`, its measurement commits naming `{sub_id}` in the subject.
+
+   A sub abandoned mid-measurement ends on its own row — skip its verdict:
+
+   → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{sub_id}`.
+
 4. **Verdict** — execute the sub's pre-registered decision rule and record it — a sub's terminal transition releases no wait; the parent's carries them:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs experiment conclude {work_unit} {topic} {sub_id} --verdict "{one line}"
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {sub_id} concluded"
    ```
+
+   A refused conclude records nothing and takes no commit — say why in one line, fix what it names (a multi-line verdict becomes its one-line outcome), and re-run the pair.
 
 When every sub is terminal, the parent's measurement completes by synthesising the sub reports.
 

@@ -8,13 +8,15 @@ Author `{dir}/design.md` with the user — load **[design-template.md](design-te
 
 Depth scales with the shape — a ten-minute local test writes four lines per section; a multi-day run writes pages — but the skeleton never scales away, and one primary question is the width limit: anything else measured is explicitly secondary.
 
-**If the user abandons the experiment before the design settles:**
+#### If the user abandons the experiment before the design settles
 
 → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
 
 → On return, return to caller.
 
-**Otherwise**, when the design is written, record the step and commit — the commit carries the design file and the manifest together:
+#### Otherwise
+
+When the design is written, record the step and commit — the commit carries the design file and the manifest together:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {id}
