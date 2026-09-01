@@ -11,7 +11,7 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This will move the feature's discussion, research, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
+> This will move the feature's discussion, research, experiments, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
 ```
 
 Fetch and emit the `MENU: absorb target` section (its numbering follows the DATA `available_epics` order):
@@ -95,11 +95,11 @@ Set `topic` to the user's input.
 
 #### If `false`
 
-→ Proceed to **D. Research Check**.
+→ Proceed to **D. Research and Experiments Check**.
 
 ---
 
-## D. Research Check
+## D. Research and Experiments Check
 
 Read the feature's manifest once as a full dump — sections D, E, and F all derive their values from this single read:
 
@@ -107,17 +107,9 @@ Read the feature's manifest once as a full dump — sections D, E, and F all der
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name}
 ```
 
-Take the feature's research items from `phases.research.items`.
+Take the feature's research items from `phases.research.items` — default `has_research` = `false`, then when items exist set it `true` and `research_item_count` to their number. Name collisions in the target epic are resolved by the engine (suffixing `-{selected.name}`).
 
-#### If there are no research items
-
-Set `has_research` = false.
-
-→ Proceed to **E. Imports and Seeds Check**.
-
-#### Otherwise
-
-Set `has_research` = true and `research_item_count` to the number of items. Name collisions in the target epic are resolved by the engine (suffixing `-{selected.name}`).
+Take the feature's experiment item from `phases.experiment.items.{selected.name}` — default `has_experiments` = `false`, then when one exists set it `true` and `experiment_count` to the number of keys under its `experiments`. The series travels whole — records, verdicts, and any live evidence wait included.
 
 → Proceed to **E. Imports and Seeds Check**.
 
@@ -149,6 +141,9 @@ Absorb Summary
 @if(has_research)
   Research:   {research_item_count} file(s)
 @endif
+@if(has_experiments)
+  Experiments: {experiment_count} record(s)
+@endif
 @if(has_seeds)
   Seed:       {seeds_count} file(s) (origin)
 @endif
@@ -160,6 +155,9 @@ Absorb Summary
   • Move discussion file to epic
 @if(has_research)
   • Move research file(s) to epic
+@endif
+@if(has_experiments)
+  • Move experiment series to epic
 @endif
 @if(has_seeds)
   • Move seed file(s) to epic
@@ -195,13 +193,13 @@ Absorb Summary
 
 ## G. Absorb
 
-One engine transaction moves the discussion (and any research, imports, and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/workflow-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base, deletes the feature, and commits:
+One engine transaction moves the discussion (and any research, experiment series, imports, and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/workflow-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base (experiments never enter it), deletes the feature, and commits:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
 ```
 
-The JSON response reports what moved (`discussion`, `research`, `imports`, `seeds` — research topics may carry a collision suffix), `routing`, `committed`, and `warnings`.
+The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — research topics may carry a collision suffix), `routing`, `committed`, and `warnings`.
 
 #### If the command failed
 
@@ -225,10 +223,10 @@ The command succeeded.
 
 ## H. Post-Absorption
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), and `--warn` rides when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the length of the response's `experiment.experiments` when a series moved (omit otherwise), and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--warn]
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--warn]
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

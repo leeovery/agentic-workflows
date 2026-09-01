@@ -4197,7 +4197,7 @@ function topicReceiptSurface(cwd, args) {
   return topicReceipt(verb, topic, phase, item.status, { warn: args.warn === '1' });
 }
 
-/** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, warn?: string}} args @returns {string} */
+/** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, warn?: string}} args @returns {string} */
 function absorbReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-receipt');
   if (manifest.work_type !== 'epic') {
@@ -4213,7 +4213,17 @@ function absorbReceiptSurface(cwd, args) {
   if (unknown.length > 0) {
     throw new Error(`render absorb-receipt: --moved entries must be research, seeds, or imports, got "${unknown.join(', ')}"`);
   }
-  return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1' });
+  let experiments = 0;
+  if (args.experiments !== undefined) {
+    experiments = parseInt(args.experiments, 10);
+    if (!Number.isInteger(experiments) || experiments < 1 || String(experiments) !== args.experiments) {
+      throw new Error(`render absorb-receipt: --experiments must be a positive record count, got "${args.experiments}"`);
+    }
+    if (!itemOf(manifest, 'experiment', topic)) {
+      throw new Error(`render absorb-receipt: no experiment series "${topic}" on "${workUnit}" — the receipt renders what the absorb moved`);
+    }
+  }
+  return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1', experiments });
 }
 
 /** @param {string} cwd @param {{dotpath: string, to?: string, warn?: string}} args @returns {string} */

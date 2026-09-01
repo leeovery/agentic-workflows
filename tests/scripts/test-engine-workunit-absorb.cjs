@@ -232,6 +232,8 @@ describe('engine workunit absorb — happy path', () => {
     // timestamps (and seed provenance), map item lands backfill-shaped.
     const m = readManifest(fix, 'payments');
     assert.deepStrictEqual(m.phases.discussion.items, { auth: { status: 'completed' } });
+    assert.strictEqual(res.experiment, undefined, 'a feature with no series reports none');
+    assert.strictEqual(m.phases.experiment, undefined, 'a feature with no series lands no experiment phase');
     assert.deepStrictEqual(m.phases.research.items, {
       exploration: { status: 'completed' },
       'exploration-auth-flow': { status: 'completed' },
@@ -323,6 +325,114 @@ describe('engine workunit absorb — happy path', () => {
       'a topic with no dismissals gains no empty field');
   });
 
+  it('the experiment series travels whole — records, statuses, verdicts, directory — and never touches the knowledge base', () => {
+    const feature = featureManifest();
+    feature.phases.experiment = {
+      items: {
+        'auth-flow': {
+          status: 'in-progress',
+          experiments: {
+            E1: { slug: 'webhook-dup-rate', status: 'concluded', verdict: 'duplicates at 5% — idempotency built for v1' },
+            'E1.1': { slug: 'sandbox-only', status: 'abandoned', reason: 'the sandbox export already covers it' },
+            E2: { slug: 'retry-window', status: 'running' },
+          },
+        },
+      },
+    };
+    fix = setupFixture({ feature });
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/design.md', '# Design\n');
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/report.md', '# Report\n');
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/data/deliveries.csv', 'evt,count\n');
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/E1.1-sandbox-only/problem.md', '# Sub problem\n');
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E2-retry-window/problem.md', '# Problem 2\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'series']);
+
+    const res = engine(fix, ABSORB);
+    assert.deepStrictEqual(res.experiment, {
+      path: 'experiment/auth',
+      status: 'in-progress',
+      experiments: ['E1', 'E1.1', 'E2'],
+    });
+
+    // The item travelled whole — derived status and every record, verdicts
+    // and reasons included.
+    const m = readManifest(fix, 'payments');
+    assert.deepStrictEqual(m.phases.experiment.items, { auth: feature.phases.experiment.items['auth-flow'] });
+
+    // The directory moved whole under the topic name — nested sub-experiment
+    // and data extracts included; nothing remains behind.
+    for (const rel of [
+      'experiment/auth/E1-webhook-dup-rate/problem.md',
+      'experiment/auth/E1-webhook-dup-rate/design.md',
+      'experiment/auth/E1-webhook-dup-rate/report.md',
+      'experiment/auth/E1-webhook-dup-rate/data/deliveries.csv',
+      'experiment/auth/E1-webhook-dup-rate/E1.1-sandbox-only/problem.md',
+      'experiment/auth/E2-retry-window/problem.md',
+    ]) {
+      assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments', rel)), `moved: ${rel}`);
+    }
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/auth-flow')));
+
+    // Experiments never enter the knowledge base — the store calls are the
+    // removal and the phase artifacts, nothing experiment-shaped.
+    assert.ok(knowledgeCalls(fix).every((c) => !c.includes('experiment')),
+      'no knowledge call names an experiment path');
+
+    // The receipt names the moved series by its record count.
+    const receipt = execFileSync('node',
+      [fix.engine, 'render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--experiments', '3'],
+      { cwd: fix.project, encoding: 'utf8' });
+    assert.match(receipt, /• Research: moved\n {2}• Experiments: 3 moved\n {2}• Seed: moved/);
+  });
+
+  it('a live evidence wait travels on its holder, and the release edge keeps holding in the epic', () => {
+    const feature = featureManifest({
+      phases: {
+        research: { items: { 'auth-flow': { status: 'in-progress', awaiting_experiments: ['E1'], reconcile_needed: 'experiment' } } },
+        discussion: { items: { 'auth-flow': { status: 'in-progress', awaiting_experiments: ['E2'] } } },
+        experiment: {
+          items: {
+            'auth-flow': {
+              status: 'in-progress',
+              experiments: {
+                E1: { slug: 'webhook-dup-rate', status: 'running' },
+                E2: { slug: 'retry-window', status: 'running' },
+              },
+            },
+          },
+        },
+      },
+    });
+    fix = setupFixture({ feature });
+    writeFile(fix.project, '.workflows/auth-flow/research/auth-flow.md', '# Research\n');
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E2-retry-window/problem.md', '# Problem 2\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'series']);
+
+    // The holder-named research item must land at the topic name for the
+    // wait's release join — same-name absorb keeps it.
+    engine(fix, ['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth-flow']);
+
+    const m = readManifest(fix, 'payments');
+    assert.deepStrictEqual(m.phases.research.items['auth-flow'],
+      { status: 'in-progress', awaiting_experiments: ['E1'], reconcile_needed: 'experiment' },
+      'the research wait and evidence flag travel untouched');
+    assert.deepStrictEqual(m.phases.discussion.items['auth-flow'],
+      { status: 'in-progress', awaiting_experiments: ['E2'] },
+      'the discussion wait travels untouched');
+
+    // The lock's semantics survive the move: completion still refuses, and a
+    // conclusion at the epic address releases the moved holder.
+    assert.match(engineFails(fix, ['topic', 'complete', 'payments', 'discussion', 'auth-flow']).error,
+      /awaits experiment evidence \(E2\)/);
+    const concluded = engine(fix, ['experiment', 'conclude', 'payments', 'auth-flow', 'E1', '--verdict', 'held']);
+    assert.deepStrictEqual(concluded.released_waits, [{ phase: 'research', released: ['E1'], remaining: [] }]);
+    assert.strictEqual(readManifest(fix, 'payments').phases.research.items['auth-flow'].awaiting_experiments, undefined);
+  });
+
   it('KB failures are warnings, never blocks — the absorb still lands and commits', () => {
     fix = setupFixture();
     const res = engine(fix, ABSORB, { STUB_KNOWLEDGE_EXIT: '1' });
@@ -402,6 +512,54 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'dead-idea'], /was dismissed from payments's discovery map/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'session-model'], /discussion topic "session-model" already exists/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'on-disk'], /discussion\/on-disk\.md already exists/);
+  });
+
+  it('refuses an experiment collision in the epic — item or directory on disk', () => {
+    const withSeries = () => featureManifest({
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        experiment: { items: { 'auth-flow': { status: 'completed', experiments: { E1: { slug: 'webhook-dup-rate', status: 'concluded', verdict: 'held' } } } } },
+      },
+    });
+    const epic = epicManifest();
+    epic.phases.experiment = { items: { auth: { status: 'completed', experiments: { E1: { slug: 'other', status: 'concluded', verdict: 'stands' } } } } };
+    fix = setupFixture({ feature: withSeries(), epic });
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'series']);
+    refusedPristine(ABSORB, /experiment topic "auth" already exists in payments/);
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+
+    fix = setupFixture({ feature: withSeries() });
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.workflows/payments/experiment/auth/stray.md', '# Orphan dir\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'orphan series dir']);
+    refusedPristine(ABSORB, /experiment\/auth already exists/);
+  });
+
+  it('refuses a research item whose live experiment state would land off the topic name — the join would strand it', () => {
+    // The epic's own `exploration` forces the suffix, and the wait's release
+    // joins by topic name — landing it renamed could never release.
+    const feature = featureManifest();
+    feature.phases.research.items.exploration.awaiting_experiments = ['E1'];
+    feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'webhook-dup-rate', status: 'running' } } } } };
+    fix = setupFixture({ feature });
+    writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'series']);
+    refusedPristine(ABSORB,
+      /research "exploration" holds a live evidence wait \(E1\) and would land as "exploration-auth-flow" — experiment state joins by the topic name/);
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+
+    // Same guard for the evidence flag alone, and for a rename away from the
+    // holder's own name.
+    const flagged = featureManifest();
+    flagged.phases.research.items['edge-cases'].reconcile_needed = 'experiment';
+    fix = setupFixture({ feature: flagged });
+    const err = refusedPristine(ABSORB,
+      /research "edge-cases" holds experiment evidence to reconcile and would land as "edge-cases"/);
+    assert.match(err.error, /absorb with --topic edge-cases, or settle the experiments first/);
   });
 
   it('closes the crash window: a research file missing on disk leaves both units pristine', () => {

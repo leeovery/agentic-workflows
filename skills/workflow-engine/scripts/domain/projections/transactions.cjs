@@ -112,12 +112,13 @@ function topicReceipt(verb, topic, phase, status, { warn = false } = {}) {
 }
 
 /**
- * workunit absorb — the post-absorption summary.
+ * workunit absorb — the post-absorption summary. `experiments` is the moved
+ * series' record count — 0 when the feature had no series.
  * @param {string} epic @param {string} topic @param {string[]} moved
- * @param {{warn?: boolean}} [opts]
+ * @param {{warn?: boolean, experiments?: number}} [opts]
  * @returns {string}
  */
-function absorbReceipt(epic, topic, moved, { warn = false } = {}) {
+function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0 } = {}) {
   // Heading and sentence at column 0; only the fact list is indented, and it
   // earns that by hanging off the sentence above it.
   const lines = [
@@ -128,6 +129,7 @@ function absorbReceipt(epic, topic, moved, { warn = false } = {}) {
     '  • Discussion: moved',
   ];
   if (moved.includes('research')) lines.push('  • Research: moved');
+  if (experiments > 0) lines.push(`  • Experiments: ${experiments} moved`);
   if (moved.includes('seeds')) lines.push('  • Seed: moved');
   if (moved.includes('imports')) lines.push('  • Imports: moved');
   lines.push('  • Feature: removed');
