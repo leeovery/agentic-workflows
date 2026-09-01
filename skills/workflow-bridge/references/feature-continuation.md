@@ -6,7 +6,7 @@
 
 Route a feature to its next pipeline phase, with an option to revisit earlier phases.
 
-Feature pipeline: (Research) → Discussion → Specification → Planning → Implementation → Review
+Feature pipeline: (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review
 
 ## A. Check Terminal
 

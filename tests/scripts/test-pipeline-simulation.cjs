@@ -538,6 +538,13 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    // The close's own consents render on the road to the conclude gate;
+    // the reason-bearing variant refuses without one.
+    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 're-review'], { expect: 'content' });
+    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'findings-owed'], { expect: 'content' });
+    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'final-review', '--reason', 'no review has run yet'], { expect: 'content' });
+    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'wrap-up'], { expect: 'content' });
+    sim.refuses(['render', 'closing-gate', `${wu}.discussion.${wu}`, '--variant', 'final-review'], /--reason is required/);
     sim.render(['conclude-gate', `${wu}.discussion.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`, '--kb']);
@@ -2446,7 +2453,16 @@ describe('pipeline simulation', () => {
     assert.ok(fs.existsSync(path.join(sim.dir, e1.dir, 'problem.md')), 'the create installs the problem statement');
     assert.ok(!fs.existsSync(path.join(sim.dir, e1Problem)), 'the scratch is consumed');
     sim.run(['commit', wu, '-m', `discussion(${wu}/timing): spawn E1 window-placement`, '--topic', 'discussion/timing']);
-    sim.run(['commit', wu, '-m', `experiment(${wu}/timing): E1 problem statement`, '--topic', 'experiment/timing']);
+    // The spawning session commits the record --sweep — the experiment topic
+    // is the laboratory's slot, never the spawner's to claim.
+    sim.run(['commit', wu, '-m', `experiment(${wu}/timing): E1 problem statement`, '--topic', 'experiment/timing', '--sweep']);
+
+    // The now-or-later choice rides the recorded spawn — addressed to the
+    // spawning item, refused for an id it holds no wait on.
+    assert.match(sim.render(['experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' }),
+      /Work E1 now\?/);
+    sim.refuses(['render', 'experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E9'],
+      /holds no evidence wait on E9/);
 
     // A research spawn locks identically — the phases are symmetric — and
     // numbers the series onward.
@@ -2467,9 +2483,14 @@ describe('pipeline simulation', () => {
     assert.match(expEntries[0].label, /1 experiment queued/);
     sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
 
-    // Both waiting conversations refuse to conclude while their evidence is out.
+    // Both waiting conversations refuse to conclude while their evidence is
+    // out; the wait gate is the refusal's graceful face, and it renders only
+    // over a live wait.
     sim.refuses(['topic', 'complete', wu, 'discussion', 'timing'], /awaits experiment evidence \(E1\)/);
     sim.refuses(['topic', 'complete', wu, 'research', 'layout'], /awaits experiment evidence \(E1\)/);
+    assert.match(sim.render(['experiment-wait-gate', `${wu}.discussion.timing`], { expect: 'content' }),
+      /Conclusion blocked — this discussion awaits experiment evidence \(E1\)/);
+    sim.refuses(['render', 'experiment-wait-gate', `${wu}.discussion.layout`], /holds no evidence wait — nothing blocks conclusion/);
 
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders
@@ -2616,6 +2637,8 @@ describe('pipeline simulation', () => {
     sim.run(['experiment', 'create', wu, wu, '--slug', 'input-latency', '--from', 'discussion',
       '--problem', sim.write(`.workflows/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
     sim.refuses(['topic', 'cancel', wu, 'discussion', wu], /strands its evidence waits \(E2\)/);
+    assert.match(sim.render(['cancel-cascade-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
+      /abandons the experiments it spawned/, 'the gate derives its statement from the item\'s own waits');
     const swept = sim.run(['topic', 'cancel', wu, 'discussion', wu, '--cascade']);
     assert.deepStrictEqual(swept.abandoned, ['E2']);
     assert.deepStrictEqual(swept.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: [] }]);

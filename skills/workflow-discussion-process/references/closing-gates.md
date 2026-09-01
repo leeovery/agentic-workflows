@@ -1,6 +1,6 @@
 # Closing Gates
 
-*Reference for **[discussion-session](discussion-session.md)** — loaded when the discussion reaches its close, with every subtopic settled (deferrals already applied).*
+*Reference for **[discussion-session](discussion-session.md)** — loaded when the discussion reaches its close, with every subtopic settled (deferrals already applied) and the evidence waits already checked.*
 
 ---
 
@@ -66,19 +66,10 @@ No review to offer — the conclude gate is next.
 
 ## B. Review Gate — Optional
 
-A review has already run and drained; declining another forfeits nothing owed.
+A review has already run and drained; declining another forfeits nothing owed. Fetch the gate and emit its MENU section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-The discussion has moved since the last final review. Another pass can catch what that movement opened — or conclude on the review you've already had.
-
-**`◆ Run another final review?`**
-
-**`y/yes`**      → Run another final review
-**`s/skip`**     → Conclude on the last review — the movement stays unreviewed
-**Keep going** → Tell me what else to explore
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant re-review
 ```
 
 **STOP.** Wait for user response.
@@ -103,17 +94,10 @@ At least one full review pass belongs to every discussion — this one cannot be
 
 #### If the classification is `findings-owed`
 
-Nothing new runs on `yes` — background findings have already come back, and Step 6 walks them. The gate says that plainly, so "another review" is never the reading the user answers to.
+Nothing new runs on `yes` — background findings have already come back, and Step 6 walks them. The gate says that plainly, so "another review" is never the reading the user answers to. Fetch it and emit its MENU section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Background findings have come back and are still to be walked — they must be heard before concluding.
-Walk them now?
-
-**`y/yes`**      → Walk what came back
-**Keep going** → Tell me what else to explore
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant findings-owed
 ```
 
 **STOP.** Wait for user response.
@@ -128,17 +112,10 @@ Walk them now?
 
 #### Otherwise
 
-`{reason}` is the matched classification's quoted description.
+`{reason}` is the matched classification's quoted description. Fetch the gate and emit its MENU section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Next: a final gap review before concluding — {reason}.
-Proceed?
-
-**`y/yes`**      → Run the final review
-**Keep going** → Tell me what else to explore
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant final-review --reason "{reason}"
 ```
 
 **STOP.** Wait for user response.
@@ -153,16 +130,10 @@ Proceed?
 
 ## D. Conclude Gate
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its MENU section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-I'll reconcile the document against our conversation, then confirm before marking complete.
-
-**`◆ Do you wish to conclude?`**
-
-**`y/yes`** → Conclude — begin wrap-up
-**`n/no`**  → Continue the conversation
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant wrap-up
 ```
 
 **STOP.** Wait for user response.

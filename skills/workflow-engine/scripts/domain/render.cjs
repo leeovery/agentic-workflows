@@ -39,7 +39,7 @@ const {
   roadmapConcludeGate,
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
-const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate } = require('./projections/experiment.cjs');
+const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate, experimentWaitGate } = require('./projections/experiment.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits, awaitedExperiments } = require('./derivations.cjs');
@@ -1429,11 +1429,15 @@ function cancelCascadeGate(cwd, { dotpath }) {
     if (proposed.length > 0) specParts.push(`the proposed grouping **${proposed.join('**, **')}** is discarded — the next grouping analysis rebuilds from the new world`);
   }
   // A spawn-phase holder's own live waits — the cascade abandons exactly
-  // those records and closes this conversation's waiting points.
+  // those records and closes this conversation's waiting points; a sibling
+  // holder is named untouched only when one exists.
   const awaiting = EXPERIMENT_SPAWN_PHASES.includes(phase) ? awaitedExperiments(manifest, phase, topic) : [];
   const parts = [];
   if (specParts.length > 0) parts.push(`collapses the specification work built from it: ${specParts.join('; ')}`);
-  if (awaiting.length > 0) parts.push(`abandons the experiments it awaits (${awaiting.join(', ')}) — this conversation is their only consumer; a sibling conversation's experiments are untouched`);
+  if (awaiting.length > 0) {
+    const sibling = experimentWaits(manifest, topic).find((h) => h.phase !== phase);
+    parts.push(`abandons the experiments it awaits (${awaiting.join(', ')}) — this conversation is their only consumer${sibling ? `; the ${sibling.phase} conversation and its experiments are untouched` : ''}`);
+  }
   if (parts.length === 0) {
     throw new Error(`render cancel-cascade-gate: nothing cascades from "${topic}" (${phase}) — the bare cancel proceeds`);
   }
@@ -2462,6 +2466,76 @@ function concludeGate(cwd, { dotpath }) {
   return section('MENU: conclude gate', STOP_FOR_RESPONSE, menu('', gate.options(), { question: gate.question }));
 }
 
+// closing-gate — the discussion close's own consents, on the road between
+// "we're done talking" and the conclude gate: the optional re-review offer,
+// the two faces of the mandatory review gate, and the wrap-up consent that
+// opens the reconciliation. One surface, variant-keyed; distinct from
+// conclude-gate, which is the final completion consent the same close
+// reaches later — the two stops coexist in one conclusion.
+const CLOSING_GATES = {
+  're-review': () => ({
+    name: 'MENU: re-review gate',
+    label: "The discussion has moved since the last final review. Another pass can catch what that movement opened — or conclude on the review you've already had.",
+    question: 'Run another final review?',
+    options: [
+      cmdOption('y', 'yes', 'Run another final review'),
+      cmdOption('s', 'skip', 'Conclude on the last review — the movement stays unreviewed'),
+      promptOption('Keep going', 'Tell me what else to explore'),
+    ],
+  }),
+  'findings-owed': () => ({
+    name: 'MENU: findings-owed gate',
+    label: 'Background findings have come back and are still to be walked — they must be heard before concluding.',
+    question: 'Walk them now?',
+    options: [
+      cmdOption('y', 'yes', 'Walk what came back'),
+      promptOption('Keep going', 'Tell me what else to explore'),
+    ],
+  }),
+  /** @param {string} reason */
+  'final-review': (reason) => ({
+    name: 'MENU: final-review gate',
+    label: `Next: a final gap review before concluding — ${reason}.`,
+    question: 'Proceed?',
+    options: [
+      cmdOption('y', 'yes', 'Run the final review'),
+      promptOption('Keep going', 'Tell me what else to explore'),
+    ],
+  }),
+  'wrap-up': () => ({
+    name: 'MENU: wrap-up gate',
+    label: "I'll reconcile the document against our conversation, then confirm before marking complete.",
+    question: 'Do you wish to conclude?',
+    options: [
+      cmdOption('y', 'yes', 'Conclude — begin wrap-up'),
+      cmdOption('n', 'no', 'Continue the conversation'),
+    ],
+  }),
+};
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string, reason?: string}} args
+ * @returns {string}
+ */
+function closingGate(cwd, { dotpath, variant, reason }) {
+  const { phase } = resolveAddress(cwd, dotpath, 'closing-gate');
+  if (phase !== 'discussion') {
+    throw new Error(`render closing-gate: address must be <wu>.discussion.<topic> — the discussion close is the flow that runs these gates; got phase "${phase}"`);
+  }
+  const gate = variant !== undefined ? CLOSING_GATES[variant] : undefined;
+  if (!gate) {
+    throw new Error(`render closing-gate: --variant must be one of ${Object.keys(CLOSING_GATES).join(', ')}, got "${variant ?? ''}"`);
+  }
+  if (variant === 'final-review') {
+    if (!isFilled(reason)) throw new Error('render closing-gate: --reason is required with --variant final-review — the matched classification\'s quoted description');
+  } else if (reason !== undefined) {
+    throw new Error(`render closing-gate: --reason belongs to --variant final-review alone, not "${variant}"`);
+  }
+  const g = gate(/** @type {string} */ (reason));
+  return section(g.name, STOP_FOR_RESPONSE, menu(g.label, g.options, { question: g.question }));
+}
+
 // ---------------------------------------------------------------------------
 // The experiment surfaces — the laboratory's gates and displays over one
 // topic's series (projections/experiment.cjs renders; the handlers resolve
@@ -2547,6 +2621,52 @@ function experimentNextGateSurface(cwd, { dotpath }) {
     throw new Error(`render experiment-next-gate: "${topic}"'s series holds no live experiments — the bridge exit follows a finished series`);
   }
   return experimentNextGate(live);
+}
+
+/**
+ * Resolve a spawn-side address — the spawning research or discussion item —
+ * to its live evidence-wait ids. Loud when the phase is not a spawn phase.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{phase: string, topic: string, awaiting: string[]}}
+ */
+function resolveSpawnSide(cwd, dotpath, surface) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
+  if (!EXPERIMENT_SPAWN_PHASES.includes(phase)) {
+    throw new Error(`render ${surface}: address must be <work_unit>.<${EXPERIMENT_SPAWN_PHASES.join('|')}>.<topic> — the spawning conversation's own item; got phase "${phase}"`);
+  }
+  return { phase, topic, awaiting: awaitedExperiments(manifest, phase, topic) };
+}
+
+/**
+ * The now-or-later gate — refuses an id the addressed item holds no wait on:
+ * the gate follows the recorded spawn, never precedes it.
+ * @param {string} cwd
+ * @param {{dotpath: string, id?: string}} args
+ * @returns {string}
+ */
+function experimentSpawnGateSurface(cwd, { dotpath, id }) {
+  const { phase, topic, awaiting } = resolveSpawnSide(cwd, dotpath, 'experiment-spawn-gate');
+  if (!isFilled(id)) throw new Error('render experiment-spawn-gate: --id is required (E1, E2, …)');
+  if (!awaiting.includes(/** @type {string} */ (id))) {
+    throw new Error(`render experiment-spawn-gate: ${phase} "${topic}" holds no evidence wait on ${id} — the gate follows the recorded spawn (experiment create)`);
+  }
+  return experimentSpawnGate(phase, /** @type {string} */ (id));
+}
+
+/**
+ * The blocked-conclusion gate — refuses when the item holds no live wait:
+ * with nothing owed, nothing blocks conclusion and the calling flow's check
+ * should have passed it straight through.
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function experimentWaitGateSurface(cwd, { dotpath }) {
+  const { phase, topic, awaiting } = resolveSpawnSide(cwd, dotpath, 'experiment-wait-gate');
+  if (awaiting.length === 0) {
+    throw new Error(`render experiment-wait-gate: ${phase} "${topic}" holds no evidence wait — nothing blocks conclusion`);
+  }
+  return experimentWaitGate(phase, awaiting);
 }
 
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
@@ -4480,10 +4600,13 @@ const SURFACES = {
   'topic-collision-gate': topicCollisionGate,
   'triage-closed-target': triageClosedTarget,
   'conclude-gate': concludeGate,
+  'closing-gate': closingGate,
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,
   'experiment-next-gate': experimentNextGateSurface,
+  'experiment-spawn-gate': experimentSpawnGateSurface,
+  'experiment-wait-gate': experimentWaitGateSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,

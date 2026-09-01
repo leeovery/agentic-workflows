@@ -11,7 +11,9 @@
 // manifest, never a hand-maintained file: one row per experiment, conceived
 // to verdict, sub-experiments nested under their parent, abandoned rows kept
 // with their reason. The approval gate is the briefing confirm that freezes
-// a design before anything is measured.
+// a design before anything is measured. The spawn gate and wait gate are the
+// spawning conversation's two pauses: the now-or-later choice right after a
+// spawn, and the blocked-conclusion choice while evidence is still owed.
 // ---------------------------------------------------------------------------
 
 const { renderTree } = require('../../kernel/render.cjs');
@@ -114,4 +116,50 @@ function experimentNextGate(live) {
   ], { question: 'Work the next experiment?' }));
 }
 
-module.exports = { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate };
+/**
+ * The now-or-later gate — rendered by the spawning session right after the
+ * spawn is recorded, while the conversation still holds the knowledge. Both
+ * roads end at the menu with the experiment queued; the choice is which turn
+ * comes first.
+ * @param {string} phase the spawning phase — `research` or `discussion`
+ * @param {string} id
+ * @returns {string}
+ */
+function experimentSpawnGate(phase, id) {
+  return section('MENU: experiment spawn gate', MENU_INSTRUCTION, menu('', [
+    cmdOption('n', 'now', `Pause this ${phase} here — the session ends and the menu takes over with ${id} queued`),
+    cmdOption('l', 'later', `Keep the conversation going — this ${phase} cannot conclude until ${id}'s evidence lands`),
+  ], { question: `Work ${id} now?` }));
+}
+
+/**
+ * The blocked-conclusion gate — a conversation trying to conclude while it
+ * still awaits evidence. The engine's completion refusal is the backstop;
+ * this is the graceful face: the blocker names the open ids, the guidance
+ * names the ways out, and the menu offers the same pause the spawn gate's
+ * `now` takes.
+ * @param {string} phase the holding phase — `research` or `discussion`
+ * @param {string[]} ids the live evidence-wait ids
+ * @returns {string}
+ */
+function experimentWaitGate(phase, ids) {
+  const list = ids.join(', ');
+  return [
+    section(
+      'DISPLAY: experiment wait block',
+      'emit verbatim as a properties code block — ```properties fence',
+      `⚑ Conclusion blocked — this ${phase} awaits experiment evidence (${list})`,
+    ),
+    section(
+      'DISPLAY: experiment wait guidance',
+      'emit verbatim as markdown',
+      '> The wait releases when each experiment ends. The menu carries the way in.',
+    ),
+    section('MENU: experiment wait gate', MENU_INSTRUCTION, menu('', [
+      cmdOption('p', 'pause', `Pause this ${phase} here — the session ends and the menu takes over with ${list} queued`),
+      cmdOption('k', 'keep', 'Keep the conversation going — conclusion stays blocked until the evidence lands'),
+    ], { question: 'Pause to the menu?' })),
+  ].join('\n');
+}
+
+module.exports = { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate, experimentWaitGate };

@@ -26,6 +26,46 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 **If `count` is `0`:**
 
+Check the topic's evidence waits next — a spawned experiment still open means the conclusion cannot pass, and the engine would refuse the completion anyway (`get` prints empty when no wait is held):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} awaiting_experiments
+```
+
+**If the wait output is non-empty:**
+
+Render the gate and emit its sections verbatim per their markers — the blocker line, its guidance, then the menu:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-wait-gate {work_unit}.research.{topic}
+```
+
+**STOP.** Wait for user response.
+
+**If `pause`:**
+
+Commit any uncommitted session work with the session's cadence commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): {what changed}"
+```
+
+Then say where the ball sits:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Paused with the experiment(s) queued — the closing ceremony waits for the evidence. Run `/clear`, then `/workflow-start`: the menu carries the way in, and this research concludes once the waits release.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+**If `keep`:**
+
+→ Return to caller.
+
+**If the wait output is empty:**
+
 → Load **[final-review.md](final-review.md)** and follow its instructions as written.
 
 → Load **[document-review.md](document-review.md)** and follow its instructions as written.

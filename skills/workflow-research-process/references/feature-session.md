@@ -107,3 +107,13 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 Note the concern in the research file for the user to consider separately, and continue.
 
 → Return to **B. Session Loop**.
+
+---
+
+## F. The Experiment Offer
+
+When a number is about to bear a decision — a controlled measurement would settle a choice the conversation is weighing, not merely inform it — offer the laboratory. Hands-on sightings short of that bar stay in the session, labelled exploratory.
+
+→ Load **[experiment-spawn.md](../../workflow-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
+
+→ On return, proceed as the reference directed.

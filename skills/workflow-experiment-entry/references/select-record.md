@@ -12,15 +12,9 @@ The caller holds the series — the `experiments` subtree. Count its **live top-
 
 #### If exactly one record is live
 
-> *Output the next fenced block as a code block:*
+Nothing to ask — store the record's id as `{id}`, its `status` as `{record_status}`, and its `slug` as `{slug}`; the note in **C** is the announce.
 
-```
-Automatically proceeding with "{id} {slug}".
-```
-
-Store the record's id as `{id}`, its `status` as `{record_status}`, and its `slug` as `{slug}`.
-
-→ Proceed to **C. Validate the Record**.
+→ Proceed to **C. Announce the Record**.
 
 #### If several records are live
 
@@ -80,21 +74,25 @@ Unknown ids — parent or sub — and finished records alike: say so in one line
 
 Say the split is walked inside its parent's run in one line, then store the parent record: `{id}` = `E{n}`, its `status` as `{record_status}`, its `slug` as `{slug}`.
 
-→ Proceed to **C. Validate the Record**.
+→ Proceed to **C. Announce the Record**.
 
 **Otherwise:**
 
 Store the record's id as `{id}`, its `status` as `{record_status}`, and its `slug` as `{slug}`.
 
-→ Proceed to **C. Validate the Record**.
+→ Proceed to **C. Announce the Record**.
 
-## C. Validate the Record
+## C. Announce the Record
 
-Branch on `{record_status}` — no re-read.
+Branch on `{record_status}` — no re-read. The note is the entry's one announce, and rendering it claims the topic's slot.
 
 #### If status is `conceived`
 
-A fresh record — the spawn conceived it and no laboratory session has run. Nothing to render.
+A fresh record — the spawn conceived it and no laboratory session has run. Render and emit the section verbatim:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Starting --noun {id}
+```
 
 → Return to caller.
 

@@ -40,6 +40,41 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
+#### If output is `experiment` (an experiment wait released)
+
+An evidence wait this topic's conversation held has released since this item last moved — an experiment concluded with its verdict, or was abandoned with its reason (a cancel abandons a series' open records the same way, its reason on each row). Surface the advisory, render the register, read what the release left behind, and clear the flag.
+
+> *Output the next fenced block as a code block:*
+
+```
+  ⚑ An experiment wait on this topic released. Read what stands
+    on the register before settling anything it touches —
+    experiments measure; conversations decide. Nothing has been
+    overwritten.
+```
+
+Render the series register and emit its DISPLAY section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
+```
+
+Read the series — each record's `{id}` and `{slug}` come from this read, never from the rendered register:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
+```
+
+Then read the evidence: every terminal top-level row (`concluded` or `abandoned`, id without a dot — a parent's verdict synthesises its subs, so sub reports are the parent's business) gets its report read in full at `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}/report.md`. Present each verdict as evidence the conversation now weighs — the verdict is the pre-registered rule's mechanical outcome, and the conversation can override it. An abandoned record surfaces its reason from the register — a partial report, or none at all, is what abandonment leaves — and its waiting point reverts to open: the conversation settles it another way or spawns a successor (a new spawn revives even a cancelled series).
+
+Clear the flag:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+```
+
+→ Return to caller.
+
 #### If output is `investigation` (upstream investigation reopened)
 
 The investigation reopened after this specification concluded — the root cause may have shifted beneath it. Surface the advisory, read the investigation file fresh into context, and clear the flag.
