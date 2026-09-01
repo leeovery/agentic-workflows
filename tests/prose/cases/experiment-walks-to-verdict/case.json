@@ -1,0 +1,67 @@
+{
+  "origin": "the laboratory's own walk had no prose coverage — the topic-grain epic entry resolving its one live record, the fresh-context initialisation that reads the problem and the spawning document from disk, the design authored before anything is measured, the approve verb recording the user's freeze, the run measuring as designed, and the conclusion executing the pre-registered rule, releasing the wait, and flagging the spawning item",
+  "entry": "workflow-experiment-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-experiment-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-experiment-entry/references/select-record.md",
+    "skills/workflow-experiment-entry/references/invoke-skill.md",
+    "skills/workflow-experiment-process/SKILL.md",
+    "skills/workflow-experiment-process/references/experiment-guidelines.md",
+    "skills/workflow-experiment-process/references/initialize-experiment.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-experiment-process/references/design-experiment.md",
+    "skills/workflow-experiment-process/references/design-template.md",
+    "skills/workflow-experiment-process/references/briefing.md",
+    "skills/workflow-experiment-process/references/run-experiment.md",
+    "skills/workflow-experiment-process/references/report-template.md",
+    "skills/workflow-experiment-process/references/amendment-protocol.md",
+    "skills/workflow-experiment-process/references/conclude-experiment.md",
+    "skills/workflow-experiment-process/references/abandon-experiment.md",
+    "skills/workflow-experiment-process/references/next-experiment.md"
+  ],
+  "answers": [],
+  "conduct": "The user is here to get the recovery number measured properly and collaborates the way a good client does: they answer the laboratory's design questions crisply — the question is the in-session recovery share of zero-result searches, the decision it feeds is the replacement source, they expect meaningful recovery (their guess is around a fifth), and the rule they agree to is that fifteen percent or better makes behaviour-driven expansion the leading candidate while less sends the research to a curated source. They confirm the day of sandbox logs at logs/search-sessions.log is the sample and that a deterministic pass over it is the right instrument. At the briefing they approve the design as presented — no amendments, no abandonment. They let the run proceed without interference, accept the measured share and the rule's outcome without relitigating it, and have nothing to add at the close. They never split the question, never abandon the experiment, and never ask for anything beyond this record.",
+  "stubs": {},
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.experiment.synonym-handling status",
+      "manifest get search-relevance.experiment.synonym-handling experiments",
+      "session label search-relevance experiment synonym-handling",
+      "render phase-note search-relevance.experiment.synonym-handling --verb Starting",
+      "manifest set search-relevance.discovery.synonym-handling brief_incorporated true",
+      "render experiment-approval-gate search-relevance.experiment.synonym-handling --id E1",
+      "experiment approve search-relevance synonym-handling E1",
+      "experiment conclude search-relevance synonym-handling E1",
+      "render experiment-register search-relevance.experiment.synonym-handling"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.experiment.synonym-handling experiments",
+      "write:.workflows/search-relevance/experiment/synonym-handling/E1-reformulation-recovery/design.md",
+      "experiment advance search-relevance synonym-handling E1",
+      "render experiment-approval-gate search-relevance.experiment.synonym-handling",
+      "experiment approve search-relevance synonym-handling E1",
+      "experiment advance search-relevance synonym-handling E1",
+      "write:.workflows/search-relevance/experiment/synonym-handling/E1-reformulation-recovery/report.md",
+      "experiment conclude search-relevance synonym-handling E1",
+      "render experiment-register search-relevance.experiment.synonym-handling"
+    ],
+    "calls_exclude": [
+      "experiment create",
+      "experiment abandon",
+      "topic start search-relevance experiment",
+      "topic complete search-relevance experiment",
+      "agent dispatch",
+      "knowledge.cjs index",
+      "render experiment-pick",
+      "render experiment-next-gate"
+    ]
+  }
+}

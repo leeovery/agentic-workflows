@@ -11,7 +11,7 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This will move the feature's discussion, research, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
+> This will move the feature's discussion, research, experiments, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
 ```
 
 Fetch and emit the `MENU: absorb target` section (its numbering follows the DATA `available_epics` order):
@@ -36,19 +36,10 @@ Resolve the number against `available_epics` and store the selected epic as `tar
 
 ## B. Name Topic
 
-Default topic name = `{selected.name}` (the feature's work unit name).
+Default topic name = `{selected.name}` (the feature's work unit name). Fetch the gate and emit its MENU section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Topic name in **{target_epic:(titlecase)}**: **{selected.name}**
-
-**`◆ Is this name okay?`**
-
-**`y/yes`**  → Use this name
-**`b/back`** → Return
-**Rename** → Enter a different name (kebab-case)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-name-gate {selected.name} --into {target_epic}
 ```
 
 **STOP.** Wait for user response.
@@ -73,13 +64,15 @@ Set `topic` to the user's input.
 
 ## C. Collision Check
 
-Check if a discussion topic with this name already exists in the target epic:
+Check whether the name is taken in the target epic — as a discussion topic, an experiment series, or a research topic:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_epic}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_epic}.experiment.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_epic}.research.{topic}
 ```
 
-#### If `true`
+#### If any is `true`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -93,92 +86,24 @@ Set `topic` to the user's input.
 
 → Return to **C. Collision Check**.
 
-#### If `false`
+#### If all are `false`
 
-→ Proceed to **D. Research Check**.
+→ Proceed to **D. Confirm**.
 
 ---
 
-## D. Research Check
+## D. Confirm
 
-Read the feature's manifest once as a full dump — sections D, E, and F all derive their values from this single read:
+Fetch the summary — every fact is the feature's own manifest state, read by the surface — and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name}
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-summary {selected.name} --into {target_epic} --topic {topic}
 ```
 
-Take the feature's research items from `phases.research.items`.
+Fetch the gate and emit its MENU section verbatim per its marker:
 
-#### If there are no research items
-
-Set `has_research` = false.
-
-→ Proceed to **E. Imports and Seeds Check**.
-
-#### Otherwise
-
-Set `has_research` = true and `research_item_count` to the number of items. Name collisions in the target epic are resolved by the engine (suffixing `-{selected.name}`).
-
-→ Proceed to **E. Imports and Seeds Check**.
-
----
-
-## E. Imports and Seeds Check
-
-Take the top-level `imports` and `seeds` arrays from the manifest dump.
-
-Default `has_imports` = `false` / `imports_count` = 0, and `has_seeds` = `false` / `seeds_count` = 0 — then, for each non-empty JSON array, set the flag `true` and the count to its length. Filename collisions in the target epic's directories are resolved by the engine; entries move with their original timestamps and seed provenance.
-
-→ Proceed to **F. Confirm**.
-
----
-
-## F. Confirm
-
-Take the discussion item's status (`phases.discussion.items.{selected.name}.status`) from the manifest dump. Store the result as `discussion_status`.
-
-> *Output the next fenced block as a code block:*
-
-```
-Absorb Summary
-
-  Feature:    {selected.name:(titlecase)}
-  Target:     {target_epic:(titlecase)}
-  Topic:      {topic}
-  Discussion: [{discussion_status}]
-@if(has_research)
-  Research:   {research_item_count} file(s)
-@endif
-@if(has_seeds)
-  Seed:       {seeds_count} file(s) (origin)
-@endif
-@if(has_imports)
-  Imports:    {imports_count} file(s)
-@endif
-
-  Actions:
-  • Move discussion file to epic
-@if(has_research)
-  • Move research file(s) to epic
-@endif
-@if(has_seeds)
-  • Move seed file(s) to epic
-@endif
-@if(has_imports)
-  • Move import file(s) to epic
-@endif
-  • Register topic in epic manifest
-  • Remove feature work unit and directory
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
-
-**`y/yes`**
-**`n/no`**
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-confirm-gate {selected.name}
 ```
 
 **STOP.** Wait for user response.
@@ -189,25 +114,25 @@ Absorb Summary
 
 #### If user chose `y/yes`
 
-→ Proceed to **G. Absorb**.
+→ Proceed to **E. Absorb**.
 
 ---
 
-## G. Absorb
+## E. Absorb
 
-One engine transaction moves the discussion (and any research, imports, and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/workflow-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base, deletes the feature, and commits:
+One engine transaction moves the discussion (and any research, experiment series, imports, and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/workflow-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base (experiments never enter it), deletes the feature, and commits:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
 ```
 
-The JSON response reports what moved (`discussion`, `research`, `imports`, `seeds` — research topics may carry a collision suffix), `routing`, `committed`, and `warnings`.
+The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — the research lands at the topic name), `routing`, `committed`, and `warnings`.
 
 #### If the command failed
 
 The refusal names the blocking condition; nothing was touched — relay the error.
 
-**If the error is a topic-name collision:**
+**If the error ends "— pick a different name"** (a name collision, item- or file-form):
 
 → Return to **B. Name Topic**.
 
@@ -219,26 +144,22 @@ The refusal names the blocking condition; nothing was touched — relay the erro
 
 The command succeeded.
 
-→ Proceed to **H. Post-Absorption**.
+→ Proceed to **F. Post-Absorption**.
 
 ---
 
-## H. Post-Absorption
+## F. Post-Absorption
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), and `--warn` rides when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--warn]
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--warn]
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the continuation and emit its MENU section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**{selected.name:(titlecase)}** absorbed into **{target_epic:(titlecase)}**.
-
-**`c/continue`** → Continue {target_epic:(titlecase)} as epic
-**`b/back`**     → Return to previous view
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-continuation {target_epic} --feature {selected.name}
 ```
 
 **STOP.** Wait for user response.

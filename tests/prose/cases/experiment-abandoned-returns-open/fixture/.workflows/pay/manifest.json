@@ -1,0 +1,41 @@
+{
+  "name": "pay",
+  "work_type": "feature",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Accept card payments at checkout",
+  "phases": {
+    "discussion": {
+      "items": {
+        "pay": {
+          "status": "in-progress",
+          "subtopics": {
+            "retry-policy": {
+              "status": "decided",
+              "parent": null
+            },
+            "webhook-timing": {
+              "status": "exploring",
+              "parent": null
+            }
+          },
+          "reconcile_needed": "experiment"
+        }
+      }
+    },
+    "experiment": {
+      "items": {
+        "pay": {
+          "status": "completed",
+          "experiments": {
+            "E1": {
+              "slug": "delivery-timing",
+              "status": "abandoned",
+              "reason": "the vendor rebuilt the sandbox mid-run — it no longer mirrors production delivery timing"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -20,8 +20,8 @@ const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
-const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
-const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
+const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
+const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu } = require('./projections/start.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
   baselineScopeGate, baselineRound, baselineDocGate, baselineManageGate, baselineDocPick,
@@ -4197,7 +4197,38 @@ function topicReceiptSurface(cwd, args) {
   return topicReceipt(verb, topic, phase, item.status, { warn: args.warn === '1' });
 }
 
-/** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, warn?: string}} args @returns {string} */
+/**
+ * The pre-confirm absorb summary — every fact is the feature's own manifest
+ * state, read here so the display can never disagree with what the
+ * transaction will move. Experiments count top-level records only.
+ * @param {string} cwd @param {{dotpath: string, into?: string, topic?: string}} args @returns {string}
+ */
+function absorbSummarySurface(cwd, args) {
+  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-summary');
+  if (manifest.work_type !== 'feature') {
+    throw new Error(`render absorb-summary: "${workUnit}" is not a feature — only features absorb into epics`);
+  }
+  if (!isFilled(args.into)) throw new Error('render absorb-summary: --into is required — the target epic');
+  if (!isFilled(args.topic)) throw new Error('render absorb-summary: --topic is required — the landing topic name');
+  const discussion = itemOf(manifest, 'discussion', workUnit);
+  if (!discussion || typeof discussion !== 'object' || typeof discussion.status !== 'string') {
+    throw new Error(`render absorb-summary: feature "${workUnit}" has no discussion — nothing to absorb`);
+  }
+  const research = itemOf(manifest, 'research', workUnit);
+  const series = itemOf(manifest, 'experiment', workUnit);
+  const experiments = series && typeof series === 'object'
+    ? Object.keys(series.experiments || {}).filter((id) => isParentExperimentId(id)).length
+    : 0;
+  return absorbSummary(workUnit, /** @type {string} */ (args.into), /** @type {string} */ (args.topic), {
+    discussion: discussion.status,
+    ...(research && typeof research === 'object' && typeof research.status === 'string' ? { research: research.status } : {}),
+    experiments,
+    seeds: Array.isArray(manifest.seeds) ? manifest.seeds.length : 0,
+    imports: Array.isArray(manifest.imports) ? manifest.imports.length : 0,
+  });
+}
+
+/** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, warn?: string}} args @returns {string} */
 function absorbReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-receipt');
   if (manifest.work_type !== 'epic') {
@@ -4213,7 +4244,29 @@ function absorbReceiptSurface(cwd, args) {
   if (unknown.length > 0) {
     throw new Error(`render absorb-receipt: --moved entries must be research, seeds, or imports, got "${unknown.join(', ')}"`);
   }
-  return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1' });
+  let experiments = 0;
+  if (args.experiments !== undefined) {
+    experiments = Number(args.experiments);
+    if (!Number.isInteger(experiments) || experiments < 1) {
+      throw new Error(`render absorb-receipt: --experiments must be a positive experiment count, got "${args.experiments}"`);
+    }
+    if (!itemOf(manifest, 'experiment', topic)) {
+      throw new Error(`render absorb-receipt: no experiment series "${topic}" on "${workUnit}" — the receipt renders what the absorb moved`);
+    }
+  }
+  return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1', experiments });
+}
+
+/** @param {string} cwd @param {{dotpath: string, feature?: string}} args @returns {string} */
+function absorbContinuationSurface(cwd, args) {
+  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-continuation');
+  if (manifest.work_type !== 'epic') {
+    throw new Error(`render absorb-continuation: "${workUnit}" is not an epic — the absorb has not run`);
+  }
+  if (!isFilled(args.feature)) {
+    throw new Error("render absorb-continuation: --feature is required — the absorbed feature's name");
+  }
+  return absorbContinuationMenu(/** @type {string} */ (args.feature), workUnit);
 }
 
 /** @param {string} cwd @param {{dotpath: string, to?: string, warn?: string}} args @returns {string} */
@@ -4259,6 +4312,34 @@ function absorbTarget(cwd, args) {
     throw new Error(`render absorb-target: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
   }
   return absorbTargetMenu(md);
+}
+
+/** @param {string} cwd @param {{dotpath: string, into?: string}} args @returns {string} */
+function absorbNameGateSurface(cwd, args) {
+  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-name-gate');
+  const md = manageDetail(cwd, workUnit);
+  if (!md) throw new Error(`render absorb-name-gate: work unit "${workUnit}" not found`);
+  if (!md.absorb_available) {
+    throw new Error(`render absorb-name-gate: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
+  }
+  if (!isFilled(args.into)) {
+    throw new Error('render absorb-name-gate: --into is required — the selected target epic');
+  }
+  if (!md.available_epics.includes(/** @type {string} */ (args.into))) {
+    throw new Error(`render absorb-name-gate: "${args.into}" is not an absorb target — available: ${md.available_epics.join(', ') || '(none)'}`);
+  }
+  return absorbNameGate(md, /** @type {string} */ (args.into));
+}
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function absorbConfirmGateSurface(cwd, args) {
+  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-confirm-gate');
+  const md = manageDetail(cwd, workUnit);
+  if (!md) throw new Error(`render absorb-confirm-gate: work unit "${workUnit}" not found`);
+  if (!md.absorb_available) {
+    throw new Error(`render absorb-confirm-gate: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
+  }
+  return absorbConfirmGate();
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
@@ -4643,11 +4724,15 @@ const SURFACES = {
   'cycle-gate': cycleGate,
   'workunit-receipt': workunitReceiptSurface,
   'topic-receipt': topicReceiptSurface,
+  'absorb-summary': absorbSummarySurface,
   'absorb-receipt': absorbReceiptSurface,
+  'absorb-continuation': absorbContinuationSurface,
   'promote-receipt': promoteReceiptSurface,
   'pivot-continuation': pivotContinuation,
   'session-receipt': sessionReceiptSurface,
   'absorb-target': absorbTarget,
+  'absorb-name-gate': absorbNameGateSurface,
+  'absorb-confirm-gate': absorbConfirmGateSurface,
   'plan-topics': planTopics,
   'revisit-phases': revisitPhasesSurface,
   'roadmap-view': roadmapViewSurface,

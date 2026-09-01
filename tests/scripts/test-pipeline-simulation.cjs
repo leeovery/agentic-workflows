@@ -1584,6 +1584,20 @@ describe('pipeline simulation', () => {
     // A standing do-not-report call on this topic's material.
     sim.run(['manifest', 'push', `${feat}.discussion.${feat}`, 'dismissed_grounds',
       'the migration path is settled and out of scope']);
+    // The discussion spawned an experiment still awaiting its evidence — the
+    // series travels with the topic, wait and all.
+    const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion',
+      '--problem', sim.write(`.workflows/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
+    assert.ok(fs.existsSync(path.join(sim.dir, spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
+    sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
+
+    // The manage flow's absorb gates render from the pre-absorb state.
+    assert.match(sim.render(['absorb-name-gate', feat, '--into', epic], { expect: 'content' }),
+      /MENU: absorb name gate/, 'the name-confirm gate renders for an absorbable feature');
+    assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
+      /MENU: absorb confirm gate/, 'the proceed consent renders for an absorbable feature');
+    assert.match(sim.render(['absorb-summary', feat, '--into', epic, '--topic', 'stray-topic'], { expect: 'content' }),
+      /Experiments: {2}1 experiment\(s\)/, 'the pre-confirm summary derives from the feature manifest — top-level records only');
 
     sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows', feat)), 'feature directory removed');
@@ -1595,8 +1609,37 @@ describe('pipeline simulation', () => {
       'dismissed grounds follow the material — the absorbed topic never re-raises what was turned down');
     assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'discussion', 'stray-topic.md')),
       'discussion file moved into the epic');
-    assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic'], { expect: 'content' }),
-      /Absorbed into Epic/, 'absorb receipt renders from the epic post-state');
+
+    // The series sub-tree audits whole at its epic identity: item, record,
+    // wait, directory — and the lock's edges keep holding after the move.
+    assert.deepStrictEqual(m.phases.experiment.items['stray-topic'],
+      { status: 'in-progress', experiments: { E1: { slug: 'cutover-cost', status: 'conceived' } } },
+      'the series travels whole — records and derived status intact');
+    assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].awaiting_experiments, ['E1'],
+      'the evidence wait rides the moved discussion item');
+    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'experiment', 'stray-topic', 'E1-cutover-cost', 'problem.md')),
+      'the record directory moved under the topic name');
+    sim.refuses(['topic', 'complete', epic, 'discussion', 'stray-topic'], /awaits experiment evidence \(E1\)/);
+    assert.match(sim.render(['experiment-register', `${epic}.experiment.stray-topic`], { expect: 'content' }),
+      /E1 cutover-cost/, 'the register renders the moved series at the epic address');
+    assert.match(sim.render(['experiment-wait-gate', `${epic}.discussion.stray-topic`], { expect: 'content' }),
+      /awaits experiment evidence \(E1\)/, 'the wait gate renders over the moved holder');
+
+    assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic', '--experiments', '1'], { expect: 'content' }),
+      /• Experiments: 1 moved/, 'absorb receipt renders from the epic post-state and names the moved series');
+    assert.match(sim.render(['absorb-continuation', epic, '--feature', feat], { expect: 'content' }),
+      /MENU: absorb continuation/, 'the continuation menu renders from the post-absorb state');
+
+    // The release edge survives the move: walking E1 to its verdict at the
+    // epic address releases the wait and the discussion can conclude.
+    sim.run(['experiment', 'advance', epic, 'stray-topic', 'E1']);
+    sim.run(['experiment', 'approve', epic, 'stray-topic', 'E1']);
+    sim.run(['experiment', 'advance', epic, 'stray-topic', 'E1']);
+    const settled = sim.run(['experiment', 'conclude', epic, 'stray-topic', 'E1', '--verdict', 'cutover costs a week — staged rollout adopted']);
+    assert.deepStrictEqual(settled.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
+    assert.strictEqual(sim.manifest(epic).phases.discussion.items['stray-topic'].awaiting_experiments, undefined);
+    assert.strictEqual(sim.manifest(epic).phases.discussion.items['stray-topic'].reconcile_needed, 'experiment',
+      'the moved holder is flagged for its next entry when the evidence lands');
   });
 
   it('spec promotion: a cross-cutting concern leaves the epic and the spec item goes terminal', () => {
@@ -2638,7 +2681,7 @@ describe('pipeline simulation', () => {
       '--problem', sim.write(`.workflows/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
     sim.refuses(['topic', 'cancel', wu, 'discussion', wu], /strands its evidence waits \(E2\)/);
     assert.match(sim.render(['cancel-cascade-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
-      /abandons the experiments it spawned/, 'the gate derives its statement from the item\'s own waits');
+      /abandons the experiments it awaits \(E2\)/, 'the gate derives its statement from the item\'s own waits');
     const swept = sim.run(['topic', 'cancel', wu, 'discussion', wu, '--cascade']);
     assert.deepStrictEqual(swept.abandoned, ['E2']);
     assert.deepStrictEqual(swept.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: [] }]);

@@ -14,9 +14,9 @@ You are in the **Discussion** phase — capturing WHAT and WHY through decisions
 
 | Work type | Pipeline |
 |---|---|
-| Epic | Discovery → Research → **Discussion** → Specification → Planning → Implementation → Review |
-| Feature | Research (optional) → **Discussion** → Specification → Planning → Implementation → Review |
-| Cross-cutting | Research (optional) → **Discussion** → Specification (terminal) |
+| Epic | Discovery → Research → (Experiment) → **Discussion** → Specification → Planning → Implementation → Review |
+| Feature | Research (optional) → (Experiment) → **Discussion** → Specification → Planning → Implementation → Review |
+| Cross-cutting | Research (optional) → (Experiment) → **Discussion** → Specification (terminal) |
 
 **Stay in your lane**: Capture the WHAT and WHY - decisions, rationale, competing approaches, edge cases. Don't jump to specifications, plans, or code. This is the time for debate and documentation.
 

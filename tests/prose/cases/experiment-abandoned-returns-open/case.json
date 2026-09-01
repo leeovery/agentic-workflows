@@ -1,0 +1,76 @@
+{
+  "origin": "the abandonment's return leg had no prose coverage — the release is only half the story: the spawning conversation's next entry must surface the put-down record before the waiting point settles (the reconcile advisory's experiment branch: callout, register, the partial report read, the flag cleared), the point must revert to open rather than inherit a verdict that never existed, and the conclusion the wait once blocked must now pass",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-discussion-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-discussion-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-discussion-process/references/conclude-discussion.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user comes back to close the payments discussion out. Shown that E1 was abandoned and why, they take it in stride: with the sandbox no longer mirroring production delivery timing there is nothing left to measure, and they would rather settle the window by judgment than wait for a rebuilt sandbox. They decide it themselves — a three-second wait before the checkout surfaces the pending state, revisited if support complaints arrive — and they want no successor experiment. When the point is written up they say that covers it and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review pass or the conclusion gets a yes — and they decline optional extras: no new threads, no second look. They introduce no new material.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "manifest get pay.discussion.pay reconcile_needed",
+      "render experiment-register pay.experiment.pay",
+      "manifest get pay.experiment.pay experiments",
+      "manifest delete pay.discussion.pay reconcile_needed",
+      "manifest get pay.discussion.pay awaiting_experiments",
+      "render conclude-gate pay.discussion.pay",
+      "topic complete pay discussion pay"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay reconcile_needed",
+      "render experiment-register pay.experiment.pay",
+      "manifest get pay.experiment.pay experiments",
+      "manifest delete pay.discussion.pay reconcile_needed",
+      "topic complete pay discussion pay"
+    ],
+    "calls_exclude": [
+      "experiment create",
+      "experiment advance",
+      "experiment approve",
+      "experiment conclude",
+      "experiment abandon",
+      "topic reactivate",
+      "topic reopen pay discussion pay",
+      "render experiment-wait-gate",
+      "render experiment-spawn-gate"
+    ]
+  }
+}

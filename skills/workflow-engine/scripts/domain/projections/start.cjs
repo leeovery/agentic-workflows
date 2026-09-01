@@ -18,7 +18,7 @@
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { combinedInbox } = require('../inbox-set.cjs');
-const { menuFrame: dotMenu, cmdOption, promptOption, rangeOption, section: labelled } = require('./surfaces.cjs');
+const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, section: labelled } = require('./surfaces.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -663,6 +663,37 @@ function absorbTargetMenu(md) {
 }
 
 /**
+ * The absorb name-confirm gate, served by `render absorb-name-gate` — the
+ * default topic name (the feature's own) offered before the collision check.
+ * @param {ManageDetail} md @param {string} epic
+ * @returns {string}
+ */
+function absorbNameGate(md, epic) {
+  return labelled(
+    'MENU: absorb name gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`Topic name in **${titlecase(epic)}**: **${md.work_unit}**`, [
+      cmdOption('y', 'yes', 'Use this name'),
+      cmdOption('b', 'back', 'Return'),
+      promptOption('Rename', 'Enter a different name (kebab-case)'),
+    ], { question: 'Is this name okay?' }),
+  );
+}
+
+/**
+ * The absorb proceed gate, served by `render absorb-confirm-gate` beneath
+ * the summary the calling prose renders — the transaction's consent.
+ * @returns {string}
+ */
+function absorbConfirmGate() {
+  return labelled(
+    'MENU: absorb confirm gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu('', [bareOption('y', 'yes'), bareOption('n', 'no')], { question: 'Proceed?' }),
+  );
+}
+
+/**
  * The view-plan topic selection menu, served by `render plan-topics` at the
  * gate that displays it. Numbering follows `planning_topics` order.
  * @param {ManageDetail} md
@@ -787,6 +818,8 @@ module.exports = {
   manageListView,
   manageUnitView,
   absorbTargetMenu,
+  absorbNameGate,
+  absorbConfirmGate,
   planTopicsMenu,
   completedView,
 };
