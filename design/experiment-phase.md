@@ -127,10 +127,12 @@ entered fresh.
 
 ### The menu is experiment-shaped
 
-Each queued or live experiment renders its own menu entry
-(`Enter E1 {slug} — {Topic} · experiment`), appearing at spawn and retiring
-at conclusion. Experiments rank above other recommendations; the pick
-stays the user's — working E1 then E2, or E1 then the half-unblocked
+On the epic dashboard each queued or live experiment renders its own
+menu entry (`Enter E1 {slug} — {Topic} · experiment`), appearing at
+spawn and retiring at conclusion; a linear work unit's menu surfaces
+the laboratory through its continue row, the record picked at entry.
+Experiments rank above other recommendations; the pick stays the
+user's — working E1 then E2, or E1 then the half-unblocked
 conversation, are both legitimate orders. Cancelling a
 no-longer-needed experiment releases its lock, and a phase whose locks
 have all released becomes the recommendation again.
