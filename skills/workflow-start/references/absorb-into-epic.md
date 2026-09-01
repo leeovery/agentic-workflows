@@ -36,19 +36,10 @@ Resolve the number against `available_epics` and store the selected epic as `tar
 
 ## B. Name Topic
 
-Default topic name = `{selected.name}` (the feature's work unit name).
+Default topic name = `{selected.name}` (the feature's work unit name). Fetch the gate and emit its MENU section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Topic name in **{target_epic:(titlecase)}**: **{selected.name}**
-
-**`◆ Is this name okay?`**
-
-**`y/yes`**  → Use this name
-**`b/back`** → Return
-**Rename** → Enter a different name (kebab-case)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-name-gate {selected.name} --into {target_epic}
 ```
 
 **STOP.** Wait for user response.
@@ -169,14 +160,10 @@ Absorb Summary
   • Remove feature work unit and directory
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the gate and emit its MENU section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
-
-**`y/yes`**
-**`n/no`**
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-confirm-gate {selected.name}
 ```
 
 **STOP.** Wait for user response.
@@ -229,14 +216,10 @@ Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried)
 node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--warn]
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the continuation and emit its MENU section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-**{selected.name:(titlecase)}** absorbed into **{target_epic:(titlecase)}**.
-
-**`c/continue`** → Continue {target_epic:(titlecase)} as epic
-**`b/back`**     → Return to previous view
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-continuation {target_epic} --feature {selected.name}
 ```
 
 **STOP.** Wait for user response.

@@ -286,10 +286,13 @@ Commands:
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
   render topic-receipt     <wu.phase.topic> --verb complete|cancel|reactivate [--warn]
   render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--warn]
+  render absorb-continuation <epic> --feature <name>
   render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--warn]
   render pivot-continuation <wu>
   render session-receipt   <wu> [--warn]
   render absorb-target     <feature>
+  render absorb-name-gate  <feature> --into <epic>
+  render absorb-confirm-gate <feature>
   render plan-topics       <wu>
   render revisit-phases    <wu>
   render roadmap-view

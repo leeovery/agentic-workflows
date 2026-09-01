@@ -182,6 +182,23 @@ function pivotContinuationMenu(workUnit) {
 }
 
 /**
+ * The absorb continuation menu — the manage flow's post-absorption decision.
+ * @param {string} feature @param {string} epic
+ * @returns {string}
+ */
+function absorbContinuationMenu(feature, epic) {
+  const name = titlecase(epic);
+  return section(
+    'MENU: absorb continuation',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`**${titlecase(feature)}** absorbed into **${name}**.`, [
+      cmdOption('c', 'continue', `Continue ${name} as epic`),
+      cmdOption('b', 'back', 'Return to previous view'),
+    ]),
+  );
+}
+
+/**
  * Session close (discovery and roadmap alike) — the indexing advisory; the
  * session is closed and committed either way. Empty without `--warn`.
  * @param {{warn?: boolean}} [opts]
@@ -193,4 +210,4 @@ function sessionReceipt({ warn = false } = {}) {
     : '';
 }
 
-module.exports = { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt };
+module.exports = { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt };

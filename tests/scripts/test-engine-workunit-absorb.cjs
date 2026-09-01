@@ -390,6 +390,18 @@ describe('engine workunit absorb — happy path', () => {
     assert.match(receipt, /• Research: moved\n {2}• Experiments: 3 moved\n {2}• Seed: moved/);
     assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--experiments', '0']).error,
       /--experiments must be a positive record count/);
+
+    // The continuation menu renders from the post-absorb state; the
+    // feature's name travels as a flag — the unit itself is gone.
+    const continuation = execFileSync('node',
+      [fix.engine, 'render', 'absorb-continuation', 'payments', '--feature', 'auth-flow'],
+      { cwd: fix.project, encoding: 'utf8' });
+    assert.match(continuation, /MENU: absorb continuation/);
+    assert.match(continuation, /\*\*Auth Flow\*\* absorbed into \*\*Payments\*\*\./);
+    assert.match(continuation, /\*\*`c\/continue`\*\* → Continue Payments as epic/);
+    assert.match(continuation, /\*\*`b\/back`\*\*\s+→ Return to previous view/);
+    assert.match(engineFails(fix, ['render', 'absorb-continuation', 'payments']).error,
+      /--feature is required/);
   });
 
   it('a live evidence wait travels on its holder, and the release edge keeps holding in the epic', () => {

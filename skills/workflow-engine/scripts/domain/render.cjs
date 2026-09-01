@@ -20,8 +20,8 @@ const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
-const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
-const { absorbTargetMenu, planTopicsMenu } = require('./projections/start.cjs');
+const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
+const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu } = require('./projections/start.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
   baselineScopeGate, baselineRound, baselineDocGate, baselineManageGate, baselineDocPick,
@@ -4226,6 +4226,18 @@ function absorbReceiptSurface(cwd, args) {
   return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1', experiments });
 }
 
+/** @param {string} cwd @param {{dotpath: string, feature?: string}} args @returns {string} */
+function absorbContinuationSurface(cwd, args) {
+  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-continuation');
+  if (manifest.work_type !== 'epic') {
+    throw new Error(`render absorb-continuation: "${workUnit}" is not an epic — the absorb has not run`);
+  }
+  if (!isFilled(args.feature)) {
+    throw new Error("render absorb-continuation: --feature is required — the absorbed feature's name");
+  }
+  return absorbContinuationMenu(/** @type {string} */ (args.feature), workUnit);
+}
+
 /** @param {string} cwd @param {{dotpath: string, to?: string, warn?: string}} args @returns {string} */
 function promoteReceiptSurface(cwd, args) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'promote-receipt');
@@ -4269,6 +4281,34 @@ function absorbTarget(cwd, args) {
     throw new Error(`render absorb-target: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
   }
   return absorbTargetMenu(md);
+}
+
+/** @param {string} cwd @param {{dotpath: string, into?: string}} args @returns {string} */
+function absorbNameGateSurface(cwd, args) {
+  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-name-gate');
+  const md = manageDetail(cwd, workUnit);
+  if (!md) throw new Error(`render absorb-name-gate: work unit "${workUnit}" not found`);
+  if (!md.absorb_available) {
+    throw new Error(`render absorb-name-gate: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
+  }
+  if (!isFilled(args.into)) {
+    throw new Error('render absorb-name-gate: --into is required — the selected target epic');
+  }
+  if (!md.available_epics.includes(/** @type {string} */ (args.into))) {
+    throw new Error(`render absorb-name-gate: "${args.into}" is not an absorb target — available: ${md.available_epics.join(', ') || '(none)'}`);
+  }
+  return absorbNameGate(md, /** @type {string} */ (args.into));
+}
+
+/** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
+function absorbConfirmGateSurface(cwd, args) {
+  const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-confirm-gate');
+  const md = manageDetail(cwd, workUnit);
+  if (!md) throw new Error(`render absorb-confirm-gate: work unit "${workUnit}" not found`);
+  if (!md.absorb_available) {
+    throw new Error(`render absorb-confirm-gate: "${workUnit}" is not absorbable — the guard (discussion, no spec-or-beyond, an in-progress epic) does not hold`);
+  }
+  return absorbConfirmGate();
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */
@@ -4654,10 +4694,13 @@ const SURFACES = {
   'workunit-receipt': workunitReceiptSurface,
   'topic-receipt': topicReceiptSurface,
   'absorb-receipt': absorbReceiptSurface,
+  'absorb-continuation': absorbContinuationSurface,
   'promote-receipt': promoteReceiptSurface,
   'pivot-continuation': pivotContinuation,
   'session-receipt': sessionReceiptSurface,
   'absorb-target': absorbTarget,
+  'absorb-name-gate': absorbNameGateSurface,
+  'absorb-confirm-gate': absorbConfirmGateSurface,
   'plan-topics': planTopics,
   'revisit-phases': revisitPhasesSurface,
   'roadmap-view': roadmapViewSurface,

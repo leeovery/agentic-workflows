@@ -1590,6 +1590,12 @@ describe('pipeline simulation', () => {
     sim.write(`${spawned.dir}/problem.md`, '# Problem — what a cutover actually costs\n');
     sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`]);
 
+    // The manage flow's absorb gates render from the pre-absorb state.
+    assert.match(sim.render(['absorb-name-gate', feat, '--into', epic], { expect: 'content' }),
+      /MENU: absorb name gate/, 'the name-confirm gate renders for an absorbable feature');
+    assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
+      /MENU: absorb confirm gate/, 'the proceed consent renders for an absorbable feature');
+
     sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows', feat)), 'feature directory removed');
     const m = sim.manifest(epic);
@@ -1618,6 +1624,8 @@ describe('pipeline simulation', () => {
 
     assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic', '--experiments', '1'], { expect: 'content' }),
       /• Experiments: 1 moved/, 'absorb receipt renders from the epic post-state and names the moved series');
+    assert.match(sim.render(['absorb-continuation', epic, '--feature', feat], { expect: 'content' }),
+      /MENU: absorb continuation/, 'the continuation menu renders from the post-absorb state');
 
     // The release edge survives the move: walking E1 to its verdict at the
     // epic address releases the wait and the discussion can conclude.
