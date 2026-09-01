@@ -791,6 +791,34 @@ describe('pipeline simulation', () => {
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', revFinal.id, '--clean']);
     sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+
+    // The triage-fold settle: a reroute reopens the concluded discussion, the
+    // raise arms new ground, and the absorb settles that ground into the
+    // review anchor — a sitting that only drained the queue arms no review;
+    // its review duty belongs to the closing gates' final pass.
+    sim.write('.workflows/.cache/scratch/concern-scratch.md',
+      '### Escalation path\n*From: alpha · discussion · 2026-07-23*\n\nWho gets paged?\n');
+    const reroute = sim.run(['topic', 'triage', wu, 'discussion', 'beta',
+      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'escalation-path',
+      '-m', `discussion(${wu}/alpha): reroute concern to beta`]);
+    assert.strictEqual(reroute.reopened, true, 'a delivery beneath a concluded discussion reopens it');
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
+      /review dispatch blocked/);
+    sim.run(['discussion-map', 'add', wu, 'beta', 'escalation-path']);
+    sim.run(['discussion-map', 'set', wu, 'beta', 'escalation-path', 'exploring']);
+    sim.run(['discussion-map', 'set', wu, 'beta', 'escalation-path', 'decided']);
+    sim.refuses(['topic', 'absorb', wu, 'discussion', 'beta',
+      '--file', '001-escalation-path.md', '-m', 'x'], /a discussion fold names its ground/);
+    const folded = sim.run(['topic', 'absorb', wu, 'discussion', 'beta',
+      '--file', '001-escalation-path.md', '--subtopic', 'escalation-path',
+      '-m', `discussion(${wu}/beta): absorb 001-escalation-path (from alpha)`]);
+    assert.strictEqual(folded.arming_settled, true, 'the fold\'s ground joins the anchor snapshot');
+    assert.strictEqual(folded.remaining, 0);
+    // The drained queue re-arms nothing — the fold never counts as movement.
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
+      /0 of 3 map moves since review-003/);
+    sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+
     sim.run(['topic', 'start', wu, 'research', 'gamma-prime']);
     sim.run(['topic', 'cancel', wu, 'research', 'gamma-prime']);
     assert.match(sim.render(['topic-receipt', `${wu}.research.gamma-prime`, '--verb', 'cancel'], { expect: 'content' }),

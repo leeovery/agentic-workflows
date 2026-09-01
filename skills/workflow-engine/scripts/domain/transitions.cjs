@@ -29,6 +29,7 @@ const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./c
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { computeTopicLifecycle, awaitedExperiments, experimentWaits, settleItemStatus } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
+const { settleFoldedSubtopic } = require('./agent-state.cjs');
 
 // The discovery map's lifecycle is computed from research and discussion
 // items alone (`computeTopicLifecycle`), so only those phases can move a map
@@ -595,6 +596,8 @@ function queueStatus(cwd, workUnit, phase, topic) {
  * @property {string} topic
  * @property {string} absorbed  the queue-file basename removed
  * @property {number} remaining  queue files left after the removal
+ * @property {boolean} [arming_settled]  discussion only: the fold's ground was settled into the review anchor
+ * @property {string} [arming_note]      discussion only: why it wasn't, when it wasn't
  * @property {string|null} [committed]
  * @property {string[]} [warnings]
  * @property {string} [note]
@@ -605,15 +608,26 @@ function queueStatus(cwd, workUnit, phase, topic) {
  * delete its queue file and commit the fold action-scoped (the phase
  * artifact, this deletion, the work-unit manifest) under the caller's
  * message. The response answers `remaining` so the caller routes
- * loop-or-exit with no follow-up read.
+ * loop-or-exit with no follow-up read. A discussion absorb names the
+ * fold's subtopic and settles it into the review-arming anchor
+ * (`settleFoldedSubtopic`): triage folds are settled ground, never map
+ * movement, so a sitting that only drained the queue arms no review —
+ * tolerant, because wedging the queue's drain would be worse than a
+ * missed settle.
  * @param {string} cwd @param {string} workUnit @param {string} phase
- * @param {string} topic @param {{file: string, message: string}} opts
+ * @param {string} topic @param {{file: string, message: string, subtopic?: string}} opts
  * @returns {TopicAbsorbResult}
  */
-function absorbConcern(cwd, workUnit, phase, topic, { file, message }) {
+function absorbConcern(cwd, workUnit, phase, topic, { file, message, subtopic }) {
   const queue = queueStatus(cwd, workUnit, phase, topic);
   if (file !== path.basename(file) || !file.endsWith('.md')) {
     throw new Error(`topic absorb: --file must be a queue-file name, not a path (got "${file}")`);
+  }
+  if (phase === 'discussion' && !subtopic) {
+    throw new Error('topic absorb: a discussion fold names its ground — pass --subtopic <name> (the subtopic the raise armed) so the fold settles into the review anchor instead of counting as map movement');
+  }
+  if (phase !== 'discussion' && subtopic !== undefined) {
+    throw new Error(`topic absorb: --subtopic settles a discussion fold into the review anchor — not legal in ${phase}`);
   }
   const rel = `.workflows/${workUnit}/${phase}/.triage/${topic}/${file}`;
   if (!queue.files.includes(rel)) {
@@ -622,6 +636,11 @@ function absorbConcern(cwd, workUnit, phase, topic, { file, message }) {
   fs.unlinkSync(path.join(cwd, rel));
   /** @type {TopicAbsorbResult} */
   const result = { phase, topic, absorbed: file, remaining: queue.count - 1 };
+  if (phase === 'discussion' && subtopic) {
+    const settled = settleFoldedSubtopic(cwd, workUnit, topic, subtopic);
+    result.arming_settled = settled.settled;
+    if (!settled.settled && settled.reason) result.arming_note = settled.reason;
+  }
   const artifactRel = `.workflows/${workUnit}/${phase}/${topic}.md`;
   /** @type {string[]} */
   const warnings = [];

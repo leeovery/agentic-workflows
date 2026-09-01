@@ -148,7 +148,7 @@ Commands:
   topic start <work-unit> <phase> <topic>
   topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]
   topic queue <work-unit> <phase> <topic>
-  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>
+  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>
   topic requeue <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
@@ -844,17 +844,19 @@ function runTopic(argv) {
       /** @type {string[]} */ const pos = [];
       /** @type {string|undefined} */ let file;
       /** @type {string|undefined} */ let message;
+      /** @type {string|undefined} */ let subtopic;
       for (let i = 0; i < rest.length; i++) {
         const a = rest[i];
         if (a === '--file') file = rest[++i];
+        else if (a === '--subtopic') subtopic = rest[++i];
         else if (a === '-m' || a === '--message') message = rest[++i];
         else pos.push(a);
       }
       const [workUnit, phase, topic] = pos;
       if (!workUnit || !phase || !topic || pos.length !== 3 || !file || !message) {
-        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>');
+        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>');
       }
-      const absorbed = absorbConcern(process.cwd(), workUnit, phase, topic, { file, message });
+      const absorbed = absorbConcern(process.cwd(), workUnit, phase, topic, { file, message, subtopic });
       beatQuietly(process.cwd(), workUnit, phase, topic);
       respond(absorbed);
       return;

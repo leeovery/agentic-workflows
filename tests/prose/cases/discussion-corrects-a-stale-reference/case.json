@@ -52,7 +52,7 @@
       "render triage-offer search-relevance.discussion.synonym-handling",
       "discussion-map set search-relevance synonym-handling expansion-source exploring",
       "discussion-map set search-relevance synonym-handling expansion-source decided",
-      "topic absorb search-relevance discussion synonym-handling --file 001-click-weights-cited-as-current.md",
+      "topic absorb search-relevance discussion synonym-handling --file 001-click-weights-cited-as-current.md --subtopic expansion-source",
       "absorb 001-click-weights-cited-as-current (from behavioural-ranking)",
       "render conclude-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling"

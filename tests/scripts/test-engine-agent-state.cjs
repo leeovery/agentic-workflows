@@ -39,6 +39,23 @@ function runFails(dir, args) {
   return parsed;
 }
 
+/** Engine runner for non-`agent` verbs (topic absorb); first response line only. */
+function engineJson(dir, args) {
+  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
+  const nl = out.indexOf('\n');
+  const parsed = JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
+  assert.strictEqual(parsed.ok, true);
+  return parsed;
+}
+
+function engineFails(dir, args) {
+  const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
+  assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+  const parsed = JSON.parse(res.stderr.trim());
+  assert.strictEqual(parsed.ok, false);
+  return parsed;
+}
+
 function readStore(dir, wu, phase, topic) {
   return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', '.cache', wu, phase, topic, 'state.json'), 'utf8'));
 }
@@ -569,5 +586,63 @@ describe('engine agent — discussion review arming', () => {
     const { SUBTOPIC_STATES } = require('../../skills/workflow-engine/scripts/domain/discussion-map.cjs');
     assert.deepStrictEqual(Object.keys(SUBTOPIC_RANK).sort(), [...SUBTOPIC_STATES].sort(),
       'a state outside the rank map would silently score 0');
+  });
+
+  /** Queue one rerouted concern for discussion/auth. @param {string} name */
+  function queueConcern(name) {
+    writeContent(dir, `.workflows/pay/discussion/.triage/auth/${name}`,
+      '### Ground\n*From: peer · discussion · 2026-09-01*\nbody\n');
+  }
+
+  it('a triage fold settles into the anchor — a drain-only sitting arms nothing', () => {
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    queueConcern('001-new-ground.md');
+    writeMap({ tokens: 'exploring', 'new-ground': 'decided' });
+    const res = engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
+      '--file', '001-new-ground.md', '--subtopic', 'new-ground',
+      '-m', 'discussion(pay/auth): absorb 001-new-ground (from peer)']);
+    assert.strictEqual(res.arming_settled, true);
+    assert.strictEqual(res.remaining, 0);
+    assert.deepStrictEqual(readStore(dir, 'pay', 'discussion', 'auth').agents['review-001'].map_snapshot,
+      { tokens: 'exploring', 'new-ground': 'decided' }, 'the folded ground joins the anchor at its landed state');
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
+      /0 of 1 map moves/, 'the fold never counts as movement');
+  });
+
+  it('organic movement beside a fold still arms', () => {
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    queueConcern('001-new-ground.md');
+    writeMap({ tokens: 'exploring', 'new-ground': 'decided', tangent: 'pending' });
+    engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
+      '--file', '001-new-ground.md', '--subtopic', 'new-ground',
+      '-m', 'discussion(pay/auth): absorb 001-new-ground (from peer)']);
+    assert.strictEqual(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).id,
+      'review-002', 'the parked tangent is the session\'s own ground and measures');
+  });
+
+  it('a discussion absorb requires --subtopic; other phases refuse it', () => {
+    queueConcern('001-new-ground.md');
+    assert.match(engineFails(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
+      '--file', '001-new-ground.md', '-m', 'x']).error,
+      /a discussion fold names its ground/);
+    writeContent(dir, '.workflows/pay/research/.triage/auth/001-x.md', '### X\nbody\n');
+    assert.match(engineFails(dir, ['topic', 'absorb', 'pay', 'research', 'auth',
+      '--file', '001-x.md', '--subtopic', 'x', '-m', 'x']).error,
+      /not legal in research/);
+  });
+
+  it('the settle is tolerant — no anchor and unknown ground absorb anyway', () => {
+    queueConcern('001-new-ground.md');
+    writeMap({ tokens: 'exploring', 'new-ground': 'decided' });
+    const unanchored = engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
+      '--file', '001-new-ground.md', '--subtopic', 'new-ground', '-m', 'x']);
+    assert.strictEqual(unanchored.arming_settled, false, 'no completed review, nothing to settle against');
+    assert.match(unanchored.arming_note, /no anchored review/);
+    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
+    queueConcern('002-typo.md');
+    const unknown = engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
+      '--file', '002-typo.md', '--subtopic', 'not-a-subtopic', '-m', 'x']);
+    assert.strictEqual(unknown.arming_settled, false);
+    assert.match(unknown.arming_note, /not on the Discussion Map/);
   });
 });

@@ -223,6 +223,55 @@ function mapMovement(before, after) {
 }
 
 /**
+ * The arming anchor: the latest report-backed review row carrying its
+ * dispatch-time map snapshot. A row with no report is a killed dispatch
+ * closed as bookkeeping, never a review — anchoring on it would hide every
+ * map move between the real review and the kill.
+ * @param {string} dir
+ */
+function anchorReviewRow(dir) {
+  return derivationRows(dir)
+    .filter((r) => r.kind === 'review' && r.map_snapshot && typeof r.map_snapshot === 'object' && reportBacked(r, dir))
+    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
+    .pop() || null;
+}
+
+/**
+ * Fold a triage-absorbed concern's ground into the arming anchor: the
+ * anchor row's `map_snapshot` entry for the subtopic is set to its current
+ * map status, so the walk's map writes on that ground never count as
+ * movement. An absorbed concern is settled ground, deliberately worked
+ * with the user — a sitting that only drained the queue stays quiet, and
+ * its review duty belongs to the closing gates' final pass. Organic work —
+ * new subtopics, forward transitions of the session's own ground — still
+ * measures. Tolerant throughout: the absorb transaction must never fail on
+ * the cache's account. Discussion only — nothing else is measured.
+ * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} subtopic
+ * @returns {{settled: boolean, reason?: string}}
+ */
+function settleFoldedSubtopic(cwd, workUnit, topic, subtopic) {
+  try {
+    return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+      const dir = agentDir(cwd, workUnit, 'discussion', topic);
+      const anchor = anchorReviewRow(dir);
+      if (!anchor) return { settled: false, reason: 'no anchored review to settle against' };
+      const current = subtopicStatuses(loadWorkUnitManifest(cwd, workUnit), topic)[subtopic];
+      if (current === undefined) return { settled: false, reason: `"${subtopic}" is not on the Discussion Map` };
+      const state = loadState(cwd, workUnit, 'discussion', topic);
+      const row = state.agents[anchor.id];
+      if (!row || !row.map_snapshot || typeof row.map_snapshot !== 'object') {
+        return { settled: false, reason: `anchor row ${anchor.id} is unreadable` };
+      }
+      row.map_snapshot[subtopic] = current;
+      saveState(cwd, workUnit, 'discussion', topic, state);
+      return { settled: true };
+    });
+  } catch (err) {
+    return { settled: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
  * @typedef {object} ReviewArming
  * @property {boolean} armed
  * @property {number} cycles              completed (report-backed) review cycles
@@ -255,10 +304,7 @@ function reviewArming(cwd, workUnit, topic) {
   if (needed === 0) {
     return { armed: true, cycles, map_moves_seen: null, map_moves_needed: 0, reason: 'no completed review cycle — the first review is free' };
   }
-  const last = derivationRows(dir)
-    .filter((r) => r.kind === 'review' && r.map_snapshot && typeof r.map_snapshot === 'object' && reportBacked(r, dir))
-    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
-    .pop();
+  const last = anchorReviewRow(dir);
   if (!last) {
     return { armed: true, cycles, map_moves_seen: null, map_moves_needed: needed, reason: 'no snapshot on record — armed; this dispatch stamps one' };
   }
@@ -623,4 +669,5 @@ module.exports = {
   incorporateAgent,
   completedReviewCycles,
   reviewArming,
+  settleFoldedSubtopic,
 };
