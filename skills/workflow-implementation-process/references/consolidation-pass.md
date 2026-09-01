@@ -177,6 +177,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {wo
 
 ## D. Process Task
 
+Each pass reads the next pending proposal from the staging file as it now stands — a settle may have rewritten it since the overview. `{consolidation_gate_mode}` is live: `auto` from the moment the user opts in mid-walk.
+
 #### If no pending tasks remain in `staging.p{N}`
 
 **If any task is `approved`:**
@@ -187,22 +189,18 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {wo
 
 → Proceed to **F. Record the Phase**.
 
-#### Otherwise
-
-Present the next pending proposal.
-
-**If it carries a Decision:**
+#### If the next pending proposal carries a Decision
 
 → Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.implementation.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/consolidation-tasks-p{N}.md`, payload_path = `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json`, gate_mode = `{consolidation_gate_mode}`, row_address = `staging.p{N}.tasks.{n}`, comment_hint = `Provide feedback to adjust`.
 
 → On return, return to **D. Process Task**.
 
-**If it carries no Decision:**
+#### Otherwise
 
-Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "{class tag}", "placement": "phase {N}", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one. Then render with `{consolidation_gate_mode}` (`auto` from the moment the user opts in mid-walk; a proposal whose fork a Comment on its raise settled renders `--gate gated` whatever the mode — the settled direction interprets the user's words, so it lands with an explicit approval), and emit each section verbatim at its marked instruction:
+Present it plain. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "{class tag}", "placement": "phase {N}", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one. `{gate}` is `{consolidation_gate_mode}` — except a proposal whose fork a Comment on its raise settled this session, which renders `gated` whatever the mode: the settled direction interprets the user's words, so it lands with an explicit approval. Render, and emit each section verbatim at its marked instruction:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {consolidation_gate_mode} --comment-hint "Provide feedback to adjust"
+node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate} --comment-hint "Provide feedback to adjust"
 ```
 
 #### If the response carried `DISPLAY: task auto-approved`

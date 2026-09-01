@@ -216,7 +216,7 @@ Settle the spec defects first — each `## Spec Defects` entry in `analysis-repo
 
 → Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
 
-A record-settled entry lands there silently — a derivable gap included, its derivation in the corrigendum. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict (a product-intent gap, or a call the reference could not stand behind — the only classes it returns open) becomes one whose Solution says what is settled and whose **Decision** carries the question, a **Stakes** line arguing the stop (each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation where a side is marked), and two to four sides, each written as the product end state chosen — what the product *is* if that side wins, never the work to do; a fork whose sides cannot be written as two distinct product end states is below the bar — the recommended side first and marked `(recommended)`; only an honest no-lean fork carries no marker. An entry the reference returns unsettled (the item back in its own phase, or held by a live session) is left exactly as reported — never re-classified here. Add each staged verdict under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Analysis Tasks: {Topic} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem**, **Solution**, and where there is one the **Decision** with its **Stakes** and sides — and initialise its row:
+A record-settled entry lands there silently — a derivable gap included, its derivation in the corrigendum. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict (a product-intent gap, or a call the reference could not stand behind — the only classes it returns open) becomes one whose Solution says what is settled and whose **Decision** carries the question, a **Stakes** line arguing the stop (each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation where a side is marked), and two to four sides, each written as the product end state chosen — what the product *is* if that side wins, never the work to do — the recommended side first and marked `(recommended)`; only an honest no-lean fork carries no marker. An entry the reference returns unsettled (the item back in its own phase, or held by a live session) is left exactly as reported — never re-classified here. Add each staged verdict under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Analysis Tasks: {Topic} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem**, **Solution**, and where there is one the **Decision** with its **Stakes** and sides — and initialise its row:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} pending
@@ -246,26 +246,24 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {wo
 
 ## F. Process Task
 
+Each pass reads the next pending proposal from the staging file as it now stands — a settle may have rewritten it since the overview. `{analysis_gate_mode}` is live: `auto` from the moment the user opts in mid-cycle.
+
 #### If no pending tasks remain
 
 → Proceed to **G. Route on Results**.
 
-#### Otherwise
-
-Present the next pending proposal.
-
-**If it carries a Decision:**
+#### If the next pending proposal carries a Decision
 
 → Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.implementation.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md`, payload_path = `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json`, gate_mode = `{analysis_gate_mode}`, row_address = `staging.c{N}.tasks.{n}`, comment_hint = `Provide feedback to adjust`.
 
 → On return, return to **F. Process Task**.
 
-**If it carries no Decision:**
+#### Otherwise
 
-Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one. Then render with `{analysis_gate_mode}` (`auto` from the moment the user opts in mid-cycle; a proposal whose fork a Comment on its raise settled renders `--gate gated` whatever the mode — the settled direction interprets the user's words, so it lands with an explicit approval), and emit each section verbatim at its marked instruction:
+Present it plain. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one. `{gate}` is `{analysis_gate_mode}` — except a proposal whose fork a Comment on its raise settled this session, which renders `gated` whatever the mode: the settled direction interprets the user's words, so it lands with an explicit approval. Render, and emit each section verbatim at its marked instruction:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {analysis_gate_mode} --comment-hint "Provide feedback to adjust"
+node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate} --comment-hint "Provide feedback to adjust"
 ```
 
 #### If the response carried `DISPLAY: task auto-approved`

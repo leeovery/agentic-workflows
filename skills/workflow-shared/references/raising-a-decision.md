@@ -25,7 +25,7 @@ A surviving Decision whose staged block lacks a Stakes line gains one now, in `{
 
 #### If the Decision falls below the bar
 
-Settle it: investigate or derive, and rewrite the staged proposal — Solution becomes the settled direction with its derivation; the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
+Settle it: investigate or derive, and rewrite the staged proposal in `{staging_file}` — Solution becomes the settled direction with its derivation; the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
 
 → Return to caller.
 
@@ -35,7 +35,7 @@ Settle it: investigate or derive, and rewrite the staged proposal — Solution b
 
 ## B. Compose the Raise
 
-Compose the raise before any render — from zero: it reaches a user who last held this corner of the work hours or days ago, so nothing from the session is assumed remembered, and every term is grounded as it arrives. The staged Problem and Solution are the record, never the script — digest them; they reach the screen only through the technical arm. Two beats:
+Compose the raise before any render, and hold it — nothing reaches the screen until **C. Emission** places it between the two sections. From zero: it reaches a user who last held this corner of the work hours or days ago, so nothing from the session is assumed remembered, and every term is grounded as it arrives. The staged Problem and Solution are the record, never the script — digest them; they reach the screen only through the technical arm. Two beats:
 
 - **What changes for the product, from zero.** The before/after in the user's terms first — what the product does today, what it would do — then one to three devices, chosen for understanding-speed:
 
@@ -45,7 +45,7 @@ Compose the raise before any render — from zero: it reaches a user who last he
 
 #### If the sides cannot be composed as two distinct product end states or the mirrored consequence cannot be stated
 
-The fork is below the bar by construction — composition is the test. Settle it: rewrite the staged proposal — Solution absorbs the settled direction with its derivation; the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
+The fork is below the bar by construction — composition is the test. Settle it: rewrite the staged proposal in `{staging_file}` — Solution absorbs the settled direction with its derivation; the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
 
 → Return to caller.
 
@@ -55,7 +55,7 @@ The fork is below the bar by construction — composition is the test. Settle it
 
 ## C. Emission
 
-Write the task's payload to `{payload_path}` with the Write tool — the base fields from the staging proposal exactly as the caller's plain path prescribes (its `outcome` clause included), plus `"stakes": "…"` (the staged Stakes line) and `"decision": {"question": "…", "options": […]}` — sides in the staged order, the `(recommended)`-marked side as `{"summary": "{side}", "recommended": true}` with the marker stripped, the rest plain strings; the engine orders the recommended side first, so staged order is rendered order and the number the user types indexes it. Then render:
+Write the task's payload to `{payload_path}` with the Write tool — the base fields from the staging proposal exactly as the caller's plain path prescribes (never `outcome`: the engine refuses it beside a decision — the raise carries what the change would look like), plus `"stakes": "…"` (the staged Stakes line) and `"decision": {"question": "…", "options": […]}` — sides in the staged order, the `(recommended)`-marked side as `{"summary": "{side}", "recommended": true}` with the marker stripped, the rest plain strings; the engine orders the recommended side first, so staged order is rendered order and the number the user types indexes it. Then render:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {dotpath} --file {payload_path} --gate {gate_mode} --comment-hint "{comment_hint}"
@@ -91,20 +91,20 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {dotpath} {r
 
 **If `technical`:**
 
-The record's depth, on request — retell the fork from the staged proposal: mechanism-first, real names with `file:line`, each mechanism tied back to what it produces in the product. A lens shift you drive, never a file dump:
+The record's depth, on request — retell the fork from the staged proposal and the findings behind it (the cycle's findings and report files its `sources:` line points into; read what is not in context): mechanism-first, real names with `file:line`, each mechanism tied back to what it produces in the product. A lens shift you drive, never a file dump:
 
-→ Load **[technical-lens.md](../../workflow-investigation-process/references/technical-lens.md)** and follow its instructions as written.
+→ Load **[technical-lens.md](technical-lens.md)** and follow its instructions as written.
 
-Then re-run **C. Emission**'s render, unchanged, and re-emit the `DISPLAY: proposed task` and `MENU: task decision` sections only, each verbatim per its marker — the raise is not re-composed; the retelling sits above the re-grounded ask.
+Then re-run the render at **C. Emission** — the same command, the payload untouched — and re-emit the `DISPLAY: proposed task` and `MENU: task decision` sections, each verbatim per its marker; the raise is not re-composed — the retelling sits above the re-grounded ask.
 
 → Return to **D. Response Handling**.
 
 **If comment and the revision keeps the fork:**
 
-Revise the staged proposal in `{staging_file}` per the user's words (content only; the marked side stays listed first), and rewrite the payload from it. The revision is an interpretation of the user's words, so it lands with an explicit approval — re-render with `--gate gated` whatever the walk's mode:
+Revise the staged proposal in `{staging_file}` per the user's words (content only; the marked side stays listed first), and rewrite the payload from it. A decision menu stops for an explicit choice at either gate mode, so the walk's own mode carries — re-render:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {dotpath} --file {payload_path} --gate gated --comment-hint "{comment_hint}"
+node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {dotpath} --file {payload_path} --gate {gate_mode} --comment-hint "{comment_hint}"
 ```
 
 Emit the `DISPLAY: proposed task` section verbatim per its marker; then one line reading back how the fork now stands — the exchange that revised it is the ground, and the raise is not re-composed; then the `MENU: task decision` section verbatim per its marker.
@@ -113,6 +113,6 @@ Emit the `DISPLAY: proposed task` section verbatim per its marker; then one line
 
 **If comment and the feedback settles the question:**
 
-It settles the same way a chosen side does: rewrite the staged proposal — Solution absorbs the settled direction the user's words carry, and the Decision and Stakes lines go. Record nothing: the settled direction is an interpretation of the user's words, and the caller's loop re-presents it as a plain proposal at an explicit gate.
+It settles the same way a chosen side does: rewrite the staged proposal in `{staging_file}` — Solution absorbs the settled direction the user's words carry, and the Decision and Stakes lines go. Record nothing: the settled direction is an interpretation of the user's words, and the caller's loop re-presents it as a plain proposal at an explicit gate.
 
 → Return to caller.
