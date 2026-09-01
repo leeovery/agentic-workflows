@@ -4,7 +4,7 @@
 
 ---
 
-Resolve which experiment this session works — the entry is per-topic, and the record resolves here. Loaded by the entry backbone and by the return leg's next pick ([next-experiment.md](../../workflow-experiment-process/references/next-experiment.md)). On return, `{id}`, `{slug}`, and `{record_status}` name a live record.
+Resolve which experiment this session works — the entry is per-topic, and the record resolves here. Loaded by the entry backbone and by the return leg's next pick ([next-experiment.md](../../workflow-experiment-process/references/next-experiment.md)). On return, `{id}`, `{slug}`, and `{record_status}` name a live record — or a `b/back` from the picker resolves no record, and the caller routes the back-out.
 
 The caller holds the series — the `experiments` subtree. Count its **live top-level records**: ids without a dot whose status is neither `concluded` nor `abandoned`.
 
@@ -61,6 +61,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-pick {w
 ```
 
 **STOP.** Wait for user response.
+
+**If `b/back`:**
+
+No record resolves.
+
+→ Return to caller.
 
 **If the response names a sub-experiment (`E{n}.{m}`):**
 

@@ -10,7 +10,13 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-You are entering the **laboratory** — a topic's experiment series. Experiments are a tool research and discussion use: a conversation hits a question talking cannot settle, spawns a record, and the laboratory answers it — designed before it is measured, run as designed, reported with a one-line verdict. The spawn is the phase's one door; this skill only ever enters a series that already exists, and which record to work resolves inside it.
+You are entering the **laboratory** — a topic's experiment series. Experiments are a tool research and discussion use: a conversation hits a question talking cannot settle, spawns a record, and the laboratory answers it — designed before it is measured, run as designed, reported with a one-line verdict. The spawn is the phase's one door; this skill only ever enters a series that already exists, and which record to work resolves inside it. Where the laboratory sits in the pipeline depends on the work type:
+
+| Work type | Pipeline |
+|---|---|
+| Epic | Discovery → Research → **(Experiment)** → Discussion → Specification → Planning → Implementation → Review |
+| Feature | Research (optional) → **(Experiment)** → Discussion → Specification → Planning → Implementation → Review |
+| Cross-cutting | Research (optional) → **(Experiment)** → Discussion → Specification (terminal) |
 
 Spawned from a Research or Discussion conversation; the verdict returns to the conversation that asked.
 
@@ -68,7 +74,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 Load **[select-record.md](references/select-record.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 4**.
+#### If the resolve returned no record (`b/back` from the picker)
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Nothing entered — the series stands as it is, and the menu is the way back.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### Otherwise
+
+→ Proceed to **Step 4**.
 
 ---
 
