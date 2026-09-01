@@ -59,6 +59,8 @@ Further claims:
 - no subtopic is added to the map before the user engages
 - the walk stops with the raise pending; the user never answers it
 
-EXPECTED WORLD — the fixture plus exactly one change: the agent store
-row `review-001` has the payment-intent finding surfaced and stands
-`acknowledged` with the other remaining.
+EXPECTED WORLD — the fixture plus exactly one durable change: the
+agent store row `review-001` has the payment-intent finding surfaced
+and stands `acknowledged` with the other remaining. Render payloads
+and per-turn heartbeats under `.workflows/.cache/` are machinery, not
+changes.
