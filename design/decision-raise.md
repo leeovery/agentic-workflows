@@ -99,18 +99,26 @@ way was never a real fork: composition doubles as enforcement.
    `workflow-review-findings-synthesizer`), the consolidation fold step,
    and the two spec-defect staging paragraphs (analysis-loop E,
    review-actions C) require each side written as the product end state
-   chosen, never the work to do — with the self-test stated: a fork whose
-   sides can't be written as two distinct end states is below the bar.
+   chosen, never the work to do. The self-test — a fork whose sides
+   can't be written as two distinct end states is below the bar — is
+   stated at the three staging gates (both synthesizers, the fold);
+   the spec-defect sites prescribe the side shape only, and the walk's
+   own composition test owns the verdict.
 7. **`t/technical` is a lens shift, not a dump** — per the codified
-   precedent (`technical-lens.md`): the session retells the fork
-   mechanism-first from the staged record, then re-runs the render and
-   re-emits header + menu (the raise is not re-composed; the dispose
-   exception that covers the Comment arm covers this arm too).
+   precedent (`technical-lens.md`, home: `workflow-shared/references/`
+   beside its product counterpart): the session retells the fork
+   mechanism-first from the staged proposal and the findings files
+   behind it, then re-runs the render — payload untouched — and
+   re-emits header + menu; the raise is not re-composed. The Comment
+   and technical re-entries loop inside the reference's response
+   section and never re-pass dispose.
 8. **"Making it land" is extracted** to
    `workflow-shared/references/making-it-land.md` (device palette,
-   example-over-description, the glance test); `background-agent-surfacing.md`
-   §G loads it, `raising-a-decision.md` loads it. §G's walk-specific
-   clauses (cheap path, scene reuse) stay in §G.
+   example-over-description, the cheap path, the glance test); both
+   raise surfaces load it at their point of composition —
+   `background-agent-surfacing.md` §G inside its first beat,
+   `raising-a-decision.md` inside B — never from a glossary a step
+   ordering could defer past emission.
 9. **Layout fix for what still renders verbatim**: blank lines between
    Problem, Solution, and Outcome in the plain-proposal body.
 10. **Payload contract unchanged.** `stakes` stays required beside
@@ -161,3 +169,24 @@ way was never a real fork: composition doubles as enforcement.
   Dead-fork dispose coverage landed by reworking
   `implementation-settles-a-sub-bar-decision` to the Portal shape: a
   Decision staged beside the sibling whose approval forecloses a side.
+- 2026-09-01 — the standing review pass (8 finders) closed ~25 verified
+  findings across the stack, and the stack rebased onto v0.7.23.
+  Engine: the menu label is head chrome — `alignOptions` never scans it,
+  so a model-authored question shaped like an option row cannot capture
+  the arrow column; newline questions/sides and `outcome` beside
+  `decision` are refused by name; the technical row takes its siblings'
+  wording. Prose: the walks' decision split is a first-match H4 chain
+  with a per-pass read of the staging file as it now stands (a settle's
+  rewrite must be seen on re-entry), and the plain fence renders
+  `--gate {gate}` resolved in its prelude; the keeps-fork re-render
+  carries the walk's mode — gated bought nothing on a menu that always
+  stops, and only suppressed the auto announcement; `technical-lens.md`
+  moved to `workflow-shared` (two loaders across skills — the
+  single-consumer rule that placed it locally no longer held).
+  Cases: every declarer of the surfacing protocol declares
+  `making-it-land.md`; the sub-bar case carries both dispose verdicts —
+  dead fork and dressed technical fork — in one walk.
+  Raised, not acted on: an in-band interleave hint in the decision
+  DISPLAY's marker; a durable marker for the comment-settled explicit
+  approval (the crash window is inherited and narrow); a case for the
+  composition-fails settle (coverage queue).
