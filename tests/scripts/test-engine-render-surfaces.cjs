@@ -122,12 +122,12 @@ describe('experiment register + approval gate', () => {
     assert.match(out, /=== MENU: experiment approval gate \(emit verbatim as markdown, then STOP for the user's response\) ===/);
     assert.match(out, /◆ Approve E1's design\?/);
     const a = out.indexOf('**`a/approve`**');
-    const p = out.indexOf('**`p/park`**');
+    const b = out.indexOf('**`b/abandon`**');
     const amend = out.indexOf('**Amend**');
-    assert.ok(a > -1 && p > a && amend > p, 'command options lead, the prompt option closes');
+    assert.ok(a > -1 && b > a && amend > b, 'command options lead, the prompt option closes');
     assert.match(unwrap(out), /Freeze the design and start measuring/);
     assert.ok(!out.includes('re-confirmed here'), 'the amendment-window explanation lives in prose, not the option label');
-    assert.match(unwrap(out), /Put E1 down — abandoned with its reason; the register keeps the row/);
+    assert.match(unwrap(out), /Abandon E1 — recorded with its reason; the register keeps the row/);
     assert.match(unwrap(out), /Tell me what to change — the design folds it in before the freeze/);
   });
 

@@ -400,7 +400,7 @@ function abandonExperiment(cwd, workUnit, topic, id, { reason }) {
     if (isParentExperimentId(id)) {
       const open = liveSubs(item, id).map(([subId, r]) => `${subId}: ${r.status}`);
       if (open.length > 0) {
-        throw new Error(`experiment ${id} ("${topic}") has live sub-experiments (${open.join(', ')}) — conclude or abandon each before putting the parent down`);
+        throw new Error(`experiment ${id} ("${topic}") has live sub-experiments (${open.join(', ')}) — conclude or abandon each before abandoning the parent`);
       }
     }
     record.status = 'abandoned';

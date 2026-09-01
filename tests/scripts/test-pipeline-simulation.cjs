@@ -2565,7 +2565,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
 
-    // The spawn parks the conversation behind its evidence: the bridge routes
+    // The spawn holds the conversation behind its evidence: the bridge routes
     // to the experiment until the wait releases — the now-and-later exits
     // land on the same state.
     const e1 = sim.run(['experiment', 'create', wu, wu, '--slug', 'frame-budget', '--from', 'discussion']);

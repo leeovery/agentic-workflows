@@ -27,7 +27,7 @@ const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's re
  * @property {string} slug
  * @property {string} status    one of the record vocabulary
  * @property {string} [verdict] concluded rows — the decision rule's outcome
- * @property {string} [reason]  abandoned rows — why the row was put down
+ * @property {string} [reason]  abandoned rows — why the row was abandoned
  */
 
 // One register row: `E{n} {slug}`. A terminal row carries no tag — its state
@@ -75,15 +75,16 @@ function experimentRegister(topic, rows) {
 /**
  * The briefing gate — the user-confirmed freeze between a written design and
  * the first measurement. Rendered after the design is presented
- * conversationally; approve records the freeze (`experiment approve`), park
- * abandons with the row kept, an amendment folds in before the freeze.
+ * conversationally; approve records the freeze (`experiment approve`), abandon
+ * ends the record with its reason and the row kept, an amendment folds in
+ * before the freeze.
  * @param {string} id
  * @returns {string}
  */
 function experimentApprovalGate(id) {
   return section('MENU: experiment approval gate', MENU_INSTRUCTION, menu('', [
     cmdOption('a', 'approve', 'Freeze the design and start measuring'),
-    cmdOption('p', 'park', `Put ${id} down — abandoned with its reason; the register keeps the row`),
+    cmdOption('b', 'abandon', `Abandon ${id} — recorded with its reason; the register keeps the row`),
     promptOption('Amend', 'Tell me what to change — the design folds it in before the freeze'),
   ], { question: `Approve ${id}'s design?` }));
 }
