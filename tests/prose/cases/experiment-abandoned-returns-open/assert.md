@@ -3,11 +3,13 @@ The prose should have taken this path:
 1. the entry reads the discussion status, finds it in progress, and
    emits the resuming phase note; the reconcile check finds
    `experiment` and takes the advisory's experiment branch: the
-   evidence-landed callout, the series register rendered verbatim —
-   E1's row abandoned with its reason — and the abandoned record's
-   partial report read from disk. The abandonment is presented as what
-   it is: the wait released with nothing measured, the waiting point
-   back open. The flag is cleared before the handoff
+   wait-released callout, the series register rendered verbatim —
+   E1's row abandoned with its reason — then the series read off the
+   manifest to bind the record's directory, and the abandoned
+   record's partial report read from disk. The abandonment is
+   presented as what it is: the wait released with nothing measured,
+   the waiting point back open. The flag is cleared before the
+   handoff
 2. the entry finds the carrier in the discovery session log and hands
    off without interviewing; the process renders resume detection and
    the user continues; initialisation is skipped
@@ -21,11 +23,11 @@ The prose should have taken this path:
    that E1 was abandoned and why the point was settled without
    measurement — the awaiting note gives way to the decision, the map
    records the subtopic decided, and the write commits
-5. the user wraps; every subtopic is settled, so the closing gates
-   run: the triage queue reads empty, the evidence-wait check reads
-   empty — no wait gate, the release already happened — and the review
-   classification finds no review has ever run, so the mandatory gate
-   asks and the user agrees
+5. the user wraps; the ceremony's evidence-wait check reads empty —
+   no wait gate, the release already happened — every subtopic is
+   settled, and the closing gates run: the triage queue reads empty
+   and the review classification finds no review has ever run, so the
+   mandatory gate asks and the user agrees
 6. the final review dispatches, the stubbed report returns clean and
    is acknowledged; document review reconciles the file against the
    session; the compliance check passes

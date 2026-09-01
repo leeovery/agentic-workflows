@@ -30,13 +30,14 @@ The prose should have taken this path:
    the laboratory's
 7. the session notes the handed-off question in the research file as
    the waiting point awaiting E1, commits the research topic with the
-   spawn message, then commits the experiment record — two commits, in
+   spawn message, then commits the experiment record sweep-marked — the
+   laboratory's slot is never the spawner's to claim — two commits, in
    that order
 8. the now-or-later gate is fetched from the engine and its menu
    emitted verbatim; the user takes now
 9. the session pauses mid-phase with no closing ceremony — no final
    review, no document review, no completion attempt — says where the
-   ball sits (E1 queued, the menu carries the entry, fresh context via
+   ball sits (E1 queued, the menu carries the way in, fresh context via
    /clear then /workflow-start), and stops at the terminal condition
 
 Further claims:

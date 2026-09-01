@@ -64,13 +64,14 @@ Set `topic` to the user's input.
 
 ## C. Collision Check
 
-Check if a discussion topic with this name already exists in the target epic:
+Check whether the name is taken in the target epic — as a discussion topic or an experiment series:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_epic}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_epic}.experiment.{topic}
 ```
 
-#### If `true`
+#### If either is `true`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -84,7 +85,7 @@ Set `topic` to the user's input.
 
 → Return to **C. Collision Check**.
 
-#### If `false`
+#### If both are `false`
 
 → Proceed to **D. Research and Experiments Check**.
 
@@ -125,21 +126,21 @@ Take the discussion item's status (`phases.discussion.items.{selected.name}.stat
 ```
 Absorb Summary
 
-  Feature:    {selected.name:(titlecase)}
-  Target:     {target_epic:(titlecase)}
-  Topic:      {topic}
-  Discussion: [{discussion_status}]
+  Feature:     {selected.name:(titlecase)}
+  Target:      {target_epic:(titlecase)}
+  Topic:       {topic}
+  Discussion:  [{discussion_status}]
 @if(has_research)
-  Research:   {research_item_count} file(s)
+  Research:    {research_item_count} file(s)
 @endif
 @if(has_experiments)
   Experiments: {experiment_count} record(s)
 @endif
 @if(has_seeds)
-  Seed:       {seeds_count} file(s) (origin)
+  Seed:        {seeds_count} file(s) (origin)
 @endif
 @if(has_imports)
-  Imports:    {imports_count} file(s)
+  Imports:     {imports_count} file(s)
 @endif
 
   Actions:
@@ -193,6 +194,12 @@ The JSON response reports what moved (`discussion`, `research`, `experiment`, `i
 The refusal names the blocking condition; nothing was touched — relay the error.
 
 **If the error is a topic-name collision:**
+
+→ Return to **B. Name Topic**.
+
+**If the error names experiment state joining by the topic name:**
+
+The recovery is the name the wait joins through — the feature's own.
 
 → Return to **B. Name Topic**.
 

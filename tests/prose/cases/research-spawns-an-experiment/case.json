@@ -45,6 +45,7 @@
       "--from research",
       "spawn E1",
       "E1 problem statement",
+      "experiment/synonym-handling --sweep",
       "render experiment-spawn-gate search-relevance.research.synonym-handling --id E1"
     ],
     "calls_in_order": [

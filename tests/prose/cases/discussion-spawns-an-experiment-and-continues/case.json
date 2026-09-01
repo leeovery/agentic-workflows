@@ -23,7 +23,6 @@
     "skills/workflow-knowledge/references/contextual-query.md",
     "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
-    "skills/workflow-discussion-process/references/closing-gates.md",
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-shared/references/background-agent-surfacing.md",
@@ -33,7 +32,7 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user comes back to settle webhook timing and goes straight at it: how long should the checkout wait on the capture webhook before surfacing a pending state? Pressed for what the window rests on, they surface the ground truth — the vendor claims sub-second delivery, the design leans on that claim, and nobody has measured it against the real sandbox. They are clear that no amount of talking settles it: the number has to be collected properly before the window is worth choosing. Offered a controlled way to get it they take it — but they are not done talking, so asked whether to work the experiment now or keep going they keep going: there is a refund-notification wrinkle they want settled while it is fresh. They settle it decisively — refund webhooks reuse the capture consumer's idempotent path, no separate handler — and then ask to wrap the discussion up. Told what is open they agree to set the timing question aside for the close — the experiment will answer it. At the blocked conclusion they take the pause rather than keep talking. They introduce no other topics and never override a block.",
+  "conduct": "The user comes back to settle webhook timing and goes straight at it: how long should the checkout wait on the capture webhook before surfacing a pending state? Pressed for what the window rests on, they surface the ground truth — the vendor claims sub-second delivery, the design leans on that claim, and nobody has measured it against the real sandbox. They are clear that no amount of talking settles it: the number has to be collected properly before the window is worth choosing. Offered a controlled way to get it they take it — but they are not done talking, so asked whether to work the experiment now or keep going they keep going: there is a refund-notification wrinkle they want settled while it is fresh. They settle it decisively — refund webhooks reuse the capture consumer's idempotent path, no separate handler — and then ask to wrap the discussion up. At the blocked conclusion they take the pause rather than keep talking. They introduce no other topics and never override a block.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   },
@@ -45,6 +44,7 @@
       "--from discussion",
       "spawn E1",
       "E1 problem statement",
+      "experiment/pay --sweep",
       "render experiment-spawn-gate pay.discussion.pay --id E1",
       "topic queue pay discussion pay",
       "manifest get pay.discussion.pay awaiting_experiments",
@@ -64,7 +64,8 @@
       "experiment conclude",
       "render conclude-gate pay.discussion.pay",
       "--kind perspective",
-      "topic triage"
+      "topic triage",
+      "render closing-gate pay.discussion.pay"
     ]
   }
 }

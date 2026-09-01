@@ -102,7 +102,7 @@ module.exports = {
     ].join('\n'));
     h.engine('commit', WU, '--topic', `research/${TOPIC}`, '-m',
       `research(${WU}/${TOPIC}): spawn E1 ${SLUG}`);
-    h.engine('commit', WU, '--topic', `experiment/${TOPIC}`, '-m',
+    h.engine('commit', WU, '--topic', `experiment/${TOPIC}`, '--sweep', '-m',
       `experiment(${WU}/${TOPIC}): E1 problem statement`);
   },
 };

@@ -48,6 +48,7 @@
       "manifest get pay.discussion.pay status",
       "manifest get pay.discussion.pay reconcile_needed",
       "render experiment-register pay.experiment.pay",
+      "manifest get pay.experiment.pay experiments",
       "manifest delete pay.discussion.pay reconcile_needed",
       "manifest get pay.discussion.pay awaiting_experiments",
       "render conclude-gate pay.discussion.pay",
@@ -56,6 +57,7 @@
     "calls_in_order": [
       "manifest get pay.discussion.pay reconcile_needed",
       "render experiment-register pay.experiment.pay",
+      "manifest get pay.experiment.pay experiments",
       "manifest delete pay.discussion.pay reconcile_needed",
       "topic complete pay discussion pay"
     ],

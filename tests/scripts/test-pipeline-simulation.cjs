@@ -1588,7 +1588,7 @@ describe('pipeline simulation', () => {
     // series travels with the topic, wait and all.
     const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion']);
     sim.write(`${spawned.dir}/problem.md`, '# Problem — what a cutover actually costs\n');
-    sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`]);
+    sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
 
     // The manage flow's absorb gates render from the pre-absorb state.
     assert.match(sim.render(['absorb-name-gate', feat, '--into', epic], { expect: 'content' }),
