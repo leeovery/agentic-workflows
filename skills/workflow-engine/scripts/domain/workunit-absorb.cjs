@@ -104,9 +104,9 @@ function planTrackedMoves(cwd, feature, epic, field, entries) {
  * the experiment item and its records travel whole with any live evidence
  * wait riding its holder — mirror each phase item's status onto the epic,
  * register the topic on the discovery map with backfill semantics, remove
- * the feature's knowledge-base chunks and index the moved artifacts at their
- * epic identities (warn-don't-block; experiments never enter the knowledge
- * base, so the series makes no store call), delete the feature (directory
+ * the feature's knowledge-base chunks and index the moved artifacts of the
+ * indexed phases at their epic identities (warn-don't-block), delete the
+ * feature (directory
  * and project-manifest registration), and commit all three pathspecs at
  * once. Git history serves as provenance.
  * @param {string} cwd project root

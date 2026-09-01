@@ -327,7 +327,7 @@ describe('engine workunit absorb — happy path', () => {
       'a topic with no dismissals gains no empty field');
   });
 
-  it('the experiment series travels whole — records, statuses, verdicts, directory — and never touches the knowledge base', () => {
+  it('the experiment series travels whole — records, statuses, verdicts, directory', () => {
     const feature = featureManifest();
     feature.phases.experiment = {
       items: {
@@ -377,10 +377,14 @@ describe('engine workunit absorb — happy path', () => {
     }
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/auth-flow')));
 
-    // Experiments never enter the knowledge base — the store calls are the
-    // removal and the phase artifacts, nothing experiment-shaped.
-    assert.ok(knowledgeCalls(fix).every((c) => !c.includes('experiment')),
-      'no knowledge call names an experiment path');
+    // The store calls are exactly the indexed-phase moves.
+    assert.deepStrictEqual(knowledgeCalls(fix), [
+      'remove --work-unit auth-flow',
+      'index .workflows/payments/discussion/auth.md',
+      'index .workflows/payments/research/exploration-auth-flow.md',
+      'index .workflows/payments/imports/notes-2.md',
+      'index .workflows/payments/seeds/seed.md',
+    ]);
 
     // The receipt names the moved series by its record count; a
     // non-count refuses.
