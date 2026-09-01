@@ -324,4 +324,62 @@ describe('engine presence', () => {
     assert.deepStrictEqual(engineWith(dir, ['presence', 'cleanup'], { input: '{}' }).cleared, []);
     assert.ok(fs.existsSync(presenceFile(dir, 'discussion', 'alpha')), 'nothing swept without an owner match');
   });
+
+  it('a queue read stamps nothing where no heartbeat exists — reads never manufacture a hold', () => {
+    const res = engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha'],
+      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    assert.strictEqual(res.count, 0);
+    assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')),
+      'a foreign topic\'s queue check leaves no presence behind');
+  });
+
+  it('a queue read refreshes a heartbeat this session owns', () => {
+    craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-one' });
+    const p = presenceFile(dir, 'discussion', 'alpha');
+    const past = new Date(Date.now() - 20 * 60 * 1000);
+    fs.utimesSync(p, past, past);
+
+    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha'],
+      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    const record = JSON.parse(fs.readFileSync(p, 'utf8'));
+    assert.strictEqual(record.session_id, 'sess-one');
+    assert.strictEqual(record.pid, process.pid, 'the refresh re-stamps the full identity');
+    const row = engineWith(dir, ['presence', 'scan', 'pay']).sessions[0];
+    assert.strictEqual(row.live, true, 'the quiet-turn poll keeps the own hold live');
+  });
+
+  it('a queue read never overwrites a peer\'s heartbeat', () => {
+    craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'peer-sess' });
+    const p = presenceFile(dir, 'discussion', 'alpha');
+    const past = new Date(Date.now() - 20 * 60 * 1000);
+    fs.utimesSync(p, past, past);
+
+    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha'],
+      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    const record = JSON.parse(fs.readFileSync(p, 'utf8'));
+    assert.strictEqual(record.session_id, 'peer-sess', 'the peer\'s identity stands');
+    assert.strictEqual(record.pid, null);
+    assert.ok(fs.statSync(p).mtimeMs < Date.now() - 15 * 60 * 1000, 'and its activity signal is untouched');
+  });
+
+  it('an identity-less heartbeat is not refreshed by a read — degraded mode ages by mtime alone', () => {
+    craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: null });
+    const p = presenceFile(dir, 'discussion', 'alpha');
+    const past = new Date(Date.now() - 20 * 60 * 1000);
+    fs.utimesSync(p, past, past);
+
+    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha'],
+      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    assert.ok(fs.statSync(p).mtimeMs < Date.now() - 15 * 60 * 1000, 'an unowned record is never claimed');
+  });
+
+  it('an agent-store scan stamps nothing where no heartbeat exists', () => {
+    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify({
+      name: 'pay', work_type: 'epic', status: 'in-progress', phases: {},
+    }, null, 2));
+    engineWith(dir, ['agent', 'scan', 'pay', 'discussion', 'alpha'],
+      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')),
+      'reading a foreign topic\'s agents leaves no presence behind');
+  });
 });

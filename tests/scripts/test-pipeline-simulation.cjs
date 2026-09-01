@@ -851,11 +851,18 @@ describe('pipeline simulation', () => {
     const queue = sim.run(['topic', 'queue', wu, 'research', 'delta']);
     assert.strictEqual(queue.count, 1);
     assert.deepStrictEqual(queue.files, [parked.concern_path], 'the read verb lists the delivered concern');
+    // The queue read is reachable for any topic — a session checking a
+    // foreign queue must not manufacture a hold there. No verb has yet
+    // acted on delta from this session, so the read stamps nothing.
+    assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/.cache/${wu}/research/delta/presence`)),
+      'a queue read never creates a heartbeat');
     // The dispatch gate: a review never launches over a non-empty queue —
     // each queued concern is a pending change to the document a review
     // would read. Other kinds stay ungated.
     sim.refuses(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'review'], /review dispatch blocked/);
     sim.run(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'deep-dive', '--label', 'scope']);
+    assert.ok(fs.existsSync(path.join(sim.dir, `.workflows/.cache/${wu}/research/delta/presence`)),
+      'the write-shaped verb is what claims the slot');
     // topic absorb — the delivery's mirror: deliver a second concern, absorb
     // it, and the self-committing response answers what remains.
     sim.write('.workflows/.cache/scratch/concern-scratch.md',
