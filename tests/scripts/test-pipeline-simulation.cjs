@@ -2637,6 +2637,8 @@ describe('pipeline simulation', () => {
     sim.run(['experiment', 'create', wu, wu, '--slug', 'input-latency', '--from', 'discussion',
       '--problem', sim.write(`.workflows/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
     sim.refuses(['topic', 'cancel', wu, 'discussion', wu], /strands its evidence waits \(E2\)/);
+    assert.match(sim.render(['cancel-cascade-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
+      /abandons the experiments it spawned/, 'the gate derives its statement from the item\'s own waits');
     const swept = sim.run(['topic', 'cancel', wu, 'discussion', wu, '--cascade']);
     assert.deepStrictEqual(swept.abandoned, ['E2']);
     assert.deepStrictEqual(swept.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: [] }]);

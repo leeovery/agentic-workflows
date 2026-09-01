@@ -1429,11 +1429,15 @@ function cancelCascadeGate(cwd, { dotpath }) {
     if (proposed.length > 0) specParts.push(`the proposed grouping **${proposed.join('**, **')}** is discarded — the next grouping analysis rebuilds from the new world`);
   }
   // A spawn-phase holder's own live waits — the cascade abandons exactly
-  // those records and closes this conversation's waiting points.
+  // those records and closes this conversation's waiting points; a sibling
+  // holder is named untouched only when one exists.
   const awaiting = EXPERIMENT_SPAWN_PHASES.includes(phase) ? awaitedExperiments(manifest, phase, topic) : [];
   const parts = [];
   if (specParts.length > 0) parts.push(`collapses the specification work built from it: ${specParts.join('; ')}`);
-  if (awaiting.length > 0) parts.push(`abandons the experiments it awaits (${awaiting.join(', ')}) — this conversation is their only consumer; a sibling conversation's experiments are untouched`);
+  if (awaiting.length > 0) {
+    const sibling = experimentWaits(manifest, topic).find((h) => h.phase !== phase);
+    parts.push(`abandons the experiments it awaits (${awaiting.join(', ')}) — this conversation is their only consumer${sibling ? `; the ${sibling.phase} conversation and its experiments are untouched` : ''}`);
+  }
   if (parts.length === 0) {
     throw new Error(`render cancel-cascade-gate: nothing cascades from "${topic}" (${phase}) — the bare cancel proceeds`);
   }

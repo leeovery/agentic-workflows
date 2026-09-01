@@ -2754,6 +2754,19 @@ describe('render proposed-task', () => {
     const waitsOnly = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.research.beta' });
     assert.ok(unwrap(waitsOnly).includes('Cancelling **Beta** abandons the experiments it awaits (E1, E2)'), waitsOnly);
     assert.ok(unwrap(waitsOnly).includes('Cancel the conversation and abandon its awaited experiments'), waitsOnly);
+    assert.ok(!waitsOnly.includes('untouched'), 'no sibling holder — none is named');
+  });
+
+  it('cancel-cascade-gate at a spawner address names a sibling holder as untouched', () => {
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: {
+      research: { items: { beta: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+      discussion: { items: { beta: { status: 'in-progress', awaiting_experiments: ['E2'] } } },
+      experiment: { items: { beta: { status: 'in-progress', experiments: {
+        E1: { slug: 'x', status: 'running' }, E2: { slug: 'y', status: 'conceived' },
+      } } } },
+    } });
+    const out = renderSurface(dir, 'cancel-cascade-gate', { dotpath: 'pay.research.beta' });
+    assert.ok(unwrap(out).includes('abandons the experiments it awaits (E1) — this conversation is their only consumer; the discussion conversation and its experiments are untouched'), out);
   });
 
   it('the incoherence stops announce over their own lane\'s auto — and stay silent over the other lane\'s', () => {

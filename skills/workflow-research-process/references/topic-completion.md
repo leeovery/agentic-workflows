@@ -44,7 +44,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-wait-ga
 
 **If `pause`:**
 
-Commit any uncommitted session work with the session's cadence commit, then say where the ball sits:
+Commit any uncommitted session work with the session's cadence commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): {what changed}"
+```
+
+Then say where the ball sits:
 
 > *Output the next fenced block as markdown (not a code block):*
 
