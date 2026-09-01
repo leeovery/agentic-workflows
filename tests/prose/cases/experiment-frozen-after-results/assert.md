@@ -1,8 +1,9 @@
 The prose should have taken this path:
 
-1. the entry parses its four arguments, finds the series live, resolves
-   E1, and — the record in flight — emits the resuming phase note
-   before handing off
+1. the entry parses its three arguments, finds the series live, and —
+   exactly one live record — auto-selects E1, announcing the automatic
+   proceed; the record in flight emits the resuming phase note before
+   handing off, and the picker is never rendered
 2. the process re-reads the series and takes `running` from the
    manifest; initialisation reads the problem statement and then the
    record's own documents — the frozen design and the partial report —
@@ -24,8 +25,9 @@ The prose should have taken this path:
    The ten-percent figure appears nowhere in the conclusion — a rule
    changed after data would void the run, and no rule changed
 7. the verdict is recorded via the conclude verb and committed; the
-   release is noted, the register re-renders showing E1 concluded, and
-   the walk stops at the bridge invocation
+   release is noted, the register re-renders showing E1 concluded, the
+   return leg finds no live record in the series, and the walk stops
+   at the bridge invocation — the next-or-menu gate never renders
 
 Further claims:
 

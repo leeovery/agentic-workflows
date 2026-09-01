@@ -10,7 +10,6 @@
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-experiment-entry/references/select-record.md",
-    "skills/workflow-experiment-entry/references/validate-record.md",
     "skills/workflow-experiment-entry/references/invoke-skill.md",
     "skills/workflow-experiment-process/SKILL.md",
     "skills/workflow-experiment-process/references/experiment-guidelines.md",
@@ -18,7 +17,8 @@
     "skills/workflow-experiment-process/references/run-experiment.md",
     "skills/workflow-experiment-process/references/amendment-protocol.md",
     "skills/workflow-experiment-process/references/report-template.md",
-    "skills/workflow-experiment-process/references/conclude-experiment.md"
+    "skills/workflow-experiment-process/references/conclude-experiment.md",
+    "skills/workflow-experiment-process/references/next-experiment.md"
   ],
   "answers": [],
   "conduct": "The user drops in mid-run having second thoughts about the rule: with numbers already landing they push to lower the decision threshold from fifteen percent to ten — it feels safer, and they ask for the design to be updated now. Told that results are visible and the design froze for good when they became so, they accept the boundary without a fight: the pushed change goes down as a dated correction and a successor's business if it ever matters, and they explicitly do not want the collected data re-scored. They let the run finish over the remaining sessions, accept the measured share and the outcome of the rule as it was registered, and have nothing to add at the close. They never ask to abandon and never split the question.",
@@ -43,6 +43,8 @@
       "experiment create",
       "topic complete search-relevance experiment",
       "render experiment-approval-gate",
+      "render experiment-pick",
+      "render experiment-next-gate",
       "agent dispatch",
       "knowledge.cjs index"
     ]

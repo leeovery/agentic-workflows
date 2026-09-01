@@ -1,9 +1,10 @@
 The prose should have taken this path:
 
-1. the entry parses its four arguments, reads the experiment item's
-   status, finds the series live, reads the series, and resolves E1
-   directly — the picker is never rendered, and a `conceived` record
-   validates silently: nothing is emitted before the handoff
+1. the entry parses its three arguments, reads the experiment item's
+   status, finds the series live, reads the series, and — exactly one
+   live record — auto-selects E1, announcing the automatic proceed;
+   the picker is never rendered, and a `conceived` record validates
+   silently: nothing else is emitted before the handoff
 2. the handoff carries the record's directory; the process refreshes
    the session label, re-reads the series, and takes `conceived` from
    the manifest as authoritative
@@ -41,9 +42,11 @@ The prose should have taken this path:
 8. the conclude response carries the released wait; the session says
    where the ball sits — the research's wait on E1 is released, the
    evidence surfaces at its next entry — re-renders the register
-   showing E1 concluded with its verdict, and reaches Step 6
-9. the walk stops at the bridge invocation, the record terminal and
-   the menu the router
+   showing E1 concluded with its verdict, and reaches the return leg
+9. the return leg reads the series, finds no live record, and takes
+   the bridge exit — the next-or-menu gate never renders; the walk
+   stops at the bridge invocation, the record terminal and the menu
+   the router
 
 Further claims:
 

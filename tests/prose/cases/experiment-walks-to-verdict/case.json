@@ -1,5 +1,5 @@
 {
-  "origin": "the laboratory's own walk had no prose coverage — the per-record epic entry with the id, the fresh-context initialisation that reads the problem and the spawning document from disk, the design authored before anything is measured, the approve verb recording the user's freeze, the run measuring as designed, and the conclusion executing the pre-registered rule, releasing the wait, and flagging the spawning item",
+  "origin": "the laboratory's own walk had no prose coverage — the topic-grain epic entry resolving its one live record, the fresh-context initialisation that reads the problem and the spawning document from disk, the design authored before anything is measured, the approve verb recording the user's freeze, the run measuring as designed, and the conclusion executing the pre-registered rule, releasing the wait, and flagging the spawning item",
   "entry": "workflow-experiment-entry",
   "world": "claims",
   "files": [
@@ -10,7 +10,6 @@
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-experiment-entry/references/select-record.md",
-    "skills/workflow-experiment-entry/references/validate-record.md",
     "skills/workflow-experiment-entry/references/invoke-skill.md",
     "skills/workflow-experiment-process/SKILL.md",
     "skills/workflow-experiment-process/references/experiment-guidelines.md",
@@ -24,7 +23,8 @@
     "skills/workflow-experiment-process/references/report-template.md",
     "skills/workflow-experiment-process/references/amendment-protocol.md",
     "skills/workflow-experiment-process/references/conclude-experiment.md",
-    "skills/workflow-experiment-process/references/abandon-experiment.md"
+    "skills/workflow-experiment-process/references/abandon-experiment.md",
+    "skills/workflow-experiment-process/references/next-experiment.md"
   ],
   "answers": [],
   "conduct": "The user is here to get the recovery number measured properly and collaborates the way a good client does: they answer the laboratory's design questions crisply — the question is the in-session recovery share of zero-result searches, the decision it feeds is the replacement source, they expect meaningful recovery (their guess is around a fifth), and the rule they agree to is that fifteen percent or better makes behaviour-driven expansion the leading candidate while less sends the research to a curated source. They confirm the day of sandbox logs at logs/search-sessions.log is the sample and that a deterministic pass over it is the right instrument. At the briefing they approve the design as presented — no amendments, no abandonment. They let the run proceed without interference, accept the measured share and the rule's outcome without relitigating it, and have nothing to add at the close. They never split the question, never abandon the experiment, and never ask for anything beyond this record.",
@@ -59,7 +59,8 @@
       "topic complete search-relevance experiment",
       "agent dispatch",
       "knowledge.cjs index",
-      "render experiment-pick"
+      "render experiment-pick",
+      "render experiment-next-gate"
     ]
   }
 }
