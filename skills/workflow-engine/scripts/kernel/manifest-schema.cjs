@@ -41,9 +41,7 @@ const VALID_PHASE_STATUSES = {
   research:       ['triaged', 'in-progress', 'completed', 'superseded', 'cancelled'],
   // Derived bookkeeping over the topic's experiment records: the spawn opens
   // the item, the last record's terminal transition closes it — the user
-  // never starts or completes it by hand. No `triaged` (experiments take no
-  // rerouted concerns) and no `superseded` (a series is never absorbed into
-  // a sibling topic).
+  // never starts or completes it by hand.
   experiment:     ['in-progress', 'completed', 'cancelled'],
   discussion:     ['triaged', 'in-progress', 'completed', 'cancelled'],
   investigation:  ['triaged', 'in-progress', 'completed', 'cancelled'],

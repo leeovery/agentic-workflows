@@ -6,7 +6,7 @@
 // .experiments.{id}`), each a frozen design plus a report on disk under
 // `.workflows/{wu}/experiment/{topic}/{id}-{slug}/`. The engine records the
 // lifecycle; every document is model-authored — the engine never writes
-// prose, and nothing here touches the knowledge base.
+// prose.
 //
 // The record lifecycle is the design-before-data invariant made mechanical:
 // conceived → designed → approved (the briefing's freeze) → running →

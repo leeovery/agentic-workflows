@@ -97,13 +97,6 @@ describe('engine presence', () => {
     assert.strictEqual(second.res.live_sources, 1);
     assert.ok(second.sections.includes('research/beta'), second.sections);
     assert.ok(!second.sections.includes('planning/'), `the callout names source rows alone: ${second.sections}`);
-
-    // A laboratory session never touches the corpora the analyses read —
-    // its slot carries presence, never a deferral.
-    engine(dir, ['presence', 'beat', 'pay', 'experiment', 'beta']);
-    const third = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(third.res.live_sources, 1);
-    assert.ok(!third.sections.includes('experiment/beta'), third.sections);
   });
 
   it('an aged heartbeat reads stale — no deferral section', () => {

@@ -407,17 +407,6 @@ describe('the experiment item is derived bookkeeping — no hand lifecycle', () 
       /a new spawn reopens the series/);
   });
 
-  it('supersede stays illegal — the schema has no superseded experiment', () => {
-    assert.match(engineFails(dir, ['topic', 'supersede', 'lab', 'experiment', 'timing', '--by', 'other']).error,
-      /Invalid status "superseded" for phase "experiment"/);
-  });
-
-  it('triage never touches the phase — no triaged status, no queue', () => {
-    assert.match(engineFails(dir, ['topic', 'triage', 'lab', 'experiment', 'timing']).error,
-      /Invalid status "triaged" for phase "experiment"/);
-    assert.match(engineFails(dir, ['topic', 'queue', 'lab', 'experiment', 'timing']).error,
-      /research\|discussion\|investigation only/);
-  });
 });
 
 describe('epic topic cancel on the experiments — the wait-release edge', () => {

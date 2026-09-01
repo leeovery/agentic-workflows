@@ -40,13 +40,8 @@ const STALE_AFTER_SECONDS = 900;
 const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 // The phases that write the tree and the index — the unpartitionable pair.
 const CODE_PHASES = ['implementation', 'review'];
-// The source record's live sessions — the ones the epic-wide analyses wait
-// for. The analyses read completed research and discussion; a laboratory
-// session never touches those corpora — its writes stay in the experiment
-// record, and its verdict reaches the spawning conversation's document only
-// at that conversation's own next entry — so a live session in any other
-// phase, experiment included, is no reason to defer an analysis that never
-// looks at its material.
+// The corpora the epic-wide analyses read. A live session in any other phase
+// is no reason to defer an analysis that never looks at its material.
 const SOURCE_PHASES = ['research', 'discussion'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
