@@ -125,22 +125,29 @@ phase completion with a deliberately minimal template. The **menu is
 the router**: the spawning session ends its turn; the laboratory is
 entered fresh.
 
-### The menu is experiment-shaped
+### The menu routes at topic grain
 
-On the epic dashboard each queued or live experiment renders its own
-menu entry (`Enter E1 {slug} — {Topic} · experiment`), appearing at
-spawn and retiring at conclusion; a linear work unit's menu surfaces
-the laboratory through its continue row, the record picked at entry.
-Experiments rank above other recommendations; the pick stays the
-user's — working E1 then E2, or E1 then the half-unblocked
-conversation, are both legitimate orders. Cancelling a
-no-longer-needed experiment releases its lock, and a phase whose locks
-have all released becomes the recommendation again.
+The laboratory appears on every menu the way any phase does: one row
+per topic with live experiments, in the standard continue form,
+appearing at the first spawn and retiring when the series holds no
+live record. No phase is special in the skeleton — the row's route is
+the uniform entry contract, and which experiment to work is the
+phase's own question, answered inside it. Topics with queued
+experiments rank above other recommendations; the pick stays the
+user's — working the laboratory, or the half-unblocked conversation,
+are both legitimate orders. Abandoning a no-longer-needed experiment
+releases its lock, and a phase whose locks have all released becomes
+the recommendation again.
 
-### Entry is per-experiment
+### Entry is per-topic; the work is per-record
 
-`workflow-experiment-entry` takes the record id — the session enters to
-deal with E1, the way a discussion is entered for a topic.
+`workflow-experiment-entry` takes the same arguments every entry
+takes — work type, work unit, topic. Inside, the record resolves:
+one live experiment and the session proceeds into it automatically;
+several and the register renders with a picker — the first time the
+user is asked, because nothing upstream chose a record. From there the
+session works that one experiment, the way a discussion session works
+its topic.
 Initialisation reads the problem file, then — provenance-driven — the
 spawning artifact **on disk, in full**: the source document is
 mid-flight, unconcluded and unindexed, so the knowledge base cannot
@@ -198,8 +205,10 @@ whole concludes.
 
 ### The return leg
 
-An experiment concludes with its one-line verdict and routes back via
-the bridge to the menu. The lock releases and flags the spawning item;
+An experiment concludes with its one-line verdict. While the series
+still holds live records the session offers the next one — E1 then E2
+in one sitting — or the exit; the exit routes back via the bridge to
+the menu, where the still-live topic row reappears. The lock releases and flags the spawning item;
 the paused conversation becomes the recommendation once unblocked, and
 its re-entry surfaces the evidence — the register, the reports read in
 full — before the waiting point settles. **Experiments measure;
@@ -302,8 +311,8 @@ laboratory.
 ## Test footprint
 
 - Pipeline simulation: the spawn (create + problem + lock) from both
-  research and discussion, now-and-later exits, per-experiment menu
-  entries, the walk to verdict, release/flag edges, abandonment and
+  research and discussion, now-and-later exits, the topic-grain menu
+  rows, the walk to verdict, release/flag edges, abandonment and
   cancellation releases, splits, series continuation, reopen.
 - Engine suites: schema, transitions, derivations, render surfaces,
   register/gate projections, lock symmetry.
@@ -321,8 +330,8 @@ PR0 is this document, standalone. The stack:
    verb family (`approve` its own verb — the freeze is never a step a
    loop drifts past), locks symmetric across research and discussion,
    sub-experiment ids, the register and approval-gate surfaces,
-   per-experiment menu entries. Simulation + suites.
-2. **PR2 — skills.** `workflow-experiment-entry` (per-record contract)
+   the topic-grain menu rows. Simulation + suites.
+2. **PR2 — skills.** `workflow-experiment-entry` (uniform entry contract; in-phase record resolution)
    and `workflow-experiment-process` (linear: initialize → design →
    briefing/freeze → run → report → verdict → bridge); templates,
    conduct, amendment protocol.
