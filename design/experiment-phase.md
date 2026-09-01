@@ -1,0 +1,343 @@
+# Experiment phase — measured evidence for decisions
+
+A tool used by research and discussion: controlled experiments against
+real systems or processes, designed before they are measured, producing
+dependable results that feed back into the conversation that asked for
+them. This is the design log. Opened 2026-08-30.
+
+## Motivation
+
+### The incident this starts from
+
+During Fumi's space-homing research, window-placement behaviour was
+tested hands-on inside research sessions — no pre-stated question, no
+decision rule, no controlled setup. The numbers exist, but they were
+collected exploratorily, and now they carry decision-bearing weight
+they were never built for: the layouts covered are unclear, the rule
+that would settle the choice was never written, and the gaps are making
+the decision harder than the testing was. The counterfactual is what
+this phase supplies: a design written and confirmed before the first
+measurement, then results that mean something against it.
+
+### The prior art
+
+Two bodies of practice were studied (2026-08-30) before this design:
+
+- **The dex experiment system** (`dex/business/experiments/`) — a
+  working small-scale lab: a register of experiments conceived-to-
+  verdict, a governing METHOD accreted from real failures, reports in
+  scientific-method order with pre-registered decision rules. Its scars
+  are the syllabus: rules changed after data void the run; instruments
+  freeze before measuring; controls are concurrent, never historical;
+  corrections are append-only and planned, never reflexive. Its
+  execution pattern carries too: the agent writes deterministic code
+  and the code does the work — calls, parsing, measurement — with the
+  agent running and observing it, not assessing by feel.
+- **The external record** — pre-registration and registered reports
+  (the frozen plan, graded deviation routes, the amendment window
+  closing at first result), ELN practice (append-only records,
+  deviations logged as they happen), ML experiment tracking (the run as
+  first-class record, named baselines), and industry experimentation
+  culture (pre-declared decision maps, "experiments do not fail —
+  hypotheses are proven wrong", one primary measure).
+
+Both converge on one temporal invariant: **the design exists before the
+data**. Everything else is that invariant applied to a different moment
+of the lifecycle.
+
+## The model
+
+### An addendum, not a peer phase
+
+Experiment is not a stage of the pipeline the way specification or
+planning are. It is an **umbrella tool that research and discussion
+use**: a conversation hits a question that talking cannot settle, and
+hands it to the laboratory. The phase machinery — its own entry, its
+own skill, bridge-routed transitions — exists for one reason: **context
+isolation as a scientific control**. An experiment run inside the
+conversation that spawned it would know what the conversation hopes
+for, and that biases the result; a session deep enough to hit an
+empirical wall is also the session closest to compaction. So the
+laboratory always begins in fresh context, knowing the problem but not
+the hopes, and the conversation's context is never polluted with a
+second phase's instructions.
+
+Consequences, all deliberate:
+
+- **Experiments are never a topic's first phase.** Discovery routes
+  every topic to research or discussion — a topic cannot be born
+  measurement-first, because at discovery nothing is shaped enough to
+  warrant an experiment. The only door into the phase is the spawn.
+- **The remit is narrow.** Instructions in → design (collaborative) →
+  perform → results recorded → verdict fed back. Nothing else: no
+  off-topic rerouting, no roadmap parks, no inbox capture, no triage
+  queues, no session loop. A stray thought mid-experiment is out of
+  remit; the spawning conversation owns everything that is not this
+  experiment. Triage in particular is untouched by this phase in every
+  direction — concerns never land in an experiment, and an experiment
+  never reroutes one. A concern that *feels* measurable still lands in
+  the target topic's research or discussion; that conversation decides
+  whether to spawn.
+- **Narrow does not mean small.** An experiment can run for hours or
+  days, spin background processes, and produce substantial artifacts.
+  The scope is narrow; the work inside it is not.
+
+### Exploratory and confirmatory
+
+Research and discussion still poke at things hands-on — legitimate, and
+those sightings stay labelled exploratory. The moment a number is going
+to bear a decision, the sessions **offer** the experiment — never
+prescribe it. Declining is always valid: an ad-hoc inline measurement,
+no ceremony, remains part of the conversation. Accepting graduates the
+question to the laboratory, where the design-before-data invariant
+takes over.
+
+### The spawn — the phase's one door
+
+Mid-conversation in research or discussion, a measurable point is
+offered. On yes, the session records the spawn right there, while the
+conversation still holds the knowledge:
+
+1. **The id.** `experiment create` allocates E{n} — increment off the
+   manifest series — with a kebab slug derived from the problem.
+2. **The problem file**, in the record's directory: the problem in
+   plain terms — what we need to pick or learn, the space around it,
+   what we hope — with a provenance line naming the phase, topic,
+   point, and date it was born from. **No design content.** The
+   spawning phase is the client at the laboratory door: it states the
+   problem and stops. Question refinement, prediction, decision rule,
+   setup — all the laboratory's job. The client is not expected to
+   speak the laboratory's language.
+3. **The lock.** `awaiting_experiments` gains E{n} on the spawning
+   phase's own item — research and discussion identically. A locked
+   phase cannot conclude (`topic complete` refuses engine-side); the
+   lock means "this phase raised a question it needs answered before it
+   can honestly conclude", and that applies to a research record
+   exactly as to a discussion.
+4. **The choice**: go now — the session pauses mid-phase and routes
+   back to the menu, closing ceremony skipped — or later — the session
+   continues, conclusion stays blocked, and it pauses at a natural end
+   the same way. Both roads end at the menu with the experiment queued.
+
+Nothing enters another phase's processing skill mid-session, and the
+bridge is not the spawn's carrier either — it crosses phase walls at
+phase completion with a deliberately minimal template. The **menu is
+the router**: the spawning session ends its turn; the laboratory is
+entered fresh.
+
+### The menu routes at topic grain
+
+The laboratory appears on every menu the way any phase does: one row
+per topic with live experiments, in the house verb-and-tail form —
+the row's own verb; the shape, not the verb, is what's standard —
+appearing at the first spawn and retiring when the series holds no
+live record. No phase is special in the skeleton — the row's route is
+the uniform entry contract, and which experiment to work is the
+phase's own question, answered inside it. Topics with queued
+experiments rank above other recommendations; the pick stays the
+user's — working the laboratory, or the half-unblocked conversation,
+are both legitimate orders. Abandoning a no-longer-needed experiment
+releases its lock, and a phase whose locks have all released becomes
+the recommendation again.
+
+### Entry is per-topic; the work is per-record
+
+`workflow-experiment-entry` takes the same arguments every entry
+takes — work type, work unit, topic. Inside, the record resolves:
+one live experiment and the session proceeds into it automatically;
+several and the register renders with a picker — the first time the
+user is asked, because nothing upstream chose a record. From there the
+session works that one experiment, the way a discussion session works
+its topic.
+Initialisation reads the problem file, then — provenance-driven — the
+spawning artifact **on disk, in full**: the source document is
+mid-flight, unconcluded and unindexed, so the knowledge base cannot
+serve it. Linked research, briefs, and seeds surface as usual. Then the
+laboratory designs, collaboratively — asking the user its own
+questions, reading whatever else it needs.
+
+### The lifecycle of one experiment
+
+```
+conceived (the spawn) → designed → approved (the freeze) → running
+                                          → concluded | abandoned
+```
+
+- **Design** (`design.md`): question, hypothesis and prediction with
+  the reason and expected values where possible, the decision rule
+  ("if X, we do A; if Y, B" — executable by a third party), setup
+  (method, instruments and their versions, sample, environment), plus
+  controls-and-biases and what-this-does-not-measure sections when the
+  shape warrants them (stochastic outputs, destructive operations,
+  multi-arm comparisons). Depth scales; ceremony doesn't fork. One
+  primary question — a second primary question is a split.
+- **The briefing**: the design presented in plain terms — what we'll
+  do, what we expect and why, what each outcome triggers — and the
+  user's confirm freezes it. From the freeze, changes happen only
+  through the amendment protocol: dated amendments re-confirmed before
+  results are visible; frozen permanently after. Old data is never
+  re-scored under new rules.
+- **The run**: mostly autonomous, by design — the collaboration was
+  front-loaded into the design. The orchestrating session is empowered
+  to choose the execution shape that produces the most dependable
+  results: doing it directly, writing deterministic code that does the
+  work while the agent runs and observes it, background shells with
+  monitors, or ad-hoc sub-agents. No custom workflow agents exist for
+  the phase; the shape of the experiment follows the shape of the
+  problem, proposed at design time. Deviations are logged as they
+  happen.
+- **The report** (`report.md`): results (every number traceable to a
+  file in the record's directory or a named source), reading kept
+  separate from measurement, the conclusion executing the
+  pre-registered rule, reproduce notes, corrections append-only and
+  dated. A measure conceived after seeing data is labelled
+  exploratory — it can motivate a successor, never settle this run.
+- **Abandoned** is a first-class terminal: the row and its reason
+  persist; the lock releases.
+
+### Splits
+
+A running experiment may discover its question decomposes. That is the
+laboratory's internal method, and it never leaks back into the spawning
+phase's state: the parts become **sub-experiments** — E1.1, E1.2 — each
+walking design → freeze → run → report in miniature, with E1's verdict
+synthesising them. The lock stays on E1 and releases once, when E1 as a
+whole concludes.
+
+### The return leg
+
+An experiment concludes with its one-line verdict. While the series
+still holds live records the session offers the next one — E1 then E2
+in one sitting — or the exit; the exit routes back via the bridge to
+the menu, where the still-live topic row reappears. The lock releases and flags the spawning item;
+the paused conversation becomes the recommendation once unblocked, and
+its re-entry surfaces the evidence — the register, the reports read in
+full — before the waiting point settles. **Experiments measure;
+conversations decide.** The verdict is the rule's mechanical outcome,
+and the discussion that reads it can override it. Specs keep sourcing
+discussions only; there is no experiment→spec edge.
+
+An abandonment surfaces the same way, with its reason, and the waiting
+point reverts to open — the conversation settles it another way or
+spawns a successor.
+
+### The series and the register
+
+A topic accumulates a series — every experiment its conversations ever
+spawned, E1 → E2 → …, numbered per-topic off the manifest. The register
+(id, slug, status, verdict or reason per row; abandoned rows kept) is a
+render surface off the manifest, never a hand-maintained file, and is
+the topic's full measurement history.
+
+### Framework, not content
+
+The workflows supply structure, gates, and logging discipline. Measures
+are the design's own declarations — the framework never imposes,
+tracks, or mentions cost; that is the user's concern and, where
+declared, the experiment's subject matter.
+
+### Artifacts and storage
+
+```
+.workflows/{wu}/experiment/{topic}/
+├── E1-window-placement/
+│   ├── problem.md     the spawn's problem statement + provenance
+│   ├── design.md      frozen at the confirm gate
+│   ├── report.md      grows during/after the run; corrections append-only
+│   ├── data/          curated extracts the report cites
+│   └── …              instruments live with the record
+├── E2-multi-monitor/
+```
+
+Harness code an experiment builds is instrument, not product code — it
+lives with the record. Raw output is kept by default; genuinely bulky
+output may stay out of git with the report linking by path. Ephemeral
+working files use the cache (`.workflows/.cache/{wu}/experiment/{topic}/`).
+
+### Not knowledge-base material
+
+Experiments deliberately never enter the knowledge base. Results take
+whatever shape the problem demands — tables, CSVs, images, JSON, zips,
+prose, any mix — which no chunker serves well, and they have exactly
+one consumer: the spawning conversation, which digests them into its
+own artifact — and *that* artifact indexes when it concludes. Other
+sessions may read the files ad hoc; no machinery feeds experiments
+anywhere else — the gap analysis included.
+The append-only corrections discipline is a property of the report
+file. `correcting-historical-artifacts.md` stays spec-only.
+
+### Conclusion is per-experiment
+
+The experiment is the unit that concludes: the report is written, the
+verdict recorded, the record marked done, and the session routes back
+so the spawning phase can carry on with the results in hand. There is
+no ceremony above that — the topic's phase item is derived bookkeeping
+over the rows, never a thing the user closes. Nothing strands: every
+experiment locks its spawning conversation, and locks release only on
+terminal records, so all conversations concluded implies all
+experiments finished.
+
+### Availability
+
+The spawn is offered in research and discussion sessions — the work
+types that carry those phases (epic, feature, cross-cutting).
+Investigation and scoping never spawn; bugfix and quick-fix have no
+laboratory.
+
+## What deliberately does not change
+
+- **Triage** — the phase has no contact with it in either direction;
+  it borrows the *idea* of a queue, nothing of the machinery.
+- **Discovery** — routes topics to research or discussion only;
+  unaware the laboratory exists.
+- **No experiment→spec edge.** Specs source discussions only.
+- **`deferred` semantics** — untouched; the lock is a distinct state
+  ("blocked pending evidence", never "parked by choice").
+- **Bugfix and quick-fix pipelines** — untouched.
+- **The knowledge base** — experiments never enter it.
+- **Gap analysis** — reads completed research and discussions; never
+  experiments.
+- **No cost machinery** — anywhere, ever.
+- **The bridge** — phase-completion walls only; never a context
+  carrier for spawns.
+
+## Banked
+
+- **Per-project conduct accretion**: a per-project method addendum the
+  skill reads (linter-discovery shape) — bank until real usage shows
+  the need.
+- **A document-review analogue at series conclusion** — deliberately
+  absent ahead of evidence from real usage.
+
+## Test footprint
+
+- Pipeline simulation: the spawn (create + problem + lock) from both
+  research and discussion, now-and-later exits, the topic-grain menu
+  rows, the walk to verdict, release/flag edges, abandonment and
+  cancellation releases, splits, series continuation, reopen.
+- Engine suites: schema, transitions, derivations, render surfaces,
+  register/gate projections, lock symmetry.
+- Prose cases: the spawn-and-return round trip for each phase, the
+  freeze, the amendment boundary (before results vs after), the
+  abandonment return.
+- Full `docs/` pass, including the experiments chapter, once the
+  implementation lands.
+
+## Implementation plan
+
+PR0 is this document, standalone. The stack:
+
+1. **PR1 — engine.** Series records and the guarded container, the
+   verb family (`approve` its own verb — the freeze is never a step a
+   loop drifts past), locks symmetric across research and discussion,
+   sub-experiment ids, the register and approval-gate surfaces,
+   the topic-grain menu rows. Simulation + suites.
+2. **PR2 — skills.** `workflow-experiment-entry` (uniform entry contract; in-phase record resolution)
+   and `workflow-experiment-process` (linear: initialize → design →
+   briefing/freeze → run → report → verdict → bridge); templates,
+   conduct, amendment protocol.
+3. **PR3 — integration.** The spawn offer in research and discussion,
+   the now-or-later exit, menu entries and recommendation ranking,
+   re-entry evidence surfacing, release edges in the continue flows.
+4. **PR4 — cross-cutting.** Absorption, docs (full pass + experiments
+   chapter), prose cases, CLAUDE.md/README.
