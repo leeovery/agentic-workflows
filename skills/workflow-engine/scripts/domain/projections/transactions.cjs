@@ -112,8 +112,40 @@ function topicReceipt(verb, topic, phase, status, { warn = false } = {}) {
 }
 
 /**
+ * workunit absorb — the pre-confirm summary: what the absorb will move and
+ * do, derived from the feature's manifest before anything runs.
+ * `experiments` counts top-level records only — a split is worked inside its
+ * parent, so a series E1, E1.1, E2 is two experiments.
+ * @param {string} feature @param {string} epic @param {string} topic
+ * @param {{discussion: string, research?: string, experiments?: number, seeds?: number, imports?: number}} facts
+ * @returns {string}
+ */
+function absorbSummary(feature, epic, topic, facts) {
+  const rows = [
+    ['Feature:', titlecase(feature)],
+    ['Target:', titlecase(epic)],
+    ['Topic:', topic],
+    ['Discussion:', `[${facts.discussion}]`],
+  ];
+  if (facts.research !== undefined) rows.push(['Research:', `[${facts.research}]`]);
+  if (facts.experiments) rows.push(['Experiments:', `${facts.experiments} experiment(s)`]);
+  if (facts.seeds) rows.push(['Seed:', `${facts.seeds} file(s) (origin)`]);
+  if (facts.imports) rows.push(['Imports:', `${facts.imports} file(s)`]);
+  const width = Math.max(...rows.map(([label]) => label.length));
+  const lines = ['Absorb Summary', ''];
+  for (const [label, value] of rows) lines.push(`  ${label.padEnd(width)}  ${value}`);
+  lines.push('', '  Actions:', '  • Move discussion file to epic');
+  if (facts.research !== undefined) lines.push('  • Move research file to epic');
+  if (facts.experiments) lines.push('  • Move experiment series to epic');
+  if (facts.seeds) lines.push('  • Move seed file(s) to epic');
+  if (facts.imports) lines.push('  • Move import file(s) to epic');
+  lines.push('  • Register topic in epic manifest', '  • Remove feature work unit and directory');
+  return section('DISPLAY: absorb summary', CONTINUE_INSTRUCTION, lines.join('\n'));
+}
+
+/**
  * workunit absorb — the post-absorption summary. `experiments` is the moved
- * series' record count — 0 when the feature had no series.
+ * series' top-level record count — 0 when the feature had no series.
  * @param {string} epic @param {string} topic @param {string[]} moved
  * @param {{warn?: boolean, experiments?: number}} [opts]
  * @returns {string}
@@ -210,4 +242,4 @@ function sessionReceipt({ warn = false } = {}) {
     : '';
 }
 
-module.exports = { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt };
+module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt };

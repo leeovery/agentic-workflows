@@ -1,9 +1,10 @@
 The prose should have taken this path:
 
 1. the entry parses its three arguments, finds the series live, and —
-   exactly one live record — auto-selects E1, announcing the automatic
-   proceed; the record in flight emits the resuming phase note before
-   handing off, and the picker is never rendered
+   exactly one live record — resolves E1 with nothing asked; the
+   record in flight announces through the resuming phase note, the
+   entry's one line before handing off, and the picker is never
+   rendered
 2. the process re-reads the series and takes `running` from the
    manifest; initialisation reads the problem statement and then the
    record's own documents — the frozen design and the partial report —

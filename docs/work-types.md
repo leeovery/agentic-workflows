@@ -22,7 +22,7 @@ The differences are not cosmetic. A **feature** runs the full arc from a decisio
 
 Whatever the shape, its phases group into three stages — the arc every piece of work travels:
 
-- **Discovery** — explore and decide. Settling what the work is, then exploring it: research, discussion, investigation.
+- **Discovery** — explore and decide. Settling what the work is, then exploring it: research, experiment, discussion, investigation.
 - **Definition** — specify and plan. Turning decisions into a standalone specification and a concrete plan; quick-fix scoping lives here too.
 - **Delivery** — build and verify. Implementation, then review.
 

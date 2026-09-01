@@ -28,6 +28,7 @@
     "calls_include": [
       "manifest get search-relevance.experiment.synonym-handling status",
       "manifest get search-relevance.experiment.synonym-handling experiments",
+      "render phase-note search-relevance.experiment.synonym-handling --verb Resuming",
       "experiment conclude search-relevance synonym-handling E1",
       "render experiment-register search-relevance.experiment.synonym-handling"
     ],

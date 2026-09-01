@@ -35,6 +35,7 @@
       "manifest get search-relevance.experiment.synonym-handling status",
       "manifest get search-relevance.experiment.synonym-handling experiments",
       "session label search-relevance experiment synonym-handling",
+      "render phase-note search-relevance.experiment.synonym-handling --verb Starting",
       "manifest set search-relevance.discovery.synonym-handling brief_incorporated true",
       "render experiment-approval-gate search-relevance.experiment.synonym-handling --id E1",
       "experiment approve search-relevance synonym-handling E1",

@@ -1,0 +1,58 @@
+{
+  "origin": "the amendment boundary's near side had no prose coverage — a running record with no results yet may still change its design, but only through the protocol: a dated entry appended to the design's Amendments section, the amended design re-presented in plain terms, and the explicit go before measurement resumes; a declined amendment is struck (dated) and the design holds as approved — and no engine verb re-freezes anything on either path",
+  "entry": "workflow-experiment-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-experiment-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-experiment-entry/references/select-record.md",
+    "skills/workflow-experiment-entry/references/invoke-skill.md",
+    "skills/workflow-experiment-process/SKILL.md",
+    "skills/workflow-experiment-process/references/experiment-guidelines.md",
+    "skills/workflow-experiment-process/references/initialize-experiment.md",
+    "skills/workflow-experiment-process/references/run-experiment.md",
+    "skills/workflow-experiment-process/references/amendment-protocol.md",
+    "skills/workflow-experiment-process/references/report-template.md",
+    "skills/workflow-experiment-process/references/conclude-experiment.md",
+    "skills/workflow-experiment-process/references/next-experiment.md"
+  ],
+  "answers": [],
+  "conduct": "The user arrives mid-run, before anything has been measured, second-guessing the rule: they push to lower the decision threshold from fifteen percent to ten and want the design updated now. When the amended design is presented back for the explicit go they think better of it and decline — the original threshold was pre-registered for a reason; strike it. They then ask for one genuinely additive change: record the ids of the recovering sessions as an explicitly secondary listing, so successor work can sample them. When that amendment is presented back they give the go. From there they let the run proceed as designed, accept the measured share and the outcome of the rule as registered, and have nothing to add at the close. They never ask to abandon, never split the question, and never ask for collected data to be re-scored.",
+  "stubs": {},
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.experiment.synonym-handling status",
+      "manifest get search-relevance.experiment.synonym-handling experiments",
+      "render phase-note search-relevance.experiment.synonym-handling --verb Resuming",
+      "session label search-relevance experiment synonym-handling",
+      "experiment conclude search-relevance synonym-handling E1",
+      "render experiment-register search-relevance.experiment.synonym-handling"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.experiment.synonym-handling experiments",
+      "write:.workflows/search-relevance/experiment/synonym-handling/E1-reformulation-recovery/design.md",
+      "amendment struck",
+      "design amended",
+      "write:.workflows/search-relevance/experiment/synonym-handling/E1-reformulation-recovery/report.md",
+      "experiment conclude search-relevance synonym-handling E1",
+      "render experiment-register search-relevance.experiment.synonym-handling"
+    ],
+    "calls_exclude": [
+      "experiment advance",
+      "experiment approve",
+      "experiment abandon",
+      "experiment create",
+      "topic complete search-relevance experiment",
+      "render experiment-approval-gate",
+      "render experiment-pick",
+      "render experiment-next-gate",
+      "agent dispatch",
+      "knowledge.cjs index"
+    ]
+  }
+}

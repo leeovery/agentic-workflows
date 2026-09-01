@@ -1596,6 +1596,8 @@ describe('pipeline simulation', () => {
       /MENU: absorb name gate/, 'the name-confirm gate renders for an absorbable feature');
     assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
       /MENU: absorb confirm gate/, 'the proceed consent renders for an absorbable feature');
+    assert.match(sim.render(['absorb-summary', feat, '--into', epic, '--topic', 'stray-topic'], { expect: 'content' }),
+      /Experiments: {2}1 experiment\(s\)/, 'the pre-confirm summary derives from the feature manifest — top-level records only');
 
     sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows', feat)), 'feature directory removed');
@@ -2679,7 +2681,7 @@ describe('pipeline simulation', () => {
       '--problem', sim.write(`.workflows/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
     sim.refuses(['topic', 'cancel', wu, 'discussion', wu], /strands its evidence waits \(E2\)/);
     assert.match(sim.render(['cancel-cascade-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
-      /abandons the experiments it spawned/, 'the gate derives its statement from the item\'s own waits');
+      /abandons the experiments it awaits \(E2\)/, 'the gate derives its statement from the item\'s own waits');
     const swept = sim.run(['topic', 'cancel', wu, 'discussion', wu, '--cascade']);
     assert.deepStrictEqual(swept.abandoned, ['E2']);
     assert.deepStrictEqual(swept.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: [] }]);

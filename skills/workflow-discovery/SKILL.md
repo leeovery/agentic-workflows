@@ -19,11 +19,11 @@ Discovery is the universal **first phase** — every work type begins here. It s
 
 | Work type | Pipeline after discovery |
 |---|---|
-| Epic | Multi-topic; each topic: (Research) → Discussion → Specification → Planning → Implementation → Review |
-| Feature | (Research) → Discussion → Specification → Planning → Implementation → Review |
+| Epic | Multi-topic; each topic: (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
+| Feature | (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
 | Bugfix | Investigation → Specification → Planning → Implementation → Review |
 | Quick-fix | Scoping → Implementation → Review |
-| Cross-cutting | (Research) → Discussion → Specification (terminal) |
+| Cross-cutting | (Research) → (Experiment) → Discussion → Specification (terminal) |
 
 It runs in two modes:
 

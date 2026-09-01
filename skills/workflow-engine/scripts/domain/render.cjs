@@ -20,7 +20,7 @@ const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
-const { workunitReceipt, topicReceipt, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
+const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu } = require('./projections/start.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
@@ -4197,6 +4197,37 @@ function topicReceiptSurface(cwd, args) {
   return topicReceipt(verb, topic, phase, item.status, { warn: args.warn === '1' });
 }
 
+/**
+ * The pre-confirm absorb summary — every fact is the feature's own manifest
+ * state, read here so the display can never disagree with what the
+ * transaction will move. Experiments count top-level records only.
+ * @param {string} cwd @param {{dotpath: string, into?: string, topic?: string}} args @returns {string}
+ */
+function absorbSummarySurface(cwd, args) {
+  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-summary');
+  if (manifest.work_type !== 'feature') {
+    throw new Error(`render absorb-summary: "${workUnit}" is not a feature — only features absorb into epics`);
+  }
+  if (!isFilled(args.into)) throw new Error('render absorb-summary: --into is required — the target epic');
+  if (!isFilled(args.topic)) throw new Error('render absorb-summary: --topic is required — the landing topic name');
+  const discussion = itemOf(manifest, 'discussion', workUnit);
+  if (!discussion || typeof discussion !== 'object' || typeof discussion.status !== 'string') {
+    throw new Error(`render absorb-summary: feature "${workUnit}" has no discussion — nothing to absorb`);
+  }
+  const research = itemOf(manifest, 'research', workUnit);
+  const series = itemOf(manifest, 'experiment', workUnit);
+  const experiments = series && typeof series === 'object'
+    ? Object.keys(series.experiments || {}).filter((id) => isParentExperimentId(id)).length
+    : 0;
+  return absorbSummary(workUnit, /** @type {string} */ (args.into), /** @type {string} */ (args.topic), {
+    discussion: discussion.status,
+    ...(research && typeof research === 'object' && typeof research.status === 'string' ? { research: research.status } : {}),
+    experiments,
+    seeds: Array.isArray(manifest.seeds) ? manifest.seeds.length : 0,
+    imports: Array.isArray(manifest.imports) ? manifest.imports.length : 0,
+  });
+}
+
 /** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, warn?: string}} args @returns {string} */
 function absorbReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-receipt');
@@ -4217,7 +4248,7 @@ function absorbReceiptSurface(cwd, args) {
   if (args.experiments !== undefined) {
     experiments = Number(args.experiments);
     if (!Number.isInteger(experiments) || experiments < 1) {
-      throw new Error(`render absorb-receipt: --experiments must be a positive record count, got "${args.experiments}"`);
+      throw new Error(`render absorb-receipt: --experiments must be a positive experiment count, got "${args.experiments}"`);
     }
     if (!itemOf(manifest, 'experiment', topic)) {
       throw new Error(`render absorb-receipt: no experiment series "${topic}" on "${workUnit}" — the receipt renders what the absorb moved`);
@@ -4693,6 +4724,7 @@ const SURFACES = {
   'cycle-gate': cycleGate,
   'workunit-receipt': workunitReceiptSurface,
   'topic-receipt': topicReceiptSurface,
+  'absorb-summary': absorbSummarySurface,
   'absorb-receipt': absorbReceiptSurface,
   'absorb-continuation': absorbContinuationSurface,
   'promote-receipt': promoteReceiptSurface,

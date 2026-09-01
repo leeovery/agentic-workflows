@@ -285,6 +285,7 @@ Commands:
   render cycle-gate
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
   render topic-receipt     <wu.phase.topic> --verb complete|cancel|reactivate [--warn]
+  render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--warn]
   render absorb-continuation <epic> --feature <name>
   render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--warn]

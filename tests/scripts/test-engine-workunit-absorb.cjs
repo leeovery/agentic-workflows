@@ -176,6 +176,32 @@ describe('engine workunit absorb — happy path', () => {
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
+  it('render absorb-summary derives the pre-confirm display from the feature manifest — top-level experiments only', () => {
+    const feature = featureManifest();
+    feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: {
+      E1: { slug: 'x', status: 'concluded', verdict: 'held' },
+      'E1.1': { slug: 'y', status: 'concluded', verdict: 'held' },
+      E2: { slug: 'z', status: 'running' },
+    } } } };
+    fix = setupFixture({ feature });
+    const out = execFileSync('node',
+      [fix.engine, 'render', 'absorb-summary', 'auth-flow', '--into', 'payments', '--topic', 'auth'],
+      { cwd: fix.project, encoding: 'utf8' });
+    assert.match(out, /DISPLAY: absorb summary/);
+    assert.match(out, /Feature: {6}Auth Flow/);
+    assert.match(out, /Target: {7}Payments/);
+    assert.match(out, /Topic: {8}auth/);
+    assert.match(out, /Discussion: {3}\[completed\]/);
+    assert.match(out, /Research: {5}\[completed\]/);
+    assert.match(out, /Experiments: {2}2 experiment\(s\)/, 'a series E1, E1.1, E2 is two experiments — subs never count');
+    assert.match(out, /Seed: {9}1 file\(s\) \(origin\)/);
+    assert.match(out, /Imports: {6}1 file\(s\)/);
+    assert.match(out, /• Move experiment series to epic/);
+    assert.match(out, /• Remove feature work unit and directory/);
+    assert.match(engineFails(fix, ['render', 'absorb-summary', 'payments', '--into', 'payments', '--topic', 'auth']).error,
+      /"payments" is not a feature/);
+  });
+
   it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', () => {
     fix = setupFixture();
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
@@ -382,14 +408,14 @@ describe('engine workunit absorb — happy path', () => {
       'index .workflows/payments/seeds/seed.md',
     ]);
 
-    // The receipt names the moved series by its record count; a
-    // non-count refuses.
+    // The receipt names the moved series by its top-level count — E1, E1.1,
+    // E2 is two experiments, never three; a non-count refuses.
     const receipt = execFileSync('node',
-      [fix.engine, 'render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--experiments', '3'],
+      [fix.engine, 'render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--experiments', '2'],
       { cwd: fix.project, encoding: 'utf8' });
-    assert.match(receipt, /• Research: moved\n {2}• Experiments: 3 moved\n {2}• Seed: moved/);
+    assert.match(receipt, /• Research: moved\n {2}• Experiments: 2 moved\n {2}• Seed: moved/);
     assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--experiments', '0']).error,
-      /--experiments must be a positive record count/);
+      /--experiments must be a positive experiment count/);
 
     // The continuation menu renders from the post-absorb state; the
     // feature's name travels as a flag — the unit itself is gone.
@@ -605,6 +631,26 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'foreign research item']);
     refusedPristine(ABSORB, /research item "exploration" not named after it — a feature's research is single and self-named/);
+  });
+
+  it('refuses a foreign-named experiment series — deletion follows, so a silent skip would lose it', () => {
+    const feature = featureManifest();
+    feature.phases.experiment = { items: { stray: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } };
+    fix = setupFixture({ feature });
+    writeFile(fix.project, '.workflows/auth-flow/experiment/stray/E1-x/problem.md', '# P\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'foreign series']);
+    refusedPristine(ABSORB, /experiment item "stray" not named after it — a feature's experiment is single and self-named/);
+  });
+
+  it('refuses a foreign-named discussion item — the same guard covers every moved phase', () => {
+    const feature = featureManifest();
+    feature.phases.discussion.items.tangent = { status: 'completed' };
+    fix = setupFixture({ feature });
+    writeFile(fix.project, '.workflows/auth-flow/discussion/tangent.md', '# Tangent\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'foreign discussion item']);
+    refusedPristine(ABSORB, /discussion item "tangent" not named after it — a feature's discussion is single and self-named/);
   });
 
   it('closes the crash window: a research file missing on disk leaves both units pristine', () => {

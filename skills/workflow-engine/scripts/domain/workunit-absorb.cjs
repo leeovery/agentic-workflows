@@ -153,6 +153,18 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       }
     }
 
+    // A feature's phase items are single and self-named — discussion,
+    // research, and experiment alike. A foreign-named item refuses rather
+    // than skips: the feature directory is deleted afterwards, so silently
+    // skipped material would be lost.
+    for (const phase of ['discussion', 'research', 'experiment']) {
+      for (const name of Object.keys(phaseItems(featureManifest, phase))) {
+        if (name !== feature) {
+          throw new Error(`feature "${feature}" has a ${phase} item "${name}" not named after it — a feature's ${phase} is single and self-named; fix the manifest before absorbing`);
+        }
+      }
+    }
+
     // The topic must be free in the epic: map, dismissed list, discussion
     // item, discussion file.
     const epicDiscovery = epicManifest.phases && typeof epicManifest.phases === 'object' && epicManifest.phases.discovery && typeof epicManifest.phases.discovery === 'object'
@@ -173,17 +185,10 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       throw new Error(`${discussionDest} already exists — pick a different name`);
     }
 
-    // A feature's research is single and self-named, and it lands at the
-    // topic name — the same landing the discussion and the series take, so
-    // the map row, the artifact, and every experiment join share one name.
-    // A foreign-named item refuses rather than skips: the feature directory
-    // is deleted afterwards, so a silently skipped file would be lost.
+    // The research lands at the topic name — the same landing the discussion
+    // and the series take, so the map row, the artifact, and every
+    // experiment join share one name.
     const featureResearch = phaseItems(featureManifest, 'research');
-    for (const name of Object.keys(featureResearch)) {
-      if (name !== feature) {
-        throw new Error(`feature "${feature}" has a research item "${name}" not named after it — a feature's research is single and self-named; fix the manifest before absorbing`);
-      }
-    }
     if (featureResearch[feature] !== undefined) {
       if (phaseItems(epicManifest, 'research')[topic]) {
         throw new Error(`research topic "${topic}" already exists in ${into} — pick a different name`);
