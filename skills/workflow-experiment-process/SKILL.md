@@ -164,12 +164,8 @@ Load **[conclude-experiment.md](references/conclude-experiment.md)** and follow 
 
 ---
 
-## Step 6: Return to the Menu
+## Step 6: The Next Experiment, or the Menu
 
-> *Output the next fenced block as markdown (not a code block):*
+Load **[next-experiment.md](references/next-experiment.md)** and follow its instructions as written.
 
-```
-> The record is terminal. The spawning conversation picks the evidence up at its next entry — the menu is the router.
-```
-
-Invoke `/workflow-bridge {work_unit} experiment`.
+→ On return, proceed as the reference directed.

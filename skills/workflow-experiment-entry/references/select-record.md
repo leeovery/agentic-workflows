@@ -4,27 +4,47 @@
 
 ---
 
-## A. Resolve the Id
+Resolve which experiment this session works — the entry is per-topic, and the record resolves here. Loaded by the entry backbone and by the return leg's next pick ([next-experiment.md](../../workflow-experiment-process/references/next-experiment.md)). On return, `{id}`, `{slug}`, and `{record_status}` name a live record.
 
-#### If `{id}` is set
+The caller holds the series — the `experiments` subtree. Count its **live top-level records**: ids without a dot whose status is neither `concluded` nor `abandoned`.
 
-Look it up in the stored `experiments` subtree.
+## A. Resolve by Count
 
-**If `{id}` is a sub-experiment (`E{n}.{m}`):** a split is walked inside its parent's run — say so in one line and take the parent id (`E{n}`) as `{id}`.
+#### If exactly one record is live
 
-→ Return to **A. Resolve the Id**.
+> *Output the next fenced block as a code block:*
 
-**If the series does not hold `{id}`:** say so in one line.
+```
+Automatically proceeding with "{id} {slug}".
+```
+
+Store the record's id as `{id}`, its `status` as `{record_status}`, and its `slug` as `{slug}`.
+
+→ Proceed to **C. Validate the Record**.
+
+#### If several records are live
+
+Nothing upstream chose a record — the pick is the user's.
 
 → Proceed to **B. Pick From the Register**.
 
-**Otherwise:** store the record's `status` as `{record_status}` and its `slug` as `{slug}`.
+#### If no record is live
 
-→ Return to caller.
+Every row is terminal — the series is finished.
 
-#### If no `{id}` is set
+> *Output the next fenced block as a properties code block (```properties fence):*
 
-→ Proceed to **B. Pick From the Register**.
+```
+⚑ Every experiment in this series is finished
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> The series' rows stand on the register; a new spawn from the topic's research or discussion starts the next experiment.
+```
+
+**STOP.** Do not proceed — terminal condition.
 
 ## B. Pick From the Register
 
@@ -42,6 +62,40 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-pick {w
 
 **STOP.** Wait for user response.
 
-Store the response as `{id}`.
+**If the response names a sub-experiment (`E{n}.{m}`):**
 
-→ Return to **A. Resolve the Id**.
+A split is walked inside its parent's run — say so in one line, then store the parent record: `{id}` = `E{n}`, its `status` as `{record_status}`, its `slug` as `{slug}`.
+
+→ Proceed to **C. Validate the Record**.
+
+**If the series does not hold the response, or the named record is terminal (`concluded` or `abandoned`):**
+
+Say so in one line.
+
+→ Return to **B. Pick From the Register**.
+
+**Otherwise:**
+
+Store the record's id as `{id}`, its `status` as `{record_status}`, and its `slug` as `{slug}`.
+
+→ Proceed to **C. Validate the Record**.
+
+## C. Validate the Record
+
+Branch on `{record_status}` — no re-read.
+
+#### If status is `conceived`
+
+A fresh record — the spawn conceived it and no laboratory session has run. Nothing to render.
+
+→ Return to caller.
+
+#### Otherwise
+
+A record in flight (`designed`, `approved`, or `running`). Render and emit the section verbatim:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Resuming --noun {id}
+```
+
+→ Return to caller.

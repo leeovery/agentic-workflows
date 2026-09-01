@@ -134,7 +134,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {w
 
 Section F returned the selected entry's `action`, `topic`, and `route` (stored by epic-display-and-menu.md **C. Route Selection**). The stored `route` is the authoritative skill invocation — the plan file carries it verbatim. Never reconstruct an invocation from the phase name; not every selection maps to a `workflow-{phase}-entry` skill. Continue discovery → `/workflow-discovery epic {work_unit}` — the only selection that doesn't route to an entry skill; every other route comes from the stored `route` verbatim.
 
-Skills receive positional arguments: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional); an experiment route adds `$3` = the record id.
+Skills receive positional arguments: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional).
 
 #### If topic is present
 

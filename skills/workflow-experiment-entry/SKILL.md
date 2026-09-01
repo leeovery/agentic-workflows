@@ -10,7 +10,7 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-You are entering the **laboratory** — one experiment record in a topic's series. Experiments are a tool research and discussion use: a conversation hits a question talking cannot settle, spawns the record, and the laboratory answers it — designed before it is measured, run as designed, reported with a one-line verdict. The spawn is the phase's one door; this skill only ever enters a record that already exists.
+You are entering the **laboratory** — a topic's experiment series. Experiments are a tool research and discussion use: a conversation hits a question talking cannot settle, spawns a record, and the laboratory answers it — designed before it is measured, run as designed, reported with a one-line verdict. The spawn is the phase's one door; this skill only ever enters a series that already exists, and which record to work resolves inside it.
 
 Spawned from a Research or Discussion conversation; the verdict returns to the conversation that asked.
 
@@ -26,11 +26,11 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 ## Step 1: Parse Arguments
 
-Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2`, experiment id = `$3`.
+Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
 
 Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
 
-Store work_unit and work_type for the handoff. Store the experiment id as `{id}` when one was supplied; Step 3 resolves it otherwise.
+Store work_unit and work_type for the handoff.
 
 → Proceed to **Step 2**.
 
@@ -72,14 +72,6 @@ Load **[select-record.md](references/select-record.md)** and follow its instruct
 
 ---
 
-## Step 4: Validate the Record
-
-Load **[validate-record.md](references/validate-record.md)** with record_status = `{record_status}`.
-
-→ On return, proceed to **Step 5**.
-
----
-
-## Step 5: Invoke the Skill
+## Step 4: Invoke the Skill
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

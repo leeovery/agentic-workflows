@@ -4,7 +4,7 @@
 
 ---
 
-Branch on the `series_state` the caller passed — no re-read. Both states end here: the spawn is the phase's one door, and this skill only ever enters a record that already exists.
+Branch on the `series_state` the caller passed — no re-read. Both states end here: the spawn is the phase's one door, and this skill only ever enters a series that already exists.
 
 #### If `series_state` is `missing`
 
