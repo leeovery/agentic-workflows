@@ -339,11 +339,11 @@ When this row's `surfaced` list holds no walked finding yet, the raise opens wit
 **`▪ {lane_heading}`**
 ```
 
-**Making it land** — an example over a description, every time: a reader who can picture the failure can judge the fix; a reader parsing a mechanism description is still building the picture when your position arrives.
+**Making it land** — the devices and the test:
 
-- **The devices**: a worked example grounded in the topic or the product (often the normal case resolving fine, then the one adjustment that breaks it — the adjustment *is* the finding); a small ASCII diagram where shape or flow helps; a before/after list; a short step-by-step walkthrough; an analogy or simile to another part of the product or codebase, or to an app the user knows. One to three, chosen for understanding-speed, and varied across the walk — twenty identically shaped raises read as a template, not a colleague.
-- **The cheap path**: within a scene already rebuilt this session, or when the finding set was visible moments ago, a bridge clause replaces the reconstruction.
-- **The test**: the user can picture the problem and knows where you stand — both from a glance.
+→ Load **[making-it-land.md](making-it-land.md)** and follow its instructions as written.
+
+**The cheap path** — within a scene already rebuilt this session, or when the finding set was visible moments ago, a bridge clause replaces the reconstruction.
 
 **The position's firmness** — judged live against the session, never read off the report. Where re-derivation moves the finding itself — it holds, it's narrower than framed, a decision made since the report already covers it — that is part of the position; say it. Then match the register to how determined the answer is:
 

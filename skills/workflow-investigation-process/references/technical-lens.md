@@ -1,6 +1,6 @@
 # Technical-Lens Presentation
 
-*Reference for **[findings-signoff.md](findings-signoff.md)** — loaded when the user asks for the technical perspective.*
+*Reference for **[findings-signoff.md](findings-signoff.md)** and **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** — loaded when the user asks for the technical perspective.*
 
 ---
 
