@@ -1,0 +1,70 @@
+{
+  "origin": "the experiment phase's one door had no prose coverage from the research side — the decision-bearing-number bar, the conversational offer, the spawn recorded while the conversation holds the knowledge (create + problem statement with provenance and no design content + the engine-owned lock), the two cadence commits, and the now-exit that skips the closing ceremony and ends at the menu",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/review-agent.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-shared/references/experiment-spawn.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user comes back to push the replacement question forward and goes straight at the number underneath it: what share of zero-result searches recover when the searcher reformulates within the same session. The choice between a curated replacement list and behaviour-driven expansion turns on that share — behaviour-driven expansion feeds on exactly those recoveries — and they are firm that it will not be settled on a guess or a quick skim: the sandbox logs exist, and the number has to be collected properly before the choice is worth arguing. Offered a controlled way to get it they take it without hesitation, and asked whether to work it now or keep talking they want it now — this session has nothing left to do until the number exists. They introduce no other topics, decline nothing else because nothing else is offered, and never ask to conclude the research.",
+  "stubs": {
+    "research-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.research.synonym-handling status",
+      "topic queue search-relevance research synonym-handling",
+      "experiment create search-relevance synonym-handling",
+      "--from research",
+      "spawn E1",
+      "E1 problem statement",
+      "render experiment-spawn-gate search-relevance.research.synonym-handling --id E1"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.research.synonym-handling status",
+      "experiment create search-relevance synonym-handling",
+      "write:.workflows/search-relevance/experiment/synonym-handling/E1-",
+      "spawn E1",
+      "E1 problem statement",
+      "render experiment-spawn-gate search-relevance.research.synonym-handling"
+    ],
+    "calls_exclude": [
+      "experiment advance",
+      "experiment approve",
+      "experiment abandon",
+      "experiment conclude",
+      "topic complete search-relevance research synonym-handling",
+      "render experiment-wait-gate",
+      "render research-conclude-gate",
+      "topic triage",
+      "--kind deep-dive"
+    ]
+  }
+}

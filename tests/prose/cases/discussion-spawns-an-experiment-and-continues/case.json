@@ -1,0 +1,70 @@
+{
+  "origin": "the later exit and the wait gate had no prose coverage — a discussion that spawns mid-conversation and keeps talking must stay honestly blocked: the spawn recorded with the conversation's knowledge, the later choice returning to the session loop, and the conclusion attempt meeting the engine-rendered wait gate instead of a completion the engine would refuse anyway",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/closing-gates.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-shared/references/experiment-spawn.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user comes back to settle webhook timing and goes straight at it: how long should the checkout wait on the capture webhook before surfacing a pending state? Pressed for what the window rests on, they surface the ground truth — the vendor claims sub-second delivery, the design leans on that claim, and nobody has measured it against the real sandbox. They are clear that no amount of talking settles it: the number has to be collected properly before the window is worth choosing. Offered a controlled way to get it they take it — but they are not done talking, so asked whether to work the experiment now or keep going they keep going: there is a refund-notification wrinkle they want settled while it is fresh. They settle it decisively — refund webhooks reuse the capture consumer's idempotent path, no separate handler — and then ask to wrap the discussion up. Told what is open they agree to set the timing question aside for the close — the experiment will answer it. At the blocked conclusion they take the pause rather than keep talking. They introduce no other topics and never override a block.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "experiment create pay pay",
+      "--from discussion",
+      "spawn E1",
+      "E1 problem statement",
+      "render experiment-spawn-gate pay.discussion.pay --id E1",
+      "topic queue pay discussion pay",
+      "manifest get pay.discussion.pay awaiting_experiments",
+      "render experiment-wait-gate pay.discussion.pay"
+    ],
+    "calls_in_order": [
+      "experiment create pay pay",
+      "write:.workflows/pay/experiment/pay/E1-",
+      "render experiment-spawn-gate pay.discussion.pay",
+      "render experiment-wait-gate pay.discussion.pay"
+    ],
+    "calls_exclude": [
+      "topic complete pay discussion pay",
+      "experiment advance",
+      "experiment approve",
+      "experiment abandon",
+      "experiment conclude",
+      "render conclude-gate pay.discussion.pay",
+      "--kind perspective",
+      "topic triage"
+    ]
+  }
+}
