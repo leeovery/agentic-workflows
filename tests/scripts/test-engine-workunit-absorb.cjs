@@ -234,6 +234,8 @@ describe('engine workunit absorb — happy path', () => {
     assert.deepStrictEqual(m.phases.discussion.items, { auth: { status: 'completed' } });
     assert.strictEqual(res.experiment, undefined, 'a feature with no series reports none');
     assert.strictEqual(m.phases.experiment, undefined, 'a feature with no series lands no experiment phase');
+    assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--experiments', '2']).error,
+      /no experiment series "auth" on "payments"/);
     assert.deepStrictEqual(m.phases.research.items, {
       exploration: { status: 'completed' },
       'exploration-auth-flow': { status: 'completed' },
@@ -380,11 +382,14 @@ describe('engine workunit absorb — happy path', () => {
     assert.ok(knowledgeCalls(fix).every((c) => !c.includes('experiment')),
       'no knowledge call names an experiment path');
 
-    // The receipt names the moved series by its record count.
+    // The receipt names the moved series by its record count; a
+    // non-count refuses.
     const receipt = execFileSync('node',
       [fix.engine, 'render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--experiments', '3'],
       { cwd: fix.project, encoding: 'utf8' });
     assert.match(receipt, /• Research: moved\n {2}• Experiments: 3 moved\n {2}• Seed: moved/);
+    assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--experiments', '0']).error,
+      /--experiments must be a positive record count/);
   });
 
   it('a live evidence wait travels on its holder, and the release edge keeps holding in the epic', () => {
