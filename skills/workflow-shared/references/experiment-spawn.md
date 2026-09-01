@@ -38,7 +38,7 @@ Continue the conversation. An inline measurement, no ceremony, stays part of the
 
    → Return to caller for **B. Session Loop**.
 
-3. Note the handed-off question in the session's own document — the waiting point the evidence returns to, named as awaiting `{id}` — and commit with the session's cadence:
+3. Note the handed-off question in the session's own document — a dated entry at the waiting point the evidence returns to, named as awaiting `{id}` — and commit with the session's cadence:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): spawn {id} {slug}"

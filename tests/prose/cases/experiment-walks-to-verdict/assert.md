@@ -50,9 +50,10 @@ The prose should have taken this path:
 
 Further claims:
 
-- the design was frozen before anything was measured: no number from
-  the log appears in `design.md`, and the design commit precedes every
-  report write
+- the design froze before the outcome was measured: setup facts (the
+  sample's size and shape) may carry their measuring commands, but no
+  number the question, prediction, or decision rule turns on appears
+  in `design.md`, and the design commit precedes every report write
 - `approve` is the only transition between designed and running —
   advance never crossed the freeze
 - the record ends `concluded` with a one-line verdict on the register

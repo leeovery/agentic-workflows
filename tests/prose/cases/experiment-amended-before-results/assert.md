@@ -64,7 +64,9 @@ the series row and the experiment item `completed`; `design.md`
 extended by the `## Amendments` section alone (one struck dated entry,
 one standing dated entry); `report.md` (results with the secondary
 listing, deviations, reading, conclusion, reproduce) under
-`experiment/synonym-handling/E1-reformulation-recovery/`; the research
+`experiment/synonym-handling/E1-reformulation-recovery/`, possibly
+beside instrument scripts and curated `data/` extracts — the run
+leg's own artifacts, present or absent without prejudice; the research
 item still `in-progress`, its wait removed and
 `reconcile_needed: "experiment"` set; the research document itself
 unchanged.

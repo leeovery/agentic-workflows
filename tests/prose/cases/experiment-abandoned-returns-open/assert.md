@@ -23,14 +23,17 @@ The prose should have taken this path:
    that E1 was abandoned and why the point was settled without
    measurement — the awaiting note gives way to the decision, the map
    records the subtopic decided, and the write commits
-5. the user wraps; the ceremony's evidence-wait check reads empty —
+5. along the way the review cadence arms its free first pass — a
+   review dispatches at a natural break, the stubbed report returns
+   clean and is drained — so by the wrap the record already holds an
+   incorporated review
+6. the user wraps; the ceremony's evidence-wait check reads empty —
    no wait gate, the release already happened — every subtopic is
    settled, and the closing gates run: the triage queue reads empty
-   and the review classification finds no review has ever run, so the
-   mandatory gate asks and the user agrees
-6. the final review dispatches, the stubbed report returns clean and
-   is acknowledged; document review reconciles the file against the
-   session; the compliance check passes
+   and the classification finds the review satisfied (nothing moved
+   since it drained), so no mandatory gate is owed; document review
+   reconciles the file against the session; the compliance check
+   passes
 7. the conclude gate renders and the user confirms; the completion the
    wait once blocked now passes — the engine accepts `topic complete`
    — and the conclusion commits with the knowledge index riding
