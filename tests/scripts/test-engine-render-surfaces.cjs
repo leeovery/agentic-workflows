@@ -2412,7 +2412,9 @@ describe('render proposed-task', () => {
       'Sources: reviewer cycle 1',
       '',
       '**Problem**: The adapter never closes.',
+      '',
       '**Solution**: Close on detach.',
+      '',
       '**Outcome**: No leaked handles.',
       '',
       '**Do**:',
@@ -2435,6 +2437,7 @@ describe('render proposed-task', () => {
       '**Comment**   → Tell me what to change',
       '',
     ].join('\n'));
+    assert.ok(!out.includes('t/technical'), 'the technical arm belongs to the decision menu alone');
   });
 
   it('honours a custom comment hint and the auto gate', () => {
@@ -2475,6 +2478,7 @@ describe('render proposed-task', () => {
       'Placement: phase 3',
       '',
       '**Problem**: Two helpers differ only in their error text.',
+      '',
       '**Solution**: Fold them into one and take the caller-supplied message.',
       '',
       '=== MENU: task approval (emit verbatim as markdown, then STOP for the user\'s response) ===',
@@ -2501,7 +2505,9 @@ describe('render proposed-task', () => {
       '**`▪ Drop the dead formatter (2 of 4)`** (dead-code)',
       '',
       '**Problem**: Nothing calls it.',
+      '',
       '**Solution**: Delete it.',
+      '',
       '**Outcome**: One fewer surface to keep true.',
       '',
       '**Tests**:',
@@ -2517,7 +2523,7 @@ describe('render proposed-task', () => {
   it('outcome is optional both ways, and the detail blocks stay non-empty when present', () => {
     const withOutcome = writePayload(dir, 'o1.json', { ...proposal, outcome: 'One helper, one message path.' });
     assert.ok(renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: withOutcome, gate: 'gated' })
-      .includes('**Solution**: Fold them into one and take the caller-supplied message.\n**Outcome**: One helper, one message path.\n'));
+      .includes('**Solution**: Fold them into one and take the caller-supplied message.\n\n**Outcome**: One helper, one message path.\n'));
     const without = writePayload(dir, 'o2.json', proposal);
     assert.ok(!renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: without, gate: 'gated' }).includes('**Outcome**'));
     const emptyOutcome = writePayload(dir, 'o3.json', { ...proposal, outcome: '' });
@@ -2530,7 +2536,7 @@ describe('render proposed-task', () => {
     }
   });
 
-  it('a decision item presents the sides as the menu — numbered, decline, comment, no auto — byte-exactly', () => {
+  it('a decision emits its slim header and the sides as the menu — the record stays staged — byte-exactly', () => {
     const file = writePayload(dir, 'dc.json', {
       current: 3, total: 4, title: 'Settle the page size', severity: 'behaviour',
       problem: 'Two page sizes are configured at once.', solution: 'Pick one and record it.',
@@ -2542,21 +2548,25 @@ describe('render proposed-task', () => {
       '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
       '**`▪ Settle the page size (3 of 4)`** (behaviour)',
       '',
-      '**Problem**: Two page sizes are configured at once.',
-      '**Solution**: Pick one and record it.',
-      '**Decision**: Which page size stands?',
-      '**Stakes**: A4 fixes print output; preferCssPageSize hands it to themes. No measurement picks between them.',
-      '',
       '=== MENU: task decision (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
+      '**Decision**: Which page size stands?',
+      '',
       '**`◆ Which way?`**',
       '',
-      '**`1`**         → A4 on the PDF renderer',
-      '**`2`**         → preferCssPageSize from the stylesheet',
-      '**`d/decline`** → Decline this task — it will not be built',
-      '**Comment**   → Tell me what to change',
+      '**`1`**           → A4 on the PDF renderer',
+      '**`2`**           → preferCssPageSize from the stylesheet',
+      '**`t/technical`** → Retell this technically — the mechanism and the',
+      `${NB(14)}staged record`,
+      '**`d/decline`**   → Decline this task — it will not be built',
+      '**Comment**     → Tell me what to change',
       '',
     ].join('\n'));
+    const display = out.slice(0, out.indexOf('=== MENU'));
+    for (const line of ['**Problem**', '**Solution**', '**Stakes**', '**Decision**']) {
+      assert.ok(!display.includes(line), `the slim header carries no ${line} line — the record stays in the staging file`);
+    }
+    assert.ok(out.includes('**Decision**: Which page size stands?'), 'the menu carries the question as its statement label');
     assert.ok(!out.includes('a/auto'), 'an open decision is never one of the calls auto makes');
     assert.ok(!out.includes('Auto is on'), 'a gated decision carries no auto-override line — there is nothing being overridden');
   });
@@ -2574,10 +2584,12 @@ describe('render proposed-task', () => {
     });
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
     assert.ok(out.includes([
-      '**`1`**         → preferCssPageSize from the stylesheet (recommended)',
-      '**`2`**         → A4 on the PDF renderer',
-      '**`3`**         → Neither — leave it configurable',
-      '**`d/decline`** → Decline this task — it will not be built',
+      '**`1`**           → preferCssPageSize from the stylesheet (recommended)',
+      '**`2`**           → A4 on the PDF renderer',
+      '**`3`**           → Neither — leave it configurable',
+      '**`t/technical`** → Retell this technically — the mechanism and the',
+      `${NB(14)}staged record`,
+      '**`d/decline`**   → Decline this task — it will not be built',
     ].join('\n')), out);
   });
 
@@ -2604,10 +2616,10 @@ describe('render proposed-task', () => {
     assert.ok(auto.includes('MENU: task decision'), 'a decision item always stops');
     assert.ok(!auto.includes('DISPLAY: task auto-approved'));
     assert.ok(!auto.includes('MENU: task approval'));
-    assert.ok(auto.includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'),
-      'a stop that fires over the auto opt-in says so, in the engine\'s one voice');
-    assert.ok(auto.includes('**Decision**: Which page size stands?'), 'the question renders in the body, never the glyphed chrome');
+    assert.ok(auto.includes('**Decision**: Which page size stands?\n\n**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'),
+      'the question is the menu\'s statement label, the auto-override line beneath it — never the glyphed chrome');
     assert.ok(/\*\*`3`\*\* +→ Neither — leave it configurable/.test(auto));
+    assert.ok(/\*\*`t\/technical`\*\* +→ Retell this technically/.test(auto), 'the technical arm rides the decision menu');
     assert.ok(/\*\*Comment\*\* +→ Provide feedback to adjust/.test(auto));
   });
 

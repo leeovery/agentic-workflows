@@ -325,21 +325,28 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 // solution (outcome only when it adds something the solution doesn't); a task
 // adds the Do/Acceptance Criteria/Tests blocks. Judging comes before
 // authoring, and detail that doesn't exist yet can't be rendered.
-// A proposal carrying an open decision renders the question and its stakes
-// as the body's last lines and the sides as its menu under a fixed engine
-// question — the conflict-menu idiom: model-authored text never enters the
-// glyphed chrome. A decision is an irreducible product fork — never a
-// technical call an investigation would settle — and the required "stakes"
-// (a top-level field beside "decision", never nested inside it) is the
-// payload's argument for the stop: each side's product consequence, why no
-// investigation settles the tie, and — where a side is marked — the grounds
-// for the recommendation. The menu fires at either gate mode, by design: a
-// bare `y` would hand the call to the executor, and auto never settles an
-// irreducible product fork — a decision item always stops, and over an
-// auto opt-in it says so. A decision excludes the authored blocks: the
-// direction is settled before bodies exist. A side may mark itself
-// recommended (at most one); it orders first with a "(recommended)"
-// suffix — the findingChoice idiom.
+// A proposal carrying an open decision is raised, never rendered: the
+// DISPLAY slims to the title and meta lines — no Problem, no Solution, no
+// Stakes — and the record stays in the staging file. The session composes
+// the raise, in product terms from zero, between the two section
+// emissions; that contract is the walk prose's to own. The menu carries
+// the question as its statement label with the sides beneath a fixed
+// engine question — the conflict-menu idiom: model-authored text never
+// enters the glyphed chrome — and a t/technical arm reaches the record's
+// depth: the session retells the mechanism from the staged record, then
+// re-runs this render for the header and menu. A decision is an
+// irreducible product fork — never a technical call an investigation
+// would settle — and the required "stakes" (a top-level field beside
+// "decision", never nested inside it) is the payload's argument for the
+// stop: each side's product consequence, why no investigation settles the
+// tie, and — where a side is marked — the grounds for the recommendation;
+// it feeds the raise, never the screen. The menu fires at either gate
+// mode, by design: a bare `y` would hand the call to the executor, and
+// auto never settles an irreducible product fork — a decision item always
+// stops, and over an auto opt-in its label says so. A decision excludes
+// the authored blocks: the direction is settled before bodies exist. A
+// side may mark itself recommended (at most one); it orders first with a
+// "(recommended)" suffix — the findingChoice idiom.
 // ---------------------------------------------------------------------------
 
 /**
@@ -412,15 +419,14 @@ function proposedTask(cwd, args) {
   const body = [
     `**\`▪ ${p.title.trim()}${ordinal}\`**${isFilled(p.severity) ? ` (${p.severity})` : ''}`,
     ...meta,
-    '',
-    `**Problem**: ${p.problem}`,
-    `**Solution**: ${p.solution}`,
   ];
-  if (isFilled(p.outcome)) body.push(`**Outcome**: ${p.outcome}`);
-  if (p.decision) body.push(`**Decision**: ${p.decision.question}`, `**Stakes**: ${p.stakes}`);
-  for (const [field, heading] of [['steps', 'Do'], ['criteria', 'Acceptance Criteria'], ['tests', 'Tests']]) {
-    if (!blocks[field]) continue;
-    body.push('', `**${heading}**:`, ...blocks[field]);
+  if (!p.decision) {
+    body.push('', `**Problem**: ${p.problem}`, '', `**Solution**: ${p.solution}`);
+    if (isFilled(p.outcome)) body.push('', `**Outcome**: ${p.outcome}`);
+    for (const [field, heading] of [['steps', 'Do'], ['criteria', 'Acceptance Criteria'], ['tests', 'Tests']]) {
+      if (!blocks[field]) continue;
+      body.push('', `**${heading}**:`, ...blocks[field]);
+    }
   }
   const parts = [section('DISPLAY: proposed task', 'emit verbatim as markdown', body.join('\n'))];
 
@@ -429,8 +435,9 @@ function proposedTask(cwd, args) {
     parts.push(section(
       'MENU: task decision',
       STOP_FOR_RESPONSE,
-      menu(gate === 'auto' ? AUTO_OVERRIDE_LINE : '', [
+      menu(`**Decision**: ${p.decision.question}${gate === 'auto' ? `\n\n${AUTO_OVERRIDE_LINE}` : ''}`, [
         ...decisionRows,
+        cmdOption('t', 'technical', 'Retell this technically — the mechanism and the staged record'),
         cmdOption('d', 'decline', 'Decline this task — it will not be built'),
         promptOption('Comment', hint),
       ], { question: 'Which way?' }),
