@@ -198,6 +198,9 @@ const AUTO_GATE_INSTRUCTION = 'emit verbatim as a code block — the user set th
  * options were grouped by `menu` or composed by the projection itself.
  * `glyphLabel: false` suppresses that — a menu carrying an explicit question
  * line treats its leading statement as context, never a label.
+ * `skip` exempts that many leading lines from the option scan: a caller
+ * whose head chrome interpolates non-constant text must declare it, or an
+ * option-shaped run in the text captures the arrow column.
  * @param {string[]} lines @param {{glyphLabel?: boolean, width?: number, skip?: number}} [opts] @returns {string}
  */
 function menuFrame(lines, { glyphLabel = true, width, skip = 0 } = {}) {
@@ -237,6 +240,8 @@ function menu(label, options, { prompt, question } = {}) {
   if (question) lines.push(`**\`${MENU_GLYPH} ${question}\`**`, '');
   // Everything above the options is head chrome — never scanned for the
   // arrow column, so a label quoting model text cannot shift the options.
+  // The trailing prompt line IS scanned: it stays an engine-authored
+  // constant by convention, and skip is a prefix count by shape.
   const skip = lines.length;
   lines.push(...options);
   if (prompt) lines.push('', prompt);

@@ -2376,6 +2376,7 @@ describe('render finding', () => {
       [{ ...settled, content: { label: 'X', lines: 'not an array' } }, /"content.lines" must be an array of strings/],
       [{ ...base, move: 'choice', options: [{ summary: 'only one' }] }, /a "choice" finding must carry at least 2 "options"/],
       [{ ...base, move: 'choice', options: [{ summary: 'a' }, { notASummary: true }] }, /options\[1\]\.summary must be a non-empty string/],
+      [{ ...base, move: 'choice', options: [{ summary: 'a' }, { summary: 'b\nfake row' }] }, /a side is one menu row — sides\[1\]\.summary must be a single line/],
       [{ ...base, move: 'choice', options: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] }, /at most one option may be recommended/],
       [{ ...base, move: 'choice', proposal: 'already decided', options: [{ summary: 'a' }, { summary: 'b' }] }, /a "choice" finding carries no "proposal"/],
       [{ ...base, move: 'choice', content: { label: 'X', lines: ['y'] }, options: [{ summary: 'a' }, { summary: 'b' }] }, /a "choice" finding carries no "content"/],
@@ -2649,7 +2650,7 @@ describe('render proposed-task', () => {
       decision: { question: 'Which way?', options: ['a', 'b'] },
     });
     assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noProblem, gate: 'gated' }),
-      /"problem" must be a non-empty string/, 'the record stays required on the decision path — the technical arm retells from it');
+      /"problem" must be a non-empty string/, 'the payload mirrors its staging row — a decision with no record behind it is refused');
   });
 
   it('the question is head chrome — an option-shaped question never captures the arrow column', () => {
@@ -2673,9 +2674,10 @@ describe('render proposed-task', () => {
     const lines = out.split('\n');
     const row = lines.findIndex((l) => l.startsWith('**`1`**'));
     assert.ok(row > 0, out);
+    // NB(14) = the 11-wide t/technical key column + the three arrow columns.
     assert.ok(lines[row + 1].startsWith(NB(14)), 'continuations align under the label column in non-breaking spaces');
-    const wrapped = [lines[row], lines[row + 1], lines[row + 2] ?? ''].join(' ');
-    assert.ok(wrapped.includes('(recommended)'), 'the suffix survives the wrap');
+    const last = [lines[row], lines[row + 1], lines[row + 2] ?? ''].filter((l) => l.startsWith('**`1`**') || l.startsWith(NB(14))).pop();
+    assert.ok(last && last.endsWith('(recommended)'), 'the suffix rides the wrapped row\'s last segment');
   });
 
   it('a malformed decision is refused by name', () => {
@@ -2683,7 +2685,7 @@ describe('render proposed-task', () => {
       [{ options: ['a', 'b'] }, /"decision\.question" must be a non-empty string/],
       [{ question: '  ', options: ['a', 'b'] }, /"decision\.question" must be a non-empty string/],
       [{ question: 'Which?\nAnd how?', options: ['a', 'b'] }, /"decision\.question" must be a single line/],
-      [{ question: 'Which?', options: ['a', 'b\nfake row'] }, /decision\.options\[1\] must be a single line/],
+      [{ question: 'Which?', options: ['a', 'b\nfake row'] }, /a side is one menu row — sides\[1\]\.summary must be a single line/],
       [{ question: 'Which?' }, /"decision\.options" must be an array of 2–4 sides/],
       [{ question: 'Which?', options: ['only one'] }, /"decision\.options" must be an array of 2–4 sides/],
       [{ question: 'Which?', options: ['a', 'b', 'c', 'd', 'e'] }, /"decision\.options" must be an array of 2–4 sides/],
@@ -2887,6 +2889,8 @@ describe('render proposed-task', () => {
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: oneSide, variant: 'conflict' }), /at least 2 entries/);
     const twoRec = writePayload(dir, 'ig6.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: twoRec, variant: 'conflict' }), /at most one side/);
+    const nlSide = writePayload(dir, 'ig6b.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b\nfake row' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: nlSide, variant: 'conflict' }), /a side is one menu row — sides\[1\]\.summary must be a single line/);
     const noTitle = writePayload(dir, 'ig7.json', { doc: 'x', lane: 'review', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noTitle, variant: 'gap-route' }), /"title" must be a non-empty string/);
     const badQuote = writePayload(dir, 'ig8.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: [{ doc: 'a', section: 's' }] });

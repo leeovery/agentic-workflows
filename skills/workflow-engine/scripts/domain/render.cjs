@@ -333,14 +333,17 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 // the question as its statement label with the sides beneath a fixed
 // engine question — the conflict-menu idiom: model-authored text never
 // enters the glyphed chrome — and a t/technical arm reaches the record's
-// depth: the session retells the mechanism from the staged record, then
-// re-runs this render for the header and menu. A decision is an
-// irreducible product fork — never a technical call an investigation
-// would settle — and the required "stakes" (a top-level field beside
-// "decision", never nested inside it) is the payload's argument for the
-// stop: each side's product consequence, why no investigation settles the
-// tie, and — where a side is marked — the grounds for the recommendation;
-// it feeds the raise, never the screen. The menu fires at either gate
+// depth: the session retells the mechanism from the staged record and the
+// findings behind it, then re-runs this render for the header and menu. A
+// decision is an irreducible product fork — never a technical call an
+// investigation would settle — and the required "stakes" (a top-level
+// field beside "decision", never nested inside it) is the payload's
+// argument for the stop: each side's product consequence, why no
+// investigation settles the tie, and — where a side is marked — the
+// grounds for the recommendation. Problem, solution and stakes stay
+// required here though the decision path never renders them: the payload
+// mirrors its staging row, and a decision with no record behind it is
+// refused, not slimmed. The menu fires at either gate
 // mode, by design: a bare `y` would hand the call to the executor, and
 // auto never settles an irreducible product fork — a decision item always
 // stops, and over an auto opt-in its label says so. A decision excludes
@@ -397,9 +400,6 @@ function proposedTask(cwd, args) {
       const summary = side.summary;
       if (!isFilled(summary)) {
         throw new Error(`render proposed-task: decision.options[${i}] must be a non-empty string or an object carrying "summary"`);
-      }
-      if (/\n/.test(/** @type {string} */ (summary))) {
-        throw new Error(`render proposed-task: decision.options[${i}] must be a single line — a side is one menu row`);
       }
       return { summary, recommended: side.recommended === true };
     });
@@ -1720,11 +1720,14 @@ function stringLines(v, surface, field) {
  * The recommended-first menu rows shared by proposed-task's decision, the
  * incoherence conflict, and the choice finding: at most one entry marked
  * (the caller owns the error text), the marked one first, "(recommended)"
- * as its suffix.
+ * as its suffix. A side is one menu row, so a newline in any summary is
+ * refused here — the single home where model-authored sides become rows.
  * @param {{summary: string, recommended?: boolean}[]} sides @param {string} atMostOne
  * @returns {string[]}
  */
 function recommendedMenuRows(sides, atMostOne) {
+  const multiline = sides.findIndex((s) => /\n/.test(s.summary));
+  if (multiline >= 0) throw new Error(`a side is one menu row — sides[${multiline}].summary must be a single line`);
   if (sides.filter((s) => s.recommended === true).length > 1) throw new Error(atMostOne);
   const ordered = [...sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
   return ordered.map((s, i) => cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
