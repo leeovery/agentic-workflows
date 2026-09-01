@@ -147,3 +147,17 @@ way was never a real fork: composition doubles as enforcement.
   facilitate it — examples, product terms, end states — with technical
   depth one option away, and a raise that cannot be composed is the
   below-bar verdict.
+- 2026-09-01 — stack up: #1078 (engine) → #1079 (prose) → #1081
+  (cases), stack #1080. Two implementation rulings against decision 5:
+  a Comment whose feedback settles the fork exits to the caller's
+  plain path rather than re-rendering inside the reference — the
+  settled payload would draw the approval menu, whose handling
+  (including the auto opt-in's caller-specific gate-mode write) is the
+  walk's; each walk's plain render instead carries the
+  explicit-approval clause (`--gate gated` for a Comment-settled
+  fork). And the Comment/technical re-entries skip dispose
+  structurally — they loop inside the reference's response section and
+  never re-pass it — so no exception clause exists in prose.
+  Dead-fork dispose coverage landed by reworking
+  `implementation-settles-a-sub-bar-decision` to the Portal shape: a
+  Decision staged beside the sibling whose approval forecloses a side.
