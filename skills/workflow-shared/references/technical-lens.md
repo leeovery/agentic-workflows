@@ -1,6 +1,6 @@
 # Technical-Lens Presentation
 
-*Shared reference. Loaded by findings-signoff.md and raising-a-decision.md when the user asks for the technical perspective.*
+*Shared reference. Loaded by `findings-signoff.md` and `raising-a-decision.md` when the user asks for the technical perspective.*
 
 ---
 
@@ -8,7 +8,7 @@ The code-perspective counterpart to [product-lens.md](product-lens.md): the same
 
 Engine-emitted sections sit outside it entirely: `=== DISPLAY … ===` and `=== MENU … ===` content is emitted byte-for-byte, and a gate re-emitted after a retell is not part of the retelling. The register stops at the section boundary.
 
-This file composes with [voice.md](voice.md) rather than competing: this governs the report's shape and fidelity, voice governs how the sentences sound.
+This file composes with [voice.md](voice.md) rather than competing: this governs the record's shape and fidelity, voice governs how the sentences sound.
 
 ## Audience
 

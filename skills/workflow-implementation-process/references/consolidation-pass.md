@@ -191,7 +191,7 @@ Each pass reads the next pending proposal from the staging file as it now stands
 
 #### If the next pending proposal carries a Decision
 
-→ Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.implementation.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/consolidation-tasks-p{N}.md`, payload_path = `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json`, gate_mode = `{consolidation_gate_mode}`, row_address = `staging.p{N}.tasks.{n}`, comment_hint = `Provide feedback to adjust`.
+→ Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.implementation.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/consolidation-tasks-p{N}.md`, payload_path = `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json`, gate_mode = `{consolidation_gate_mode}`, row_address = `staging.p{N}.tasks.{n}`, comment_hint = `Provide feedback to adjust`, findings_paths = `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md`.
 
 → On return, return to **D. Process Task**.
 

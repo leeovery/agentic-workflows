@@ -14,6 +14,7 @@ A Decision stops the walk because the fork needs discussion — mirrored consequ
 - `gate_mode` — the walk's gate mode
 - `row_address` — this task's staging-status field, relative to `{dotpath}` (e.g. `staging.c{N}.tasks.{n}`)
 - `comment_hint` — the Comment option's hint
+- `findings_paths` — the findings and report files behind this walk's staging file, for the technical arm
 
 Sections A through D run in order. Always start at **A. Dispose**.
 
@@ -91,7 +92,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {dotpath} {r
 
 **If `technical`:**
 
-The record's depth, on request — retell the fork from the staged proposal and the findings behind it (the cycle's findings and report files its `sources:` line points into; read what is not in context): mechanism-first, real names with `file:line`, each mechanism tied back to what it produces in the product. A lens shift you drive, never a file dump:
+The record's depth, on request — retell the fork from the staged proposal and the findings behind it (`{findings_paths}`; read what is not in context): mechanism-first, real names with `file:line`, each mechanism tied back to what it produces in the product. A lens shift you drive, never a file dump:
 
 → Load **[technical-lens.md](technical-lens.md)** and follow its instructions as written.
 

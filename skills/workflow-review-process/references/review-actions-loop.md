@@ -164,7 +164,7 @@ Each pass reads the next pending proposal from the staging file as it now stands
 
 #### If the next pending proposal carries a Decision
 
-→ Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.review.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, payload_path = `.workflows/.cache/{work_unit}/review/{topic}/proposed-task.json`, gate_mode = `{gate_mode}`, row_address = `staging.c{N}.tasks.{n}`, comment_hint = `Tell me what to change`.
+→ Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.review.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, payload_path = `.workflows/.cache/{work_unit}/review/{topic}/proposed-task.json`, gate_mode = `{gate_mode}`, row_address = `staging.c{N}.tasks.{n}`, comment_hint = `Tell me what to change`, findings_paths = the cycle's `review-report-c{N}.md` and the per-task `report-*.md` files in `.workflows/{work_unit}/review/{topic}/`.
 
 → On return, return to **D. Process Task**.
 
@@ -173,7 +173,7 @@ Each pass reads the next pending proposal from the staging file as it now stands
 Present it plain. Write its payload to `.workflows/.cache/{work_unit}/review/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one. `{gate}` is `{gate_mode}` — except a proposal whose fork a Comment on its raise settled this session, which renders `gated` whatever the mode: the settled direction interprets the user's words, so it lands with an explicit approval. Render, and emit each section verbatim at its marked instruction:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/proposed-task.json --gate {gate}
+node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/proposed-task.json --gate {gate} --comment-hint "Tell me what to change"
 ```
 
 #### If the response carried `DISPLAY: task auto-approved`
