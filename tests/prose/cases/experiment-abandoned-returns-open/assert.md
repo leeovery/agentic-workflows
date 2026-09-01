@@ -36,7 +36,8 @@ The prose should have taken this path:
    passes
 7. the conclude gate renders and the user confirms; the completion the
    wait once blocked now passes — the engine accepts `topic complete`
-   — and the conclusion commits with the knowledge index riding
+   with empty warnings (the index rides inside the verb; no separate
+   call appears in any record) — and the conclusion commits `--kb`
 8. presence clears with the close, the sweep finds no leavings, the
    closing recap runs, and the walk stops at the bridge invocation
 
@@ -49,8 +50,10 @@ Further claims:
   reopen, and not left for a later session
 - the discussion item ends `completed` with no `awaiting_experiments`
   field
-- the decision in the document is the user's judgment call, dated, and
-  the document carries no fabricated timing measurement
+- the decision in the document is the user's judgment call, and the
+  once-awaiting note is settled by a dated entry — no present-tense
+  "awaiting E1" line survives above the decision; the document carries
+  no fabricated timing measurement
 - the map's webhook-timing subtopic ends `decided` — not `deferred`:
   the point was settled, not set aside
 - git history holds the decision commit before the completion commit
@@ -62,5 +65,6 @@ abandonment noted) with its Summary current; the map's webhook-timing
 subtopic `decided`; the experiment item and E1's row byte-unchanged —
 still `completed` above an `abandoned` record with its reason — and
 the record's documents untouched; the stubbed review report in the
-topic's cache with its agent row closed; the discussion indexed into
-the knowledge store by the completion.
+topic's cache with its agent row closed. (The knowledge index rides
+inside `topic complete` and this fixture's store leaves no delta path
+— the verb's empty warnings and the `--kb` commit are its evidence.)
