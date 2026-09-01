@@ -190,3 +190,20 @@ way was never a real fork: composition doubles as enforcement.
   DISPLAY's marker; a durable marker for the comment-settled explicit
   approval (the crash window is inherited and narrow); a case for the
   composition-fails settle (coverage queue).
+- 2026-09-01 — the three raised items settled as recommended (Lee
+  delegated): no in-band hint, crash window accepted, composition-fails
+  case queued. A second adversarial pass then ran over the fix layer
+  itself (four verifiers) and its findings landed as one verify-fix
+  commit per layer: the single-line side refusal moved to
+  recommendedMenuRows — the one place model-authored sides become menu
+  rows — closing the same newline injection on the incoherence conflict
+  and the choice finding; the decision path's required
+  problem/solution/stakes now state their real reason (the payload
+  mirrors its staging row); the technical arm's sources travel as a
+  findings_paths parameter, since the consolidation walk has no cycle,
+  no report and no sources: line for the old pointer to resolve
+  against on a cold resume; the making-it-land load takes the sibling
+  block shape at the point of composition; and the sub-bar case went
+  side-agnostic — its fixture's spec speaks "intent", so pinning the
+  recommended "intentId" failed a walker that derives from the record.
+  Stack rebased onto v0.7.24.
