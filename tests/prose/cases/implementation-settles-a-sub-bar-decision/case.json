@@ -1,5 +1,5 @@
 {
-  "origin": "the dispose check's moved-ground clauses had no coverage: a synthesizer can stage a Decision beside the very sibling whose approval forecloses one of its sides — the observed live failure — and the session's own re-derivation must catch the dead fork and settle it rather than stop. This walks the analysis loop to that moment: a plain webhook-guard proposal takes the auto opt-in, then the staged surfacing Decision is re-derived with the walk's own approvals in context and found one-sided — the approved guard acknowledges unmatched captures, so the redeliver side is unpickable — settled in the staging file with a derivation naming the sibling, and re-presented plain under --gate auto: auto-approved, no raise composed, no decision menu, no user turn",
+  "origin": "the dispose check's two below-bar verdicts had thin coverage: a synthesizer can stage a Decision beside the very sibling whose approval forecloses one of its sides — the observed live failure — and can dress a purely technical fork as a Decision, and the session's own re-derivation must settle both rather than stop. This walks the analysis loop through both in one pass: a plain webhook-guard proposal takes the auto opt-in; the staged surfacing Decision is re-derived with the walk's own approvals in context and found one-sided — the approved guard acknowledges unmatched captures, so the redeliver side is unpickable — settled with a derivation naming the sibling; the staged naming Decision fails the first prong — a spelling changes nothing the product's user gets — and is settled as an honest technical call; each re-presents plain under --gate auto: auto-approved, no raise composed, no decision menu, no user turn",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -42,9 +42,9 @@
     "analysis-duplication-clean": "when the workflow-implementation-analysis-duplication agent is dispatched — write its findings file at the path the agent's own conventions name, via the .txt-then-rename mechanism, and return the stub's status block; one firing",
     "analysis-standards-finds-an-unguarded-webhook": "when the workflow-implementation-analysis-standards agent is dispatched — write its findings file at the path the agent's own conventions name, via the .txt-then-rename mechanism, and return the stub's status block; one firing",
     "analysis-architecture-clean": "when the workflow-implementation-analysis-architecture agent is dispatched — write its findings file at the path the agent's own conventions name, via the .txt-then-rename mechanism, and return the stub's status block; one firing",
-    "synthesizer-stages-a-dead-forked-decision": "when the workflow-implementation-analysis-synthesizer agent is dispatched — write the report and the staging file via the .txt-then-rename mechanism and return the stub's status block; one firing",
-    "task-author-expands-webhook-pair": "when the workflow-implementation-task-author agent is dispatched — add each approved proposal's blocks under its heading in the staging file and return the stub's status block; one firing",
-    "task-writer-creates-analysis-pair": "when the workflow-implementation-task-writer agent is dispatched — create both approved analysis tasks and the new plan phase exactly as the stub directs, record both task_map entries, and return the stub's status block; one firing"
+    "synthesizer-stages-two-dressed-decisions": "when the workflow-implementation-analysis-synthesizer agent is dispatched — write the report and the staging file via the .txt-then-rename mechanism and return the stub's status block; one firing",
+    "task-author-expands-webhook-trio": "when the workflow-implementation-task-author agent is dispatched — add each approved proposal's blocks under its heading in the staging file and return the stub's status block; one firing",
+    "task-writer-creates-analysis-trio": "when the workflow-implementation-task-writer agent is dispatched — create the three approved analysis tasks and the new plan phase exactly as the stub directs, record the three task_map entries, and return the stub's status block; one firing"
   },
   "invariants": {
     "engine_before_write": true,
@@ -60,6 +60,7 @@
       "impl(pay): analysis cycle 1 — synthesis",
       "staging.c1.tasks.1=pending",
       "staging.c1.tasks.2=pending",
+      "staging.c1.tasks.3=pending",
       "render tasks-overview pay.implementation.pay",
       "render proposed-task pay.implementation.pay",
       "--gate gated",
@@ -67,8 +68,10 @@
       "analysis_gate_mode auto",
       "--gate auto",
       "staging.c1.tasks.2 approved",
+      "staging.c1.tasks.3 approved",
       "manifest set pay.planning.pay task_map.pay-2-1",
       "manifest set pay.planning.pay task_map.pay-2-2",
+      "manifest set pay.planning.pay task_map.pay-2-3",
       "impl(pay): analysis cycle 1 — staged tasks",
       "impl(pay): add analysis cycle 1",
       "--plan pay"
@@ -85,8 +88,9 @@
       "analysis_gate_mode auto",
       "--gate auto",
       "staging.c1.tasks.2 approved",
-      "write:.workflows/pay/planning/pay/tasks/pay-2-2.md",
-      "manifest set pay.planning.pay task_map.pay-2-2",
+      "staging.c1.tasks.3 approved",
+      "write:.workflows/pay/planning/pay/tasks/pay-2-3.md",
+      "manifest set pay.planning.pay task_map.pay-2-3",
       "impl(pay): analysis cycle 1 — staged tasks",
       "--plan pay"
     ],
@@ -100,7 +104,7 @@
       "topic reopen",
       "topic start pay specification",
       "topic complete pay specification",
-      "staging.c1.tasks.3",
+      "staging.c1.tasks.4",
       "render cycle-gate",
       "render cycle-limit",
       "render task-brief",

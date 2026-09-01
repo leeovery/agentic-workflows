@@ -18,7 +18,10 @@ was ever deposited.
 The webhook module trusts every capture it is handed:
 `handleCaptureWebhook` marks `event.intentId` paid without looking the
 intent up, and nothing in the plan, the specification, or the
-discussion says what a capture matching no order should do.
+discussion says what a capture matching no order should do. The two
+modules also spell the identifier that links them differently — the
+checkout side keys the payment as `order`, the webhook reads
+`event.intentId` — with behaviour unaffected.
 
 As in the sibling loop cases, the previous pass also left:
 

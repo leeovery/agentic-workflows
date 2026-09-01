@@ -15,7 +15,7 @@ The findings file:
 ```
 AGENT: architecture
 FINDINGS: none
-SUMMARY: No architectural concerns across the two implementation modules.
+SUMMARY: Nothing architectural inside this cycle's remit — the cycle's substance sits with the standards findings.
 ```
 
 The status block:
@@ -23,5 +23,5 @@ The status block:
 ```
 STATUS: clean
 FINDINGS_COUNT: 0
-SUMMARY: The two modules are structured proportionately for what they do.
+SUMMARY: Nothing architectural within this cycle's remit.
 ```

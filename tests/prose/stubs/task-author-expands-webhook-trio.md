@@ -1,6 +1,6 @@
-# stub: task-author-expands-webhook-pair
+# stub: task-author-expands-webhook-trio
 
-A task author's expansion of the two approved analysis proposals. Edit
+A task author's expansion of the three approved analysis proposals. Edit
 the staging file in place, under each approved task's existing
 `## Task {n}` heading: leave its title, its `severity:` and `sources:`
 lines, and its Problem and Solution exactly as the walk left them, and
@@ -26,10 +26,18 @@ Under the surfacing proposal:
 
 **Tests**: `an unmatched capture is recorded for follow-up` — one entry per miss, none on a match.
 
+Under the spelling proposal:
+
+**Do**: Rename the checkout module's `order`-keyed payment identifier to the settled spelling at `src/checkout/payment-intent.js`, align the webhook side's read and both test files' comments, and touch nothing else.
+
+**Acceptance Criteria**: One spelling for the gateway identifier at both entry points and in both tests' comments; behaviour unchanged; the existing tests stay green.
+
+**Tests**: existing suites only — the rename is behaviour-neutral, and green tests are the check.
+
 The status block:
 
 ```
 STATUS: complete
-TASKS_AUTHORED: 2
-SUMMARY: Expanded both approved proposals into executor-ready bodies.
+TASKS_AUTHORED: 3
+SUMMARY: Expanded all three approved proposals into executor-ready bodies.
 ```
