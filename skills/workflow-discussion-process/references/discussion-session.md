@@ -157,7 +157,7 @@ One ceremony, two ways in — enter when either, or both at once, holds:
 
 A non-empty calls queue flushes first — follow **J. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and conclusion resumes by its standing conditions once the queue drains. An unlanded call is undocumented knowledge.
 
-The topic's evidence waits gate the ceremony next, before anything is parked — a point blocked pending evidence is never written `deferred` by the sweep below, because deferral is parked by choice and this point is blocked pending input. Read the waits (`get` prints empty when no wait is held; the engine would refuse the completion anyway):
+The topic's evidence waits gate the ceremony next, before anything is deferred — a point blocked pending evidence is never written `deferred` by the sweep below, because deferral is a choice and this point is blocked pending input. Read the waits (`get` prints empty when no wait is held; the engine would refuse the completion anyway):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} awaiting_experiments
