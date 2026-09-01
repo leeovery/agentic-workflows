@@ -22,7 +22,7 @@ const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/r
 const { commitPathspecScoped, commitPathspecWithKb, discoveryScope, KB_DIR } = require('./domain/commit.cjs');
 const { dirtyPaths, stageableSpecs, hasStagedDeletions } = require('./kernel/git.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
-const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
+const { VALID_ROUTINGS, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
@@ -956,7 +956,7 @@ function runExperiment(argv) {
       const result = command === 'conclude'
         ? concludeExperiment(cwd, workUnit, topic, id, { verdict: payload })
         : abandonExperiment(cwd, workUnit, topic, id, { reason: payload });
-      (id.includes('.') ? beatQuietly : clearQuietly)(cwd, workUnit, 'experiment', topic);
+      (isParentExperimentId(id) ? clearQuietly : beatQuietly)(cwd, workUnit, 'experiment', topic);
       respond(result);
       return;
     }

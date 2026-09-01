@@ -57,6 +57,12 @@ function buildFixture(root) {
         ledger: { status: 'completed' },
         refunds: { status: 'in-progress' },       // not completed → excluded
       } },
+      experiment: { items: {
+        ledger: {                                  // never indexed, completed or not
+          status: 'completed',
+          experiments: { E1: { slug: 'settle-window', status: 'concluded', verdict: 'held' } },
+        },
+      } },
     },
     imports: [
       { path: 'imports/oauth-notes.md' },
@@ -75,6 +81,8 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', 'discussion', 'ledger.md'), '# Ledger\n');
   writeFile(path.join(wf, 'payments', 'discussion', 'refunds.md'), '# Refunds\n');
   writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec\n');
+  writeFile(path.join(wf, 'payments', 'experiment', 'ledger', 'E1-settle-window', 'report.md'), '# never indexed\n');
+  writeFile(path.join(wf, 'payments', 'experiment', 'ledger', 'E1-settle-window', 'design.md'), '# never indexed\n');
   writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth\n');
   writeFile(path.join(wf, 'payments', 'seeds', 'original-idea.md'), '# Idea\n');
   writeFile(path.join(wf, 'payments', '.state', 'research-analysis.md'), '# retired cache — not indexable\n');
@@ -203,6 +211,12 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
 
   it('discovers exactly the expected identity + target set', () => {
     assert.deepStrictEqual(normalise(discoverArtifacts()), EXPECTED);
+  });
+
+  it('never discovers the experiment records — a completed series is not knowledge-base material', () => {
+    const found = normalise(discoverArtifacts());
+    assert.ok(found.every((it) => it.phase !== 'experiment' && !it.file.includes('/experiment/')),
+      'the bulk walk yields no experiment identity and no record file');
   });
 
   it('leaves the retired research-analysis cache undiscovered', () => {

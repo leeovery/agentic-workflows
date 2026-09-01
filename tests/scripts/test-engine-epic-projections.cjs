@@ -1208,6 +1208,36 @@ describe('epic projections: per-experiment menu entries', () => {
     assert.notStrictEqual(rec && rec.action, 'continue_experiment');
   });
 
+  it('the series joins neither the resume nor the reactivate candidates — nothing above the records concludes or revives by hand', () => {
+    const done = labDetail({
+      discussion: { items: { timing: { status: 'in-progress' } } },
+      experiment: {
+        items: {
+          timing: {
+            status: 'completed',
+            experiments: { E1: { slug: 'window-placement', status: 'concluded', verdict: 'held' } },
+          },
+        },
+      },
+    });
+    assert.ok(!done.completed.some((i) => i.phase === 'experiment'),
+      'a completed series has nothing to resume — a new spawn reopens it');
+
+    const cancelled = labDetail({
+      discussion: { items: { timing: { status: 'in-progress' } } },
+      experiment: {
+        items: {
+          timing: {
+            status: 'cancelled', previous_status: 'in-progress',
+            experiments: { E1: { slug: 'window-placement', status: 'abandoned', reason: 'series cancelled' } },
+          },
+        },
+      },
+    });
+    assert.ok(!cancelled.cancelled.some((i) => i.phase === 'experiment'),
+      'a cancelled series has nothing to reactivate — its rows stand and the next spawn revives it');
+  });
+
   it('a held laboratory session strikes the entry and hands the recommendation onward', () => {
     const { keys } = epicMenu('lab', labDetail(), {
       presence: [{ phase: 'experiment', topic: 'timing', age_seconds: 60, held: true, live: true, session_id: 'peer', pid: null }],

@@ -29,6 +29,7 @@ const {
   VALID_WORK_UNIT_STATUSES,
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_ID_PATTERN,
+  isParentExperimentId,
 } = require('../kernel/manifest-schema.cjs');
 
 // Phases whose artifacts the knowledge base indexes — `resolve`'s scope.
@@ -267,6 +268,12 @@ function validateSet(segments, value, fieldSegments = segments) {
 
     // phases.<phase>.items.<item>.status
     if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'status') {
+      // The experiment item's status is derived bookkeeping over its records
+      // — the experiment verbs settle it after every transition, and no hand
+      // ever writes it.
+      if (phase === 'experiment') {
+        fail('the experiment item\'s status is derived bookkeeping the experiment verbs maintain — the spawn opens it, the last record\'s terminal transition closes it; never set it by hand');
+      }
       validatePhaseStatus(phase, value);
       return;
     }
@@ -409,7 +416,7 @@ function validateExperimentField(fieldSegments, value) {
 
 /** @param {*} value */
 function validateAwaitingExperiments(value) {
-  if (!Array.isArray(value) || value.some((id) => typeof id !== 'string' || !EXPERIMENT_ID_PATTERN.test(id) || id.includes('.'))) {
+  if (!Array.isArray(value) || value.some((id) => typeof id !== 'string' || !EXPERIMENT_ID_PATTERN.test(id) || !isParentExperimentId(id))) {
     fail(`Invalid awaiting_experiments ${JSON.stringify(value)}. Must be an array of top-level experiment ids (E1, E2, …) — the lock is only ever the parent id`);
   }
 }

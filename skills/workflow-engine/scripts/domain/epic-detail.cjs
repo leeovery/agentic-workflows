@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 const {
   phaseItems,
   computeAnalysisCacheStatus,
@@ -238,10 +238,10 @@ function epicDetail(cwd, manifest) {
       if (phase === 'experiment' && item.status === 'in-progress'
           && item.experiments && typeof item.experiments === 'object') {
         const live = Object.entries(item.experiments)
-          .filter(([id, r]) => !id.includes('.') && r && typeof r === 'object'
+          .filter(([id, r]) => isParentExperimentId(id) && r && typeof r === 'object'
             && !EXPERIMENT_TERMINAL_STATUSES.includes(r.status))
           .map(([id, r]) => ({ id, slug: r.slug, status: r.status }))
-          .sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
+          .sort((a, b) => compareExperimentIds(a.id, b.id));
         if (live.length > 0) entry.experiments = live;
       }
 
@@ -291,13 +291,18 @@ function epicDetail(cwd, manifest) {
       if (item.status === 'in-progress') {
         inProgressItems.push({ name: item.name, phase });
       }
-      if (item.status === 'completed') {
+      // The experiment item is derived bookkeeping with no session of its
+      // own: a completed series has nothing to resume (a new spawn reopens
+      // it) and a cancelled one nothing to reactivate (its rows stand; the
+      // next spawn revives it) — so neither joins the resume or reactivate
+      // candidates.
+      if (item.status === 'completed' && phase !== 'experiment') {
         completedItems.push({
           name: item.name, phase,
           ...(item.reconcile_needed !== undefined ? { reconcile_needed: item.reconcile_needed } : {}),
         });
       }
-      if (item.status === 'cancelled') {
+      if (item.status === 'cancelled' && phase !== 'experiment') {
         cancelledItems.push({ name: item.name, phase, previous_status: item.previous_status || null });
       }
     }

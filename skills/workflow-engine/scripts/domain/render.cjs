@@ -40,6 +40,7 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick } = require('./projections/experiment.cjs');
+const { compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
@@ -2467,14 +2468,9 @@ function resolveExperiment(cwd, dotpath, surface) {
     throw new Error(`render ${surface}: no experiment series for "${topic}" in "${workUnit}"`);
   }
   const experiments = (item.experiments && typeof item.experiments === 'object') ? item.experiments : {};
-  const numbers = (/** @type {string} */ id) => id.slice(1).split('.').map(Number);
   const rows = Object.entries(experiments)
     .map(([id, r]) => ({ id, ...(r && typeof r === 'object' ? r : {}) }))
-    .sort((a, b) => {
-      const [an, am = 0] = numbers(a.id);
-      const [bn, bm = 0] = numbers(b.id);
-      return an - bn || am - bm;
-    });
+    .sort((a, b) => compareExperimentIds(a.id, b.id));
   return { workUnit, topic, rows };
 }
 
@@ -3281,11 +3277,13 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
   const artefacts = paths
     ? `\n\n  Spec: .workflows/${workUnit}/specification/${workUnit}/specification.md\n  Plan: .workflows/${workUnit}/planning/${workUnit}/`
     : '';
-  return section(
-    'DISPLAY: phase completed',
-    CONTINUE_INSTRUCTION,
-    `${titlecase(phase)} completed for "${titlecase(workUnit)}".${artefacts}`,
-  );
+  // The experiment phase has no completion ceremony — the record closed, the
+  // session ends, and sibling records may still live — so its line says what
+  // is true: the session is complete, never the phase.
+  const line = phase === 'experiment'
+    ? `Experiment session complete for "${titlecase(workUnit)}".`
+    : `${titlecase(phase)} completed for "${titlecase(workUnit)}".${artefacts}`;
+  return section('DISPLAY: phase completed', CONTINUE_INSTRUCTION, line);
 }
 
 /**
@@ -3327,10 +3325,15 @@ function revisitGate(cwd, { dotpath, prev, next }) {
   const { workUnit } = resolveWorkUnit(cwd, dotpath, 'revisit-gate');
   if (!isFilled(prev)) throw new Error('render revisit-gate: --prev is required');
   if (!isFilled(next)) throw new Error('render revisit-gate: --next is required');
+  // The experiment line matches phase-completed's: the session is complete,
+  // never the phase — sibling records may still live.
+  const statement = prev === 'experiment'
+    ? `Experiment session complete for "${titlecase(workUnit)}".`
+    : `${titlecase(prev)} completed for "${titlecase(workUnit)}".`;
   return section(
     'MENU: revisit gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(`${titlecase(prev)} completed for "${titlecase(workUnit)}".`, [
+    menu(statement, [
       cmdOption('y', 'yes', `Proceed to ${next}`),
       cmdOption('r', 'revisit', 'Revisit an earlier phase'),
     ], { question: `Proceed to ${next}?` }),

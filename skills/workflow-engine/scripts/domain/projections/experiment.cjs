@@ -15,6 +15,7 @@
 // ---------------------------------------------------------------------------
 
 const { renderTree } = require('../../kernel/render.cjs');
+const { isParentExperimentId } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
 const { section, menu, menuFrame, cmdOption, promptOption, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 
@@ -48,7 +49,7 @@ function registerNode(r) {
 /** @param {SeriesRow[]} rows */
 function registerNodes(rows) {
   return rows
-    .filter((r) => !r.id.includes('.'))
+    .filter((r) => isParentExperimentId(r.id))
     .map((parent) => {
       const subs = rows.filter((r) => r.id.startsWith(`${parent.id}.`));
       const node = registerNode(parent);

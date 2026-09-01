@@ -53,7 +53,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.c
 const SPEC_GATEWAY = require(path.join(ROOT, 'skills/workflow-specification-entry/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
-const { epicMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+const { epicMenu, epicDashboard } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
 
 // Spec-entry detail for one work unit — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
@@ -2466,9 +2466,13 @@ describe('pipeline simulation', () => {
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders
     // only over a designed record.
+    // The dashboard renders over the live series — the waiting cue on the
+    // map row, the state audited whole after the spawn transactions.
+    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail), /awaiting E1/);
+
     label(sim, wu, 'experiment', 'timing');
-    sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
     sim.write(`${e1.dir}/design.md`, '# Design — E1\n\nQuestion, prediction, decision rule.\n');
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
     assert.match(sim.render(['experiment-register', `${wu}.experiment.timing`], { expect: 'content' }),
       /Experiments — Timing \(1 experiment\)/);
     assert.match(sim.render(['experiment-approval-gate', `${wu}.experiment.timing`, '--id', 'E1'], { expect: 'content' }),
@@ -2482,6 +2486,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sub.id, 'E1.1');
     assert.strictEqual(sub.dir, `.workflows/${wu}/experiment/timing/E1-window-placement/E1.1-single-monitor`);
     sim.refuses(['experiment', 'conclude', wu, 'timing', 'E1', '--verdict', 'held'], /live sub-experiments/);
+    sim.write(`${sub.dir}/design.md`, '# Design — E1.1\n');
     sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
     sim.run(['experiment', 'approve', wu, 'timing', 'E1.1']);
     sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
@@ -2524,22 +2529,32 @@ describe('pipeline simulation', () => {
       /Cancel and release\?/);
     const cancelled = sim.run(['topic', 'cancel', wu, 'experiment', 'layout', '--cascade']);
     assert.deepStrictEqual(cancelled.released_waits, [{ phase: 'research', released: ['E1'], remaining: [] }]);
+    assert.deepStrictEqual(cancelled.abandoned, ['E1'], 'the cancel closes every open record — no zombie survives');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.experiments.E1.reason, 'series cancelled');
     sim.run(['manifest', 'delete', `${wu}.research.layout`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'research', 'layout']);
     assert.ok(!epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
       .some((k) => k.action === 'continue_experiment'), 'terminal and cancelled records retire from the menu');
 
+    // The cancelled series is never reactivated — its rows stand; a new spawn
+    // from the reopened conversation revives it at the next id.
+    sim.refuses(['topic', 'reactivate', wu, 'experiment', 'layout'], /never reactivated/);
+
     // Reopen: the staleness hop walks past the experiment slot — the series
     // item is derived bookkeeping no entry flow reconciles, so the flag lands
     // on the first real phase (layout has no discussion, so nowhere) and the
     // settled series is left untouched.
-    sim.run(['topic', 'reactivate', wu, 'experiment', 'layout']);
-    const settled = sim.run(['experiment', 'abandon', wu, 'layout', 'E1', '--reason', 'cancelled with the sweep; not revived']);
-    assert.strictEqual(settled.item_status, 'completed');
     const reopened = sim.run(['topic', 'reopen', wu, 'research', 'layout']);
     assert.strictEqual(reopened.reconcile_flagged, undefined, 'no conversation downstream — nothing takes the flag');
     assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.reconcile_needed, undefined,
       'the series item never takes a reconcile flag');
+
+    const revived = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'follow-up', '--from', 'research']);
+    assert.strictEqual(revived.id, 'E2', 'the revival allocates the next id over the closed rows');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.status, 'in-progress');
+    const settled = sim.run(['experiment', 'abandon', wu, 'layout', 'E2', '--reason', 'settled without the follow-up']);
+    assert.strictEqual(settled.item_status, 'completed');
+    sim.run(['manifest', 'delete', `${wu}.research.layout`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'research', 'layout']);
   });
 
@@ -2569,6 +2584,22 @@ describe('pipeline simulation', () => {
     // The verdict lands the route back on the conversation.
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'discussion');
     sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
+
+    // Cancelling the spawning conversation cascades into its series: bare
+    // refuses over the wait, the cascade cancels the experiment item and
+    // abandons its open record in the same transaction.
+    sim.run(['experiment', 'create', wu, wu, '--slug', 'input-latency', '--from', 'discussion']);
+    sim.refuses(['topic', 'cancel', wu, 'discussion', wu], /strands its evidence waits \(E2\)/);
+    const swept = sim.run(['topic', 'cancel', wu, 'discussion', wu, '--cascade']);
+    assert.strictEqual(swept.experiment_cancelled, true);
+    assert.deepStrictEqual(swept.abandoned, ['E2']);
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items[wu].experiments.E2.reason, 'spawning conversation cancelled');
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].reconcile_needed, undefined,
+      'the cancelled holder is terminal — the release never flags it');
+
+    // Reactivating the conversation leaves the series where the cancel put
+    // it; concluding is legal again — every wait released with the cascade.
+    sim.run(['topic', 'reactivate', wu, 'discussion', wu]);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
   });

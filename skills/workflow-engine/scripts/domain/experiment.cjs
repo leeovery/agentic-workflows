@@ -35,6 +35,7 @@ const {
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,
   EXPERIMENT_ID_PATTERN,
+  isParentExperimentId,
   EXPERIMENT_SPAWN_PHASES,
 } = require('../kernel/manifest-schema.cjs');
 const { flagDownstream, releaseExperimentWaits } = require('./transitions.cjs');
@@ -48,11 +49,6 @@ function assertLegalId(id) {
   if (!EXPERIMENT_ID_PATTERN.test(id)) {
     throw new Error(`invalid experiment id "${id}" — ids are E1, E2, … (sub-experiments E1.1, E1.2, …)`);
   }
-}
-
-/** A top-level series id — never a sub-experiment's. @param {string} id */
-function isParentId(id) {
-  return !id.includes('.');
 }
 
 /** One line, non-empty — the register's row form. @param {string} label @param {string|undefined} value */
@@ -85,7 +81,7 @@ function experimentItem(manifest, topic) {
     throw new Error(`no experiment series for "${topic}" — the spawn creates it (experiment create)`);
   }
   if (item.status === 'cancelled') {
-    throw new Error(`experiment item "${topic}" is cancelled — reactivate it instead`);
+    throw new Error(`experiment item "${topic}" is cancelled — its records are closed; a new spawn from the conversation (experiment create --from) revives the series`);
   }
   return item;
 }
@@ -135,7 +131,7 @@ function liveSubs(item, parentId) {
  */
 function recordDir(workUnit, topic, id, experiments) {
   const base = `.workflows/${workUnit}/experiment/${topic}`;
-  if (isParentId(id)) return `${base}/${id}-${experiments[id].slug}`;
+  if (isParentExperimentId(id)) return `${base}/${id}-${experiments[id].slug}`;
   const parentId = id.slice(0, id.indexOf('.'));
   return `${base}/${parentId}-${experiments[parentId].slug}/${id}-${experiments[id].slug}`;
 }
@@ -201,7 +197,7 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent }) {
   }
   if (parent !== undefined) {
     assertLegalId(parent);
-    if (!isParentId(parent)) {
+    if (!isParentExperimentId(parent)) {
       throw new Error(`--parent must be a top-level experiment id, got "${parent}" — a split never splits again`);
     }
   }
@@ -215,8 +211,9 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent }) {
         throw new Error(`experiment ${parent} ("${topic}") is ${record.status} — only a running experiment discovers its question decomposes; a split waits for the run`);
       }
       const experiments = /** @type {Record<string, ExperimentRecord>} */ (item.experiments);
+      const subPattern = new RegExp(`^${parent}\\.([1-9][0-9]*)$`);
       const m = Object.keys(experiments)
-        .map((id) => (new RegExp(`^${parent}\\.([1-9][0-9]*)$`).exec(id) || [])[1])
+        .map((id) => (subPattern.exec(id) || [])[1])
         .filter(Boolean)
         .reduce((max, digits) => Math.max(max, Number(digits)), 0) + 1;
       const id = `${parent}.${m}`;
@@ -244,12 +241,12 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent }) {
     if (!item || typeof item !== 'object') {
       item = items[topic] = { status: 'in-progress' };
     } else {
-      if (item.status === 'cancelled') {
-        throw new Error(`experiment item "${topic}" is cancelled — reactivate it instead`);
-      }
-      // A completed series reopens at the next spawn — the item is derived
-      // bookkeeping, and a live record makes it live again.
+      // A completed series reopens at the next spawn, and a cancelled one
+      // revives the same way — post-cancel every record is terminal by
+      // construction, so the new record is the only live one. The item is
+      // derived bookkeeping, and a live record makes it live again.
       item.status = 'in-progress';
+      delete item.previous_status;
     }
     const experiments = ensureContainer(item, 'experiments', `phases.experiment.items.${topic}.experiments`);
     const n = Object.keys(experiments)
@@ -361,7 +358,7 @@ function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
     if (record.status !== 'running') {
       throw new Error(`experiment ${id} ("${topic}") is ${record.status} — only a running experiment concludes; the design exists before the data, and the data before the verdict`);
     }
-    if (isParentId(id)) {
+    if (isParentExperimentId(id)) {
       const open = liveSubs(item, id).map(([subId, r]) => `${subId}: ${r.status}`);
       if (open.length > 0) {
         throw new Error(`experiment ${id} ("${topic}") has live sub-experiments (${open.join(', ')}) — its verdict synthesises them; conclude or abandon each first`);
@@ -371,7 +368,7 @@ function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
     record.verdict = verdict.trim();
     /** @type {Partial<ExperimentOpResult>} */
     const extra = { verdict: record.verdict };
-    if (isParentId(id)) {
+    if (isParentExperimentId(id)) {
       const fd = flagDownstream(manifest, /** @type {{work_type: string}} */ (manifest).work_type, 'experiment', topic);
       if (fd.flagged.length > 0) extra.reconcile_flagged = fd.flagged;
       const released = releaseExperimentWaits(manifest, topic, { ids: [id] });
@@ -400,7 +397,7 @@ function abandonExperiment(cwd, workUnit, topic, id, { reason }) {
   assertOneLine('--reason', reason);
   return recordTransition(cwd, workUnit, topic, id, (record, item, manifest) => {
     assertNotTerminal(record, topic, id);
-    if (isParentId(id)) {
+    if (isParentExperimentId(id)) {
       const open = liveSubs(item, id).map(([subId, r]) => `${subId}: ${r.status}`);
       if (open.length > 0) {
         throw new Error(`experiment ${id} ("${topic}") has live sub-experiments (${open.join(', ')}) — conclude or abandon each before putting the parent down`);
@@ -410,7 +407,7 @@ function abandonExperiment(cwd, workUnit, topic, id, { reason }) {
     record.reason = reason.trim();
     /** @type {Partial<ExperimentOpResult>} */
     const extra = { reason: record.reason };
-    if (isParentId(id)) {
+    if (isParentExperimentId(id)) {
       const released = releaseExperimentWaits(manifest, topic, { ids: [id] });
       if (released.length > 0) extra.released_waits = released;
     }

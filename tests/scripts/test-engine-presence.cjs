@@ -82,13 +82,13 @@ describe('engine presence', () => {
   });
 
   it('a live session outside the source phases defers no analysis', () => {
-    // The analyses read research and discussion; a planning or code session
-    // holds nothing they look at.
-    for (const phase of ['planning', 'specification', 'implementation', 'review', 'scoping', 'investigation']) {
+    // The analyses read research and discussion; a laboratory, planning, or
+    // code session holds nothing they look at.
+    for (const phase of ['planning', 'specification', 'implementation', 'review', 'scoping', 'investigation', 'experiment']) {
       engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']);
     }
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(res.live, 6, 'every session is live');
+    assert.strictEqual(res.live, 7, 'every session is live');
     assert.strictEqual(res.live_sources, 0, 'none of them is source material');
     assert.strictEqual(sections, '', 'nothing to defer, nothing rendered');
 
@@ -98,12 +98,12 @@ describe('engine presence', () => {
     assert.ok(second.sections.includes('research/beta'), second.sections);
     assert.ok(!second.sections.includes('planning/'), `the callout names source rows alone: ${second.sections}`);
 
-    // A live experiment session is a source mid-measurement — it defers the
-    // analyses exactly as the conversation it will land in does.
+    // A laboratory session never touches the corpora the analyses read —
+    // its slot carries presence, never a deferral.
     engine(dir, ['presence', 'beat', 'pay', 'experiment', 'beta']);
     const third = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(third.res.live_sources, 2);
-    assert.ok(third.sections.includes('experiment/beta'), third.sections);
+    assert.strictEqual(third.res.live_sources, 1);
+    assert.ok(!third.sections.includes('experiment/beta'), third.sections);
   });
 
   it('an aged heartbeat reads stale — no deferral section', () => {

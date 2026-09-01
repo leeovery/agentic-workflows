@@ -79,6 +79,24 @@ const EXPERIMENT_TERMINAL_STATUSES = ['concluded', 'abandoned'];
 // state.
 const EXPERIMENT_ID_PATTERN = /^E[1-9][0-9]*(\.[1-9][0-9]*)?$/;
 
+/** A top-level series id — never a sub-experiment's. @param {string} id */
+function isParentExperimentId(id) {
+  return !id.includes('.');
+}
+
+/**
+ * Series order over legal ids: parents by number, each parent's
+ * sub-experiments beneath it in their own order — the register's reading
+ * order, shared by every surface that sorts a series.
+ * @param {string} a @param {string} b
+ */
+function compareExperimentIds(a, b) {
+  const [an, am] = a.slice(1).split('.').map(Number);
+  const [bn, bm] = b.slice(1).split('.').map(Number);
+  if (an !== bn) return an - bn;
+  return (am ?? 0) - (bm ?? 0);
+}
+
 // The phases whose sessions spawn experiments — each spawn locks the
 // spawning phase's own item (`awaiting_experiments`), research and
 // discussion identically.
@@ -109,6 +127,8 @@ module.exports = {
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,
   EXPERIMENT_ID_PATTERN,
+  isParentExperimentId,
+  compareExperimentIds,
   EXPERIMENT_SPAWN_PHASES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,

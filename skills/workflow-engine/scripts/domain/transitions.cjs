@@ -38,7 +38,7 @@ const { revertJoins } = require('./roadmap.cjs');
 // here strips a still-live topic's position.
 const MAP_LIFECYCLE_PHASES = ['research', 'discussion'];
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
 // items (no lifecycle status — computed at render time); they are created and
@@ -70,13 +70,15 @@ function assertLegalWrite(phase, status) {
  * @property {string[]} [cascaded]  started spec items cancelled with their source (cancel --cascade)
  * @property {string[]} [discarded] proposed groupings deleted with their source (cancel --cascade)
  * @property {string[]} [roadmap_reverted] roadmap items handed back to waiting by the cancel-revert hop
- * @property {WaitRelease[]} [released_waits] the evidence waits an experiment cancel released (cancel --cascade)
+ * @property {WaitRelease[]} [released_waits] the evidence waits a cancel released — the experiment item's own, or a spawner cascade's (cancel --cascade)
+ * @property {string[]} [abandoned] the open records a cancel closed as abandoned, reason recorded on each row
+ * @property {boolean} [experiment_cancelled] a spawner cascade cancelled the topic's experiment item in the same transaction
  */
 
 /**
  * The phase item for `topic`, or a loud error.
  * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string, superseded_by?: string, order?: number, previous_order?: number, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
+ * @returns {{status?: string, previous_status?: string, superseded_by?: string, order?: number, previous_order?: number, reconcile_needed?: string, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
  */
 function phaseItem(manifest, phase, topic) {
   assertLegalWrite(phase, 'cancelled');
@@ -312,6 +314,28 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
     break;
   }
   return result;
+}
+
+/**
+ * Abandon every non-terminal record in an experiment item's series — the
+ * cancel paths' honesty move: the register keeps a row per record, each
+ * carrying the cancellation as its reason, so no live record ever survives
+ * under a cancelled item. Mutates the item; returns the abandoned ids.
+ * @param {{experiments?: Record<string, {status?: string, reason?: string}>}} item
+ * @param {string} reason
+ * @returns {string[]}
+ */
+function abandonOpenRecords(item, reason) {
+  /** @type {string[]} */
+  const abandoned = [];
+  for (const [id, record] of Object.entries(item.experiments || {})) {
+    if (!record || typeof record !== 'object') continue;
+    if (EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (record.status))) continue;
+    record.status = 'abandoned';
+    record.reason = reason;
+    abandoned.push(id);
+  }
+  return abandoned;
 }
 
 /**
@@ -999,6 +1023,9 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   const discarded = [];
   /** @type {WaitRelease[]} */
   let releasedWaits = [];
+  /** @type {string[]} */
+  let abandoned = [];
+  let experimentCancelled = false;
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -1012,7 +1039,40 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
         const held = holders.map((h) => `its ${h.phase} awaits ${h.ids.join(', ')}`).join('; ');
         throw new Error(`cancelling the "${topic}" experiments releases the evidence wait — ${held} — confirm the release (--cascade cancels the experiments and releases the waits; each waiting point reverts to open)`);
       }
+      // The register stays honest: every open record ends abandoned with the
+      // cancellation as its reason, so no zombie survives under the
+      // cancelled item and a later spawn revives a fully terminal series.
+      abandoned = abandonOpenRecords(/** @type {{experiments?: Record<string, {status?: string, reason?: string}>}} */ (item), 'series cancelled');
       releasedWaits = releaseExperimentWaits(manifest, topic);
+    }
+
+    // The spawning conversation is its experiments' only consumer — cancel
+    // it and the series it spawned has nobody to report to. Bare refuses
+    // naming the waits; the cascade cancels the experiment item in the same
+    // transaction, abandoning its open records and releasing every wait on
+    // the topic (a non-terminal sibling holder is flagged by the release).
+    if (EXPERIMENT_SPAWN_PHASES.includes(phase)) {
+      const awaiting = awaitedExperiments(manifest, phase, topic);
+      if (awaiting.length > 0) {
+        if (!opts.cascade) {
+          throw new Error(`cancelling ${phase} "${topic}" strands its evidence waits (${awaiting.join(', ')}) — the conversation is the experiments' only consumer; confirm the cascade (--cascade cancels its experiments with it: open records are abandoned and every wait releases)`);
+        }
+        const expItems = (manifest.phases && manifest.phases.experiment && manifest.phases.experiment.items) || {};
+        const expItem = expItems[topic];
+        if (expItem && typeof expItem === 'object' && expItem.status !== 'cancelled') {
+          abandoned = abandonOpenRecords(expItem, 'spawning conversation cancelled');
+          expItem.previous_status = expItem.status;
+          expItem.status = 'cancelled';
+          experimentCancelled = true;
+        }
+        // The release flags every non-terminal holder — but this item is
+        // cancelled by the same transaction, so a flag the release just laid
+        // on it comes straight back off (a flag it already carried stays
+        // stashed with the rest of its fields).
+        const hadFlag = item.reconcile_needed !== undefined;
+        releasedWaits = releaseExperimentWaits(manifest, topic);
+        if (!hadFlag && item.reconcile_needed === 'experiment') delete item.reconcile_needed;
+      }
     }
 
     if (phase === 'discussion' || phase === 'investigation') {
@@ -1070,9 +1130,9 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
 
   /** @type {string[]} */
   const warnings = [];
-  // Experiments never enter the knowledge base — their cancel has no chunks
-  // to remove, so the store is left untouched.
-  if (phase !== 'experiment') {
+  // Only the indexed phases have chunks to remove — the artifact table is
+  // the one home for which those are.
+  if (INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)]) {
     knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
   }
   for (const name of cascaded) {
@@ -1099,6 +1159,8 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   if (discarded.length > 0) result.discarded = discarded;
   if (reverted.length > 0) result.roadmap_reverted = reverted;
   if (releasedWaits.length > 0) result.released_waits = releasedWaits;
+  if (abandoned.length > 0) result.abandoned = abandoned;
+  if (experimentCancelled) result.experiment_cancelled = true;
   // `--sweep`, because the cancel runs from the epic menu: the session doing
   // it is not the session in the topic. A revert widened the commit past the
   // topic scope, so that retry stays generic.
@@ -1118,6 +1180,12 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
  * @returns {TopicTransitionResult}
  */
 function reactivateTopic(cwd, workUnit, phase, topic) {
+  // A cancelled series is never reactivated: post-cancel every record is
+  // terminal by construction, the rows stand on the register, and the next
+  // spawn from the conversation revives the item.
+  if (phase === 'experiment') {
+    throw new Error(`the experiment series is never reactivated — "${topic}"'s rows stand on the register, and a new spawn from its conversation (experiment create --from) revives the series`);
+  }
   const restored = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);

@@ -66,6 +66,41 @@ describe('workunit projections: status display', () => {
     assert.ok(!out.includes('MATERIAL'), out);
   });
 
+  it('feature: an evidence wait renders the experiment slot in flight, never ready', () => {
+    // computeNextPhase says `experiment (awaiting evidence)` — a route into a
+    // phase already alive, so the row reads ◐ [in-progress], never → [ready].
+    createManifest(dir, 'pay', {
+      phases: {
+        research: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
+      },
+    });
+    const unit = unitOf(dir, 'feature', 'pay');
+    assert.strictEqual(unit.phase_label, 'experiment (awaiting evidence)');
+    assert.strictEqual(workUnitStatus('feature', unit), [
+      'PIPELINE (feature)',
+      '  ├─ ◐ Research      [in-progress]',
+      '  └─ ◐ Experiment    [in-progress]',
+      '',
+    ].join('\n'));
+  });
+
+  it('feature: the experiment phase is never a revisit candidate', () => {
+    createManifest(dir, 'pay', {
+      phases: {
+        research: { items: { pay: { status: 'completed' } } },
+        experiment: { items: { pay: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } },
+        discussion: { items: { pay: { status: 'in-progress' } } },
+      },
+    });
+    const unit = unitOf(dir, 'feature', 'pay');
+    const { keys } = workUnitMenu('feature', unit);
+    assert.ok(keys.some((k) => k.action === 'revisit_phase' && k.phase === 'research'),
+      'the completed research is revisitable');
+    assert.ok(!keys.some((k) => k.action === 'revisit_phase' && k.phase === 'experiment'),
+      'entry is per-record and a verdict stands — a new spawn is what reopens the series');
+  });
+
   it('feature: a flagged completed phase carries the cue, the ⚑ line, and takes next_phase', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
