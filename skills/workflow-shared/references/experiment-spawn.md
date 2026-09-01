@@ -34,6 +34,10 @@ Continue the conversation. An inline measurement, no ceremony, stays part of the
    node .claude/skills/workflow-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {slug} --from {phase} --problem .workflows/.cache/{work_unit}/{phase}/{topic}/problem.md
    ```
 
+   A refused create records nothing — no id, no lock, and the scratch survives. Say why in one line and skip the note and both commits:
+
+   → Return to caller for **B. Session Loop**.
+
 3. Note the handed-off question in the session's own document — the waiting point the evidence returns to, named as awaiting `{id}` — and commit with the session's cadence:
 
    ```bash
