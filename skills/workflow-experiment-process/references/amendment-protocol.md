@@ -35,7 +35,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 → Return to caller.
 
-**If the user puts the experiment down instead:**
+**If the user abandons the experiment instead:**
 
 → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
 

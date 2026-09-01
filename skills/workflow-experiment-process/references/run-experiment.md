@@ -69,7 +69,7 @@ Two primary questions where the design saw one.
 
 → Proceed to **C. Splits**.
 
-#### If the user puts the run down
+#### If the user abandons the run
 
 → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
 
@@ -95,15 +95,15 @@ On a resume the parts are already on the register — create nothing; each live 
 
 Walk each sub in miniature, holding its `id` and `dir` — from the create response, or on a resume from the register and `{dir}`'s subdirectories — as `{sub_id}` and `{sub_dir}`:
 
-1. **Design** — → Load **[design-experiment.md](design-experiment.md)** with id = `{sub_id}`, dir = `{sub_dir}`. A sub put down here ends `abandoned` on its own row — skip its remaining legs.
-2. **Freeze** — → Load **[briefing.md](briefing.md)** with id = `{sub_id}`, dir = `{sub_dir}` — the gate renders over the sub's id. A park here abandons the sub — skip its remaining legs.
+1. **Design** — → Load **[design-experiment.md](design-experiment.md)** with id = `{sub_id}`, dir = `{sub_dir}`. A sub abandoned here ends on its own row — skip its remaining legs.
+2. **Freeze** — → Load **[briefing.md](briefing.md)** with id = `{sub_id}`, dir = `{sub_dir}` — the gate renders over the sub's id. An abandon here ends the sub on its own row — skip its remaining legs.
 3. **Run** — record that the sub's measurement begins (a sub resumed already `running` skips this call):
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {sub_id}
    ```
 
-   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`, its measurement commits naming `{sub_id}` in the subject. A sub put down mid-measurement — → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{sub_id}` — ends `abandoned` on its own row; skip its verdict.
+   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`, its measurement commits naming `{sub_id}` in the subject. A sub abandoned mid-measurement — → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{sub_id}` — ends on its own row; skip its verdict.
 4. **Verdict** — execute the sub's pre-registered decision rule and record it — a sub's terminal transition releases no wait; the parent's carries them:
 
    ```bash

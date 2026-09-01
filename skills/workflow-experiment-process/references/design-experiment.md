@@ -8,7 +8,7 @@ Author `{dir}/design.md` with the user — load **[design-template.md](design-te
 
 Depth scales with the shape — a ten-minute local test writes four lines per section; a multi-day run writes pages — but the skeleton never scales away, and one primary question is the width limit: anything else measured is explicitly secondary.
 
-**If the user puts the experiment down before the design settles:**
+**If the user abandons the experiment before the design settles:**
 
 → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
 

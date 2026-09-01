@@ -14,7 +14,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs experiment abandon {work_
 
 #### If the engine refused over live sub-experiments
 
-A running parent was put down mid-split — each sub ends on its own row first.
+The parent is mid-split — each sub ends on its own row first.
 
 → Return to **[the skill](../SKILL.md)** for **Step 4**.
 

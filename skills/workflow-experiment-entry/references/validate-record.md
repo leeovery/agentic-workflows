@@ -33,7 +33,7 @@ Branch on the `record_status` the caller stored in Step 3 — no re-read.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> {id} was put down; the register keeps its row. A successor spawns from the conversation that still needs the answer.
+> {id} was abandoned; the register keeps its row. A successor spawns from the conversation that still needs the answer.
 ```
 
 **STOP.** Do not proceed — terminal condition.

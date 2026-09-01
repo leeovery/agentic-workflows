@@ -41,9 +41,9 @@ Fold the changes into `{dir}/design.md` — the record is still `designed`, so t
 
 → Return to **A. Present the Design**.
 
-#### If `park`
+#### If `abandon`
 
-The experiment is put down before it ran.
+The experiment is abandoned before it ran.
 
 → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
 
