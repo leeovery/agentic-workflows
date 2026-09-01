@@ -149,7 +149,7 @@ Continue {selected_phase} for "{topic}" in "{work_unit}".
 
 Invoke `{route}`
 
-Arguments: work_type = epic, work_unit = {work_unit}, topic = {topic}@if(the route is an experiment entry), experiment = {the route's record id}@endif
+Arguments: work_type = epic, work_unit = {work_unit}, topic = {topic}
 The skill will skip discovery and proceed directly to validation.
 
 ## How to proceed
