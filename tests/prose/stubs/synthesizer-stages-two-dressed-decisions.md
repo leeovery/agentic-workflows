@@ -65,8 +65,8 @@ sources: standards
 severity: drift
 sources: standards
 
-**Problem**: The identifier linking the two entry points is named two ways — the checkout module keys it as `order`, the webhook reads `event.intentId`, and each test's comments follow its own site's spelling. Every reader has to hold the mapping in their head.
-**Solution**: One spelling at both entry points and their tests, the other renamed to match.
+**Problem**: The identifier linking the two entry points is named two ways — the checkout module keys it as `order`, the webhook reads `event.intentId`. Every reader has to hold the mapping in their head.
+**Solution**: One spelling at both entry points, the other renamed to match.
 **Decision**: Which spelling does the phase settle on?
 **Stakes**: `intentId` keeps the webhook payload's own field name at the cost of the checkout side's wording; `intent` keeps the specification's vocabulary at the cost of a mapped payload read. The costs mirror and no measurement picks between them.
 1. `intentId` — the gateway's own name as the webhook payload carries it (recommended)

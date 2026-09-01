@@ -15,7 +15,7 @@ The findings file:
 ```
 AGENT: architecture
 FINDINGS: none
-SUMMARY: Nothing architectural inside this cycle's remit — the cycle's substance sits with the standards findings.
+SUMMARY: Nothing architectural inside this cycle's remit.
 ```
 
 The status block:

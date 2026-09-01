@@ -73,8 +73,8 @@ The prose should have taken this path:
     shared arm again and its dispose settles this one on the first
     prong: a spelling changes how the tree names one concept, never
     what the product's user gets or how it behaves — a technical call,
-    settled honestly (either spelling defensible, the recommended one
-    taken with its derivation stated). No raise is composed, no
+    settled honestly: one spelling chosen, either defensible, with the
+    derivation stated. No raise is composed, no
     decision menu is shown; the staged proposal is rewritten plain —
     Solution absorbs the settled spelling, Decision and Stakes gone —
     and it re-presents at --gate auto: auto-approved, no user turn

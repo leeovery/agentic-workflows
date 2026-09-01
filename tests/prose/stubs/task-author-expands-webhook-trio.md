@@ -28,9 +28,9 @@ Under the surfacing proposal:
 
 Under the spelling proposal:
 
-**Do**: Rename the checkout module's `order`-keyed payment identifier to the settled spelling at `src/checkout/payment-intent.js`, align the webhook side's read and both test files' comments, and touch nothing else.
+**Do**: Rename the losing spelling of the payment identifier to the settled one across `src/checkout/payment-intent.js` and `src/webhooks/capture.js`, and touch nothing else.
 
-**Acceptance Criteria**: One spelling for the gateway identifier at both entry points and in both tests' comments; behaviour unchanged; the existing tests stay green.
+**Acceptance Criteria**: One spelling for the gateway identifier at both entry points; behaviour unchanged; the existing tests stay green.
 
 **Tests**: existing suites only — the rename is behaviour-neutral, and green tests are the check.
 
