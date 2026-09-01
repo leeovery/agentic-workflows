@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.25] - 2026-09-01
+
+🔧 Changed
+- A surviving product-fork decision is now raised as a conversational, product-terms explanation (before/after, worked examples, two end states) instead of a technical wall of text, with a `t/technical` option to see the underlying record.
+- Decision sides are now written and stored as product end states ("what the product is if this side wins") rather than task lists.
+- Task and decision proposals now show blank lines between Problem/Solution/Outcome for easier reading.
+
+🐛 Fixed
+- Model-authored menu text (like a long decision question) can no longer misalign a menu's option arrows.
+- Decisions dependent on an earlier approval in the same review walk are now re-checked against fresh context before being presented, avoiding stops over already-settled forks.
+
 ## [0.7.24] - 2026-09-01
 
 🔧 Changed
