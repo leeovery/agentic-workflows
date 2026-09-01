@@ -8,17 +8,17 @@
 
 Read `{dir}/problem.md` in full — the spawn's problem statement: what to pick or learn, the space around it, what the spawning conversation hopes, with a provenance line naming the phase, topic, point, and date it was born from. Hold the provenance — **B** reads by it.
 
-#### If `record_status` is `conceived`
+#### If `record_status` is `approved` or `running`
 
-No design exists yet — the laboratory designs from the spawning conversation's ground.
+The design is frozen — from the freeze, the record's own documents are the ground and the spawning context has served its purpose. Read `{dir}/design.md` in full, and `{dir}/report.md` where it exists — sub-experiment directories under `{dir}` included. The design on disk is the ground; conversation memory is not.
 
-→ Proceed to **B. Read the Spawning Conversation**.
+→ Proceed to **C. Route**.
 
 #### Otherwise
 
-A record in flight. Read its own documents instead: `{dir}/design.md` in full, and `{dir}/report.md` where it exists — sub-experiment directories under `{dir}` included. The design on disk is the ground; conversation memory is not.
+The freeze has not happened — the design is still being shaped (`conceived`: none exists yet; `designed`: written but unfrozen, re-presented at the briefing — read `{dir}/design.md` in full too), so the laboratory designs from the spawning conversation's ground.
 
-→ Proceed to **C. Route**.
+→ Proceed to **B. Read the Spawning Conversation**.
 
 ## B. Read the Spawning Conversation
 

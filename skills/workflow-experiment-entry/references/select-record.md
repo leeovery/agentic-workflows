@@ -10,7 +10,9 @@
 
 Look it up in the stored `experiments` subtree.
 
-**If `{id}` is a sub-experiment (`E{n}.{m}`):** a split is walked inside its parent's run — say so in one line, take the parent id (`E{n}`) as `{id}`, and resolve that instead.
+**If `{id}` is a sub-experiment (`E{n}.{m}`):** a split is walked inside its parent's run — say so in one line and take the parent id (`E{n}`) as `{id}`.
+
+→ Return to **A. Resolve the Id**.
 
 **If the series does not hold `{id}`:** say so in one line.
 

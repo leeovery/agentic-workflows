@@ -39,7 +39,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
 
-→ On return, return to caller.
+→ On return, proceed as the reference directed.
 
 #### If results are visible
 

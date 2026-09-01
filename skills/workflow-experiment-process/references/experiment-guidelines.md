@@ -28,7 +28,7 @@ These guidelines are peripheral vision, not a checkpoint. Carry this awareness t
 
 - **Reading is separate from measurement.** The report records what was measured, then — separately — what it means. Blending the two lets interpretation leak into the numbers.
 - **Measures conceived after seeing data are exploratory.** Label them so. An exploratory measure can motivate the next experiment; it never settles this one.
-- **Experiments don't fail — hypotheses are proven wrong.** A disproven hypothesis is triaged execution-first: was the run flawed, or the belief? Only a clean run indicts the belief; a flawed run indicts the harness and triggers the next experiment.
+- **Experiments don't fail — hypotheses are proven wrong.** A disproven hypothesis is examined execution-first: was the run flawed, or the belief? Only a clean run indicts the belief; a flawed run indicts the harness and triggers the next experiment.
 - **Corrections are append-only and dated.** A flaw found after the fact joins the report's corrections section; nothing already written is rewritten, and old data is never re-scored under new rules.
 
 ## The Boundary

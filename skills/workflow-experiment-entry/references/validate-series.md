@@ -33,7 +33,7 @@ Branch on the `series_state` the caller passed — no re-read. Both states end h
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reactivate it from the menu to work its records again.
+> The series' rows stand on the register; a new spawn from the topic's research or discussion starts the next experiment.
 ```
 
 **STOP.** Do not proceed — terminal condition.

@@ -21,4 +21,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs experiment advance {work_
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} designed"
 ```
 
+**If the engine refused the advance:**
+
+The record moved beneath the session — a peer closed or cancelled it, and the manifest's answer stands. Say so in one line.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+
+**Otherwise:**
+
 → Return to caller.

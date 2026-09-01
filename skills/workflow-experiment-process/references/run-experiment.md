@@ -73,7 +73,7 @@ Two primary questions where the design saw one.
 
 → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{id}`.
 
-→ On return, return to **B. Measure as Designed**.
+→ On return, proceed as the reference directed.
 
 #### Otherwise
 
@@ -83,7 +83,7 @@ Measure until the design is satisfied, then close the report's results.
 
 ## C. Splits
 
-The split is the laboratory's internal method — it never leaks into the spawning conversation's state: the wait stays on the parent and releases once, when the parent as a whole ends. A split never splits again, and the parent's `{id}` and `{dir}` are never rebound — every command in the walk below names the sub directly.
+The split is the laboratory's internal method — it never leaks into the spawning conversation's state: the wait stays on the parent and releases once, when the parent as a whole ends. A split never splits again. The parent's `{id}` and `{dir}` bindings hold in this file — the walk below names each sub directly, and a loaded leg binds its own `{id}`/`{dir}` to the sub for its duration.
 
 On a fresh decomposition, say what decomposed and how in one or two lines, then for each part derive a kebab-case `sub_slug` and create its record — the engine allocates `E{n}.{m}`, nested inside the parent's directory:
 
@@ -103,7 +103,7 @@ Walk each sub in miniature, holding its `id` and `dir` — from the create respo
    node .claude/skills/workflow-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {sub_id}
    ```
 
-   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`. A sub put down mid-measurement — → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{sub_id}` — ends `abandoned` on its own row; skip its verdict.
+   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`, its measurement commits naming `{sub_id}` in the subject. A sub put down mid-measurement — → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{sub_id}` — ends `abandoned` on its own row; skip its verdict.
 4. **Verdict** — execute the sub's pre-registered decision rule and record it — a sub's terminal transition releases no wait; the parent's carries them:
 
    ```bash
