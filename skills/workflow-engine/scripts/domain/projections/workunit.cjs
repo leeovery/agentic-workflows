@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const { box, renderTree } = require('../../kernel/render.cjs');
+const { DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
 const { menuFrame, cmdOption } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
@@ -37,11 +38,14 @@ function entryRoute(cfg, phase, workUnit) {
 
 // Completed phases that come before next_phase in the pipeline — the revisit
 // candidates. A next_phase outside the pipeline (defensive) revisits any.
+// A derived phase is never revisitable: a concluded verdict stands, and a
+// new spawn is what reopens the series.
 /** @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit @returns {string[]} */
 function earlierCompleted(cfg, unit) {
   const nextIdx = cfg.pipeline.indexOf(unit.next_phase);
-  if (nextIdx === -1) return unit.completed_phases.slice();
-  return unit.completed_phases.filter((p) => {
+  const completed = unit.completed_phases.filter((p) => !DERIVED_PHASES.includes(p));
+  if (nextIdx === -1) return completed;
+  return completed.filter((p) => {
     const i = cfg.pipeline.indexOf(p);
     return i > -1 && i < nextIdx;
   });
@@ -63,7 +67,10 @@ function pipelineNodes(cfg, unit) {
       const tag = flaggedPhases.has(phase) ? 'completed · input moved' : 'completed';
       nodes.push({ title: title({ glyph: '✓', label: titlecase(phase) }), tag });
     } else if (phase === unit.next_phase) {
-      const started = nextPhaseStarted(unit);
+      // The label vocabulary marks a started next phase, but not every
+      // started label says so — `experiment (awaiting evidence)` routes to a
+      // phase already in flight — so an in-progress item settles it too.
+      const started = nextPhaseStarted(unit) || (unit.in_progress_phases || []).includes(phase);
       nodes.push({
         title: title({ glyph: started ? '◐' : '→', label: titlecase(phase) }),
         tag: started ? 'in-progress' : 'ready',

@@ -124,6 +124,30 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-b.md'], 'peer dirt untouched');
   });
 
+  it('commits an experiment record tree whole — documents, data, nested sub-records — and leaves the tree clean', () => {
+    writeFile(dir, '.workflows/payments/experiment/topic-a/E1-x/problem.md', '# Problem\n');
+    writeFile(dir, '.workflows/payments/experiment/topic-a/E1-x/design.md', '# Design\n');
+    writeFile(dir, '.workflows/payments/experiment/topic-a/E1-x/data/samples.csv', 'a,b\n');
+    writeFile(dir, '.workflows/payments/experiment/topic-a/E1-x/E1.1-y/report.md', '# Sub report\n');
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+
+    const res = engine(dir, ['commit', 'payments', '-m', 'experiment(payments/topic-a): E1 designed', '--topic', 'experiment/topic-a']);
+    assert.strictEqual(res.ok, true);
+    const files = headFiles(dir);
+    for (const rel of [
+      '.workflows/payments/experiment/topic-a/E1-x/problem.md',
+      '.workflows/payments/experiment/topic-a/E1-x/design.md',
+      '.workflows/payments/experiment/topic-a/E1-x/data/samples.csv',
+      '.workflows/payments/experiment/topic-a/E1-x/E1.1-y/report.md',
+      '.workflows/payments/manifest.json',
+    ]) {
+      assert.ok(files.includes(rel), `record tree committed whole: ${rel}`);
+    }
+    assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-b.md'],
+      'the record tree is clean; only the peer dirt remains');
+  });
+
   it('topic absorb deletes one queue file, commits action-scoped, and answers remaining', () => {
     writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md', '### First\nbody\n');
     writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/002-second.md', '### Second\nbody\n');

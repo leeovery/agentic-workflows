@@ -115,6 +115,23 @@ describe('discoveryMapView', () => {
     ].join('\n'));
   });
 
+  it('a live evidence wait cues the map row — the conversation is blocked on the laboratory', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { alpha: { routing: 'discussion', source: 'discovery' } } },
+        discussion: { items: { alpha: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        experiment: { items: { alpha: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
+      },
+    });
+    assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
+      'Discovery Map (1 topic)',
+      '  └─ ◐ Alpha',
+      '        ↳ Discussing · awaiting E1',
+      '',
+    ].join('\n'));
+  });
+
   it('renders (empty) for a map with no items', () => {
     createManifest(dir, 'v1', { work_type: 'epic', phases: {} });
     assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [

@@ -82,13 +82,13 @@ describe('engine presence', () => {
   });
 
   it('a live session outside the source phases defers no analysis', () => {
-    // The analyses read research and discussion; a planning or code session
-    // holds nothing they look at.
-    for (const phase of ['planning', 'specification', 'implementation', 'review', 'scoping', 'investigation']) {
+    // The analyses read research and discussion; a laboratory, planning, or
+    // code session holds nothing they look at.
+    for (const phase of ['planning', 'specification', 'implementation', 'review', 'scoping', 'investigation', 'experiment']) {
       engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']);
     }
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(res.live, 6, 'every session is live');
+    assert.strictEqual(res.live, 7, 'every session is live');
     assert.strictEqual(res.live_sources, 0, 'none of them is source material');
     assert.strictEqual(sections, '', 'nothing to defer, nothing rendered');
 
@@ -112,6 +112,18 @@ describe('engine presence', () => {
     assert.strictEqual(sections, '', 'nothing live, nothing rendered');
   });
 
+  it('render phase-note beats the addressed topic — announcing the entry is the same act as claiming the slot', () => {
+    fs.writeFileSync(path.join(dir, '.workflows/pay/manifest.json'), JSON.stringify({
+      name: 'pay', work_type: 'epic', status: 'in-progress',
+      phases: { experiment: { items: { alpha: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } } },
+    }) + '\n');
+    const out = execFileSync('node', [ENGINE, 'render', 'phase-note', 'pay.experiment.alpha', '--verb', 'Starting', '--noun', 'E1'], { cwd: dir, encoding: 'utf8' });
+    assert.ok(out.includes('Starting E1: Alpha'), out);
+    assert.ok(fs.existsSync(presenceFile(dir, 'experiment', 'alpha')), 'the note claimed the slot');
+    const scan = engine(dir, ['presence', 'scan', 'pay']).res;
+    assert.strictEqual(scan.sessions.filter((s) => s.phase === 'experiment' && s.topic === 'alpha' && s.live).length, 1);
+  });
+
   it('clear drops the heartbeat and is a no-op when never set', () => {
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
     const cleared = engine(dir, ['presence', 'clear', 'pay', 'discussion', 'alpha']).res;
@@ -121,14 +133,14 @@ describe('engine presence', () => {
   });
 
   it('covers every phase a session sits in — discovery excepted', () => {
-    for (const phase of ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
+    for (const phase of ['research', 'experiment', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
       assert.strictEqual(engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']).res.beat, true, `${phase} beats`);
     }
     const scan = engine(dir, ['presence', 'scan', 'pay']).res;
-    assert.strictEqual(scan.sessions.length, 8, 'every phase reports a row');
-    assert.strictEqual(scan.live, 8);
+    assert.strictEqual(scan.sessions.length, 9, 'every phase reports a row');
+    assert.strictEqual(scan.live, 9);
     // Discovery is engine-serialised by `discovery-session open` — no heartbeat.
-    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is research\|discussion\|/);
+    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is research\|experiment\|discussion\|/);
   });
 
   it('refuses illegal phases, unknown work units, and malformed calls', () => {

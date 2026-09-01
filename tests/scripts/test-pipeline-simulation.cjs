@@ -53,6 +53,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.c
 const SPEC_GATEWAY = require(path.join(ROOT, 'skills/workflow-specification-entry/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
+const { epicMenu, epicDashboard } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
 
 // Spec-entry detail for one work unit — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
@@ -2414,5 +2415,225 @@ describe('pipeline simulation', () => {
     assert.strictEqual(
       require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/presence.cjs')).heldCodeSessions(sim.dir).length, 0,
       'so the next code session walks straight in');
+  });
+  it('epic experiments: spawn, the walk to verdict, splits, releases, series continuation', () => {
+    const wu = 'lab';
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Measured decisions', '--session-log-file', sessionLog(sim, wu)]);
+    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+      { name: 'timing', routing: 'discussion', summary: 'Timing behaviour' },
+      { name: 'layout', routing: 'research', summary: 'Layout rules' },
+    ]);
+    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
+    label(sim, wu, 'discussion', 'timing');
+    sim.run(['topic', 'start', wu, 'discussion', 'timing']);
+    sim.write(`.workflows/${wu}/discussion/timing.md`, '# Discussion — Timing\n');
+    label(sim, wu, 'research', 'layout');
+    sim.run(['topic', 'start', wu, 'research', 'layout']);
+    sim.write(`.workflows/${wu}/research/layout.md`, '# Research — Layout\n');
+
+    // The spawn, mid-discussion: id + item + the problem statement + the
+    // spawning item's lock, one transaction — the session writes the problem
+    // to a cache scratch and the create installs it, so no conceived record
+    // ever exists without its problem file. The cadence commit picks the
+    // record up.
+    const e1Problem = sim.write(`.workflows/.cache/${wu}/discussion/timing/problem.md`,
+      '# Problem — window placement\n\n*From: timing · discussion*\n');
+    const e1 = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'window-placement', '--from', 'discussion', '--problem', e1Problem]);
+    assert.strictEqual(e1.id, 'E1');
+    assert.strictEqual(e1.dir, `.workflows/${wu}/experiment/timing/E1-window-placement`);
+    assert.deepStrictEqual(e1.awaiting, { phase: 'discussion', ids: ['E1'] });
+    assert.ok(fs.existsSync(path.join(sim.dir, e1.dir, 'problem.md')), 'the create installs the problem statement');
+    assert.ok(!fs.existsSync(path.join(sim.dir, e1Problem)), 'the scratch is consumed');
+    sim.run(['commit', wu, '-m', `discussion(${wu}/timing): spawn E1 window-placement`, '--topic', 'discussion/timing']);
+    sim.run(['commit', wu, '-m', `experiment(${wu}/timing): E1 problem statement`, '--topic', 'experiment/timing']);
+
+    // A research spawn locks identically — the phases are symmetric — and
+    // numbers the series onward.
+    const e2 = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'grid-density', '--from', 'research',
+      '--problem', sim.write(`.workflows/.cache/${wu}/research/layout/problem.md`, '# Problem — grid density\n')]);
+    assert.strictEqual(e2.id, 'E1');
+    assert.deepStrictEqual(e2.awaiting, { phase: 'research', ids: ['E1'] });
+
+    // The menu is experiment-shaped: one leading entry per topic with live
+    // records, ranked above every other recommendation — which record to
+    // work resolves inside the phase, never in the route.
+    const menu = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail);
+    const expEntries = menu.keys.filter((k) => k.action === 'continue_experiment');
+    assert.deepStrictEqual(expEntries.map((k) => [k.key, k.topic]),
+      [['1', 'timing'], ['2', 'layout']]);
+    assert.strictEqual(expEntries.some((k) => k.recommended), true, 'a live experiment leads the recommendations');
+    assert.match(expEntries[0].route, new RegExp(`^/workflow-experiment-entry epic ${wu} timing$`));
+    assert.match(expEntries[0].label, /1 experiment queued/);
+    sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
+
+    // Both waiting conversations refuse to conclude while their evidence is out.
+    sim.refuses(['topic', 'complete', wu, 'discussion', 'timing'], /awaits experiment evidence \(E1\)/);
+    sim.refuses(['topic', 'complete', wu, 'research', 'layout'], /awaits experiment evidence \(E1\)/);
+
+    // The walk to verdict: design → the register and the briefing freeze →
+    // run → conclude. The freeze is its own verb; the approval gate renders
+    // only over a designed record.
+    // The dashboard renders over the live series — the waiting cue on the
+    // map row, the state audited whole after the spawn transactions.
+    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail), /awaiting E1/);
+
+    label(sim, wu, 'experiment', 'timing');
+    sim.write(`${e1.dir}/design.md`, '# Design — E1\n\nQuestion, prediction, decision rule.\n');
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
+    assert.match(sim.render(['experiment-register', `${wu}.experiment.timing`], { expect: 'content' }),
+      /Experiments — Timing \(1 experiment\)/);
+    assert.match(sim.render(['experiment-approval-gate', `${wu}.experiment.timing`, '--id', 'E1'], { expect: 'content' }),
+      /Approve E1's design\?/);
+    sim.run(['experiment', 'approve', wu, 'timing', 'E1']);
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
+
+    // A split: the running question decomposes into sub-experiments walked in
+    // miniature; the lock stays on E1 and the parent's verdict waits for them.
+    const sub = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'single-monitor', '--parent', 'E1']);
+    assert.strictEqual(sub.id, 'E1.1');
+    assert.strictEqual(sub.dir, `.workflows/${wu}/experiment/timing/E1-window-placement/E1.1-single-monitor`);
+    sim.refuses(['experiment', 'conclude', wu, 'timing', 'E1', '--verdict', 'held'], /live sub-experiments/);
+    sim.write(`${sub.dir}/design.md`, '# Design — E1.1\n');
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
+    sim.run(['experiment', 'approve', wu, 'timing', 'E1.1']);
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
+    const subDone = sim.run(['experiment', 'conclude', wu, 'timing', 'E1.1', '--verdict', 'placed correctly']);
+    assert.strictEqual(subDone.released_waits, undefined, 'a sub releases nothing — the lock is the parent to release');
+
+    // The parent's conclusion synthesises the subs, releases the wait once,
+    // and flags the conversation so its re-entry surfaces the evidence.
+    sim.write(`${e1.dir}/report.md`, '# Report — E1\n\nResults, verdict, reproduce notes.\n');
+    const verdict = sim.run(['experiment', 'conclude', wu, 'timing', 'E1', '--verdict', 'all layouts placed correctly; adopted']);
+    assert.deepStrictEqual(verdict.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
+    assert.strictEqual(verdict.item_status, 'completed', 'timing\'s records are all terminal — the item closes itself');
+    sim.run(['commit', wu, '-m', `experiment(${wu}/timing): conclude E1 — adopted`, '--topic', 'experiment/timing']);
+    const timing = sim.manifest(wu).phases.discussion.items.timing;
+    assert.strictEqual(timing.awaiting_experiments, undefined);
+    assert.strictEqual(timing.reconcile_needed, 'experiment');
+
+    // The released conversation reconciles at re-entry and concludes.
+    sim.run(['manifest', 'delete', `${wu}.discussion.timing`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'timing']);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): complete timing discussion`, '--topic', 'discussion/timing', '--kb']);
+
+    // Series continuation: the next questions spawn E2 and E3 onto the
+    // completed series and reopen it; abandonment is the other release — the
+    // waiting point reverts to open, no downstream hop.
+    sim.run(['topic', 'reopen', wu, 'discussion', 'timing']);
+    const next = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'multi-monitor', '--from', 'discussion',
+      '--problem', sim.write(`.workflows/.cache/${wu}/discussion/timing/problem.md`, '# Problem — multi-monitor\n')]);
+    assert.strictEqual(next.id, 'E2');
+    const third = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'stacking-order', '--from', 'discussion',
+      '--problem', sim.write(`.workflows/.cache/${wu}/discussion/timing/problem.md`, '# Problem — stacking order\n')]);
+    assert.strictEqual(third.id, 'E3');
+    const dropped = sim.run(['experiment', 'abandon', wu, 'timing', 'E2', '--reason', 'settled by E1 after all']);
+    assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: ['E3'] }]);
+    assert.strictEqual(dropped.item_status, 'in-progress', 'a live sibling keeps the item open');
+
+    // The return leg's gate: a record just closed and E3 still lives, so the
+    // session offers the next experiment or the menu; once the series is
+    // finished the gate refuses and the bridge exit follows.
+    assert.match(sim.render(['experiment-next-gate', `${wu}.experiment.timing`], { expect: 'content' }),
+      /The series still holds E3 stacking-order\./);
+    const last = sim.run(['experiment', 'abandon', wu, 'timing', 'E3', '--reason', 'settled by E1 after all']);
+    assert.deepStrictEqual(last.released_waits, [{ phase: 'discussion', released: ['E3'], remaining: [] }]);
+    assert.strictEqual(last.item_status, 'completed', 'every record terminal closes the item');
+    sim.refuses(['render', 'experiment-next-gate', `${wu}.experiment.timing`], /no live experiments/);
+    sim.run(['manifest', 'delete', `${wu}.discussion.timing`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'timing']);
+
+    // Cancellation is the release's menu-side edge: the bare cancel refuses
+    // over layout's live wait, the cascade-gate renders the confirm, and the
+    // cascade cancels and releases in one transaction.
+    sim.refuses(['topic', 'cancel', wu, 'experiment', 'layout'], /its research awaits E1/);
+    assert.match(sim.render(['cancel-cascade-gate', `${wu}.experiment.layout`], { expect: 'content' }),
+      /Cancel and release\?/);
+    const cancelled = sim.run(['topic', 'cancel', wu, 'experiment', 'layout', '--cascade']);
+    assert.deepStrictEqual(cancelled.released_waits, [{ phase: 'research', released: ['E1'], remaining: [] }]);
+    assert.deepStrictEqual(cancelled.abandoned, ['E1'], 'the cancel closes every open record — no zombie survives');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.experiments.E1.reason, 'series cancelled');
+    sim.run(['manifest', 'delete', `${wu}.research.layout`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'research', 'layout']);
+    assert.ok(!epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+      .some((k) => k.action === 'continue_experiment'), 'terminal and cancelled records retire from the menu');
+
+    // The cancelled series is never reactivated — its rows stand; a new spawn
+    // from the reopened conversation revives it at the next id.
+    sim.refuses(['topic', 'reactivate', wu, 'experiment', 'layout'], /never reactivated/);
+
+    // Reopen: the staleness hop walks past the experiment slot — the series
+    // item is derived bookkeeping no entry flow reconciles, so the flag lands
+    // on the first real phase (layout has no discussion, so nowhere) and the
+    // settled series is left untouched.
+    const reopened = sim.run(['topic', 'reopen', wu, 'research', 'layout']);
+    assert.strictEqual(reopened.reconcile_flagged, undefined, 'no conversation downstream — nothing takes the flag');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.reconcile_needed, undefined,
+      'the series item never takes a reconcile flag');
+
+    const revived = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'follow-up', '--from', 'research',
+      '--problem', sim.write(`.workflows/.cache/${wu}/research/layout/problem.md`, '# Problem — follow-up\n')]);
+    assert.strictEqual(revived.id, 'E2', 'the revival allocates the next id over the closed rows');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.status, 'in-progress');
+    const settled = sim.run(['experiment', 'abandon', wu, 'layout', 'E2', '--reason', 'settled without the follow-up']);
+    assert.strictEqual(settled.item_status, 'completed');
+    sim.run(['manifest', 'delete', `${wu}.research.layout`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'research', 'layout']);
+  });
+
+  it('feature experiments: the waiting conversation routes to the laboratory and back', () => {
+    const wu = 'render-path';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Rendering decisions', '--session-log-file', sessionLog(sim, wu)]);
+    label(sim, wu, 'discussion', wu);
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+
+    // The spawn holds the conversation behind its evidence: the bridge routes
+    // to the experiment until the wait releases — the now-and-later exits
+    // land on the same state.
+    const e1 = sim.run(['experiment', 'create', wu, wu, '--slug', 'frame-budget', '--from', 'discussion',
+      '--problem', sim.write(`.workflows/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — frame budget\n')]);
+    assert.ok(fs.existsSync(path.join(sim.dir, e1.dir, 'problem.md')), 'the spawn installs the problem statement');
+    sim.run(['commit', wu, '-m', `discussion(${wu}): spawn E1 frame-budget`, '--topic', `discussion/${wu}`]);
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'experiment');
+    sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits experiment evidence/);
+
+    label(sim, wu, 'experiment', wu);
+    sim.run(['experiment', 'advance', wu, wu, 'E1']);
+    sim.run(['experiment', 'approve', wu, wu, 'E1']);
+    sim.run(['experiment', 'advance', wu, wu, 'E1']);
+    sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'budget holds at 60fps']);
+    sim.run(['commit', wu, '-m', `experiment(${wu}): conclude E1`, '--topic', `experiment/${wu}`]);
+
+    // The verdict lands the route back on the conversation.
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'discussion');
+    sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
+
+    // Cancelling the spawning conversation takes only its own records: bare
+    // refuses over the wait, the cascade abandons exactly the cancelled
+    // item's awaited records and closes its waits — the experiment item is
+    // never cancelled; its derived status settles over what remains.
+    sim.run(['experiment', 'create', wu, wu, '--slug', 'input-latency', '--from', 'discussion',
+      '--problem', sim.write(`.workflows/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
+    sim.refuses(['topic', 'cancel', wu, 'discussion', wu], /strands its evidence waits \(E2\)/);
+    const swept = sim.run(['topic', 'cancel', wu, 'discussion', wu, '--cascade']);
+    assert.deepStrictEqual(swept.abandoned, ['E2']);
+    assert.deepStrictEqual(swept.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: [] }]);
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items[wu].experiments.E2.reason, 'spawning conversation cancelled');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items[wu].status, 'completed',
+      'every record terminal — the derived status settles; the item is never cancelled');
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].reconcile_needed, 'experiment',
+      'the cancelled holder keeps the release flag inertly — terminal items never cue it, and reactivation restores it live');
+
+    // Reactivating the conversation restores the holder with its flag live —
+    // the reopened conversation's next entry surfaces its abandoned records.
+    // The series stays where the cancel put it; concluding is legal again.
+    sim.run(['topic', 'reactivate', wu, 'discussion', wu]);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].status, 'in-progress');
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].reconcile_needed, 'experiment',
+      'the restored holder carries the advisory live — the abandonment surfaces at its next entry');
+    sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
   });
 });

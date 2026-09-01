@@ -332,6 +332,12 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, false), 'decided');
   });
 
+  it('discoveryLifecycleLabel appends the awaiting cue directly after the lifecycle', () => {
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, false, false, ['E1']), 'discussing · awaiting E1');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, true, false, ['E1', 'E2']), 'discussing · awaiting E1, E2 · triage waiting');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, false, false, []), 'discussing');
+  });
+
   it('discoveryLifecycleLabel renders no cue when triageParked is false or omitted', () => {
     assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null, false), 'fresh · routed to research');
     assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null), 'fresh · routed to research');

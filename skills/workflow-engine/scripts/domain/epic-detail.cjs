@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 const {
   phaseItems,
   computeAnalysisCacheStatus,
@@ -40,11 +40,21 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  */
 
 /**
+ * @typedef {object} ExperimentRow
+ * @property {string} id      `E1`, `E2`, …
+ * @property {string} slug
+ * @property {string} status  one of the experiment record vocabulary
+ */
+
+/**
  * @typedef {object} PhaseEntry
  * @property {string} name
  * @property {string} status
  * @property {string|boolean} [reconcile_needed]  a live reconcile flag — the upstream phase that
  *                                             moved, or `true` for a brief flag
+ * @property {ExperimentRow[]} [experiments]   experiment items — the live (non-terminal)
+ *                                             top-level records, id order; the menu's
+ *                                             topic-grain entry reads them for its tail
  * @property {SpecSource[]} [sources]          specification items
  * @property {string[]} [blocked_by]           specification items whose source is back in-progress
  * @property {string} [format]                 planning items
@@ -89,6 +99,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {boolean} triage_parked  a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
+ * @property {string[]} awaiting_experiments  live evidence-wait ids across the topic's research and discussion items (empty when none)
  * @property {string|null} next_action
  */
 
@@ -220,6 +231,20 @@ function epicDetail(cwd, manifest) {
       const entry = { name: item.name, status: item.status || 'unknown' };
       if (item.reconcile_needed !== undefined) entry.reconcile_needed = item.reconcile_needed;
 
+      // A live series' open experiments ride the entry — the topic's menu
+      // row counts them, appearing at the first spawn and retiring when no
+      // live record remains. Top-level records only: a split is the
+      // laboratory's internal method, worked through its parent.
+      if (DERIVED_PHASES.includes(phase) && item.status === 'in-progress'
+          && item.experiments && typeof item.experiments === 'object') {
+        const live = Object.entries(item.experiments)
+          .filter(([id, r]) => isParentExperimentId(id) && r && typeof r === 'object'
+            && !EXPERIMENT_TERMINAL_STATUSES.includes(r.status))
+          .map(([id, r]) => ({ id, slug: r.slug, status: r.status }))
+          .sort((a, b) => compareExperimentIds(a.id, b.id));
+        if (live.length > 0) entry.experiments = live;
+      }
+
       if (phase === 'specification' && item.sources) {
         const sourcesArr = Array.isArray(item.sources)
           ? item.sources
@@ -266,13 +291,17 @@ function epicDetail(cwd, manifest) {
       if (item.status === 'in-progress') {
         inProgressItems.push({ name: item.name, phase });
       }
-      if (item.status === 'completed') {
+      // A derived item has no session of its own: a completed series has
+      // nothing to resume (a new spawn reopens it) and a cancelled one
+      // nothing to reactivate (its rows stand; the next spawn revives it) —
+      // so neither joins the resume or reactivate candidates.
+      if (item.status === 'completed' && !DERIVED_PHASES.includes(phase)) {
         completedItems.push({
           name: item.name, phase,
           ...(item.reconcile_needed !== undefined ? { reconcile_needed: item.reconcile_needed } : {}),
         });
       }
-      if (item.status === 'cancelled') {
+      if (item.status === 'cancelled' && !DERIVED_PHASES.includes(phase)) {
         cancelledItems.push({ name: item.name, phase, previous_status: item.previous_status || null });
       }
     }

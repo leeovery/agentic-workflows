@@ -11,6 +11,7 @@ function phaseFileExists(cwd, workUnit, phase, manifest) {
   const dir = path.join(cwd, '.workflows', workUnit, phase);
   switch (phase) {
     case 'research':       return listFiles(dir, '.md').length > 0;
+    case 'experiment':     return listDirs(dir).length > 0;
     case 'discussion':     return listFiles(dir, '.md').length > 0;
     case 'investigation':  return listFiles(dir, '.md').length > 0;
     case 'scoping':        return phaseStatus(manifest, phase) !== null;

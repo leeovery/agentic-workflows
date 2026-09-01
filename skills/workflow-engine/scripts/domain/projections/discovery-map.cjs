@@ -24,6 +24,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
  * @property {string|null} [research_state]  the research item's raw status, null when none exists
  * @property {boolean} [triage_parked]  a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {boolean} [reconcile_pending]  a phase item beneath the row carries a live reconcile flag
+ * @property {string[]} [awaiting_experiments]  live evidence-wait ids across the topic's phase items
  * @property {string|null} [summary]
  */
 
@@ -69,7 +70,7 @@ function breakdown(summary) {
 function mapNodes(rows) {
   return rows.map((row) => ({
     title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
-    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false))],
+    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false, row.awaiting_experiments))],
   }));
 }
 
