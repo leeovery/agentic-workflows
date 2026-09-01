@@ -24,7 +24,7 @@ Tell the user in one line what was measured and what it corrects — no gate; th
 
 **If the corrected value undermines a conclusion but itself determines how it falls** — the conclusion re-derives from the corrected value alone, nothing new committed and no live alternative picked between:
 
-A repair the record supports. Tell the user in one line what was measured and how the conclusion re-lands — no gate; the measurement made the choice.
+A repair the record supports. Tell the user in one line what was measured and how the conclusion re-lands — no gate; the measurement made the choice. The repair revises what the document concluded: a conclusion recorded in a Decision block takes C's dated timeline revision, the failed measurement as its trigger — never an in-place value substitution; only restatements outside the block are repaired in place.
 
 → Proceed to **C. Landing a Resolution** with resolution = `{the corrected claim and the conclusion repaired against it, carrying its command and result}`, doc = `{the owning source's topic}`.
 
