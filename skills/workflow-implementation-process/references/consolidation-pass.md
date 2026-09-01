@@ -107,7 +107,7 @@ Read the findings file. The finder proposes; this stage disposes, with the sessi
    → Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
 
    A record-settled entry lands there silently — a derivable gap included, its derivation in the corrigendum. A code-wrong verdict returns for the fold below as a `behaviour` finding; an open verdict (a product-intent gap, or a call the reference could not stand behind — the only classes it returns open) returns as a finding whose proposal carries the decision. An entry the reference returns unsettled (the item back in its own phase, or held by a live session) is left exactly as reported — never re-classified here. An entry the specification already reads as corrected — its corrigendum present — was settled by an earlier run: skip it. When at least one correction landed, confirm in one line total — `{count} spec correction(s) recorded.` — never a per-correction recap; nothing when none did.
-3. **Fold the survivors into proposals** — related findings about one pattern become one proposal; anything giant splits. Normal planning granularity, the count dictated by the work. Give each a one-word class tag: its dominant finding class (`duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `comments`), or `behaviour` where it changes what the code does. A proposal carries the problem and the direction — the bodies are authored after the walk. Settle the direction: derivable from the record → derive; underivable but technical → an honest judgment call — either way the Solution carries the settled direction with its derivation in a clause. A **Decision** is staged only when all three hold: the fork lives at product level (choosing changes what the product's user gets or how it behaves, not how the tree achieves it — test structure, helper extraction, naming, lint, internal bounds never qualify); the costs conflict irreducibly (both sides defensible, mirrored consequences, and no measurement, convention, spec entry, or further trace breaks the tie — where investigation could break it, the investigation is owed instead); and the tie-break is the user's (appetite, product intent, a fact only they hold). Such a proposal keeps a Solution saying what is settled and adds the **Decision** — the question, a **Stakes** line arguing the bar (each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation where a side is marked), and two to four sides, the recommended side first and marked `(recommended)`; only an honest no-lean fork carries no marker. Most passes stage zero Decisions.
+3. **Fold the survivors into proposals** — related findings about one pattern become one proposal; anything giant splits. Normal planning granularity, the count dictated by the work. Give each a one-word class tag: its dominant finding class (`duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `comments`), or `behaviour` where it changes what the code does. A proposal carries the problem and the direction — the bodies are authored after the walk. Settle the direction: derivable from the record → derive; underivable but technical → an honest judgment call — either way the Solution carries the settled direction with its derivation in a clause. A **Decision** is staged only when all three hold: the fork lives at product level (choosing changes what the product's user gets or how it behaves, not how the tree achieves it — test structure, helper extraction, naming, lint, internal bounds never qualify); the costs conflict irreducibly (both sides defensible, mirrored consequences, and no measurement, convention, spec entry, or further trace breaks the tie — where investigation could break it, the investigation is owed instead); and the tie-break is the user's (appetite, product intent, a fact only they hold) — and a fork whose sides cannot be written as two distinct product end states is below the bar. Such a proposal keeps a Solution saying what is settled and adds the **Decision** — the question, a **Stakes** line arguing the bar (each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation where a side is marked), and two to four sides, each written as the product end state chosen — what the product *is* if that side wins, never the work to do — the recommended side first and marked `(recommended)`; only an honest no-lean fork carries no marker. Most passes stage zero Decisions.
 4. **Settle each bank verdict** — the findings file carries the finder's verdict per banked entry, with the entry's JSON quoted verbatim. Record each disposition in the staging file's `## Bank Disposition` section: `folded into task {n}`, `mooted — {reason}`, or `residue — {reason}` (pre-existing debt and out-of-phase entries ride to the end-of-implementation analysis).
 5. **Bank the finder's pre-existing debt** — push each `## Pre-existing Debt` entry the bank does not already hold (read it back first — a re-entry must not double-deposit); it rides to the end-of-implementation analysis:
 
@@ -136,8 +136,8 @@ severity: {class tag}
 **Solution**: {what is settled — the part the decision does not touch}
 **Decision**: {the question}
 **Stakes**: {each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation}
-1. {side} (recommended)
-2. {side}
+1. {the product end state if this side is chosen} (recommended)
+2. {the product end state if this side is chosen}
 
 ## Task 3: ...
 
@@ -177,6 +177,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {wo
 
 ## D. Process Task
 
+Each pass reads the next pending proposal from the staging file as it now stands — a settle may have rewritten it since the overview. `{consolidation_gate_mode}` is live: `auto` from the moment the user opts in mid-walk.
+
 #### If no pending tasks remain in `staging.p{N}`
 
 **If any task is `approved`:**
@@ -187,16 +189,18 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {wo
 
 → Proceed to **F. Record the Phase**.
 
+#### If the next pending proposal carries a Decision
+
+→ Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.implementation.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/consolidation-tasks-p{N}.md`, payload_path = `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json`, gate_mode = `{consolidation_gate_mode}`, row_address = `staging.p{N}.tasks.{n}`, comment_hint = `Provide feedback to adjust`, findings_paths = `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md`.
+
+→ On return, return to **D. Process Task**.
+
 #### Otherwise
 
-Present the next pending proposal.
-
-**If it carries a Decision** — except one returning from this menu's Comment arm, whose gated re-render governs — re-derive it against the bar first: rulings and ground may have moved since it was staged. Below the bar → settle it: investigate or derive, rewrite the staged proposal (Solution becomes the settled direction with its derivation; the Decision and Stakes lines go), and present it as a plain proposal. A surviving Decision whose staged block lacks a Stakes line gains one now, in the staging file, from this re-derivation.
-
-Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "{class tag}", "placement": "phase {N}", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one; a proposal still carrying its Decision adds `"stakes": "…"` (the staged Stakes line) and `"decision": {"question": "…", "options": […]}` — sides in the staged order, the `(recommended)`-marked side as `{"summary": "{side}", "recommended": true}` with the marker stripped, the rest plain strings; the engine orders the recommended side first, so staged order is rendered order and the number the user types indexes it. Then render with `{consolidation_gate_mode}` (`auto` from the moment the user opts in mid-walk), and emit each section verbatim at its marked instruction:
+Present it plain. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "{class tag}", "placement": "phase {N}", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one. `{gate}` is `{consolidation_gate_mode}` — except a proposal whose fork a Comment on its raise settled this session, which renders `gated` whatever the mode: the settled direction interprets the user's words, so it lands with an explicit approval. Render, and emit each section verbatim at its marked instruction:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {consolidation_gate_mode} --comment-hint "Provide feedback to adjust"
+node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate} --comment-hint "Provide feedback to adjust"
 ```
 
 #### If the response carried `DISPLAY: task auto-approved`
@@ -234,28 +238,6 @@ Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs mani
 **If comment:**
 
 Revise the staged proposal in the staging file based on the user's feedback (content only), and rewrite the payload.
-
-→ Return to **D. Process Task**.
-
-#### If the response carried `MENU: task decision`
-
-**STOP.** Wait for user response.
-
-**If a numbered side:**
-
-Rewrite the proposal in the staging file — Solution becomes the settled direction carrying the chosen side, and the Decision and Stakes lines go — then record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.p{N}.tasks.{n} approved`.
-
-→ Return to **D. Process Task**.
-
-**If `decline`:**
-
-Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.p{N}.tasks.{n} skipped`.
-
-→ Return to **D. Process Task**.
-
-**If comment:**
-
-Revise the staged proposal in the staging file based on the user's feedback (content only, and a revision that keeps the fork keeps the marked side listed first) — feedback that settles the question settles it the same way a chosen side does — and rewrite the payload. The revision is an interpretation of the user's words: re-render this item with `--gate gated` whatever the walk's mode, so it lands with an explicit approval.
 
 → Return to **D. Process Task**.
 

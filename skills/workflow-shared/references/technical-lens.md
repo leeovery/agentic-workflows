@@ -1,14 +1,14 @@
 # Technical-Lens Presentation
 
-*Reference for **[findings-signoff.md](findings-signoff.md)** — loaded when the user asks for the technical perspective.*
+*Shared reference. Loaded by `findings-signoff.md` and `raising-a-decision.md` when the user asks for the technical perspective.*
 
 ---
 
-The code-perspective counterpart to [product-lens.md](../../workflow-shared/references/product-lens.md): the same report retold from the code's side. A perspective shift, not a dump — never raw file contents, never a jargon chain.
+The code-perspective counterpart to [product-lens.md](product-lens.md): the same record retold from the code's side. A perspective shift, not a dump — never raw file contents, never a jargon chain.
 
 Engine-emitted sections sit outside it entirely: `=== DISPLAY … ===` and `=== MENU … ===` content is emitted byte-for-byte, and a gate re-emitted after a retell is not part of the retelling. The register stops at the section boundary.
 
-This file composes with [voice.md](../../workflow-shared/references/voice.md) rather than competing: this governs the report's shape and fidelity, voice governs how the sentences sound.
+This file composes with [voice.md](voice.md) rather than competing: this governs the record's shape and fidelity, voice governs how the sentences sound.
 
 ## Audience
 
@@ -23,4 +23,4 @@ The same engineer — knows the product, and is now asking how the code produces
 
 ## Fidelity
 
-A retelling, not a summary — every substantive point in the underlying record appears; nothing softened, nothing dropped. This is the detail path the product-lens summary defers to. The record file stays authoritative.
+A retelling, not a summary — every substantive point in the underlying record appears; nothing softened, nothing dropped. This is the detail path the product-facing presentation defers to. The record file stays authoritative.

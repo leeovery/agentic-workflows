@@ -67,7 +67,7 @@ Each beat lands in a paragraph the user takes in at a glance — complete in cov
 
 ## C. Technical Perspective
 
-→ Load **[technical-lens.md](technical-lens.md)** and follow its instructions as written.
+→ Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
 
 Retell the same findings through the technical lens — the same four sections from the investigation file, mechanism-first, as a markdown narrative (not a code block).
 
