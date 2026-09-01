@@ -112,6 +112,18 @@ describe('engine presence', () => {
     assert.strictEqual(sections, '', 'nothing live, nothing rendered');
   });
 
+  it('render phase-note beats the addressed topic — announcing the entry is the same act as claiming the slot', () => {
+    fs.writeFileSync(path.join(dir, '.workflows/pay/manifest.json'), JSON.stringify({
+      name: 'pay', work_type: 'epic', status: 'in-progress',
+      phases: { experiment: { items: { alpha: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } } },
+    }) + '\n');
+    const out = execFileSync('node', [ENGINE, 'render', 'phase-note', 'pay.experiment.alpha', '--verb', 'Starting', '--noun', 'E1'], { cwd: dir, encoding: 'utf8' });
+    assert.ok(out.includes('Starting E1: Alpha'), out);
+    assert.ok(fs.existsSync(presenceFile(dir, 'experiment', 'alpha')), 'the note claimed the slot');
+    const scan = engine(dir, ['presence', 'scan', 'pay']).res;
+    assert.strictEqual(scan.sessions.filter((s) => s.phase === 'experiment' && s.topic === 'alpha' && s.live).length, 1);
+  });
+
   it('clear drops the heartbeat and is a no-op when never set', () => {
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
     const cleared = engine(dir, ['presence', 'clear', 'pay', 'discussion', 'alpha']).res;

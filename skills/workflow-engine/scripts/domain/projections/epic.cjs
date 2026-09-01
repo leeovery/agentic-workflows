@@ -513,7 +513,7 @@ function experimentEntries(workUnit, detail) {
       key: '',
       action: 'continue_experiment',
       topic: item.name,
-      route: `/workflow-experiment-entry epic ${workUnit} ${item.name}`,
+      route: topicRoute('continue_experiment', workUnit, item.name),
       label: `Enter the laboratory for "${titlecase(item.name)}" — *${live.length} experiment${live.length === 1 ? '' : 's'} queued*`,
     });
   }

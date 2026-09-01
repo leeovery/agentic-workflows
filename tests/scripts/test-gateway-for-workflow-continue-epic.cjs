@@ -1631,6 +1631,26 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       assert.ok(out.includes('all_done: false'));
     });
 
+    it('false while a live experiment series is open — the gate never offers completion over unfinished evidence', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          experiment: {
+            items: { auth: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } },
+          },
+          specification: {
+            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
+          },
+          planning: { items: { 'auth-spec': { status: 'completed' } } },
+          implementation: { items: { 'auth-spec': { status: 'completed' } } },
+          review: { items: { 'auth-spec': { status: 'completed' } } },
+        },
+      });
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('all_done: false'), out);
+    });
+
     it('false while a review item is in progress', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',

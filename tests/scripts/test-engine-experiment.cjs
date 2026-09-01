@@ -180,6 +180,8 @@ describe('engine experiment create — the spawn', () => {
     writeManifest(dir, 'lab', m);
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', scratch()]).error,
       /discussion "timing" is completed — only an in-progress discussion spawns/);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/lab/scratch/x-problem.md')),
+      'a refused spawn leaves the problem scratch intact — nothing consumed, nothing conceived');
   });
 
   it('the problem statement is required, cache-confined, and never rides a split', () => {
@@ -487,6 +489,7 @@ describe('epic topic cancel on the experiments — the wait-release edge', () =>
     assert.strictEqual(res.status, 'cancelled');
     assert.strictEqual(res.released_waits, undefined);
     assert.deepStrictEqual(res.abandoned, ['E2'], 'the bare cancel closes the running record too');
+    assert.deepStrictEqual(res.warnings, [], 'no knowledge sync for a non-indexed phase — nothing to warn about');
     const after = readManifest(dir, 'lab');
     assert.strictEqual(after.phases.experiment.items.timing.experiments.E2.status, 'abandoned');
     assert.strictEqual(after.phases.experiment.items.timing.experiments.E2.reason, 'series cancelled');
@@ -525,8 +528,8 @@ describe('epic topic cancel on the experiments — the wait-release edge', () =>
     assert.strictEqual(after.phases.experiment.items.timing.experiments.E2.status, 'running',
       'the sibling conversation\'s experiment is untouched');
     assert.strictEqual(after.phases.discussion.items.timing.status, 'cancelled');
-    assert.strictEqual(after.phases.discussion.items.timing.reconcile_needed, undefined,
-      'a cancelled holder is terminal — the release never flags it');
+    assert.strictEqual(after.phases.discussion.items.timing.reconcile_needed, 'experiment',
+      'the cancelled holder keeps the release flag inertly — terminal items never cue it; reactivation restores it live');
     assert.deepStrictEqual(after.phases.research.items.timing.awaiting_experiments, ['E2'],
       'the sibling holder\'s wait stands');
     assert.strictEqual(after.phases.research.items.timing.reconcile_needed, undefined,
@@ -557,6 +560,17 @@ describe('epic topic cancel on the experiments — the wait-release edge', () =>
   it('the derived item status refuses the hand-write the verbs make unnecessary', () => {
     assert.match(engineFails(dir, ['manifest', 'set', 'lab.experiment.timing', 'status', 'completed']).error,
       /derived bookkeeping the experiment verbs maintain/);
+  });
+
+  it('supersession refuses over a live evidence wait — a terminal holder would strand the records', () => {
+    assert.match(engineFails(dir, ['topic', 'supersede', 'lab', 'research', 'timing', '--by', 'other']).error,
+      /holds live evidence waits \(E2\) — a superseded holder would strand those experiments with no consumer/);
+    assert.strictEqual(readManifest(dir, 'lab').phases.research.items.timing.status, 'in-progress',
+      'the refusal writes nothing');
+    // With the wait settled, the same supersession reaches the ordinary guards.
+    engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E2', '--reason', 'moot']);
+    assert.match(engineFails(dir, ['topic', 'supersede', 'lab', 'research', 'timing', '--by', 'other']).error,
+      /no research item "other" to supersede toward/);
   });
 });
 
@@ -660,14 +674,36 @@ describe('the field surface guards the series exactly as the verbs write it', ()
   });
 
   it('guards the lock: top-level ids only, on set and push alike', () => {
-    engine(dir, ['manifest', 'set', 'lab.discussion.timing', 'awaiting_experiments', '["E1","E2"]']);
-    engine(dir, ['manifest', 'push', 'lab.research.timing', 'awaiting_experiments', 'E3']);
+    engine(dir, ['manifest', 'set', 'lab.discussion.timing', 'awaiting_experiments', '["E1"]']);
     assert.match(engineFails(dir, ['manifest', 'set', 'lab.discussion.timing', 'awaiting_experiments', '["E1.1"]']).error,
       /the lock is only ever the parent id/);
     assert.match(engineFails(dir, ['manifest', 'push', 'lab.discussion.timing', 'awaiting_experiments', 'nope']).error,
       /Invalid awaiting_experiments/);
     assert.match(engineFails(dir, ['manifest', 'set', 'lab.discussion.timing', 'awaiting_experiments', '"E1"']).error,
       /Must be an array/);
+  });
+
+  it('every awaiting id must name a record the spawn allocated — set and push alike', () => {
+    assert.match(engineFails(dir, ['manifest', 'set', 'lab.discussion.timing', 'awaiting_experiments', '["E1","E9"]']).error,
+      /awaiting_experiments cannot name E9/);
+    assert.match(engineFails(dir, ['manifest', 'push', 'lab.research.timing', 'awaiting_experiments', 'E9']).error,
+      /awaiting_experiments cannot name E9/);
+    assert.strictEqual(readManifest(dir, 'lab').phases.research.items.timing.awaiting_experiments, undefined,
+      'the refusal writes nothing');
+  });
+
+  it('a leaf set on an id the series does not hold refuses — the surface repairs, never creates', () => {
+    assert.match(engineFails(dir, ['manifest', 'set', 'lab.experiment.timing', 'experiments.E9.status', 'running']).error,
+      /no experiment E9 in "timing"'s series — records are allocated by the spawn/);
+    const ops = '.workflows/.cache/lab/scratch/ops.json';
+    fs.mkdirSync(path.join(dir, path.dirname(ops)), { recursive: true });
+    fs.writeFileSync(path.join(dir, ops), JSON.stringify([
+      { op: 'set', path: 'lab.experiment.timing', fields: { 'experiments.E9.status': 'running' } },
+    ]));
+    assert.match(engineFails(dir, ['manifest', 'apply', 'lab', '--file', ops]).error,
+      /no experiment E9 in "timing"'s series/);
+    assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E9, undefined,
+      'no phantom record — a mint here would block the series ever settling');
   });
 });
 

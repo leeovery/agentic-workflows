@@ -1215,6 +1215,12 @@ describe('epic projections: the topic-grain experiment entry', () => {
     assert.match(dash, /↳ Discussing · awaiting E1/);
   });
 
+  it('a live series lands in the detail\'s in-progress set — completion is never offered over open evidence', () => {
+    const detail = labDetail();
+    assert.ok(detail.in_progress.some((i) => i.phase === 'experiment' && i.name === 'timing'),
+      'the in-progress scan sees the derived item like any other open work');
+  });
+
   it('a cancelled series retires its entry and the recommendation falls through', () => {
     const detail = labDetail({
       discussion: { items: { timing: { status: 'in-progress' } } },
@@ -1261,6 +1267,17 @@ describe('epic projections: the topic-grain experiment entry', () => {
     });
     assert.ok(!cancelled.cancelled.some((i) => i.phase === 'experiment'),
       'a cancelled series has nothing to reactivate — its rows stand and the next spawn revives it');
+  });
+
+  it('an interrupted discovery session still outranks the laboratory — the map itself is mid-shape', () => {
+    const detail = labDetail();
+    detail.active_session = '002';
+    const { keys } = epicMenu('lab', detail);
+    const experiment = keys.find((k) => k.action === 'continue_experiment');
+    assert.ok(experiment, 'the laboratory entry still renders');
+    assert.strictEqual(experiment.recommended, undefined, 'the resume gate is waiting — the laboratory ranks among the topic entries');
+    const discoveryOpt = keys.find((k) => k.action === 'continue_discovery');
+    assert.strictEqual(discoveryOpt.recommended, true, 'the discovery resume wins');
   });
 
   it('a held laboratory session strikes the entry and hands the recommendation onward', () => {

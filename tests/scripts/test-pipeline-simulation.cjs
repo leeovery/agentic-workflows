@@ -2622,12 +2622,17 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.experiment.items[wu].experiments.E2.reason, 'spawning conversation cancelled');
     assert.strictEqual(sim.manifest(wu).phases.experiment.items[wu].status, 'completed',
       'every record terminal — the derived status settles; the item is never cancelled');
-    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].reconcile_needed, undefined,
-      'the cancelled holder is terminal — the release never flags it');
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].reconcile_needed, 'experiment',
+      'the cancelled holder keeps the release flag inertly — terminal items never cue it, and reactivation restores it live');
 
-    // Reactivating the conversation leaves the series where the cancel put
-    // it; concluding is legal again — every wait released with the cascade.
+    // Reactivating the conversation restores the holder with its flag live —
+    // the reopened conversation's next entry surfaces its abandoned records.
+    // The series stays where the cancel put it; concluding is legal again.
     sim.run(['topic', 'reactivate', wu, 'discussion', wu]);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].status, 'in-progress');
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].reconcile_needed, 'experiment',
+      'the restored holder carries the advisory live — the abandonment surfaces at its next entry');
+    sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
   });

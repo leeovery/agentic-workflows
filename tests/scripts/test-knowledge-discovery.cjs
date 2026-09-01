@@ -57,6 +57,9 @@ function buildFixture(root) {
         ledger: { status: 'completed' },
         refunds: { status: 'in-progress' },       // not completed → excluded
       } },
+      planning: { items: {
+        ledger: { status: 'completed' },          // completed, but not an indexed phase → excluded
+      } },
     },
     imports: [
       { path: 'imports/oauth-notes.md' },
@@ -75,6 +78,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', 'discussion', 'ledger.md'), '# Ledger\n');
   writeFile(path.join(wf, 'payments', 'discussion', 'refunds.md'), '# Refunds\n');
   writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec\n');
+  writeFile(path.join(wf, 'payments', 'planning', 'ledger', 'planning.md'), '# Plan — unindexed phase, never discovered\n');
   writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth\n');
   writeFile(path.join(wf, 'payments', 'seeds', 'original-idea.md'), '# Idea\n');
   writeFile(path.join(wf, 'payments', '.state', 'research-analysis.md'), '# retired cache — not indexable\n');

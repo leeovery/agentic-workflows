@@ -40,10 +40,10 @@ const {
   EXPERIMENT_TERMINAL_STATUSES,
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
-  derivedItemStatus,
   EXPERIMENT_SPAWN_PHASES,
 } = require('../kernel/manifest-schema.cjs');
-const { flagDownstream, releaseExperimentWaits } = require('./transitions.cjs');
+const { settleItemStatus } = require('./derivations.cjs');
+const { flagDownstream, releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
 
 // The mechanical steps `advance` walks. designed → approved is missing on
 // purpose: that transition is the briefing gate's freeze (`approve`).
@@ -142,17 +142,6 @@ function recordDir(workUnit, topic, id, experiments) {
 }
 
 /**
- * Settle the item's derived status over its records: `completed` when every
- * record is terminal, `in-progress` otherwise. Mutates the item.
- * @param {{status?: string, experiments?: Record<string, ExperimentRecord>}} item
- * @returns {string}
- */
-function settleItemStatus(item) {
-  item.status = derivedItemStatus(item.experiments);
-  return item.status;
-}
-
-/**
  * @typedef {object} ExperimentOpResult
  * @property {string} topic
  * @property {string} id
@@ -192,6 +181,7 @@ function settleItemStatus(item) {
  * @returns {ExperimentOpResult}
  */
 function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem }) {
+  assertLegalTopicName(topic);
   if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
     throw new Error(`--slug must be kebab-case, got "${slug ?? ''}"`);
   }

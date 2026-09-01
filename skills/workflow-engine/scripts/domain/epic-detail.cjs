@@ -235,7 +235,7 @@ function epicDetail(cwd, manifest) {
       // row counts them, appearing at the first spawn and retiring when no
       // live record remains. Top-level records only: a split is the
       // laboratory's internal method, worked through its parent.
-      if (phase === 'experiment' && item.status === 'in-progress'
+      if (DERIVED_PHASES.includes(phase) && item.status === 'in-progress'
           && item.experiments && typeof item.experiments === 'object') {
         const live = Object.entries(item.experiments)
           .filter(([id, r]) => isParentExperimentId(id) && r && typeof r === 'object'

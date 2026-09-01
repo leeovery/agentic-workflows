@@ -419,6 +419,37 @@ function validateAwaitingExperiments(value) {
   }
 }
 
+/**
+ * Existence checks that need the loaded manifest, run on the write path
+ * inside the lock: records are allocated by the spawn — the field surface
+ * repairs, never creates. A `set` on an id the series does not hold would
+ * mint a phantom record that blocks the series ever settling; an
+ * `awaiting_experiments` id naming no record would strand a wait no release
+ * edge can find.
+ * @param {any} manifest @param {string[]} segments @param {*} value
+ */
+function assertExperimentTargets(manifest, segments, value) {
+  // phases.experiment.items.<topic>.experiments.<id>.<leaf>
+  if (segments.length === 7 && segments[0] === 'phases' && segments[2] === 'items' && segments[4] === 'experiments') {
+    const [, , , topic, , id] = segments;
+    const record = getByPath(manifest, segments.slice(0, 6));
+    if (!record || typeof record !== 'object') {
+      fail(`no experiment ${id} in "${topic}"'s series — records are allocated by the spawn (experiment create); the field surface repairs, never creates`);
+    }
+    return;
+  }
+  // phases.<phase>.items.<topic>.awaiting_experiments
+  if (segments.length === 5 && segments[0] === 'phases' && segments[2] === 'items' && segments[4] === 'awaiting_experiments') {
+    const topic = segments[3];
+    const series = (((((manifest.phases || {}).experiment || {}).items || {})[topic] || {}).experiments) || {};
+    for (const id of Array.isArray(value) ? value : [value]) {
+      if (!series[id] || typeof series[id] !== 'object') {
+        fail(`awaiting_experiments cannot name ${id} — no such record in "${topic}"'s experiment series; the lock only ever points at records the spawn allocated`);
+      }
+    }
+  }
+}
+
 /** @param {*} value */
 function validateStoragePaths(value) {
   if (!Array.isArray(value) || value.some((p) => typeof p !== 'string')) {
@@ -922,6 +953,9 @@ function cmdSet(cwd, args) {
 
   manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
     for (const write of planned) {
+      assertExperimentTargets(manifest, write.segments, write.value);
+    }
+    for (const write of planned) {
       setByPath(manifest, write.segments, write.value);
     }
     save();
@@ -991,6 +1025,7 @@ function cmdPush(cwd, args) {
   }
 
   const length = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
+    assertExperimentTargets(manifest, segments, value);
     const current = getByPath(manifest, segments);
 
     if (current !== undefined && !Array.isArray(current)) {
@@ -1164,6 +1199,12 @@ function cmdApply(cwd, args) {
   });
 
   manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
+    for (const op of planned) {
+      if (op.kind !== 'set') continue;
+      for (const write of /** @type {{segments: string[], value: unknown}[]} */ (op.writes)) {
+        assertExperimentTargets(manifest, write.segments, write.value);
+      }
+    }
     for (const op of planned) {
       if (op.kind === 'set') {
         for (const write of /** @type {{segments: string[], value: unknown}[]} */ (op.writes)) {

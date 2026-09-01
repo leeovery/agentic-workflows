@@ -85,6 +85,19 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
+  it('feature: the continue row routes the waiting unit into the laboratory', () => {
+    createManifest(dir, 'pay', {
+      phases: {
+        research: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
+      },
+    });
+    const { keys } = workUnitMenu('feature', unitOf(dir, 'feature', 'pay'));
+    assert.strictEqual(keys[0].action, 'continue');
+    assert.strictEqual(keys[0].route, '/workflow-experiment-entry feature pay');
+    assert.strictEqual(keys[0].label, 'Proceed to experiment');
+  });
+
   it('feature: the experiment phase is never a revisit candidate', () => {
     createManifest(dir, 'pay', {
       phases: {

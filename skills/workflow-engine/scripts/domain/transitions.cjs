@@ -27,7 +27,7 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { computeTopicLifecycle, awaitedExperiments, experimentWaits } = require('./derivations.cjs');
+const { computeTopicLifecycle, awaitedExperiments, experimentWaits, settleItemStatus } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 
 // The discovery map's lifecycle is computed from research and discussion
@@ -38,7 +38,7 @@ const { revertJoins } = require('./roadmap.cjs');
 // here strips a still-live topic's position.
 const MAP_LIFECYCLE_PHASES = ['research', 'discussion'];
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, derivedItemStatus } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
 // items (no lifecycle status — computed at render time); they are created and
@@ -950,7 +950,9 @@ function staleSources(cwd, workUnit, discussion, opts = {}) {
  * list. The absorbing topic must already exist in the same phase (every
  * supersession runs after the superseding item completed). A proposed item is
  * refused — it has no artifact; reconcile deletes it instead — and a
- * cancelled item must go through reactivate. No git commit — supersession is
+ * cancelled item must go through reactivate. An item holding live evidence
+ * waits refuses: a superseded holder is terminal, and the lock would strand
+ * with live records and no consumer. No git commit — supersession is
  * batch-oriented; the calling flow commits the whole set.
  * @param {string} cwd project root
  * @param {string} workUnit
@@ -983,6 +985,12 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     if (item.status === 'promoted') {
       const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+    }
+    // A superseded holder is terminal — its evidence waits would strand with
+    // live records and no consumer.
+    const awaiting = awaitedExperiments(manifest, phase, topic);
+    if (awaiting.length > 0) {
+      throw new Error(`${phase} item "${topic}" holds live evidence waits (${awaiting.join(', ')}) — a superseded holder would strand those experiments with no consumer; conclude or abandon them first`);
     }
     const items = manifest.phases[phase].items;
     if (!items[by] || typeof items[by] !== 'object') {
@@ -1078,17 +1086,15 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
         const expItem = expItems[topic];
         if (expItem && typeof expItem === 'object' && expItem.status !== 'cancelled') {
           abandoned = abandonOpenRecords(expItem, 'spawning conversation cancelled', { ids: awaiting });
-          expItem.status = derivedItemStatus(expItem.experiments);
+          settleItemStatus(expItem);
         }
         // Each id is held by exactly one conversation (the spawn locks the
         // spawning item alone), so releasing this item's own ids can touch
-        // no sibling holder. The release flags every non-terminal holder —
-        // but this item is cancelled by the same transaction, so a flag the
-        // release just laid on it comes straight back off (a flag it
-        // already carried stays stashed with the rest of its fields).
-        const hadFlag = item.reconcile_needed !== undefined;
+        // no sibling holder. The release's flag stays: the cancelled holder
+        // carries it inertly (terminal items keep flags, never cued), and
+        // reactivation restores it live — the reopened conversation's next
+        // entry then surfaces its abandoned records.
         releasedWaits = releaseExperimentWaits(manifest, topic, { ids: awaiting });
-        if (!hadFlag && item.reconcile_needed === 'experiment') delete item.reconcile_needed;
       }
     }
 
@@ -1259,4 +1265,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows, flagDownstream, releaseExperimentWaits };
+module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, sourceRows, flagDownstream, releaseExperimentWaits, assertLegalTopicName };

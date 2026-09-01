@@ -7,7 +7,7 @@
 // Consumed by BOTH write paths (the field commands' validators and the
 // engine's transitions), so the two enforcers can never drift: a status the
 // field surface refuses is refused by the transitions identically. Pure
-// constants — no IO, no side effects, safe to require from anywhere.
+// constants and grammar helpers — no IO.
 // ---------------------------------------------------------------------------
 
 const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'cross-cutting', 'quick-fix'];
@@ -100,19 +100,6 @@ function compareExperimentIds(a, b) {
   return (am ?? 0) - (bm ?? 0);
 }
 
-/**
- * A derived item's status over its records: `completed` only when every
- * record is terminal — an empty series is still open (the spawn opened it).
- * @param {Record<string, {status?: string}>|undefined} experiments
- * @returns {string}
- */
-function derivedItemStatus(experiments) {
-  const records = Object.values(experiments || {});
-  return records.length > 0 && records.every((r) => EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)))
-    ? 'completed'
-    : 'in-progress';
-}
-
 // The phases whose sessions spawn experiments — each spawn locks the
 // spawning phase's own item (`awaiting_experiments`), research and
 // discussion identically.
@@ -146,7 +133,6 @@ module.exports = {
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
   compareExperimentIds,
-  derivedItemStatus,
   EXPERIMENT_SPAWN_PHASES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,

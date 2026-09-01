@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { fileExists, filesChecksum } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -76,6 +76,21 @@ function experimentWaits(manifest, topic) {
     if (ids.length > 0) holders.push({ phase, ids });
   }
   return holders;
+}
+
+/**
+ * Settle a derived item's status over its records — `phaseStatus` one level
+ * down: `completed` only when every record is terminal; an empty series is
+ * still open (the spawn opened it). Mutates the item; returns the status.
+ * @param {{status?: string, experiments?: Record<string, {status?: string}>}} item
+ * @returns {string}
+ */
+function settleItemStatus(item) {
+  const records = Object.values(item.experiments || {});
+  item.status = records.length > 0 && records.every((r) => EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)))
+    ? 'completed'
+    : 'in-progress';
+  return item.status;
 }
 
 // Non-terminal items of one spawn phase holding a live evidence wait — the
@@ -560,6 +575,7 @@ module.exports = {
   phaseStatus,
   awaitedExperiments,
   experimentWaits,
+  settleItemStatus,
   computeNextPhase,
   computeInProgressPhases,
   computeUnitPhaseState,

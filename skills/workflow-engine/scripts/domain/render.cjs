@@ -40,9 +40,9 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate } = require('./projections/experiment.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits, awaitedExperiments } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -1380,10 +1380,13 @@ function incoherenceGate(cwd, args) {
 
 // ---------------------------------------------------------------------------
 // cancel-cascade-gate — the collapse confirm `topic cancel`'s refusal routes
-// to: a live specification is built from the topic being cancelled, so the
-// cascade takes both. No payload — the collapse set is manifest state (the
-// same reverse join the refusal ran): started specs cancel with the topic
-// (reactivatable), proposed groupings are discarded. Always gated.
+// to, per consumer (mirroring the transaction's own cascade set): a
+// discussion or investigation a live specification sources takes the spec
+// collapse (started specs cancel with the topic, reactivatable; proposed
+// groupings are discarded); a research or discussion holding a live
+// evidence wait takes the record-scoped abandonment (exactly its own
+// awaited records); a derived-phase address renders the softer wait-release
+// confirm. No payload — every clause is manifest state. Always gated.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1393,10 +1396,10 @@ function incoherenceGate(cwd, args) {
  */
 function cancelCascadeGate(cwd, { dotpath }) {
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-cascade-gate');
-  // An experiment address renders the softer wait-release confirm — nothing
-  // collapses: each waiting conversation's evidence wait releases and its
-  // waiting point reverts to open.
-  if (phase === 'experiment') {
+  // A derived-phase address renders the softer wait-release confirm —
+  // nothing collapses: each waiting conversation's evidence wait releases
+  // and its waiting point reverts to open.
+  if (DERIVED_PHASES.includes(phase)) {
     const holders = experimentWaits(manifest, topic);
     if (holders.length === 0) {
       throw new Error(`render cancel-cascade-gate: no live evidence wait on "${topic}"'s experiments — the bare cancel proceeds`);
@@ -1411,23 +1414,39 @@ function cancelCascadeGate(cwd, { dotpath }) {
       { question: 'Cancel and release?' },
     ));
   }
-  const specItems = ((manifest.phases || {}).specification || {}).items || {};
-  const collapses = Object.entries(specItems).filter(([, s]) =>
-    s && typeof s === 'object' && !['cancelled', 'superseded', 'promoted'].includes(s.status)
-    && sourceRows(s.sources).some(([n]) => n === topic));
-  if (collapses.length === 0) {
-    throw new Error(`render cancel-cascade-gate: no live specification sources "${topic}" — the bare cancel proceeds`);
+  const specParts = [];
+  // The transaction only cascades specs for discussion and investigation —
+  // the two phases specs source. A same-named research address must never
+  // borrow the discussion's reverse join.
+  if (phase === 'discussion' || phase === 'investigation') {
+    const specItems = ((manifest.phases || {}).specification || {}).items || {};
+    const collapses = Object.entries(specItems).filter(([, s]) =>
+      s && typeof s === 'object' && !['cancelled', 'superseded', 'promoted'].includes(s.status)
+      && sourceRows(s.sources).some(([n]) => n === topic));
+    const started = collapses.filter(([, s]) => s.status !== 'proposed').map(([n]) => titlecase(n));
+    const proposed = collapses.filter(([, s]) => s.status === 'proposed').map(([n]) => titlecase(n));
+    if (started.length > 0) specParts.push(`**${started.join('**, **')}** is cancelled with it (reactivatable)`);
+    if (proposed.length > 0) specParts.push(`the proposed grouping **${proposed.join('**, **')}** is discarded — the next grouping analysis rebuilds from the new world`);
   }
-  const started = collapses.filter(([, s]) => s.status !== 'proposed').map(([n]) => titlecase(n));
-  const proposed = collapses.filter(([, s]) => s.status === 'proposed').map(([n]) => titlecase(n));
+  // A spawn-phase holder's own live waits — the cascade abandons exactly
+  // those records and closes this conversation's waiting points.
+  const awaiting = EXPERIMENT_SPAWN_PHASES.includes(phase) ? awaitedExperiments(manifest, phase, topic) : [];
   const parts = [];
-  if (started.length > 0) parts.push(`**${started.join('**, **')}** is cancelled with it (reactivatable)`);
-  if (proposed.length > 0) parts.push(`the proposed grouping **${proposed.join('**, **')}** is discarded — the next grouping analysis rebuilds from the new world`);
-  const statement = `Cancelling **${titlecase(topic)}** collapses the specification work built from it: ${parts.join('; ')}.`;
+  if (specParts.length > 0) parts.push(`collapses the specification work built from it: ${specParts.join('; ')}`);
+  if (awaiting.length > 0) parts.push(`abandons the experiments it awaits (${awaiting.join(', ')}) — this conversation is their only consumer; a sibling conversation's experiments are untouched`);
+  if (parts.length === 0) {
+    throw new Error(`render cancel-cascade-gate: nothing cascades from "${topic}" (${phase}) — the bare cancel proceeds`);
+  }
+  const statement = `Cancelling **${titlecase(topic)}** ${parts.join('; and ')}.`;
+  const yesLabel = specParts.length > 0 && awaiting.length > 0
+    ? 'Cancel the topic and everything that cascades with it'
+    : specParts.length > 0
+      ? 'Cancel the topic and the specification work it sources'
+      : 'Cancel the conversation and abandon its awaited experiments';
   return section('MENU: cancel cascade', "emit verbatim as markdown, then STOP for the user's response", menu(
     statement,
     [
-      cmdOption('y', 'yes', 'Cancel the topic and the specification work it sources'),
+      cmdOption('y', 'yes', yesLabel),
       cmdOption('n', 'no', 'Return to menu'),
     ],
     { question: 'Cancel them together?' },
@@ -2444,11 +2463,11 @@ function concludeGate(cwd, { dotpath }) {
 }
 
 // ---------------------------------------------------------------------------
-// The experiment surfaces — the series register and the briefing's approval
-// gate (projections/experiment.cjs renders; the handlers resolve the item
-// and refuse states the calling prose never reaches). Address-backed: the
-// series lives on the manifest (`experiments.{id}` records), never in a
-// hand-maintained file.
+// The experiment surfaces — the laboratory's gates and displays over one
+// topic's series (projections/experiment.cjs renders; the handlers resolve
+// the item and refuse states the calling prose never reaches).
+// Address-backed: the series lives on the manifest (`experiments.{id}`
+// records), never in a hand-maintained file.
 // ---------------------------------------------------------------------------
 
 /**
@@ -2502,18 +2521,13 @@ function experimentApprovalGateSurface(cwd, { dotpath, id }) {
 
 /**
  * The record picker — the several-live-records path, rendered directly
- * beneath the register it picks from. Refuses an empty series: with no
- * records there is nothing to pick, and the caller's series check should
- * have refused first.
+ * beneath the register it picks from.
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
  */
 function experimentPickSurface(cwd, { dotpath }) {
-  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-pick');
-  if (rows.length === 0) {
-    throw new Error(`render experiment-pick: "${topic}"'s series holds no experiments — nothing to pick`);
-  }
+  resolveExperiment(cwd, dotpath, 'experiment-pick');
   return experimentPick();
 }
 
@@ -3507,7 +3521,10 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
 // ---------------------------------------------------------------------------
 // phase-note — the entry skills' one-line status notes (Resuming / Starting /
 // Reopening …). Address-backed; the verb is the caller's word, the noun
-// defaults to the phase segment (planning overrides with "plan").
+// defaults to the phase segment (planning overrides with "plan"). Only ever
+// rendered by an entry skill for its own phase, so it beats the addressed
+// topic — the code-gate precedent: claiming the slot is the same act as
+// announcing the entry.
 // ---------------------------------------------------------------------------
 
 /**
@@ -3516,8 +3533,9 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
  * @returns {string}
  */
 function phaseNote(cwd, { dotpath, verb, noun }) {
-  const { phase, topic } = resolveAddress(cwd, dotpath, 'phase-note');
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'phase-note');
   if (!isFilled(verb)) throw new Error('render phase-note: --verb is required (e.g. Resuming, Reopening, Starting)');
+  beatQuietly(cwd, workUnit, phase, topic);
   return section(
     'DISPLAY: phase note',
     CONTINUE_INSTRUCTION,
