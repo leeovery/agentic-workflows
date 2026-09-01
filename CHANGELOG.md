@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.24] - 2026-09-01
+
+🔧 Changed
+
+- Experiment design docs now measure setup facts broadly (instrument behaviour, sample size, environment) rather than just instrument/sample, while explicitly excluding outcomes the run itself is meant to measure.
+- Experiment hand-off notes in session documents are now dated entries rather than untimed notes.
+
 ## [0.7.23] - 2026-09-01
 
 🔧 Changed
