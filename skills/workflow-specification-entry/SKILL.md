@@ -14,10 +14,10 @@ You are in the **Specification** phase — refining prior work into a standalone
 
 | Work type | Pipeline |
 |---|---|
-| Epic | Discovery → Research → Discussion → **Specification** → Planning → Implementation → Review |
+| Epic | Discovery → Research → (Experiment) → Discussion → **Specification** → Planning → Implementation → Review |
 | Feature | Discussion → **Specification** → Planning → Implementation → Review |
 | Bugfix | Investigation → **Specification** → Planning → Implementation → Review |
-| Cross-cutting | Research (optional) → Discussion → **Specification** (terminal) |
+| Cross-cutting | Research (optional) → (Experiment) → Discussion → **Specification** (terminal) |
 
 **Stay in your lane**: Validate and refine discussion content into standalone specifications. Don't jump to planning, phases, tasks, or code. The specification is the "line in the sand" - everything after this has hard dependencies on it.
 

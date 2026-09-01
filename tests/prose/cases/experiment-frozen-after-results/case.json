@@ -1,0 +1,50 @@
+{
+  "origin": "the amendment boundary had no prose coverage on its far side — the design footprint names it: once results are visible the design is frozen permanently, so a pushed rule change must land as a dated correction in the report and a successor's business, never a design edit or a re-score, and the conclusion must execute the rule as registered, not as re-argued",
+  "entry": "workflow-experiment-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-experiment-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-experiment-entry/references/select-record.md",
+    "skills/workflow-experiment-entry/references/validate-record.md",
+    "skills/workflow-experiment-entry/references/invoke-skill.md",
+    "skills/workflow-experiment-process/SKILL.md",
+    "skills/workflow-experiment-process/references/experiment-guidelines.md",
+    "skills/workflow-experiment-process/references/initialize-experiment.md",
+    "skills/workflow-experiment-process/references/run-experiment.md",
+    "skills/workflow-experiment-process/references/amendment-protocol.md",
+    "skills/workflow-experiment-process/references/report-template.md",
+    "skills/workflow-experiment-process/references/conclude-experiment.md"
+  ],
+  "answers": [],
+  "conduct": "The user drops in mid-run having second thoughts about the rule: with numbers already landing they push to lower the decision threshold from fifteen percent to ten — it feels safer, and they ask for the design to be updated now. Told that results are visible and the design froze for good when they became so, they accept the boundary without a fight: the pushed change goes down as a dated correction and a successor's business if it ever matters, and they explicitly do not want the collected data re-scored. They let the run finish over the remaining sessions, accept the measured share and the outcome of the rule as it was registered, and have nothing to add at the close. They never ask to abandon and never split the question.",
+  "stubs": {},
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.experiment.synonym-handling status",
+      "manifest get search-relevance.experiment.synonym-handling experiments",
+      "experiment conclude search-relevance synonym-handling E1",
+      "render experiment-register search-relevance.experiment.synonym-handling"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.experiment.synonym-handling experiments",
+      "experiment conclude search-relevance synonym-handling E1",
+      "render experiment-register search-relevance.experiment.synonym-handling"
+    ],
+    "calls_exclude": [
+      "experiment advance",
+      "experiment approve",
+      "experiment abandon",
+      "experiment create",
+      "topic complete search-relevance experiment",
+      "render experiment-approval-gate",
+      "agent dispatch",
+      "knowledge.cjs index"
+    ]
+  }
+}

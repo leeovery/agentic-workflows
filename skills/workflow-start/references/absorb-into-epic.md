@@ -187,19 +187,13 @@ One engine transaction moves the discussion (and any research, experiment series
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
 ```
 
-The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — research topics may carry a collision suffix), `routing`, `committed`, and `warnings`.
+The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — research topics may carry a collision suffix; one carrying live experiment state lands at the topic name), `routing`, `committed`, and `warnings`.
 
 #### If the command failed
 
 The refusal names the blocking condition; nothing was touched — relay the error.
 
 **If the error is a topic-name collision:**
-
-→ Return to **B. Name Topic**.
-
-**If the error names experiment state joining by the topic name:**
-
-The recovery is the name the wait joins through — the feature's own.
 
 → Return to **B. Name Topic**.
 

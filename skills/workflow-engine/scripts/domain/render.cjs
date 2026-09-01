@@ -4215,8 +4215,8 @@ function absorbReceiptSurface(cwd, args) {
   }
   let experiments = 0;
   if (args.experiments !== undefined) {
-    experiments = parseInt(args.experiments, 10);
-    if (!Number.isInteger(experiments) || experiments < 1 || String(experiments) !== args.experiments) {
+    experiments = Number(args.experiments);
+    if (!Number.isInteger(experiments) || experiments < 1) {
       throw new Error(`render absorb-receipt: --experiments must be a positive record count, got "${args.experiments}"`);
     }
     if (!itemOf(manifest, 'experiment', topic)) {

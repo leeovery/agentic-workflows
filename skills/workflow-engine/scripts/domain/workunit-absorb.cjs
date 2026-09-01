@@ -217,23 +217,23 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       if (status === null) {
         throw new Error(`research item "${name}" in "${feature}" has no status — fix the manifest before absorbing`);
       }
-      const target = researchTarget(name);
-      takenResearch.add(target);
       // Experiment state joins by topic name on both sides — the wait's
       // release edge and the advisory's register read both address
       // `phases.experiment.items.{topic}`. A research item carrying live
-      // experiment state must therefore land AT the topic name; anywhere
-      // else the wait could never release and the advisory could never
-      // render, so the guard refuses rather than strand either.
+      // experiment state therefore lands AT the topic name — the same
+      // landing the discussion and the series take, keeping every join
+      // intact — and a collision on that name refuses like the
+      // discussion's: pick a different name.
       const liveWait = Array.isArray(item.awaiting_experiments) && item.awaiting_experiments.length > 0;
       const experimentFlag = item.reconcile_needed === 'experiment';
-      if ((liveWait || experimentFlag) && target !== topic) {
-        const held = liveWait ? `a live evidence wait (${item.awaiting_experiments.join(', ')})` : 'experiment evidence to reconcile';
-        const recovery = name === topic
-          ? 'settle or cancel the experiments first'
-          : `absorb with --topic ${name}, or settle the experiments first`;
-        throw new Error(`research "${name}" holds ${held} and would land as "${target}" — experiment state joins by the topic name; ${recovery}`);
+      const carriesExperimentState = liveWait || experimentFlag;
+      if (carriesExperimentState
+        && (takenResearch.has(topic) || Object.prototype.hasOwnProperty.call(epicResearch, topic)
+          || fs.existsSync(path.join(epicResearchDir, `${topic}.md`)))) {
+        throw new Error(`research topic "${topic}" already exists in ${into} — pick a different name`);
       }
+      const target = carriesExperimentState ? topic : researchTarget(name);
+      takenResearch.add(target);
       researchPlan.push({
         from: name,
         target,

@@ -14,9 +14,9 @@ You are in the **Research** phase — exploring ideas, feasibility, market, and 
 
 | Work type | Pipeline |
 |---|---|
-| Epic | Discovery → **Research** → Discussion → Specification → Planning → Implementation → Review |
-| Feature | **Research** (optional) → Discussion → Specification → Planning → Implementation → Review |
-| Cross-cutting | **Research** (optional) → Discussion → Specification (terminal) |
+| Epic | Discovery → **Research** → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
+| Feature | **Research** (optional) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
+| Cross-cutting | **Research** (optional) → (Experiment) → Discussion → Specification (terminal) |
 
 **Stay in your lane**: Explore freely. This is the time for broad thinking, feasibility checks, and learning. Surface options and tradeoffs — don't make decisions. When a topic converges toward a conclusion, that's a signal it's ready for discussion phase, not a cue to start deciding. Park it and move on.
 

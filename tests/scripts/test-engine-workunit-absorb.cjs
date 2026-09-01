@@ -555,9 +555,10 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(ABSORB, /experiment\/auth already exists/);
   });
 
-  it('refuses a research item whose live experiment state would land off the topic name — the join would strand it', () => {
-    // The epic's own `exploration` forces the suffix, and the wait's release
-    // joins by topic name — landing it renamed could never release.
+  it('a research item carrying live experiment state lands at the topic name — the join intact, a collision refused uniformly', () => {
+    // The epic's own `exploration` would suffix an ordinary move; a state
+    // carrier lands at the topic name instead — the join every release edge
+    // reads.
     const feature = featureManifest();
     feature.phases.research.items.exploration.awaiting_experiments = ['E1'];
     feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'webhook-dup-rate', status: 'running' } } } } };
@@ -565,18 +566,31 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'series']);
-    refusedPristine(ABSORB,
-      /research "exploration" holds a live evidence wait \(E1\) and would land as "exploration-auth-flow" — experiment state joins by the topic name/);
+    const res = engine(fix, ABSORB);
+    assert.deepStrictEqual(res.research.find((r) => r.from === 'exploration'),
+      { from: 'exploration', topic: 'auth', status: 'completed' });
+    const m = readManifest(fix, 'payments');
+    assert.deepStrictEqual(m.phases.research.items.auth,
+      { status: 'completed', awaiting_experiments: ['E1'] });
+    assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/research/auth.md')),
+      'the carrier lands at the topic name on disk too');
+    // The join holds end to end: the conclusion at the epic address releases
+    // the moved wait.
+    const concluded = engine(fix, ['experiment', 'conclude', 'payments', 'auth', 'E1', '--verdict', 'held']);
+    assert.deepStrictEqual(concluded.released_waits, [{ phase: 'research', released: ['E1'], remaining: [] }]);
     fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
-    // Same guard for the evidence flag alone, and for a rename away from the
-    // holder's own name.
+    // A collision on the topic name refuses like the discussion's — the
+    // evidence flag alone marks a carrier too.
     const flagged = featureManifest();
     flagged.phases.research.items['edge-cases'].reconcile_needed = 'experiment';
-    fix = setupFixture({ feature: flagged });
-    const err = refusedPristine(ABSORB,
-      /research "edge-cases" holds experiment evidence to reconcile and would land as "edge-cases"/);
-    assert.match(err.error, /absorb with --topic edge-cases, or settle the experiments first/);
+    const epic = epicManifest();
+    epic.phases.research.items.auth = { status: 'completed' };
+    fix = setupFixture({ feature: flagged, epic });
+    writeFile(fix.project, '.workflows/payments/research/auth.md', '# Epic auth research\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'epic auth research']);
+    refusedPristine(ABSORB, /research topic "auth" already exists in payments — pick a different name/);
   });
 
   it('closes the crash window: a research file missing on disk leaves both units pristine', () => {

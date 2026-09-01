@@ -65,7 +65,8 @@
       "render conclude-gate pay.discussion.pay",
       "--kind perspective",
       "topic triage",
-      "render closing-gate pay.discussion.pay"
+      "render closing-gate pay.discussion.pay",
+      "gateway.cjs map pay pay"
     ]
   }
 }

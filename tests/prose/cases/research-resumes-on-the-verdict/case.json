@@ -1,0 +1,76 @@
+{
+  "origin": "the concluded return leg had no prose coverage — the design footprint's round trip ends where the evidence lands: the flagged conversation's re-entry must surface the register, bind the record's directory from the manifest read (never the rendered display), read the report in full before the waiting point settles, present the verdict as evidence the conversation weighs, and clear the flag — then the once-blocked conclusion passes",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/review-agent.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-shared/references/experiment-spawn.md",
+    "skills/workflow-research-process/references/topic-completion.md",
+    "skills/workflow-research-process/references/final-review.md",
+    "skills/workflow-shared/references/final-review-menu.md",
+    "skills/workflow-research-process/references/document-review.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-research-process/references/conclude-research.md",
+    "skills/workflow-shared/references/closing-recap.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user comes back to pick the research up after the laboratory reported. Shown the verdict they take the evidence as read — thirty percent is comfortably past the bar — and they want the file to carry the measured share, what it rests on, and behaviour-driven expansion recorded as the leading candidate for the discussion to weigh; they are explicit that the research documents the evidence and holds the decision for the discussion. With the number in hand they consider the question answered and ask to wrap the research up. On the way out they are agreeable to required steps — a mandatory review or check gets a yes — and decline optional extras: no deep dive, no further threads, and this is no dead end — the findings carry forward under the topic's own name. They introduce no new material.",
+  "stubs": {
+    "research-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.research.synonym-handling status",
+      "manifest get search-relevance.research.synonym-handling reconcile_needed",
+      "render experiment-register search-relevance.experiment.synonym-handling",
+      "manifest get search-relevance.experiment.synonym-handling experiments",
+      "manifest delete search-relevance.research.synonym-handling reconcile_needed",
+      "topic queue search-relevance research synonym-handling",
+      "render research-conclude-gate search-relevance.research.synonym-handling",
+      "topic complete search-relevance research synonym-handling"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.research.synonym-handling reconcile_needed",
+      "render experiment-register search-relevance.experiment.synonym-handling",
+      "manifest get search-relevance.experiment.synonym-handling experiments",
+      "manifest delete search-relevance.research.synonym-handling reconcile_needed",
+      "topic complete search-relevance research synonym-handling"
+    ],
+    "calls_exclude": [
+      "experiment create",
+      "experiment abandon",
+      "experiment conclude",
+      "--dead-end",
+      "render experiment-wait-gate",
+      "topic reopen search-relevance",
+      "discovery-map handle",
+      "topic triage"
+    ]
+  }
+}
