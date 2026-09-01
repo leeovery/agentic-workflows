@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const { box, renderTree } = require('../../kernel/render.cjs');
+const { DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
 const { menuFrame, cmdOption } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
@@ -37,12 +38,12 @@ function entryRoute(cfg, phase, workUnit) {
 
 // Completed phases that come before next_phase in the pipeline — the revisit
 // candidates. A next_phase outside the pipeline (defensive) revisits any.
-// The experiment phase is never revisitable: a concluded verdict stands,
-// and a new spawn is what reopens the series.
+// A derived phase is never revisitable: a concluded verdict stands, and a
+// new spawn is what reopens the series.
 /** @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit @returns {string[]} */
 function earlierCompleted(cfg, unit) {
   const nextIdx = cfg.pipeline.indexOf(unit.next_phase);
-  const completed = unit.completed_phases.filter((p) => p !== 'experiment');
+  const completed = unit.completed_phases.filter((p) => !DERIVED_PHASES.includes(p));
   if (nextIdx === -1) return completed;
   return completed.filter((p) => {
     const i = cfg.pipeline.indexOf(p);

@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
-const { WORK_TYPE_PIPELINES } = require('../../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge, CODE_PHASES } = require('../presence.cjs');
@@ -793,10 +793,10 @@ function epicMenu(workUnit, detail, opts = {}) {
     }
   } else {
     // Continue items — any in-progress item in any phase, pipeline order.
-    // The experiment phase is skipped: its topic row above already carries
-    // the series, and a generic item row would double it.
+    // Derived phases are skipped: their topic rows above already carry the
+    // series, and a generic item row would double it.
     for (const phase of EPIC_PIPELINE) {
-      if (phase === 'experiment') continue;
+      if (DERIVED_PHASES.includes(phase)) continue;
       numbered.push(...continueEntries(workUnit, detail, phase));
     }
     // Next-phase-ready items — specification first, then planning,

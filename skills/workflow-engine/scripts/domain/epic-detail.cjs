@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 const {
   phaseItems,
   computeAnalysisCacheStatus,
@@ -291,18 +291,17 @@ function epicDetail(cwd, manifest) {
       if (item.status === 'in-progress') {
         inProgressItems.push({ name: item.name, phase });
       }
-      // The experiment item is derived bookkeeping with no session of its
-      // own: a completed series has nothing to resume (a new spawn reopens
-      // it) and a cancelled one nothing to reactivate (its rows stand; the
-      // next spawn revives it) — so neither joins the resume or reactivate
-      // candidates.
-      if (item.status === 'completed' && phase !== 'experiment') {
+      // A derived item has no session of its own: a completed series has
+      // nothing to resume (a new spawn reopens it) and a cancelled one
+      // nothing to reactivate (its rows stand; the next spawn revives it) —
+      // so neither joins the resume or reactivate candidates.
+      if (item.status === 'completed' && !DERIVED_PHASES.includes(phase)) {
         completedItems.push({
           name: item.name, phase,
           ...(item.reconcile_needed !== undefined ? { reconcile_needed: item.reconcile_needed } : {}),
         });
       }
-      if (item.status === 'cancelled' && phase !== 'experiment') {
+      if (item.status === 'cancelled' && !DERIVED_PHASES.includes(phase)) {
         cancelledItems.push({ name: item.name, phase, previous_status: item.previous_status || null });
       }
     }

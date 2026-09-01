@@ -14,7 +14,9 @@
 // any pre-terminal status). `advance` walks the mechanical steps; `approve`
 // is deliberately its own verb — the user-confirmed freeze, never a step a
 // loop drifts past. The spawn (`create`) is the phase's one door: it
-// allocates the id and locks the spawning research or discussion item
+// allocates the id, installs the spawning session's problem statement
+// (moved from a cache scratch — the engine still never writes prose), and
+// locks the spawning research or discussion item
 // (`awaiting_experiments`); a split creates sub-experiments (`E{n}.{m}`)
 // under a running parent, and the lock stays on the parent — it releases
 // once, when the parent concludes or is abandoned. The release edges live in
@@ -30,12 +32,15 @@
 // the manifest change up (`commit --topic experiment/{topic}`).
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
+const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const {
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
+  derivedItemStatus,
   EXPERIMENT_SPAWN_PHASES,
 } = require('../kernel/manifest-schema.cjs');
 const { flagDownstream, releaseExperimentWaits } = require('./transitions.cjs');
@@ -143,10 +148,7 @@ function recordDir(workUnit, topic, id, experiments) {
  * @returns {string}
  */
 function settleItemStatus(item) {
-  const records = Object.values(item.experiments || {});
-  item.status = records.length > 0 && records.every((r) => EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)))
-    ? 'completed'
-    : 'in-progress';
+  item.status = derivedItemStatus(item.experiments);
   return item.status;
 }
 
@@ -170,22 +172,26 @@ function settleItemStatus(item) {
 /**
  * The spawn — the phase's one door. A top-level create (`from` names the
  * spawning phase) allocates `E{n}` (per-topic numbering — highest existing
- * plus one), records it `conceived`, opens the experiment item (creating it,
- * or setting a completed series back to in-progress — a new spawn reopens
- * the series), and locks the spawning item: `awaiting_experiments` gains the
- * id on the in-progress research or discussion the question came from,
- * identically for both. A split (`parent` names a running experiment)
- * allocates `E{n}.{m}` under it — no lock moves: the wait stays on the
- * parent and releases once, when the parent as a whole ends. The record's
- * directory is the response's `dir`, where the design is authored before
- * anything is measured.
+ * plus one), records it `conceived`, installs the problem statement
+ * (`problem` names a cache scratch file the spawning session wrote; the
+ * create moves it in as `{dir}/problem.md`), opens the experiment item
+ * (creating it, or setting a completed series back to in-progress — a new
+ * spawn reopens the series), and locks the spawning item:
+ * `awaiting_experiments` gains the id on the in-progress research or
+ * discussion the question came from, identically for both. A split (`parent`
+ * names a running experiment) allocates `E{n}.{m}` under it — no lock moves
+ * (the wait stays on the parent and releases once, when the parent as a
+ * whole ends), and no problem file: the sub-record's design frames its
+ * question. The record's directory is the
+ * response's `dir`, where the design is authored before anything is
+ * measured.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
- * @param {{slug: string, from?: string, parent?: string}} opts
+ * @param {{slug: string, from?: string, parent?: string, problem?: string}} opts
  * @returns {ExperimentOpResult}
  */
-function createExperiment(cwd, workUnit, topic, { slug, from, parent }) {
+function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem }) {
   if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
     throw new Error(`--slug must be kebab-case, got "${slug ?? ''}"`);
   }
@@ -200,8 +206,33 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent }) {
     if (!isParentExperimentId(parent)) {
       throw new Error(`--parent must be a top-level experiment id, got "${parent}" — a split never splits again`);
     }
+    if (problem !== undefined) {
+      throw new Error('--problem is refused with --parent — a split carries no spawn-side problem statement; the sub-record\'s design frames its question');
+    }
   }
-  return withWorkUnitLock(cwd, workUnit, () => {
+  /** @type {string|null} */
+  let problemBody = null;
+  /** @type {string|null} */
+  let scratchAbs = null;
+  if (from !== undefined) {
+    if (problem === undefined) {
+      throw new Error('--problem <file> is required on a spawn — no record is conceived without its problem statement');
+    }
+    // The scratch is consumed after the create — confine it to the cache so
+    // a mis-passed path can never read (and delete) a live artifact.
+    scratchAbs = path.resolve(cwd, problem);
+    const cacheRoot = path.join(cwd, '.workflows', '.cache') + path.sep;
+    if (!scratchAbs.startsWith(cacheRoot)) {
+      throw new Error(`--problem must point inside .workflows/.cache/ — got "${problem}"`);
+    }
+    try {
+      problemBody = fs.readFileSync(scratchAbs, 'utf8');
+    } catch {
+      throw new Error(`problem file not found: ${problem}`);
+    }
+    if (problemBody.trim() === '') throw new Error(`problem file is empty: ${problem}`);
+  }
+  const result = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
 
     if (parent !== undefined) {
@@ -257,13 +288,24 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent }) {
     experiments[id] = { slug, status: 'conceived' };
     const awaiting = Array.isArray(spawner.awaiting_experiments) ? spawner.awaiting_experiments : [];
     spawner.awaiting_experiments = [...awaiting, id];
+    const dir = recordDir(workUnit, topic, id, experiments);
+    // The problem file lands before the manifest names the record — a crash
+    // between the two writes must never leave a conceived record with no
+    // problem statement.
+    fs.mkdirSync(path.join(cwd, dir), { recursive: true });
+    const body = /** @type {string} */ (problemBody);
+    fs.writeFileSync(path.join(cwd, dir, 'problem.md'), body.endsWith('\n') ? body : body + '\n');
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return {
       topic, id, slug, status: 'conceived',
-      dir: recordDir(workUnit, topic, id, experiments),
+      dir,
       awaiting: { phase: /** @type {string} */ (from), ids: spawner.awaiting_experiments },
     };
   });
+  if (scratchAbs !== null) {
+    try { fs.unlinkSync(scratchAbs); } catch { /* scratch already gone */ }
+  }
+  return result;
 }
 
 /**

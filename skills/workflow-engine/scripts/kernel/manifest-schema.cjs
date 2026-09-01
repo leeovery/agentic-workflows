@@ -31,6 +31,11 @@ const WORK_TYPE_PIPELINES = {
   'cross-cutting': ['research', 'experiment', 'discussion', 'specification'],
 };
 
+// Derived-bookkeeping phases: the item is computed over its own records — no
+// hand lifecycle, no entry-flow reconcile, no resume or reactivate; the
+// phase's own verbs maintain the item.
+const DERIVED_PHASES = ['experiment'];
+
 const VALID_PHASE_STATUSES = {
   // Empty on purpose, never removed: discovery items are map items with NO
   // status field (lifecycle is computed at render time), and an empty
@@ -95,6 +100,19 @@ function compareExperimentIds(a, b) {
   return (am ?? 0) - (bm ?? 0);
 }
 
+/**
+ * A derived item's status over its records: `completed` only when every
+ * record is terminal — an empty series is still open (the spawn opened it).
+ * @param {Record<string, {status?: string}>|undefined} experiments
+ * @returns {string}
+ */
+function derivedItemStatus(experiments) {
+  const records = Object.values(experiments || {});
+  return records.length > 0 && records.every((r) => EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)))
+    ? 'completed'
+    : 'in-progress';
+}
+
 // The phases whose sessions spawn experiments — each spawn locks the
 // spawning phase's own item (`awaiting_experiments`), research and
 // discussion identically.
@@ -120,6 +138,7 @@ module.exports = {
   VALID_WORK_TYPES,
   VALID_PHASES,
   WORK_TYPE_PIPELINES,
+  DERIVED_PHASES,
   VALID_PHASE_STATUSES,
   VALID_ROUTINGS,
   VALID_EXPERIMENT_STATUSES,
@@ -127,6 +146,7 @@ module.exports = {
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
   compareExperimentIds,
+  derivedItemStatus,
   EXPERIMENT_SPAWN_PHASES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,

@@ -91,9 +91,17 @@ function setup(dir) {
   commitAll(dir, 'init');
 }
 
+/** Write a problem scratch into the cache and return its project-relative path. */
+function problemScratch(dir, slug) {
+  const rel = `.workflows/.cache/lab/scratch/${slug}-problem.md`;
+  fs.mkdirSync(path.join(dir, path.dirname(rel)), { recursive: true });
+  fs.writeFileSync(path.join(dir, rel), `# Problem — ${slug}\n`);
+  return rel;
+}
+
 /** Spawn E{next} from the named phase. */
 function spawn(dir, from, slug) {
-  return engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', slug, '--from', from]);
+  return engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', slug, '--from', from, '--problem', problemScratch(dir, slug)]);
 }
 
 /** Walk an id to `status` through the legal steps. */
@@ -111,7 +119,7 @@ describe('engine experiment create — the spawn', () => {
   beforeEach(() => { dir = setupGitFixture(); setup(dir); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('conceives E1, opens the item, and locks the spawning discussion', () => {
+  it('conceives E1, opens the item, installs the problem statement, and locks the spawning discussion', () => {
     const res = spawn(dir, 'discussion', 'window-placement');
     assert.strictEqual(res.id, 'E1');
     assert.strictEqual(res.status, 'conceived');
@@ -125,6 +133,10 @@ describe('engine experiment create — the spawn', () => {
     assert.deepStrictEqual(m.phases.discussion.items.timing.awaiting_experiments, ['E1']);
     assert.strictEqual(m.phases.research.items.timing.awaiting_experiments, undefined,
       'the lock lands on the spawning phase alone');
+    assert.strictEqual(fs.readFileSync(path.join(dir, res.dir, 'problem.md'), 'utf8'),
+      '# Problem — window-placement\n', 'the create installs the problem statement in the same transaction');
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/lab/scratch/window-placement-problem.md')),
+      'the scratch is consumed');
   });
 
   it('locks a research spawn identically — the phases are symmetric', () => {
@@ -156,24 +168,45 @@ describe('engine experiment create — the spawn', () => {
   });
 
   it('refuses a bad slug, a bad or missing origin, and a spawner that cannot hold the lock', () => {
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'Bad Slug', '--from', 'discussion']).error, /kebab-case/);
+    const scratch = () => problemScratch(dir, 'x');
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'Bad Slug', '--from', 'discussion', '--problem', scratch()]).error, /kebab-case/);
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x']).error, /exactly one of --from/);
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--parent', 'E1']).error, /exactly one of --from/);
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'planning']).error, /--from must be one of research\|discussion/);
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'ghost', '--slug', 'x', '--from', 'discussion']).error, /no discussion item "ghost" to spawn from/);
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'planning', '--problem', scratch()]).error, /--from must be one of research\|discussion/);
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'ghost', '--slug', 'x', '--from', 'discussion', '--problem', scratch()]).error, /no discussion item "ghost" to spawn from/);
 
     const m = readManifest(dir, 'lab');
     m.phases.discussion.items.timing.status = 'completed';
     writeManifest(dir, 'lab', m);
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion']).error,
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', scratch()]).error,
       /discussion "timing" is completed — only an in-progress discussion spawns/);
+  });
+
+  it('the problem statement is required, cache-confined, and never rides a split', () => {
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion']).error,
+      /--problem <file> is required on a spawn/);
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', 'notes/problem.md']).error,
+      /--problem must point inside \.workflows\/\.cache\//);
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', '.workflows/.cache/lab/scratch/ghost.md']).error,
+      /problem file not found/);
+    const empty = '.workflows/.cache/lab/scratch/empty.md';
+    fs.mkdirSync(path.join(dir, path.dirname(empty)), { recursive: true });
+    fs.writeFileSync(path.join(dir, empty), '  \n');
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', empty]).error,
+      /problem file is empty/);
+    assert.strictEqual(readManifest(dir, 'lab').phases.experiment, undefined, 'a refused spawn conceives nothing');
+
+    spawn(dir, 'discussion', 'window-placement');
+    walkTo(dir, 'E1', 'running');
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'part', '--parent', 'E1', '--problem', problemScratch(dir, 'part')]).error,
+      /--problem is refused with --parent — a split carries no spawn-side problem statement/);
   });
 
   it('a spawn onto a cancelled item revives the series — the next experiment, never a reopen of a closed row', () => {
     spawn(dir, 'discussion', 'first');
     engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'moot']);
     engine(dir, ['topic', 'cancel', 'lab', 'experiment', 'timing']);
-    const revived = engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'successor', '--from', 'discussion']);
+    const revived = spawn(dir, 'discussion', 'successor');
     assert.strictEqual(revived.id, 'E2');
     const item = readManifest(dir, 'lab').phases.experiment.items.timing;
     assert.strictEqual(item.status, 'in-progress');
@@ -472,27 +505,53 @@ describe('epic topic cancel on the experiments — the wait-release edge', () =>
     assert.strictEqual(revivedItem.previous_status, undefined, 'the revival clears the cancel stash');
   });
 
-  it('cancelling the spawning conversation cascades into its series', () => {
-    // Bare refuses naming the waits — the conversation is the experiments' only consumer.
+  it('cancelling one spawning conversation takes only its own records — the sibling\'s experiments run on', () => {
+    // Bare refuses naming this item's own waits — the conversation is those
+    // records' only consumer, and only those.
     assert.match(engineFails(dir, ['topic', 'cancel', 'lab', 'discussion', 'timing']).error,
-      /strands its evidence waits \(E1\) — the conversation is the experiments' only consumer/);
+      /strands its evidence waits \(E1\) — the conversation is those experiments' only consumer/);
 
+    walkTo(dir, 'E2', 'running');
     const res = engine(dir, ['topic', 'cancel', 'lab', 'discussion', 'timing', '--cascade']);
     assert.strictEqual(res.status, 'cancelled');
-    assert.strictEqual(res.experiment_cancelled, true, 'the cascade cancels the experiment item in the same transaction');
-    assert.deepStrictEqual(res.abandoned, ['E1', 'E2'], 'its open records end abandoned');
+    assert.deepStrictEqual(res.abandoned, ['E1'], 'exactly the cancelled holder\'s records end abandoned');
     assert.deepStrictEqual(res.released_waits, [
-      { phase: 'research', released: ['E2'], remaining: [] },
       { phase: 'discussion', released: ['E1'], remaining: [] },
-    ]);
+    ], 'only the cancelled holder\'s waits close');
     const after = readManifest(dir, 'lab');
-    assert.strictEqual(after.phases.experiment.items.timing.status, 'cancelled');
+    assert.strictEqual(after.phases.experiment.items.timing.status, 'in-progress',
+      'the item is not cancelled — the sibling\'s live record keeps it open');
     assert.strictEqual(after.phases.experiment.items.timing.experiments.E1.reason, 'spawning conversation cancelled');
+    assert.strictEqual(after.phases.experiment.items.timing.experiments.E2.status, 'running',
+      'the sibling conversation\'s experiment is untouched');
     assert.strictEqual(after.phases.discussion.items.timing.status, 'cancelled');
     assert.strictEqual(after.phases.discussion.items.timing.reconcile_needed, undefined,
       'a cancelled holder is terminal — the release never flags it');
-    assert.strictEqual(after.phases.research.items.timing.reconcile_needed, 'experiment',
-      'the sibling holder is flagged — its wait released beneath it');
+    assert.deepStrictEqual(after.phases.research.items.timing.awaiting_experiments, ['E2'],
+      'the sibling holder\'s wait stands');
+    assert.strictEqual(after.phases.research.items.timing.reconcile_needed, undefined,
+      'nothing released beneath the sibling — it is not flagged');
+  });
+
+  it('the item settles completed when a cascade abandons its only live records', () => {
+    engine(dir, ['topic', 'cancel', 'lab', 'discussion', 'timing', '--cascade']);
+    const res = engine(dir, ['topic', 'cancel', 'lab', 'research', 'timing', '--cascade']);
+    assert.deepStrictEqual(res.abandoned, ['E2']);
+    const after = readManifest(dir, 'lab');
+    assert.strictEqual(after.phases.experiment.items.timing.status, 'completed',
+      'every record terminal — the derived status settles, never a cancel');
+    assert.strictEqual(after.phases.experiment.items.timing.previous_status, undefined);
+  });
+
+  it('a cascade abandons the cancelled holder\'s live sub-experiments with their parent', () => {
+    walkTo(dir, 'E1', 'running');
+    engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'part', '--parent', 'E1']);
+    const res = engine(dir, ['topic', 'cancel', 'lab', 'discussion', 'timing', '--cascade']);
+    assert.deepStrictEqual(res.abandoned, ['E1', 'E1.1'], 'the family never outlives its parent');
+    const after = readManifest(dir, 'lab');
+    assert.strictEqual(after.phases.experiment.items.timing.experiments['E1.1'].reason, 'spawning conversation cancelled');
+    assert.strictEqual(after.phases.experiment.items.timing.status, 'in-progress',
+      'the sibling\'s conceived record still holds the item open');
   });
 
   it('the derived item status refuses the hand-write the verbs make unnecessary', () => {

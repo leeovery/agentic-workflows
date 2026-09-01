@@ -40,7 +40,7 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate } = require('./projections/experiment.cjs');
-const { compareExperimentIds, isParentExperimentId, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
@@ -3295,11 +3295,11 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
   const artefacts = paths
     ? `\n\n  Spec: .workflows/${workUnit}/specification/${workUnit}/specification.md\n  Plan: .workflows/${workUnit}/planning/${workUnit}/`
     : '';
-  // The experiment phase has no completion ceremony — the record closed, the
+  // A derived phase has no completion ceremony — the record closed, the
   // session ends, and sibling records may still live — so its line says what
   // is true: the session is complete, never the phase.
-  const line = phase === 'experiment'
-    ? `Experiment session complete for "${titlecase(workUnit)}".`
+  const line = DERIVED_PHASES.includes(phase)
+    ? `${titlecase(phase)} session complete for "${titlecase(workUnit)}".`
     : `${titlecase(phase)} completed for "${titlecase(workUnit)}".${artefacts}`;
   return section('DISPLAY: phase completed', CONTINUE_INSTRUCTION, line);
 }
@@ -3343,10 +3343,10 @@ function revisitGate(cwd, { dotpath, prev, next }) {
   const { workUnit } = resolveWorkUnit(cwd, dotpath, 'revisit-gate');
   if (!isFilled(prev)) throw new Error('render revisit-gate: --prev is required');
   if (!isFilled(next)) throw new Error('render revisit-gate: --next is required');
-  // The experiment line matches phase-completed's: the session is complete,
-  // never the phase — sibling records may still live.
-  const statement = prev === 'experiment'
-    ? `Experiment session complete for "${titlecase(workUnit)}".`
+  // A derived phase's line matches phase-completed's: the session is
+  // complete, never the phase — sibling records may still live.
+  const statement = DERIVED_PHASES.includes(prev)
+    ? `${titlecase(prev)} session complete for "${titlecase(workUnit)}".`
     : `${titlecase(prev)} completed for "${titlecase(workUnit)}".`;
   return section(
     'MENU: revisit gate',
@@ -3368,10 +3368,13 @@ function revisitGate(cwd, { dotpath, prev, next }) {
  */
 function cancelGate(cwd, { dotpath }) {
   const { phase, topic } = resolveAddress(cwd, dotpath, 'cancel-gate');
+  const consequence = DERIVED_PHASES.includes(phase)
+    ? 'open records end abandoned with their reason on the register, the series never reactivates, and a new spawn starts the next experiment'
+    : 'it can be reactivated later';
   return section(
     'MENU: cancel gate',
     "emit verbatim as markdown, then STOP for the user's response",
-    menu(`Cancelling **${titlecase(topic)}** in ${phase} will mark it as cancelled — it can be reactivated later.`, [
+    menu(`Cancelling **${titlecase(topic)}** in ${phase} will mark it as cancelled — ${consequence}.`, [
       cmdOption('y', 'yes', 'Confirm cancellation'),
       cmdOption('n', 'no', 'Return to menu'),
     ], { question: 'Cancel it?' }),

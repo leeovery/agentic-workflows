@@ -38,7 +38,7 @@ const { revertJoins } = require('./roadmap.cjs');
 // here strips a still-live topic's position.
 const MAP_LIFECYCLE_PHASES = ['research', 'discussion'];
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, derivedItemStatus } = require('../kernel/manifest-schema.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
 // items (no lifecycle status — computed at render time); they are created and
@@ -60,6 +60,17 @@ function assertLegalWrite(phase, status) {
 }
 
 /**
+ * A derived phase has no hand lifecycle — each caller's refusal teaches the
+ * verb that does the job instead.
+ * @param {string} phase @param {string} message
+ */
+function assertNotDerived(phase, message) {
+  if (DERIVED_PHASES.includes(phase)) {
+    throw new Error(message);
+  }
+}
+
+/**
  * @typedef {object} TopicTransitionResult
  * @property {string} topic
  * @property {string} phase
@@ -70,9 +81,8 @@ function assertLegalWrite(phase, status) {
  * @property {string[]} [cascaded]  started spec items cancelled with their source (cancel --cascade)
  * @property {string[]} [discarded] proposed groupings deleted with their source (cancel --cascade)
  * @property {string[]} [roadmap_reverted] roadmap items handed back to waiting by the cancel-revert hop
- * @property {WaitRelease[]} [released_waits] the evidence waits a cancel released — the experiment item's own, or a spawner cascade's (cancel --cascade)
+ * @property {WaitRelease[]} [released_waits] the evidence waits a cancel released — every holder's for an experiment cancel, the cancelled holder's own for a spawner cascade (cancel --cascade)
  * @property {string[]} [abandoned] the open records a cancel closed as abandoned, reason recorded on each row
- * @property {boolean} [experiment_cancelled] a spawner cascade cancelled the topic's experiment item in the same transaction
  */
 
 /**
@@ -124,9 +134,7 @@ function phaseItem(manifest, phase, topic) {
  */
 function startTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
-  if (phase === 'experiment') {
-    throw new Error('the experiment item is derived bookkeeping — the spawn creates and reopens it (experiment create), never topic start');
-  }
+  assertNotDerived(phase, 'the experiment item is derived bookkeeping — the spawn creates and reopens it (experiment create), never topic start');
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const phases = ensureContainer(manifest, 'phases', 'phases');
@@ -299,17 +307,16 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
 
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
   const at = pipeline.indexOf(phase);
-  // One hop to the next pipeline phase — walking past the experiment slot
+  // One hop to the next pipeline phase — walking past a derived slot
   // unconditionally: a reconcile flag must land where an entry flow can
-  // clear it, and the series item is derived bookkeeping with no entry of
-  // its own (its only flag edges are the wait release, which flags the
-  // holder, and a parent conclusion, which runs this walk from the slot).
-  // So a research reopen flags the discussion whatever the series between
-  // them holds, and the hop still ends at the first real phase — never past
-  // it.
+  // clear it, and a derived item has no entry of its own (its only flag
+  // edges are the wait release, which flags the holder, and a parent
+  // conclusion, which runs this walk from the slot). So a research reopen
+  // flags the discussion whatever the series between them holds, and the
+  // hop still ends at the first real phase — never past it.
   for (let i = at + 1; at !== -1 && i < pipeline.length; i++) {
     const next = pipeline[i];
-    if (next === 'experiment') continue;
+    if (DERIVED_PHASES.includes(next)) continue;
     flag(next, topic, (itemsOf(next) || {})[topic]);
     break;
   }
@@ -317,19 +324,26 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
 }
 
 /**
- * Abandon every non-terminal record in an experiment item's series — the
+ * Abandon the non-terminal records in an experiment item's series — the
  * cancel paths' honesty move: the register keeps a row per record, each
  * carrying the cancellation as its reason, so no live record ever survives
- * under a cancelled item. Mutates the item; returns the abandoned ids.
+ * a cancel that took it. `opts.ids` scopes the sweep to the named top-level
+ * records; their sub-experiments ride with them — a wait only ever names the
+ * parent form, and a family never outlives its parent. Mutates the item;
+ * returns the abandoned ids.
  * @param {{experiments?: Record<string, {status?: string, reason?: string}>}} item
  * @param {string} reason
+ * @param {{ids?: string[]}} [opts]  top-level ids; omitted sweeps the whole series
  * @returns {string[]}
  */
-function abandonOpenRecords(item, reason) {
+function abandonOpenRecords(item, reason, opts = {}) {
+  const inScope = (/** @type {string} */ id) => opts.ids === undefined
+    || opts.ids.includes(id)
+    || opts.ids.some((p) => id.startsWith(`${p}.`));
   /** @type {string[]} */
   const abandoned = [];
   for (const [id, record] of Object.entries(item.experiments || {})) {
-    if (!record || typeof record !== 'object') continue;
+    if (!record || typeof record !== 'object' || !inScope(id)) continue;
     if (EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (record.status))) continue;
     record.status = 'abandoned';
     record.reason = reason;
@@ -770,9 +784,7 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
  */
 function completeTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'completed');
-  if (phase === 'experiment') {
-    throw new Error('the experiment item is derived bookkeeping — each experiment concludes or is abandoned (experiment conclude/abandon), and the item closes itself when the last record ends');
-  }
+  assertNotDerived(phase, 'the experiment item is derived bookkeeping — each experiment concludes or is abandoned (experiment conclude/abandon), and the item closes itself when the last record ends');
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -854,9 +866,7 @@ function completeTopic(cwd, workUnit, phase, topic) {
  */
 function reopenTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
-  if (phase === 'experiment') {
-    throw new Error('the experiment item is derived bookkeeping — a new spawn reopens the series (experiment create), never topic reopen');
-  }
+  assertNotDerived(phase, 'the experiment item is derived bookkeeping — a new spawn reopens the series (experiment create), never topic reopen');
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -1009,6 +1019,13 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
  * true` cancels the experiments and releases the waits in one transaction
  * (each waiting point reverts to open, the release surfaced at that
  * conversation's next entry).
+ *
+ * Cancelling a research or discussion holding live evidence waits is the
+ * mirror, scoped to the cancelled item's own `awaiting_experiments`: the
+ * bare cancel refuses naming those ids; `cascade: true` abandons exactly
+ * those records and closes this conversation's waits — the experiment item
+ * is never cancelled (its derived status settles over what remains), and a
+ * sibling conversation's experiments are untouched.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -1025,7 +1042,6 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   let releasedWaits = [];
   /** @type {string[]} */
   let abandoned = [];
-  let experimentCancelled = false;
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -1046,31 +1062,32 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
       releasedWaits = releaseExperimentWaits(manifest, topic);
     }
 
-    // The spawning conversation is its experiments' only consumer — cancel
-    // it and the series it spawned has nobody to report to. Bare refuses
-    // naming the waits; the cascade cancels the experiment item in the same
-    // transaction, abandoning its open records and releasing every wait on
-    // the topic (a non-terminal sibling holder is flagged by the release).
+    // The one-consumer principle is per-record: cancelling the conversation
+    // orphans only the experiments IT spawned. Bare refuses naming its own
+    // waits; the cascade abandons exactly those records and closes this
+    // conversation's waiting points — a sibling conversation's experiments
+    // are untouched, and the item's derived status settles over what
+    // remains.
     if (EXPERIMENT_SPAWN_PHASES.includes(phase)) {
       const awaiting = awaitedExperiments(manifest, phase, topic);
       if (awaiting.length > 0) {
         if (!opts.cascade) {
-          throw new Error(`cancelling ${phase} "${topic}" strands its evidence waits (${awaiting.join(', ')}) — the conversation is the experiments' only consumer; confirm the cascade (--cascade cancels its experiments with it: open records are abandoned and every wait releases)`);
+          throw new Error(`cancelling ${phase} "${topic}" strands its evidence waits (${awaiting.join(', ')}) — the conversation is those experiments' only consumer; confirm the cascade (--cascade abandons exactly those records and closes this conversation's waits; a sibling conversation's experiments are untouched)`);
         }
         const expItems = (manifest.phases && manifest.phases.experiment && manifest.phases.experiment.items) || {};
         const expItem = expItems[topic];
         if (expItem && typeof expItem === 'object' && expItem.status !== 'cancelled') {
-          abandoned = abandonOpenRecords(expItem, 'spawning conversation cancelled');
-          expItem.previous_status = expItem.status;
-          expItem.status = 'cancelled';
-          experimentCancelled = true;
+          abandoned = abandonOpenRecords(expItem, 'spawning conversation cancelled', { ids: awaiting });
+          expItem.status = derivedItemStatus(expItem.experiments);
         }
-        // The release flags every non-terminal holder — but this item is
-        // cancelled by the same transaction, so a flag the release just laid
-        // on it comes straight back off (a flag it already carried stays
-        // stashed with the rest of its fields).
+        // Each id is held by exactly one conversation (the spawn locks the
+        // spawning item alone), so releasing this item's own ids can touch
+        // no sibling holder. The release flags every non-terminal holder —
+        // but this item is cancelled by the same transaction, so a flag the
+        // release just laid on it comes straight back off (a flag it
+        // already carried stays stashed with the rest of its fields).
         const hadFlag = item.reconcile_needed !== undefined;
-        releasedWaits = releaseExperimentWaits(manifest, topic);
+        releasedWaits = releaseExperimentWaits(manifest, topic, { ids: awaiting });
         if (!hadFlag && item.reconcile_needed === 'experiment') delete item.reconcile_needed;
       }
     }
@@ -1160,7 +1177,6 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
   if (reverted.length > 0) result.roadmap_reverted = reverted;
   if (releasedWaits.length > 0) result.released_waits = releasedWaits;
   if (abandoned.length > 0) result.abandoned = abandoned;
-  if (experimentCancelled) result.experiment_cancelled = true;
   // `--sweep`, because the cancel runs from the epic menu: the session doing
   // it is not the session in the topic. A revert widened the commit past the
   // topic scope, so that retry stays generic.
@@ -1180,12 +1196,9 @@ function cancelTopic(cwd, workUnit, phase, topic, opts = {}) {
  * @returns {TopicTransitionResult}
  */
 function reactivateTopic(cwd, workUnit, phase, topic) {
-  // A cancelled series is never reactivated: post-cancel every record is
-  // terminal by construction, the rows stand on the register, and the next
-  // spawn from the conversation revives the item.
-  if (phase === 'experiment') {
-    throw new Error(`the experiment series is never reactivated — "${topic}"'s rows stand on the register, and a new spawn from its conversation (experiment create --from) revives the series`);
-  }
+  // Post-cancel every record is terminal by construction, so the next spawn
+  // from the conversation is what revives the item.
+  assertNotDerived(phase, `the experiment series is never reactivated — "${topic}"'s rows stand on the register, and a new spawn from its conversation (experiment create --from) revives the series`);
   const restored = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);

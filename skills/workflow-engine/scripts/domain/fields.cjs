@@ -25,6 +25,7 @@ const {
   VALID_WORK_TYPES,
   VALID_PHASES,
   VALID_PHASE_STATUSES,
+  DERIVED_PHASES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
   VALID_EXPERIMENT_STATUSES,
@@ -268,10 +269,7 @@ function validateSet(segments, value, fieldSegments = segments) {
 
     // phases.<phase>.items.<item>.status
     if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'status') {
-      // The experiment item's status is derived bookkeeping over its records
-      // — the experiment verbs settle it after every transition, and no hand
-      // ever writes it.
-      if (phase === 'experiment') {
+      if (DERIVED_PHASES.includes(phase)) {
         fail('the experiment item\'s status is derived bookkeeping the experiment verbs maintain — the spawn opens it, the last record\'s terminal transition closes it; never set it by hand');
       }
       validatePhaseStatus(phase, value);

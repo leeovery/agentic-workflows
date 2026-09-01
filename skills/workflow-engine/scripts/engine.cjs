@@ -162,7 +162,7 @@ Commands:
   topic supersede <work-unit> <phase> <topic> --by <topic>
   topic cancel <work-unit> <phase> <topic> [--cascade]
   topic reactivate <work-unit> <phase> <topic>
-  experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> | --parent <E{n}>)
+  experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
@@ -942,9 +942,9 @@ function runExperiment(argv) {
     const [workUnit, topic, id] = positional;
     if (command === 'create') {
       if (!workUnit || !topic || positional.length !== 2 || !opts.slug) {
-        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> | --parent <E{n}>)');
+        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)');
       }
-      const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent });
+      const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent, problem: opts.problem });
       beatQuietly(cwd, workUnit, opts.from ?? 'experiment', topic);
       respond(created);
       return;

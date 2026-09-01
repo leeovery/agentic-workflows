@@ -95,7 +95,7 @@ function experimentApprovalGate(id) {
  * @returns {string}
  */
 function experimentPick() {
-  const body = menuFrame(['Which experiment? (enter its id — E1, E2, …)']);
+  const body = menuFrame(['Which experiment? (enter its id — E1, E2, …, or **`b/back`**)']);
   return section('MENU: experiment pick', MENU_INSTRUCTION, body);
 }
 

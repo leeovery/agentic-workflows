@@ -55,6 +55,15 @@ describe('cancel-gate', () => {
     assert.match(out, /◆ Cancel it\?/);
     assert.match(out, /\*\*`y\/yes`\*\* → Confirm cancellation/);
   });
+
+  it('an experiment address states the terminal truth — the series never reactivates', () => {
+    writeManifest(dir, 'pay', {
+      phases: { experiment: { items: { auth: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } } },
+    });
+    const out = renderSurface(dir, 'cancel-gate', { dotpath: 'pay.experiment.auth' });
+    assert.match(unwrap(out), /Cancelling \*\*Auth\*\* in experiment will mark it as cancelled — open records end abandoned with their reason on the register, the series never reactivates, and a new spawn starts the next experiment\./);
+    assert.doesNotMatch(out, /reactivated later/);
+  });
 });
 
 describe('the experiment surfaces', () => {
@@ -154,7 +163,7 @@ describe('the experiment surfaces', () => {
     labWith({ E1: { slug: 'window-placement', status: 'running' } });
     const out = renderSurface(dir, 'experiment-pick', { dotpath: 'lab.experiment.timing' });
     assert.match(out, /=== MENU: experiment pick \(emit verbatim as markdown, then STOP for the user's response\) ===/);
-    assert.match(out, /Which experiment\? \(enter its id — E1, E2, …\)/);
+    assert.match(out, /Which experiment\? \(enter its id — E1, E2, …, or \*\*`b\/back`\*\*\)/);
   });
 
   it('the picker refuses an empty series and a wrong phase address', () => {

@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { fileExists, filesChecksum } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -112,7 +112,7 @@ function computeNextPhase(manifest) {
       // phase-coarse, and its topic-grain experiment rows carry the route
       // instead.
       if (ps(phase) === 'in-progress') {
-        const awaiting = phase === 'experiment'
+        const awaiting = DERIVED_PHASES.includes(phase)
           ? EXPERIMENT_SPAWN_PHASES.some((p) => waitingItems(manifest, p).length > 0)
           : EXPERIMENT_SPAWN_PHASES.includes(phase) && waitingItems(manifest, phase).length > 0;
         if (awaiting) {
