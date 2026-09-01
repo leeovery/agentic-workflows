@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.22] - 2026-09-01
+
+✨ Added
+- New Experiment phase — research and discussion conversations can spawn a controlled, pre-registered measurement (a laboratory) when a decision hinges on a number talking alone can't settle.
+- Experiment series and register per topic — every experiment a topic's conversations ever spawned, tracked from conceived through designed, approved, running, to concluded or abandoned.
+- Sub-experiments (splits) — a running experiment that discovers its question decomposes can spin off nested sub-experiments whose verdicts roll up into the parent's.
+- Epic dashboard now surfaces topics with queued experiments as a dedicated, top-ranked menu row.
+- Feature absorption into an epic now carries the feature's experiment series (records, verdicts, and any open evidence wait) along with the discussion and research.
+- New `docs/experiments.md` chapter explaining the laboratory, the offer, and who decides.
+
+🔧 Changed
+- A research or discussion conversation that spawns an experiment is locked from concluding until the experiment's evidence lands (or is abandoned).
+- Cancelling a topic with open experiments now offers a softer cascade: releasing the waiting conversation(s) and abandoning the open records instead of silently orphaning them.
+- Absorbing a feature into an epic now shows a fuller pre-confirm summary and post-absorption continuation menu, including experiment counts when a series moves.
+- Discussion's closing gates (review offers, findings-owed, wrap-up) are now rendered by the engine instead of hardcoded in skill prose.
+
 ## [0.7.21] - 2026-09-01
 
 🔧 Changed
