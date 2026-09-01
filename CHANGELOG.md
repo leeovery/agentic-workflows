@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.23] - 2026-09-01
+
+🔧 Changed
+- Triage folds absorbed into a discussion topic (`topic absorb --subtopic`) no longer count as review-arming movement — a sitting that only drains the queue won't trigger an early review, leaving that duty to the closing pass.
+
 ## [0.7.22] - 2026-09-01
 
 ✨ Added
