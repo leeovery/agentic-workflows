@@ -1835,7 +1835,7 @@ describe('pipeline simulation', () => {
     const proposalGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
       '--file', consolidationPayload, '--gate', 'gated', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' });
     assert.match(proposalGate, /MENU: task approval/, 'a proposal keeps the walk\'s approval gate');
-    assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:|\*\*Tests\*\*:|\*\*Outcome\*\*/.test(proposalGate),
+    assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:|\*\*Tests\*\*:|\*\*Outcome\*\*|t\/technical/.test(proposalGate),
       'proposal altitude renders only what the payload carries');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.2', 'skipped']);
     sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
@@ -1859,11 +1859,13 @@ describe('pipeline simulation', () => {
     const decisionGate = sim.render(['proposed-task', `${wu}.implementation.${wu}`,
       '--file', consolidationPayload, '--gate', 'auto', '--comment-hint', 'Provide feedback to adjust'], { expect: 'content' });
     assert.match(decisionGate, /MENU: task decision/, 'an open decision stops the walk even under auto');
-    assert.match(decisionGate, /\*\*Decision\*\*: Which page size stands\?/, 'the question renders in the body, never the glyphed chrome');
-    assert.match(decisionGate, /\*\*Stakes\*\*: Each side changes the shipped output/, 'the stakes argue the stop beneath the question');
+    assert.match(decisionGate, /\*\*Decision\*\*: Which page size stands\?/, 'the question is the menu\'s statement label, never the glyphed chrome');
+    assert.ok(!/\*\*Problem\*\*|\*\*Solution\*\*|\*\*Stakes\*\*/.test(decisionGate),
+      'the staged record never renders — the session composes the raise between the two emissions');
     assert.match(decisionGate, /Auto is on — stopping anyway/, 'the stop over the auto opt-in announces itself');
     assert.match(decisionGate, /\*\*`1`\*\* +→ preferCssPageSize \(recommended\)/, 'the recommended side orders first with its suffix');
     assert.match(decisionGate, /\*\*`2`\*\* +→ A4 on the renderer/, 'the sides are the menu options');
+    assert.match(decisionGate, /t\/technical/, 'the technical arm reaches the staged record');
     assert.ok(!/a\/auto|DISPLAY: task auto-approved/.test(decisionGate),
       'approving a decision blind is not one of the calls auto makes');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.3', 'skipped']);

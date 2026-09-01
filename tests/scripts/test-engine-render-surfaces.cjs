@@ -2376,6 +2376,7 @@ describe('render finding', () => {
       [{ ...settled, content: { label: 'X', lines: 'not an array' } }, /"content.lines" must be an array of strings/],
       [{ ...base, move: 'choice', options: [{ summary: 'only one' }] }, /a "choice" finding must carry at least 2 "options"/],
       [{ ...base, move: 'choice', options: [{ summary: 'a' }, { notASummary: true }] }, /options\[1\]\.summary must be a non-empty string/],
+      [{ ...base, move: 'choice', options: [{ summary: 'a' }, { summary: 'b\nfake row' }] }, /a side is one menu row — sides\[1\]\.summary must be a single line/],
       [{ ...base, move: 'choice', options: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] }, /at most one option may be recommended/],
       [{ ...base, move: 'choice', proposal: 'already decided', options: [{ summary: 'a' }, { summary: 'b' }] }, /a "choice" finding carries no "proposal"/],
       [{ ...base, move: 'choice', content: { label: 'X', lines: ['y'] }, options: [{ summary: 'a' }, { summary: 'b' }] }, /a "choice" finding carries no "content"/],
@@ -2412,7 +2413,9 @@ describe('render proposed-task', () => {
       'Sources: reviewer cycle 1',
       '',
       '**Problem**: The adapter never closes.',
+      '',
       '**Solution**: Close on detach.',
+      '',
       '**Outcome**: No leaked handles.',
       '',
       '**Do**:',
@@ -2435,6 +2438,7 @@ describe('render proposed-task', () => {
       '**Comment**   → Tell me what to change',
       '',
     ].join('\n'));
+    assert.ok(!out.includes('t/technical'), 'the technical arm belongs to the decision menu alone');
   });
 
   it('honours a custom comment hint and the auto gate', () => {
@@ -2475,6 +2479,7 @@ describe('render proposed-task', () => {
       'Placement: phase 3',
       '',
       '**Problem**: Two helpers differ only in their error text.',
+      '',
       '**Solution**: Fold them into one and take the caller-supplied message.',
       '',
       '=== MENU: task approval (emit verbatim as markdown, then STOP for the user\'s response) ===',
@@ -2501,7 +2506,9 @@ describe('render proposed-task', () => {
       '**`▪ Drop the dead formatter (2 of 4)`** (dead-code)',
       '',
       '**Problem**: Nothing calls it.',
+      '',
       '**Solution**: Delete it.',
+      '',
       '**Outcome**: One fewer surface to keep true.',
       '',
       '**Tests**:',
@@ -2517,7 +2524,7 @@ describe('render proposed-task', () => {
   it('outcome is optional both ways, and the detail blocks stay non-empty when present', () => {
     const withOutcome = writePayload(dir, 'o1.json', { ...proposal, outcome: 'One helper, one message path.' });
     assert.ok(renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: withOutcome, gate: 'gated' })
-      .includes('**Solution**: Fold them into one and take the caller-supplied message.\n**Outcome**: One helper, one message path.\n'));
+      .includes('**Solution**: Fold them into one and take the caller-supplied message.\n\n**Outcome**: One helper, one message path.\n'));
     const without = writePayload(dir, 'o2.json', proposal);
     assert.ok(!renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: without, gate: 'gated' }).includes('**Outcome**'));
     const emptyOutcome = writePayload(dir, 'o3.json', { ...proposal, outcome: '' });
@@ -2530,9 +2537,10 @@ describe('render proposed-task', () => {
     }
   });
 
-  it('a decision item presents the sides as the menu — numbered, decline, comment, no auto — byte-exactly', () => {
+  it('a decision emits its slim header and the sides as the menu — the record stays staged — byte-exactly', () => {
     const file = writePayload(dir, 'dc.json', {
       current: 3, total: 4, title: 'Settle the page size', severity: 'behaviour',
+      sources: 'finder cycle 1', placement: 'phase 1',
       problem: 'Two page sizes are configured at once.', solution: 'Pick one and record it.',
       stakes: 'A4 fixes print output; preferCssPageSize hands it to themes. No measurement picks between them.',
       decision: { question: 'Which page size stands?', options: ['A4 on the PDF renderer', 'preferCssPageSize from the stylesheet'] },
@@ -2541,22 +2549,27 @@ describe('render proposed-task', () => {
     assert.strictEqual(out, [
       '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
       '**`▪ Settle the page size (3 of 4)`** (behaviour)',
-      '',
-      '**Problem**: Two page sizes are configured at once.',
-      '**Solution**: Pick one and record it.',
-      '**Decision**: Which page size stands?',
-      '**Stakes**: A4 fixes print output; preferCssPageSize hands it to themes. No measurement picks between them.',
+      'Sources: finder cycle 1',
+      'Placement: phase 1',
       '',
       '=== MENU: task decision (emit verbatim as markdown, then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
+      '**Decision**: Which page size stands?',
+      '',
       '**`◆ Which way?`**',
       '',
-      '**`1`**         → A4 on the PDF renderer',
-      '**`2`**         → preferCssPageSize from the stylesheet',
-      '**`d/decline`** → Decline this task — it will not be built',
-      '**Comment**   → Tell me what to change',
+      '**`1`**           → A4 on the PDF renderer',
+      '**`2`**           → preferCssPageSize from the stylesheet',
+      "**`t/technical`** → Retell the fork from the code's perspective",
+      '**`d/decline`**   → Decline this task — it will not be built',
+      '**Comment**     → Tell me what to change',
       '',
     ].join('\n'));
+    const display = out.slice(0, out.indexOf('=== MENU'));
+    for (const line of ['**Problem**', '**Solution**', '**Stakes**', '**Decision**']) {
+      assert.ok(!display.includes(line), `the slim header carries no ${line} line — the record stays in the staging file`);
+    }
+    assert.ok(out.includes('**Decision**: Which page size stands?'), 'the menu carries the question as its statement label');
     assert.ok(!out.includes('a/auto'), 'an open decision is never one of the calls auto makes');
     assert.ok(!out.includes('Auto is on'), 'a gated decision carries no auto-override line — there is nothing being overridden');
   });
@@ -2574,10 +2587,11 @@ describe('render proposed-task', () => {
     });
     const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
     assert.ok(out.includes([
-      '**`1`**         → preferCssPageSize from the stylesheet (recommended)',
-      '**`2`**         → A4 on the PDF renderer',
-      '**`3`**         → Neither — leave it configurable',
-      '**`d/decline`** → Decline this task — it will not be built',
+      '**`1`**           → preferCssPageSize from the stylesheet (recommended)',
+      '**`2`**           → A4 on the PDF renderer',
+      '**`3`**           → Neither — leave it configurable',
+      "**`t/technical`** → Retell the fork from the code's perspective",
+      '**`d/decline`**   → Decline this task — it will not be built',
     ].join('\n')), out);
   });
 
@@ -2604,10 +2618,10 @@ describe('render proposed-task', () => {
     assert.ok(auto.includes('MENU: task decision'), 'a decision item always stops');
     assert.ok(!auto.includes('DISPLAY: task auto-approved'));
     assert.ok(!auto.includes('MENU: task approval'));
-    assert.ok(auto.includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'),
-      'a stop that fires over the auto opt-in says so, in the engine\'s one voice');
-    assert.ok(auto.includes('**Decision**: Which page size stands?'), 'the question renders in the body, never the glyphed chrome');
+    assert.ok(auto.includes('**Decision**: Which page size stands?\n\n**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'),
+      'the question is the menu\'s statement label, the auto-override line beneath it — never the glyphed chrome');
     assert.ok(/\*\*`3`\*\* +→ Neither — leave it configurable/.test(auto));
+    assert.ok(/\*\*`t\/technical`\*\* +→ Retell the fork from the code's perspective/.test(auto), 'the technical arm rides the decision menu');
     assert.ok(/\*\*Comment\*\* +→ Provide feedback to adjust/.test(auto));
   });
 
@@ -2625,12 +2639,53 @@ describe('render proposed-task', () => {
       assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' }),
         /"decision" must be an object carrying "question" and "options"/, `decision as ${name} is refused`);
     }
+    const withOutcome = writePayload(dir, 'dx-outcome.json', {
+      ...proposal, outcome: 'One page size everywhere.', stakes: 'the fork is product-shaped',
+      decision: { question: 'Which way?', options: ['a', 'b'] },
+    });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: withOutcome, gate: 'gated' }),
+      /"decision" excludes outcome/, 'a decision payload never carries a field the path would silently drop');
+    const noProblem = writePayload(dir, 'dx-problem.json', {
+      current: 1, total: 1, title: 'T', solution: 's', stakes: 'the fork is product-shaped',
+      decision: { question: 'Which way?', options: ['a', 'b'] },
+    });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noProblem, gate: 'gated' }),
+      /"problem" must be a non-empty string/, 'the payload mirrors its staging row — a decision with no record behind it is refused');
+  });
+
+  it('the question is head chrome — an option-shaped question never captures the arrow column', () => {
+    const file = writePayload(dir, 'dq.json', {
+      ...proposal, stakes: 'the fork is product-shaped',
+      decision: { question: 'Ship **now** → later?', options: ['A4 on the PDF renderer', 'preferCssPageSize'] },
+    });
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    assert.ok(out.includes('**Decision**: Ship **now** → later?'), 'the label passes through untouched');
+    assert.ok(out.includes('**`1`**           → A4 on the PDF renderer'),
+      'the arrow column is measured from the option rows alone — t/technical, at 11, stays the widest key');
+  });
+
+  it('a long end-state side wraps under its own row, the recommendation suffix riding the last segment', () => {
+    const side = 'Unmatched captures land on an operator-visible record and a person resolves each one — nothing redelivers, nothing vanishes';
+    const file = writePayload(dir, 'dw.json', {
+      ...proposal, stakes: 'the fork is product-shaped',
+      decision: { question: 'Where does an unmatched capture surface?', options: [{ summary: side, recommended: true }, 'Refused — the gateway redelivers'] },
+    });
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    const lines = out.split('\n');
+    const row = lines.findIndex((l) => l.startsWith('**`1`**'));
+    assert.ok(row > 0, out);
+    // NB(14) = the 11-wide t/technical key column + the three arrow columns.
+    assert.ok(lines[row + 1].startsWith(NB(14)), 'continuations align under the label column in non-breaking spaces');
+    const last = [lines[row], lines[row + 1], lines[row + 2] ?? ''].filter((l) => l.startsWith('**`1`**') || l.startsWith(NB(14))).pop();
+    assert.ok(last && last.endsWith('(recommended)'), 'the suffix rides the wrapped row\'s last segment');
   });
 
   it('a malformed decision is refused by name', () => {
     const cases = [
       [{ options: ['a', 'b'] }, /"decision\.question" must be a non-empty string/],
       [{ question: '  ', options: ['a', 'b'] }, /"decision\.question" must be a non-empty string/],
+      [{ question: 'Which?\nAnd how?', options: ['a', 'b'] }, /"decision\.question" must be a single line/],
+      [{ question: 'Which?', options: ['a', 'b\nfake row'] }, /a side is one menu row — sides\[1\]\.summary must be a single line/],
       [{ question: 'Which?' }, /"decision\.options" must be an array of 2–4 sides/],
       [{ question: 'Which?', options: ['only one'] }, /"decision\.options" must be an array of 2–4 sides/],
       [{ question: 'Which?', options: ['a', 'b', 'c', 'd', 'e'] }, /"decision\.options" must be an array of 2–4 sides/],
@@ -2834,6 +2889,8 @@ describe('render proposed-task', () => {
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: oneSide, variant: 'conflict' }), /at least 2 entries/);
     const twoRec = writePayload(dir, 'ig6.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: twoRec, variant: 'conflict' }), /at most one side/);
+    const nlSide = writePayload(dir, 'ig6b.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b\nfake row' }] });
+    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: nlSide, variant: 'conflict' }), /a side is one menu row — sides\[1\]\.summary must be a single line/);
     const noTitle = writePayload(dir, 'ig7.json', { doc: 'x', lane: 'review', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
     assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noTitle, variant: 'gap-route' }), /"title" must be a non-empty string/);
     const badQuote = writePayload(dir, 'ig8.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: [{ doc: 'a', section: 's' }] });

@@ -325,21 +325,34 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 // solution (outcome only when it adds something the solution doesn't); a task
 // adds the Do/Acceptance Criteria/Tests blocks. Judging comes before
 // authoring, and detail that doesn't exist yet can't be rendered.
-// A proposal carrying an open decision renders the question and its stakes
-// as the body's last lines and the sides as its menu under a fixed engine
-// question — the conflict-menu idiom: model-authored text never enters the
-// glyphed chrome. A decision is an irreducible product fork — never a
-// technical call an investigation would settle — and the required "stakes"
-// (a top-level field beside "decision", never nested inside it) is the
-// payload's argument for the stop: each side's product consequence, why no
-// investigation settles the tie, and — where a side is marked — the grounds
-// for the recommendation. The menu fires at either gate mode, by design: a
-// bare `y` would hand the call to the executor, and auto never settles an
-// irreducible product fork — a decision item always stops, and over an
-// auto opt-in it says so. A decision excludes the authored blocks: the
-// direction is settled before bodies exist. A side may mark itself
-// recommended (at most one); it orders first with a "(recommended)"
-// suffix — the findingChoice idiom.
+// A proposal carrying an open decision is raised, never rendered: the
+// DISPLAY slims to the title and meta lines — no Problem, no Solution, no
+// Stakes — and the record stays in the staging file. The session composes
+// the raise, in product terms from zero, between the two section
+// emissions; that contract is the walk prose's to own. The menu carries
+// the question as its statement label with the sides beneath a fixed
+// engine question — the conflict-menu idiom: model-authored text never
+// enters the glyphed chrome — and a t/technical arm reaches the record's
+// depth: the session retells the mechanism from the staged record and the
+// findings behind it, then re-runs this render for the header and menu. A
+// decision is an irreducible product fork — never a technical call an
+// investigation would settle — and the required "stakes" (a top-level
+// field beside "decision", never nested inside it) is the payload's
+// argument for the stop: each side's product consequence, why no
+// investigation settles the tie, and — where a side is marked — the
+// grounds for the recommendation. Problem, solution and stakes stay
+// required here though the decision path never renders them: the payload
+// mirrors its staging row, and a decision with no record behind it is
+// refused, not slimmed. The menu fires at either gate
+// mode, by design: a bare `y` would hand the call to the executor, and
+// auto never settles an irreducible product fork — a decision item always
+// stops, and over an auto opt-in its label says so. A decision excludes
+// the authored blocks and outcome: the direction is settled before bodies
+// exist, and what the change would look like is the raise's to say. The
+// question and each side are single lines — they become the menu's label
+// and rows, and the head chrome is never scanned for the option column. A
+// side may mark itself recommended (at most one); it orders first with a
+// "(recommended)" suffix — the findingChoice idiom.
 // ---------------------------------------------------------------------------
 
 /**
@@ -377,6 +390,7 @@ function proposedTask(cwd, args) {
       throw new Error('render proposed-task: "decision" must be an object carrying "question" and "options"');
     }
     if (!isFilled(p.decision.question)) throw new Error('render proposed-task: "decision.question" must be a non-empty string');
+    if (/\n/.test(p.decision.question)) throw new Error('render proposed-task: "decision.question" must be a single line — it becomes the menu\'s statement label');
     if (!Array.isArray(p.decision.options) || p.decision.options.length < 2 || p.decision.options.length > 4) {
       throw new Error('render proposed-task: "decision.options" must be an array of 2–4 sides');
     }
@@ -396,6 +410,9 @@ function proposedTask(cwd, args) {
     if (blocks.steps || blocks.criteria || blocks.tests) {
       throw new Error('render proposed-task: "decision" excludes steps/criteria/tests — the direction is settled before bodies are authored');
     }
+    if (p.outcome !== undefined) {
+      throw new Error('render proposed-task: "decision" excludes outcome — the raise carries what the change would look like; the record keeps the rest');
+    }
   } else if (p.stakes !== undefined) {
     throw new Error('render proposed-task: "stakes" requires "decision" — the argument for a stop needs an open fork to argue for');
   }
@@ -412,15 +429,14 @@ function proposedTask(cwd, args) {
   const body = [
     `**\`▪ ${p.title.trim()}${ordinal}\`**${isFilled(p.severity) ? ` (${p.severity})` : ''}`,
     ...meta,
-    '',
-    `**Problem**: ${p.problem}`,
-    `**Solution**: ${p.solution}`,
   ];
-  if (isFilled(p.outcome)) body.push(`**Outcome**: ${p.outcome}`);
-  if (p.decision) body.push(`**Decision**: ${p.decision.question}`, `**Stakes**: ${p.stakes}`);
-  for (const [field, heading] of [['steps', 'Do'], ['criteria', 'Acceptance Criteria'], ['tests', 'Tests']]) {
-    if (!blocks[field]) continue;
-    body.push('', `**${heading}**:`, ...blocks[field]);
+  if (!p.decision) {
+    body.push('', `**Problem**: ${p.problem}`, '', `**Solution**: ${p.solution}`);
+    if (isFilled(p.outcome)) body.push('', `**Outcome**: ${p.outcome}`);
+    for (const [field, heading] of [['steps', 'Do'], ['criteria', 'Acceptance Criteria'], ['tests', 'Tests']]) {
+      if (!blocks[field]) continue;
+      body.push('', `**${heading}**:`, ...blocks[field]);
+    }
   }
   const parts = [section('DISPLAY: proposed task', 'emit verbatim as markdown', body.join('\n'))];
 
@@ -429,8 +445,9 @@ function proposedTask(cwd, args) {
     parts.push(section(
       'MENU: task decision',
       STOP_FOR_RESPONSE,
-      menu(gate === 'auto' ? AUTO_OVERRIDE_LINE : '', [
+      menu(`**Decision**: ${p.decision.question}${gate === 'auto' ? `\n\n${AUTO_OVERRIDE_LINE}` : ''}`, [
         ...decisionRows,
+        cmdOption('t', 'technical', "Retell the fork from the code's perspective"),
         cmdOption('d', 'decline', 'Decline this task — it will not be built'),
         promptOption('Comment', hint),
       ], { question: 'Which way?' }),
@@ -1703,11 +1720,14 @@ function stringLines(v, surface, field) {
  * The recommended-first menu rows shared by proposed-task's decision, the
  * incoherence conflict, and the choice finding: at most one entry marked
  * (the caller owns the error text), the marked one first, "(recommended)"
- * as its suffix.
+ * as its suffix. A side is one menu row, so a newline in any summary is
+ * refused here — the single home where model-authored sides become rows.
  * @param {{summary: string, recommended?: boolean}[]} sides @param {string} atMostOne
  * @returns {string[]}
  */
 function recommendedMenuRows(sides, atMostOne) {
+  const multiline = sides.findIndex((s) => /\n/.test(s.summary));
+  if (multiline >= 0) throw new Error(`a side is one menu row — sides[${multiline}].summary must be a single line`);
   if (sides.filter((s) => s.recommended === true).length > 1) throw new Error(atMostOne);
   const ordered = [...sides].sort((a, b) => Number(b.recommended === true) - Number(a.recommended === true));
   return ordered.map((s, i) => cmdOption(String(i + 1), null, `${s.summary}${s.recommended === true ? ' (recommended)' : ''}`));
