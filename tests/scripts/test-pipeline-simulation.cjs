@@ -1586,8 +1586,9 @@ describe('pipeline simulation', () => {
       'the migration path is settled and out of scope']);
     // The discussion spawned an experiment still awaiting its evidence — the
     // series travels with the topic, wait and all.
-    const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion']);
-    sim.write(`${spawned.dir}/problem.md`, '# Problem — what a cutover actually costs\n');
+    const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion',
+      '--problem', sim.write(`.workflows/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
+    assert.ok(fs.existsSync(path.join(sim.dir, spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
     sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
 
     // The manage flow's absorb gates render from the pre-absorb state.

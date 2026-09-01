@@ -42,6 +42,7 @@
       "manifest get pay.discussion.pay status",
       "experiment create pay pay",
       "--from discussion",
+      "--problem .workflows/.cache/pay/discussion/pay/problem.md",
       "spawn E1",
       "E1 problem statement",
       "experiment/pay --sweep",
@@ -51,8 +52,8 @@
       "render experiment-wait-gate pay.discussion.pay"
     ],
     "calls_in_order": [
+      "write:.workflows/.cache/pay/discussion/pay/problem.md",
       "experiment create pay pay",
-      "write:.workflows/pay/experiment/pay/E1-",
       "render experiment-spawn-gate pay.discussion.pay",
       "render experiment-wait-gate pay.discussion.pay"
     ],

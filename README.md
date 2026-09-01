@@ -40,14 +40,16 @@ That's the whole interface. Describe what you want to build and the right pipeli
 Work comes in five shapes, each with a pipeline suited to its size, from months of multi-topic discovery down to a one-file fix. Mid-conversation capture too: say "log that as an idea" and keep working.
 
 ```
-epic           Discovery → (Research) → (Experiments) → Discussion → Specification → Planning → Implementation → Review
-feature        Discovery → (Research) → (Experiments) → Discussion → Specification → Planning → Implementation → Review
+epic           Discovery → (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review
+feature        Discovery → (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review
 bugfix         Discovery → Investigation → Specification → Planning → Implementation → Review
 quick-fix      Discovery → Scoping → Implementation → Review
-cross-cutting  Discovery → (Research) → (Experiments) → Discussion → Specification
+cross-cutting  Discovery → (Research) → (Experiment) → Discussion → Specification
 ```
 
-Parenthesised phases are optional. Experiments are never entered directly: a research or discussion conversation spawns one when a number is about to bear a decision — a controlled measurement, designed and frozen before it runs — and the verdict feeds back into the conversation that asked, which cannot conclude until it lands.
+Parenthesised phases are optional.
+
+The experiment slot is never entered directly: a research or discussion conversation spawns one when a number is about to bear a decision — a controlled measurement, designed and frozen before it runs — and the verdict feeds back into the conversation that asked, which cannot conclude until it lands.
 
 ## What it looks like
 

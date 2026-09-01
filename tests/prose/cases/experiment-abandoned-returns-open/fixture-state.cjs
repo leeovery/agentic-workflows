@@ -91,8 +91,7 @@ module.exports = {
     h.engine('commit', WU, '--topic', `discussion/${WU}`, '-m',
       `discussion(${WU}/${WU}): retry policy decided; webhook timing handed to the laboratory`);
 
-    const created = JSON.parse(h.engine('experiment', 'create', WU, WU, '--slug', SLUG, '--from', 'discussion'));
-    h.write(`${created.dir}/problem.md`, [
+    h.write(`.workflows/.cache/${WU}/discussion/${WU}/problem.md`, [
       '# E1: Delivery Timing',
       '',
       'We need to learn how long capture webhooks actually take to arrive',
@@ -105,6 +104,8 @@ module.exports = {
       '2026-01-01.',
       '',
     ].join('\n'));
+    const created = JSON.parse(h.engine('experiment', 'create', WU, WU, '--slug', SLUG, '--from', 'discussion',
+      '--problem', `.workflows/.cache/${WU}/discussion/${WU}/problem.md`));
     h.engine('commit', WU, '--topic', `discussion/${WU}`, '-m',
       `discussion(${WU}/${WU}): spawn E1 ${SLUG}`);
     h.engine('commit', WU, '--topic', `experiment/${WU}`, '--sweep', '-m',

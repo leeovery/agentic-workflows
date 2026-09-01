@@ -99,9 +99,10 @@ function planTrackedMoves(cwd, feature, epic, field, entries) {
 /**
  * Absorb a feature into an in-progress epic as `topic`: move the discussion
  * (and any research, experiment series, imports, and seeds) into the epic —
- * manifest entries carry their original timestamps, filename collisions
- * suffix like create does, research-topic collisions suffix `-{feature}`,
- * the experiment item and its records travel whole with any live evidence
+ * manifest entries carry their original timestamps, imports/seeds filename
+ * collisions suffix like create does, the research lands at the topic name
+ * (a collision refuses like the discussion's), the experiment item and its
+ * records travel whole with any live evidence
  * wait riding its holder — mirror each phase item's status onto the epic,
  * register the topic on the discovery map with backfill semantics, remove
  * the feature's knowledge-base chunks and index the moved artifacts of the
@@ -172,6 +173,26 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       throw new Error(`${discussionDest} already exists — pick a different name`);
     }
 
+    // A feature's research is single and self-named, and it lands at the
+    // topic name — the same landing the discussion and the series take, so
+    // the map row, the artifact, and every experiment join share one name.
+    // A foreign-named item refuses rather than skips: the feature directory
+    // is deleted afterwards, so a silently skipped file would be lost.
+    const featureResearch = phaseItems(featureManifest, 'research');
+    for (const name of Object.keys(featureResearch)) {
+      if (name !== feature) {
+        throw new Error(`feature "${feature}" has a research item "${name}" not named after it — a feature's research is single and self-named; fix the manifest before absorbing`);
+      }
+    }
+    if (featureResearch[feature] !== undefined) {
+      if (phaseItems(epicManifest, 'research')[topic]) {
+        throw new Error(`research topic "${topic}" already exists in ${into} — pick a different name`);
+      }
+      if (fs.existsSync(path.join(cwd, '.workflows', into, 'research', `${topic}.md`))) {
+        throw new Error(`.workflows/${into}/research/${topic}.md already exists — pick a different name`);
+      }
+    }
+
     // The experiment series (when the feature ran one) travels whole — item,
     // records, and directory. Same freedom checks as the discussion.
     const experimentItem = phaseItems(featureManifest, 'experiment')[feature];
@@ -185,62 +206,27 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       }
     }
 
-    // Research moves: every item's file must exist; target names dodge the
-    // epic's items, its files on disk, and the batch — `-{feature}` first,
-    // then numbered.
-    const featureResearch = phaseItems(featureManifest, 'research');
-    const epicResearch = phaseItems(epicManifest, 'research');
+    // The research move: the file must exist before anything mutates.
     const epicResearchDir = path.join(cwd, '.workflows', into, 'research');
-    /** @type {Set<string>} */
-    const takenResearch = new Set();
-    /** @param {string} name @returns {string} */
-    const researchTarget = (name) => {
-      /** @param {string} n */
-      const clashes = (n) => takenResearch.has(n)
-        || Object.prototype.hasOwnProperty.call(epicResearch, n)
-        || fs.existsSync(path.join(epicResearchDir, `${n}.md`));
-      if (!clashes(name)) return name;
-      const suffixed = `${name}-${feature}`;
-      if (!clashes(suffixed)) return suffixed;
-      for (let i = 2; ; i++) {
-        if (!clashes(`${suffixed}-${i}`)) return `${suffixed}-${i}`;
-      }
-    };
     /** @type {{from: string, target: string, status: string, dismissed_grounds?: string[], awaiting_experiments?: string[], reconcile_needed?: string}[]} */
     const researchPlan = [];
-    for (const [name, item] of Object.entries(featureResearch)) {
-      const src = `.workflows/${feature}/research/${name}.md`;
+    const researchItem = featureResearch[feature];
+    if (researchItem !== undefined) {
+      const src = `.workflows/${feature}/research/${feature}.md`;
       if (!fs.existsSync(path.join(cwd, src))) {
         throw new Error(`research file missing on disk: ${src}`);
       }
-      const status = item && typeof item === 'object' && typeof item.status === 'string' ? item.status : null;
+      const status = researchItem && typeof researchItem === 'object' && typeof researchItem.status === 'string' ? researchItem.status : null;
       if (status === null) {
-        throw new Error(`research item "${name}" in "${feature}" has no status — fix the manifest before absorbing`);
+        throw new Error(`research item "${feature}" in "${feature}" has no status — fix the manifest before absorbing`);
       }
-      // Experiment state joins by topic name on both sides — the wait's
-      // release edge and the advisory's register read both address
-      // `phases.experiment.items.{topic}`. A research item carrying live
-      // experiment state therefore lands AT the topic name — the same
-      // landing the discussion and the series take, keeping every join
-      // intact — and a collision on that name refuses like the
-      // discussion's: pick a different name.
-      const liveWait = Array.isArray(item.awaiting_experiments) && item.awaiting_experiments.length > 0;
-      const experimentFlag = item.reconcile_needed === 'experiment';
-      const carriesExperimentState = liveWait || experimentFlag;
-      if (carriesExperimentState
-        && (takenResearch.has(topic) || Object.prototype.hasOwnProperty.call(epicResearch, topic)
-          || fs.existsSync(path.join(epicResearchDir, `${topic}.md`)))) {
-        throw new Error(`research topic "${topic}" already exists in ${into} — pick a different name`);
-      }
-      const target = carriesExperimentState ? topic : researchTarget(name);
-      takenResearch.add(target);
       researchPlan.push({
-        from: name,
-        target,
+        from: feature,
+        target: topic,
         status,
-        ...(item.dismissed_grounds !== undefined ? { dismissed_grounds: item.dismissed_grounds } : {}),
-        ...(item.awaiting_experiments !== undefined ? { awaiting_experiments: item.awaiting_experiments } : {}),
-        ...(item.reconcile_needed !== undefined ? { reconcile_needed: item.reconcile_needed } : {}),
+        ...(researchItem.dismissed_grounds !== undefined ? { dismissed_grounds: researchItem.dismissed_grounds } : {}),
+        ...(researchItem.awaiting_experiments !== undefined ? { awaiting_experiments: researchItem.awaiting_experiments } : {}),
+        ...(researchItem.reconcile_needed !== undefined ? { reconcile_needed: researchItem.reconcile_needed } : {}),
       });
     }
 

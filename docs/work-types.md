@@ -8,15 +8,15 @@ You do not have to know which shape your work is. You describe it in your own wo
 
 | Type | What it is | Pipeline |
 |---|---|---|
-| **Epic** | A large initiative that fans out into several distinct concerns; multi-topic, multi-session. | Discovery → per topic: (Research) → (Experiments) → Discussion → Specification → Planning → Implementation → Review |
-| **Feature** | One coherent, shippable thing. | Discovery → (Research) → (Experiments) → Discussion → Specification → Planning → Implementation → Review |
+| **Epic** | A large initiative that fans out into several distinct concerns; multi-topic, multi-session. | Discovery → per topic: (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
+| **Feature** | One coherent, shippable thing. | Discovery → (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
 | **Bugfix** | Something that used to work is now failing. | Discovery → Investigation → Specification → Planning → Implementation → Review |
 | **Quick-fix** | A small, known, mechanical change. | Discovery → Scoping → Implementation → Review |
-| **Cross-cutting** | A pattern, policy, or convention to define — nothing shippable at the end. | Discovery → (Research) → (Experiments) → Discussion → Specification |
+| **Cross-cutting** | A pattern, policy, or convention to define — nothing shippable at the end. | Discovery → (Research) → (Experiment) → Discussion → Specification |
 
-Parenthesised phases are optional. [Experiments](experiments.md) are more than optional — they are never entered directly at all: a research or discussion conversation spawns one when it hits a question only measurement can settle, and the result feeds back into the conversation that asked. Every shape begins in discovery, because that is where the shape itself is decided — see [why every work type starts in discovery](discovery.md).
+Parenthesised phases are optional. Every shape begins in discovery, because that is where the shape itself is decided — see [why every work type starts in discovery](discovery.md).
 
-The differences are not cosmetic. A **feature** runs the full arc from a decision-making discussion through to a verified build. A **bugfix** swaps discussion for **investigation**, because you cannot decide how to fix something until you know why it broke. A **quick-fix** collapses the whole middle into a single **scoping** pass — there is nothing to debate and nothing to diagnose, so context, spec, and plan are written in one sitting and the work goes straight to building. A **cross-cutting** concern is terminal at specification: you are establishing a standard the rest of the codebase will follow, not shipping a unit of work, so there is nothing to plan or build. An **epic** is a feature's pipeline run many times over, once per topic, held together by a map of everything the initiative contains.
+The differences are not cosmetic. A **feature** runs the full arc from a decision-making discussion through to a verified build. A **bugfix** swaps discussion for **investigation**, because you cannot decide how to fix something until you know why it broke. A **quick-fix** collapses the whole middle into a single **scoping** pass — there is nothing to debate and nothing to diagnose, so context, spec, and plan are written in one sitting and the work goes straight to building. A **cross-cutting** concern is terminal at specification: you are establishing a standard the rest of the codebase will follow, not shipping a unit of work, so there is nothing to plan or build. An **epic** is a feature's pipeline run many times over, once per topic, held together by a map of everything the initiative contains. And wherever a shape carries the experiment slot, it is never entered directly at all: a research or discussion conversation [spawns an experiment](experiments.md) when it hits a question only measurement can settle, and the result feeds back into the conversation that asked.
 
 ## The three stages
 

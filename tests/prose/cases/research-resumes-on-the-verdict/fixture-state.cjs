@@ -64,8 +64,7 @@ module.exports = {
     h.engine('commit', WU, '--topic', `research/${TOPIC}`, '-m',
       `research(${WU}/${TOPIC}): candidate sources and the open recovery number`);
 
-    const created = JSON.parse(h.engine('experiment', 'create', WU, TOPIC, '--slug', SLUG, '--from', 'research'));
-    h.write(`${created.dir}/problem.md`, [
+    h.write(`.workflows/.cache/${WU}/research/${TOPIC}/problem.md`, [
       '# E1: Reformulation Recovery',
       '',
       'What share of zero-result searches recover because the searcher',
@@ -76,6 +75,8 @@ module.exports = {
       'source choice, on 2026-01-01.',
       '',
     ].join('\n'));
+    const created = JSON.parse(h.engine('experiment', 'create', WU, TOPIC, '--slug', SLUG, '--from', 'research',
+      '--problem', `.workflows/.cache/${WU}/research/${TOPIC}/problem.md`));
     h.engine('commit', WU, '--topic', `research/${TOPIC}`, '-m',
       `research(${WU}/${TOPIC}): spawn E1 ${SLUG}`);
     h.engine('commit', WU, '--topic', `experiment/${TOPIC}`, '--sweep', '-m',

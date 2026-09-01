@@ -49,7 +49,7 @@ function featureManifest(overrides = {}) {
     imports: [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z' }],
     seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' }],
     phases: {
-      research: { items: { exploration: { status: 'completed' }, 'edge-cases': { status: 'in-progress' } } },
+      research: { items: { 'auth-flow': { status: 'completed' } } },
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
     },
     ...overrides,
@@ -96,8 +96,7 @@ function setupFixture({ feature = featureManifest(), epic = epicManifest() } = {
   }, null, 2) + '\n');
   writeFile(project, '.workflows/auth-flow/manifest.json', JSON.stringify(feature, null, 2) + '\n');
   writeFile(project, '.workflows/auth-flow/discussion/auth-flow.md', '# Discussion\n');
-  writeFile(project, '.workflows/auth-flow/research/exploration.md', '# Exploration\n');
-  writeFile(project, '.workflows/auth-flow/research/edge-cases.md', '# Edge Cases\n');
+  writeFile(project, '.workflows/auth-flow/research/auth-flow.md', '# Research\n');
   writeFile(project, '.workflows/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(project, '.workflows/auth-flow/seeds/seed.md', '# Seed\n');
   writeFile(project, '.workflows/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
@@ -192,8 +191,7 @@ describe('engine workunit absorb — happy path', () => {
       topic: 'auth',
       discussion: { path: 'discussion/auth.md', status: 'completed' },
       research: [
-        { from: 'exploration', topic: 'exploration-auth-flow', status: 'completed' },
-        { from: 'edge-cases', topic: 'edge-cases', status: 'in-progress' },
+        { from: 'auth-flow', topic: 'auth', status: 'completed' },
       ],
       imports: [{ path: 'imports/notes-2.md' }],
       seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea' }],
@@ -219,8 +217,7 @@ describe('engine workunit absorb — happy path', () => {
 
     // Files landed at their epic identities; the feature directory is gone.
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/auth.md'), 'utf8'), '# Discussion\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/research/exploration-auth-flow.md'), 'utf8'), '# Exploration\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/research/edge-cases.md'), 'utf8'), '# Edge Cases\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/research/auth.md'), 'utf8'), '# Research\n');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/imports/notes-2.md'), 'utf8'), '# Notes\n');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/seeds/seed.md'), 'utf8'), '# Seed\n');
     // The epic's own colliding files are untouched.
@@ -238,8 +235,7 @@ describe('engine workunit absorb — happy path', () => {
       /no experiment series "auth" on "payments"/);
     assert.deepStrictEqual(m.phases.research.items, {
       exploration: { status: 'completed' },
-      'exploration-auth-flow': { status: 'completed' },
-      'edge-cases': { status: 'in-progress' },
+      auth: { status: 'completed' },
     });
     assert.deepStrictEqual(m.imports, [
       { path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z' },
@@ -269,7 +265,7 @@ describe('engine workunit absorb — happy path', () => {
     assert.deepStrictEqual(knowledgeCalls(fix), [
       'remove --work-unit auth-flow',
       'index .workflows/payments/discussion/auth.md',
-      'index .workflows/payments/research/exploration-auth-flow.md',
+      'index .workflows/payments/research/auth.md',
       'index .workflows/payments/imports/notes-2.md',
       'index .workflows/payments/seeds/seed.md',
     ]);
@@ -313,18 +309,18 @@ describe('engine workunit absorb — happy path', () => {
   it('dismissed grounds travel with the material — discussion and research alike', () => {
     const feature = featureManifest();
     feature.phases.discussion.items['auth-flow'].dismissed_grounds = ['token rotation is out of scope'];
-    feature.phases.research.items.exploration.dismissed_grounds = ['vendor pricing was already ruled out'];
+    feature.phases.research.items['auth-flow'].dismissed_grounds = ['vendor pricing was already ruled out'];
     fix = setupFixture({ feature });
     engine(fix, ABSORB);
 
     const m = readManifest(fix, 'payments');
     assert.deepStrictEqual(m.phases.discussion.items.auth.dismissed_grounds, ['token rotation is out of scope']);
-    // The research topic collided with the epic's own `exploration`, so it
-    // landed renamed — the grounds follow the material, not the name.
-    assert.deepStrictEqual(m.phases.research.items['exploration-auth-flow'].dismissed_grounds,
+    // The research landed at the topic name — the grounds follow the
+    // material to its new name.
+    assert.deepStrictEqual(m.phases.research.items.auth.dismissed_grounds,
       ['vendor pricing was already ruled out']);
-    assert.strictEqual(m.phases.research.items['edge-cases'].dismissed_grounds, undefined,
-      'a topic with no dismissals gains no empty field');
+    assert.strictEqual(m.phases.research.items.exploration.dismissed_grounds, undefined,
+      'the epic\'s own topic gains no field');
   });
 
   it('the experiment series travels whole — records, statuses, verdicts, directory', () => {
@@ -381,7 +377,7 @@ describe('engine workunit absorb — happy path', () => {
     assert.deepStrictEqual(knowledgeCalls(fix), [
       'remove --work-unit auth-flow',
       'index .workflows/payments/discussion/auth.md',
-      'index .workflows/payments/research/exploration-auth-flow.md',
+      'index .workflows/payments/research/auth.md',
       'index .workflows/payments/imports/notes-2.md',
       'index .workflows/payments/seeds/seed.md',
     ]);
@@ -559,50 +555,64 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(ABSORB, /experiment\/auth already exists/);
   });
 
-  it('a research item carrying live experiment state lands at the topic name — the join intact, a collision refused uniformly', () => {
-    // The epic's own `exploration` would suffix an ordinary move; a state
-    // carrier lands at the topic name instead — the join every release edge
-    // reads.
+  it('the research lands at the topic name — a renamed absorb keeps every experiment join intact', () => {
+    // The wait's release edge and the register both address
+    // `phases.experiment.items.{topic}` — the research landing at the topic
+    // name is what keeps the join true after a renamed absorb.
     const feature = featureManifest();
-    feature.phases.research.items.exploration.awaiting_experiments = ['E1'];
+    feature.phases.research.items['auth-flow'].awaiting_experiments = ['E1'];
     feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'webhook-dup-rate', status: 'running' } } } } };
     fix = setupFixture({ feature });
     writeFile(fix.project, '.workflows/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'series']);
     const res = engine(fix, ABSORB);
-    assert.deepStrictEqual(res.research.find((r) => r.from === 'exploration'),
-      { from: 'exploration', topic: 'auth', status: 'completed' });
+    assert.deepStrictEqual(res.research,
+      [{ from: 'auth-flow', topic: 'auth', status: 'completed' }]);
     const m = readManifest(fix, 'payments');
     assert.deepStrictEqual(m.phases.research.items.auth,
       { status: 'completed', awaiting_experiments: ['E1'] });
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/research/auth.md')),
-      'the carrier lands at the topic name on disk too');
+      'the research lands at the topic name on disk too');
     // The join holds end to end: the conclusion at the epic address releases
     // the moved wait.
     const concluded = engine(fix, ['experiment', 'conclude', 'payments', 'auth', 'E1', '--verdict', 'held']);
     assert.deepStrictEqual(concluded.released_waits, [{ phase: 'research', released: ['E1'], remaining: [] }]);
-    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
 
-    // A collision on the topic name refuses like the discussion's — the
-    // evidence flag alone marks a carrier too.
-    const flagged = featureManifest();
-    flagged.phases.research.items['edge-cases'].reconcile_needed = 'experiment';
+  it('refuses a research collision on the topic name — item or file on disk', () => {
     const epic = epicManifest();
     epic.phases.research.items.auth = { status: 'completed' };
-    fix = setupFixture({ feature: flagged, epic });
+    fix = setupFixture({ epic });
     writeFile(fix.project, '.workflows/payments/research/auth.md', '# Epic auth research\n');
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'epic auth research']);
     refusedPristine(ABSORB, /research topic "auth" already exists in payments — pick a different name/);
+    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+
+    fix = setupFixture();
+    writeFile(fix.project, '.workflows/payments/research/auth.md', '# Orphan\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'orphan research file']);
+    refusedPristine(ABSORB, /research\/auth\.md already exists — pick a different name/);
+  });
+
+  it('refuses a research item not named after the feature — single and self-named, and deletion follows', () => {
+    const feature = featureManifest();
+    feature.phases.research.items.exploration = { status: 'completed' };
+    fix = setupFixture({ feature });
+    writeFile(fix.project, '.workflows/auth-flow/research/exploration.md', '# Exploration\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'foreign research item']);
+    refusedPristine(ABSORB, /research item "exploration" not named after it — a feature's research is single and self-named/);
   });
 
   it('closes the crash window: a research file missing on disk leaves both units pristine', () => {
     fix = setupFixture();
-    fs.rmSync(path.join(fix.project, '.workflows/auth-flow/research/edge-cases.md'));
+    fs.rmSync(path.join(fix.project, '.workflows/auth-flow/research/auth-flow.md'));
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'drop research file']);
-    refusedPristine(ABSORB, /research file missing on disk: \.workflows\/auth-flow\/research\/edge-cases\.md/);
+    refusedPristine(ABSORB, /research file missing on disk: \.workflows\/auth-flow\/research\/auth-flow\.md/);
     // Validation refused before ANY move — the discussion is still the
     // feature's, the epic gained nothing, no KB call ran.
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/auth-flow/discussion/auth-flow.md')));

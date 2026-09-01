@@ -19,15 +19,16 @@ The prose should have taken this path:
    script, never a menu, with the inline-measurement alternative named
    and declining valid
 5. the user accepts. The spawn is recorded right there: the session
-   derives a kebab slug and creates the record — the engine allocates
-   E1, and the same transaction locks the research item with the
-   evidence wait
-6. the problem statement is written to the record's directory: the
-   problem in plain terms — what to pick or learn, the space, what is
+   writes the problem statement to its cache scratch first — the
+   problem in plain terms, what to pick or learn, the space, what is
    hoped — closing with a provenance line naming the synonym-handling
-   research, the point, and the date. It carries **no design content**:
-   no hypothesis, no prediction, no decision rule, no setup — those are
-   the laboratory's
+   research, the point, and the date, and carrying **no design
+   content**: no hypothesis, no prediction, no decision rule, no setup
+   — those are the laboratory's
+6. the session derives a kebab slug and creates the record with the
+   scratch as its problem file — the engine allocates E1, installs
+   `problem.md` in the record's directory, consumes the scratch, and
+   the same transaction locks the research item with the evidence wait
 7. the session notes the handed-off question in the research file as
    the waiting point awaiting E1, commits the research topic with the
    spawn message, then commits the experiment record sweep-marked — the

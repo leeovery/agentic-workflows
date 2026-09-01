@@ -99,7 +99,7 @@ Read the feature's manifest once as a full dump — sections D, E, and F all der
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name}
 ```
 
-Take the feature's research items from `phases.research.items` — default `has_research` = `false`, then when items exist set it `true` and `research_item_count` to their number. Name collisions in the target epic are resolved by the engine (suffixing `-{selected.name}`).
+Take the feature's research items from `phases.research.items` — default `has_research` = `false`, then when items exist set it `true` and `research_item_count` to their number. The research lands at the topic name; a collision in the target epic refuses at the transaction, like the discussion's.
 
 Take the feature's experiment item from `phases.experiment.items.{selected.name}` — default `has_experiments` = `false`, then when one exists set it `true` and `experiment_count` to the number of keys under its `experiments`. The series travels whole — records, verdicts, and any live evidence wait included.
 
@@ -187,7 +187,7 @@ One engine transaction moves the discussion (and any research, experiment series
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
 ```
 
-The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — research topics may carry a collision suffix; one carrying live experiment state lands at the topic name), `routing`, `committed`, and `warnings`.
+The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — the research lands at the topic name), `routing`, `committed`, and `warnings`.
 
 #### If the command failed
 

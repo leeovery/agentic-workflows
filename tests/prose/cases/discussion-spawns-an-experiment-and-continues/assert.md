@@ -13,15 +13,16 @@ The prose should have taken this path:
    number is about to bear the window decision — and offers the
    experiment conversationally, declining named as valid
 4. the user accepts. The spawn is recorded while the conversation holds
-   the knowledge: a kebab slug is derived, the create allocates E1 and
-   locks the discussion item with the evidence wait in the same
-   transaction, the problem statement lands in the record's directory —
-   plain terms plus a provenance line naming the discussion, the point,
-   and the date; no design content — the waiting point is noted in the
-   webhook-timing section as awaiting E1, and the discussion commit
-   lands before the record's problem-statement commit, which is
-   sweep-marked: the experiment topic is the laboratory's slot, never
-   the spawner's to claim
+   the knowledge: the problem statement is written to the session's
+   cache scratch — plain terms plus a provenance line naming the
+   discussion, the point, and the date; no design content — then a
+   kebab slug is derived and the create allocates E1, installs the
+   scratch as the record's `problem.md`, and locks the discussion item
+   with the evidence wait in the same transaction; the waiting point is
+   noted in the webhook-timing section as awaiting E1, and the
+   discussion commit lands before the record's problem-statement
+   commit, which is sweep-marked: the experiment topic is the
+   laboratory's slot, never the spawner's to claim
 5. the now-or-later gate is fetched and its menu emitted verbatim; the
    user takes later, and the conversation continues where it left off
 6. the refund-notification wrinkle is worked in the ordinary way: a new

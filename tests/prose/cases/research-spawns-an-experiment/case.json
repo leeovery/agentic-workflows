@@ -43,6 +43,7 @@
       "topic queue search-relevance research synonym-handling",
       "experiment create search-relevance synonym-handling",
       "--from research",
+      "--problem .workflows/.cache/search-relevance/research/synonym-handling/problem.md",
       "spawn E1",
       "E1 problem statement",
       "experiment/synonym-handling --sweep",
@@ -50,8 +51,8 @@
     ],
     "calls_in_order": [
       "manifest get search-relevance.research.synonym-handling status",
+      "write:.workflows/.cache/search-relevance/research/synonym-handling/problem.md",
       "experiment create search-relevance synonym-handling",
-      "write:.workflows/search-relevance/experiment/synonym-handling/E1-",
       "spawn E1",
       "E1 problem statement",
       "render experiment-spawn-gate search-relevance.research.synonym-handling"
