@@ -32,7 +32,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
-const { beatPresence, clearPresence, beatQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, setLabelConfig } = require('./domain/session-label.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -836,7 +836,10 @@ function runTopic(argv) {
         throw new Error('Usage: engine topic queue <work-unit> <phase> <topic>');
       }
       const status = queueStatus(process.cwd(), workUnit, phase, topic);
-      beatQuietly(process.cwd(), workUnit, phase, topic);
+      // A read is reachable for any topic — a foreign queue is legitimately
+      // checked from another session — so it refreshes an owned hold only,
+      // never creates one.
+      refreshQuietly(process.cwd(), workUnit, phase, topic);
       respond(status);
       return;
     }
@@ -1241,8 +1244,9 @@ function runCache(argv) {
 
 // ---------------------------------------------------------------------------
 // agent — the background-agent lifecycle store (domain/agent-state.cjs).
-// Every verb addresses the session's own topic — dispatching, scanning, and
-// walking its own agents' findings — so every one heartbeats.
+// The write verbs address the session's own topic — dispatching and walking
+// its own agents' findings — so every one heartbeats. `scan` is a read,
+// reachable for any topic, so it refreshes an owned hold only.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -1268,7 +1272,9 @@ function runAgent(argv) {
       if (!workUnit || !phase || !topic || positional.length !== 3) {
         throw new Error('Usage: engine agent scan <work-unit> <phase> <topic>');
       }
-      answer(agentState.scanAgents(cwd, workUnit, phase, topic));
+      const scanned = agentState.scanAgents(cwd, workUnit, phase, topic);
+      refreshQuietly(cwd, workUnit, phase, topic);
+      respond(scanned);
       return;
     }
     if (command === 'ack') {

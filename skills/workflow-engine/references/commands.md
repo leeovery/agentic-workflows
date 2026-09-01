@@ -170,7 +170,7 @@ engine sources stale <work-unit> <discussion> [--except <spec-topic>]
 
 **`presence`** — the per-topic session heartbeat, cache-resident (`.workflows/.cache/{wu}/{phase}/{topic}/presence`, gitignored). Awareness, never mutual exclusion. Every phase a session sits in carries one — research, experiment, discussion, investigation, scoping, specification, planning, implementation, review — except discovery, which `discovery-session open` already serialises to one session per epic.
 
-**Beats are mechanical, and no prose ever issues one.** The engine stamps the heartbeat as a side effect of the verbs a session already runs, and only where the verb is structurally self-referential — the session acting on its own topic. A beat writes *this* process's identity, so a beat from a verb acting on another topic would manufacture a false hold there.
+**Beats are mechanical, and no prose ever issues one.** The engine stamps the heartbeat as a side effect of the verbs a session already runs, and only where the verb is structurally self-referential — the session acting on its own topic. A beat writes *this* process's identity, so a beat from a verb acting on another topic would manufacture a false hold there. The read verbs (`topic queue`, `agent scan`) are reachable for any topic — a session legitimately checks a foreign queue — so they **refresh** instead: re-stamp a heartbeat this session already owns, never create one, never overwrite a peer's.
 
 | Verb | Beat |
 |---|---|
@@ -181,13 +181,14 @@ engine sources stale <work-unit> <discussion> [--except <spec-topic>]
 | `render code-gate` (empty) | beats — reading a free code slot is how a session claims it, so the hold starts at entry rather than at the first code commit; a gated read stamps nothing |
 | `render phase-note` | beats — only ever rendered by an entry skill for its own phase, so announcing the entry is the same act as claiming the slot |
 | `commit --paths … --for {wu} {phase}/{topic}` | beats the named code topic |
-| `topic queue` | beats — the session loops' findings check polls it every turn, so a turn with no writes still registers |
+| `topic queue` | refreshes — the session loops' findings check polls its own topic every turn, so a turn with no writes still registers; a read of another topic's queue stamps nothing |
 | `topic start` · `topic absorb` | beat — opening the session's own topic, and folding a concern into its document |
 | `experiment create --from` | beats the **spawning** research or discussion — the conversation recording the spawn on its own item |
 | `experiment create --parent` · `advance` · `approve` | beat the experiment topic — the laboratory session working its own record |
 | `experiment conclude` · `abandon` (top-level id) | **clear** — the last record's close settles the item, so the record's close is the release; a cadence commit while records remain re-claims (that is the session still in the laboratory); a sub-experiment's beats instead (the parent still runs) |
 | `topic complete` | **clears** — the close is the release; the slot opens the moment the topic is finished |
-| `agent dispatch` · `scan` · `ack` · `announce` · `surface` · `incorporate` | beat — the session's own background agents |
+| `agent dispatch` · `ack` · `announce` · `surface` · `incorporate` | beat — the session's own background agents |
+| `agent scan` | refreshes — a read of the store, so it re-stamps an owned hold and creates nothing |
 | `topic triage` | never — delivery acts on the **target** topic from the origin's session |
 | `manifest set` · `apply` | never — a three-segment `set` looks self-referential and frequently is not: storage-path backfills, review's `updated` stamp and the epic menu's unblock all write one phase's item from another phase's session. The session's cadence commit is its heartbeat |
 | `topic requeue` · `cancel` · `reactivate` · `supersede` · `reopen` · `sources stale` | never — analysis and navigation actors reaching across topics |

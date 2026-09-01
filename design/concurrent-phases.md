@@ -152,8 +152,11 @@ Beats become side effects of self-referential verbs:
   log already establishes the `--kb` rider as the one terminal
   session-cadence commit; if it beat, it would re-stamp presence
   after the conclusion and the topic would read held forever.
-- `topic queue` — beats (polled by the session loops' findings check
-  every iteration: turn coverage with no writes).
+- `topic queue` — refreshes an owned hold only (polled by the session
+  loops' findings check every iteration: turn coverage with no
+  writes). Reads are reachable for any topic — a session legitimately
+  checks a foreign queue — so a read never creates a hold and never
+  overwrites a peer's record; `agent scan` takes the same rule.
 - Three-segment `manifest set`/`apply` on a presence phase — beats
   (every state transition heartbeats).
 - Agent-store writes — beat.

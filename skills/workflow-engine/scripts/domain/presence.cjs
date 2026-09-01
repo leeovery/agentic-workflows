@@ -19,9 +19,11 @@
 // a session already runs on its own topic (`beatQuietly`), and the terminal
 // conclusion commit clears (`clearQuietly`). A beat writes THIS process's
 // identity, so only a structurally self-referential verb may beat — stamping
-// it from a verb acting on another topic manufactures a false hold. The
-// SessionEnd hook on the session skills sweeps by session id for the exits
-// that keep the process alive (/clear, logout).
+// it from a verb acting on another topic manufactures a false hold. Read
+// verbs are reachable for any topic, so they take `refreshQuietly` instead:
+// re-stamp a heartbeat this session already owns, never create one, never
+// overwrite a peer's. The SessionEnd hook on the session skills sweeps by
+// session id for the exits that keep the process alive (/clear, logout).
 //
 // Every phase a session sits in carries presence except discovery:
 // `discovery-session open` already refuses a second session per epic
@@ -128,6 +130,26 @@ function clearPresence(cwd, workUnit, phase, topic) {
 function beatQuietly(cwd, workUnit, phase, topic) {
   try {
     if (!PHASES.includes(phase)) return;
+    beatPresence(cwd, workUnit, phase, topic);
+  } catch { /* liveness is advisory — never fail a verb over it */ }
+}
+
+/**
+ * The read verbs' beat: re-stamp a heartbeat this session already owns, and
+ * only that. A read (`topic queue`, `agent scan`) is reachable for any topic
+ * — a foreign topic's queue is legitimately checked from another session —
+ * so creating a hold here would manufacture a phantom, and stamping over a
+ * peer's record would re-attribute a live hold. Ownership was established by
+ * the write-shaped verbs that are self-referential by construction (`topic
+ * start`, the entry renders, the cadence commit); this keeps that hold live
+ * through quiet polling turns. Same silence as `beatQuietly`.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function refreshQuietly(cwd, workUnit, phase, topic) {
+  try {
+    if (!PHASES.includes(phase)) return;
+    const record = readRecord(presencePath(cwd, workUnit, phase, topic));
+    if (!record || !ownsRow(record)) return;
     beatPresence(cwd, workUnit, phase, topic);
   } catch { /* liveness is advisory — never fail a verb over it */ }
 }
@@ -269,7 +291,7 @@ function scanProject(cwd) {
  * pid where the record predates a session id. The one home for the question,
  * because every surface that marks or gates on a peer's hold must exclude the
  * caller's own — a session must never gate against, or strike through, itself.
- * @param {PresenceRow} row
+ * @param {{session_id?: string|null, pid?: number|null}} row
  * @returns {boolean}
  */
 function ownsRow(row) {
@@ -353,7 +375,7 @@ function deferralSection(scan) {
 }
 
 module.exports = {
-  beatPresence, clearPresence, beatQuietly, clearQuietly,
+  beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly,
   scanPresence, scanProject, heldCodeSessions, cleanupPresence, deferralSection,
   fmtAge, ownsRow, CODE_PHASES, STALE_AFTER_SECONDS,
 };

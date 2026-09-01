@@ -658,24 +658,35 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--kb', '--sweep']).error, /Usage/);
   });
 
-  it('the topic verbs a session runs on its own topic beat — and triage never does', () => {
-    engine(dir, ['topic', 'queue', 'payments', 'discussion', 'topic-a']);
-    assert.ok(beaten('discussion', 'topic-a'), 'the per-turn queue poll is turn coverage');
+  it('the topic verbs a session runs on its own topic beat — and the reads and triage never create one', () => {
+    const me = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'door-sess' };
+    // The queue read is reachable for any topic — a session checking a
+    // foreign queue must not manufacture a hold there.
+    engine(dir, ['topic', 'queue', 'payments', 'discussion', 'topic-a'], me);
+    assert.ok(!beaten('discussion', 'topic-a'), 'a queue read never creates a heartbeat');
 
-    engine(dir, ['topic', 'start', 'payments', 'planning', 'topic-a']);
+    engine(dir, ['topic', 'start', 'payments', 'planning', 'topic-a'], me);
     assert.ok(beaten('planning', 'topic-a'), 'start opens the session\'s own topic');
 
     writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md', '### First\nbody\n');
     commitAll(dir, 'a delivered concern');
     engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md',
-      '--subtopic', 'first', '-m', 'discussion(payments/topic-a): absorb 001-first (from topic-b)']);
+      '--subtopic', 'first', '-m', 'discussion(payments/topic-a): absorb 001-first (from topic-b)'], me);
     assert.ok(beaten('discussion', 'topic-a'), 'absorb folds a concern into the session\'s own document');
+
+    // The per-turn queue poll on the session's own topic is turn coverage:
+    // it refreshes the hold the write-shaped verbs established.
+    const own = beatFile('discussion', 'topic-a');
+    const past = new Date(Date.now() - 20 * 60 * 1000);
+    fs.utimesSync(own, past, past);
+    engine(dir, ['topic', 'queue', 'payments', 'discussion', 'topic-a'], me);
+    assert.ok(fs.statSync(own).mtimeMs > Date.now() - 60 * 1000, 'the poll keeps the owned hold live');
 
     // Delivery acts on the TARGET topic from the origin's session — a beat
     // there would manufacture a hold on a topic no session is in.
     writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
     engine(dir, ['topic', 'triage', 'payments', 'discussion', 'topic-b',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): reroute to topic-b']);
+      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): reroute to topic-b'], me);
     assert.ok(!beaten('discussion', 'topic-b'), 'triage never beats the target');
   });
 
