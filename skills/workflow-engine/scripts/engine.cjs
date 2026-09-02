@@ -248,7 +248,6 @@ Commands:
   render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
-  render experiment-wait-gate <wu.research|discussion.topic>
   render wait-gate        <wu.research|discussion.topic>     (empty when the item holds no wait)
   render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick [--blocking <topic,topic,…>]

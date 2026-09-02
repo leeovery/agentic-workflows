@@ -53,6 +53,7 @@
       "manifest get search-relevance.experiment.synonym-handling experiments",
       "manifest delete search-relevance.research.synonym-handling reconcile_needed",
       "topic queue search-relevance research synonym-handling",
+      "render wait-gate search-relevance.research.synonym-handling",
       "render research-conclude-gate search-relevance.research.synonym-handling",
       "topic complete search-relevance research synonym-handling"
     ],
@@ -68,7 +69,6 @@
       "experiment abandon",
       "experiment conclude",
       "--dead-end",
-      "render experiment-wait-gate",
       "topic reopen search-relevance",
       "discovery-map handle",
       "topic triage"

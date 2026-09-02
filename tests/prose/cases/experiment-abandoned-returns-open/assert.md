@@ -27,9 +27,9 @@ The prose should have taken this path:
    review dispatches at a natural break, the stubbed report returns
    clean and is drained — so by the wrap the record already holds an
    incorporated review
-6. the user wraps; the ceremony's evidence-wait check reads empty —
-   no wait gate, the release already happened — every subtopic is
-   settled, and the closing gates run: the triage queue reads empty
+6. the user wraps; the ceremony's wait-gate fetch comes back empty —
+   nothing is owed, the release already happened, and no gate is
+   emitted — every subtopic is settled, and the closing gates run: the triage queue reads empty
    and the classification finds the review satisfied (nothing moved
    since it drained), so no mandatory gate is owed; document review
    reconciles the file against the session; the compliance check

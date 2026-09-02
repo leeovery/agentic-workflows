@@ -1037,13 +1037,12 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'in-progress');
     // The parked stub is a wait the discussion cannot conclude over — derived
     // from the stub's status, never stored. The refusal names it, the wait
-    // gate is its graceful face (the alias renders identically), and the epic
-    // menu carries beta's research row directly above its discussion row.
+    // gate is its graceful face, and the epic menu carries beta's research
+    // row directly above its discussion row.
     sim.refuses(['topic', 'complete', wu, 'discussion', 'beta'],
       /awaits research on the topic — conclude once it lands, or cancel the research to release the wait/);
     const waitGate = sim.render(['wait-gate', `${wu}.discussion.beta`], { expect: 'content' });
     assert.match(waitGate, /Conclusion blocked — this discussion awaits research on "Beta" \(parked — not yet started\)/);
-    assert.strictEqual(sim.render(['experiment-wait-gate', `${wu}.discussion.beta`], { expect: 'content' }), waitGate);
     const betaRows = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
       .filter((k) => k.topic === 'beta').map((k) => k.action);
     assert.deepStrictEqual(betaRows, ['start_research', 'continue_discussion'], 'the research row leads its topic');
@@ -1718,7 +1717,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'complete', epic, 'discussion', 'stray-topic'], /awaits experiment evidence \(E1\)/);
     assert.match(sim.render(['experiment-register', `${epic}.experiment.stray-topic`], { expect: 'content' }),
       /E1 cutover-cost/, 'the register renders the moved series at the epic address');
-    assert.match(sim.render(['experiment-wait-gate', `${epic}.discussion.stray-topic`], { expect: 'content' }),
+    assert.match(sim.render(['wait-gate', `${epic}.discussion.stray-topic`], { expect: 'content' }),
       /awaits experiment evidence \(E1\)/, 'the wait gate renders over the moved holder');
 
     assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic', '--experiments', '1'], { expect: 'content' }),
@@ -2640,12 +2639,12 @@ describe('pipeline simulation', () => {
 
     // Both waiting conversations refuse to conclude while their evidence is
     // out; the wait gate is the refusal's graceful face, and it renders only
-    // over a live wait.
+    // over a live wait — empty where nothing blocks.
     sim.refuses(['topic', 'complete', wu, 'discussion', 'timing'], /awaits experiment evidence \(E1\)/);
     sim.refuses(['topic', 'complete', wu, 'research', 'layout'], /awaits experiment evidence \(E1\)/);
-    assert.match(sim.render(['experiment-wait-gate', `${wu}.discussion.timing`], { expect: 'content' }),
+    assert.match(sim.render(['wait-gate', `${wu}.discussion.timing`], { expect: 'content' }),
       /Conclusion blocked — this discussion awaits experiment evidence \(E1\)/);
-    sim.refuses(['render', 'experiment-wait-gate', `${wu}.discussion.layout`], /holds no evidence wait — nothing blocks conclusion/);
+    sim.render(['wait-gate', `${wu}.discussion.layout`], { expect: 'empty' });
 
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders

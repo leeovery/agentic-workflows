@@ -2689,22 +2689,6 @@ function waitGateSurface(cwd, { dotpath }) {
   return blocking.length === 0 ? '' : waitGate(phase, topic, blocking);
 }
 
-/**
- * The wait gate under its former name, refusing an unblocked item the way
- * its two prose call sites still expect — retired once they fetch wait-gate.
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function experimentWaitGateSurface(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveConversation(cwd, dotpath, 'experiment-wait-gate');
-  const blocking = waits(manifest, phase, topic);
-  if (blocking.length === 0) {
-    throw new Error(`render experiment-wait-gate: ${phase} "${topic}" holds no evidence wait — nothing blocks conclusion`);
-  }
-  return waitGate(phase, topic, blocking);
-}
-
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
 // batch variant is static (the proposed lines are displayed above it); the
 // unsourced variant names the topics no source file could be drafted from,
@@ -4751,7 +4735,6 @@ const SURFACES = {
   'experiment-pick': experimentPickSurface,
   'experiment-next-gate': experimentNextGateSurface,
   'experiment-spawn-gate': experimentSpawnGateSurface,
-  'experiment-wait-gate': experimentWaitGateSurface,
   'wait-gate': waitGateSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
