@@ -42,7 +42,7 @@ const { revisitablePhases, revisitPhasesSection } = require('./projections/worku
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate, experimentWaitGate } = require('./projections/experiment.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase, computeTopicLifecycle, experimentWaits, awaitedExperiments } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -3718,6 +3718,37 @@ function blocker(fact, guidance) {
   ].join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// direct-entry-gate — the epic menu's d/r doors take a free-typed topic name.
+// A name already on the map is not a new topic: the menu row is the way in,
+// so the door refuses, naming where the topic stands. Empty when the name is
+// new, or the work unit carries no map. The one pass-through is a parked
+// research stub — research is downstream of nothing, and a discussing
+// topic's parked research has no menu row, so the r door is its drain.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string} blocker sections, or '' when the name is free to start
+ */
+function directEntryGate(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'direct-entry-gate');
+  if (phase !== 'research' && phase !== 'discussion') {
+    throw new Error(`render direct-entry-gate: phase must be research or discussion, got "${phase}"`);
+  }
+  if (manifest.work_type !== 'epic') return '';
+  const item = phaseItems(manifest, 'discovery').find((i) => i.name === topic);
+  if (!item) return '';
+  const own = itemOf(manifest, phase, topic);
+  if (phase === 'research' && own && own.status === 'triaged') return '';
+  const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
+  return blocker(
+    `"${titlecase(topic)}" is already on the map — ${lifecyclePhrase(lifecycle, research_state, item.routing)}`,
+    'Return to the epic menu — its row for the topic names the next step.',
+  );
+}
+
 /**
  * @param {string} cwd
  * @param {{dotpath: string, own?: string}} args
@@ -4729,6 +4760,7 @@ const SURFACES = {
   'phase-completed': phaseCompleted,
   'phase-note': phaseNote,
   'entry-gate': entryGate,
+  'direct-entry-gate': directEntryGate,
   'code-gate': codeGate,
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,

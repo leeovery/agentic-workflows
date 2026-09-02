@@ -27,7 +27,7 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { computeTopicLifecycle, awaitedExperiments, experimentWaits, settleItemStatus } = require('./derivations.cjs');
+const { phaseItems, computeTopicLifecycle, computeNextAction, lifecyclePhrase, awaitedExperiments, experimentWaits, settleItemStatus } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
 
@@ -122,11 +122,43 @@ function phaseItem(manifest, phase, topic) {
  * @property {string[]} warnings non-blocking failures (knowledge-base index)
  */
 
+// The map decides which of research/discussion a topic can be born into —
+// the same join the epic menu renders its rows from, so the engine is never
+// the permissive path around it. The gate is on birth alone: an in-progress
+// item resumes regardless (the map already shows that phase live), and a
+// parked research stub always drains — research is downstream of nothing,
+// and a discussing topic's parked research has no menu row to drain it.
+const MAP_PHASE_ACTIONS = {
+  research: ['start_research', 'continue_research'],
+  discussion: ['start_discussion', 'start_discussion_after_research', 'continue_discussion'],
+};
+
+/**
+ * @param {object} manifest @param {string} phase @param {string} topic
+ * @param {{status?: string}|undefined} existing  the phase's own item, if any
+ */
+function assertMapAllowsStart(manifest, phase, topic, existing) {
+  if (manifest.work_type !== 'epic') return;
+  const allowed = MAP_PHASE_ACTIONS[/** @type {keyof typeof MAP_PHASE_ACTIONS} */ (phase)];
+  if (!allowed) return;
+  if (existing && existing.status === 'in-progress') return;
+  if (existing && existing.status === 'triaged' && phase === 'research') return;
+  const item = phaseItems(manifest, 'discovery').find((i) => i.name === topic);
+  if (!item) return;
+  const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
+  const next = computeNextAction(item.routing, lifecycle);
+  if (next && allowed.includes(next)) return;
+  throw new Error(
+    `${phase} can't start on "${topic}" — ${lifecyclePhrase(lifecycle, research_state, item.routing)}; the epic menu names its next step`,
+  );
+}
+
 /**
  * Start a phase item: create it with `status: in-progress` when absent
  * (init-phase semantics), or set an existing item back to `in-progress`.
  * A completed item must go through reopen — resuming is not starting — and
- * a cancelled item through reactivate. No git commit.
+ * a cancelled item through reactivate. On an epic the discovery map gates
+ * the birth (see assertMapAllowsStart). No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -142,21 +174,24 @@ function startTopic(cwd, workUnit, phase, topic) {
     const ph = ensureContainer(phases, phase, `phases.${phase}`);
     const items = ensureContainer(ph, 'items', `phases.${phase}.items`);
 
-    const existing = items[topic];
-    let created = false;
-    if (!existing || typeof existing !== 'object') {
-      items[topic] = { status: 'in-progress' };
-      created = true;
-    } else if (existing.status === 'completed') {
+    const existing = items[topic] && typeof items[topic] === 'object' ? items[topic] : undefined;
+    if (existing && existing.status === 'completed') {
       throw new Error(`${phase} item "${topic}" is already completed — reopen it instead`);
-    } else if (existing.status === 'cancelled') {
+    } else if (existing && existing.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
-    } else if (existing.status === 'superseded') {
+    } else if (existing && existing.status === 'superseded') {
       const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
       throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
-    } else if (existing.status === 'promoted') {
+    } else if (existing && existing.status === 'promoted') {
       const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+    }
+    assertMapAllowsStart(manifest, phase, topic, existing);
+
+    let created = false;
+    if (!existing) {
+      items[topic] = { status: 'in-progress' };
+      created = true;
     } else {
       existing.status = 'in-progress';
     }

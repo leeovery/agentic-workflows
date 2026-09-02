@@ -24,27 +24,8 @@ const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
-const { computeTopicLifecycle, phaseItems } = require('./derivations.cjs');
+const { computeTopicLifecycle, phaseItems, lifecyclePhrase } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
-
-// Why each non-fresh lifecycle blocks a destructive op — mirrors the
-// conversational rejection phrasing in map-operations.md. Derived from the
-// actual research state, same honesty rule as the render-time tags: superseded
-// research is named as such, never as completed.
-/** @param {string} lifecycle @param {string|null} researchState */
-function lifecyclePhrase(lifecycle, researchState) {
-  switch (lifecycle) {
-    case 'researching': return 'research is in flight on it';
-    case 'discussing': return 'discussion is in flight on it';
-    case 'ready_for_discussion':
-      return researchState === 'superseded'
-        ? 'its research was superseded and discussion is queued'
-        : 'research has completed and discussion is queued';
-    case 'decided': return 'discussion has concluded';
-    case 'handled': return 'it is closed as a dead end and stays on the map as record';
-    default: return 'it has phase work in cancelled state and stays on the map as historical record'; // cancelled
-  }
-}
 
 /**
  * @typedef {object} SequenceResult
