@@ -164,6 +164,7 @@ describe('engine boot', () => {
       WORKFLOWS_CONFIG_DIR: path.join(fix.root, 'wf-config'),
     });
 
+    const today = git(fix.project, ['log', '-1', '--format=%cs']).trim();
     assert.deepStrictEqual(res, {
       ok: true,
       migrations: { changed: false, output: '[SKIP] No changes needed', verify: [] },
@@ -174,6 +175,8 @@ describe('engine boot', () => {
       tmux_labels: 'prompt',
       label_repaired: false,
       baseline: 'none',
+      // The fixture's one commit carries `.workflows/` — nothing came before.
+      baseline_signal: { root_date: today, workflows_date: today, commits_before: 0, commits_total: 1, files_before: 0 },
     });
     assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'compact']);
   });
@@ -181,14 +184,22 @@ describe('engine boot', () => {
   it('baseline: reports the project-manifest status; unrecognised or malformed values read none', () => {
     const projManifest = path.join(fix.project, '.workflows/manifest.json');
 
-    for (const status of ['in-progress', 'completed', 'skipped']) {
+    for (const status of ['native', 'in-progress', 'completed', 'skipped']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status } }));
       const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
       assert.strictEqual(res.baseline, status);
+      // A recorded verdict is never re-judged, so the signal travels only with `none`.
+      assert.ok(!('baseline_signal' in res), `${status}: no signal once a status is recorded`);
     }
 
-    // Unrecognised value → none (the offer-eligible default).
+    // Unrecognised value → none (the judgment-eligible default), signal attached.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'weird' } }));
+    const weird = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+    assert.strictEqual(weird.baseline, 'none');
+    assert.strictEqual(weird.baseline_signal.commits_before, 0);
+
+    // An object with nothing recorded → none.
+    fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: {} }));
     assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
 
     // Malformed field shape → none.
@@ -198,6 +209,56 @@ describe('engine boot', () => {
     // No project manifest at all → none.
     fs.rmSync(projManifest);
     assert.strictEqual(runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' }).baseline, 'none');
+  });
+
+  it('baseline_signal: a codebase committed before `.workflows/` arrived reads as history that predates the workflows', () => {
+    // A brownfield repo: two commits of code (the skills install beside it,
+    // which never counts as project code), then the workflows land.
+    const project = path.join(fix.root, 'brownfield');
+    fs.mkdirSync(project, { recursive: true });
+    git(project, ['init', '-q', '-b', 'main']);
+    git(project, ['config', 'user.email', 'test@example.com']);
+    git(project, ['config', 'user.name', 'Test']);
+    git(project, ['config', 'commit.gpgsign', 'false']);
+    const dated = (date) => ({ GIT_AUTHOR_DATE: `${date}T12:00:00Z`, GIT_COMMITTER_DATE: `${date}T12:00:00Z` });
+    const commit = (msg, date) => execFileSync('git', ['commit', '-q', '-m', msg], { cwd: project, encoding: 'utf8', env: { ...process.env, ...dated(date) } });
+    writeFile(project, 'src/app.js', 'export default 1;\n');
+    writeFile(project, 'README.md', '# App\n');
+    writeFile(project, '.claude/settings.json', '{}\n');
+    git(project, ['add', '-A']);
+    commit('initial', '2025-03-01');
+    writeFile(project, 'src/lib.js', 'export const x = 2;\n');
+    git(project, ['add', '-A']);
+    commit('more code', '2025-06-15');
+
+    // Nothing under `.workflows/` committed yet — the install's first boot:
+    // the whole history predates the workflows, measured at HEAD.
+    writeFile(project, '.workflows/.state/migrations', '');
+    let res = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready' });
+    assert.strictEqual(res.baseline, 'none');
+    assert.deepStrictEqual(res.baseline_signal, { root_date: '2025-03-01', workflows_date: null, commits_before: 2, commits_total: 2, files_before: 3 });
+
+    // The workflows land in a third commit: two commits and three project
+    // files came before them, and the arrival date is that commit's.
+    git(project, ['add', '-A']);
+    commit('add workflows', '2025-09-01');
+    res = runEngine(fix.engine, project, ['boot'], { STUB_CHECK: 'ready' });
+    assert.deepStrictEqual(res.baseline_signal, { root_date: '2025-03-01', workflows_date: '2025-09-01', commits_before: 2, commits_total: 3, files_before: 3 });
+  });
+
+  it('baseline_signal: no history to read — a repository with no commits, or no repository — is null, never a failure', () => {
+    const empty = path.join(fix.root, 'empty');
+    fs.mkdirSync(empty, { recursive: true });
+    git(empty, ['init', '-q', '-b', 'main']);
+    writeFile(empty, '.workflows/.state/migrations', '');
+    const res = runEngine(fix.engine, empty, ['boot'], { STUB_CHECK: 'ready' });
+    assert.strictEqual(res.baseline, 'none');
+    assert.strictEqual(res.baseline_signal, null);
+
+    const { baselineSignal } = require(path.join(REAL_SCRIPTS, 'domain/baseline.cjs'));
+    const plain = path.join(fix.root, 'plain');
+    fs.mkdirSync(plain, { recursive: true });
+    assert.strictEqual(baselineSignal(plain), null);
   });
 
   it('baseline: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {

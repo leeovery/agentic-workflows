@@ -56,7 +56,7 @@ Read the baseline status (empty output means never started):
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.baseline.status
 ```
 
-#### If the status is empty or `skipped`
+#### If the status is empty, `native`, or `skipped`
 
 → Proceed to **Step 1**.
 

@@ -4540,10 +4540,10 @@ function queryFailureGateSurface(_cwd, _args) {
 // prose never reaches, and hands the pure projection its detail.
 // ---------------------------------------------------------------------------
 
-/** Resolve baseline state, refusing the never-started default. @param {string} cwd @param {string} surface */
+/** Resolve baseline state, refusing the never-started states — nothing recorded, or a native verdict. @param {string} cwd @param {string} surface */
 function resolveBaseline(cwd, surface) {
   const d = baselineState(cwd);
-  if (d.status === 'none') {
+  if (d.status === 'none' || d.status === 'native') {
     throw new Error(`render ${surface}: no baseline on the project manifest`);
   }
   return d;

@@ -101,12 +101,17 @@ log for the stack. Opened 2026-08-12 from the discussion with Lee.
    are themed per area, batched where independent, sequential where an
    answer branches, ranked by "would a future phase plausibly need this".
 8. **Status-keyed surfacing, not origin-keyed.** Project-manifest status
-   `none / in-progress / completed / skipped`. `in-progress` → a
-   first-class resume row on the start menu (unfinished interview looks
-   like unfinished work); `completed` → under `m/manage` (view, expand,
-   refresh); `none` → the one-time boot offer covers the brownfield
-   moment, afterwards reachable via manage. A greenfield project that
-   grew up on the workflows never needs it and never sees it.
+   `none / native / in-progress / completed / skipped`. `in-progress` →
+   a first-class resume row on the start menu (unfinished interview
+   looks like unfinished work); `completed` → under `m/manage` (view,
+   expand, refresh); `none` → nothing recorded yet: workflow-start's
+   one-time judgment, which either records `native` (a project that
+   grew up on the workflows — never asked again, never a row outside
+   manage) or makes the brownfield offer (yes → the assessment, no →
+   `skipped`, reachable via manage and the empty-state menu). The
+   judgment is recorded whichever way it falls: a verdict with no home
+   is re-made every boot, and one boot's wrong roll is an offer a
+   native project should never see.
 9. **Resume and expand are one flow** — resume walks a non-empty agenda;
    expand generates a new one (new area, or deeper on an existing one)
    and walks it. Refresh (re-verifying the observed layer against moved
@@ -130,7 +135,13 @@ log for the stack. Opened 2026-08-12 from the discussion with Lee.
   `work_type` from).
 - `baseline` reserved as a work-unit name (alongside `project`).
 - Project-manifest baseline status field + whatever boot needs to report
-  it.
+  it — and, while nothing is recorded, boot's `baseline_signal`: the
+  repository facts the judgment is made from (`domain/baseline.cjs`
+  `baselineSignal`): the first commit's date, the date of the first
+  commit touching `.workflows/` (null when none is committed yet, so
+  the whole history predates the workflows), commits before that
+  arrival against the total, and the tracked project files at the last
+  commit before it. Null with no git history — the tree decides then.
 - Simulation coverage per the house rule; prose cases for the offer, an
   interview round, exit/resume, and the status-keyed menu.
 
@@ -198,7 +209,12 @@ resulting deltas — several revise the decisions above:
   there; manage carries the row for every status.
 - **The offer keys on precedence, not size** — code and history that
   predate the workflows, so a project that grew up on them is never
-  offered one however large it gets.
+  offered one however large it gets. Precedence is read from the
+  signal, not from context: a scaffold of a few commits over the first
+  days before `.workflows/` first landed is the project's start, a
+  substantial run of commits or a tree of working code before it is a
+  codebase the workflows were installed into. No "when in doubt, offer"
+  — the tree resolves the doubt, the user is never the tiebreak.
 - **Confirmation questions restored** (decision 2's "user-confirmed
   where load-bearing"): the agenda keeps confirm-class questions for
   load-bearing observed claims, and a correction to an observed claim
@@ -211,8 +227,11 @@ resulting deltas — several revise the decisions above:
 - **One state home**: `domain/baseline.cjs` derives status/areas/
   remaining for boot, the start menus, and every surface; projections
   are pure detail-to-string.
-- **Prose worlds stamp `baseline: skipped`** (the tmux-kill precedent)
-  so the nine workflow-start-entry cases never meet the offer judgment.
+- **Prose worlds stamp `baseline: native`** (the tmux-kill precedent)
+  so the workflow-start-entry cases never meet the judgment; a case
+  about the judgment itself holds `baseline: {}` in its fixture — an
+  object with nothing recorded reads `none` — and the harness strips
+  the stamp only where the expected world carries no baseline.
 
 ## Open / deferred
 

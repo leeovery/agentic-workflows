@@ -4049,6 +4049,11 @@ describe('baseline surfaces', () => {
     assert.match(unwrap(out), /\*\*`n\/no`\*\*\s+→ Skip — you can start it later from the workflow-start menus/);
     writeBaseline({ status: 'skipped' });
     assert.throws(() => renderSurface(dir, 'baseline-offer-gate', {}), /the offer fires once/);
+    // A native verdict is recorded state too — the offer never fires over it,
+    // and the mid-flight surfaces read it as never started.
+    writeBaseline({ status: 'native' });
+    assert.throws(() => renderSurface(dir, 'baseline-offer-gate', {}), /the offer fires once/);
+    assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /no baseline on the project manifest/);
   });
 
   it('the static baseline gates render their menus; the completed-only pair refuse mid-flight', () => {

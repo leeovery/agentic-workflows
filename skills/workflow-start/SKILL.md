@@ -200,11 +200,22 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 ### Step 0.4: Baseline Offer
 
-Branch on the boot response's `baseline` — the one-time offer to assess a pre-existing codebase. A recorded status (`in-progress`/`completed`/`skipped`) never re-offers; the start menu and manage carry those paths.
+Branch on the boot response's `baseline` — the one-time judgment on whether the project carries a codebase that predates the workflows. A recorded status (`native`/`in-progress`/`completed`/`skipped`) never re-judges and never re-offers; the start menu and manage carry those paths.
 
-#### If `baseline` is `none` and the project carries a codebase that predates the workflows
+While `baseline` is `none`, nothing is recorded yet. Judge from the response's `baseline_signal` — the repository's own history, never what happens to be in context: `root_date` and `workflows_date` (the first commit, and the first commit touching `.workflows/` — `null` when none is committed yet, so every commit predates the workflows), `commits_before` against `commits_total`, and `files_before` (tracked files outside `.claude/` and `.workflows/` at the last commit before the workflows arrived). **Native** means the workflows arrived at the project's start — no commits before them, or a handful of scaffolding commits over the first days — whatever the project has grown into since. **Predating** means real history before them: a substantial run of commits, or a tree of working code. A `null` signal is a project with no repository history to read — judge from the tree, and an empty or scaffold-only tree is native.
 
-Judge the second condition from what you can already see — code and git history from before the workflows arrived, not a project that grew up on them (however large it has become) and not a fresh or near-empty repository. When in doubt, offer once: declining records the answer.
+#### If `baseline` is `none` and the project is native
+
+Record the verdict — the question is settled for good — and commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.baseline.status native
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: the project grew up on the workflows"
+```
+
+→ Proceed to **Step 1**.
+
+#### If `baseline` is `none` and the codebase predates the workflows
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -239,7 +250,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "ba
 
 #### Otherwise
 
-A recorded status (`in-progress`/`completed`/`skipped`), or no pre-existing codebase — render nothing.
+A recorded status — render nothing.
 
 → Proceed to **Step 1**.
 

@@ -328,12 +328,13 @@ function stampLabelKill(dir) {
   let manifest = {};
   if (fs.existsSync(file)) manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
   manifest.defaults = { ...(manifest.defaults || {}), tmux_labels: false };
-  // Every world reads as a substantial codebase (the real skills tree is
-  // copied in), so workflow-start's one-time baseline offer would fire on a
-  // walker's judgment call. `skipped` pins the branch shut — a case about
-  // the baseline itself stamps its own state in fixture-state.cjs, which
+  // A world grows up on the workflows, and workflow-start's one-time
+  // baseline judgment would record exactly that — a manifest write and a
+  // commit in every start case's delta. `native` pins the branch shut; a
+  // case about the judgment itself stamps its own state in
+  // fixture-state.cjs (`baseline: {}` reads as nothing recorded), which
   // wins here.
-  if (manifest.baseline === undefined) manifest.baseline = { status: 'skipped' };
+  if (manifest.baseline === undefined) manifest.baseline = { status: 'native' };
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
 }
@@ -341,11 +342,14 @@ function stampLabelKill(dir) {
 /**
  * Reverse the stamp on a collected tree so deltas compare against
  * unstamped snapshots: drop `defaults.tmux_labels` when it carries the
- * harness value, drop an emptied `defaults`, and drop the manifest
- * entirely when the stamp was all it held.
+ * harness value, drop an emptied `defaults`, drop the baseline stamp where
+ * the expected world carries no baseline at all (a walk that recorded the
+ * same verdict on its own is a real delta the case pins, not a stamp), and
+ * drop the manifest entirely when the stamp was all it held.
  * @param {Map<string, Buffer>} tree
+ * @param {Map<string, Buffer>} expected
  */
-function unstampLabelKill(tree) {
+function unstampLabelKill(tree, expected) {
   const buf = tree.get(PROJECT_MANIFEST);
   if (!buf) return;
   /** @type {Record<string, any>} */
@@ -355,7 +359,8 @@ function unstampLabelKill(tree) {
   delete manifest.defaults.tmux_labels;
   if (Object.keys(manifest.defaults).length === 0) delete manifest.defaults;
   if (manifest.baseline && typeof manifest.baseline === 'object'
-      && manifest.baseline.status === 'skipped' && Object.keys(manifest.baseline).length === 1) {
+      && manifest.baseline.status === 'native' && Object.keys(manifest.baseline).length === 1
+      && !expectedHasBaseline(expected)) {
     delete manifest.baseline;
   }
   if (Object.keys(manifest).length === 0) {
@@ -365,12 +370,24 @@ function unstampLabelKill(tree) {
   tree.set(PROJECT_MANIFEST, Buffer.from(JSON.stringify(manifest, null, 2) + '\n'));
 }
 
+/** Whether a snapshot's project manifest records a baseline. @param {Map<string, Buffer>} tree */
+function expectedHasBaseline(tree) {
+  const buf = tree.get(PROJECT_MANIFEST);
+  if (!buf) return false;
+  try {
+    const manifest = JSON.parse(buf.toString('utf8'));
+    return Boolean(manifest && typeof manifest === 'object' && manifest.baseline !== undefined);
+  } catch {
+    return false;
+  }
+}
+
 function diffWorld(caseId, worldDir, claimsMode = false) {
   const which = !claimsMode && fs.existsSync(snapshotDir(caseId, 'assertion')) ? 'assertion' : 'fixture';
   const expected = readSnapshot(caseId, which);
   if (expected === null) throw new Error(`case "${caseId}" has no committed ${which} snapshot`);
   const actual = collectTree(worldDir);
-  unstampLabelKill(actual);
+  unstampLabelKill(actual, expected);
 
   const added = [];
   const removed = [];

@@ -586,6 +586,34 @@ describe('workflow-start sub-view sections', () => {
     assert.ok(out.includes(`Resume the baseline interview — *1 area*\n${'\u00a0'.repeat(18)}*remaining*`), out);
   });
 
+  it('a native verdict hides the baseline row everywhere but manage; a declined offer keeps its empty-state row', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const p = path.join(dir, '.workflows', 'manifest.json');
+    const writeProject = (baseline) => {
+      fs.mkdirSync(path.dirname(p), { recursive: true });
+      fs.writeFileSync(p, JSON.stringify({ work_units: {}, baseline }, null, 2));
+    };
+
+    writeProject({ status: 'native' });
+    const native = run(['view']);
+    assert.ok(native.includes('baseline: native'), native);
+    assert.ok(!native.includes('open_baseline'), 'a project that grew up on the workflows never sees a baseline row');
+
+    writeProject({ status: 'skipped' });
+    const skipped = run(['view']);
+    assert.ok(skipped.includes('a  open_baseline  —  → /workflow-baseline'), skipped);
+    assert.ok(skipped.includes('Start the project baseline assessment'), skipped);
+
+    // Manage carries the row for every status — the one way in for a native
+    // project that wants the assessment after all.
+    writeProject({ status: 'native' });
+    createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
+    const manage = run(['manage']);
+    assert.ok(manage.includes('baseline: native'), manage);
+    assert.ok(manage.includes('Start the project baseline assessment'), manage);
+  });
+
   it('the add and drop gates render on demand over the caller-held set — never on the snapshot', () => {
     createFile(dir, '.workflows/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
     createFile(dir, '.workflows/.inbox/ideas/2026-06-02--smart-retry.md', '# Smart Retry\n');
