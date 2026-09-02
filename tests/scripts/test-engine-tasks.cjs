@@ -160,6 +160,20 @@ describe('engine task init', () => {
     assert.deepStrictEqual(implItem(dir), expected);
   });
 
+  it('resume returns a bounded gate to gated — the session is the outer bound of both auto modes', () => {
+    const phases = planPhases();
+    const item = inFlightItem();
+    item.task_gate_mode = 'bounded';
+    item.fix_gate_mode = 'bounded';
+    phases.implementation = { items: { 'auth-flow': item } };
+    createManifest(dir, 'auth', { phases });
+
+    const res = engine(dir, ['init', 'auth', 'auth-flow']);
+    assert.deepStrictEqual(res.gates, GATED_GATES);
+    assert.strictEqual(implItem(dir).task_gate_mode, 'gated');
+    assert.strictEqual(implItem(dir).fix_gate_mode, 'gated');
+  });
+
   it('preserves fix_attempts on resume when current_task has a live tracking file — gates still reset', () => {
     // A crash-resume mid-task: the counter and tracking file are the task's
     // convergence history and survive the session reset in lockstep.
@@ -353,6 +367,13 @@ describe('engine task complete', () => {
   });
   afterEach(() => { cleanupFixture(dir); });
 
+  /** Seed gate modes on the fixture's item. @param {Record<string, string>} gates */
+  function seedGateModes(gates) {
+    const m = readManifest(dir);
+    Object.assign(m.phases.implementation.items['auth-flow'], gates);
+    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+  }
+
   it('records a completed task by internal id: push, current_phase, current_task', () => {
     const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--phase', '1', '--next-task', 'auth-flow-1-2']);
     assert.deepStrictEqual(res, {
@@ -438,6 +459,57 @@ describe('engine task complete', () => {
     const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase', '1', '--next-task', 'auth-flow-2-1', '--phase-complete']);
     assert.strictEqual(res.recorded.current_task, 'auth-flow-2-1');
     assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
+  });
+
+  it('--phase-complete returns the phase-bounded gates holding bounded to gated, naming them — auto and the other gates stand', () => {
+    // bounded is auto to the end of the plan phase; the phase record is the
+    // one moment it ends. `auto` is the session's, and the analysis and
+    // consolidation gates are not bound to the phase.
+    seedGateModes({ task_gate_mode: 'bounded', fix_gate_mode: 'bounded', analysis_gate_mode: 'bounded', consolidation_gate_mode: 'auto' });
+    const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase', '1', '--next-task', '~', '--phase-complete']);
+    assert.deepStrictEqual(res.recorded, {
+      completed_task: 'auth-flow-1-2', current_phase: 1, current_task: null, completed_phase: 1,
+      gates_reset: ['task_gate_mode', 'fix_gate_mode'],
+    });
+    const item = implItem(dir);
+    assert.strictEqual(item.task_gate_mode, 'gated');
+    assert.strictEqual(item.fix_gate_mode, 'gated');
+    assert.strictEqual(item.analysis_gate_mode, 'bounded', 'the analysis gate is not bound to the plan phase');
+    assert.strictEqual(item.consolidation_gate_mode, 'auto');
+  });
+
+  it('--phase-complete names only the gate that held bounded, and leaves auto as it is', () => {
+    seedGateModes({ task_gate_mode: 'bounded', fix_gate_mode: 'auto' });
+    const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase-complete']);
+    assert.deepStrictEqual(res.recorded.gates_reset, ['task_gate_mode']);
+    assert.strictEqual(implItem(dir).task_gate_mode, 'gated');
+    assert.strictEqual(implItem(dir).fix_gate_mode, 'auto', 'full auto runs to the session\'s end, never the phase\'s');
+  });
+
+  it('--phase-complete over gated gates reports no reset — the response shape is unchanged', () => {
+    const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase-complete']);
+    assert.strictEqual(res.recorded.gates_reset, undefined);
+  });
+
+  it('a completion WITHOUT --phase-complete leaves bounded gates standing — the boundary disposition keeps the phase open', () => {
+    // Task-loop H at `boundary` records the last planned task with
+    // --next-task ~ and no flag; the consolidation pass may add tasks to the
+    // still-open phase, and they run under the same bounded auto.
+    seedGateModes({ task_gate_mode: 'bounded', fix_gate_mode: 'bounded' });
+    const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase', '1', '--next-task', '~']);
+    assert.strictEqual(res.recorded.gates_reset, undefined);
+    assert.strictEqual(implItem(dir).task_gate_mode, 'bounded');
+    assert.strictEqual(implItem(dir).fix_gate_mode, 'bounded');
+  });
+
+  it('re-recording a phase completion after the reset reports nothing further — the gates stay gated', () => {
+    seedGateModes({ task_gate_mode: 'bounded', fix_gate_mode: 'bounded' });
+    const first = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase', '1', '--phase-complete']);
+    assert.deepStrictEqual(first.recorded.gates_reset, ['task_gate_mode', 'fix_gate_mode']);
+    const second = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--phase', '1', '--phase-complete']);
+    assert.strictEqual(second.recorded.gates_reset, undefined);
+    assert.strictEqual(implItem(dir).task_gate_mode, 'gated');
+    assert.deepStrictEqual(implItem(dir).completed_phases, [1]);
   });
 
   it('appends to existing progress arrays', () => {
@@ -739,7 +811,9 @@ describe('engine render task surfaces', () => {
       '**`◆ Approve this task?`**',
       '',
       '**`y/yes`**       → Commit and continue to next task',
-      '**`a/auto`**      → Approve this and all future tasks automatically',
+      '**`a/auto`**      → Approve this and all remaining tasks automatically',
+      '**`b/bounded`**   → Approve this and the remaining tasks in this phase',
+      `${NB(14)}automatically`,
       "**`t/technical`** → Retell the result from the code's perspective",
       '**`s/show`**      → Show the result as diagrams',
       "**Ask**         → Ask questions about the implementation (doesn't",
@@ -749,15 +823,20 @@ describe('engine render task surfaces', () => {
     ].join('\n');
   }
 
-  /** @param {{auto?: boolean}} [opts] */
-  function fixGateMenu({ auto = false } = {}) {
+  /** @param {{optIns?: boolean}} [opts]  `optIns: false`: the gate holds an auto mode, so neither opt-in renders */
+  function fixGateMenu({ optIns = true } = {}) {
     return [
       `=== MENU: fix gate (${MENU_INSTRUCTION}) ===`,
       '· · · · · · · · · · · ·',
       "**`◆ Accept the reviewer's fix analysis?`**",
       '',
       '**`y/yes`**       → Pass to executor',
-      ...(auto ? [] : ['**`a/auto`**      → Accept and auto-approve future fix analyses']),
+      ...(optIns ? [
+        '**`a/auto`**      → Accept this and all remaining fix analyses',
+        `${NB(14)}automatically`,
+        '**`b/bounded`**   → Accept this and the remaining fix analyses in this',
+        `${NB(14)}phase automatically`,
+      ] : []),
       "**`t/technical`** → Retell the review from the code's perspective",
       '**`s/show`**      → Show the findings as diagrams',
       "**Ask**         → Ask questions about the review (doesn't accept or",
@@ -810,32 +889,44 @@ describe('engine render task surfaces', () => {
       ].join('\n'));
   });
 
-  it('fix-gate below the threshold: gated renders the full menu, auto the continuation line', () => {
-    seedGates('gated', 1);
-    assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu());
-
-    cleanupFixture(dir);
-    dir = setupFixture();
-    seedGates('auto', 2);
+  it('task-gate under a bounded mode renders the same continuation line — bounded is an auto mode', () => {
+    seedGates('bounded');
     assert.strictEqual(
-      render(['fix-gate', 'auth.implementation.auth-flow']),
+      render(['task-gate', 'auth.implementation.auth-flow']),
       [
-        '=== DISPLAY: fix gate auto-accepted (after the findings summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
-        'Fix analysis accepted [auto]. Passing the findings to the executor.',
+        '=== DISPLAY: task gate auto-approved (after the result summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
+        'Task approved [auto]. Committing and moving to the next task.',
         '',
       ].join('\n'));
   });
 
-  it('fix-gate at the threshold renders the menu in both modes — auto omits the auto option', () => {
+  it('fix-gate below the threshold: gated renders the full menu, auto and bounded the continuation line', () => {
+    seedGates('gated', 1);
+    assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu());
+
+    const continuation = [
+      '=== DISPLAY: fix gate auto-accepted (after the findings summary: emit verbatim as a code block — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
+      'Fix analysis accepted [auto]. Passing the findings to the executor.',
+      '',
+    ].join('\n');
+    for (const mode of ['auto', 'bounded']) {
+      cleanupFixture(dir);
+      dir = setupFixture();
+      seedGates(mode, 2);
+      assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), continuation, mode);
+    }
+  });
+
+  it('fix-gate at the threshold renders the menu in every mode — an auto mode omits both opt-ins', () => {
     seedGates('gated', 3);
     assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu());
 
-    cleanupFixture(dir);
-    dir = setupFixture();
-    seedGates('auto', 3);
-    assert.strictEqual(
-      render(['fix-gate', 'auth.implementation.auth-flow']),
-      fixGateMenu({ auto: true }));
+    for (const mode of ['auto', 'bounded']) {
+      cleanupFixture(dir);
+      dir = setupFixture();
+      seedGates(mode, 3);
+      assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu({ optIns: false }), mode);
+    }
   });
 
   it('task-gate and fix-gate refuse a missing in-flight task, a wrong-phase address, and an unknown work unit', () => {

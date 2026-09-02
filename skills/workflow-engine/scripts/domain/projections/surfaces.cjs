@@ -177,7 +177,7 @@ function section(name, instruction, body) {
 // instruction ends the turn. Two facts, never blurred:
 // CONTINUE is for displays where no gate exists at all (the word "gate"
 // never appears — naming one would imply something to skip); AUTO_GATE is
-// for a real gate the user's a/auto choice bypasses, and says exactly
+// for a real gate the user's a/auto or b/bounded choice bypasses, and says exactly
 // that. Neither names a next step: where the flow goes is the prose's to
 // own, and an engine string that duplicated it would be a second routing
 // source to keep in sync. The markdown variant serves surfaces whose

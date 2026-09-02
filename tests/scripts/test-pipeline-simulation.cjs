@@ -1768,8 +1768,11 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['cycle-gate'], { expect: 'content' }),
       /MENU: cycle gate/, 'cycle gate renders its menu');
 
-    // Auto gates render a continuation artifact — the loop never ends a turn by silence.
-    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode=auto', 'fix_gate_mode=auto']);
+    // Auto gates render a continuation artifact — the loop never ends a turn by
+    // silence. The task gate takes the phase-bounded opt-in (`b/bounded`), the
+    // fix gate the full one (`a/auto`): both render the same continuation, and
+    // only the phase record below tells them apart.
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode=bounded', 'fix_gate_mode=auto']);
     sim.run(['task', 'start', wu, wu, `${wu}-1-2`]);
     // Every task start gets its brief; the stale first-task payload refuses, the rewritten one renders.
     const staleBrief = spawnSync('node', [ENGINE, 'render', 'task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload],
@@ -1800,7 +1803,10 @@ describe('pipeline simulation', () => {
     // and the phase records once it lands.
     const bankEntry = `{"task":"${wu}-1-2","source":"reviewer","summary":"near-miss helpers","detail":"src/x.js:3 vs src/y.js:9","files":["src/x.js","src/y.js"]}`;
     sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank', bankEntry]);
-    sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--phase', '1', '--next-task', '~']);
+    const boundary = sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--phase', '1', '--next-task', '~']);
+    assert.strictEqual(boundary.recorded.gates_reset, undefined, 'the deferred completion is not the phase\'s close');
+    assert.strictEqual(sim.manifest(wu).phases.implementation.items[wu].task_gate_mode, 'bounded',
+      'bounded auto holds while the phase stays open for the consolidation pass');
     // B's spec-defect settle, before any proposal is staged: a record-settled
     // correction lands on the same unit's concluded spec — in-place edit +
     // corrigendum — then the same-unit route's scoped commit (--kb carries the
@@ -1884,12 +1890,18 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'pull', `${wu}.implementation.${wu}`, 'bank', bankEntry]);
     // The consolidation task runs through the ordinary loop; its completion
     // finds the phase consolidated and records it.
-    sim.run(['task', 'start', wu, wu, `${wu}-1-3`]);
-    sim.run(['task', 'complete', wu, wu, `${wu}-1-3`, '--phase', '1', '--next-task', '~', '--phase-complete']);
+    const started = sim.run(['task', 'start', wu, wu, `${wu}-1-3`]);
+    assert.strictEqual(started.gates.task_gate_mode, 'bounded', 'the consolidation task runs under the same bounded auto');
+    assert.match(sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
+      /DISPLAY: task gate auto-approved/, 'a bounded task gate is an auto gate until the phase closes');
+    const closed = sim.run(['task', 'complete', wu, wu, `${wu}-1-3`, '--phase', '1', '--next-task', '~', '--phase-complete']);
+    assert.deepStrictEqual(closed.recorded.gates_reset, ['task_gate_mode'], 'the phase record names the bounded gate it returned to gated');
     const loopItem = sim.manifest(wu).phases.implementation.items[wu];
     assert.deepStrictEqual(loopItem.consolidated_phases, [1], 'the boundary marker survives');
     assert.deepStrictEqual(loopItem.completed_phases, [1], 'the phase records complete after consolidation');
     assert.deepStrictEqual(loopItem.bank, [], 'the folded entry left the bank');
+    assert.strictEqual(loopItem.task_gate_mode, 'gated', 'bounded ends with the phase — the next task\'s gate is a menu');
+    assert.strictEqual(loopItem.fix_gate_mode, 'auto', 'full auto is the session\'s and outlives the phase');
 
     // An analysis cycle's staging walks the manifest; all-skipped is a legal exit.
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
@@ -1921,11 +1933,13 @@ describe('pipeline simulation', () => {
       'head takes the task-header marker idiom, ordinal omitted for a batch of one');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.ad-hoc-1.tasks.1', 'approved']);
 
-    // A resumed session resets gate modes to gated (session-scoped auto).
-    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode', 'auto']);
+    // A resumed session resets gate modes to gated — the session is the outer
+    // bound of both auto modes.
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode=bounded', 'fix_gate_mode=auto']);
     const resumed = sim.run(['task', 'init', wu, wu]);
     assert.strictEqual(resumed.mode, 'resumed', 'second init is a genuine resume');
-    assert.strictEqual(resumed.gates.task_gate_mode, 'gated', 'resume resets auto to gated');
+    assert.strictEqual(resumed.gates.task_gate_mode, 'gated', 'resume resets bounded to gated');
+    assert.strictEqual(resumed.gates.fix_gate_mode, 'gated', 'resume resets auto to gated');
     assert.strictEqual(resumed.gates.consolidation_gate_mode, 'gated', 'the boundary gate resets with the session');
     const completed = sim.manifest(wu).phases.implementation.items[wu].completed_tasks;
     assert.deepStrictEqual([...completed].sort(), [`${wu}-1-1`, `${wu}-1-2`, `${wu}-1-3`],

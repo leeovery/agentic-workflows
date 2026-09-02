@@ -1,5 +1,5 @@
 {
-  "origin": "the consolidation boundary's findings path had no walk — every prior case took the clean sweep. This walks the whole drain: the reviewer banks a cross-scope opportunity mid-loop, the finder confirms it as a finding, the orchestrator folds it into a staged proposal carrying no body, the gated walk approves it, the task author expands it in the staging file and only then does the task-writer land it in the still-open phase, the bank entry is pulled, the consolidation task builds through the ordinary loop, and only then does the phase record complete",
+  "origin": "the task gate's bounded opt-in — auto to the end of the current plan phase — had no walk. The property that matters is that the bound is the phase for real: a bounded auto set on the last planned task must still carry the tasks the consolidation boundary adds to the same phase, and only the phase's record may end it, so the next phase's first task gates again. This walks exactly that: bounded chosen at pay-1-2's gate, the consolidation task pay-1-3 approved at the boundary walk and then built with no stop, the phase record returning the gate to gated, and pay-2-1 stopping at a menu",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -39,15 +39,17 @@
   "answers": [
     "y — skip project skills again",
     "y — skip linters again",
-    "y — approve the task",
+    "b — auto-approve to the end of this phase, then gate again",
     "y — approve this consolidation task",
     "y — approve the task"
   ],
   "stubs": {
     "executor-task-complete": "when the workflow-implementation-task-executor agent is dispatched for task pay-1-2 — create that task's source and test files as the stub gives them and return that task's STATUS block; one firing",
     "executor-consolidation-task": "when the workflow-implementation-task-executor agent is dispatched for the consolidation task pay-1-3 — create the helper's source and test files, apply the call-site edits, and return the stub's STATUS block; one firing",
-    "reviewer-banks-then-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — first firing (pay-1-2's review) returns the approved-with-BANK block, any later firing (the consolidation task's review) returns the plain approved block; write no file",
-    "finder-sweep-findings": "when the workflow-implementation-consolidation-finder agent is dispatched — write the findings file at the dispatched path via the .txt-then-rename mechanism, quoting the banked entry's JSON verbatim as received, and return the stub's status block",
+    "executor-settlement-task": "when the workflow-implementation-task-executor agent is dispatched for task pay-2-1 — create the settlement source and test files as the stub gives them and return the stub's STATUS block; one firing",
+    "reviewer-banks-then-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — the first firing (pay-1-2's review) returns the approved-with-BANK block, every later firing (pay-1-3's and pay-2-1's reviews) returns the plain approved block; write no file",
+    "finder-sweep-findings": "when the workflow-implementation-consolidation-finder agent is dispatched for phase 1 — write the findings file at the dispatched path via the .txt-then-rename mechanism, quoting the banked entry's JSON verbatim as received, and return the stub's status block",
+    "finder-sweep-clean": "when the workflow-implementation-consolidation-finder agent is dispatched for phase 2 — write no file and return STATUS: clean, FINDINGS_COUNT: 0, BANK: no entries, SUMMARY: the phase's surface needs no consolidation",
     "task-author-expands-consolidation": "when the workflow-implementation-task-author agent is dispatched — add the stub's blocks under the approved proposal in the staging file and return the stub's status block; one firing",
     "task-writer-creates-consolidation": "when the workflow-implementation-task-writer agent is dispatched — create the approved consolidation task from the staging file exactly as the stub directs, record the task_map entry, and return the stub's status block"
   },
@@ -60,6 +62,7 @@
       "render task-brief pay.implementation.pay",
       "manifest push pay.implementation.pay bank",
       "render task-gate pay.implementation.pay",
+      "task_gate_mode bounded",
       "task complete pay pay pay-1-2 --phase 1 --next-task ~",
       "impl(pay): Tpay-1-2",
       "commit --paths",
@@ -73,14 +76,21 @@
       "manifest set pay.planning.pay task_map.pay-1-3 pay-1-3",
       "manifest pull pay.implementation.pay bank",
       "task start pay pay pay-1-3",
+      "task complete pay pay pay-1-3 --phase 1",
+      "--phase-complete",
       "impl(pay): Tpay-1-3",
-      "--phase-complete"
+      "task start pay pay pay-2-1",
+      "task complete pay pay pay-2-1 --phase 2",
+      "impl(pay): Tpay-2-1",
+      "manifest push pay.implementation.pay consolidated_phases 2",
+      "task complete pay pay pay-2-1 --phase 2 --phase-complete"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",
       "task init pay pay",
       "task start pay pay pay-1-2",
       "manifest push pay.implementation.pay bank",
+      "task_gate_mode bounded",
       "task complete pay pay pay-1-2",
       "impl(pay): Tpay-1-2",
       "staging.p1.tasks.1=pending",
@@ -90,18 +100,25 @@
       "manifest pull pay.implementation.pay bank",
       "task start pay pay pay-1-3",
       "--phase-complete",
-      "impl(pay): Tpay-1-3"
+      "impl(pay): Tpay-1-3",
+      "task start pay pay pay-2-1",
+      "task complete pay pay pay-2-1",
+      "impl(pay): Tpay-2-1",
+      "manifest push pay.implementation.pay consolidated_phases 2",
+      "task complete pay pay pay-2-1 --phase 2 --phase-complete"
     ],
     "calls_exclude": [
       "task start pay pay pay-1-1",
       "task fix-attempt",
       "analysis-cycle",
       "topic complete pay implementation",
-      "consolidation_gate_mode auto",
       "task_gate_mode auto",
-      "task_gate_mode bounded",
       "fix_gate_mode auto",
       "fix_gate_mode bounded",
+      "consolidation_gate_mode auto",
+      "consolidation_gate_mode bounded",
+      "task_gate_mode gated",
+      "task_gate_mode=gated",
       "--skipped",
       "git add -A",
       "git add --all",

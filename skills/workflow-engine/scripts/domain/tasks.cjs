@@ -13,9 +13,19 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
+const { GATE_FIELDS } = require('../kernel/manifest-schema.cjs');
 
 const FIX_THRESHOLD = 3;
 const SESSION_CYCLE_LIMIT = 3;
+
+// The gates the schema binds to the plan phase: `complete --phase-complete`
+// — the one record that closes a plan phase, reached only once every task of
+// the phase has landed, consolidation-added tasks included — returns each
+// from `bounded` to `gated`. The session reset in `initTasks` stays outside
+// this bound.
+const PHASE_BOUNDED_GATES = /** @type {(keyof GateModes)[]} */ (
+  Object.keys(GATE_FIELDS.implementation).filter((field) => GATE_FIELDS.implementation[field] === 'plan-phase')
+);
 
 /**
  * @typedef {object} GateModes
@@ -334,10 +344,12 @@ function pushTo(item, field, value) {
  * counter must not leak into the next task — its tracking file stays on disk
  * as history; `start` clears it if that id is ever started fresh again),
  * optionally set `current_phase` / `current_task`, and push the phase to
- * `completed_phases` when the caller reports the phase complete. Skipped
- * tasks are recorded in `completed_tasks` too — the plan (the session's side)
- * carries the skip distinction. Re-recording an id (or phase) already present
- * leaves the array as-is — same response, no double-count.
+ * `completed_phases` when the caller reports the phase complete — which also
+ * returns every phase-bounded gate holding `bounded` to `gated`, named in the
+ * response's `gates_reset`. Skipped tasks are recorded in `completed_tasks`
+ * too — the plan (the session's side) carries the skip distinction.
+ * Re-recording an id (or phase) already present leaves the array as-is — same
+ * response, no double-count.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
@@ -388,6 +400,12 @@ function completeTask(cwd, workUnit, topic, { internalId = null, externalId = nu
         item.current_task = null;
         recorded.current_task = null;
       }
+      // The phase is done for real — every task of it has landed — so the
+      // gates bounded to it return to gated. `auto` is the session's and
+      // stays.
+      const reset = PHASE_BOUNDED_GATES.filter((field) => gateOf(item, field) === 'bounded');
+      for (const field of reset) item[field] = 'gated';
+      if (reset.length > 0) recorded.gates_reset = reset;
     }
     saveWorkUnitManifest(cwd, workUnit, manifest);
 

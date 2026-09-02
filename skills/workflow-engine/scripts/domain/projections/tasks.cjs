@@ -15,10 +15,12 @@
 //                          the session renders the list, this menu carries
 //                          the decision)
 //   render task-gate     → MENU: task gate       (task_gate_mode gated)
-//                          DISPLAY: task gate auto-approved (task_gate_mode auto)
+//                          DISPLAY: task gate auto-approved (auto or bounded)
 //   render fix-gate      → MENU: fix gate        (gated or threshold reached;
-//                          the auto option renders only while the gate is gated)
-//                          DISPLAY: fix gate auto-accepted (auto, below threshold)
+//                          the auto and bounded options render only while
+//                          the gate is gated)
+//                          DISPLAY: fix gate auto-accepted (auto or bounded,
+//                          below threshold)
 //   render cycle-limit   → DISPLAY: cycle limit   (the over-limit callout)
 //   render cycle-gate    → MENU: cycle gate      (static)
 //
@@ -52,8 +54,9 @@ function blockedTasksMenu() {
 }
 
 /**
- * The task gate: menu when gated, continuation line when auto. The result
- * header names the in-flight task — the gate never repeats the id.
+ * The task gate: menu when gated, continuation line under either auto mode
+ * (`auto` runs to the session's end, `bounded` to the plan phase's). The
+ * result header names the in-flight task — the gate never repeats the id.
  * @param {string} gateMode  `task_gate_mode`
  * @returns {string}
  */
@@ -70,7 +73,8 @@ function taskGateSection(gateMode) {
     MENU_INSTRUCTION,
     menu('Approve this task?', [
       cmdOption('y', 'yes', 'Commit and continue to next task'),
-      cmdOption('a', 'auto', 'Approve this and all future tasks automatically'),
+      cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
+      cmdOption('b', 'bounded', 'Approve this and the remaining tasks in this phase automatically'),
       cmdOption('t', 'technical', "Retell the result from the code's perspective"),
       cmdOption('s', 'show', 'Show the result as diagrams'),
       promptOption('Ask', "Ask questions about the implementation (doesn't approve or reject)"),
@@ -80,9 +84,9 @@ function taskGateSection(gateMode) {
 }
 
 /**
- * The fix gate: menu when gated or threshold-forced, continuation line when
- * auto and below the threshold. The result header names the in-flight task
- * — the gate never repeats the id.
+ * The fix gate: menu when gated or threshold-forced, continuation line under
+ * either auto mode below the threshold. The result header names the in-flight
+ * task — the gate never repeats the id.
  * @param {string} gateMode  `fix_gate_mode`
  * @param {boolean} thresholdReached  `fix_attempts` at or past the threshold
  * @returns {string}
@@ -95,17 +99,21 @@ function fixGateSection(gateMode, thresholdReached) {
       'Fix analysis accepted [auto]. Passing the findings to the executor.',
     );
   }
-  const options = [
-    cmdOption('y', 'yes', 'Pass to executor'),
-    cmdOption('a', 'auto', 'Accept and auto-approve future fix analyses'),
+  const options = [cmdOption('y', 'yes', 'Pass to executor')];
+  // An auto-mode gate only reaches this menu via the threshold — offering
+  // either opt-in again would be a no-op option.
+  if (gateMode === 'gated') {
+    options.push(
+      cmdOption('a', 'auto', 'Accept this and all remaining fix analyses automatically'),
+      cmdOption('b', 'bounded', 'Accept this and the remaining fix analyses in this phase automatically'),
+    );
+  }
+  options.push(
     cmdOption('t', 'technical', "Retell the review from the code's perspective"),
     cmdOption('s', 'show', 'Show the findings as diagrams'),
     promptOption('Ask', "Ask questions about the review (doesn't accept or reject)"),
     promptOption('Comment', 'Give direction for the fix — or challenge a finding you think is wrong'),
-  ];
-  // An auto gate only reaches this menu via the threshold — offering auto
-  // again would be a no-op option.
-  if (gateMode !== 'gated') options.splice(1, 1);
+  );
   return section(
     'MENU: fix gate',
     MENU_INSTRUCTION,

@@ -654,11 +654,11 @@ Entry-point skills that invoke processing skills use this exact blockquote to pr
 
 ### Auto-Mode Gates
 
-Per-item approval gates can offer `a/auto` to let the user bypass repeated STOP gates. This pattern is used in implementation (task + fix gates), planning (task list approval + task authoring + review findings), and specification (construction + review findings).
+Per-item approval gates can offer `a/auto` to let the user bypass repeated STOP gates — and, where the gate's flow defines a bound, `b/bounded` beside it. This pattern is used in implementation (task + fix gates, whose bound is the plan phase), planning (task list approval + task authoring + review findings), and specification (construction + review findings).
 
-**Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated` or `auto`) — every gate, no exceptions. This ensures they survive context refresh.
+**Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated`, `auto`, or `bounded`) — every gate, no exceptions. This ensures they survive context refresh.
 
-**Behavior when `auto`**: Content is always rendered above the gate check (so both modes see identical output). Auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement:
+**Behavior when `auto` or `bounded`**: Content is always rendered above the gate check (so every mode sees identical output). Either auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement:
 
 ```
 > *Output the next fenced block as a code block:*
@@ -670,13 +670,15 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 
 **Lifecycle**:
 - Default: `gated` (set in manifest on creation)
-- Opt-in: user chooses `a/auto` at any per-item gate → manifest updated via `engine manifest` before next commit
-- Reset: entry-point skills reset gates to `gated` at session start — fresh invocation or resume. Auto opt-in is session-scoped, never carried across sessions
+- Opt-in: user chooses `a/auto` (full — the rest of the session) or `b/bounded` (auto to the end of the bound the gate's flow defines) at any per-item gate → manifest updated via `engine manifest` before next commit
+- Bound: `bounded` is one generic value — the schema's `GATE_FIELDS` table (`kernel/manifest-schema.cjs`) places each gate on its phase and names its bound, the field surface refuses `bounded` on any gate without one, and the engine returns the gate to `gated` at the bound's close, never the prose. The implementation task and fix gates are bound to the plan phase: `task complete --phase-complete` resets them, so a bounded auto holds through every task the phase gains before it records. A gate with no bound never offers `b/bounded`
+- Reset: entry-point skills reset gates to `gated` at session start — fresh invocation or resume. Either opt-in is session-scoped, never carried across sessions
 - Context refresh: read gate modes from manifest and preserve (a refresh continues the same session — no reset)
 
-**Menu option format**: Add between the primary action and secondary options:
+**Menu option format**: Add between the primary action and secondary options — the bounded row beside it where the gate has a bound:
 ```
-**`a/auto`** → Approve this and all remaining {items} automatically
+**`a/auto`**    → Approve this and all remaining {items} automatically
+**`b/bounded`** → Approve this and the remaining {items} in this {bound} automatically
 ```
 
 **Re-loop safety cap**: When auto-mode enables automatic re-analysis loops, cap at 5 cycles before escalating to the user. This prevents infinite cascading. At escalation, a convergence analysis diagnostic (shared reference at `skills/workflow-shared/references/convergence-analysis.md`) reads prior cycle tracking files and presents what's resolving, what's recurring, and a trend assessment to inform the user's decision.

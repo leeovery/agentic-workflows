@@ -15,7 +15,7 @@ C. Handle executor block (conditional)
 D. Review task → invoke-reviewer.md
 E. Evaluate review changes (conditional, fix_gate_mode)
 F. Fix approval gate (gated prompt)
-G. Task gate (gated → prompt user / auto → announce)
+G. Task gate (gated → prompt user / auto or bounded → announce)
 H. Update progress + phase check + commit
 I. All tasks complete (exit to caller)
 J. Consolidation pass (phase boundary) → consolidation-pass.md
@@ -108,7 +108,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
-   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` opt-in is made by this flow itself, so you already know the current mode.
+   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — `gated`, `auto` (the rest of this session), or `bounded` (to the end of the current plan phase — the engine returns it to `gated` as the phase records complete). Stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` or `b/bounded` opt-in is made by this flow itself, so you already know the current mode.
 4. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 → Load **[display-task-brief.md](display-task-brief.md)** and follow its instructions as written.
@@ -237,7 +237,7 @@ Present the reviewer's findings as the register's findings summary (**[report-re
 
 Branch on the response's `fix_gate_mode`.
 
-**If `fix_gate_mode` is `auto`:**
+**If `fix_gate_mode` is `auto` or `bounded`:**
 
 After the findings summary, fetch the fix gate and emit its `DISPLAY: fix gate auto-accepted` section:
 
@@ -261,7 +261,7 @@ The turn does not end here — the gate menu follows in the same turn.
 
 Every arrival emits the menu in the turn it arrives — from **E**, and back from a lens, the page, an answer, or a standing challenge alike.
 
-Fetch the fix gate and emit its `MENU: fix gate` section (the `a/auto` option renders only while the fix gate is `gated` — a threshold-forced gate in auto mode omits it):
+Fetch the fix gate and emit its `MENU: fix gate` section (the `a/auto` and `b/bounded` options render only while the fix gate is `gated` — a threshold-forced gate in an auto mode omits them):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
@@ -277,6 +277,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_uni
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} fix_gate_mode auto
+```
+
+→ Return to **B. Execute Task**.
+
+#### If `bounded`
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} fix_gate_mode bounded
 ```
 
 → Return to **B. Execute Task**.
@@ -345,7 +353,7 @@ Present the result as the register's product summary (**[report-register.md](rep
 
 Branch on the `task_gate_mode` carried by this task's `start` response.
 
-#### If `task_gate_mode` is `auto`
+#### If `task_gate_mode` is `auto` or `bounded`
 
 After the result summary, fetch the task gate and emit its `DISPLAY: task gate auto-approved` section:
 
@@ -375,6 +383,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate {work_un
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} task_gate_mode auto
+```
+
+→ Proceed to **H. Update Progress and Commit**.
+
+**If `bounded`:**
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} task_gate_mode bounded
 ```
 
 → Proceed to **H. Update Progress and Commit**.

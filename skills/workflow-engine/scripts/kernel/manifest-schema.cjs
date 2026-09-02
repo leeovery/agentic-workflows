@@ -105,7 +105,26 @@ function compareExperimentIds(a, b) {
 // discussion identically.
 const EXPERIMENT_SPAWN_PHASES = ['research', 'discussion'];
 
-const VALID_GATE_MODES = ['gated', 'auto'];
+// Gate modes. `auto` runs to the end of the session — the entry reset
+// returns every gate to `gated`; `bounded` is auto with an end the gate
+// declares in GATE_FIELDS, and the domain ring owning that bound returns the
+// gate to `gated` at the bound's close.
+const VALID_GATE_MODES = ['gated', 'auto', 'bounded'];
+
+// The gate-mode fields each phase's items carry, keyed by phase, each naming
+// its bound or `null` for none. The one home for which gate lives where and
+// which gates `bounded` can reach: the field surface accepts a `*_gate_mode`
+// write only where this table places it and `bounded` only where the entry
+// names a bound, and the domain ring owning a bound reads the same entries
+// to know what its close resets (`plan-phase`: domain/tasks.cjs, at `task
+// complete --phase-complete`). A walk's nested gate (`staging.<key>.gate_mode`,
+// `analysis_staging.<name>.gate_mode`) is the walk's own and takes no bound.
+/** @type {Record<string, Record<string, string | null>>} */
+const GATE_FIELDS = {
+  planning:       { task_list_gate_mode: null, author_gate_mode: null, finding_gate_mode: null },
+  specification:  { construction_gate_mode: null, finding_gate_mode: null },
+  implementation: { task_gate_mode: 'plan-phase', fix_gate_mode: 'plan-phase', analysis_gate_mode: null, consolidation_gate_mode: null },
+};
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
@@ -135,6 +154,7 @@ module.exports = {
   compareExperimentIds,
   EXPERIMENT_SPAWN_PHASES,
   VALID_GATE_MODES,
+  GATE_FIELDS,
   VALID_WORK_UNIT_STATUSES,
   TERMINAL_STATUSES,
   RESERVED_WORK_UNIT_NAMES,

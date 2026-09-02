@@ -36,8 +36,8 @@
   "answers": [
     "y — skip project skills again",
     "y — skip linters again",
-    "a — accept and auto-approve future fix analyses",
-    "a — approve this and all future tasks automatically"
+    "a — accept this and all remaining fix analyses automatically",
+    "a — approve this and all remaining tasks automatically"
   ],
   "stubs": {
     "executor-task-complete": "each time the workflow-implementation-task-executor agent is invoked — the task's initial fresh dispatch and its fix-round continuation of that same executor alike — create the task's source and test files as the stub gives them and return that task's STATUS block; one fresh dispatch plus one continuation per task",

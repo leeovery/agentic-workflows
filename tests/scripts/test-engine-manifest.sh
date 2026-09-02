@@ -569,10 +569,30 @@ echo ""
 echo -e "${YELLOW}Test: set accepts valid gate modes${NC}"
 setup_fixture
 create_wu gate-valid feature "Gate"
-run_cli set gate-valid.planning.gate-valid task_gate_mode auto >/dev/null 2>&1
-output=$(run_cli_stdout get gate-valid.planning.gate-valid task_gate_mode)
+run_cli set gate-valid.implementation.gate-valid task_gate_mode auto >/dev/null 2>&1
+output=$(run_cli_stdout get gate-valid.implementation.gate-valid task_gate_mode)
 
 assert_equals "$output" "auto" "Gate mode set to auto"
+
+run_cli set gate-valid.implementation.gate-valid task_gate_mode bounded >/dev/null 2>&1
+output=$(run_cli_stdout get gate-valid.implementation.gate-valid task_gate_mode)
+
+assert_equals "$output" "bounded" "Gate mode set to bounded"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: set refuses a gate off its phase and bounded off a bound${NC}"
+setup_fixture
+create_wu gate-home feature "Gate"
+assert_exit_code 1 "Implementation gate refused on a planning item" set gate-home.planning.gate-home task_gate_mode auto
+assert_exit_code 1 "bounded refused on a gate with no bound" set gate-home.implementation.gate-home consolidation_gate_mode bounded
+assert_exit_code 1 "bounded refused on a walk's gate_mode" set gate-home.review.gate-home staging.c1.gate_mode bounded
+run_cli set gate-home.planning.gate-home task_list_gate_mode auto >/dev/null 2>&1
+output=$(run_cli_stdout get gate-home.planning.gate-home task_list_gate_mode)
+
+assert_equals "$output" "auto" "Planning gate lands on the planning item"
 
 echo ""
 
@@ -1159,9 +1179,9 @@ echo -e "${YELLOW}Test: delete topic-level field for feature${NC}"
 setup_fixture
 create_wu del-feat feature "Delete feat"
 run_cli set del-feat.planning.del-feat status in-progress >/dev/null 2>&1
-run_cli set del-feat.planning.del-feat task_gate_mode auto >/dev/null 2>&1
-run_cli delete del-feat.planning.del-feat task_gate_mode >/dev/null 2>&1
-output=$(run_cli_stdout exists del-feat.planning.del-feat task_gate_mode)
+run_cli set del-feat.planning.del-feat task_list_gate_mode auto >/dev/null 2>&1
+run_cli delete del-feat.planning.del-feat task_list_gate_mode >/dev/null 2>&1
+output=$(run_cli_stdout exists del-feat.planning.del-feat task_list_gate_mode)
 
 assert_equals "$output" "false" "Deleted topic-level field gone"
 
