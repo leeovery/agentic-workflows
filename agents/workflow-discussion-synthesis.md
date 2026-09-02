@@ -80,7 +80,7 @@ The output file is pure markdown — no frontmatter, ever; the orchestrator's ow
 
 ### T1: {label} _(or T2 if Framing alignment is present)_
 
-{What's being traded against what.}
+{What's being traded against what — opening on what the product is or does under each side, the arguments beneath. The orchestrator raises the tension from that opening.}
 
 ### T2: {label}
 

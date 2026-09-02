@@ -12,6 +12,8 @@ Read each file below every time this reference is loaded. Never skip one on the 
 
 → Load **[voice.md](voice.md)** and follow its instructions as written.
 
+→ Load **[altitude.md](altitude.md)** and follow its instructions as written.
+
 → Load **[ask-or-decide.md](ask-or-decide.md)** and follow its instructions as written.
 
 → Return to caller.

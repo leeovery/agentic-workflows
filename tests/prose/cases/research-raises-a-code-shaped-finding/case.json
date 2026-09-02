@@ -1,0 +1,65 @@
+{
+  "origin": "a live research session raised a deep-dive finding as a compressed read-out of the report's code — four source snippets, a position at implementation depth, no question — and the user could not tell what was being asked; retold as a product scenario with three end states and one question, it was answered in a sentence. Every walk case until this one used a product-shaped report, so the corpus could not see the drift. The report here is fixture-authored in code on purpose: a product fork the user owns, hidden under three mechanisms, so what the raise translates and what it leaves in the record are both checkable",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/review-agent.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/composing-a-raise.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": [
+    "c — continue",
+    "y — yes, work through them now"
+  ],
+  "conduct": "The user returns to the relevance-measurement research after a day away. They remember a deep dive was running when they left and want to hear what it found before doing anything else. They run the shop, not the search stack: they know what a bad result page costs them and have opinions about which shoppers matter, and they do not know what a slice guard or a feature flag is. They opt in when offered and read the first raised finding with interest — but the walk stops before they answer. They volunteer nothing new and do not steer the conversation anywhere else.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.research.relevance-measurement status",
+      "agent scan search-relevance research relevance-measurement",
+      "render finding-announce search-relevance.research.relevance-measurement",
+      "agent surface search-relevance research relevance-measurement deep-dive-001-subset-regressions F1"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.research.relevance-measurement status",
+      "agent scan search-relevance research relevance-measurement",
+      "render finding-announce search-relevance.research.relevance-measurement",
+      "agent surface search-relevance research relevance-measurement deep-dive-001-subset-regressions F1"
+    ],
+    "calls_exclude": [
+      "render finding-batch",
+      "agent dispatch",
+      "agent ack",
+      "agent incorporate",
+      "agent surface search-relevance research relevance-measurement deep-dive-001-subset-regressions F2",
+      "render deep-dive-offer",
+      "topic complete",
+      "knowledge.cjs index"
+    ]
+  }
+}
