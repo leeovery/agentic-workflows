@@ -1,0 +1,61 @@
+{
+  "origin": "research feeds discussion — once the research a flagged discussion stood on has landed, the discussion's re-entry must read it in full and clear the flag before the session opens, with no wait gate anywhere; the held flag's release is the other half of the hold, and the landed research has to reach the conversation rather than be relayed or skipped",
+  "entry": "workflow-discussion-entry",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "invariants": {
+    "calls_include": [
+      "manifest get search-relevance.discussion.behavioural-ranking status",
+      "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
+      "manifest get search-relevance.research.behavioural-ranking status",
+      "manifest delete search-relevance.discussion.behavioural-ranking reconcile_needed",
+      "render resume-gate search-relevance.discussion.behavioural-ranking",
+      "topic queue search-relevance discussion behavioural-ranking"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
+      "manifest get search-relevance.research.behavioural-ranking status",
+      "manifest delete search-relevance.discussion.behavioural-ranking reconcile_needed",
+      "render resume-gate search-relevance.discussion.behavioural-ranking"
+    ],
+    "calls_exclude": [
+      "render wait-gate",
+      "topic complete",
+      "topic reopen",
+      "topic start",
+      "topic triage",
+      "topic absorb",
+      "discussion-map add",
+      "discussion-map set",
+      "knowledge.cjs index"
+    ]
+  }
+}
