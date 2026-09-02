@@ -67,6 +67,7 @@
       "impl(pay): Tpay-1-2",
       "commit --paths",
       "manifest get pay.implementation.pay consolidation_gate_mode",
+      "phase 1 consolidation — findings",
       "staging.p1.tasks.1=pending",
       "render tasks-overview pay.implementation.pay",
       "render proposed-task pay.implementation.pay",
@@ -81,7 +82,8 @@
       "task start pay pay pay-2-1",
       "task complete pay pay pay-2-1 --phase 2",
       "impl(pay): Tpay-2-1",
-      "manifest push pay.implementation.pay consolidated_phases 2"
+      "manifest push pay.implementation.pay consolidated_phases 2",
+      "task complete pay pay pay-2-1 --phase 2 --phase-complete"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",
@@ -102,7 +104,8 @@
       "task start pay pay pay-2-1",
       "task complete pay pay pay-2-1",
       "impl(pay): Tpay-2-1",
-      "manifest push pay.implementation.pay consolidated_phases 2"
+      "manifest push pay.implementation.pay consolidated_phases 2",
+      "task complete pay pay pay-2-1 --phase 2 --phase-complete"
     ],
     "calls_exclude": [
       "task start pay pay pay-1-1",

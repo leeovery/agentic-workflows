@@ -33,7 +33,7 @@
           "author_gate_mode": "gated",
           "finding_gate_mode": "gated",
           "review_cycle": 0,
-          "phase": 2,
+          "phase": 3,
           "task": null,
           "task_map": {
             "pay-1-1": "pay-1-1",

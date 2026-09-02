@@ -64,7 +64,7 @@ function planTwoPhases(h) {
   h.write(`.workflows/${m.WU}/planning/${m.WU}/tasks/${PHASE_2_TASK.id}.md`, taskFile(PHASE_2_TASK, 2, 'pending'));
   h.engine('manifest', 'set', `${m.WU}.planning.${m.WU}`,
     'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
-    'finding_gate_mode=gated', 'review_cycle=0', 'phase=2', 'task=~',
+    'finding_gate_mode=gated', 'review_cycle=0', 'phase=3', 'task=~',
     ...m.TASKS.map((t) => `task_map.${t.id}=${t.id}`),
     `task_map.${PHASE_2_TASK.id}=${PHASE_2_TASK.id}`,
     'storage_paths=[]');

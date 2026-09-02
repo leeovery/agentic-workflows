@@ -4,7 +4,8 @@ The `pay` feature is mid-implementation under a two-phase local-markdown
 plan. Phase 1 (Payment core) holds `pay-1-1` (Create Payment Intent) and
 `pay-1-2` (Handle Capture Webhooks); Phase 2 (Settlement) holds
 `pay-2-1` (Reconcile Settlement Reports). Structure and both phases'
-task approvals are recorded and the planning item is completed.
+task approvals are recorded, the authoring cursor sits past the last
+phase, and the planning item is completed.
 
 `pay-1-1` is completed by a previous session — its source, test, and
 completed task file all exist, its `impl(pay): Tpay-1-1` commit is in

@@ -13,16 +13,19 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
+const { GATE_FIELDS } = require('../kernel/manifest-schema.cjs');
 
 const FIX_THRESHOLD = 3;
 const SESSION_CYCLE_LIMIT = 3;
 
-// The gates whose `bounded` mode is bound to the plan phase: `complete
-// --phase-complete` — the one record that closes a plan phase, reached only
-// once every task of the phase has landed, consolidation-added tasks
-// included — returns each to `gated`. The session reset in `initTasks`
-// stays outside this bound.
-const PHASE_BOUNDED_GATES = ['task_gate_mode', 'fix_gate_mode'];
+// The gates the schema binds to the plan phase: `complete --phase-complete`
+// — the one record that closes a plan phase, reached only once every task of
+// the phase has landed, consolidation-added tasks included — returns each
+// from `bounded` to `gated`. The session reset in `initTasks` stays outside
+// this bound.
+const PHASE_BOUNDED_GATES = /** @type {(keyof GateModes)[]} */ (
+  Object.keys(GATE_FIELDS.implementation).filter((field) => GATE_FIELDS.implementation[field] === 'plan-phase')
+);
 
 /**
  * @typedef {object} GateModes
@@ -400,7 +403,7 @@ function completeTask(cwd, workUnit, topic, { internalId = null, externalId = nu
       // The phase is done for real — every task of it has landed — so the
       // gates bounded to it return to gated. `auto` is the session's and
       // stays.
-      const reset = PHASE_BOUNDED_GATES.filter((field) => item[field] === 'bounded');
+      const reset = PHASE_BOUNDED_GATES.filter((field) => gateOf(item, field) === 'bounded');
       for (const field of reset) item[field] = 'gated';
       if (reset.length > 0) recorded.gates_reset = reset;
     }
@@ -437,4 +440,4 @@ function analysisCycle(cwd, workUnit, topic) {
   });
 }
 
-module.exports = { initTasks, startTask, fixAttempt, completeTask, analysisCycle, gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT, PHASE_BOUNDED_GATES };
+module.exports = { initTasks, startTask, fixAttempt, completeTask, analysisCycle, gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT };

@@ -73,8 +73,8 @@ function taskGateSection(gateMode) {
     MENU_INSTRUCTION,
     menu('Approve this task?', [
       cmdOption('y', 'yes', 'Commit and continue to next task'),
-      cmdOption('a', 'auto', 'Auto-approve every remaining task (full: the rest of this session)'),
-      cmdOption('b', 'bounded', 'Auto-approve to the end of this phase, then gate again'),
+      cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
+      cmdOption('b', 'bounded', 'Approve this and the remaining tasks in this phase automatically'),
       cmdOption('t', 'technical', "Retell the result from the code's perspective"),
       cmdOption('s', 'show', 'Show the result as diagrams'),
       promptOption('Ask', "Ask questions about the implementation (doesn't approve or reject)"),
@@ -99,18 +99,21 @@ function fixGateSection(gateMode, thresholdReached) {
       'Fix analysis accepted [auto]. Passing the findings to the executor.',
     );
   }
-  const options = [
-    cmdOption('y', 'yes', 'Pass to executor'),
-    cmdOption('a', 'auto', 'Auto-accept every remaining fix analysis (full: the rest of this session)'),
-    cmdOption('b', 'bounded', 'Auto-accept to the end of this phase, then gate again'),
+  const options = [cmdOption('y', 'yes', 'Pass to executor')];
+  // An auto-mode gate only reaches this menu via the threshold — offering
+  // either opt-in again would be a no-op option.
+  if (gateMode === 'gated') {
+    options.push(
+      cmdOption('a', 'auto', 'Accept this and all remaining fix analyses automatically'),
+      cmdOption('b', 'bounded', 'Accept this and the remaining fix analyses in this phase automatically'),
+    );
+  }
+  options.push(
     cmdOption('t', 'technical', "Retell the review from the code's perspective"),
     cmdOption('s', 'show', 'Show the findings as diagrams'),
     promptOption('Ask', "Ask questions about the review (doesn't accept or reject)"),
     promptOption('Comment', 'Give direction for the fix — or challenge a finding you think is wrong'),
-  ];
-  // An auto-mode gate only reaches this menu via the threshold — offering
-  // either opt-in again would be a no-op option.
-  if (gateMode !== 'gated') options.splice(1, 2);
+  );
   return section(
     'MENU: fix gate',
     MENU_INSTRUCTION,

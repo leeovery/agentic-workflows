@@ -1933,11 +1933,13 @@ describe('pipeline simulation', () => {
       'head takes the task-header marker idiom, ordinal omitted for a batch of one');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.ad-hoc-1.tasks.1', 'approved']);
 
-    // A resumed session resets gate modes to gated (session-scoped auto).
-    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode', 'auto']);
+    // A resumed session resets gate modes to gated — the session is the outer
+    // bound of both auto modes.
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode=bounded', 'fix_gate_mode=auto']);
     const resumed = sim.run(['task', 'init', wu, wu]);
     assert.strictEqual(resumed.mode, 'resumed', 'second init is a genuine resume');
-    assert.strictEqual(resumed.gates.task_gate_mode, 'gated', 'resume resets auto to gated');
+    assert.strictEqual(resumed.gates.task_gate_mode, 'gated', 'resume resets bounded to gated');
+    assert.strictEqual(resumed.gates.fix_gate_mode, 'gated', 'resume resets auto to gated');
     assert.strictEqual(resumed.gates.consolidation_gate_mode, 'gated', 'the boundary gate resets with the session');
     const completed = sim.manifest(wu).phases.implementation.items[wu].completed_tasks;
     assert.deepStrictEqual([...completed].sort(), [`${wu}-1-1`, `${wu}-1-2`, `${wu}-1-3`],

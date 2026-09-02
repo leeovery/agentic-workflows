@@ -114,6 +114,9 @@ Further claims:
   at pay-1-2's gate; fix_gate_mode and consolidation_gate_mode were
   never set, and no call set task_gate_mode back to gated — the
   engine's phase record did that
+- nothing announced the end of the bounded auto: between pay-1-3's
+  completion and pay-2-1's gate the walker emitted no line about the
+  gate returning to gated — the reappearing menu is the whole signal
 - exactly three fresh executor dispatches fired (pay-1-2, pay-1-3,
   pay-2-1) and exactly three reviewer dispatches; pay-1-1 was never
   re-executed or re-reviewed; no fix round ran for any task

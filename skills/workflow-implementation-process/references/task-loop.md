@@ -15,7 +15,7 @@ C. Handle executor block (conditional)
 D. Review task → invoke-reviewer.md
 E. Evaluate review changes (conditional, fix_gate_mode)
 F. Fix approval gate (gated prompt)
-G. Task gate (gated → prompt user / auto → announce)
+G. Task gate (gated → prompt user / auto or bounded → announce)
 H. Update progress + phase check + commit
 I. All tasks complete (exit to caller)
 J. Consolidation pass (phase boundary) → consolidation-pass.md

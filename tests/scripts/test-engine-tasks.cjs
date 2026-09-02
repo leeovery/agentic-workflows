@@ -160,6 +160,20 @@ describe('engine task init', () => {
     assert.deepStrictEqual(implItem(dir), expected);
   });
 
+  it('resume returns a bounded gate to gated — the session is the outer bound of both auto modes', () => {
+    const phases = planPhases();
+    const item = inFlightItem();
+    item.task_gate_mode = 'bounded';
+    item.fix_gate_mode = 'bounded';
+    phases.implementation = { items: { 'auth-flow': item } };
+    createManifest(dir, 'auth', { phases });
+
+    const res = engine(dir, ['init', 'auth', 'auth-flow']);
+    assert.deepStrictEqual(res.gates, GATED_GATES);
+    assert.strictEqual(implItem(dir).task_gate_mode, 'gated');
+    assert.strictEqual(implItem(dir).fix_gate_mode, 'gated');
+  });
+
   it('preserves fix_attempts on resume when current_task has a live tracking file — gates still reset', () => {
     // A crash-resume mid-task: the counter and tracking file are the task's
     // convergence history and survive the session reset in lockstep.
@@ -353,6 +367,13 @@ describe('engine task complete', () => {
   });
   afterEach(() => { cleanupFixture(dir); });
 
+  /** Seed gate modes on the fixture's item. @param {Record<string, string>} gates */
+  function seedGateModes(gates) {
+    const m = readManifest(dir);
+    Object.assign(m.phases.implementation.items['auth-flow'], gates);
+    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+  }
+
   it('records a completed task by internal id: push, current_phase, current_task', () => {
     const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--phase', '1', '--next-task', 'auth-flow-1-2']);
     assert.deepStrictEqual(res, {
@@ -439,13 +460,6 @@ describe('engine task complete', () => {
     assert.strictEqual(res.recorded.current_task, 'auth-flow-2-1');
     assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
   });
-
-  /** Seed the four gate modes on the fixture's item. @param {Record<string, string>} gates */
-  function seedGateModes(gates) {
-    const m = readManifest(dir);
-    Object.assign(m.phases.implementation.items['auth-flow'], gates);
-    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
-  }
 
   it('--phase-complete returns the phase-bounded gates holding bounded to gated, naming them — auto and the other gates stand', () => {
     // bounded is auto to the end of the plan phase; the phase record is the
@@ -797,10 +811,9 @@ describe('engine render task surfaces', () => {
       '**`◆ Approve this task?`**',
       '',
       '**`y/yes`**       → Commit and continue to next task',
-      '**`a/auto`**      → Auto-approve every remaining task (full: the rest',
-      `${NB(14)}of this session)`,
-      '**`b/bounded`**   → Auto-approve to the end of this phase, then gate',
-      `${NB(14)}again`,
+      '**`a/auto`**      → Approve this and all remaining tasks automatically',
+      '**`b/bounded`**   → Approve this and the remaining tasks in this phase',
+      `${NB(14)}automatically`,
       "**`t/technical`** → Retell the result from the code's perspective",
       '**`s/show`**      → Show the result as diagrams',
       "**Ask**         → Ask questions about the implementation (doesn't",
@@ -810,20 +823,20 @@ describe('engine render task surfaces', () => {
     ].join('\n');
   }
 
-  /** @param {{auto?: boolean}} [opts]  `auto`: the gate holds an auto mode — both opt-ins omitted */
-  function fixGateMenu({ auto = false } = {}) {
+  /** @param {{optIns?: boolean}} [opts]  `optIns: false`: the gate holds an auto mode, so neither opt-in renders */
+  function fixGateMenu({ optIns = true } = {}) {
     return [
       `=== MENU: fix gate (${MENU_INSTRUCTION}) ===`,
       '· · · · · · · · · · · ·',
       "**`◆ Accept the reviewer's fix analysis?`**",
       '',
       '**`y/yes`**       → Pass to executor',
-      ...(auto ? [] : [
-        '**`a/auto`**      → Auto-accept every remaining fix analysis (full: the',
-        `${NB(14)}rest of this session)`,
-        '**`b/bounded`**   → Auto-accept to the end of this phase, then gate',
-        `${NB(14)}again`,
-      ]),
+      ...(optIns ? [
+        '**`a/auto`**      → Accept this and all remaining fix analyses',
+        `${NB(14)}automatically`,
+        '**`b/bounded`**   → Accept this and the remaining fix analyses in this',
+        `${NB(14)}phase automatically`,
+      ] : []),
       "**`t/technical`** → Retell the review from the code's perspective",
       '**`s/show`**      → Show the findings as diagrams',
       "**Ask**         → Ask questions about the review (doesn't accept or",
@@ -912,7 +925,7 @@ describe('engine render task surfaces', () => {
       cleanupFixture(dir);
       dir = setupFixture();
       seedGates(mode, 3);
-      assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu({ auto: true }), mode);
+      assert.strictEqual(render(['fix-gate', 'auth.implementation.auth-flow']), fixGateMenu({ optIns: false }), mode);
     }
   });
 
