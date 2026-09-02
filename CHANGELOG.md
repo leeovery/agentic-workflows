@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.29] - 2026-09-02
+
+✨ Added
+- The epic menu's `d`/`r` free-text doors now refuse a topic name already on the map, telling you where it currently stands instead of letting you accidentally start a duplicate.
+
+🔧 Changed
+- The specification soft-gate warning no longer nags about in-progress research when moving toward discussion — only in-progress discussions are flagged ahead of specification.
+- Starting research or discussion on an epic topic now goes through the discovery map's own routing, so the phase you land in always matches what the map says is next.
+
 ## [0.7.28] - 2026-09-02
 
 ✨ Added
