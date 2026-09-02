@@ -724,6 +724,10 @@ describe('pipeline simulation', () => {
 
     // Alpha: research then discussion; regenerated-brief reconcile flag rides.
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
+    // Research in flight is no concern of a discussion entry — the soft gate
+    // is empty for every discussion action while alpha's research runs.
+    sim.render(['epic-soft-gate', wu, '--action', 'start_discussion', '--topic', 'beta'], { expect: 'empty' });
+    sim.render(['epic-soft-gate', wu, '--action', 'new_discussion'], { expect: 'empty' });
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);

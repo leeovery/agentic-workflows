@@ -253,16 +253,12 @@ function heldSessions(presence) {
 
 /** First-matching recommendation for the no-map dashboard, or null. @param {EpicDetail} detail */
 function displayRecommendation(detail) {
-  const research = detail.phases.research || [];
   const discussion = detail.phases.discussion || [];
   const spec = detail.phases.specification || [];
   const plan = detail.phases.planning || [];
 
   const inProgressPhases = new Set(detail.in_progress.map((i) => i.phase));
   if (inProgressPhases.size > 1) return null;
-  if (research.some((i) => i.status === 'in-progress') && research.some((i) => i.status === 'completed')) {
-    return 'Consider completing remaining research before starting discussion. Topic analysis works best with all research available.';
-  }
   if (discussion.some((i) => i.status === 'in-progress') && discussion.some((i) => i.status === 'completed')) {
     return 'Conclude the remaining discussions to unlock specification — the grouping analysis reads the settled record.';
   }
