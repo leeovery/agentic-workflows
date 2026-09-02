@@ -99,7 +99,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {boolean} triage_parked  a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
- * @property {string[]} awaiting_experiments  live evidence-wait ids across the topic's research and discussion items (empty when none)
+ * @property {import('./derivations.cjs').Wait[]} waits  the live waits of the topic's in-progress research and discussion items (empty when none)
  * @property {string|null} next_action
  */
 

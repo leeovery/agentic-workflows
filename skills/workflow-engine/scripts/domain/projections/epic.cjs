@@ -12,6 +12,7 @@
 
 const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
+const { OUTSTANDING_RESEARCH_STATUSES } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
 const { fmtAge, CODE_PHASES } = require('../presence.cjs');
@@ -120,7 +121,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false, row.awaiting_experiments);
+  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false, row.waits);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
@@ -493,6 +494,33 @@ function startVerbLabel(n, srcFlagged) {
   return `Start ${phase} for "${t}" — *${n.label}*${cue}`;
 }
 
+/** @param {string} workUnit @param {MapRow} row @param {string} action @returns {MenuKey} */
+function discoveryEntry(workUnit, row, action) {
+  return {
+    key: '',
+    action,
+    topic: row.name,
+    route: topicRoute(action, workUnit, row.name),
+    label: discoveryEntryLabel(action, row.name, row.research_state ?? null, row.triage_parked ?? false),
+  };
+}
+
+// Research still outstanding beneath a topic whose own entry is not a
+// research action — a discussing or decided topic, or a discussion-routed
+// fresh one holding a parked stub — gets its own row directly above the
+// topic's: research feeds discussion, so it is the way in first. A closed
+// lifecycle carries nothing.
+const CLOSED_LIFECYCLES = ['cancelled', 'handled'];
+const RESEARCH_ACTIONS = ['start_research', 'continue_research'];
+
+/** @param {string} workUnit @param {MapRow} row @returns {MenuKey|null} */
+function researchEntry(workUnit, row) {
+  if (CLOSED_LIFECYCLES.includes(row.lifecycle)) return null;
+  if (!OUTSTANDING_RESEARCH_STATUSES.includes(row.research_state ?? '')) return null;
+  if (row.next_action && RESEARCH_ACTIONS.includes(row.next_action)) return null;
+  return discoveryEntry(workUnit, row, row.research_state === 'triaged' ? 'start_research' : 'continue_research');
+}
+
 /**
  * One entry per topic whose series holds a live top-level record — appearing
  * at the first spawn, retiring when no live record remains. Entry is
@@ -663,15 +691,20 @@ function pickRecommendation(detail, numbered, options, hasMap) {
   if (experiment) return experiment;
 
   if (hasMap) {
-    if (detail.convergence_state === 'in-progress') {
-      // Top of the actionable map — the first discovery entry mirrors the
-      // first map row with a non-null next_action. Decided rows lead the map
-      // but carry no action, so the actionable order is → then ◐ then ○.
-      // A topic another session holds open is never the recommendation.
-      const discoveryActions = ['start_research', 'start_discussion', 'continue_research', 'continue_discussion', 'start_discussion_after_research'];
-      return numbered.find((e) => discoveryActions.includes(e.action) && !e.in_session) || null;
-    }
-    // settled — first build-phase next_phase_ready entry in pipeline order.
+    // Top of the actionable map — the first discovery entry mirrors the
+    // first map row with a non-null next_action, led by its research row
+    // when one stands above it. Decided rows lead the map but carry no
+    // action, so the actionable order is → then ◐ then ○. A topic another
+    // session holds open is never the recommendation.
+    const discoveryActions = ['start_research', 'start_discussion', 'continue_research', 'continue_discussion', 'start_discussion_after_research'];
+    const discovery = numbered.find((e) => discoveryActions.includes(e.action) && !e.in_session) || null;
+    if (detail.convergence_state === 'in-progress') return discovery;
+    // settled — a settled map's one discovery row is research outstanding
+    // beneath a decided topic, and it leads: the first step of a reconcile
+    // (the flagged discussion it feeds sources a spec), where a build start
+    // elsewhere on the map would propagate known-stale input one hop removed.
+    if (discovery) return discovery;
+    // Then the first build-phase next_phase_ready entry in pipeline order.
     // An input-moved entry is never the recommendation: recommending a start
     // that propagates known-stale input contradicts its own cue — the
     // reconcile (via the flagged item's entry flow) comes first. Nor is an
@@ -771,16 +804,12 @@ function epicMenu(workUnit, detail, opts = {}) {
 
   if (hasMap) {
     // Discovery topics — one entry per map row with a non-null next_action
-    // (✓/⊙/⊘ rows have none), in map order.
+    // (✓/⊙/⊘ rows have none), in map order, each led by the row's research
+    // entry when research is outstanding beneath it.
     for (const row of detail.discovery_map) {
-      if (!row.next_action) continue;
-      numbered.push({
-        key: '',
-        action: row.next_action,
-        topic: row.name,
-        route: topicRoute(row.next_action, workUnit, row.name),
-        label: discoveryEntryLabel(row.next_action, row.name, row.research_state ?? null, row.triage_parked ?? false),
-      });
+      const research = researchEntry(workUnit, row);
+      if (research) numbered.push(research);
+      if (row.next_action) numbered.push(discoveryEntry(workUnit, row, row.next_action));
     }
     // Build-phase entries by pipeline position — continues, then gated starts.
     for (const phase of BUILD_PHASES) {

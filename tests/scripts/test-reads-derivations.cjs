@@ -16,7 +16,7 @@ const {
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
-  awaitedExperiments, experimentWaits,
+  awaitedExperiments, experimentWaits, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES,
   TIER_RANK,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
@@ -1492,7 +1492,68 @@ describe('reads + derivations', () => {
         },
       };
       const row = buildDiscoveryMap(m).map.find((t) => t.name === 'timing');
-      assert.deepStrictEqual(row.awaiting_experiments, ['E2', 'E1'], 'spawn-phase order, both holders');
+      assert.deepStrictEqual(row.waits, [
+        { kind: 'experiment', id: 'E2' },
+        { kind: 'research', status: 'in-progress' },
+        { kind: 'experiment', id: 'E1' },
+      ], 'spawn-phase order, each holder\'s waits in the derivation\'s order');
+    });
+  });
+
+  describe('waits — every kind that holds a conclusion shut', () => {
+    const world = (research, discussion) => ({
+      name: 'lab', work_type: 'epic',
+      phases: {
+        ...(research ? { research: { items: { pay: research } } } : {}),
+        ...(discussion ? { discussion: { items: { pay: discussion } } } : {}),
+      },
+    });
+
+    it('a discussion waits on its same-named research while it is in-progress or triaged', () => {
+      assert.deepStrictEqual(OUTSTANDING_RESEARCH_STATUSES, ['in-progress', 'triaged']);
+      assert.deepStrictEqual(waits(world({ status: 'in-progress' }, { status: 'in-progress' }), 'discussion', 'pay'),
+        [{ kind: 'research', status: 'in-progress' }]);
+      assert.deepStrictEqual(waits(world({ status: 'triaged' }, { status: 'in-progress' }), 'discussion', 'pay'),
+        [{ kind: 'research', status: 'triaged' }]);
+    });
+
+    it('landed, cancelled, superseded, or absent research holds nothing', () => {
+      for (const status of ['completed', 'cancelled', 'superseded']) {
+        assert.deepStrictEqual(waits(world({ status }, { status: 'in-progress' }), 'discussion', 'pay'), [], status);
+      }
+      assert.deepStrictEqual(waits(world(undefined, { status: 'in-progress' }), 'discussion', 'pay'), []);
+    });
+
+    it('experiment waits ride one descriptor per awaited id, after the research wait', () => {
+      const m = world({ status: 'in-progress' }, { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] });
+      assert.deepStrictEqual(waits(m, 'discussion', 'pay'), [
+        { kind: 'research', status: 'in-progress' },
+        { kind: 'experiment', id: 'E1' },
+        { kind: 'experiment', id: 'E2' },
+      ]);
+      delete m.phases.research;
+      assert.deepStrictEqual(waits(m, 'discussion', 'pay'), [{ kind: 'experiment', id: 'E1' }, { kind: 'experiment', id: 'E2' }]);
+    });
+
+    it('research waits on experiments alone, an absent item holds nothing, and no other phase waits', () => {
+      const m = world({ status: 'in-progress', awaiting_experiments: ['E3'] }, { status: 'in-progress' });
+      assert.deepStrictEqual(waits(m, 'research', 'pay'), [{ kind: 'experiment', id: 'E3' }]);
+      assert.deepStrictEqual(waits(world({ status: 'in-progress' }, undefined), 'discussion', 'pay'), [],
+        'no discussion item — nothing to hold shut');
+      assert.deepStrictEqual(waits(m, 'specification', 'pay'), []);
+    });
+
+    it('is work-type agnostic — a feature\'s discussion waits on its research the same way', () => {
+      const m = { ...world({ status: 'in-progress' }, { status: 'in-progress' }), work_type: 'feature' };
+      assert.deepStrictEqual(waits(m, 'discussion', 'pay'), [{ kind: 'research', status: 'in-progress' }]);
+    });
+
+    it('topicWaits joins the in-progress holders alone — a completed discussion\'s outstanding research is its flag\'s business', () => {
+      assert.deepStrictEqual(topicWaits(world({ status: 'triaged' }, { status: 'in-progress' }), 'pay'),
+        [{ kind: 'research', status: 'triaged' }]);
+      assert.deepStrictEqual(topicWaits(world({ status: 'triaged' }, { status: 'completed', reconcile_needed: 'research' }), 'pay'), []);
+      assert.deepStrictEqual(topicWaits(world({ status: 'in-progress', awaiting_experiments: ['E1'] }, { status: 'cancelled' }), 'pay'),
+        [{ kind: 'experiment', id: 'E1' }]);
     });
   });
 
