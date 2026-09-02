@@ -39,10 +39,11 @@ const {
   roadmapConcludeGate,
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
-const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate, experimentWaitGate } = require('./projections/experiment.cjs');
+const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
+const { waitGate } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments, waits } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -2644,17 +2645,17 @@ function experimentNextGateSurface(cwd, { dotpath }) {
 }
 
 /**
- * Resolve a spawn-side address — the spawning research or discussion item —
- * to its live evidence-wait ids. Loud when the phase is not a spawn phase.
+ * Resolve a conversation address — a research or discussion item, the two
+ * phases that spawn experiments and hold waits. Loud on any other phase.
  * @param {string} cwd @param {string} dotpath @param {string} surface
- * @returns {{phase: string, topic: string, awaiting: string[]}}
+ * @returns {{phase: string, topic: string, manifest: object}}
  */
-function resolveSpawnSide(cwd, dotpath, surface) {
+function resolveConversation(cwd, dotpath, surface) {
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
   if (!EXPERIMENT_SPAWN_PHASES.includes(phase)) {
-    throw new Error(`render ${surface}: address must be <work_unit>.<${EXPERIMENT_SPAWN_PHASES.join('|')}>.<topic> — the spawning conversation's own item; got phase "${phase}"`);
+    throw new Error(`render ${surface}: address must be <work_unit>.<${EXPERIMENT_SPAWN_PHASES.join('|')}>.<topic> — the conversation's own item; got phase "${phase}"`);
   }
-  return { phase, topic, awaiting: awaitedExperiments(manifest, phase, topic) };
+  return { phase, topic, manifest };
 }
 
 /**
@@ -2665,28 +2666,43 @@ function resolveSpawnSide(cwd, dotpath, surface) {
  * @returns {string}
  */
 function experimentSpawnGateSurface(cwd, { dotpath, id }) {
-  const { phase, topic, awaiting } = resolveSpawnSide(cwd, dotpath, 'experiment-spawn-gate');
+  const { phase, topic, manifest } = resolveConversation(cwd, dotpath, 'experiment-spawn-gate');
   if (!isFilled(id)) throw new Error('render experiment-spawn-gate: --id is required (E1, E2, …)');
-  if (!awaiting.includes(/** @type {string} */ (id))) {
+  if (!awaitedExperiments(manifest, phase, topic).includes(/** @type {string} */ (id))) {
     throw new Error(`render experiment-spawn-gate: ${phase} "${topic}" holds no evidence wait on ${id} — the gate follows the recorded spawn (experiment create)`);
   }
   return experimentSpawnGate(phase, /** @type {string} */ (id));
 }
 
 /**
- * The blocked-conclusion gate — refuses when the item holds no live wait:
- * with nothing owed, nothing blocks conclusion and the calling flow's check
- * should have passed it straight through.
+ * The blocked-conclusion gate over every wait the item holds — the research
+ * a discussion stands on, the experiments a conversation spawned. Empty
+ * when nothing is owed: the calling flow branches on the response, so one
+ * fetch stands in for the read-then-render pair.
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string} the gate's sections, or '' when nothing blocks conclusion
+ */
+function waitGateSurface(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveConversation(cwd, dotpath, 'wait-gate');
+  const blocking = waits(manifest, phase, topic);
+  return blocking.length === 0 ? '' : waitGate(phase, topic, blocking);
+}
+
+/**
+ * The wait gate under its former name, refusing an unblocked item the way
+ * its two prose call sites still expect — retired once they fetch wait-gate.
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
  */
 function experimentWaitGateSurface(cwd, { dotpath }) {
-  const { phase, topic, awaiting } = resolveSpawnSide(cwd, dotpath, 'experiment-wait-gate');
-  if (awaiting.length === 0) {
+  const { phase, topic, manifest } = resolveConversation(cwd, dotpath, 'experiment-wait-gate');
+  const blocking = waits(manifest, phase, topic);
+  if (blocking.length === 0) {
     throw new Error(`render experiment-wait-gate: ${phase} "${topic}" holds no evidence wait — nothing blocks conclusion`);
   }
-  return experimentWaitGate(phase, awaiting);
+  return waitGate(phase, topic, blocking);
 }
 
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
@@ -3721,10 +3737,9 @@ function blocker(fact, guidance) {
 // ---------------------------------------------------------------------------
 // direct-entry-gate — the epic menu's d/r doors take a free-typed topic name.
 // A name already on the map is not a new topic: the menu row is the way in,
-// so the door refuses, naming where the topic stands. Empty when the name is
-// new, or the work unit carries no map. The one pass-through is a parked
-// research stub — research is downstream of nothing, and a discussing
-// topic's parked research has no menu row, so the r door is its drain.
+// so the door refuses, naming where the topic stands — a parked research
+// stub included, whose row the menu carries above the topic's own. Empty
+// when the name is new, or the work unit carries no map.
 // ---------------------------------------------------------------------------
 
 /**
@@ -3740,8 +3755,6 @@ function directEntryGate(cwd, { dotpath }) {
   if (manifest.work_type !== 'epic') return '';
   const item = phaseItems(manifest, 'discovery').find((i) => i.name === topic);
   if (!item) return '';
-  const own = itemOf(manifest, phase, topic);
-  if (phase === 'research' && own && own.status === 'triaged') return '';
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
   return blocker(
     `"${titlecase(topic)}" is already on the map — ${lifecyclePhrase(lifecycle, research_state, item.routing)}`,
@@ -4739,6 +4752,7 @@ const SURFACES = {
   'experiment-next-gate': experimentNextGateSurface,
   'experiment-spawn-gate': experimentSpawnGateSurface,
   'experiment-wait-gate': experimentWaitGateSurface,
+  'wait-gate': waitGateSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,

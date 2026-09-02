@@ -46,6 +46,12 @@ function phaseData(manifest, phase) {
   return (manifest.phases || {})[phase] || {};
 }
 
+/** @param {object} manifest @param {string} phase @param {string} topic @returns {Record<string, any>|undefined} */
+function itemOf(manifest, phase, topic) {
+  const item = (phaseData(manifest, phase).items || {})[topic];
+  return item && typeof item === 'object' ? item : undefined;
+}
+
 /**
  * One item's live evidence-wait ids (`awaiting_experiments` — the
  * engine-owned lock a spawn places on the spawning phase's own item) — empty
@@ -54,10 +60,53 @@ function phaseData(manifest, phase) {
  * @returns {string[]}
  */
 function awaitedExperiments(manifest, phase, topic) {
-  const item = (phaseData(manifest, phase).items || {})[topic];
-  return item && typeof item === 'object' && Array.isArray(item.awaiting_experiments)
-    ? item.awaiting_experiments
-    : [];
+  const item = itemOf(manifest, phase, topic);
+  return item && Array.isArray(item.awaiting_experiments) ? item.awaiting_experiments : [];
+}
+
+/**
+ * @typedef {{kind: 'research', status: string} | {kind: 'experiment', id: string}} Wait
+ */
+
+// Research statuses that hold the same-named discussion's conclusion shut —
+// in flight, or parked as a stub of concerns no session has drained.
+const OUTSTANDING_RESEARCH_STATUSES = ['in-progress', 'triaged'];
+
+/**
+ * Every wait holding one item's conclusion shut, in presentation order: a
+ * `research` wait when a discussion's same-named research is still
+ * outstanding (research feeds discussion), then one `experiment` wait per
+ * live awaited id. Derived from the items' statuses alone — never stored —
+ * and work-type agnostic; an absent item holds nothing.
+ * @param {object} manifest @param {string} phase @param {string} topic
+ * @returns {Wait[]}
+ */
+function waits(manifest, phase, topic) {
+  /** @type {Wait[]} */
+  const out = [];
+  if (!itemOf(manifest, phase, topic)) return out;
+  const research = phase === 'discussion' ? itemOf(manifest, 'research', topic) : undefined;
+  if (research && OUTSTANDING_RESEARCH_STATUSES.includes(research.status)) {
+    out.push({ kind: 'research', status: research.status });
+  }
+  for (const id of awaitedExperiments(manifest, phase, topic)) out.push({ kind: 'experiment', id });
+  return out;
+}
+
+/**
+ * The topic's live waits across its research and discussion items — every
+ * wait an in-progress holder is blocked on, spawn-phase order. Only an
+ * in-progress holder is trying to conclude: a completed discussion's
+ * outstanding research is its reconcile flag's business, and a parked or
+ * terminal holder waits on nothing.
+ * @param {object} manifest @param {string} topic
+ * @returns {Wait[]}
+ */
+function topicWaits(manifest, topic) {
+  return EXPERIMENT_SPAWN_PHASES.flatMap((phase) => {
+    const item = itemOf(manifest, phase, topic);
+    return item && item.status === 'in-progress' ? waits(manifest, phase, topic) : [];
+  });
 }
 
 /**
@@ -70,8 +119,8 @@ function awaitedExperiments(manifest, phase, topic) {
 function experimentWaits(manifest, topic) {
   const holders = [];
   for (const phase of EXPERIMENT_SPAWN_PHASES) {
-    const item = (phaseData(manifest, phase).items || {})[topic];
-    if (!item || typeof item !== 'object' || TERMINAL_STATUSES.includes(item.status)) continue;
+    const item = itemOf(manifest, phase, topic);
+    if (!item || TERMINAL_STATUSES.includes(item.status)) continue;
     const ids = awaitedExperiments(manifest, phase, topic);
     if (ids.length > 0) holders.push({ phase, ids });
   }
@@ -540,7 +589,7 @@ function computeSourceProvenance(source) {
  * @property {string|null} research_state
  * @property {boolean} triage_parked       a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {boolean} reconcile_pending   a phase item beneath the row carries a live reconcile flag
- * @property {string[]} awaiting_experiments  live evidence-wait ids across the topic's research and discussion items (empty when none)
+ * @property {Wait[]} waits               the live waits of the topic's in-progress research and discussion items (empty when none)
  * @property {string|null} next_action
  */
 
@@ -581,7 +630,7 @@ function buildDiscoveryMap(manifest) {
       research_state,
       triage_parked,
       reconcile_pending,
-      awaiting_experiments: experimentWaits(manifest, item.name).flatMap((h) => h.ids),
+      waits: topicWaits(manifest, item.name),
       next_action: computeNextAction(item.routing, lifecycle),
     };
   });
@@ -595,6 +644,9 @@ module.exports = {
   phaseStatus,
   awaitedExperiments,
   experimentWaits,
+  waits,
+  topicWaits,
+  OUTSTANDING_RESEARCH_STATUSES,
   settleItemStatus,
   computeNextPhase,
   computeInProgressPhases,

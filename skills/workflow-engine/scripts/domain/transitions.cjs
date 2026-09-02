@@ -27,7 +27,7 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { phaseItems, computeTopicLifecycle, computeNextAction, lifecyclePhrase, awaitedExperiments, experimentWaits, settleItemStatus } = require('./derivations.cjs');
+const { phaseItems, computeTopicLifecycle, computeNextAction, lifecyclePhrase, awaitedExperiments, experimentWaits, waits, settleItemStatus } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
 
@@ -126,8 +126,8 @@ function phaseItem(manifest, phase, topic) {
 // the same join the epic menu renders its rows from, so the engine is never
 // the permissive path around it. The gate is on birth alone: an in-progress
 // item resumes regardless (the map already shows that phase live), and a
-// parked research stub always drains — research is downstream of nothing,
-// and a discussing topic's parked research has no menu row to drain it.
+// parked research stub starts from the research row the menu carries above
+// the topic's own — research feeds discussion, so it is the way in first.
 const MAP_PHASE_ACTIONS = {
   research: ['start_research', 'continue_research'],
   discussion: ['start_discussion', 'start_discussion_after_research', 'continue_discussion'],
@@ -210,7 +210,7 @@ function startTopic(cwd, workUnit, phase, topic) {
  * @property {string|null} status_before  the item's status before the call (null when created)
  * @property {boolean} [reopened]  set when a completed item was reopened to receive the concern
  * @property {string} [concern_path]  delivery form: the installed concern file, project-relative
- * @property {boolean} [reconcile_flagged]  delivery form: the landing flagged completed downstream item(s) for reconciliation
+ * @property {boolean} [reconcile_flagged]  delivery form: the landing flagged downstream item(s) for reconciliation
  * @property {string[]} [sources_staled]  delivery form: spec items whose source row for this discussion flipped `incorporated` → `stale`
  * @property {string|null} [committed]  delivery form: short commit sha, or null
  * @property {string} [note]       delivery form: set when committed is null
@@ -278,7 +278,7 @@ function sourceRow(sources, topic) {
 
 /**
  * @typedef {object} DownstreamFlagResult
- * @property {{phase: string, topic: string}[]} flagged  completed downstream items now carrying `reconcile_needed`
+ * @property {{phase: string, topic: string}[]} flagged  downstream items now carrying `reconcile_needed`
  * @property {string[]} staled  spec items whose `sources.{topic}` row flipped `incorporated` → `stale`
  */
 
@@ -294,9 +294,13 @@ function sourceRow(sources, topic) {
  * legacy bugfix shape). The experiment slot is walked past unconditionally —
  * a flag must land where an entry flow can clear it, and the series item
  * has none.
- * Only a `completed` item takes the flag (value = the upstream phase name,
+ * A `completed` item takes the flag (value = the upstream phase name,
  * consumed and cleared by the entry skills' reconcile advisory; an existing
- * flag is never clobbered). An `incorporated` source row on any non-terminal
+ * flag is never clobbered) — and on the hop out of research so does an
+ * in-progress discussion: research feeds discussion, and a discussion in
+ * flight is the one that could otherwise conclude over research still to
+ * land (the wait derivation holds its conclusion shut; the flag says why).
+ * Terminal items never take one. An `incorporated` source row on any non-terminal
  * spec item flips to `stale` regardless of the item's flag state — the
  * persistent record that the extraction predates the revision, cleared only
  * by the spec's own reconciliation.
@@ -317,8 +321,9 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
     const items = ph && typeof ph === 'object' ? ph.items : undefined;
     return items && typeof items === 'object' ? items : undefined;
   };
+  const takesFlag = phase === 'research' ? ['in-progress', 'completed'] : ['completed'];
   const flag = (p, name, item) => {
-    if (item && typeof item === 'object' && item.status === 'completed' && item.reconcile_needed === undefined) {
+    if (item && typeof item === 'object' && takesFlag.includes(item.status) && item.reconcile_needed === undefined) {
       item.reconcile_needed = phase;
       result.flagged.push({ phase: p, topic: name });
     }
@@ -826,10 +831,29 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
 }
 
 /**
+ * The completion refusal's clauses — one per wait kind present, in the
+ * derivation's order.
+ * @param {import('./derivations.cjs').Wait[]} blocking
+ * @returns {string[]}
+ */
+function waitClauses(blocking) {
+  const clauses = [];
+  if (blocking.some((w) => w.kind === 'research')) {
+    clauses.push('awaits research on the topic — conclude once it lands, or cancel the research to release the wait');
+  }
+  const ids = blocking.flatMap((w) => (w.kind === 'experiment' ? [w.id] : []));
+  if (ids.length > 0) {
+    clauses.push(`awaits experiment evidence (${ids.join(', ')}) — the wait releases when the experiment concludes or is abandoned`);
+  }
+  return clauses;
+}
+
+/**
  * Complete a phase item: set `status: completed` and, when the phase's
  * artifact is knowledge-base indexed, index it (warn-don't-block). The item
- * must exist; a cancelled item must go through reactivate first. No git
- * commit.
+ * must exist; a cancelled item must go through reactivate first; an item
+ * holding a live wait — evidence it awaits, or a discussion's outstanding
+ * research — refuses naming every wait. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -864,13 +888,11 @@ function completeTopic(cwd, workUnit, phase, topic) {
         throw new Error(`specification "${topic}" has unresolved source rows (${blocking.join(', ')}) — extract pending sources and reconcile stale ones before concluding`);
       }
     }
-    if (EXPERIMENT_SPAWN_PHASES.includes(phase)) {
-      // The evidence wait holds the conclusion shut engine-side — the phase
-      // raised a question it needs answered before it can honestly conclude.
-      const awaiting = awaitedExperiments(manifest, phase, topic);
-      if (awaiting.length > 0) {
-        throw new Error(`${phase} "${topic}" awaits experiment evidence (${awaiting.join(', ')}) — the wait releases when the experiment concludes or is abandoned`);
-      }
+    // A wait holds the conclusion shut engine-side — the phase raised a
+    // question it needs answered, or stands on research still to land.
+    const blocking = waits(manifest, phase, topic);
+    if (blocking.length > 0) {
+      throw new Error(`${phase} "${topic}" ${waitClauses(blocking).join('; and ')}`);
     }
     item.status = 'completed';
 

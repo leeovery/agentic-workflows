@@ -55,7 +55,7 @@ What topic would you like to research?
 
 Kebab-case the response, store as `{topic}`. `resolved_filename = {topic}.md`.
 
-A name already on the map is not a new topic — the menu row is the way in; a parked research stub passes, this door being its drain. Fetch the gate:
+A name already on the map is not a new topic — the menu row is the way in. Fetch the gate:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render direct-entry-gate {work_unit}.research.{topic}

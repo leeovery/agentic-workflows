@@ -1297,3 +1297,112 @@ describe('epic projections: the topic-grain experiment entry', () => {
     assert.strictEqual(entry.recommended, undefined, 'a struck row is never the recommendation');
   });
 });
+
+describe('epic projections: the research row above the topic\'s own entry', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function billing(research, discussion, { routing = 'discussion', handled } = {}) {
+    return detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { billing: { routing, source: 'discovery', order: 1, ...(handled ? { handled: true } : {}) } } },
+        ...(research ? { research: { items: { billing: research } } } : {}),
+        ...(discussion ? { discussion: { items: { billing: discussion } } } : {}),
+      },
+    });
+  }
+  const numbered = (d) => epicMenu('v1', d).keys.filter((k) => /^\d+$/.test(k.key)).map((k) => [k.key, k.action, k.topic]);
+
+  it('a discussing topic with research in flight: continue research leads, recommended, its discussion row beneath', () => {
+    const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
+    const { keys, rendered } = epicMenu('v1', d);
+    assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing'], ['2', 'continue_discussion', 'billing']]);
+    assert.strictEqual(keys[0].route, '/workflow-research-entry epic v1 billing');
+    assert.strictEqual(keys[0].recommended, true, 'the research row is first when its topic is first');
+    assert.strictEqual(rendered, [
+      '· · · · · · · · · · · ·',
+      '**`◆ What would you like to do?`**',
+      '',
+      '**`1`**           → Continue "Billing" — *research* (recommended)',
+      '**`2`**           → Continue "Billing" — *discussion*',
+      '**`d/discuss`**   → Start a discussion on a new topic',
+      '**`r/research`**  → Start research on a new topic',
+      '**`i/discovery`** → Continue discovery',
+      '**`a/cancel`**    → Cancel a topic (phase work)',
+    ].join('\n'));
+  });
+
+  it('a discussing topic with a parked stub: start research with the triage tail leads', () => {
+    const d = billing({ status: 'triaged' }, { status: 'in-progress' });
+    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing'], ['2', 'continue_discussion', 'billing']]);
+    assert.strictEqual(epicMenu('v1', d).keys[0].label, 'Start research for "Billing" — *triage waiting*');
+  });
+
+  it('a decided topic with a parked stub: the research row stands alone', () => {
+    const d = billing({ status: 'triaged' }, { status: 'completed', reconcile_needed: 'research' });
+    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing']]);
+    assert.strictEqual(epicMenu('v1', d).keys[0].recommended, true);
+  });
+
+  it('a settled map: research outstanding beneath a decided topic leads, ahead of a build start elsewhere', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { billing: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        research: { items: { billing: { status: 'triaged' } } },
+        discussion: { items: { billing: { status: 'completed', reconcile_needed: 'research' } } },
+        specification: { items: { 'billing-grouping': { status: 'proposed', sources: { billing: { status: 'pending' } } } } },
+      },
+    });
+    assert.strictEqual(d.convergence_state, 'settled');
+    const { keys } = epicMenu('v1', d);
+    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing'], ['2', 'start_specification', 'billing-grouping']]);
+    assert.strictEqual(keys[0].recommended, true, 'the research row is the reconcile\'s first step');
+    assert.notStrictEqual(keys[1].recommended, true, 'a build start would propagate the stale decision one hop removed');
+  });
+
+  it('a discussion-routed fresh topic with a parked stub: research above the discussion start', () => {
+    const d = billing({ status: 'triaged' }, undefined);
+    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing'], ['2', 'start_discussion', 'billing']]);
+  });
+
+  it('no second row when the topic\'s own entry is the research', () => {
+    assert.deepStrictEqual(numbered(billing({ status: 'in-progress' }, undefined, { routing: 'research' })), [['1', 'continue_research', 'billing']]);
+    assert.deepStrictEqual(numbered(billing({ status: 'triaged' }, undefined, { routing: 'research' })), [['1', 'start_research', 'billing']]);
+    // Research reopened beneath a decided discussion reads researching — its own entry is the research row.
+    assert.deepStrictEqual(numbered(billing({ status: 'in-progress' }, { status: 'completed', reconcile_needed: 'research' })), [['1', 'continue_research', 'billing']]);
+  });
+
+  it('landed research carries no row; a closed lifecycle carries nothing', () => {
+    assert.deepStrictEqual(numbered(billing({ status: 'completed' }, { status: 'in-progress' })), [['1', 'continue_discussion', 'billing']]);
+    assert.deepStrictEqual(numbered(billing({ status: 'superseded', superseded_by: 'other' }, { status: 'in-progress' })), [['1', 'continue_discussion', 'billing']]);
+    assert.deepStrictEqual(numbered(billing({ status: 'triaged' }, { status: 'completed' }, { handled: true })), []);
+    assert.deepStrictEqual(numbered(billing({ status: 'cancelled', previous_status: 'in-progress' }, { status: 'cancelled', previous_status: 'in-progress' })), []);
+  });
+
+  it('a held research session strikes the research row per phase and hands the recommendation to the discussion row', () => {
+    const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
+    const { keys } = epicMenu('v1', d, {
+      presence: [{ phase: 'research', topic: 'billing', age_seconds: 30, held: true, live: true, session_id: 'peer', pid: null }],
+    });
+    assert.strictEqual(keys[0].action, 'continue_research');
+    assert.strictEqual(keys[0].in_session, true);
+    assert.strictEqual(keys[0].recommended, undefined);
+    assert.strictEqual(keys[1].action, 'continue_discussion');
+    assert.strictEqual(keys[1].in_session, undefined);
+    assert.strictEqual(keys[1].recommended, true);
+  });
+
+  it('the map row cues the waiting discussion — awaiting research, awaiting E1, or both', () => {
+    const cue = (d) => epicDashboard('v1', d).match(/↳ [^\n]*/)[0];
+    assert.strictEqual(cue(billing({ status: 'in-progress' }, { status: 'in-progress' })), '↳ Discussing · awaiting research');
+    assert.strictEqual(cue(billing({ status: 'triaged' }, { status: 'in-progress' })), '↳ Discussing · awaiting research · triage waiting');
+    assert.strictEqual(cue(billing({ status: 'in-progress' }, { status: 'in-progress', awaiting_experiments: ['E1'] })), '↳ Discussing · awaiting research · awaiting E1');
+    assert.strictEqual(cue(billing({ status: 'completed' }, { status: 'in-progress', awaiting_experiments: ['E1'] })), '↳ Discussing · awaiting E1');
+    assert.strictEqual(cue(billing({ status: 'in-progress' }, { status: 'in-progress', reconcile_needed: 'research' })), '↳ Discussing · awaiting research · input moved');
+    assert.strictEqual(cue(billing({ status: 'triaged' }, { status: 'completed', reconcile_needed: 'research' })), '↳ Decided · triage waiting · input moved',
+      'a completed discussion waits on nothing — its flag carries the outstanding research');
+  });
+});

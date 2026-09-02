@@ -489,17 +489,22 @@ describe('engine topic triage', () => {
     assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
   });
 
-  it('no reconcile flag for discussion-side deliveries or live discussions', () => {
+  it('no reconcile flag for a discussion-side delivery — its downstream is the spec join', () => {
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
     const disc = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model',
       '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'a-decision', '-m', 'm']);
     assert.strictEqual(disc.reconcile_flagged, undefined);
+  });
 
+  it('research-side delivery beneath a live discussion flags it — research feeds discussion', () => {
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
     const live = engine(dir, ['topic', 'triage', 'payments', 'research', 'refund-policy',
       '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'open-q', '-m', 'm']);
-    assert.strictEqual(live.reconcile_flagged, undefined, 'in-progress discussion is not flagged');
-    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].reconcile_needed, undefined);
+    assert.strictEqual(live.reconcile_flagged, true);
+    const m = readManifest(dir, 'payments');
+    assert.strictEqual(m.phases.discussion.items['refund-policy'].reconcile_needed, 'research');
+    assert.strictEqual(m.phases.discussion.items['refund-policy'].status, 'in-progress', 'the discussion stays in flight — the flag says why it cannot conclude');
+    assert.strictEqual(m.phases.research.items['refund-policy'].status, 'triaged', 'the research item parks the concern');
   });
 
   it('queue read: empty for a missing directory, lists delivered concerns sorted, refuses illegal phases', () => {
@@ -943,15 +948,27 @@ describe('engine topic reopen', () => {
     assert.strictEqual(after.phases.discussion.items['fee-model'].status, 'completed', 'the discussion itself is not reopened');
   });
 
-  it('does not flag an in-progress downstream — completed items only', () => {
+  it('flags an in-progress discussion too when research reopens — the one hop that reaches a live neighbour', () => {
     const m = epicManifest();
     m.phases.discussion.items['fee-model'] = { status: 'in-progress' };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
     const res = engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
 
+    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'discussion', topic: 'fee-model' }]);
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['fee-model'].reconcile_needed, 'research');
+  });
+
+  it('every other hop flags completed items only — a specification reopen leaves an in-progress plan alone', () => {
+    const m = epicManifest();
+    m.phases.specification = { items: { 'fee-model': { status: 'completed' } } };
+    m.phases.planning = { items: { 'fee-model': { status: 'in-progress' } } };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'specification', 'fee-model']);
+
     assert.strictEqual(res.reconcile_flagged, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['fee-model'].reconcile_needed, undefined);
+    assert.strictEqual(readManifest(dir, 'payments').phases.planning.items['fee-model'].reconcile_needed, undefined);
   });
 
   it('never clobbers an existing downstream flag', () => {
@@ -2078,7 +2095,7 @@ describe('engine topic start — the discovery map gates the birth of a phase it
     assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.epsilon.status, 'triaged');
   });
 
-  it('a parked research stub always drains — even beneath a live discussion', () => {
+  it('a parked research stub starts from its menu row — even beneath a live discussion', () => {
     const res = engine(dir, ['topic', 'start', 'mapped', 'research', 'gamma']);
     assert.strictEqual(res.status, 'in-progress');
     assert.strictEqual(res.created, false);
@@ -2110,5 +2127,61 @@ describe('engine topic start — the discovery map gates the birth of a phase it
     engine(dir, ['topic', 'cancel', 'mapped', 'research', 'zeta']);
     assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'research', 'zeta']).error, /is cancelled — reactivate it instead/);
     assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'research', 'delta']).error, /already completed — reopen it instead/);
+  });
+});
+
+describe('engine topic complete — every wait holds the conclusion shut', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** refund-policy's discussion is in-progress in the fixture; give it a research item and, optionally, waits of its own. */
+  function withResearch(status, discussion = {}) {
+    const m = epicManifest();
+    m.phases.research.items['refund-policy'] = { status };
+    Object.assign(m.phases.discussion.items['refund-policy'], discussion);
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+  }
+
+  it('a discussion refuses over in-progress research, naming the ways out', () => {
+    withResearch('in-progress');
+    const err = engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']);
+    assert.strictEqual(err.error, 'discussion "refund-policy" awaits research on the topic — conclude once it lands, or cancel the research to release the wait');
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].status, 'in-progress');
+  });
+
+  it('a parked research stub is the same wait', () => {
+    withResearch('triaged');
+    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).error,
+      /awaits research on the topic/);
+  });
+
+  it('both kinds present — both named, research first', () => {
+    withResearch('in-progress', { awaiting_experiments: ['E1'] });
+    const err = engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']);
+    assert.strictEqual(err.error, 'discussion "refund-policy" awaits research on the topic — conclude once it lands, or cancel the research to release the wait; and awaits experiment evidence (E1) — the wait releases when the experiment concludes or is abandoned');
+  });
+
+  it('the experiment-only wording stands', () => {
+    withResearch('completed', { awaiting_experiments: ['E1', 'E2'] });
+    const err = engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']);
+    assert.strictEqual(err.error, 'discussion "refund-policy" awaits experiment evidence (E1, E2) — the wait releases when the experiment concludes or is abandoned');
+  });
+
+  it('the research landing releases the wait', () => {
+    withResearch('in-progress');
+    engine(dir, ['topic', 'complete', 'payments', 'research', 'refund-policy']);
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).status, 'completed');
+  });
+
+  it('cancelling the research releases the wait', () => {
+    withResearch('triaged');
+    engine(dir, ['topic', 'cancel', 'payments', 'research', 'refund-policy']);
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).status, 'completed');
+  });
+
+  it('research waits on experiments alone — never on the discussion beside it', () => {
+    withResearch('in-progress');
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'research', 'refund-policy']).status, 'completed');
   });
 });
