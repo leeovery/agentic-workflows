@@ -3554,19 +3554,24 @@ function epicAllDoneGate(cwd, { dotpath }) {
 
 // ---------------------------------------------------------------------------
 // epic-soft-gate — the epic menu's advisory phase gates, one surface for the
-// whole table. Empty when the selection raises no concern. The discovery-side
-// rows count unfinished upstream items; the planning and implementation rows
-// read the build order and name the topics sitting ahead of the selection.
-// Advisory always: the menu offers proceed-anyway, never a refusal.
+// whole table. Empty when the selection raises no concern. The specification
+// row counts the discussions the grouping analysis will read; the planning
+// and implementation rows read the build order and name the topics sitting
+// ahead of the selection. Discussion entries carry no gate: a discussion
+// reads its own topic's research, and the menu offers one only once that
+// has settled. Advisory always: the menu offers proceed-anyway, never a
+// refusal.
 // ---------------------------------------------------------------------------
 
 const { SOFT_GATE_ACTIONS } = require('./projections/epic.cjs');
 
-const SOFT_GATE_DISCUSSION_ACTIONS = ['start_discussion', 'start_discussion_after_research', 'continue_discussion', 'new_discussion'];
-
-/** @param {object[]} items @returns {{inProgress: number, total: number}} */
+/**
+ * The discussions the grouping analysis reads: in-progress and completed.
+ * A parked stub or a terminal item never reaches it, so never counts.
+ * @param {object[]} items @returns {{inProgress: number, total: number}}
+ */
 function softGateCounts(items) {
-  const live = items.filter((i) => i.status !== 'cancelled');
+  const live = items.filter((i) => i.status === 'in-progress' || i.status === 'completed');
   return { inProgress: live.filter((i) => i.status === 'in-progress').length, total: live.length };
 }
 
@@ -3615,12 +3620,7 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
   let message = null;
   let advisory = 'The system will re-analyse if you revisit later — proceeding now is safe, but may require rework.';
 
-  if (SOFT_GATE_DISCUSSION_ACTIONS.includes(action)) {
-    const c = softGateCounts(phaseItems(manifest, 'research'));
-    if (c.total > 0 && c.inProgress > 0) {
-      message = `${c.inProgress} of ${c.total} research topics still in-progress. Topic analysis works best with all research available.`;
-    }
-  } else if (action === 'start_specification') {
+  if (action === 'start_specification') {
     const c = softGateCounts(phaseItems(manifest, 'discussion'));
     if (c.total > 0 && c.inProgress > 0) {
       message = `${c.inProgress} of ${c.total} discussions still in-progress. Later conclusions may reshape this grouping.`;

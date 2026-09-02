@@ -429,14 +429,36 @@ describe('epic-soft-gate', () => {
     assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'billing' }), '');
   });
 
-  it('discussion and specification rows keep the counting idiom', () => {
+  it('the specification row counts the discussions the grouping reads', () => {
     orderedEpic();
-    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'new_discussion' }),
-      /1 of 2 research topics still in-progress/);
-    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_specification' }),
+    const out = renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_specification' });
+    assert.match(out, /1 of 2 discussions still in-progress/);
+    assert.match(out, /re-analyse if you revisit later/);
+  });
+
+  it('a discussion entry carries no gate — research in flight elsewhere is no concern of it', () => {
+    orderedEpic();
+    for (const action of ['start_discussion', 'start_discussion_after_research', 'continue_discussion', 'new_discussion']) {
+      assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action, topic: 'auth' }), '', action);
+    }
+  });
+
+  it('parked and terminal discussions never inflate the specification count', () => {
+    writeManifest(dir, 'stubs', {
+      phases: {
+        discussion: {
+          items: {
+            auth: { status: 'in-progress' },
+            billing: { status: 'completed' },
+            parked: { status: 'triaged' },
+            gone: { status: 'cancelled' },
+            moved: { status: 'promoted', promoted_to: 'cc' },
+          },
+        },
+      },
+    });
+    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'stubs', action: 'start_specification' }),
       /1 of 2 discussions still in-progress/);
-    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'new_discussion' }),
-      /re-analyse if you revisit later/);
   });
 
   it('requires --action always and --topic for the order rows', () => {

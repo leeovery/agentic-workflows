@@ -258,8 +258,7 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
     const d = detailFor(dir, 'auth-overhaul', {
       work_type: 'epic',
       phases: {
-        research: { items: { 'market-analysis': { status: 'in-progress' }, 'competitor-scan': { status: 'completed' } } },
-        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        discussion: { items: { 'auth-flow': { status: 'in-progress' }, 'session-model': { status: 'completed' } } },
       },
     });
     assert.strictEqual(
@@ -267,19 +266,28 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
       [
         '── DISCOVERY ────────────────────────────────────────────────────',
         '',
-        'RESEARCH (1 in-progress, 1 completed)',
-        '  ├─ Market Analysis    [in-progress]',
-        '  └─ Competitor Scan    [completed]',
+        'DISCUSSION (1 in-progress, 1 completed)',
+        '  ├─ Auth Flow        [in-progress]',
+        '  └─ Session Model    [completed]',
         '',
-        'DISCUSSION (1 completed)',
-        '  └─ Auth Flow    [completed]',
-        '',
-        '  ⚑ Consider completing remaining research before starting',
-        '    discussion. Topic analysis works best with all research',
-        '    available.',
+        '  ⚑ Conclude the remaining discussions to unlock specification —',
+        '    the grouping analysis reads the settled record.',
         '',
       ].join('\n')
     );
+  });
+
+  it('research in flight no longer masks the discussion-state recommendation', () => {
+    const d = detailFor(dir, 'auth-overhaul', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { 'market-analysis': { status: 'in-progress' }, 'competitor-scan': { status: 'completed' } } },
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    const out = epicDashboard('auth-overhaul', d);
+    assert.ok(!/⚑[^\n]*research/.test(out), out);
+    assert.match(out, /⚑ All discussions are completed\. Specification will analyze and\n\s+group them\./, out);
   });
 
   it('appends the plans-not-ready block after the stages', () => {
