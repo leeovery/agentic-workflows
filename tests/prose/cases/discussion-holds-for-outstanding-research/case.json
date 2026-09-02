@@ -1,0 +1,72 @@
+{
+  "origin": "research feeds discussion — a discussion whose same-named research is still outstanding must say so at the door and hold its reconcile flag rather than clear it, and its wrap-up must meet the engine-rendered wait gate instead of a completion the engine would refuse; first coverage of the advisory's held-flag branch and of a research wait at the discussion's conclusion",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user comes back to close behavioural ranking out: both of its points are settled to their satisfaction and they want the record concluded. Told at the door that research on the topic is still outstanding, they take it in without argument — they are not going to open the research themselves in this sitting, and they will not reopen either decision on a measurement nobody has taken yet — and they ask to wrap the discussion up. At the blocked conclusion they take the pause rather than keep talking. They introduce no new material, add no subtopics, and never override a block.",
+  "stubs": {
+    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.discussion.behavioural-ranking status",
+      "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
+      "manifest get search-relevance.research.behavioural-ranking status",
+      "render resume-gate search-relevance.discussion.behavioural-ranking",
+      "topic queue search-relevance discussion behavioural-ranking",
+      "render wait-gate search-relevance.discussion.behavioural-ranking"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
+      "manifest get search-relevance.research.behavioural-ranking status",
+      "render resume-gate search-relevance.discussion.behavioural-ranking",
+      "render wait-gate search-relevance.discussion.behavioural-ranking"
+    ],
+    "calls_exclude": [
+      "manifest delete search-relevance.discussion.behavioural-ranking reconcile_needed",
+      "topic complete",
+      "topic start search-relevance research behavioural-ranking",
+      "topic absorb",
+      "topic reopen",
+      "topic cancel",
+      "topic queue search-relevance research behavioural-ranking",
+      "render conclude-gate",
+      "render closing-gate",
+      "discussion-map set search-relevance behavioural-ranking signal-ingestion deferred",
+      "discussion-map set search-relevance behavioural-ranking signal-weighting deferred",
+      "experiment create",
+      "--kind perspective",
+      "knowledge.cjs index"
+    ]
+  }
+}

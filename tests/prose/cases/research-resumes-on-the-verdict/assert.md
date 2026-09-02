@@ -20,9 +20,9 @@ The prose should have taken this path:
    on, and behaviour-driven expansion as the leading candidate — held
    as material for the discussion, never decided here — and the waiting
    note gives way to the answered number
-5. the user wraps; the triage queue reads empty and the evidence-wait
-   check finds nothing held — the release already happened, so no wait
-   gate renders and nothing blocks
+5. the user wraps; the triage queue reads empty and the wait-gate
+   fetch comes back empty — the release already happened, so no gate
+   is emitted and nothing blocks
 6. the closing gates run: the final review dispatches (no review row
    has ever existed), the stubbed report returns clean and is
    acknowledged; document review reconciles the file against the

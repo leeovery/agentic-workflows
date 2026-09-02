@@ -244,7 +244,7 @@ describe('experiment spawn gate + wait gate — the spawning conversation\'s two
 
   it('renders the blocked-conclusion gate — blocker naming the ids, guidance, then the pause/keep menu', () => {
     holderWith('discussion', ['E1', 'E2']);
-    const out = renderSurface(dir, 'experiment-wait-gate', { dotpath: 'lab.discussion.timing' });
+    const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.timing' });
     assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block — ```properties fence\) ===/);
     assert.match(out, /⚑ Conclusion blocked — this discussion awaits experiment evidence \(E1, E2\)/);
     assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown\) ===/);
@@ -255,11 +255,10 @@ describe('experiment spawn gate + wait gate — the spawning conversation\'s two
     assert.match(unwrap(out), /Keep the conversation going — conclusion stays blocked until the evidence lands/);
   });
 
-  it('the wait gate refuses an item with no live wait and a non-spawn address', () => {
+  it('the wait gate is empty over an item with no live wait, and refuses a non-spawn address', () => {
     holderWith('research');
-    assert.throws(() => renderSurface(dir, 'experiment-wait-gate', { dotpath: 'lab.research.timing' }),
-      /research "timing" holds no evidence wait — nothing blocks conclusion/);
-    assert.throws(() => renderSurface(dir, 'experiment-wait-gate', { dotpath: 'lab.experiment.timing' }),
+    assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.research.timing' }), '');
+    assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.experiment.timing' }),
       /address must be <work_unit>\.<research\|discussion>\.<topic>/);
   });
 });
@@ -308,21 +307,16 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.match(unwrap(out), /conclusion stays blocked until the research and the evidence land/);
   });
 
-  it('an experiment-only wait renders exactly what the experiment-wait-gate alias renders', () => {
+  it('an experiment-only wait names the evidence alone — landed research holds nothing', () => {
     billingWith({ status: 'completed' }, { status: 'in-progress', awaiting_experiments: ['E1'] });
     const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' });
     assert.match(out, /awaits experiment evidence \(E1\)\n/);
-    assert.strictEqual(renderSurface(dir, 'experiment-wait-gate', { dotpath: 'lab.discussion.billing' }), out);
-    billingWith({ status: 'in-progress' }, { status: 'in-progress' });
-    assert.strictEqual(renderSurface(dir, 'experiment-wait-gate', { dotpath: 'lab.discussion.billing' }),
-      renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' }), 'the alias renders the research wait identically');
+    assert.ok(!out.includes('research'), 'no research clause once the research has landed');
   });
 
-  it('empty when nothing blocks conclusion — where the alias still refuses', () => {
+  it('empty when nothing blocks conclusion', () => {
     billingWith({ status: 'completed' }, { status: 'in-progress' });
     assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' }), '');
-    assert.throws(() => renderSurface(dir, 'experiment-wait-gate', { dotpath: 'lab.discussion.billing' }),
-      /discussion "billing" holds no evidence wait — nothing blocks conclusion/);
     billingWith(undefined, { status: 'in-progress' });
     assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' }), '');
     assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.research.billing' }), '', 'an absent item holds nothing');
@@ -3786,7 +3780,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, experiment-wait-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
   });
 });
 

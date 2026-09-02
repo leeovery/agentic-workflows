@@ -64,7 +64,7 @@
       "experiment abandon",
       "experiment conclude",
       "topic complete search-relevance research synonym-handling",
-      "render experiment-wait-gate",
+      "render wait-gate",
       "render research-conclude-gate",
       "topic triage",
       "--kind deep-dive"

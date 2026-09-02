@@ -51,7 +51,7 @@
       "render experiment-register pay.experiment.pay",
       "manifest get pay.experiment.pay experiments",
       "manifest delete pay.discussion.pay reconcile_needed",
-      "manifest get pay.discussion.pay awaiting_experiments",
+      "render wait-gate pay.discussion.pay",
       "render conclude-gate pay.discussion.pay",
       "topic complete pay discussion pay"
     ],
@@ -70,7 +70,6 @@
       "experiment abandon",
       "topic reactivate",
       "topic reopen pay discussion pay",
-      "render experiment-wait-gate",
       "render experiment-spawn-gate"
     ]
   }
