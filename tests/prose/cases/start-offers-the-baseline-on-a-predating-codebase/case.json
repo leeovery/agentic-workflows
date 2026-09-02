@@ -1,0 +1,34 @@
+{
+  "origin": "the baseline judgment's other verdict — a codebase built before the workflows arrived gets the offer, once, and a decline is recorded through the same verb; the walk the design owed for the offer",
+  "entry": "workflow-start",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/empty-state.md"
+  ],
+  "answers": [
+    "n"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "render baseline-offer-gate",
+      "baseline record skipped",
+      "gateway.cjs"
+    ],
+    "calls_exclude": [
+      "baseline record native",
+      "manifest set project.baseline"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "render baseline-offer-gate",
+      "baseline record skipped",
+      "gateway.cjs"
+    ]
+  }
+}

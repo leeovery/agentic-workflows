@@ -42,6 +42,7 @@ const { openDiscoverySession, closeDiscoverySession } = require('./domain/discov
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const roadmap = require('./domain/roadmap.cjs');
+const baseline = require('./domain/baseline.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
 
 /** @param {string} msg @returns {never} */
@@ -177,6 +178,7 @@ Commands:
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
+  baseline record <native|skipped>
   roadmap state
   roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]
   roadmap add-batch --file <items.json>
@@ -318,6 +320,8 @@ Commands:
   render baseline-manage-gate
   render baseline-doc-pick
   render baseline-offer-gate
+  render migration-gate
+  render label-gate
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
@@ -1083,6 +1087,26 @@ function runInbox(argv) {
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
+/**
+ * `baseline record <native|skipped>` — workflow-start's one-time verdict,
+ * written and committed in one confined transaction.
+ * @param {string[]} argv
+ */
+function runBaseline(argv) {
+  const [command, ...rest] = argv;
+  const cwd = process.cwd();
+  try {
+    if (command === 'record') {
+      if (rest.length !== 1) throw new Error('Usage: engine baseline record <native|skipped>');
+      respond(baseline.recordBaselineVerdict(cwd, rest[0]));
+      return;
+    }
+    throw new Error(`Unknown baseline command: ${command}. Usage: engine baseline record <native|skipped>`);
+  } catch (err) {
+    failJson(err);
+  }
+}
+
 function runRoadmap(argv) {
   const [command, ...rest] = argv;
   const cwd = process.cwd();
@@ -1774,6 +1798,9 @@ function runCli(argv) {
       break;
     case 'roadmap':
       runRoadmap(rest);
+      break;
+    case 'baseline':
+      runBaseline(rest);
       break;
     case 'cache':
       runCache(rest);

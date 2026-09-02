@@ -1,0 +1,25 @@
+[
+  {
+    "message": "feat: config-driven project setup",
+    "files": [
+      "setup/install.sh",
+      "workspace.json"
+    ]
+  },
+  {
+    "message": "fix(setup): capture step output to show errors on failure",
+    "files": [
+      "setup/README.md"
+    ]
+  },
+  {
+    "message": "research(pay): initialize exploration research",
+    "files": [
+      ".workflows/.state/migrations",
+      ".workflows/_gitignore.fixture",
+      ".workflows/manifest.json",
+      ".workflows/pay/discovery/sessions/session-001.md",
+      ".workflows/pay/manifest.json"
+    ]
+  }
+]

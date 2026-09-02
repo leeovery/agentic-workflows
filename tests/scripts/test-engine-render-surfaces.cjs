@@ -3715,7 +3715,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, experiment-wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, experiment-wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate\)/);
   });
 });
 
@@ -3945,7 +3945,7 @@ describe('baseline surfaces', () => {
   });
 
   it('baseline-progress: refuses a missing baseline and an empty area map', () => {
-    assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /no baseline on the project manifest/);
+    assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /the baseline is "none" — no assessment has been started/);
     writeBaseline({ status: 'in-progress', areas: {} });
     assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /no areas/);
   });
@@ -4053,7 +4053,20 @@ describe('baseline surfaces', () => {
     // and the mid-flight surfaces read it as never started.
     writeBaseline({ status: 'native' });
     assert.throws(() => renderSurface(dir, 'baseline-offer-gate', {}), /the offer fires once/);
-    assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /no baseline on the project manifest/);
+    assert.throws(() => renderSurface(dir, 'baseline-progress', {}), /the baseline is "native" — no assessment has been started/);
+  });
+
+  it('the boot gates are static menus: the migration confirm and the tmux label opt-in', () => {
+    const migration = renderSurface(dir, 'migration-gate', {});
+    assert.match(migration, /=== MENU: migration gate/);
+    assert.match(migration, /\*\*`◆ Ready to continue\?`\*\*/);
+    assert.match(migration, /\*\*`c\/continue`\*\* → Proceed/);
+    assert.match(unwrap(migration), /\*\*Ask\*\*\s+→ Ask questions about the changes/);
+    const label = renderSurface(dir, 'label-gate', {});
+    assert.match(label, /=== MENU: label gate/);
+    assert.match(label, /\*\*`◆ Label your tmux session as you work\?`\*\*/);
+    assert.match(label, /\*\*`y\/yes`\*\* → Turn session labels on/);
+    assert.match(unwrap(label), /\*\*`n\/no`\*\*\s+→ Leave session names alone/);
   });
 
   it('the static baseline gates render their menus; the completed-only pair refuse mid-flight', () => {

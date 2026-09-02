@@ -221,9 +221,8 @@ function boot(cwd) {
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
   const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, baseline };
-  // Nothing recorded yet: the calling skill judges once — native, or the
-  // brownfield offer — and the verdict is made from the repository's own
-  // history, never from whatever happens to be in context.
+  // The signal travels only while nothing is recorded: the calling skill
+  // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a

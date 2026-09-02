@@ -620,6 +620,8 @@ describe('start projections: manage list', () => {
     assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → View or expand the project baseline/);
     writeProjectBaseline(dir, { status: 'skipped' });
     assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → Start the project baseline assessment/);
+    writeProjectBaseline(dir, { status: 'native' });
+    assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → Start the project baseline assessment/);
   });
 });
 
@@ -676,6 +678,9 @@ describe('start projections: baseline rows', () => {
     assert.deepStrictEqual(reachable('completed', { overview: 'completed' }), { empty: true, full: false, manage: true });
     assert.deepStrictEqual(reachable('skipped', undefined), { empty: true, full: false, manage: true });
     assert.deepStrictEqual(reachable('none', undefined), { empty: false, full: false, manage: true });
+    // A native verdict is a project that grew up on the workflows: no row
+    // anywhere but manage, the one way in should it want the assessment.
+    assert.deepStrictEqual(reachable('native', undefined), { empty: false, full: false, manage: true });
   });
 });
 

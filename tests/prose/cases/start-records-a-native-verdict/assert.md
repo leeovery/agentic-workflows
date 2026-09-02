@@ -5,14 +5,16 @@ The prose should have taken this path:
 2. runs the boot pipeline, and since no migrations applied and the
    knowledge base is ready, raises neither the migrations confirmation
    nor the knowledge gate
-3. reads `baseline: none` on the boot response and judges from its
-   `baseline_signal` — the repository's first commit already carried
-   `.workflows/`, so no commits and no project files came before the
-   workflows — that the project is native
-4. records the verdict through the engine (`manifest set
-   project.baseline.status native`) and commits it with `commit
-   --workflows`, without rendering the baseline offer and without asking
-   the user anything about it
+3. reads `baseline: none` on the boot response and reads its
+   `baseline_signal` as evidence: the commits before the workflows arrived
+   are the world's opening commit, a config-driven setup and a fix to it,
+   and the tree they arrived into is a README, a workspace config and the
+   setup script — scaffolding, no application code — so the project grew
+   up on the workflows and is native
+4. records the verdict through the engine's one verb (`baseline record
+   native`), which writes and commits in the same call — without
+   rendering the baseline offer, without a manifest write of its own, and
+   without asking the user anything about it
 5. gets the workflow state from the discovery gateway script rather than
    listing directories or reading files itself
 6. shows `pay` as the only active work, with a menu whose continue action
@@ -21,8 +23,8 @@ The prose should have taken this path:
 Further claims:
 
 - the offer menu (`Run a baseline assessment?`) never appears, and the
-  judgment is made from the boot response's signal — not from listing
-  the tree, not from git commands of the walker's own, and never by
+  judgment is made from the boot response's signal — not from git
+  commands of the walker's own, not from listing the tree, and never by
   putting the question to the user
 - the project manifest's baseline reads `native` afterwards; nothing else
   about the project or the feature changes

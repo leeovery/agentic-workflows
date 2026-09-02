@@ -50,7 +50,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 # **`■ Project Baseline`**
 ```
 
-Read the baseline status (empty output means never started):
+Read the baseline status (empty output, or `native`, means no assessment has been started):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.baseline.status
@@ -70,7 +70,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.base
 
 #### Otherwise
 
-An unrecognised status — treat it as never started.
+An unrecognised status — treat it as no assessment started.
 
 → Proceed to **Step 1**.
 

@@ -271,9 +271,10 @@ function emptyOverview(detail) {
  * The empty-state start menu — a baseline row first when one exists to act
  * on (`a`: resume in-progress, view/expand completed, start a declined one —
  * the empty state has no manage row, so `skipped` rides here; `none` and
- * `native` render nothing), then the six start-new options with pipeline-shape labels, `i`
- * only with a live inbox, `v` only with closed work units. Same key shape as
- * startMenu, so the ACTIONS table and routing are uniform.
+ * `native` render nothing), then the six start-new options with
+ * pipeline-shape labels, `i` only with a live inbox, `v` only with closed
+ * work units. Same key shape as startMenu, so the ACTIONS table and routing
+ * are uniform.
  * @param {StartDetail} detail
  * @returns {{keys: StartMenuKey[], rendered: string}}
  */

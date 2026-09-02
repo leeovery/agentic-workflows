@@ -2171,11 +2171,16 @@ describe('pipeline simulation', () => {
     // the pause receipt, the doc list and completion receipt once every area
     // lands. A native verdict is a recorded state like any other: the offer
     // refuses over it, and the mid-flight surfaces read it as never started.
+    assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
+    assert.match(sim.render(['label-gate'], { expect: 'content' }), /Label your tmux session/);
     assert.match(sim.render(['baseline-offer-gate'], { expect: 'content' }), /Run a baseline assessment\?/);
-    sim.run(['manifest', 'set', 'project.baseline.status', 'native']);
+    sim.refuses(['baseline', 'record', 'bananas'], /one of native, skipped/);
+    const verdict = sim.run(['baseline', 'record', 'native']);
+    assert.match(verdict.committed, /^[0-9a-f]+$/, 'the verdict commits in the same call');
     assert.strictEqual(sim.read(['manifest', 'get', 'project.baseline.status']), 'native');
+    sim.refuses(['baseline', 'record', 'skipped'], /recorded once/);
     sim.refuses(['render', 'baseline-offer-gate'], /the offer fires once/);
-    sim.refuses(['render', 'baseline-progress'], /no baseline on the project manifest/);
+    sim.refuses(['render', 'baseline-progress'], /no assessment has been started/);
     sim.run(['manifest', 'set', 'project.baseline.status', 'in-progress']);
     assert.strictEqual(sim.read(['manifest', 'get', 'project.baseline.status']), 'in-progress');
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'pending']);
