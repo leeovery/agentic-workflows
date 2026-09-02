@@ -201,6 +201,10 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'status', 'concluded']).error, /Invalid status/);
     assert.match(runFails(dir, ['set', 'auth', 'work_type', 'saga']).error, /Invalid work_type/);
     assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_gate_mode', 'manual']).error, /Invalid gate mode/);
+    for (const mode of ['gated', 'auto', 'bounded']) {
+      runJson(dir, ['set', 'auth.planning.auth', 'task_gate_mode', mode]);
+      assert.strictEqual(readWorkUnit(dir, 'auth').phases.planning.items.auth.task_gate_mode, mode);
+    }
     assert.match(runFails(dir, ['set', 'auth.discovery.topic', 'status', 'in-progress']).error, /carry no status field/);
     assert.match(runFails(dir, ['set', 'ghost', 'status', 'completed']).error, /Work unit "ghost" not found/);
   });

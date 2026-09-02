@@ -574,6 +574,11 @@ output=$(run_cli_stdout get gate-valid.planning.gate-valid task_gate_mode)
 
 assert_equals "$output" "auto" "Gate mode set to auto"
 
+run_cli set gate-valid.planning.gate-valid task_gate_mode bounded >/dev/null 2>&1
+output=$(run_cli_stdout get gate-valid.planning.gate-valid task_gate_mode)
+
+assert_equals "$output" "bounded" "Gate mode set to bounded"
+
 echo ""
 
 # ----------------------------------------------------------------------------

@@ -105,7 +105,13 @@ function compareExperimentIds(a, b) {
 // discussion identically.
 const EXPERIMENT_SPAWN_PHASES = ['research', 'discussion'];
 
-const VALID_GATE_MODES = ['gated', 'auto'];
+// Gate modes. `auto` runs to the end of the session (the entry reset
+// returns every gate to `gated`); `bounded` is auto with an end the gate's
+// owning flow defines — the engine returns it to `gated` at that bound's
+// close (the implementation task and fix gates bound to the plan phase,
+// reset by `task complete --phase-complete`). A gate whose flow defines no
+// bound never offers the value.
+const VALID_GATE_MODES = ['gated', 'auto', 'bounded'];
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
