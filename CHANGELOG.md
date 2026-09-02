@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.28] - 2026-09-02
+
+✨ Added
+- Bounded auto for implementation task and fix gates — `b/bounded` approves everything for the rest of the current plan phase, then asks again, instead of committing to auto for the whole session.
+
+🔧 Changed
+- Fix-gate menu no longer offers a redundant auto option once it's already in an auto mode and stopped only because the retry threshold was hit.
+
 ## [0.7.27] - 2026-09-01
 
 🔧 Changed
