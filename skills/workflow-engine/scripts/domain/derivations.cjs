@@ -459,6 +459,26 @@ function computeTopicLifecycle(manifest, topicName) {
   return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, triage_parked, reconcile_pending };
 }
 
+// Why a lifecycle stands in the way of a move — the map ops' refusals and
+// the phase-birth guard share it, so the engine and the epic menu's
+// conversational rejections never drift. Derived from the actual research
+// state: superseded research is named as such, never as completed.
+/** @param {string} lifecycle @param {string|null} researchState @param {string} [routing] */
+function lifecyclePhrase(lifecycle, researchState, routing) {
+  switch (lifecycle) {
+    case 'fresh': return routing ? `it is routed to ${routing} and nothing has started` : 'nothing has started on it';
+    case 'researching': return 'research is in flight on it';
+    case 'discussing': return 'discussion is in flight on it';
+    case 'ready_for_discussion':
+      return researchState === 'superseded'
+        ? 'its research was superseded and discussion is queued'
+        : 'research has completed and discussion is queued';
+    case 'decided': return 'discussion has concluded';
+    case 'handled': return 'it is closed as a dead end and stays on the map as record';
+    default: return 'it has phase work in cancelled state and stays on the map as historical record'; // cancelled
+  }
+}
+
 function computeNextAction(routing, lifecycle) {
   switch (lifecycle) {
     case 'fresh':
@@ -584,6 +604,7 @@ module.exports = {
   computeAnalysisCacheStatus,
   computeTopicLifecycle,
   computeNextAction,
+  lifecyclePhrase,
   computeMapSummary,
   computeSourceProvenance,
   compareMapRows,

@@ -118,6 +118,9 @@ module.exports = {
       '--topic', 'discussion/behavioural-ranking');
 
     // --- the dead peer, mid-write ----------------------------------------
+    // Re-routed to discussion at its own session's start — the map gates a
+    // discussion's birth on a research-routed topic.
+    h.engine('discovery-map', 'reroute', WU, 'synonym-handling', 'discussion');
     h.engine('topic', 'start', WU, 'discussion', 'synonym-handling');
     h.write(`.workflows/${WU}/discussion/synonym-handling.md`, [
       '# Discussion: Synonym Handling',

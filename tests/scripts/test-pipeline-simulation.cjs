@@ -713,6 +713,16 @@ describe('pipeline simulation', () => {
     assert.strictEqual(batch.map_total, 3);
     sim.run(['discovery-map', 'sequence', wu, 'alpha=1', 'beta=2', 'gamma=3']);
 
+    // The map gates the birth of a phase item — the menu row is the way in:
+    // a discussion cannot be born on a research-routed topic whose research
+    // has not run, nor research on a discussion-routed one. The d/r doors'
+    // gate refuses the same names and passes a name not on the map.
+    sim.refuses(['topic', 'start', wu, 'discussion', 'alpha'], /routed to research and nothing has started/);
+    sim.refuses(['topic', 'start', wu, 'research', 'beta'], /routed to discussion and nothing has started/);
+    sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' });
+    sim.render(['direct-entry-gate', `${wu}.research.beta`], { expect: 'content' });
+    sim.render(['direct-entry-gate', `${wu}.discussion.omega`], { expect: 'empty' });
+
     // Map operations the session loop supports.
     sim.run(['discovery-map', 'edit', wu, 'gamma', '--summary', 'Gamma, sharpened']);
     sim.run(['discovery-map', 'rename', wu, 'gamma', 'gamma-prime']);
@@ -1014,6 +1024,10 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.research.items.delta.previous_status, 'triaged');
     sim.run(['topic', 'reactivate', wu, 'research', 'delta']);
     assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'triaged');
+    // A parked research stub drains through the r door — the gate passes it
+    // while the discussion side of the same name still refuses.
+    sim.render(['direct-entry-gate', `${wu}.research.delta`], { expect: 'empty' });
+    sim.render(['direct-entry-gate', `${wu}.discussion.delta`], { expect: 'content' });
     const drained = sim.run(['topic', 'start', wu, 'research', 'delta']);
     assert.strictEqual(drained.status, 'in-progress');
     assert.strictEqual(drained.created, false);

@@ -2033,3 +2033,82 @@ describe('discovery-map add-batch — name typing', () => {
     assert.match(err.error, /not a legal topic name/);
   });
 });
+
+describe('engine topic start — the discovery map gates the birth of a phase item', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeFile(dir, '.workflows/mapped/manifest.json', JSON.stringify({
+      name: 'mapped',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        discovery: {
+          items: {
+            alpha: { routing: 'research', source: 'discovery' },
+            beta: { routing: 'discussion', source: 'discovery' },
+            gamma: { routing: 'discussion', source: 'discovery' },
+            delta: { routing: 'research', source: 'discovery' },
+            epsilon: { routing: 'research', source: 'discovery' },
+            zeta: { routing: 'research', source: 'discovery' },
+          },
+        },
+        research: { items: { gamma: { status: 'triaged' }, delta: { status: 'completed' }, zeta: { status: 'in-progress' } } },
+        discussion: { items: { gamma: { status: 'in-progress' }, epsilon: { status: 'triaged' }, zeta: { status: 'in-progress' } } },
+      },
+    }, null, 2) + '\n');
+    commitAll(dir, 'init');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('refuses a discussion on a research-routed topic whose research has not run', () => {
+    const err = engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'alpha']);
+    assert.match(err.error, /discussion can't start on "alpha" — it is routed to research and nothing has started; the epic menu names its next step/);
+    assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.alpha, undefined);
+  });
+
+  it('refuses research on a discussion-routed topic — rerouting is the discovery session\'s move', () => {
+    const err = engineFails(dir, ['topic', 'start', 'mapped', 'research', 'beta']);
+    assert.match(err.error, /research can't start on "beta" — it is routed to discussion and nothing has started/);
+  });
+
+  it('a parked discussion stub on a research-routed topic waits for the research', () => {
+    const err = engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'epsilon']);
+    assert.match(err.error, /it is routed to research and nothing has started/);
+    assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.epsilon.status, 'triaged');
+  });
+
+  it('a parked research stub always drains — even beneath a live discussion', () => {
+    const res = engine(dir, ['topic', 'start', 'mapped', 'research', 'gamma']);
+    assert.strictEqual(res.status, 'in-progress');
+    assert.strictEqual(res.created, false);
+  });
+
+  it('the map\'s own next action passes: a fresh discussion-routed topic, a discussion after completed research', () => {
+    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'beta']).created, true);
+    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'delta']).created, true);
+    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'research', 'alpha']).created, true);
+  });
+
+  it('an in-progress item resumes regardless of what the map shows live', () => {
+    // zeta: research and discussion both in flight — the lifecycle reads
+    // discussing, yet the research session's resume is not a birth.
+    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'research', 'zeta']).created, false);
+    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'zeta']).created, false);
+  });
+
+  it('a topic off the map, and every non-epic work unit, are ungated', () => {
+    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'unmapped']).created, true);
+    writeFile(dir, '.workflows/feat/manifest.json', JSON.stringify({
+      name: 'feat', work_type: 'feature', status: 'in-progress',
+      phases: { discovery: { items: { feat: { routing: 'research', source: 'discovery' } } } },
+    }, null, 2) + '\n');
+    assert.strictEqual(engine(dir, ['topic', 'start', 'feat', 'discussion', 'feat']).created, true);
+  });
+
+  it('the terminal-status refusals keep their own words ahead of the map', () => {
+    engine(dir, ['topic', 'cancel', 'mapped', 'research', 'zeta']);
+    assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'research', 'zeta']).error, /is cancelled — reactivate it instead/);
+    assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'research', 'delta']).error, /already completed — reopen it instead/);
+  });
+});

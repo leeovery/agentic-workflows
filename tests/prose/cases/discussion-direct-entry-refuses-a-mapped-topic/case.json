@@ -1,0 +1,47 @@
+{
+  "origin": "the epic menu's d door took a free-typed name that already sat on the map and started a discussion on it, beneath research that had not run — the map's next action never had a vote at that door",
+  "entry": "workflow-start",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/active-work.md",
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-discussion-entry/SKILL.md"
+  ],
+  "answers": [
+    "1 — continue the Search Relevance epic",
+    "d — start a discussion on a new topic",
+    "synonym-handling"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "render epic-soft-gate search-relevance --action new_discussion",
+      "render direct-entry-gate search-relevance.discussion.synonym-handling"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "render direct-entry-gate search-relevance.discussion.synonym-handling"
+    ],
+    "calls_exclude": [
+      "topic start",
+      "discovery-map add",
+      "discovery-map sequence",
+      "discussion-map add",
+      "manifest set",
+      "engine.cjs commit",
+      "workflow-discussion-process"
+    ]
+  }
+}

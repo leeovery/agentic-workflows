@@ -69,9 +69,23 @@ What topic would you like to discuss?
 
 Kebab-case the response, store as `{topic}`. Set `source = "fresh"`.
 
+A name already on the map is not a new topic — the menu row is the way in. Fetch the gate:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render direct-entry-gate {work_unit}.discussion.{topic}
+```
+
+**If a `DISPLAY: entry blocker` section is returned:**
+
+Emit both sections verbatim per their markers.
+
+**STOP.** Do not proceed — terminal condition.
+
+**If the output is empty:**
+
 Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-discovery-item` in Step 2. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
 
-Read the discussion phase status for the resolved topic — a freshly named topic is usually empty, but this catches a collision with an existing discussion:
+Read the discussion phase status for the resolved topic:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} status
