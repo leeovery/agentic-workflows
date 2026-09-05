@@ -1,5 +1,5 @@
 {
-  "origin": "the baseline offer fired on Folio, a project that grew up on the workflows — the judgment had no home, so every boot re-rolled it from nothing; this is Folio's shape: scaffolding commits before the arrival, read as evidence",
+  "origin": "the baseline offer fired on Folio, a project that grew up on the workflows \u2014 the judgment had no home, so every boot re-rolled it from nothing; this is Folio's shape: scaffolding commits before the arrival, read as evidence",
   "entry": "workflow-start",
   "files": [
     "skills/workflow-start/SKILL.md",
@@ -8,6 +8,7 @@
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/altitude.md",
     "skills/workflow-start/references/active-work.md"
   ],
   "invariants": {

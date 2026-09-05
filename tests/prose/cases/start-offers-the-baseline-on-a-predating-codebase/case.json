@@ -1,5 +1,5 @@
 {
-  "origin": "the baseline judgment's other verdict — a codebase built before the workflows arrived gets the offer, once, and a decline is recorded through the same verb; the walk the design owed for the offer",
+  "origin": "the baseline judgment's other verdict \u2014 a codebase built before the workflows arrived gets the offer, once, and a decline is recorded through the same verb; the walk the design owed for the offer",
   "entry": "workflow-start",
   "files": [
     "skills/workflow-start/SKILL.md",
@@ -8,6 +8,7 @@
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/altitude.md",
     "skills/workflow-start/references/empty-state.md"
   ],
   "answers": [
