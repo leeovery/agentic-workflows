@@ -1,0 +1,20 @@
+{
+  "agents": {
+    "deep-dive-001-subset-regressions": {
+      "id": "deep-dive-001-subset-regressions",
+      "kind": "deep-dive",
+      "phase": "research",
+      "topic": "relevance-measurement",
+      "set": "001",
+      "label": "subset-regressions",
+      "status": "acknowledged",
+      "announced": true,
+      "findings": [
+        "F1",
+        "F2"
+      ],
+      "surfaced": [],
+      "created": "2026-01-01T00:00:00.000Z"
+    }
+  }
+}

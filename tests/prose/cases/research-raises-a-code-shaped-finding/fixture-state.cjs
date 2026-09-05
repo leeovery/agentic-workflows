@@ -1,0 +1,187 @@
+'use strict';
+
+// A research topic mid-flight whose deep dive has returned a report
+// written in code: the lead finding is three source snippets, each a
+// different behaviour at release, with a product fork the user owns
+// hiding underneath. The behaviour under test is that the raise
+// translates it — the shop's situation, the three behaviours as product
+// end states, a position, one literal question — and leaves the code in
+// the record. The store row is acknowledged and announced, nothing
+// surfaced — the walk opens on the announce menu.
+
+const e = require('../../mainlines/epic.cjs');
+
+const WU = e.WU;
+const TOPIC = 'relevance-measurement';
+
+module.exports = {
+  build(h) {
+    e.init(h);
+    e.create(h);
+    e.harvest(h);
+
+    h.engine('topic', 'start', WU, 'research', TOPIC);
+    h.write(`.workflows/${WU}/research/${TOPIC}.md`, [
+      '# Research: Relevance Measurement',
+      '',
+      'How to tell whether a relevance change makes results better or',
+      'worse. No evaluation set and no metrics exist — every ranking tweak',
+      'is decided by argument.',
+      '',
+      '## Starting Point',
+      '',
+      'What we know so far:',
+      '- Click and purchase events land reliably in the events pipeline.',
+      '- The team has never built an evaluation harness.',
+      '- Starting technical: candidate metrics, then how to collect',
+      '  judgments.',
+      '',
+      '---',
+      '',
+      '## Candidate Metrics',
+      '',
+      'NDCG@10 is the leading candidate for the primary offline metric —',
+      'rank-sensitive, standard, and comparable across runs. Click-through',
+      'position as a cheap secondary signal.',
+      '',
+      'RankBench note (benchmark survey, 2025): click-derived relevance',
+      'labels correlated 0.92 with human judgments at rank 10 across three',
+      'commerce datasets — strong enough to stand in for graded judgments',
+      'at the depth NDCG@10 reads.',
+      '',
+      '## Judgment Collection',
+      '',
+      'Click-derived labels suffice for the primary metric (RankBench',
+      'note above); human raters an option for spot-checks. The events',
+      'pipeline retains ninety days of click logs — enough history to',
+      'derive labels from.',
+      '',
+      '## Per-Query-Class Behaviour',
+      '',
+      'An aggregate NDCG@10 can rise while a class of queries regresses —',
+      'long-tail product searches in particular, where clicks are sparse',
+      'and a handful of results carry the whole class. Whether a tail',
+      'regression should hold a change back is the user\'s call and has',
+      'not been asked. What other harnesses do about it was sent to a',
+      'deep dive.',
+      '',
+      '## Open Questions',
+      '',
+      '- How large must an eval query set be before per-run comparisons',
+      '  are trustworthy?',
+      '',
+    ].join('\n'));
+    h.engine('commit', WU, '--topic', `research/${TOPIC}`,
+      '-m', `research(${WU}/${TOPIC}): judgment collection settled, per-query-class thread opened`);
+
+    // The store driven through its real lifecycle: dispatch allocates the
+    // row in-flight, the report lands on disk, scan promotes it to pending,
+    // ack records the findings. Announced, nothing surfaced.
+    h.engine('agent', 'dispatch', WU, 'research', TOPIC, '--kind', 'deep-dive', '--label', 'subset-regressions');
+    h.write(`.workflows/.cache/${WU}/research/${TOPIC}/deep-dive-001-subset-regressions.md`, [
+      '# Deep Dive: Subset Regressions Under an Improving Aggregate',
+      '',
+      '## Brief',
+      '',
+      'What open-source ranking and evaluation stacks do when an aggregate',
+      'relevance metric improves while a class of queries regresses —',
+      'whether anything gates on the class, and how. Dispatched from the',
+      'per-query-class thread: NDCG@10 over all queries can rise while',
+      'long-tail product searches get worse, and the file had nothing on',
+      'what other harnesses do about it.',
+      '',
+      '## Key Findings',
+      '',
+      '### F1: Reference harnesses gate on per-slice deltas, never on the aggregate alone — three mechanisms in source',
+      '',
+      '*Read in source.*',
+      '',
+      '**(a) Hard block on any slice regression — `ltr-eval`\'s slice guard.**',
+      '`ltr_eval/gate.py:18`:',
+      '',
+      '```python',
+      'def gate(run, baseline, slices, tol=0.005):',
+      '    for s in slices:',
+      '        if ndcg(run, s) < ndcg(baseline, s) - tol:',
+      '            raise SliceRegression(s, ndcg(run, s), ndcg(baseline, s))',
+      '    return ndcg(run, ALL) > ndcg(baseline, ALL)',
+      '```',
+      '',
+      'The aggregate is consulted only once every slice has held. `tol` is',
+      'half a point of NDCG; the slice list is a hand-maintained YAML',
+      '(`slices.yml`) of query classes. A regressing slice fails the run',
+      'outright, whatever the aggregate did.',
+      '',
+      '**(b) Weighted aggregate — `rank_eval` with per-class weights',
+      '(Searchwright plugin).** The metric request carries a `weights` map',
+      'and the gate is a single number:',
+      '',
+      '```json',
+      '{ "metric": { "ndcg": { "k": 10 } },',
+      '  "weights": { "head": 1.0, "torso": 1.0, "tail": 2.5 },',
+      '  "gate": { "min_delta": 0.0 } }',
+      '```',
+      '',
+      'A tail loss counts two and a half times over; a change passes when',
+      'the weighted total is non-negative. The weights are the release',
+      'manager\'s to set, checked into the index config, and nothing else',
+      'looks at slices.',
+      '',
+      '**(c) Flagged rollout with a per-slice alarm — `shopsearch`.**',
+      '`ranker/rollout.cc:41`:',
+      '',
+      '```cpp',
+      'BASE_FEATURE(kRankerV2, base::FEATURE_DISABLED_BY_DEFAULT);',
+      '// alarm: tail NDCG@10 down > 1.0pt for 2 consecutive hourly windows -> flag off',
+      '```',
+      '',
+      'Nothing gates before release. Per-slice NDCG is computed from live',
+      'clicks hourly, and a sustained tail drop flips the flag back — the',
+      'tail takes the regression for at least two hourly windows.',
+      '',
+      'Sources: `ltr-eval` `gate.py` (github, main); Searchwright',
+      '`rank_eval` docs, "Weighted metrics"; `shopsearch` `rollout.cc`',
+      '(github, main).',
+      '',
+      '### F2: Every harness\'s slice definitions are a hand-maintained list, refreshed at most quarterly',
+      '',
+      '`ltr-eval` reads `slices.yml`; Searchwright\'s weights key on class',
+      'names the index config declares; `shopsearch` derives `tail` from a',
+      'query-frequency cut (`< 5/day`) recomputed by a quarterly job',
+      '(`jobs/slice_refresh.py`). None derives classes from the catalogue',
+      'or the season. A slice list falls behind the queries it protects —',
+      'a class that did not exist when the list was written is judged as',
+      'part of whatever it falls into.',
+      '',
+      'Sources: as above; `shopsearch` `jobs/slice_refresh.py`.',
+      '',
+      '## Limitations and Caveats',
+      '',
+      'Three harnesses, all commerce or general web search; no marketplace',
+      'with a strongly seasonal catalogue was found in source. Tolerances,',
+      'weights, and alarm windows quoted are each project\'s shipped',
+      'defaults, not tuned values.',
+      '',
+      '## Open Questions',
+      '',
+      '1. Whether the click-derived labels the file leans on hold at the',
+      '   tail, where clicks are sparse.',
+      '',
+      '## Sources',
+      '',
+      '- github `ltr-eval` — `ltr_eval/gate.py`, `slices.yml`',
+      '- Searchwright docs — `rank_eval`, "Weighted metrics"',
+      '- github `shopsearch` — `ranker/rollout.cc`, `jobs/slice_refresh.py`',
+      '',
+      'STATUS: complete',
+      'THREAD: subset regressions under an improving aggregate',
+      'FINDINGS: F1,F2',
+      'FINDINGS_COUNT: 2',
+      'SUMMARY: Reference harnesses never gate on the aggregate alone — a hard slice block, a weighted aggregate, and a flagged rollout with an alarm are the three shapes in source; every slice list is hand-maintained.',
+      '',
+    ].join('\n'));
+    h.engine('agent', 'scan', WU, 'research', TOPIC);
+    h.engine('agent', 'ack', WU, 'research', TOPIC, 'deep-dive-001-subset-regressions', '--findings', 'F1,F2');
+    h.engine('agent', 'announce', WU, 'research', TOPIC, 'deep-dive-001-subset-regressions');
+  },
+};

@@ -8,6 +8,7 @@
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-shared/references/read-brief-context.md",
@@ -31,6 +32,7 @@
     "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-shared/references/triage-landing.md",
     "skills/workflow-shared/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/composing-a-raise.md",
     "skills/workflow-shared/references/making-it-land.md",
     "skills/workflow-shared/references/natural-breaks.md"
   ],

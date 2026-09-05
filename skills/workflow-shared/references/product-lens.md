@@ -8,7 +8,7 @@ The register for presenting a **report about the work** — findings, review sum
 
 Engine-emitted sections sit outside it entirely: `=== DISPLAY … ===` and `=== MENU … ===` content is emitted byte-for-byte, and a gate that follows a report is not part of the report. The register stops at the section boundary. The boundary governs emission, not authorship: judgment content written into an engine payload for a section to render — a summary, a watch line — takes the register at authoring time, at the depth the authoring site prescribes.
 
-This file composes with [voice.md](voice.md) rather than competing: this governs the report's shape and fidelity, voice governs how the sentences sound.
+This file composes with [altitude.md](altitude.md) and [voice.md](voice.md), both in context via the framework: altitude governs the level the report is told at, voice how the sentences sound, and this file the report's shape and depth.
 
 ## Audience
 
@@ -16,11 +16,9 @@ An engineer who knows the product but not this codebase. Full engineering fluenc
 
 ## Register
 
-- **Lead with the manifestation, in product terms.** What you'd see happen and where — the page, command, or flow — before any code.
+- **The manifestation leads** — altitude's rule, applied to a report: what you'd see happen and where — the page, command, or flow — then the cause as behaviour ("it asks X when it should ask Y"), the mechanism after it, never in its place.
 - **Narrative markdown prose**, not fixed-width fragments in a code block. Bold section leads are fine.
-- **Causes as behaviour.** "It asks X when it should ask Y" beats a mechanism dump. The mechanism follows the behaviour, never replaces it.
 - **`file:line` refs as anchors.** Keep them — subordinate to the story, never its spine.
-- **Translate codebase-internal names.** Helpers, flags, and jargon are introduced on first use or replaced with what they do.
 
 ## Depth
 
