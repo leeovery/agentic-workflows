@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.30] - 2026-09-05
+
+✨ Added
+- The first `/workflow-start` in a project now judges whether the codebase predates the workflows by reading its own commit history and tree, instead of asking — a project that grew up on the workflows is recorded `native` and never prompted again.
+- Review, research, and discussion findings now open every raise at product altitude — what the product does and what its user meets — with code and mechanism kept as supporting evidence underneath.
+
+🔧 Changed
+- The baseline offer's boot check and menus now recognize the new `native` status alongside `none`/`in-progress`/`completed`/`skipped`.
+- The migration confirm gate and tmux session-label opt-in in `/workflow-start` now render through the engine instead of hardcoded prose.
+
 ## [0.7.29] - 2026-09-02
 
 ✨ Added
