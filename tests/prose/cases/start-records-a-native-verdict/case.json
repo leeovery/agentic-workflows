@@ -1,0 +1,30 @@
+{
+  "origin": "the baseline offer fired on Folio, a project that grew up on the workflows — the judgment had no home, so every boot re-rolled it from nothing; this is Folio's shape: scaffolding commits before the arrival, read as evidence",
+  "entry": "workflow-start",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/active-work.md"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "baseline record native",
+      "gateway.cjs"
+    ],
+    "calls_exclude": [
+      "render baseline-offer-gate",
+      "baseline record skipped",
+      "manifest set project.baseline"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "baseline record native",
+      "gateway.cjs"
+    ]
+  }
+}

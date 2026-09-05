@@ -270,10 +270,11 @@ function emptyOverview(detail) {
 /**
  * The empty-state start menu — a baseline row first when one exists to act
  * on (`a`: resume in-progress, view/expand completed, start a declined one —
- * the empty state has no manage row, so `skipped` rides here; `none` renders
- * nothing), then the six start-new options with pipeline-shape labels, `i`
- * only with a live inbox, `v` only with closed work units. Same key shape as
- * startMenu, so the ACTIONS table and routing are uniform.
+ * the empty state has no manage row, so `skipped` rides here; `none` and
+ * `native` render nothing), then the six start-new options with
+ * pipeline-shape labels, `i` only with a live inbox, `v` only with closed
+ * work units. Same key shape as startMenu, so the ACTIONS table and routing
+ * are uniform.
  * @param {StartDetail} detail
  * @returns {{keys: StartMenuKey[], rendered: string}}
  */
@@ -287,7 +288,8 @@ function emptyMenu(detail) {
   } else if (detail.baseline.status === 'skipped') {
     // A declined offer stays reachable here — the empty state has no manage
     // row, and this is the only surface a work-free project renders. `none`
-    // stays hidden: a greenfield project never sees a baseline row.
+    // and `native` stay hidden: a project that grew up on the workflows
+    // never sees a baseline row.
     options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: 'Start the project baseline assessment' });
   }
   const roadmapRow = roadmapMenuRow(detail);
@@ -569,6 +571,7 @@ function manageListView(detail) {
     'in-progress': 'Resume the baseline interview',
     completed: 'View or expand the project baseline',
     skipped: 'Start the project baseline assessment',
+    native: 'Start the project baseline assessment',
     none: 'Start the project baseline assessment',
   }[detail.baseline.status];
   const menuLines = [

@@ -96,16 +96,10 @@ Migrations Applied
 {N} migration(s), {M} file(s) updated.
 ```
 
-5. Confirm:
+5. Fetch the confirm gate and emit its `MENU: migration gate` section verbatim as markdown (not a code block):
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Ready to continue?`**
-
-**`c/continue`** → Proceed
-**Ask**        → Ask questions about the changes
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render migration-gate
 ```
 
 **STOP.** Wait for user response.
@@ -122,7 +116,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "ch
 
 **If ask:**
 
-Answer the user's question, then re-render the confirmation prompt above.
+Answer the user's question, then fetch the confirm gate again and emit it as above.
 
 **STOP.** Wait for user response.
 
@@ -150,14 +144,10 @@ Branch on the boot response's `tmux_labels` — `prompt` means the session runs 
 > You're running inside tmux. The workflows can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` — as you move through phases, restoring the original name when the session ends. One choice for all your projects, stored in `~/.config/workflows/config.json`.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the opt-in and emit its `MENU: label gate` section verbatim as markdown (not a code block):
 
-```
-· · · · · · · · · · · ·
-**`◆ Label your tmux session as you work?`**
-
-**`y/yes`** → Turn session labels on
-**`n/no`**  → Leave session names alone
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render label-gate
 ```
 
 **STOP.** Wait for user response.
@@ -198,13 +188,23 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 → Proceed to **Step 0.4**.
 
-### Step 0.4: Baseline Offer
+### Step 0.4: Baseline Judgment
 
-Branch on the boot response's `baseline` — the one-time offer to assess a pre-existing codebase. A recorded status (`in-progress`/`completed`/`skipped`) never re-offers; the start menu and manage carry those paths.
+Branch on the boot response's `baseline` — the one-time judgment on whether the project carries a codebase that predates the workflows. A recorded status (`native`/`in-progress`/`completed`/`skipped`) never re-judges and never re-offers: manage carries the way into the assessment for every recorded status, and the start menus carry an interview in progress or a declined offer.
 
-#### If `baseline` is `none` and the project carries a codebase that predates the workflows
+While `baseline` is `none`, nothing is recorded yet. Read the response's `baseline_signal` — the repository's own account of what came before the workflows — and decide the one question: was there real development before the workflows arrived, or only setup? `history_before` lists the commits before the arrival as `date  subject` (`commits_before` of `commits_total`, from `root_date` to `workflows_date` — `null` when nothing under `.workflows/` is committed yet: the workflows are arriving now, and the whole history came before them); `tree_at_arrival` and `files_at_arrival` are the project tree they arrived into, less the workflows' own footprint. Read them as you would by hand — the counts are context, never thresholds. Commits that are an initial commit, setup, configuration, a generator's skeleton, and a tree with no application code in it: the project grew up on the workflows, whatever it has become since — **native**. Application code and the history of building it before the arrival: a codebase the workflows were installed into — it **predates** them. A `null` signal is a project with no history to read (no repository, no commits, a shallow clone): look at the project tree yourself, and an empty or scaffold-only tree is native.
 
-Judge the second condition from what you can already see — code and git history from before the workflows arrived, not a project that grew up on them (however large it has become) and not a fresh or near-empty repository. When in doubt, offer once: declining records the answer.
+#### If `baseline` is `none` and the project is native
+
+Record the verdict — written and committed in one call, so the question is settled for good. If it fails (`ok: false`), surface the error and continue — the judgment returns at the next start:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs baseline record native
+```
+
+→ Proceed to **Step 1**.
+
+#### If `baseline` is `none` and the codebase predates the workflows
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -228,18 +228,17 @@ This skill ends. The invoked skill will load into context and provide additional
 
 **If `no`:**
 
-Record the decline so the offer never repeats, and commit:
+Record the decline — written and committed in one call, so the offer never repeats. If it fails (`ok: false`), surface the error and continue — the offer returns at the next start:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.baseline.status skipped
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: decline the assessment offer"
+node .claude/skills/workflow-engine/scripts/engine.cjs baseline record skipped
 ```
 
 → Proceed to **Step 1**.
 
 #### Otherwise
 
-A recorded status (`in-progress`/`completed`/`skipped`), or no pre-existing codebase — render nothing.
+A recorded status — render nothing.
 
 → Proceed to **Step 1**.
 

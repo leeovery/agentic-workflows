@@ -28,6 +28,7 @@ const {
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
+const { migrationGate, labelGate } = require('./projections/boot.cjs');
 const { heldCodeSessions, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const {
@@ -4540,11 +4541,11 @@ function queryFailureGateSurface(_cwd, _args) {
 // prose never reaches, and hands the pure projection its detail.
 // ---------------------------------------------------------------------------
 
-/** Resolve baseline state, refusing the never-started default. @param {string} cwd @param {string} surface */
+/** Resolve baseline state, refusing the never-started states — nothing recorded, or a native verdict. @param {string} cwd @param {string} surface */
 function resolveBaseline(cwd, surface) {
   const d = baselineState(cwd);
-  if (d.status === 'none') {
-    throw new Error(`render ${surface}: no baseline on the project manifest`);
+  if (d.status === 'none' || d.status === 'native') {
+    throw new Error(`render ${surface}: the baseline is "${d.status}" — no assessment has been started`);
   }
   return d;
 }
@@ -4679,7 +4680,7 @@ function baselineManageGateSurface(cwd, _args) {
   return baselineManageGate();
 }
 
-/** The one-time offer gate — only sensible while the baseline was never started. @param {string} cwd @param {object} _args @returns {string} */
+/** The one-time offer gate — only while nothing is recorded; a native verdict is recorded state and refuses here. @param {string} cwd @param {object} _args @returns {string} */
 function baselineOfferGateSurface(cwd, _args) {
   const d = baselineState(cwd);
   if (d.status !== 'none') {
@@ -4808,6 +4809,8 @@ const SURFACES = {
   'baseline-manage-gate': baselineManageGateSurface,
   'baseline-doc-pick': baselineDocPickSurface,
   'baseline-offer-gate': baselineOfferGateSurface,
+  'migration-gate': () => migrationGate(),
+  'label-gate': () => labelGate(),
 };
 
 /**

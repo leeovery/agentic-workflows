@@ -55,7 +55,7 @@ Nothing is persisted.
 
 **If `back` and the assessment is fresh:**
 
-Nothing is persisted — the offer stands from the workflow-start menus whenever you want it.
+Nothing is persisted — the assessment stays available from the workflow-start manage menu whenever you want it.
 
 **STOP.** Do not proceed — terminal condition.
 

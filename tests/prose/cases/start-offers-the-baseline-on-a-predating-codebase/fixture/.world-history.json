@@ -1,0 +1,38 @@
+[
+  {
+    "message": "feat: user accounts",
+    "files": [
+      "src/models/user.js",
+      "src/routes/users.js"
+    ]
+  },
+  {
+    "message": "feat: billing with invoices",
+    "files": [
+      "src/models/invoice.js",
+      "src/routes/billing.js",
+      "src/services/pricing.js"
+    ]
+  },
+  {
+    "message": "fix: prorate mid-cycle plan changes",
+    "files": [
+      "tests/pricing.test.js"
+    ]
+  },
+  {
+    "message": "feat: webhook delivery with retries",
+    "files": [
+      "src/services/webhooks.js",
+      "tests/webhooks.test.js"
+    ]
+  },
+  {
+    "message": "chore: install the workflows",
+    "files": [
+      ".workflows/.state/migrations",
+      ".workflows/_gitignore.fixture",
+      ".workflows/manifest.json"
+    ]
+  }
+]

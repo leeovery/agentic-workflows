@@ -55,6 +55,25 @@ function git(cwd, args) {
   return res.stdout;
 }
 
+// Whole-history listings (a signal's `git log`, a tree's `ls-tree -r`) can
+// run past spawnSync's 1 MiB default; a read past the budget is a failure
+// like any other, never a truncated answer.
+const TRY_BUDGET_BYTES = 64 * 1024 * 1024;
+
+/**
+ * Run git and return stdout, or null on any failure — the tolerant read for
+ * advisory probes that must never take their caller down. An empty result
+ * (`''`) and a failed one (`null`) stay distinct.
+ * @param {string} cwd
+ * @param {string[]} args
+ * @returns {string|null}
+ */
+function tryGit(cwd, args) {
+  const res = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: TRY_BUDGET_BYTES });
+  if (res.error || res.status !== 0) return null;
+  return res.stdout;
+}
+
 /** @param {string} message */
 function isIndexLockError(message) {
   return message.includes('index.lock') &&
@@ -132,8 +151,8 @@ function stageableSpecs(cwd, specs) {
       if (!fs.statSync(abs).isDirectory()) return true;
       if (dirHasFiles(abs)) return true;
     }
-    const res = spawnSync('git', ['ls-files', '--', p], { cwd, encoding: 'utf8' });
-    return res.status === 0 && (res.stdout || '').trim() !== '';
+    const out = tryGit(cwd, ['ls-files', '--', p]);
+    return out !== null && out.trim() !== '';
   });
 }
 
@@ -146,8 +165,8 @@ function stageableSpecs(cwd, specs) {
  * @returns {boolean}
  */
 function hasStagedDeletions(cwd, spec) {
-  const res = spawnSync('git', ['diff', '--cached', '--name-only', '--', spec], { cwd, encoding: 'utf8' });
-  return res.status === 0 && (res.stdout || '').trim() !== '';
+  const out = tryGit(cwd, ['diff', '--cached', '--name-only', '--', spec]);
+  return out !== null && out.trim() !== '';
 }
 
 /**
@@ -204,4 +223,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, commitPathspec, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };
+module.exports = { git, tryGit, commitPathspec, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };

@@ -524,8 +524,8 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 [branch on the boot response: not-ready → terminal stop; ready → proceed]
 → Proceed to **Step 0.4**.
 
-### Step 0.4: Baseline Offer
-[one-time offer when the boot response says so; otherwise silent]
+### Step 0.4: Baseline Judgment
+[one-time judgment when the boot response says so — records the verdict either way; otherwise silent]
 → Proceed to **Step 1**.
 ```
 

@@ -315,12 +315,19 @@ function unifiedDiff(label, expectedBuf, actualBuf) {
 
 const PROJECT_MANIFEST = path.join('.workflows', 'manifest.json');
 
+// Where materialise records what it stamped, so the differ strips exactly
+// that and never a value the walk wrote itself. Under `.git/`, which no
+// collected tree ever holds.
+const STAMP_MARKER = path.join('.git', 'prose-stamp.json');
+
 /**
  * Write `defaults.tmux_labels: false` into the world's project manifest
  * (creating the manifest when the fixture has none) — the engine's
  * per-project override, which beats the developer's real system opt-in.
  * Canonical manifest style, so mid-walk engine rewrites stay byte-stable.
+ * Returns what was stamped beyond the label kill.
  * @param {string} dir
+ * @returns {{baseline: boolean}}
  */
 function stampLabelKill(dir) {
   const file = path.join(dir, PROJECT_MANIFEST);
@@ -328,24 +335,37 @@ function stampLabelKill(dir) {
   let manifest = {};
   if (fs.existsSync(file)) manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
   manifest.defaults = { ...(manifest.defaults || {}), tmux_labels: false };
-  // Every world reads as a substantial codebase (the real skills tree is
-  // copied in), so workflow-start's one-time baseline offer would fire on a
-  // walker's judgment call. `skipped` pins the branch shut — a case about
-  // the baseline itself stamps its own state in fixture-state.cjs, which
+  // A world grows up on the workflows, and workflow-start's one-time
+  // baseline judgment would record exactly that — a manifest write and a
+  // commit in every start case's delta. `native` pins the branch shut; a
+  // case about the judgment itself stamps its own state in
+  // fixture-state.cjs (`baseline: {}` reads as nothing recorded), which
   // wins here.
-  if (manifest.baseline === undefined) manifest.baseline = { status: 'skipped' };
+  const baseline = manifest.baseline === undefined;
+  if (baseline) manifest.baseline = { status: 'native' };
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
+  return { baseline };
+}
+
+/** What materialise stamped into a world, per its marker. @param {string} dir @returns {{baseline: boolean}} */
+function readStampMarker(dir) {
+  const file = path.join(dir, STAMP_MARKER);
+  if (!fs.existsSync(file)) return { baseline: false };
+  try { return { baseline: Boolean(JSON.parse(fs.readFileSync(file, 'utf8')).baseline) }; } catch { return { baseline: false }; }
 }
 
 /**
  * Reverse the stamp on a collected tree so deltas compare against
  * unstamped snapshots: drop `defaults.tmux_labels` when it carries the
- * harness value, drop an emptied `defaults`, and drop the manifest
- * entirely when the stamp was all it held.
+ * harness value, drop an emptied `defaults`, drop the baseline stamp only
+ * when materialise stamped one (a verdict the walk recorded itself is a
+ * real delta the case pins, never a stamp), and drop the manifest entirely
+ * when the stamp was all it held.
  * @param {Map<string, Buffer>} tree
+ * @param {{baseline: boolean}} stamped  what materialise recorded stamping
  */
-function unstampLabelKill(tree) {
+function unstampLabelKill(tree, stamped) {
   const buf = tree.get(PROJECT_MANIFEST);
   if (!buf) return;
   /** @type {Record<string, any>} */
@@ -354,8 +374,8 @@ function unstampLabelKill(tree) {
   if (!manifest || typeof manifest !== 'object' || !manifest.defaults || manifest.defaults.tmux_labels !== false) return;
   delete manifest.defaults.tmux_labels;
   if (Object.keys(manifest.defaults).length === 0) delete manifest.defaults;
-  if (manifest.baseline && typeof manifest.baseline === 'object'
-      && manifest.baseline.status === 'skipped' && Object.keys(manifest.baseline).length === 1) {
+  if (stamped.baseline && manifest.baseline && typeof manifest.baseline === 'object'
+      && manifest.baseline.status === 'native' && Object.keys(manifest.baseline).length === 1) {
     delete manifest.baseline;
   }
   if (Object.keys(manifest).length === 0) {
@@ -370,7 +390,7 @@ function diffWorld(caseId, worldDir, claimsMode = false) {
   const expected = readSnapshot(caseId, which);
   if (expected === null) throw new Error(`case "${caseId}" has no committed ${which} snapshot`);
   const actual = collectTree(worldDir);
-  unstampLabelKill(actual);
+  unstampLabelKill(actual, readStampMarker(worldDir));
 
   const added = [];
   const removed = [];
@@ -440,10 +460,14 @@ function buildWorld(caseId) {
 
   // The walker's engine calls inherit the developer's real environment —
   // tmux identity and system config included — so every world carries the
-  // project-level session-label kill switch. Stamped before the baseline
+  // project-level session-label kill switch. Stamped before the first
   // commit (no dirt for the walk to sweep up) and stripped back out by
-  // diffWorld, so snapshots never see it.
-  stampLabelKill(dir);
+  // diffWorld, so snapshots never see it. A fixture that layers the
+  // project manifest through its history is stamped when that layer lands
+  // instead — the root commit then holds no `.workflows/` at all, which is
+  // what lets a case put commits before the workflows' arrival.
+  const manifestLayered = layered.has(PROJECT_MANIFEST);
+  let stamped = manifestLayered ? { baseline: false } : stampLabelKill(dir);
 
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 'prose@example.com');
@@ -461,13 +485,18 @@ function buildWorld(caseId) {
   // git-history reads (scope greps, baselines) expect of a real run.
   for (const group of history) {
     for (const rel of group.files) {
-      const dest = path.join(dir, rel);
+      const real = path.basename(rel) === GITIGNORE_ESCAPED
+        ? path.join(path.dirname(rel), GITIGNORE)
+        : rel;
+      const dest = path.join(dir, real);
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, snap.get(rel));
     }
+    if (manifestLayered && group.files.includes(PROJECT_MANIFEST)) stamped = stampLabelKill(dir);
     git('add', '-A');
     git('commit', '-q', '-m', group.message);
   }
+  fs.writeFileSync(path.join(dir, STAMP_MARKER), JSON.stringify(stamped) + '\n');
 
   // A recipe cannot know a commit hash — every world re-inits git — so a
   // fixture that must hold one (a plan's spec_commit baseline) writes
@@ -585,4 +614,5 @@ module.exports = {
   ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog,
   runRecipe, collectTree, readSnapshot, snapshotDir, recipeHash, storedHash,
   writeSnapshot, verifySnapshot, diffWorld, buildWorld, destroyWorld, archiveWorld,
+  stampLabelKill, unstampLabelKill, readStampMarker, STAMP_MARKER, PROJECT_MANIFEST,
 };

@@ -101,12 +101,18 @@ log for the stack. Opened 2026-08-12 from the discussion with Lee.
    are themed per area, batched where independent, sequential where an
    answer branches, ranked by "would a future phase plausibly need this".
 8. **Status-keyed surfacing, not origin-keyed.** Project-manifest status
-   `none / in-progress / completed / skipped`. `in-progress` → a
-   first-class resume row on the start menu (unfinished interview looks
-   like unfinished work); `completed` → under `m/manage` (view, expand,
-   refresh); `none` → the one-time boot offer covers the brownfield
-   moment, afterwards reachable via manage. A greenfield project that
-   grew up on the workflows never needs it and never sees it.
+   `none / native / in-progress / completed / skipped`. `in-progress` →
+   a first-class resume row on the start menu (unfinished interview
+   looks like unfinished work); `completed` → under `m/manage` (view,
+   expand, refresh); `none` → nothing recorded yet: workflow-start's
+   one-time judgment, which either records `native` (a project that
+   grew up on the workflows — never asked again, never a row outside
+   manage) or makes the brownfield offer (yes → the assessment, no →
+   `skipped`, reachable via manage and the empty-state menu). Either
+   verdict lands through `engine baseline record`, one write committed
+   confined to the project manifest. The judgment is recorded whichever
+   way it falls: a verdict with no home is re-made every boot, and one
+   boot's wrong roll is an offer a native project should never see.
 9. **Resume and expand are one flow** — resume walks a non-empty agenda;
    expand generates a new one (new area, or deeper on an existing one)
    and walks it. Refresh (re-verifying the observed layer against moved
@@ -130,7 +136,18 @@ log for the stack. Opened 2026-08-12 from the discussion with Lee.
   `work_type` from).
 - `baseline` reserved as a work-unit name (alongside `project`).
 - Project-manifest baseline status field + whatever boot needs to report
-  it.
+  it — and, while nothing is recorded, boot's `baseline_signal`
+  (`domain/baseline.cjs` `baselineSignal`): the repository's own account
+  of what came before the workflows, handed to the judgment as evidence
+  to read. The commits before `.workflows/` first landed, as commits —
+  date and subject, head and tail of a long run — with the counts and
+  the two dates as context, and the project tree they arrived into as
+  a file count and its top-level shape. Ancestry-exact (`rev-list`
+  from the arrival's parent), bounded, signature-blind, and null with
+  no honest history — no repository, no commits, a shallow clone, a
+  failed read — where the tree decides. The verdict itself is one verb,
+  `baseline record <native|skipped>`: write and confined commit in one
+  transaction, refusing any other value and refusing once recorded.
 - Simulation coverage per the house rule; prose cases for the offer, an
   interview round, exit/resume, and the status-keyed menu.
 
@@ -196,9 +213,14 @@ resulting deltas — several revise the decisions above:
   `a/baseline` start row) — the empty state has no manage row, and that
   window is exactly the one the offer targets. `none` stays hidden
   there; manage carries the row for every status.
-- **The offer keys on precedence, not size** — code and history that
-  predate the workflows, so a project that grew up on them is never
-  offered one however large it gets.
+- **The judgment reads the history as a person would** — did real
+  development happen before the workflows arrived, or only setup? The
+  signal hands over the commits themselves and the tree they arrived
+  into; scaffolding, configuration and a generator's skeleton are a
+  project's start whatever it has grown into, application code and the
+  history of building it are a codebase the workflows were installed
+  into. Counts are context, never thresholds. The tree resolves the
+  doubt; the user is never the tiebreak.
 - **Confirmation questions restored** (decision 2's "user-confirmed
   where load-bearing"): the agenda keeps confirm-class questions for
   load-bearing observed claims, and a correction to an observed claim
@@ -211,8 +233,15 @@ resulting deltas — several revise the decisions above:
 - **One state home**: `domain/baseline.cjs` derives status/areas/
   remaining for boot, the start menus, and every surface; projections
   are pure detail-to-string.
-- **Prose worlds stamp `baseline: skipped`** (the tmux-kill precedent)
-  so the nine workflow-start-entry cases never meet the offer judgment.
+- **Prose worlds stamp `baseline: native`** (the tmux-kill precedent)
+  so the workflow-start-entry cases never meet the judgment; a case
+  about the judgment itself holds `baseline: {}` in its fixture — an
+  object with nothing recorded reads `none`. The harness remembers
+  what it stamped and strips exactly that, never a verdict the walk
+  recorded. A case that needs commits before the arrival layers its
+  `.workflows/` files through `.world-history.json`: the root commit
+  then holds the project's code alone, and the stamp lands on the
+  layered manifest.
 
 ## Open / deferred
 
