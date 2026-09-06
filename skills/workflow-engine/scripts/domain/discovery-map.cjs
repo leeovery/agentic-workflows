@@ -534,6 +534,11 @@ function handleItem(cwd, workUnit, name) {
     if (lifecycle === 'cancelled') {
       throw new Error(`"${name}" can't be closed as a dead end — it's cancelled; reactivate the phase work from the epic menu first`);
     }
+    const parked = ['research', 'discussion']
+      .filter((phase) => phaseItems(manifest, phase).some((it) => it.name === name && it.status === 'triaged'));
+    if (parked.length > 0) {
+      throw new Error(`"${name}" can't be closed as a dead end — rerouted concerns are parked in its ${parked.join(' and ')} triage; drain them, or cancel the stub from the epic menu first`);
+    }
     item.handled = true;
 
     saveWorkUnitManifest(cwd, workUnit, manifest);

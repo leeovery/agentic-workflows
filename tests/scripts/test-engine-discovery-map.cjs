@@ -655,6 +655,12 @@ describe('engine CLI: discovery-map operations', () => {
       const err = runFail(dir, ['handle', 'payments', 'cancelled-topic']);
       assert.match(err.error, /it's cancelled; reactivate the phase work from the epic menu first/);
     });
+
+    it('refuses a topic with a parked stub — a dead end never buries rerouted concerns', () => {
+      const err = runFail(dir, ['handle', 'payments', 'triaged-topic']);
+      assert.match(err.error, /"triaged-topic" can't be closed as a dead end — rerouted concerns are parked in its research triage; drain them, or cancel the stub from the epic menu first/);
+      assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['triaged-topic'], false);
+    });
   });
 
   describe('unhandle', () => {

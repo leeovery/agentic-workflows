@@ -564,6 +564,75 @@ describe('pipeline simulation', () => {
       new RegExp(`Apply the correction protocol to \\.workflows/${wu}/specification/${wu}/specification\\.md\\?`));
   });
 
+  it('feature: research parked beneath the live discussion routes the continue to the research and holds the discussion shut', () => {
+    const wu = 'ledger';
+    const log = sessionLog(sim, wu);
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Ledger feature', '--session-log-file', log]);
+    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    // The discussion's own requeue parks a concern research-side: the stub is
+    // pre-live to the phase walk, yet research feeds discussion — the linear
+    // continue routes to it, and the discussion cannot conclude over it.
+    sim.run(['topic', 'triage', wu, 'research', wu]);
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
+    sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits research on the topic/);
+    assert.match(sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
+      /awaits research on "Ledger" \(parked — not yet started\)/);
+    sim.run(['topic', 'start', wu, 'research', wu]);
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
+    sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
+    sim.run(['commit', wu, '-m', `research(${wu}): open the question`, '--topic', `research/${wu}`]);
+    sim.run(['topic', 'complete', wu, 'research', wu]);
+    sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'discussion');
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+  });
+
+  it('epic: research first — a parked stub is the topic\'s own row, no discussion is born over it, no dead end buries it, and a reopen flags the live discussion', () => {
+    const wu = 'orbit';
+    const log = sessionLog(sim, wu);
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Orbit', '--session-log-file', log]);
+    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+      { name: 'alpha', routing: 'discussion', summary: 'Alpha summary' },
+      { name: 'beta', routing: 'research', summary: 'Beta summary' },
+    ]);
+    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
+    sim.run(['discovery-map', 'sequence', wu, 'alpha=1', 'beta=2']);
+    const rows = (topic) => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+      .filter((k) => k.topic === topic).map((k) => [k.action, k.label]);
+
+    // A research-side concern parks on alpha before any discussion exists.
+    sim.run(['topic', 'triage', wu, 'research', 'alpha']);
+    assert.deepStrictEqual(rows('alpha'), [['start_research', 'Start research for "Alpha" — *triage waiting*']]);
+    sim.refuses(['topic', 'start', wu, 'discussion', 'alpha'], /research is parked on it and comes first/);
+    assert.match(sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }), /research is parked on it and comes first/);
+    sim.refuses(['discovery-map', 'handle', wu, 'alpha'], /rerouted concerns are parked in its research triage/);
+
+    // The research lands — the discussion row returns, and the discussion is born.
+    sim.run(['topic', 'start', wu, 'research', 'alpha']);
+    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
+    sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
+    sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+    assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['start_discussion_after_research']);
+    sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
+
+    // A reopen of the research beneath the discussion now in flight flags it,
+    // holds its conclusion shut, and leads the topic's rows; the soft gate
+    // passes the research row's actions.
+    const hop = sim.run(['topic', 'reopen', wu, 'research', 'alpha']);
+    assert.deepStrictEqual(hop.reconcile_flagged, [{ phase: 'discussion', topic: 'alpha' }]);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.reconcile_needed, 'research');
+    sim.refuses(['topic', 'complete', wu, 'discussion', 'alpha'], /awaits research on the topic/);
+    assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_research', 'continue_discussion']);
+    sim.render(['epic-soft-gate', wu, '--action', 'continue_research', '--topic', 'alpha'], { expect: 'empty' });
+    sim.render(['epic-soft-gate', wu, '--action', 'start_research', '--topic', 'beta'], { expect: 'empty' });
+    sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+    sim.render(['wait-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
+    sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
+  });
+
   it('feature: review skipped at the early-completion gate', () => {
     const wu = 'quick-ship';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Ship it', '--session-log-file', sessionLog(sim, wu)]);
@@ -2656,7 +2725,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'complete', wu, 'research', 'layout'], /awaits experiment evidence \(E1\)/);
     assert.match(sim.render(['wait-gate', `${wu}.discussion.timing`], { expect: 'content' }),
       /Conclusion blocked — this discussion awaits experiment evidence \(E1\)/);
-    sim.render(['wait-gate', `${wu}.discussion.layout`], { expect: 'empty' });
+    sim.refuses(['render', 'wait-gate', `${wu}.discussion.layout`], /no discussion item "layout" — nothing to hold shut/);
 
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders

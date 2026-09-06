@@ -2068,9 +2068,10 @@ describe('engine topic start — the discovery map gates the birth of a phase it
             delta: { routing: 'research', source: 'discovery' },
             epsilon: { routing: 'research', source: 'discovery' },
             zeta: { routing: 'research', source: 'discovery' },
+            eta: { routing: 'discussion', source: 'discovery' },
           },
         },
-        research: { items: { gamma: { status: 'triaged' }, delta: { status: 'completed' }, zeta: { status: 'in-progress' } } },
+        research: { items: { gamma: { status: 'triaged' }, delta: { status: 'completed' }, zeta: { status: 'in-progress' }, eta: { status: 'triaged' } } },
         discussion: { items: { gamma: { status: 'in-progress' }, epsilon: { status: 'triaged' }, zeta: { status: 'in-progress' } } },
       },
     }, null, 2) + '\n');
@@ -2093,6 +2094,12 @@ describe('engine topic start — the discovery map gates the birth of a phase it
     const err = engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'epsilon']);
     assert.match(err.error, /it is routed to research and nothing has started/);
     assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.epsilon.status, 'triaged');
+  });
+
+  it('research parked on a discussion-routed topic comes first — the discussion cannot be born over it', () => {
+    const err = engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'eta']);
+    assert.match(err.error, /discussion can't start on "eta" — research is parked on it and comes first/);
+    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'research', 'eta']).created, false);
   });
 
   it('a parked research stub starts from its menu row — even beneath a live discussion', () => {

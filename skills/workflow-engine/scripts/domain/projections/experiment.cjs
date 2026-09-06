@@ -11,9 +11,9 @@
 // manifest, never a hand-maintained file: one row per experiment, conceived
 // to verdict, sub-experiments nested under their parent, abandoned rows kept
 // with their reason. The approval gate is the briefing confirm that freezes
-// a design before anything is measured. The spawn gate and wait gate are the
-// spawning conversation's two pauses: the now-or-later choice right after a
-// spawn, and the blocked-conclusion choice while evidence is still owed.
+// a design before anything is measured. The spawn gate is the spawning
+// conversation's now-or-later choice right after a spawn; the blocked-
+// conclusion gate over every wait lives in wait.cjs.
 // ---------------------------------------------------------------------------
 
 const { renderTree } = require('../../kernel/render.cjs');
