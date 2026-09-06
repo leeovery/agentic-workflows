@@ -885,6 +885,14 @@ describe('pipeline simulation', () => {
       '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'escalation-path',
       '-m', `discussion(${wu}/alpha): reroute concern to beta`]);
     assert.strictEqual(reroute.reopened, true, 'a delivery beneath a concluded discussion reopens it');
+    // The cue follows the queue, not the status: the reopened item is
+    // in-progress with no stub to read, yet its rows say what waits — and
+    // the fold retires the cue.
+    const betaRow = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+      .find((k) => k.topic === 'beta' && k.action === 'continue_discussion').label;
+    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion* · triage waiting');
+    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).replace(/\n[ │]+/g, ' '),
+      /Discussing · triage waiting/);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /review dispatch blocked/);
     sim.run(['discussion-map', 'add', wu, 'beta', 'escalation-path']);
@@ -897,6 +905,7 @@ describe('pipeline simulation', () => {
       '-m', `discussion(${wu}/beta): absorb 001-escalation-path (from alpha)`]);
     assert.strictEqual(folded.arming_settled, true, 'the fold\'s ground joins the anchor snapshot');
     assert.strictEqual(folded.remaining, 0);
+    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion*', 'the drained queue retires the cue');
     // The drained queue re-arms nothing — the fold never counts as movement.
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /0 of 3 map moves since review-003/);

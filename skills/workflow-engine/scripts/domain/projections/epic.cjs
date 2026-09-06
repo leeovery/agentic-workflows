@@ -448,19 +448,23 @@ function topicRoute(action, workUnit, topic) {
   return `/${PHASE_ENTRY_SKILL[/** @type {keyof typeof ACTION_PHASE} */ (ACTION_PHASE[action])]} epic ${workUnit} ${topic}`;
 }
 
+// The triage cue rides every row shape: the bare start rows carry it as
+// their italic tail; a row that already has a tail appends it after, the
+// way continueLabel appends `· input moved`.
 /** @param {string} action @param {string} name @param {string|null} [researchState] @param {boolean} [triageParked] */
 function discoveryEntryLabel(action, name, researchState, triageParked) {
   const t = titlecase(name);
+  const cue = triageParked ? ' · triage waiting' : '';
   switch (action) {
     case 'start_research': return triageParked ? `Start research for "${t}" — *triage waiting*` : `Start research for "${t}"`;
     case 'start_discussion': return triageParked ? `Start discussion for "${t}" — *triage waiting*` : `Start discussion for "${t}"`;
-    case 'continue_research': return `Continue "${t}" — *research*`;
-    case 'continue_discussion': return `Continue "${t}" — *discussion*`;
+    case 'continue_research': return `Continue "${t}" — *research*${cue}`;
+    case 'continue_discussion': return `Continue "${t}" — *discussion*${cue}`;
     // start_discussion_after_research — superseded research is named as such,
     // never as completed (same rule as discoveryLifecycleLabel).
-    default: return researchState === 'superseded'
+    default: return (researchState === 'superseded'
       ? `Start discussion for "${t}" — *research superseded*`
-      : `Start discussion for "${t}" — *research completed*`;
+      : `Start discussion for "${t}" — *research completed*`) + cue;
   }
 }
 
@@ -494,10 +498,14 @@ function startVerbLabel(n, srcFlagged) {
 
 // A row's triage tail speaks for its own phase's queue — a parked research
 // stub beside a discussion row is the research row's cue, never both rows'.
+// The queue is read per phase: a `triaged` stub, or files landed beneath a
+// started or reopened item (the row's triage_queued, counted from disk).
 /** @param {string} workUnit @param {MapRow} row @param {string} action @returns {MenuKey} */
 function discoveryEntry(workUnit, row, action) {
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (action)];
-  const parked = (phase === 'research' ? row.research_state : row.discussion_state) === 'triaged';
+  const state = phase === 'research' ? row.research_state : row.discussion_state;
+  const queued = phase === 'research' ? row.triage_queued.research : row.triage_queued.discussion;
+  const parked = state === 'triaged' || queued > 0;
   return {
     key: '',
     action,

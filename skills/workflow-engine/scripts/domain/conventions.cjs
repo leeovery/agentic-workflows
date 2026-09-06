@@ -137,10 +137,11 @@ function discoveryGlyph(tier) {
 // carries. One phrasing, every map render (epic dashboard, discovery session
 // map view). `researchState` is the topic's actual research-item status (null
 // when none exists — see computeTopicLifecycle's research_state): superseded
-// research is named as such, never as complete. `triageParked`
-// (computeTopicLifecycle's triage_parked) appends a `triage waiting` cue on
-// any lifecycle — a `triaged` stub holds rerouted concerns that drain when
-// the phase's session starts. `reconcilePending` (computeTopicLifecycle's
+// research is named as such, never as complete. `triageParked` (the map
+// row's triage_parked) appends a `triage waiting` cue on any lifecycle —
+// rerouted concerns wait on the topic, parked on a `triaged` stub or queued
+// beneath a started or reopened item, and drain when its session next sits.
+// `reconcilePending` (computeTopicLifecycle's
 // reconcile_pending) appends an `input moved` cue the same way — a phase item
 // beneath the row carries a live reconcile flag its entry flow will clear.
 // `waits` (the map row's live waits, every kind) appends `awaiting research`

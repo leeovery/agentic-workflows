@@ -98,7 +98,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} current_phase
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
- * @property {boolean} triage_parked  a `triaged` stub (parked rerouted concerns) exists in either phase
+ * @property {boolean} triage_parked  rerouted concerns wait on the topic — a `triaged` stub in either phase, or queue files on disk beneath a started or reopened item
+ * @property {{research: number, discussion: number}} triage_queued  the topic's queue depth per phase, counted from disk
  * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
  * @property {import('./derivations.cjs').Wait[]} waits  the live waits of the topic's in-progress research and discussion items (empty when none)
  * @property {string|null} next_action
@@ -401,7 +402,7 @@ function epicDetail(cwd, manifest) {
   // the same rows the discovery-session gateway reads. map_summary stays null
   // (not the zero-count shape) when the map is empty, the epic dashboard's cue
   // that there is no map to render.
-  const builtMap = buildDiscoveryMap(manifest);
+  const builtMap = buildDiscoveryMap(manifest, path.join(cwd, '.workflows'));
   /** @type {MapRow[]} */
   const discoveryMap = builtMap.map;
   const mapSummary = discoveryMap.length > 0 ? builtMap.summary : null;

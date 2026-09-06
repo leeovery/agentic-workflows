@@ -42,9 +42,9 @@ function discover(cwd, workUnit) {
   const activeSession = (typeof discoveryPhase.active_session === 'string' && discoveryPhase.active_session !== '')
     ? discoveryPhase.active_session
     : null;
-  const { map, summary, needs_sequencing } = buildDiscoveryMap(manifest);
-  const nextSessionNumber = engine.session.nextSessionNumber(path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions'));
   const workflowsDir = path.join(cwd, '.workflows');
+  const { map, summary, needs_sequencing } = buildDiscoveryMap(manifest, workflowsDir);
+  const nextSessionNumber = engine.session.nextSessionNumber(path.join(workflowsDir, workUnit, 'discovery', 'sessions'));
   const analysisCaches = {
     gap_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'gap-analysis'),
   };

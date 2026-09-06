@@ -1497,7 +1497,7 @@ describe('reads + derivations', () => {
           discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
         },
       };
-      const row = buildDiscoveryMap(m).map.find((t) => t.name === 'timing');
+      const row = buildDiscoveryMap(m, path.join(__dirname, '.no-such-workflows')).map.find((t) => t.name === 'timing');
       assert.deepStrictEqual(row.waits, [
         { kind: 'experiment', id: 'E2' },
         { kind: 'research', status: 'in-progress' },
