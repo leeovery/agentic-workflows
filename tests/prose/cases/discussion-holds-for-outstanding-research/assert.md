@@ -7,7 +7,7 @@ The prose should have taken this path:
    the advisory's outstanding branch runs: the callout says research on
    this topic is still outstanding (parked), that decisions here may
    rest on ground it re-examines, that this work cannot conclude until
-   it lands, and that the menu's research row is the way in. The flag
+   it lands, and that the menu carries the way in. The flag
    is left in place — no delete — and no research file is read, there
    being none
 2. the epic context arm reads the map item's source, finds it
@@ -23,7 +23,7 @@ The prose should have taken this path:
    flush and fetches the wait gate before anything is deferred; the
    gate comes back populated — the blocker naming research on
    Behavioural Ranking as parked and not yet started, the guidance
-   naming the research row as the way in and a cancel as the release,
+   naming the research as the first move and a cancel as the release,
    and the pause/keep menu — emitted verbatim, and the session stops.
    The map gate never runs and nothing is written `deferred`; the
    closing gates are never loaded and no completion is attempted — the

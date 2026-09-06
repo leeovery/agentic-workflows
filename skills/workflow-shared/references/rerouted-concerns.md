@@ -249,7 +249,7 @@ Surface the engine's error verbatim — it names the recovery path. The concern 
 
 #### If `remaining` is non-zero
 
-Announce the move in one line — the concern now waits in this topic's `{other_phase}` queue, raised when that phase runs; when the response carries `reconcile_flagged` or `sources_staled`, say which downstream work the move flagged. Then re-enter the check now, in this same turn — the move is the next raise's natural break, and the standing opt-in routes it straight to the next raise.
+Announce the move in one line — the concern now waits in this topic's `{other_phase}` queue, raised when that phase runs; when the response carries `reconcile_flagged` or `sources_staled`, say which downstream work the move flagged, and when the move parked the concern research-side, that this discussion now waits on that research — it cannot conclude until the research lands, and the menu carries the way in. Then re-enter the check now, in this same turn — the move is the next raise's natural break, and the standing opt-in routes it straight to the next raise.
 
 → Return to **A. Check**.
 

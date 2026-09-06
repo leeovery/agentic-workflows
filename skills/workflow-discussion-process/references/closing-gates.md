@@ -1,6 +1,6 @@
 # Closing Gates
 
-*Reference for **[discussion-session](discussion-session.md)** — loaded when the discussion reaches its close, with every subtopic settled (deferrals already applied) and the evidence waits already checked.*
+*Reference for **[discussion-session](discussion-session.md)** — loaded when the discussion reaches its close, with every subtopic settled (deferrals already applied) and the topic's waits already checked.*
 
 ---
 

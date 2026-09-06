@@ -120,7 +120,7 @@ Deliver each note in turn. Build its concern from the note *plus* the session co
 
 → Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the note's full context}`, origin = `{topic}`, phase = `discussion`, landing_phase = `{landing_phase}`, date = `{today}`.
 
-On return: if `result` is `landed`, the note is handled — replace the stranded prose with a reroute record in place, `Rerouted to {landed_topic} triage ({date}).`, and when the landing response carried `reconcile_flagged` or `sources_staled`, tell the user what it flagged — the target's completed discussion (research landing) or the specification(s) named in `sources_staled` (discussion landing, their extraction now stale). If `result` is `cancelled`, nothing was written — the note stays unhandled and re-presents on the next run.
+On return: if `result` is `landed`, the note is handled — replace the stranded prose with a reroute record in place, `Rerouted to {landed_topic} triage ({date}).`, and when the landing response carried `reconcile_flagged` or `sources_staled`, tell the user what it flagged — the target's discussion, live or decided (research landing) or the specification(s) named in `sources_staled` (discussion landing, their extraction now stale). If `result` is `cancelled`, nothing was written — the note stays unhandled and re-presents on the next run.
 
 → Return to **C. Route Misdirected Knowledge**.
 

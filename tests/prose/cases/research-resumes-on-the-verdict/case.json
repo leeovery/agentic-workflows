@@ -73,7 +73,8 @@
       "--dead-end",
       "topic reopen search-relevance",
       "discovery-map handle",
-      "topic triage"
+      "topic triage",
+      "manifest get search-relevance.research.synonym-handling awaiting_experiments"
     ]
   }
 }

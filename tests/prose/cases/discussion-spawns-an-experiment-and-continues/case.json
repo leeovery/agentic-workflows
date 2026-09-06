@@ -68,7 +68,8 @@
       "render conclude-gate pay.discussion.pay",
       "--kind perspective",
       "topic triage",
-      "render closing-gate pay.discussion.pay"
+      "render closing-gate pay.discussion.pay",
+      "manifest get pay.discussion.pay awaiting_experiments"
     ]
   }
 }

@@ -4,7 +4,7 @@
 
 ---
 
-Caller passes `work_type`, `work_unit`, `topic`, and `downstream_phase` — the entered phase, whose item may carry the flag. The flag's value names what moved upstream and keys the branch below. Every populated branch surfaces a non-blocking advisory (never a STOP gate) and clears the flag — except that the research branch clears it only once the research has landed, and holds it while the research is still outstanding.
+Caller passes `work_type`, `work_unit`, `topic`, and `downstream_phase` — the entered phase, whose item may carry the flag. The flag's value names what moved upstream and keys the branch below. Every populated branch surfaces a non-blocking advisory (never a STOP gate) and clears the flag — the research branch alone holds it while the research is still outstanding.
 
 Read the reconcile flag on the item:
 
@@ -48,9 +48,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
-**Otherwise (`in-progress` or `triaged` — the research is still outstanding):**
+**If `in-progress` or `triaged` (the research is still outstanding):**
 
-The research is in flight, or parked as concerns no session has drained. This work's decisions may rest on ground it re-examines, and this work cannot conclude until the research lands — the menu's research row is the way in. Surface the advisory and leave the flag in place: the entry that finds the research landed clears it.
+The research is in flight, or parked as concerns no session has drained. This work's decisions may rest on ground it re-examines, and this work cannot conclude until the research lands — the menu carries the way in. Surface the advisory and leave the flag in place: the entry that finds the research landed clears it.
 
 > *Output the next fenced block as a code block:*
 
@@ -58,8 +58,24 @@ The research is in flight, or parked as concerns no session has drained. This wo
   ⚑ Research on this topic is still outstanding — in flight or
     parked. Decisions here may rest on ground it re-examines,
     and this work cannot conclude until the research lands. The
-    menu's research row is the way in. Nothing has been
-    overwritten.
+    menu carries the way in. Nothing has been overwritten.
+```
+
+→ Return to caller.
+
+**Otherwise (`cancelled`, `superseded`, or no research item — the lineage closed with nothing landed):**
+
+Nothing moved beneath this work after all. Surface the one-line advisory, then clear the flag:
+
+> *Output the next fenced block as a code block:*
+
+```
+  ⚑ The research that moved beneath this work was closed without
+    landing — nothing here needs revisiting.
+```
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.

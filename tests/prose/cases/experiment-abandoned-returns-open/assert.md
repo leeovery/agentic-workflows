@@ -29,7 +29,8 @@ The prose should have taken this path:
    incorporated review
 6. the user wraps; the ceremony's wait-gate fetch comes back empty —
    nothing is owed, the release already happened, and no gate is
-   emitted — every subtopic is settled, and the closing gates run: the triage queue reads empty
+   emitted — every subtopic is settled, and the closing gates run: the
+   triage queue reads empty
    and the classification finds the review satisfied (nothing moved
    since it drained), so no mandatory gate is owed; document review
    reconciles the file against the session; the compliance check

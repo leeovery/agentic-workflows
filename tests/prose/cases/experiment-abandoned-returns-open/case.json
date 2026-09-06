@@ -72,7 +72,8 @@
       "experiment abandon",
       "topic reactivate",
       "topic reopen pay discussion pay",
-      "render experiment-spawn-gate"
+      "render experiment-spawn-gate",
+      "manifest get pay.discussion.pay awaiting_experiments"
     ]
   }
 }

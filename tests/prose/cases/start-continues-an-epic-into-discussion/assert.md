@@ -20,8 +20,8 @@ The prose should have taken this path:
 6. the epic dashboard renders — the three-stage layout with the
    discovery map — and the second scripted answer selects the
    behavioural-ranking discussion entry; no soft gate fires (a
-   discussion entry carries none) and the route is invoked with epic, the work
-   unit, and the topic
+   discussion entry carries none) and the route is invoked with epic,
+   the work unit, and the topic
 7. discussion entry validates a fresh phase — status reads empty — and
    the discovery item already exists, so nothing is added to the map;
    its Gather Context reads the map item's source, finds it map-shaped,
@@ -34,7 +34,8 @@ The prose should have taken this path:
 9. the discussion is registered through the engine, the discussion
    file is created from the template with a Context drawn from the
    brief, initial subtopics land on the discussion map, and the
-   initialisation commit closes the walk — the session is never opened with the user
+   initialisation commit closes the walk — the session is never opened
+   with the user
 
 Further claims:
 
