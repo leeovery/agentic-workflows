@@ -35,7 +35,7 @@ At natural conversational breaks, check for completed results.
 
 The shared surfacing protocol reads this declaration when presenting this phase's findings.
 
-- `explore` — the walked lane. Raises render under the heading `Needs Investigation`, and the raise's move is investigation: offer a deep-dive on the thread, never dispatched without the user's say. Research surfaces material and holds decisions for discussion — a raise here never asks the user to settle a design call; converged options land in the file as material.
+- `explore` — the walked lane. Raises render under the heading `Needs Investigation`, and the raise's move is investigation: offer a deep-dive on the thread, never dispatched without the user's say. Research surfaces material and holds decisions for discussion — a raise here never asks the user to settle a design call; converged options land in the file as material. Holding the decision withholds no lean: the raise still says where you stand and why, at the firmness earned — a lean on what the product should do is a position, not a decision — and a fork that is the user's own product intent is asked with the lean beside it.
 - `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the source or finding that determines it. The confirmation says amended, never removed.
 - `route` — approving delivers each finding to its owning topic through the shared triage landing.
 

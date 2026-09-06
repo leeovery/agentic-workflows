@@ -14,7 +14,7 @@ Three beats, composed in order, then held until the caller emits the raise.
 
 ## A. The Problem
 
-Made immediately graspable, from zero. Say where it came from (the background {agent_type}) and what it observed — for a synthesis, the two positions in tension — then make the problem land before your position arrives: the product's behaviour first, one to three devices, technical depth only as deep as seeing the problem needs. For the devices and the test:
+Made immediately graspable, from zero. The product's situation opens — what its user meets and what happens to them — before anything else: the first sentence is about the product, never about the report. Where the finding came from (the background {agent_type}) and what it observed ride in a clause once the situation is on the page — for a synthesis, the two positions in tension; a raise that opens on the report being back, or on what it looked at, has opened on the wrong thing. Make the problem land before your position arrives: one to three devices, technical depth only as deep as seeing the problem needs. For the devices and the test:
 
 → Load **[making-it-land.md](making-it-land.md)** and follow its instructions as written.
 
