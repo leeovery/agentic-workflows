@@ -23,8 +23,8 @@ The prose should have taken this path:
 7. the raise is composed at product altitude from a report written in
    code: the problem lands as the shop's situation — a ranking change
    goes out, most searches get better, searches for rare products get
-   worse — then the three behaviours as what the product does at
-   release, then a position with one reason, then one literal question
+   worse — then the behaviours as what the product does at release,
+   then a position at its earned firmness, then one literal question
    for the user, and the turn ends awaiting them
 
 Presentation claims — the translation is the behaviour under test:
@@ -39,20 +39,28 @@ Presentation claims — the translation is the behaviour under test:
   guard function, the exception, the weights request, the feature flag,
   the rollout file, the slice list, nor any snippet or path; the
   mechanisms are told only as what the product does
-- the three shapes are stated as product end states, one per side —
-  the change never ships until rare-product searches hold; it ships
-  when the loss on rare searches is outweighed, those searches counting
-  for more; it ships and is pulled back once rare searches have
-  suffered for a while — so a number or a word answers
-- the raise states a position — a lean with one load-bearing reason —
-  never a neutral survey of the three
+- the release behaviours the deep dive found are told as what the
+  product does — the change never ships until rare-product searches
+  hold; it ships when the loss on rare searches is outweighed, those
+  searches counting for more; it ships and is pulled back once rare
+  searches have suffered for a while — and the sides put to the user
+  are product end states, two or three, so a number or a word answers;
+  a raise that compresses the behaviours into "in different ways" and
+  shows the user none of them fails this claim
+- the raise states a position at its earned firmness — a lean with one
+  load-bearing reason, or, where the user alone holds the answer, what
+  the raise would need to know from them — never a neutral survey, and
+  never an abdication ("that's yours to weigh, not mine")
 - the raise ends on a single literal question, the one thing only the
   user holds: which of those the product should do, or how much of a
   regression on rare searches they will let reach shoppers — never
   "what do you think?", never a keyed menu, and never a request to
   settle how the harness would be built
-- the report's depth stays back: tolerances, weights, alarm windows,
-  and the slice-list refresh cadence appear nowhere in the raise
+- the report's tuning stays back: no numeric weight (the two-and-a-
+  half-times multiplier), tolerance (the half-point), or refresh
+  cadence (quarterly) appears in the raise; a behaviour told as the
+  user meets it — a change pulled back after a couple of hours of
+  worse results — is the product level, not a leak
 - no outcome is documented in the raise's turn: nothing is written to
   the research file and no direction is recorded as chosen
 
