@@ -143,12 +143,12 @@ function discoveryGlyph(tier) {
 // the phase's session starts. `reconcilePending` (computeTopicLifecycle's
 // reconcile_pending) appends an `input moved` cue the same way — a phase item
 // beneath the row carries a live reconcile flag its entry flow will clear.
-// `awaiting` (the map row's live evidence-wait ids) appends `awaiting E1`
-// directly after the lifecycle — a conversation beneath the row is blocked
-// pending experiment evidence, released when the experiment concludes or is
-// abandoned.
-/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [triageParked] @param {boolean} [reconcilePending] @param {string[]} [awaiting] */
-function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked, reconcilePending, awaiting) {
+// `waits` (the map row's live waits, every kind) appends `awaiting research`
+// and `awaiting E1` directly after the lifecycle — a conversation beneath the
+// row is blocked pending research still to land or experiment evidence,
+// released when the research lands or the experiment ends.
+/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [triageParked] @param {boolean} [reconcilePending] @param {import('./derivations.cjs').Wait[]} [waits] */
+function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked, reconcilePending, waits) {
   let label;
   switch (lifecycle) {
     case 'ready_for_discussion':
@@ -163,7 +163,11 @@ function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked
     case 'cancelled': label = 'cancelled'; break;
     default: label = routing ? `fresh · routed to ${routing}` : 'fresh';
   }
-  if (Array.isArray(awaiting) && awaiting.length > 0) label += ` · awaiting ${awaiting.join(', ')}`;
+  if (Array.isArray(waits)) {
+    const ids = waits.flatMap((w) => (w.kind === 'experiment' ? [w.id] : []));
+    if (waits.some((w) => w.kind === 'research')) label += ' · awaiting research';
+    if (ids.length > 0) label += ` · awaiting ${ids.join(', ')}`;
+  }
   if (triageParked) label += ' · triage waiting';
   if (reconcilePending) label += ' · input moved';
   return label;

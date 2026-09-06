@@ -297,14 +297,19 @@ describe('engine experiment conclude / abandon — the release edges', () => {
     const item = readManifest(dir, 'lab').phases.discussion.items.timing;
     assert.strictEqual(item.awaiting_experiments, undefined, 'the emptied lock is removed');
     assert.strictEqual(item.reconcile_needed, 'experiment', 'the next entry surfaces the evidence');
+    // Research feeds discussion: timing's research is still in flight, so it
+    // lands first — then the released conversation can conclude.
+    engine(dir, ['topic', 'complete', 'lab', 'research', 'timing']);
     const done = engine(dir, ['topic', 'complete', 'lab', 'discussion', 'timing']);
     assert.strictEqual(done.status, 'completed', 'the released conversation can conclude');
   });
 
   it('a waiting conversation cannot conclude — research and discussion identically', () => {
     spawn(dir, 'research', 'second');
+    // The discussion names both its waits — the in-flight research first,
+    // then the evidence — the research alone.
     assert.match(engineFails(dir, ['topic', 'complete', 'lab', 'discussion', 'timing']).error,
-      /discussion "timing" awaits experiment evidence \(E1\)/);
+      /^discussion "timing" awaits research on the topic — [^;]*; and awaits experiment evidence \(E1\)/);
     assert.match(engineFails(dir, ['topic', 'complete', 'lab', 'research', 'timing']).error,
       /research "timing" awaits experiment evidence \(E2\)/);
   });

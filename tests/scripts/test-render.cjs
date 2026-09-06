@@ -332,9 +332,13 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, false), 'decided');
   });
 
-  it('discoveryLifecycleLabel appends the awaiting cue directly after the lifecycle', () => {
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, false, false, ['E1']), 'discussing · awaiting E1');
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, true, false, ['E1', 'E2']), 'discussing · awaiting E1, E2 · triage waiting');
+  it('discoveryLifecycleLabel appends the awaiting cues directly after the lifecycle — research first, then the experiment ids', () => {
+    const e = (id) => ({ kind: 'experiment', id });
+    const research = { kind: 'research', status: 'in-progress' };
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, false, false, [e('E1')]), 'discussing · awaiting E1');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'triaged', true, false, [e('E1'), e('E2')]), 'discussing · awaiting E1, E2 · triage waiting');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'in-progress', false, false, [research]), 'discussing · awaiting research');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'in-progress', false, true, [research, e('E1')]), 'discussing · awaiting research · awaiting E1 · input moved');
     assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, false, false, []), 'discussing');
   });
 
