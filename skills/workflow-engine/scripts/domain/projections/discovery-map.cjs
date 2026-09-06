@@ -22,6 +22,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
  * @property {string} lifecycle   fresh|researching|ready_for_discussion|discussing|decided|handled|cancelled
  * @property {string|null} [routing]
  * @property {string|null} [research_state]  the research item's raw status, null when none exists
+ * @property {string|null} [discussion_state]  the discussion item's raw status, null when none exists
  * @property {boolean} [triage_parked]  a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {boolean} [reconcile_pending]  a phase item beneath the row carries a live reconcile flag
  * @property {import('../derivations.cjs').Wait[]} [waits]  the live waits of the topic's in-progress phase items

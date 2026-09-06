@@ -277,7 +277,7 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
     );
   });
 
-  it('research in flight no longer masks the discussion-state recommendation', () => {
+  it('research in flight beside completed research leaves the discussion-state recommendation reachable', () => {
     const d = detailFor(dir, 'auth-overhaul', {
       work_type: 'epic',
       phases: {
@@ -1340,6 +1340,13 @@ describe('epic projections: the research row above the topic\'s own entry', () =
     assert.strictEqual(epicMenu('v1', d).keys[0].label, 'Start research for "Billing" — *triage waiting*');
   });
 
+  it('the triage tail speaks for the row\'s own phase — a parked research stub never tags the discussion row', () => {
+    // research-routed topic, a parked DISCUSSION stub: the research row carries no tail
+    assert.strictEqual(epicMenu('v1', billing(undefined, { status: 'triaged' }, { routing: 'research' })).keys[0].label, 'Start research for "Billing"');
+    // discussion-routed topic, a parked DISCUSSION stub: its own row carries the tail
+    assert.strictEqual(epicMenu('v1', billing(undefined, { status: 'triaged' })).keys[0].label, 'Start discussion for "Billing" — *triage waiting*');
+  });
+
   it('a decided topic with a parked stub: the research row stands alone', () => {
     const d = billing({ status: 'triaged' }, { status: 'completed', reconcile_needed: 'research' });
     assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing']]);
@@ -1363,9 +1370,11 @@ describe('epic projections: the research row above the topic\'s own entry', () =
     assert.notStrictEqual(keys[1].recommended, true, 'a build start would propagate the stale decision one hop removed');
   });
 
-  it('a discussion-routed fresh topic with a parked stub: research above the discussion start', () => {
+  it('a discussion-routed fresh topic with a parked stub: the research is the topic\'s own row, and the discussion returns once it lands', () => {
     const d = billing({ status: 'triaged' }, undefined);
-    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing'], ['2', 'start_discussion', 'billing']]);
+    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing']]);
+    assert.strictEqual(epicMenu('v1', d).keys[0].label, 'Start research for "Billing" — *triage waiting*');
+    assert.deepStrictEqual(numbered(billing({ status: 'completed' }, undefined)), [['1', 'start_discussion_after_research', 'billing']]);
   });
 
   it('no second row when the topic\'s own entry is the research', () => {

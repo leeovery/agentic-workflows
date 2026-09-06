@@ -100,9 +100,9 @@ function compareExperimentIds(a, b) {
   return (am ?? 0) - (bm ?? 0);
 }
 
-// The phases whose sessions spawn experiments — each spawn locks the
-// spawning phase's own item (`awaiting_experiments`), research and
-// discussion identically.
+// The two conversation phases — the ones whose sessions spawn experiments
+// (each spawn locks the spawning phase's own item, `awaiting_experiments`,
+// research and discussion identically) and the ones that hold waits.
 const EXPERIMENT_SPAWN_PHASES = ['research', 'discussion'];
 
 // Gate modes. `auto` runs to the end of the session — the entry reset

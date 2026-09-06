@@ -31,16 +31,19 @@ function waitGate(phase, topic, waits) {
   const lands = [];
   if (research) {
     owed.push(`research on "${titlecase(topic)}" (${research.status === 'triaged' ? 'parked — not yet started' : 'in flight'})`);
-    guidance.push(`Work the research row first — this ${phase} can conclude once the research lands; cancelling the research releases the wait.`);
     queued.push('the research');
     lands.push('the research');
   }
   if (ids.length > 0) {
     owed.push(`experiment evidence (${ids.join(', ')})`);
-    guidance.push('The wait releases when each experiment ends.');
     queued.push(ids.join(', '));
     lands.push('the evidence');
   }
+  // Each kind names its own release; the conclusion clause is composed over
+  // every wait present, never over one kind while another still holds.
+  if (research) guidance.push(`Work the research first — cancelling it releases its wait${ids.length > 0 ? '.' : `; this ${phase} can conclude once the research lands.`}`);
+  if (ids.length > 0) guidance.push('The wait releases when each experiment ends.');
+  if (research && ids.length > 0) guidance.push(`This ${phase} can conclude once the research and the evidence have landed.`);
   guidance.push('The menu carries the way in.');
   return [
     section(

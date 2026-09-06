@@ -44,7 +44,7 @@ const { experimentRegister, experimentApprovalGate, experimentPick, experimentNe
 const { waitGate } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments, waits } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments, waits, itemOf, OUTSTANDING_RESEARCH_STATUSES } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -2686,24 +2686,11 @@ function experimentSpawnGateSurface(cwd, { dotpath, id }) {
  */
 function waitGateSurface(cwd, { dotpath }) {
   const { phase, topic, manifest } = resolveConversation(cwd, dotpath, 'wait-gate');
+  if (!itemOf(manifest, phase, topic)) {
+    throw new Error(`render wait-gate: no ${phase} item "${topic}" — nothing to hold shut`);
+  }
   const blocking = waits(manifest, phase, topic);
   return blocking.length === 0 ? '' : waitGate(phase, topic, blocking);
-}
-
-/**
- * The wait gate under its former name, refusing an unblocked item the way
- * its two prose call sites still expect — retired once they fetch wait-gate.
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function experimentWaitGateSurface(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveConversation(cwd, dotpath, 'experiment-wait-gate');
-  const blocking = waits(manifest, phase, topic);
-  if (blocking.length === 0) {
-    throw new Error(`render experiment-wait-gate: ${phase} "${topic}" holds no evidence wait — nothing blocks conclusion`);
-  }
-  return waitGate(phase, topic, blocking);
 }
 
 // summary-backfill-gate — the epic's provenance recovery, both stops. The
@@ -3574,23 +3561,13 @@ function epicAllDoneGate(cwd, { dotpath }) {
 // whole table. Empty when the selection raises no concern. The specification
 // row counts the discussions the grouping analysis will read; the planning
 // and implementation rows read the build order and name the topics sitting
-// ahead of the selection. Discussion entries carry no gate: a discussion
-// reads its own topic's research, and the menu offers one only once that
-// has settled. Advisory always: the menu offers proceed-anyway, never a
-// refusal.
+// ahead of the selection. Discussion entries carry no gate: research
+// outstanding on a topic is a wait on its discussion's conclusion, held by
+// the wait gate, never a warning at entry. Advisory always: the menu offers
+// proceed-anyway, never a refusal.
 // ---------------------------------------------------------------------------
 
 const { SOFT_GATE_ACTIONS } = require('./projections/epic.cjs');
-
-/**
- * The discussions the grouping analysis reads: in-progress and completed.
- * A parked stub or a terminal item never reaches it, so never counts.
- * @param {object[]} items @returns {{inProgress: number, total: number}}
- */
-function softGateCounts(items) {
-  const live = items.filter((i) => i.status === 'in-progress' || i.status === 'completed');
-  return { inProgress: live.filter((i) => i.status === 'in-progress').length, total: live.length };
-}
 
 /**
  * Topics ahead of the selection in the build order that lack a completed
@@ -3638,9 +3615,12 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
   let advisory = 'The system will re-analyse if you revisit later — proceeding now is safe, but may require rework.';
 
   if (action === 'start_specification') {
-    const c = softGateCounts(phaseItems(manifest, 'discussion'));
-    if (c.total > 0 && c.inProgress > 0) {
-      message = `${c.inProgress} of ${c.total} discussions still in-progress. Later conclusions may reshape this grouping.`;
+    // The discussions the grouping analysis reads: in-progress and completed.
+    // A parked stub or a terminal item never reaches it, so never counts.
+    const read = phaseItems(manifest, 'discussion').filter((i) => i.status === 'in-progress' || i.status === 'completed');
+    const inProgress = read.filter((i) => i.status === 'in-progress').length;
+    if (read.length > 0 && inProgress > 0) {
+      message = `${inProgress} of ${read.length} discussions still in-progress. Later conclusions may reshape this grouping.`;
     }
   } else if (action === 'start_planning' || action === 'continue_planning') {
     if (!isFilled(topic)) throw new Error(`render epic-soft-gate: --topic is required for ${action}`);
@@ -3707,11 +3687,6 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
 // terminal blocker display.
 // ---------------------------------------------------------------------------
 
-/** @param {any} manifest @param {string} phase @param {string} topic */
-function itemOf(manifest, phase, topic) {
-  return (((manifest.phases || {})[phase] || {}).items || {})[topic];
-}
-
 // Blocked states render red: a `properties` fence colours the first token
 // (the ⚑) turquoise and everything after it red, and is the one highlighter
 // that never tokenises English — so the message stays uniform whatever words
@@ -3757,9 +3732,16 @@ function directEntryGate(cwd, { dotpath }) {
   const item = phaseItems(manifest, 'discovery').find((i) => i.name === topic);
   if (!item) return '';
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
+  // The r door over outstanding research names the research, not the
+  // discussion beside it — that is the phase the user asked for, and its
+  // row is the one the menu leads with.
+  const outstanding = OUTSTANDING_RESEARCH_STATUSES.includes(research_state ?? '');
+  const stands = phase === 'research' && outstanding
+    ? `research is ${research_state === 'triaged' ? 'parked on it (triage waiting)' : 'in flight on it'}`
+    : lifecyclePhrase(lifecycle, research_state, item.routing);
   return blocker(
-    `"${titlecase(topic)}" is already on the map — ${lifecyclePhrase(lifecycle, research_state, item.routing)}`,
-    'Return to the epic menu — its row for the topic names the next step.',
+    `"${titlecase(topic)}" is already on the map — ${stands}`,
+    `Return to the epic menu — ${outstanding ? 'its research row is the way in' : 'its row for the topic names the next step'}.`,
   );
 }
 
@@ -4752,7 +4734,6 @@ const SURFACES = {
   'experiment-pick': experimentPickSurface,
   'experiment-next-gate': experimentNextGateSurface,
   'experiment-spawn-gate': experimentSpawnGateSurface,
-  'experiment-wait-gate': experimentWaitGateSurface,
   'wait-gate': waitGateSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,

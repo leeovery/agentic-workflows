@@ -157,19 +157,15 @@ One ceremony, two ways in — enter when either, or both at once, holds:
 
 A non-empty calls queue flushes first — follow **J. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and conclusion resumes by its standing conditions once the queue drains. An unlanded call is undocumented knowledge.
 
-The topic's evidence waits gate the ceremony next, before anything is deferred — a point blocked pending evidence is never written `deferred` by the sweep below, because deferral is a choice and this point is blocked pending input. Read the waits (`get` prints empty when no wait is held; the engine would refuse the completion anyway):
+The topic's waits gate the ceremony next, before anything is deferred — a point blocked on a wait is never written `deferred` by the sweep below, because deferral is a choice and this point is blocked pending input. Fetch the gate (empty when nothing is owed; the engine would refuse the completion anyway):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} awaiting_experiments
+node .claude/skills/workflow-engine/scripts/engine.cjs render wait-gate {work_unit}.discussion.{topic}
 ```
 
-#### If the wait output is non-empty
+#### If sections are returned
 
-Render the gate and emit its sections verbatim per their markers — the blocker line, its guidance, then the menu:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-wait-gate {work_unit}.discussion.{topic}
-```
+Emit them verbatim per their markers — the blocker naming what is owed, its guidance, then the menu.
 
 **STOP.** Wait for user response.
 
@@ -186,7 +182,7 @@ Then say where the ball sits:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Paused with the experiment(s) queued — the closing ceremony waits for the evidence. Run `/clear`, then `/workflow-start`: the menu carries the way in, and this discussion concludes once the waits release.
+> Paused with the waits queued — the closing ceremony runs once everything this discussion waits on has landed. Run `/clear`, then `/workflow-start`: the menu carries the way in, and this discussion concludes once every wait releases.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -195,7 +191,7 @@ Then say where the ball sits:
 
 → Return to **B. Session Loop**.
 
-#### If the wait output is empty
+#### If the output is empty
 
 Nothing blocks the ceremony.
 

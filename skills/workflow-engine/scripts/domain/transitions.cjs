@@ -27,7 +27,7 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { phaseItems, computeTopicLifecycle, computeNextAction, lifecyclePhrase, awaitedExperiments, experimentWaits, waits, settleItemStatus } = require('./derivations.cjs');
+const { phaseItems, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, OUTSTANDING_RESEARCH_STATUSES, lifecyclePhrase, awaitedExperiments, experimentWaits, waits, settleItemStatus } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
 
@@ -125,13 +125,9 @@ function phaseItem(manifest, phase, topic) {
 // The map decides which of research/discussion a topic can be born into —
 // the same join the epic menu renders its rows from, so the engine is never
 // the permissive path around it. The gate is on birth alone: an in-progress
-// item resumes regardless (the map already shows that phase live), and a
-// parked research stub starts from the research row the menu carries above
-// the topic's own — research feeds discussion, so it is the way in first.
-const MAP_PHASE_ACTIONS = {
-  research: ['start_research', 'continue_research'],
-  discussion: ['start_discussion', 'start_discussion_after_research', 'continue_discussion'],
-};
+// item resumes regardless (the map already shows that phase live), and
+// outstanding research always starts — research feeds discussion, so it is
+// the way in first, and the menu carries its row above the topic's own.
 
 /**
  * @param {object} manifest @param {string} phase @param {string} topic
@@ -139,14 +135,14 @@ const MAP_PHASE_ACTIONS = {
  */
 function assertMapAllowsStart(manifest, phase, topic, existing) {
   if (manifest.work_type !== 'epic') return;
-  const allowed = MAP_PHASE_ACTIONS[/** @type {keyof typeof MAP_PHASE_ACTIONS} */ (phase)];
+  const allowed = CONVERSATION_ACTIONS[/** @type {keyof typeof CONVERSATION_ACTIONS} */ (phase)];
   if (!allowed) return;
   if (existing && existing.status === 'in-progress') return;
-  if (existing && existing.status === 'triaged' && phase === 'research') return;
+  if (phase === 'research' && existing && OUTSTANDING_RESEARCH_STATUSES.includes(existing.status ?? '')) return;
   const item = phaseItems(manifest, 'discovery').find((i) => i.name === topic);
   if (!item) return;
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
-  const next = computeNextAction(item.routing, lifecycle);
+  const next = computeNextAction(item.routing, lifecycle, research_state);
   if (next && allowed.includes(next)) return;
   throw new Error(
     `${phase} can't start on "${topic}" — ${lifecyclePhrase(lifecycle, research_state, item.routing)}; the epic menu names its next step`,

@@ -2,6 +2,7 @@
 
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
+const { TERMINAL_STATUSES } = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
 const { phaseStatus, phaseItems, computeNextPhase } = engine.derivations;
 
@@ -37,12 +38,12 @@ function discover(cwd, workUnit) {
   const workType = manifest.work_type;
   const next_phase = computeNextPhase(manifest).next_phase;
 
-  // Completed items carrying a live reconcile flag — observability for the
+  // Live items carrying a reconcile flag — observability for the
   // continuation prose (routing itself rides next_phase).
   const reconcile_pending = [];
   for (const phase of ALL_PHASES) {
     for (const item of phaseItems(manifest, phase)) {
-      if (item.status === 'completed' && item.reconcile_needed !== undefined) {
+      if (!TERMINAL_STATUSES.includes(item.status) && item.reconcile_needed !== undefined) {
         reconcile_pending.push(`${phase}/${item.name} (${item.reconcile_needed})`);
       }
     }

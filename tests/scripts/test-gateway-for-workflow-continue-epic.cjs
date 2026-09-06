@@ -1622,6 +1622,36 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       assert.ok(out.includes('reconcile_pending: review/auth-spec (implementation)'), out);
     });
 
+    it('false while a rerouted concern is parked — a stub is undrained work, whatever the review says', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          research: { items: { auth: { status: 'triaged' } } },
+          specification: {
+            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
+          },
+          planning: { items: { 'auth-spec': { status: 'completed' } } },
+          implementation: { items: { 'auth-spec': { status: 'completed' } } },
+          review: { items: { 'auth-spec': { status: 'completed' } } },
+        },
+      });
+      assert.ok(formatScoped('v1', discover(dir, 'v1')).includes('all_done: false'));
+    });
+
+    it('reconcile_pending lists a live discussion the research hop flagged, not only completed items', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discovery: { items: { auth: { routing: 'discussion', source: 'discovery' } } },
+          research: { items: { auth: { status: 'triaged' } } },
+          discussion: { items: { auth: { status: 'in-progress', reconcile_needed: 'research' } } },
+        },
+      });
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('reconcile_pending: discussion/auth (research)'), out);
+    });
+
     it('false when every review item is cancelled — vacuous completion never counts', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',

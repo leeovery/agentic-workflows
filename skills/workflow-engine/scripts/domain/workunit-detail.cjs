@@ -13,7 +13,7 @@
 // ---------------------------------------------------------------------------
 
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const {
   phaseStatus,
   phaseItems,
@@ -131,13 +131,13 @@ function completedPhases(cfg, manifest) {
   return cfg.pipeline.filter((phase) => phaseStatus(manifest, phase) === 'completed');
 }
 
-/** Completed pipeline phases whose item carries a reconcile flag, in pipeline order. @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {{phase: string, from: string|boolean}[]} */
+/** Live pipeline phases whose item carries a reconcile flag, in pipeline order. @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {{phase: string, from: string|boolean}[]} */
 function reconcilePhases(cfg, manifest) {
   /** @type {{phase: string, from: string|boolean}[]} */
   const out = [];
   for (const phase of cfg.pipeline) {
     const flagged = phaseItems(manifest, phase)
-      .find((i) => i.status === 'completed' && i.reconcile_needed !== undefined);
+      .find((i) => !TERMINAL_STATUSES.includes(i.status) && i.reconcile_needed !== undefined);
     if (flagged) out.push({ phase, from: flagged.reconcile_needed });
   }
   return out;
