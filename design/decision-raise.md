@@ -83,10 +83,17 @@ way was never a real fork: composition doubles as enforcement.
    committed. A fork whose sides cannot be written as two distinct
    product end states, or whose mirrored consequence cannot be stated,
    is below the bar by construction — the session settles it and presents
-   a plain proposal. The dispose check gains two named clauses: ground
+   a plain proposal. The dispose check carries four named clauses: ground
    that has moved includes proposals approved earlier in this same walk;
-   and a side no informed user would choose is not a side — a fork with
-   one live side is settled.
+   a side no informed user would choose is not a side — a fork with one
+   live side is settled; a fork every side of which leaves the user well
+   served is a preference, not a decision — the bar's magnitude prong,
+   stated at the staging gates too, settles it on whatever convention or
+   precedent leans (a fork can pass the shape tests — product level,
+   irreducible, the user's tie-break — and still not matter); and the
+   Stakes line is the staging's argument, never its evidence — a cost it
+   asserts is read against the tree before it counts, a hypothetical
+   cost carrying nothing.
 5. **The shared reference owns the whole decision arm.** Dispose →
    composition → payload/render → response handling (side, decline,
    technical, comment), parameterised over dotpath, staging file, cache
