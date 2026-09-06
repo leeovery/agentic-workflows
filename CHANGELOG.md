@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.31] - 2026-09-06
+
+✨ Added
+
+- Discussions now wait on the topic's research — a discussion can't conclude while research on it is still in flight or parked, and the epic menu surfaces that research as the way in first.
+
+🔧 Changed
+
+- The blocked-conclusion gate (`experiment-wait-gate`) is now a unified `wait-gate` covering both experiment evidence and outstanding research, with clearer messaging on what's owed and how to release it.
+- Reconciliation advisories for reopened research now distinguish landed, still-outstanding, and closed-without-landing research, so downstream work only re-reads what actually moved.
+- Decision proposals and raises now require a side that visibly costs the user before qualifying as a real decision — forks where every option serves the user fine are settled by convention instead of raised as a choice.
+- The "Stakes" line in decision raises must be backed by evidence from the tree, not a hypothetical cost.
+- Raises now open on the user's situation before mentioning the report or agent that found it, and tuning numbers (weights, thresholds, windows) stay out of the composed question.
+- Research conversations now voice a lean on open questions instead of staying neutral, while still leaving the decision to discussion.
+
 ## [0.7.30] - 2026-09-05
 
 ✨ Added
