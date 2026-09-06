@@ -8,7 +8,7 @@
 
 - `agent_type` — `review` | `synthesis` | `deep-dive` — the report's kind, named in the raise as where the finding came from
 
-A raise is an opener, never a case: its whole job is to put the user in front of the problem and say where you stand. Everything else — the report's full case, your own supporting analysis, the costs, secondary consequences — stays back and enters the conversation as responses, when the user's reply calls for it. The report is the record, never the script: digest it, and digest it upward — a finding written in code is retold as what the product does, at the level [altitude.md](altitude.md) sets, whatever level the report chose.
+A raise is an opener, never a case: its whole job is to put the user in front of the problem and say where you stand. Everything else — the report's full case, your own supporting analysis, the costs, secondary consequences — stays back and enters the conversation as responses, when the user's reply calls for it. The report is the record, never the script: digest it, and digest it upward — a finding written in code is retold as what the product does, at the level [altitude.md](altitude.md) sets, whatever level the report chose. A mechanism is retold as the behaviour it produces, wherever in the raise it appears; its tuning — a weight, a threshold, a window — stays in the record.
 
 Three beats, composed in order, then held until the caller emits the raise.
 
@@ -42,7 +42,7 @@ The position answers the finding's own question, never its bookkeeping: proposin
 
 The raise ends by saying what kind of reply moves things forward. One of three shapes:
 
-- **A question**, where the position turns on something only the user holds. A literal question, composed as altitude prescribes: the situation the user would be in, then what the product is or does on each side — one line per side where there are sides to choose between, so a number or a word answers it — and the one question mark that asks. Each side names what the product does, never the number that tunes it: a weight, a threshold, a window is the record's, and a side that carries one has leaked the case. Sides that cannot be composed as product end states mean the raise has no question for the user: it is material for the record, and the close takes the third shape instead.
+- **A question**, where the position turns on something only the user holds. A literal question, composed as altitude prescribes: the situation the user would be in, then what the product is or does on each side — one line per side where there are sides to choose between, so a number or a word answers it — and the one question mark that asks. Each side names what the product does, never the number that tunes it. Sides that cannot be composed as product end states mean the raise has no question for the user: it is material for the record, and the close takes the third shape instead.
 - **An invitation to push back**, where a real choice exists — pointing at the load-bearing reason the opener already gave as what a different reading would have to move, so the invitation belongs to this finding rather than to politeness.
 - **Nothing needs a call** — say so plainly and offer the pause: they are free to read and weigh in, and a word from them moves the walk on.
 
