@@ -9,7 +9,7 @@ Follow stages A through H sequentially for each task — stage J is the phase-bo
 At loop entry (crash-resume healing): if the plan marks tasks completed — completed, not skipped — that the manifest's `completed_tasks` lacks, run `engine task complete` for each missing internal id — in plan order, passing `--phase` with the phase embedded in the id — before retrieving the next task. The push is an idempotent no-op for ids already recorded, and this reseals the seam a crash between the plan mark and the bookkeeping can leave.
 
 ```
-A. Retrieve next task + mark in-progress + present the task brief
+A. Retrieve next task + mark in-progress + present the task brief (a resumed task → F)
 B. Execute task → invoke-executor.md
 C. Handle executor block (conditional)
 D. Review task → invoke-reviewer.md
@@ -110,6 +110,20 @@ Stage A re-detects any remaining blocked tasks on the loop back.
    ```
    The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — `gated`, `auto` (the rest of this session), or `bounded` (to the end of the current plan phase — the engine returns it to `gated` as the phase records complete). Stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` or `b/bounded` opt-in is made by this flow itself, so you already know the current mode.
 4. Mark the task as in-progress — follow the format's **updating.md** status transition.
+
+The `start` response's `mode` says whether this task is being taken up or resumed.
+
+**If `mode` is `resumed`** — a previous session left the task mid-fix-round, its recorded findings unanswered:
+
+→ Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
+
+Present the findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary), reading the last `## Attempt` section of `.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md` — the session that wrote them is gone, and the record is what the user answers the gate on.
+
+The turn does not end here — the gate menu follows in the same turn.
+
+→ On return, proceed to **F. Fix Approval Gate**.
+
+**If `mode` is `started`:**
 
 → Load **[display-task-brief.md](display-task-brief.md)** and follow its instructions as written.
 

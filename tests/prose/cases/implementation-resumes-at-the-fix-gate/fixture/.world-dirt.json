@@ -1,0 +1,4 @@
+[
+  "src/checkout/payment-intent.js",
+  "tests/checkout/payment-intent.test.js"
+]

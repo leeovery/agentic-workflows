@@ -348,4 +348,4 @@ function implement(h) {
   h.engine('topic', 'complete', WU, 'implementation', WU);
 }
 
-module.exports = { WU, TASKS, P2_TASK, init, create, discuss, specify, plan, planAuthored, planGraphed, implement };
+module.exports = { WU, TASKS, P2_TASK, taskFile, init, create, discuss, specify, plan, planAuthored, planGraphed, implement };

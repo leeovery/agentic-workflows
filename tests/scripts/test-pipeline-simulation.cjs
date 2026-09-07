@@ -1853,7 +1853,8 @@ describe('pipeline simulation', () => {
     assert.strictEqual(init.gates.task_gate_mode, 'gated');
     assert.strictEqual(init.gates.consolidation_gate_mode, 'gated', 'the boundary walk gate ships gated');
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${wu}`]);
-    sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
+    const firstStart = sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
+    assert.strictEqual(firstStart.mode, 'started', 'a task taken up fresh dispatches the executor');
     // The brief announces the dispatch — the shared task header plus summary and watch.
     const briefPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
       { id: `${wu}-1-1`, title: 'Wire the auth entry point', current: 1, total: 2, phase: '1 — Core', position: '1 of 2 in phase', summary: 'Wire the auth entry point.', watch: ['the login redirect'] });
@@ -1874,6 +1875,16 @@ describe('pipeline simulation', () => {
       'fix history is committed history, not purgeable cache');
     assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: fix gate/, 'gated fix gate renders its menu');
+    // A fresh session opening on this task: `task init` resumes the item and
+    // `task start` re-runs over the in-flight pair. The `resumed` mode is what
+    // routes stage A to the pending fix gate instead of dispatching an
+    // executor blind to findings the user has never answered.
+    assert.strictEqual(sim.run(['task', 'init', wu, wu]).counters.fix_attempts, 1,
+      'the in-flight pair survives the session reset');
+    assert.strictEqual(sim.run(['task', 'start', wu, wu, `${wu}-1-1`]).mode, 'resumed',
+      'restarting the in-flight task reports the resume');
+    assert.strictEqual(sim.manifest(wu).phases.implementation.items[wu].fix_attempts, 1,
+      'the resume leaves the attempt count untouched');
     // The result header is one surface for every presentation moment.
     const resultPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-result.json`,
       { id: `${wu}-1-1`, title: 'Wire the auth entry point', current: 1, total: 2, phase: '1 — Core', position: '1 of 2 in phase' });
