@@ -3,6 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
+const fs = require('fs');
 const { execFileSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
@@ -1413,5 +1414,59 @@ describe('epic projections: the research row above the topic\'s own entry', () =
     assert.strictEqual(cue(billing({ status: 'in-progress' }, { status: 'in-progress', reconcile_needed: 'research' })), '↳ Discussing · awaiting research · input moved');
     assert.strictEqual(cue(billing({ status: 'triaged' }, { status: 'completed', reconcile_needed: 'research' })), '↳ Decided · triage waiting · input moved',
       'a completed discussion waits on nothing — its flag carries the outstanding research');
+  });
+
+  // The cue reads the queue, not the status: a landing on a concluded topic
+  // reopens it to in-progress and leaves no stub behind, so the queue files
+  // themselves are the signal — and their drain retires it.
+  const queue = (phase, ...files) => {
+    const qdir = path.join(dir, '.workflows', 'v1', phase, '.triage', 'billing');
+    fs.mkdirSync(qdir, { recursive: true });
+    for (const f of files) fs.writeFileSync(path.join(qdir, f), `### ${f}\n`);
+    return qdir;
+  };
+  // A long cue wraps onto continuation lines indented past the ↳ — join them.
+  const cueOf = (d) => epicDashboard('v1', d).match(/( *)↳ [^\n]*(?:\n\1 +[^\n]*)*/)[0].trim().replace(/\n\s+/g, ' ');
+
+  it('a reopened discussion with concerns queued: its continue row and map row carry the cue', () => {
+    queue('discussion', '001-escalation-path.md');
+    const d = billing({ status: 'completed' }, { status: 'in-progress' });
+    assert.deepStrictEqual(numbered(d), [['1', 'continue_discussion', 'billing']]);
+    assert.strictEqual(epicMenu('v1', d).keys[0].label, 'Continue "Billing" — *discussion* · triage waiting');
+    assert.strictEqual(cueOf(d), '↳ Discussing · triage waiting');
+    assert.deepStrictEqual(d.discovery_map[0].triage_queued, { research: 0, discussion: 1 });
+  });
+
+  it('a reopened research beneath a decided discussion: the research row carries the cue, per phase', () => {
+    queue('research', '001-cost-model.md');
+    const d = billing({ status: 'in-progress' }, { status: 'completed', reconcile_needed: 'research' });
+    assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing']]);
+    assert.strictEqual(epicMenu('v1', d).keys[0].label, 'Continue "Billing" — *research* · triage waiting');
+    assert.strictEqual(cueOf(d), '↳ Researching · triage waiting · input moved');
+    // A discussion row beneath the same topic stays clean while only the research queue holds files.
+    const both = billing({ status: 'in-progress' }, { status: 'in-progress' });
+    const labels = epicMenu('v1', both).keys.filter((k) => k.topic === 'billing').map((k) => k.label);
+    assert.deepStrictEqual(labels, ['Continue "Billing" — *research* · triage waiting', 'Continue "Billing" — *discussion*']);
+  });
+
+  it('a parked discussion stub beneath landed research: the after-research start row carries the cue', () => {
+    const d = billing({ status: 'completed' }, { status: 'triaged' });
+    assert.deepStrictEqual(numbered(d), [['1', 'start_discussion_after_research', 'billing']]);
+    assert.strictEqual(epicMenu('v1', d).keys[0].label, 'Start discussion for "Billing" — *research completed* · triage waiting');
+    assert.strictEqual(cueOf(d), '↳ Research complete · ready for discussion · triage waiting');
+  });
+
+  it('the drain retires the cue — an empty queue directory is no wait; a stub with an empty directory still is', () => {
+    const qdir = queue('discussion', '001-escalation-path.md');
+    fs.rmSync(path.join(qdir, '001-escalation-path.md'));
+    const d = billing({ status: 'completed' }, { status: 'in-progress' });
+    assert.strictEqual(epicMenu('v1', d).keys[0].label, 'Continue "Billing" — *discussion*');
+    assert.strictEqual(cueOf(d), '↳ Discussing');
+    assert.strictEqual(d.discovery_map[0].triage_parked, false);
+    assert.deepStrictEqual(d.discovery_map[0].triage_queued, { research: 0, discussion: 0 });
+    // The bare `topic triage` parks a stub without a file — the status alone keeps the cue.
+    const stub = billing(undefined, { status: 'triaged' });
+    assert.strictEqual(stub.discovery_map[0].triage_parked, true);
+    assert.strictEqual(epicMenu('v1', stub).keys[0].label, 'Start discussion for "Billing" — *triage waiting*');
   });
 });

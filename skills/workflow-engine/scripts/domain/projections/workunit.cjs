@@ -58,9 +58,11 @@ function nextPhaseStarted(unit) {
   return unit.phase_label.endsWith('(in-progress)');
 }
 
-/** Pipeline rows: completed phases (an `· input moved` cue on flagged ones), the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped). @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
+/** Pipeline rows: completed phases (an `· input moved` cue on flagged ones), the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped) — a `· triage waiting` cue on a phase whose queue holds concerns. @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
 function pipelineNodes(cfg, unit) {
   const flaggedPhases = new Set((unit.reconcile_phases || []).map((r) => r.phase));
+  const queuedPhases = new Set(unit.triage_phases || []);
+  const triageTag = (/** @type {string} */ phase, /** @type {string} */ tag) => (queuedPhases.has(phase) ? `${tag} · triage waiting` : tag);
   const nodes = [];
   for (const phase of cfg.pipeline) {
     if (unit.completed_phases.includes(phase)) {
@@ -73,10 +75,10 @@ function pipelineNodes(cfg, unit) {
       const started = nextPhaseStarted(unit) || (unit.in_progress_phases || []).includes(phase);
       nodes.push({
         title: title({ glyph: started ? '◐' : '→', label: titlecase(phase) }),
-        tag: started ? 'in-progress' : 'ready',
+        tag: triageTag(phase, started ? 'in-progress' : 'ready'),
       });
     } else if ((unit.in_progress_phases || []).includes(phase)) {
-      nodes.push({ title: title({ glyph: '◐', label: titlecase(phase) }), tag: 'in-progress' });
+      nodes.push({ title: title({ glyph: '◐', label: titlecase(phase) }), tag: triageTag(phase, 'in-progress') });
     }
   }
   return nodes;
@@ -152,7 +154,7 @@ function workUnitMenu(type, unit) {
     // The statement is context above an explicit question — suppress the
     // frame's label glyph or a short work-unit name earns a second diamond.
     rendered = menuFrame([
-      `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — *${unit.phase_label}*.`,
+      `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — *${unit.phase_label}*${(unit.triage_phases || []).length > 0 ? ' · triage waiting' : ''}.`,
       '',
       '**`◆ Proceed?`**',
       '',
@@ -181,6 +183,7 @@ function workUnitData(type, unit, menu) {
   lines.push(`finalising: ${unit.finalising === true}`);
   lines.push(`completed_phases: ${unit.completed_phases.join(', ') || '(none)'}`);
   lines.push(`reconcile_pending: ${(unit.reconcile_phases || []).map((r) => `${r.phase} (${r.from})`).join(', ') || '(none)'}`);
+  lines.push(`triage_waiting: ${(unit.triage_phases || []).join(', ') || '(none)'}`);
   lines.push(`revisit_available: ${menu.keys.some((k) => k.action === 'revisit')}`);
   if (cfg.surfacesSeeds) {
     lines.push(`seeds_count: ${unit.seeds_count || 0}`);

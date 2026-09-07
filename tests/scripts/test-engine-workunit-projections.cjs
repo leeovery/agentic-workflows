@@ -2,8 +2,10 @@
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
 
-const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { workUnitDetail, typeConfig } = require('../../skills/workflow-engine/scripts/domain/workunit-detail.cjs');
 const { workUnitStatus, workUnitMenu, workUnitData, revisitablePhases, revisitPhasesSection } = require('../../skills/workflow-engine/scripts/domain/projections/workunit.cjs');
 
@@ -197,6 +199,29 @@ describe('workunit projections: status display', () => {
       '  ⚑ All phases complete — ready to finalise.',
       '',
     ].join('\n'));
+  });
+
+  it('feature: a reopened discussion with concerns queued cues the pipeline row, the proceed gate, and DATA', () => {
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        research: { items: { 'auth-flow': { status: 'completed' } } },
+        discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
+        specification: { items: { 'auth-flow': { status: 'completed', reconcile_needed: 'discussion' } } },
+      },
+    });
+    createFile(dir, '.workflows/auth-flow/discussion/.triage/auth-flow/001-retry-semantics.md', '### Retry semantics\n');
+    const unit = unitOf(dir, 'feature', 'auth-flow');
+    assert.deepStrictEqual(unit.triage_phases, ['discussion']);
+    assert.match(workUnitStatus('feature', unit), /◐ Discussion +\[in-progress · triage waiting\]/);
+    assert.match(workUnitStatus('feature', unit), /✓ Specification +\[completed · input moved\]/);
+    const menu = workUnitMenu('feature', unit);
+    assert.ok(menu.rendered.includes('Continuing "Auth Flow" — *discussion (in-progress)* · triage waiting.'), menu.rendered);
+    assert.ok(workUnitData('feature', unit, menu).includes('\ntriage_waiting: discussion\n'));
+    // The drain retires it.
+    fs.rmSync(path.join(dir, '.workflows/auth-flow/discussion/.triage/auth-flow/001-retry-semantics.md'));
+    const drained = unitOf(dir, 'feature', 'auth-flow');
+    assert.strictEqual(drained.triage_phases, undefined);
+    assert.match(workUnitStatus('feature', drained), /◐ Discussion +\[in-progress\]/);
   });
 
   it('feature: a reopened phase behind a completed review is in-progress, never finalising', () => {
@@ -464,6 +489,7 @@ describe('workunit projections: data body', () => {
       'finalising: false',
       'completed_phases: discussion',
       'reconcile_pending: (none)',
+      'triage_waiting: (none)',
       'revisit_available: true',
       'seeds_count: 1',
       'imports_count: 0',
@@ -486,6 +512,7 @@ describe('workunit projections: data body', () => {
       'finalising: false',
       'completed_phases: (none)',
       'reconcile_pending: (none)',
+      'triage_waiting: (none)',
       'revisit_available: false',
       'ACTIONS (key  action  topic  → route):',
       '  y  continue  login-crash  → /workflow-investigation-entry bugfix login-crash',
@@ -511,6 +538,7 @@ describe('workunit projections: data body', () => {
       'finalising: true',
       'completed_phases: scoping, implementation, review',
       'reconcile_pending: (none)',
+      'triage_waiting: (none)',
       'revisit_available: true',
       'ACTIONS (key  action  topic  → route):',
       '  y  finalise  hotfix-logs  → (internal)',

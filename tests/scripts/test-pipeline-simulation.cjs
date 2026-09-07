@@ -54,6 +54,8 @@ const SPEC_GATEWAY = require(path.join(ROOT, 'skills/workflow-specification-entr
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
 const { epicMenu, epicDashboard } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
+const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
 
 // Spec-entry detail for one work unit — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
@@ -692,11 +694,21 @@ describe('pipeline simulation', () => {
       '--concern', '.workflows/.cache/scratch/gap-concern.md', '--slug', 'retry-semantics', '-m', `spec(${wu}): gap routed to ${wu}`]);
     assert.strictEqual(gapLand.reopened, true);
     assert.deepStrictEqual(gapLand.sources_staled, [wu]);
+    // The reopened investigation's rows say what waits — the start menu
+    // entry and the bugfix pipeline row — and the drain retires the cue.
+    const startRow = () => startMenu(GATEWAYS.start.discover(sim.dir)).keys
+      .find((k) => k.label.startsWith('Continue "Crash Fix"')).label;
+    const bugfixUnit = () => GATEWAYS.bugfix.discover(sim.dir).bugfixes.find((u) => u.name === wu);
+    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)* · triage waiting');
+    assert.deepStrictEqual(bugfixUnit().triage_phases, ['investigation']);
+    assert.match(workUnitStatus('bugfix', bugfixUnit()), /◐ Investigation +\[in-progress · triage waiting\]/);
     const gapQueue = sim.run(['topic', 'queue', wu, 'investigation', wu]);
     assert.strictEqual(gapQueue.files.length, 1);
     sim.run(['topic', 'absorb', wu, 'investigation', wu,
       '--file', gapQueue.files[0].split('/').pop(), '-m', `investigation(${wu}/${wu}): absorb retry-semantics (from ${wu})`]);
     assert.strictEqual(sim.run(['topic', 'queue', wu, 'investigation', wu]).files.length, 0);
+    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the drained queue retires the cue');
+    assert.strictEqual(bugfixUnit().triage_phases, undefined);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
     sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
@@ -885,6 +897,14 @@ describe('pipeline simulation', () => {
       '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'escalation-path',
       '-m', `discussion(${wu}/alpha): reroute concern to beta`]);
     assert.strictEqual(reroute.reopened, true, 'a delivery beneath a concluded discussion reopens it');
+    // The cue follows the queue, not the status: the reopened item is
+    // in-progress with no stub to read, yet its rows say what waits — and
+    // the fold retires the cue.
+    const betaRow = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+      .find((k) => k.topic === 'beta' && k.action === 'continue_discussion').label;
+    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion* · triage waiting');
+    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).replace(/\n[ │]+/g, ' '),
+      /Discussing · triage waiting/);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /review dispatch blocked/);
     sim.run(['discussion-map', 'add', wu, 'beta', 'escalation-path']);
@@ -897,6 +917,7 @@ describe('pipeline simulation', () => {
       '-m', `discussion(${wu}/beta): absorb 001-escalation-path (from alpha)`]);
     assert.strictEqual(folded.arming_settled, true, 'the fold\'s ground joins the anchor snapshot');
     assert.strictEqual(folded.remaining, 0);
+    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion*', 'the drained queue retires the cue');
     // The drained queue re-arms nothing — the fold never counts as movement.
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /0 of 3 map moves since review-003/);

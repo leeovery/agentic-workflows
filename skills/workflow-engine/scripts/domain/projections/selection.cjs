@@ -59,7 +59,7 @@ const SELECT_CONFIG = {
  * titlecased phase label. Empty units → empty string (the caller's flow
  * terminates on the zero case before selection).
  * @param {string} type
- * @param {{name: string, phase_label?: string, active_phases?: string[]}[]} units
+ * @param {{name: string, phase_label?: string, active_phases?: string[], triage_phases?: string[]}[]} units
  * @param {{completed: number, cancelled: number}} counts
  * @returns {string}
  */
@@ -72,11 +72,14 @@ function selectionSections(type, units, counts) {
   // every engine list shares. The unit's phase state is the row's body, never
   // a second `└─`: branch glyphs are positional, and a row that is the last of
   // its group owns the only `└─` in it.
+  // Concerns queued on a single-topic unit cue its row and its option, as
+  // the start menu's row carries it.
+  const cue = (/** @type {{triage_phases?: string[]}} */ u) => ((u.triage_phases || []).length > 0 ? ' · triage waiting' : '');
   const rows = units.map((u, i) => ({
     title: `${i + 1}. ${titlecase(u.name)}`,
     body: [type === 'epic'
       ? ((u.active_phases || []).map(titlecase).join(', ') || '(no phases)')
-      : titlecaseLabel(u.phase_label || '')],
+      : titlecaseLabel(u.phase_label || '') + cue(u)],
   }));
   const disp = [
     `${units.length} ${cfg.plural} in progress`,
@@ -89,7 +92,7 @@ function selectionSections(type, units, counts) {
   units.forEach((u, i) => {
     menuLines.push(cmdOption(String(i + 1), null, type === 'epic'
       ? `Continue "${titlecase(u.name)}"`
-      : `Continue "${titlecase(u.name)}" — *${u.phase_label}*`));
+      : `Continue "${titlecase(u.name)}" — *${u.phase_label}*${cue(u)}`));
   });
   if (closed) menuLines.push(cmdOption(String(units.length + 1), null, cfg.view));
   menuLines.push(cmdOption('m', 'manage', cfg.manage));

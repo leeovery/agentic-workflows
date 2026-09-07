@@ -8,8 +8,8 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { fileExists, filesChecksum } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { fileExists, filesChecksum, countFiles } = require('./reads.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -599,6 +599,42 @@ function computeSourceProvenance(source) {
   return `from ${labels.join(' + ')}`;
 }
 
+// The phases that own a triage queue — those whose item vocabulary admits
+// `triaged`, in schema order.
+const TRIAGE_PHASES = Object.entries(VALID_PHASE_STATUSES)
+  .filter(([, vocabulary]) => vocabulary.includes('triaged'))
+  .map(([phase]) => phase);
+
+// A topic's triage queue, counted from disk. The cue means "concerns wait
+// here", and that is a fact about the queue directory, not the item's
+// status: a landing on a concluded topic reopens it to `in-progress`, leaving
+// no `triaged` stub to read, and the drain deletes queue files, so an empty
+// directory is the released signal with nothing to clear.
+/** @param {string} workflowsDir @param {object} manifest @param {string} phase @param {string} topic @returns {number} */
+function triageQueueDepth(workflowsDir, manifest, phase, topic) {
+  if (typeof manifest.name !== 'string') return 0;
+  return countFiles(path.join(workflowsDir, manifest.name, phase, '.triage', topic), '.md');
+}
+
+// The epic map row's depths — the two conversation phases a map row joins.
+/** @param {string} workflowsDir @param {object} manifest @param {string} topic @returns {{research: number, discussion: number}} */
+function triageQueued(workflowsDir, manifest, topic) {
+  return {
+    research: triageQueueDepth(workflowsDir, manifest, 'research', topic),
+    discussion: triageQueueDepth(workflowsDir, manifest, 'discussion', topic),
+  };
+}
+
+/**
+ * The phases whose queue holds concerns for one topic — the single-topic
+ * surfaces' cue (the start rows, the continue dashboards, the pick lists),
+ * where topic = work unit and any triage-legal phase may own the queue.
+ * @param {string} workflowsDir @param {object} manifest @param {string} topic @returns {string[]}
+ */
+function triagePhases(workflowsDir, manifest, topic) {
+  return TRIAGE_PHASES.filter((phase) => triageQueueDepth(workflowsDir, manifest, phase, topic) > 0);
+}
+
 /**
  * @typedef {object} DiscoveryMapRow
  * @property {string} name
@@ -615,7 +651,8 @@ function computeSourceProvenance(source) {
  * @property {string|null} current_phase
  * @property {string|null} research_state
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
- * @property {boolean} triage_parked       a `triaged` stub (parked rerouted concerns) exists in either phase
+ * @property {boolean} triage_parked       rerouted concerns wait on the topic — a `triaged` stub in either phase, or queue files on disk beneath a started or reopened item
+ * @property {{research: number, discussion: number}} triage_queued  the topic's queue depth per phase, counted from disk
  * @property {boolean} reconcile_pending   a phase item beneath the row carries a live reconcile flag
  * @property {Wait[]} waits               the live waits of the topic's in-progress research and discussion items (empty when none)
  * @property {string|null} next_action
@@ -634,12 +671,14 @@ function computeSourceProvenance(source) {
  * agree with the text; `description` carries the raw value for surfaces that
  * render it in full.
  * @param {object} manifest
+ * @param {string} workflowsDir  the project's `.workflows` directory — the triage queues are read from disk
  * @returns {{map: DiscoveryMapRow[], summary: object, needs_sequencing: boolean}}
  */
-function buildDiscoveryMap(manifest) {
+function buildDiscoveryMap(manifest, workflowsDir) {
   const discoveryItems = phaseItems(manifest, 'discovery');
   const map = discoveryItems.map((item) => {
-    const { lifecycle, tier, current_phase, research_state, discussion_state, triage_parked, reconcile_pending } = computeTopicLifecycle(manifest, item.name);
+    const { lifecycle, tier, current_phase, research_state, discussion_state, triage_parked: stubParked, reconcile_pending } = computeTopicLifecycle(manifest, item.name);
+    const triage_queued = triageQueued(workflowsDir, manifest, item.name);
     const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
     const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
     return {
@@ -657,7 +696,8 @@ function buildDiscoveryMap(manifest) {
       current_phase,
       research_state,
       discussion_state,
-      triage_parked,
+      triage_parked: stubParked || triage_queued.research > 0 || triage_queued.discussion > 0,
+      triage_queued,
       reconcile_pending,
       waits: topicWaits(manifest, item.name),
       next_action: computeNextAction(item.routing, lifecycle, research_state),
@@ -693,5 +733,6 @@ module.exports = {
   compareMapRows,
   computeNeedsSequencing,
   buildDiscoveryMap,
+  triagePhases,
   TIER_RANK,
 };

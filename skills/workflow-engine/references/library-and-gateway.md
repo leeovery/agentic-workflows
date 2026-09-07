@@ -57,7 +57,7 @@ engine.derivations.computeMapSummary(items)       // → tier counts over map ro
 engine.derivations.computeSourceProvenance(source) // → "from …" label, or null
 engine.derivations.compareMapRows(a, b)           // map-row sort comparator (tier, order, name)
 engine.derivations.computeNeedsSequencing(items)  // → true when a live row lacks an order
-engine.derivations.buildDiscoveryMap(manifest)    // → { map, summary, needs_sequencing } — the one discovery-map row builder
+engine.derivations.buildDiscoveryMap(manifest, workflowsDir)    // → { map, summary, needs_sequencing } — the one discovery-map row builder; the triage queues are counted from disk
 
 // domain: discussion-map transitions + queries
 engine.discussionMap.addSubtopic(manifest, topic, name, { parent }) // mutates; new subtopic starts pending

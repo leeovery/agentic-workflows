@@ -12,6 +12,7 @@
 // duplicated here.
 // ---------------------------------------------------------------------------
 
+const path = require('path');
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const { WORK_TYPE_PIPELINES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const {
@@ -19,6 +20,7 @@ const {
   phaseItems,
   computeUnitPhaseState,
   lastCompletedPhase,
+  triagePhases,
 } = require('./derivations.cjs');
 
 /**
@@ -85,6 +87,8 @@ const WORK_UNIT_TYPES = {
  * @property {{phase: string, from: string|boolean}[]} [reconcile_phases]  completed phases whose item carries
  *                                     a reconcile flag — `from` is the flag value (the upstream
  *                                     phase that moved, or `true` for a brief flag)
+ * @property {string[]} [triage_phases]  phases whose triage queue holds concerns for the unit's
+ *                                     topic — the pipeline row's and menu's `triage waiting` cue
  * @property {number} [imports_count]  types with surfacesSeeds only
  * @property {number} [seeds_count]    types with surfacesSeeds only
  */
@@ -169,6 +173,8 @@ function workUnitDetail(cwd, type) {
     };
     const flagged = reconcilePhases(cfg, m);
     if (flagged.length > 0) unit.reconcile_phases = flagged;
+    const queued = triagePhases(path.join(cwd, '.workflows'), m, m.name);
+    if (queued.length > 0) unit.triage_phases = queued;
     if (cfg.surfacesSeeds) {
       unit.imports_count = Array.isArray(m.imports) ? m.imports.length : 0;
       unit.seeds_count = Array.isArray(m.seeds) ? m.seeds.length : 0;
