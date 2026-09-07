@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.32] - 2026-09-07
+
+🐛 Fixed
+- The "triage waiting" cue on a topic reopened by a rerouted concern now shows correctly, instead of only cueing topics that hadn't started yet.
+- Resuming an implementation task that was left mid-fix-round now returns you straight to the pending fix gate with the recorded findings, instead of re-dispatching the executor from scratch.
+
 ## [0.7.31] - 2026-09-06
 
 ✨ Added
