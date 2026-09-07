@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { fileExists, filesChecksum, countFiles } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -599,19 +599,40 @@ function computeSourceProvenance(source) {
   return `from ${labels.join(' + ')}`;
 }
 
-// The topic's triage queues, counted from disk — one number per triage-legal
-// conversation phase. The cue means "concerns wait here", and that is a fact
-// about the queue directory, not the item's status: a landing on a concluded
-// topic reopens it to `in-progress`, leaving no `triaged` stub to read, and
-// the drain deletes queue files, so an empty directory is the released
-// signal with nothing to clear.
+// The phases that own a triage queue — those whose item vocabulary admits
+// `triaged`, in schema order.
+const TRIAGE_PHASES = Object.entries(VALID_PHASE_STATUSES)
+  .filter(([, vocabulary]) => vocabulary.includes('triaged'))
+  .map(([phase]) => phase);
+
+// A topic's triage queue, counted from disk. The cue means "concerns wait
+// here", and that is a fact about the queue directory, not the item's
+// status: a landing on a concluded topic reopens it to `in-progress`, leaving
+// no `triaged` stub to read, and the drain deletes queue files, so an empty
+// directory is the released signal with nothing to clear.
+/** @param {string} workflowsDir @param {object} manifest @param {string} phase @param {string} topic @returns {number} */
+function triageQueueDepth(workflowsDir, manifest, phase, topic) {
+  if (typeof manifest.name !== 'string') return 0;
+  return countFiles(path.join(workflowsDir, manifest.name, phase, '.triage', topic), '.md');
+}
+
+// The epic map row's depths — the two conversation phases a map row joins.
 /** @param {string} workflowsDir @param {object} manifest @param {string} topic @returns {{research: number, discussion: number}} */
 function triageQueued(workflowsDir, manifest, topic) {
-  const workUnit = typeof manifest.name === 'string' ? manifest.name : null;
-  const count = (/** @type {string} */ phase) => (workUnit === null
-    ? 0
-    : countFiles(path.join(workflowsDir, workUnit, phase, '.triage', topic), '.md'));
-  return { research: count('research'), discussion: count('discussion') };
+  return {
+    research: triageQueueDepth(workflowsDir, manifest, 'research', topic),
+    discussion: triageQueueDepth(workflowsDir, manifest, 'discussion', topic),
+  };
+}
+
+/**
+ * The phases whose queue holds concerns for one topic — the single-topic
+ * surfaces' cue (the start rows, the continue dashboards, the pick lists),
+ * where topic = work unit and any triage-legal phase may own the queue.
+ * @param {string} workflowsDir @param {object} manifest @param {string} topic @returns {string[]}
+ */
+function triagePhases(workflowsDir, manifest, topic) {
+  return TRIAGE_PHASES.filter((phase) => triageQueueDepth(workflowsDir, manifest, phase, topic) > 0);
 }
 
 /**
@@ -712,5 +733,6 @@ module.exports = {
   compareMapRows,
   computeNeedsSequencing,
   buildDiscoveryMap,
+  triagePhases,
   TIER_RANK,
 };

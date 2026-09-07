@@ -170,6 +170,18 @@ describe('start projections: menu', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
+  it('a single-topic unit with concerns queued carries the triage waiting cue on its row — an epic never does', () => {
+    createFile(dir, '.workflows/dark-mode/discussion/.triage/dark-mode/001-escalation-path.md', '### Escalation path\n');
+    createFile(dir, '.workflows/quiz-competition-v1/discussion/.triage/menu-admin/001-cost-model.md', '### Cost model\n');
+    const detail = fullFixture(dir);
+    assert.deepStrictEqual(detail.features.work_units.find((u) => u.name === 'dark-mode').triage_phases, ['discussion']);
+    assert.strictEqual(detail.features.work_units.find((u) => u.name === 'auth-flow').triage_phases, undefined);
+    assert.strictEqual(detail.epics.work_units[0].triage_phases, undefined);
+    const labels = startMenu(detail).keys.map((k) => k.label);
+    assert.ok(labels.includes('Continue "Dark Mode" — *feature, discussion (in-progress)* · triage waiting'), labels.join('\n'));
+    assert.ok(labels.includes('Continue "Quiz Competition V1" — *epic*'), labels.join('\n'));
+  });
+
   it('renders continue entries then command options with the conditional i/v present', () => {
     const menu = startMenu(fullFixture(dir));
     assert.strictEqual(menu.rendered, [

@@ -3242,6 +3242,16 @@ describe('selection projection', () => {
     ].join('\n'));
   });
 
+  it('a unit with concerns queued carries the triage waiting cue on its row and its option', () => {
+    const out = selectionSections('feature',
+      [{ name: 'auth-flow', phase_label: 'discussion (in-progress)', triage_phases: ['discussion'] }, { name: 'dark-mode', phase_label: 'ready for specification' }],
+      { completed: 0, cancelled: 0 });
+    assert.ok(out.includes('  ├─ 1. Auth Flow\n  │   Discussion (In-Progress) · triage waiting\n'), out);
+    assert.ok(out.includes('  └─ 2. Dark Mode\n      Ready For Specification\n'), out);
+    assert.ok(unwrap(out).includes('→ Continue "Auth Flow" — *discussion (in-progress)* · triage waiting\n'), out);
+    assert.ok(unwrap(out).includes('→ Continue "Dark Mode" — *ready for specification*\n'), out);
+  });
+
   it('epic variant bodies the active phases and drops the phase label from options', () => {
     const out = selectionSections('epic', [{ name: 'payments', active_phases: ['discussion', 'specification'] }], { completed: 0, cancelled: 0 });
     assert.ok(out.includes('  └─ 1. Payments\n      Discussion, Specification'));

@@ -20,6 +20,7 @@ const {
   phaseItems,
   computeUnitPhaseState,
   lastCompletedPhase,
+  triagePhases,
 } = require('./derivations.cjs');
 const { WORK_TYPE_PIPELINES, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 
@@ -49,6 +50,8 @@ function pipelineOf(workType) {
  *                                       flight, but the unit is still in-progress — `workunit
  *                                       complete` never ran
  * @property {string[]} [active_phases]  epics only — phases that have items
+ * @property {string[]} [triage_phases]  single-topic types — phases whose triage queue holds
+ *                                       concerns for the unit's topic (the row's `triage waiting` cue)
  */
 
 /**
@@ -197,6 +200,7 @@ function discoverInbox(cwd) {
  */
 function startDetail(cwd) {
   const manifests = loadActiveManifests(cwd);
+  const workflowsDir = path.join(cwd, '.workflows');
   /** @type {WorkUnitEntry[]} */
   const epics = [];
   /** @type {WorkUnitEntry[]} */
@@ -217,6 +221,12 @@ function startDetail(cwd) {
       phase_label: state.phase_label,
       finalising: state.finalising,
     };
+    // Single-topic types cue concerns queued on the unit's own topic; an
+    // epic's row carries no phase state — its dashboard cues per topic.
+    if (m.work_type !== 'epic') {
+      const queued = triagePhases(workflowsDir, m, m.name);
+      if (queued.length > 0) unit.triage_phases = queued;
+    }
 
     if (m.work_type === 'epic') {
       // For epics, include list of phases that have items
