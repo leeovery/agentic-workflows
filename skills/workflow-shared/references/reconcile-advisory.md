@@ -30,7 +30,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 **If `completed`:**
 
-The research has landed. Surface the advisory, read the topic's research file fresh into context, and clear the flag.
+The research has landed. Surface the advisory, read the topic's research file fresh into context, and clear the flag. What it re-examines is carried into the session as ground to put to the user — decisions here are theirs to revisit, and nothing on the discussion map moves until they do.
 
 > *Output the next fenced block as a code block:*
 

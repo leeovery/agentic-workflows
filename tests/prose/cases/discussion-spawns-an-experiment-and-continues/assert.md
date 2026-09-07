@@ -58,9 +58,9 @@ Further claims:
 - the document holds the refund decision written up in full, the dated
   awaiting-E1 note in the webhook-timing section, and no invented
   timing number anywhere
-- no review walk blocked the close: the wait gate fired before the
-  ceremony's review machinery, so whatever background review ran
-  stayed background
+- no review walk blocked the close: whatever background review ran
+  came back clean and raised nothing, so the wait gate was the first
+  and only block the wrap-up met
 - git history holds the spawn commit, the sweep-marked record commit,
   and the refund decision's commit
 

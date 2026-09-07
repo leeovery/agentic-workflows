@@ -19,7 +19,8 @@ The prose should have taken this path:
 4. the evidence lands in the file: the measured share, what it rests
    on, and behaviour-driven expansion as the leading candidate — held
    as material for the discussion, never decided here — and the waiting
-   note gives way to the answered number
+   note is answered beneath it — a dated entry carrying the number,
+   the waiting line kept as the record of the wait
 5. the user wraps; the triage queue reads empty and the wait-gate
    fetch comes back empty — the release already happened, so no gate
    is emitted and nothing blocks
@@ -51,7 +52,8 @@ Further claims:
 
 EXPECTED WORLD — the fixture plus: the research item `completed` with
 the reconcile flag absent; the research document carrying the measured
-share, its provenance, and the leading-candidate note in place of the
-awaiting note; the stubbed review report in the topic's cache with its
+share, its provenance, and the leading-candidate note as a dated entry
+beneath the awaiting note, which stays as the record of the wait; the
+stubbed review report in the topic's cache with its
 agent row closed; the experiment item and E1's row byte-unchanged; the
 research indexed into the knowledge store by the completion.
