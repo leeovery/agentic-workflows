@@ -228,6 +228,7 @@ describe('engine task start', () => {
     assert.deepStrictEqual(res, {
       ok: true,
       task: 'auth-flow-1-2',
+      mode: 'started',
       gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
     });
     assert.strictEqual(implItem(dir).fix_attempts, 0);
@@ -245,6 +246,7 @@ describe('engine task start', () => {
     assert.deepStrictEqual(res, {
       ok: true,
       task: 'auth-flow-2-1',
+      mode: 'resumed',
       gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
     });
     assert.strictEqual(implItem(dir).fix_attempts, 2);
@@ -258,6 +260,7 @@ describe('engine task start', () => {
     // counter-leak defect. No tracking file → no in-flight pair → clean slate.
     const res = engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-2-1']);
     assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.mode, 'started');
     assert.strictEqual(implItem(dir).fix_attempts, 0);
     assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
   });
@@ -617,7 +620,12 @@ describe('engine task counter/file lockstep (composition)', () => {
     const fileBefore = fs.readFileSync(trackingPath(dir, 'auth-flow-1-1'), 'utf8');
 
     const again = engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']);
-    assert.deepStrictEqual(again, first);
+    // Same task, same gates — only `mode` moves, and it is the flow's
+    // discriminator: the first start dispatches an executor, the re-run
+    // resumes a task whose recorded findings are still unanswered.
+    assert.strictEqual(first.mode, 'started');
+    assert.strictEqual(again.mode, 'resumed');
+    assert.deepStrictEqual({ ...again, mode: 'started' }, first);
     assert.strictEqual(implItem(dir).fix_attempts, 1);
     assert.strictEqual(fs.readFileSync(trackingPath(dir, 'auth-flow-1-1'), 'utf8'), fileBefore);
   });

@@ -218,7 +218,7 @@ engine session cleanup [session-id]                 # SessionEnd hook target; re
 
 ```bash
 engine task init <work-unit> <topic>                       # create-or-resume the implementation item
-engine task start <work-unit> <topic> <internal-id>        # record current_task; fresh task: reset fix_attempts, drop the fix-tracking file; restarting the in-flight task preserves both
+engine task start <work-unit> <topic> <internal-id>        # record current_task; fresh task (mode started): reset fix_attempts, drop the fix-tracking file; restarting the in-flight task (mode resumed) preserves both
 engine task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>
 engine task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped] [--next-task <id|~>] [--phase <N>] [--phase-complete]
 engine task analysis-cycle <work-unit> <topic>             # increment both analysis counters

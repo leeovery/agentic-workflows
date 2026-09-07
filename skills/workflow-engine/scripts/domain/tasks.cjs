@@ -45,6 +45,7 @@ const PHASE_BOUNDED_GATES = /** @type {(keyof GateModes)[]} */ (
 /**
  * @typedef {object} StartResult
  * @property {string} task  the internal id
+ * @property {'started'|'resumed'} mode  `resumed` when the task was already in flight with its fix-tracking file
  * @property {{task_gate_mode: string, fix_gate_mode: string}} gates
  */
 
@@ -214,7 +215,10 @@ function initTasks(cwd, workUnit, topic) {
  * count and the tracking file are that task's convergence history, and wiping
  * them would evade the fix threshold. Anything else (a different task, or the
  * same id with no tracking file — e.g. freshly handed over by `complete
- * --next-task`) is a fresh start and resets both.
+ * --next-task`) is a fresh start and resets both. The response's `mode` names
+ * which happened: the task loop dispatches an executor for a `started` task
+ * and routes a `resumed` one to its pending fix gate, where the recorded
+ * findings are still unanswered.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
@@ -224,19 +228,20 @@ function initTasks(cwd, workUnit, topic) {
 function startTask(cwd, workUnit, topic, internalId) {
   safeName(internalId, 'internal id');
   const file = fixTrackingPath(cwd, workUnit, topic, internalId);
-  const item = withWorkUnitLock(cwd, workUnit, () => {
+  const { item, resumed } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const found = implementationItem(manifest, topic);
-    const resumed = found.current_task === internalId && fs.existsSync(file);
-    if (!resumed) found.fix_attempts = 0;
+    const isResume = found.current_task === internalId && fs.existsSync(file);
+    if (!isResume) found.fix_attempts = 0;
     found.current_task = internalId;
-    if (!resumed && fs.existsSync(file)) fs.unlinkSync(file);
+    if (!isResume && fs.existsSync(file)) fs.unlinkSync(file);
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return found;
+    return { item: found, resumed: isResume };
   });
 
   return {
     task: internalId,
+    mode: resumed ? 'resumed' : 'started',
     gates: { task_gate_mode: gateOf(item, 'task_gate_mode'), fix_gate_mode: gateOf(item, 'fix_gate_mode') },
   };
 }
