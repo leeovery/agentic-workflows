@@ -66,7 +66,9 @@ The prose should have taken this path:
     the implementation topic, the tasks with --plan
 15. the loop's next fetch sees pay-1-3: started, briefed, executed
     by the consolidation executor stub, reviewed by the reviewer
-    stub's later firing (plain approve, no BANK), and approved at
+    stub's later firing (approve with a BANK entry the loop leaves
+    undeposited — `do_banking` is false for a consolidation task, so
+    no `manifest push … bank` follows), and approved at
     the gate by the fifth scripted answer
 16. progress lands for pay-1-3: no open tasks remain and
     consolidated_phases contains 1 with the approved staged task

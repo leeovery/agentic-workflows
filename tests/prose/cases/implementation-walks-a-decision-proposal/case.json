@@ -84,7 +84,8 @@
       "manifest push pay.implementation.pay consolidated_phases 1",
       "manifest set pay.planning.pay task_map.pay-1-3",
       "manifest set pay.planning.pay task_map.pay-1-4",
-      "phase 1 consolidation — staged tasks"
+      "phase 1 consolidation — staged tasks",
+      "manifest exists pay.implementation.pay bank"
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",
@@ -120,7 +121,8 @@
       "topic complete pay implementation",
       "git add -A",
       "git add --all",
-      "render correction-gate"
+      "render correction-gate",
+      "manifest delete pay.implementation.pay bank"
     ]
   }
 }

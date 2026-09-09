@@ -342,6 +342,12 @@ Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engi
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
+**Record the phase as machinery-created** — the writer's `PHASES` names the phase the tasks landed in; a task of that phase never banks. Skip the push when `machine_phases` already contains the number:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} machine_phases {phase}
+```
+
 **If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
 
 ```bash

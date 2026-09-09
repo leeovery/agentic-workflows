@@ -48,10 +48,10 @@
   "stubs": {
     "executor-task-complete": "when the workflow-implementation-task-executor agent is dispatched for task pay-1-2 — create that task's source and test files as the stub gives them and return that task's STATUS block; one firing",
     "executor-consolidation-task": "when the workflow-implementation-task-executor agent is dispatched for the consolidation task pay-1-3 — create the helper's source and test files, apply the call-site edits, and return the stub's STATUS block; one firing",
-    "reviewer-banks-then-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — first firing (pay-1-2's review) returns the approved-with-BANK block, any later firing (the consolidation task's review) returns the plain approved block; write no file",
     "finder-sweep-findings": "when the workflow-implementation-consolidation-finder agent is dispatched — write the findings file at the dispatched path via the .txt-then-rename mechanism, naming the banked entry it confirms on the finding's Bank line, and return the stub's status block",
     "task-author-expands-consolidation": "when the workflow-implementation-task-author agent is dispatched — add the stub's blocks under the approved proposal in the staging file and return the stub's status block; one firing",
-    "task-writer-creates-consolidation": "when the workflow-implementation-task-writer agent is dispatched — create the approved consolidation task from the staging file exactly as the stub directs, record the task_map entry, and return the stub's status block"
+    "task-writer-creates-consolidation": "when the workflow-implementation-task-writer agent is dispatched — create the approved consolidation task from the staging file exactly as the stub directs, record the task_map entry, and return the stub's status block",
+    "reviewer-banks-then-banks-again": "each time the workflow-implementation-task-reviewer agent is dispatched — first firing (pay-1-2's review) returns the first block, with its BANK entry; the later firing (the consolidation task's review) returns the second block, whose BANK entry the loop leaves undeposited; write no file"
   },
   "invariants": {
     "engine_before_write": true,
@@ -66,6 +66,7 @@
       "impl(pay): Tpay-1-2",
       "commit --paths",
       "manifest get pay.implementation.pay consolidation_gate_mode",
+      "manifest get pay.implementation.pay bank",
       "phase 1 consolidation — findings",
       "staging.p1.tasks.1=pending",
       "render tasks-overview pay.implementation.pay",
@@ -86,10 +87,12 @@
       "manifest push pay.implementation.pay bank",
       "task complete pay pay pay-1-2",
       "impl(pay): Tpay-1-2",
+      "manifest get pay.implementation.pay bank",
       "staging.p1.tasks.1=pending",
       "staging.p1.tasks.1 approved",
       "manifest push pay.implementation.pay consolidated_phases 1",
       "write:.workflows/pay/planning/pay/tasks/pay-1-3.md",
+      "manifest exists pay.implementation.pay bank",
       "manifest delete pay.implementation.pay bank",
       "task start pay pay pay-1-3",
       "--phase-complete",
