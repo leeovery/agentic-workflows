@@ -2097,13 +2097,29 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'pending']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'approved']);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-2-1`, `${wu}-2-1`]);
+    // The flow that lands a machinery-created phase records it (analysis-loop.md H,
+    // the review loop's remediation landing) — the switch the engine keys on.
+    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'machine_phases', '2']);
     const analysisTask = sim.run(['task', 'start', wu, wu, `${wu}-2-1`]);
     assert.strictEqual(analysisTask.mode, 'started', 'the analysis task is taken up fresh');
     assert.strictEqual(analysisTask.do_banking, false,
-      'once an analysis cycle has run, no task banks — nothing downstream would drain the deposit');
+      'a task of a machinery-created phase never banks — no boundary follows it to drain the deposit');
     // A machinery-created phase takes no consolidation boundary — the fused
     // completion closes it (task-loop H).
     sim.run(['task', 'complete', wu, wu, `${wu}-2-1`, '--phase', '2', '--next-task', '~', '--phase-complete']);
+    // A plan phase added at the tail afterwards (ad-hoc-plan-changes.md) is not
+    // machinery-created: its tasks bank, whatever the cycle count says.
+    sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-3-1`, `${wu}-3-1`]);
+    assert.strictEqual(sim.run(['task', 'start', wu, wu, `${wu}-3-1`]).do_banking, true,
+      'a plan-authored phase banks after the analysis loop has run — the switch is the phase, not the counter');
+    sim.run(['task', 'complete', wu, wu, `${wu}-3-1`, '--phase', '3', '--next-task', '~']);
+    // From the fourth cycle the lifetime count trips the gate: the record says
+    // so, and the over-limit callout renders (analysis-loop.md A).
+    sim.run(['task', 'analysis-cycle', wu, wu]);
+    assert.strictEqual(sim.run(['task', 'analysis-cycle', wu, wu]).over_cycle_limit, true,
+      'the fourth cycle on the topic trips the lifetime limit');
+    assert.match(sim.render(['cycle-limit', `${wu}.implementation.${wu}`], { expect: 'content' }),
+      /Analysis cycle 4 on this topic — over the cycle limit of 3/, 'the callout names the lifetime count');
 
     // The ad hoc plan-changes gate stages under its own family key (ad-hoc-plan-changes.md E/F)
     // and renders the shared proposed-task surface without the synthesis-only fields.
@@ -2132,10 +2148,10 @@ describe('pipeline simulation', () => {
     assert.strictEqual(resumed.gates.task_gate_mode, 'gated', 'resume resets bounded to gated');
     assert.strictEqual(resumed.gates.fix_gate_mode, 'gated', 'resume resets auto to gated');
     assert.strictEqual(resumed.gates.consolidation_gate_mode, 'gated', 'the boundary gate resets with the session');
-    assert.deepStrictEqual(resumed.counters, { fix_attempts: 0, analysis_cycle_total: 2 },
+    assert.deepStrictEqual(resumed.counters, { fix_attempts: 0, analysis_cycle_total: 4 },
       'the resume leaves the lifetime cycle count alone — the limit outlives the session');
     const completed = sim.manifest(wu).phases.implementation.items[wu].completed_tasks;
-    assert.deepStrictEqual([...completed].sort(), [`${wu}-1-1`, `${wu}-1-2`, `${wu}-1-3`, `${wu}-2-1`],
+    assert.deepStrictEqual([...completed].sort(), [`${wu}-1-1`, `${wu}-1-2`, `${wu}-1-3`, `${wu}-2-1`, `${wu}-3-1`],
       'completed_tasks carries each id once — the boundary re-record must not double-count');
   });
 

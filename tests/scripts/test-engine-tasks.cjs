@@ -238,7 +238,7 @@ describe('engine task start', () => {
       task: 'auth-flow-1-2',
       mode: 'started',
       gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
-      do_banking: false,
+      do_banking: true,
     });
     assert.strictEqual(implItem(dir).fix_attempts, 0);
     assert.strictEqual(implItem(dir).current_task, 'auth-flow-1-2');
@@ -257,7 +257,7 @@ describe('engine task start', () => {
       task: 'auth-flow-2-1',
       mode: 'resumed',
       gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
-      do_banking: false,
+      do_banking: true,
     });
     assert.strictEqual(implItem(dir).fix_attempts, 2);
     assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
@@ -296,7 +296,7 @@ describe('engine task start answers do_banking', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   // A plan phase's bank is open only while its own tasks run: a work type
-  // whose plan takes a boundary, no analysis cycle on the topic yet, the
+  // whose plan takes a boundary, a phase the machinery did not create, the
   // phase's boundary walk not staged, the phase not consolidated. Derived
   // from the manifest on every call — both modes answer it, nothing is stored.
 
@@ -335,10 +335,14 @@ describe('engine task start answers do_banking', () => {
     assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: true, resumed: true });
   });
 
-  it('once an analysis cycle has run, no phase banks', () => {
-    seed({ analysis_cycle_total: 1 });
-    assert.deepStrictEqual(bothModes('auth-flow-1-1'), { started: false, resumed: false });
+  it('a machinery-created phase never banks — no boundary follows it', () => {
+    seed({ analysis_cycle_total: 1, machine_phases: [2] });
     assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: false, resumed: false });
+  });
+
+  it('a plan phase still banks after an analysis cycle has run — the counter is not the switch', () => {
+    seed({ analysis_cycle_total: 2, machine_phases: [2], consolidated_phases: [1], completed_phases: [1, 2] });
+    assert.deepStrictEqual(bothModes('auth-flow-3-1'), { started: true, resumed: true });
   });
 
   it('a quick-fix never banks — its plan takes no boundary, so nothing would drain a deposit', () => {

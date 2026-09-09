@@ -160,7 +160,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implement
 
 > **CHECKPOINT**: Do not proceed until all agents have returned.
 
-Commit the analysis findings — the scoped commit covers the findings files and the manifest's cycle counters:
+Commit the analysis findings — the scoped commit covers the findings files and the manifest's cycle counter:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — findings" --topic implementation/{topic}

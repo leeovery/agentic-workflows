@@ -148,18 +148,21 @@ function phaseOfInternalId(internalId) {
 /**
  * True while a plan phase is still taking BANK deposits: the work unit is
  * not a quick-fix (its plan never takes a boundary, so nothing would drain
- * a deposit), no analysis cycle has run on the topic, and the phase has
- * neither staged its boundary walk nor been consolidated. Derived from what
- * the manifest already holds — nothing stores it.
+ * a deposit), the phase is plan-authored (a machinery-created phase — an
+ * analysis cycle's or a review remediation's — is recorded in
+ * `machine_phases` by the flow that lands it), and the phase has neither
+ * staged its boundary walk nor been consolidated. Derived from what the
+ * manifest already holds — nothing stores it.
  * @param {string|undefined} workType the manifest's top-level `work_type`
  * @param {Record<string, any>} item @param {number} phase
  * @returns {boolean}
  */
 function bankingOpen(workType, item, phase) {
+  const machine = Array.isArray(item.machine_phases) ? item.machine_phases : [];
   const consolidated = Array.isArray(item.consolidated_phases) ? item.consolidated_phases : [];
   const staging = item.staging && typeof item.staging === 'object' ? item.staging : {};
   return workType !== 'quick-fix'
-    && counterOf(item, 'analysis_cycle_total') === 0
+    && !machine.includes(phase)
     && !consolidated.includes(phase)
     && !(`p${phase}` in staging);
 }
@@ -169,8 +172,8 @@ function bankingOpen(workType, item, phase) {
  * (`{status: 'in-progress'}`) plus session defaults. Present → session reset
  * only: the four gate modes back to `gated` — `analysis_cycle_total`,
  * `linters`, `project_skills`, `current_phase`, `current_task`,
- * `completed_tasks`, `completed_phases`, `consolidated_phases`, and `bank`
- * are never touched.
+ * `completed_tasks`, `completed_phases`, `consolidated_phases`,
+ * `machine_phases`, and `bank` are never touched.
  * `fix_attempts` resets to 0 UNLESS `current_task` has a live fix-tracking
  * file (a crash-resume mid-task): the counter and file are that task's
  * convergence history and stay in lockstep — zeroing one without the other
