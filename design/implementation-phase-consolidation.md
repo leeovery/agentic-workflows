@@ -2,7 +2,8 @@
 
 **Status:** built — stack #911 (2026-08-17); revised by the 2026-09-09
 stack: the bank confined to one plan phase, a consequence floor on
-every finding, a directions ledger, the cycle gate keyed to lifetime.
+every finding, settled directions read from the record, the cycle
+gate keyed to lifetime.
 
 The implementation phase gets a consolidation pass at every plan-phase
 boundary — a sweep over what the phase just built that the plan could
@@ -12,7 +13,8 @@ executor and reviewer deposit as the phase's tasks run, judged by the
 orchestrator, authored by the existing task-writer, executed by the
 normal task loop, and emptied when the phase closes. The
 end-of-implementation analysis loop runs after the plan on its own
-findings alone, under the same floor. Opened 2026-08-15 from idea 40
+findings alone, under the same floor and the same settled directions.
+Opened 2026-08-15 from idea 40
 (`ideas/implementation-end-of-phase-pass.md`), evidence from Portal's
 `theming-system` feature; revised on evidence from Portal's
 `resume-hooks-silently-lost` bugfix.
@@ -100,10 +102,15 @@ tasks deposit it.
   entries deposits on arrival (task loop B/D and the confirmation
   round), so no verdict path, fix round, or crash drops one.
 - **Switched by the engine.** `task start` answers `do_banking`,
-  derived from the manifest: the topic's lifetime analysis-cycle
-  count is zero, the task's phase is not in `consolidated_phases`,
-  and the phase's boundary walk (`staging.p{N}`) does not exist.
-  Plan-authored tasks get `true`; consolidation tasks, analysis-cycle
+  derived from the manifest: the work unit is not a quick-fix, the
+  task's phase is not in `machine_phases`, not in
+  `consolidated_phases`, and its boundary walk (`staging.p{N}`) does
+  not exist. `machine_phases` is written by the flow that lands a
+  machinery-created phase — the analysis loop's task creation and the
+  review loop's remediation landing each push the phase number — so
+  the engine keys on the same fact the prose reads from the phase
+  label. Plan-authored tasks get `true`, a plan phase added after the
+  analysis loop began included; consolidation tasks, analysis-cycle
   tasks and review-remediation tasks get `false`. The prose loads the
   deposit reference only when the flag is true — the loop is
   bank-blind everywhere else, by progressive disclosure rather than
@@ -279,14 +286,17 @@ adapter — the same path the analysis loop uses. Charters stay
 narrow: the orchestrator never writes tasks, the task-writer never
 judges.
 
-### The directions ledger
+### The settled directions
 
 A later pass must not undo what an earlier pass settled on taste.
-When the boundary pass or the analysis loop lands tasks, the
-orchestrator pushes one entry per task onto the implementation item's
-`directions` array — `{task, direction}`, the direction being the
-staged proposal's settled Solution in one line. The boundary judge
-and the synthesizer receive the ledger with one rule:
+The record already exists: every walk's approvals sit in the
+manifest's `staging` (`p{M}` for a boundary walk, `c{M}` for an
+analysis cycle), and each approved row names a proposal in that
+pass's committed staging file whose title and Solution are the
+direction the pass settled. Nothing is written a second time — the
+boundary judge reads the prelude's `staging` and the synthesizer
+dispatch reads it fresh, and each opens the approved proposals of
+every earlier pass. One rule governs what they find:
 
 > A proposal that reverses a listed direction is dropped unless the
 > finding shows that direction wrong by measurement, the
@@ -296,11 +306,12 @@ and the synthesizer receive the ledger with one rule:
 "Reverses", not "touches": extending, completing or building on a
 direction is not a reversal. A measured defect is always grounds — a
 regression an earlier pass introduced stays catchable. A reversal
-without grounds is dropped, never raised to the user as a fork. The
-three analysis agents, the executor and the reviewer never see the
-ledger: the agents run with clean context by design, and the ledger
-constrains proposals, not fixes. The ledger is the work unit's
-record and is left in place at conclude.
+without grounds is dropped, unwritten — never raised to the user as a
+fork, never named in a report. The three analysis agents, the
+executor and the reviewer never see the directions: the agents run
+with clean context by design, and the directions constrain
+proposals, not fixes. Deriving them from the staging files leaves no
+write to duplicate on a re-entry and none to lose in a crash.
 
 ### The gate
 
@@ -325,8 +336,8 @@ Runs after the plan's last phase, unchanged in shape: three agents
 with clean context, a synthesizer, a walk, a phase of tasks, again
 until the agents return clean. Two things hold it:
 
-- **The floor and the ledger** apply to its synthesizer exactly as
-  to the boundary judge.
+- **The floor and the settled directions** apply to its synthesizer
+  exactly as to the boundary judge.
 - **The cycle gate counts the topic's lifetime.** `task
   analysis-cycle` increments `analysis_cycle_total` alone and answers
   `over_cycle_limit` past three; from the fourth cycle every cycle
@@ -336,14 +347,18 @@ until the agents return clean. Two things hold it:
 
 ## Engine surface
 
-- `task start` → `do_banking` (derived, never stored).
+- `task start` → `do_banking` (derived, never stored) over
+  `work_type`, `machine_phases`, `consolidated_phases` and
+  `staging.p{N}`.
 - `task analysis-cycle` → `{cycle_total, over_cycle_limit,
   analysis_gate_mode}`; `render cycle-limit` reads the lifetime
   counter; `task init` resets gate modes only.
-- `bank` and `directions`: plain array fields on
-  `implementation.{topic}`, written with the generic `manifest push`,
-  cleared with `manifest delete` — the review phase's `out_of_scope`
-  and `dismissed_grounds` precedent. No engine storage code.
+- `bank` and `machine_phases`: plain array fields on
+  `implementation.{topic}`, written with the generic `manifest push`
+  (the bank cleared with `manifest delete`) — the review phase's
+  `out_of_scope` and `dismissed_grounds` precedent. No engine storage
+  code. Settled directions have no field: they are read from
+  `staging` and the staging files.
 - Staging reuses the guarded container: `staging.p{N}` for the
   boundary walk beside the analysis loop's `staging.c{N}`;
   `tasks-overview` and `proposed-task` serve both.
@@ -359,7 +374,7 @@ until the agents return clean. Two things hold it:
 - **PR3** — the consequence floor: the shared reference and its
   loaders, test-file scope, comment handling, the corrections task,
   the complete-set rule.
-- **PR4** — the directions ledger.
+- **PR4** — the settled directions.
 
 Tests ride each layer: engine suites and the pipeline simulation for
 PR1 and PR4, prose cases and snapshots for the flows they change.
