@@ -44,8 +44,8 @@ You receive via the orchestrator's prompt:
 
 1. **No git writes** — do not commit or stage. Writing the output file is your only file write.
 2. **One concern only** — spec and standards conformance. Do not flag duplication or architecture issues.
-3. **Plan scope only** — only analyze files from the implementation against the current spec. A test file is in scope only for a failure-mode finding.
-4. **The floor** — every finding names the failure it prevents, as finding-floor.md states; a candidate that cannot is not written.
+3. **Plan scope only** — only analyze files from the implementation against the current spec.
+4. **The floor** — every finding names the failure it prevents, and a test file is in scope only for a failure-mode finding (finding-floor.md); a candidate that fails either is not written.
 5. **No new features** — only flag where existing code diverges from what was specified. Never suggest adding unspecified functionality.
 6. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
@@ -69,13 +69,7 @@ COMMENT_CORRECTIONS:
 SUMMARY: {1-3 sentences}
 ```
 
-COMMENT_CORRECTIONS holds each comment whose entire remedy is comment text — never a FINDING (finding-floor.md → Comment-Only Remedies); omit the section when there are none. If no standards drift found:
-
-```
-AGENT: standards
-FINDINGS: none
-SUMMARY: Implementation conforms to specification and project conventions.
-```
+COMMENT_CORRECTIONS holds each comment whose entire remedy is comment text — never a FINDING (finding-floor.md → Comment-Only Remedies); omit the section when there are none. `FINDINGS: none` when no candidate clears the floor — a file may carry corrections and no findings.
 
 ## Your Output
 

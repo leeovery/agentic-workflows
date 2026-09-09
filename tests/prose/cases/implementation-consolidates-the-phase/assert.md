@@ -64,8 +64,10 @@ The prose should have taken this path:
 13. E records the pass as landed — consolidated_phases gains 1 —
     then invokes the task author over the staging file with the one
     approved task number; the author stub adds the Do, Acceptance
-    Criteria and Tests blocks beneath Task 1's existing heading and
-    leaves its title, control lines, Problem and Solution as staged.
+    Criteria and Tests blocks beneath Task 1's existing heading — the
+    Do quoting the measuring grep and its count and converting every
+    site it names — and leaves its title, control lines, Problem and
+    Solution as staged.
     Only once the author has returned is the task writer invoked,
     with the per-task consolidation-boundary placement; the writer
     stub creates tasks/pay-1-3.md carrying the authored body,

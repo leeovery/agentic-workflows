@@ -31,7 +31,7 @@ You receive via the orchestrator's prompt:
 2. **Check unstaged changes** — use `git diff` and `git status` to identify files changed by the executor
 3. **Read all changed files** — implementation code and test code
 4. **Read project skills** — understand framework conventions, testing patterns, architecture patterns
-5. **Read code-quality.md and finding-floor.md** — the quality standards the executor worked to, including its comment discipline, and the floor
+5. **Read code-quality.md and finding-floor.md** — the quality standards the executor worked to, including its comment discipline, and the floor every BANK entry clears
 6. **Evaluate all five review dimensions** (see below), classifying comment findings per **Comment Corrections**
 
 ## Review Dimensions

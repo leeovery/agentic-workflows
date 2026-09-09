@@ -91,7 +91,7 @@ the review-findings lanes: classified by the move owed, never by
 taxonomy. Per item:
 
 - **Pure refactors** walk as today (class tags `duplication`,
-  `near-miss`, `drift`, `dead-code`, `complexity`, `comments`).
+  `near-miss`, `drift`, `dead-code`, `complexity`, `corrections`).
 - **Behaviour-changing improvements** join the same walk tagged
   `behaviour`. The tag is one word in the existing tag slot — kept
   because it costs nothing and matters the day a regression traces back

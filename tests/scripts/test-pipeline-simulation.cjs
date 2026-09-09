@@ -465,10 +465,10 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // report arrives (bank-deposit.md, loaded while `do_banking` is true) —
   // durable on the manifest, emptied at the phase boundary.
   const bankPush = sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
-    `{"task":"${topic}-1-1","source":"executor","summary":"helper duplicated from a sibling task","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}`]);
+    `{"task":"${topic}-1-1","source":"executor","summary":"helper duplicated from a sibling task","failure":"a rule change lands in one copy and not the other — the two callers disagree silently","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}`]);
   assert.strictEqual(bankPush.length, 1, 'first bank deposit creates the array');
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
-    `{"task":"${topic}-1-1","source":"reviewer","summary":"dead scaffolding a later task orphaned","detail":"src/c.js:8 export unused","files":["src/c.js"]}`]);
+    `{"task":"${topic}-1-1","source":"reviewer","summary":"dead scaffolding a later task orphaned","failure":"a reader wires the orphaned export into new code and ships a path nothing tests","detail":"src/c.js:8 export unused","files":["src/c.js"]}`]);
   const bank = JSON.parse(sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'bank']));
   assert.strictEqual(bank.length, 2, 'bank accumulates entries');
   assert.strictEqual(bank[0].source, 'executor', 'entries store as objects, not strings');

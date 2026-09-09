@@ -21,3 +21,5 @@ A test file is in scope only for a failure-mode finding — a guard that passes 
 ## Comment-Only Remedies
 
 A finding whose entire remedy is comment text is not a finding. Report it as a comment correction — the file and line, what is wrong, the OLD text verbatim, the NEW text (empty to delete) — in the shape your output format names. A correction must itself clear the comment bar in **[code-quality.md](code-quality.md)** → Comments: a comment earns its place only by carrying what the code cannot, and a comment that cannot is deleted, never reworded.
+
+→ Return to caller.

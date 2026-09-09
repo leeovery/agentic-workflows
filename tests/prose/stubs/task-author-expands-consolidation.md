@@ -12,9 +12,9 @@ return the status block.
 
 The blocks to add under the approved task:
 
-**Do**: Create `src/gateway/result.js` exporting `gatewayResult(response)` carrying the unwrap both entry points hand-roll; replace the inline unwrap in `src/checkout/payment-intent.js` and in `src/webhooks/capture.js` with calls through it.
+**Do**: Measure the complete set first — `grep -rln "gateway" src/checkout src/webhooks` → 2 files: `src/checkout/payment-intent.js`, `src/webhooks/capture.js`. Create `src/gateway/result.js` exporting `gatewayResult(response)` carrying the unwrap both sites hand-roll, and route every measured site through it.
 
-**Acceptance Criteria**: Both entry points unwrap gateway results through `gatewayResult`; no inline unwrap remains at either site; the existing checkout and webhook tests stay green untouched.
+**Acceptance Criteria**: Every site the measurement names unwraps gateway results through `gatewayResult` — re-running the quoted grep reaches no inline unwrap; the existing checkout and webhook tests stay green untouched.
 
 **Tests**: `gateway results unwrap through the shared helper` — behaviour identical at both call sites.
 

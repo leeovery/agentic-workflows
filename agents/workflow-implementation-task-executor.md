@@ -33,7 +33,7 @@ A fresh dispatch starts with no memory — the full task content is provided so 
 ## Your Process
 
 1. **Read the workflow reference** — absorb the full cycle (TDD or verification) before writing any code
-2. **Read code-quality.md and finding-floor.md** — absorb quality standards and the floor
+2. **Read code-quality.md and finding-floor.md** — absorb quality standards and the floor every BANK entry clears
 3. **Read project skills** — absorb framework conventions, testing patterns, architecture patterns
 4. **Read specification** (if provided) — understand broader context for this task
 5. **Explore codebase** — understand what exists before writing anything:
