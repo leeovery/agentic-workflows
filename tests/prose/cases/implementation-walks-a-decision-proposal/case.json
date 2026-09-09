@@ -33,6 +33,7 @@
     "skills/workflow-implementation-process/references/bank-deposit.md",
     "skills/workflow-implementation-process/references/invoke-reviewer.md",
     "skills/workflow-implementation-process/references/consolidation-pass.md",
+    "skills/workflow-implementation-process/references/finding-floor.md",
     "skills/workflow-shared/references/raising-a-decision.md",
     "skills/workflow-shared/references/making-it-land.md",
     "skills/workflow-shared/references/technical-lens.md",
@@ -122,7 +123,8 @@
       "git add -A",
       "git add --all",
       "render correction-gate",
-      "manifest delete pay.implementation.pay bank"
+      "manifest delete pay.implementation.pay bank",
+      "comment corrections"
     ]
   }
 }

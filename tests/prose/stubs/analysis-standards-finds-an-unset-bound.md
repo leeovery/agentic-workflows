@@ -19,6 +19,7 @@ AGENT: standards
 FINDINGS:
 - FINDING: The specification never set the order write's client bound
   SEVERITY: low
+  FAILURE: With no bound to configure, the order write runs unbounded — a slow orders store holds the webhook consumer on one call indefinitely, captures queue behind it and orders stay unpaid for as long as it lasts; noticed as a backlog of unpaid orders that clears on its own with nothing recorded about why.
   FILES: .workflows/pay/specification/pay/specification.md (Client call bounds), src/webhooks/capture.js:4
   DESCRIPTION: The specification's Client call bounds section requires the feature's two synchronous external calls to run under explicit client timeouts, configured once on the shared clients rather than at the call sites. It bounds intent creation at 4 seconds and records why — twice the gateway's documented p99 of 2 seconds — then records the orders store's documented p99 of 250 milliseconds for the order write and never states that call's bound. The webhook consumer's `orders.markPaid` call at src/webhooks/capture.js:4 is the call the missing bound governs. Nothing in this tree carries either value: the shared clients are ambient, so no configuration file here holds a timeout.
   RECOMMENDATION: The specification is the side that owes the value — the section that bounds one call with its reasoning and records the other call's p99 should state the order write's bound.

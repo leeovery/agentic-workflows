@@ -2,8 +2,9 @@
 
 A synthesis over the cycle's three findings files that stages two
 proposals — one a pure refactor carrying its consolidation class, one
-graded — and records the standards agent's specification finding as a
-spec defect the tree settles. Write both files to the paths the agent's
+graded — records the standards agent's specification finding as a spec
+defect the tree settles, and carries the standards agent's one comment
+correction into the report verbatim. Write both files to the paths the agent's
 conventions name
 (`.workflows/{work_unit}/implementation/{topic}/analysis-report-c{N}.md`
 and `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md`)
@@ -30,7 +31,8 @@ The two modules the phase built take their collaborators from ambient
 scope and assert guarantees in comments that neither body implements.
 Nothing is duplicated between them. One standards finding indicts the
 specification rather than the code: a design note pointing at a file
-that does not exist.
+that does not exist. One comment correction: the webhook header's claim
+about the rest of the system.
 
 ## Spec Defects
 
@@ -38,6 +40,14 @@ that does not exist.
 - **Claim**: "Intent creation lives in `src/checkout/intent.js`." (§ Design notes)
 - **Observed**: `ls src/checkout` lists `payment-intent.js` and nothing else; `createPaymentIntent` is defined at src/checkout/payment-intent.js:4
 - **Read**: spec stale — the path is a factual value the tree settles by direct measurement, not a design question
+
+## Comment Corrections
+
+- src/webhooks/capture.js:1 — the header asserts that no polling path exists anywhere: a claim about the rest of the system, true today and falsified by any later addition far from this file, which code-quality.md's comment discipline forbids
+  OLD: // Consume gateway capture webhooks and mark the order paid. There
+       // is no polling path; duplicate deliveries are idempotent.
+  NEW: // Consume gateway capture webhooks and mark the order paid.
+       // Duplicate deliveries are idempotent.
 
 ## Discarded Findings
 - none
@@ -68,5 +78,5 @@ The status block:
 ```
 STATUS: tasks_proposed
 TASKS_PROPOSED: 2
-SUMMARY: Two proposals — an import-declaration refactor and the unimplemented header guarantees. One specification defect recorded: a design note naming a path the tree does not have.
+SUMMARY: Two proposals — an import-declaration refactor and the unimplemented header guarantees. One specification defect recorded: a design note naming a path the tree does not have. One comment correction carried: the webhook header's claim about the rest of the system.
 ```

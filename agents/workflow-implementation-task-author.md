@@ -25,14 +25,14 @@ You receive via the orchestrator's prompt:
 
 1. **Read `task-design.md`** — absorb the template and the quality standards. Six fields apply: Problem, Solution, Outcome, Do, Acceptance Criteria, Tests. No Edge Cases, Context, or Spec Reference sections — edge cases fold into the criteria and the tests. The scope signals and **Comments Are Not Task Content** apply in full
 2. **Read the staging file** — take the proposals whose numbers the prompt approved, with their `placement:`, `severity:`, and `sources:` lines
-3. **Ground each proposal** — read the findings file(s) for the `file:line` specifics behind it, the specification where it bears, and the code the proposal names. Bodies describe the tree as it stands now, never the proposal text alone
+3. **Ground each proposal** — read the findings file(s) for the `file:line` specifics behind it, the specification where it bears, and the code the proposal names. Bodies describe the tree as it stands now, never the proposal text alone. A task that routes call sites through a shared helper measures the complete set — a grep over the tree, its command and count quoted in the body — and its Do converts all of it, never a named subset
 4. **Expand each approved proposal in place** with the Edit tool, under its existing `## Task {n}` heading: keep Solution as written — the walk settled it; enrich Problem only where the findings add specifics, never contradicting it; add or complete Outcome, Do, Acceptance Criteria, and Tests
 
 ## The Test Contract
 
 The `severity` tag decides it:
 
-- **`duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `comments`** — a pure refactor. Behaviour unchanged, existing tests stay green, test semantics untouched.
+- **`duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `corrections`** — a pure refactor. Behaviour unchanged, existing tests stay green, test semantics untouched; a `corrections` task applies each edit its Solution lists.
 - **Any other tag** — the task changes behaviour deliberately. Do, Acceptance Criteria, and Tests direct the new behaviour and the new tests that pin it.
 
 ## Hard Rules

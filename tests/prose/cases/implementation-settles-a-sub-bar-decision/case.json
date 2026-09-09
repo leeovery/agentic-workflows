@@ -1,5 +1,5 @@
 {
-  "origin": "the dispose check's two below-bar verdicts had thin coverage: a synthesizer can stage a Decision beside the very sibling whose approval forecloses one of its sides — the observed live failure — and can dress a purely technical fork as a Decision, and the session's own re-derivation must settle both rather than stop. This walks the analysis loop through both in one pass: a plain webhook-guard proposal takes the auto opt-in; the staged surfacing Decision is re-derived with the walk's own approvals in context and found one-sided — the approved guard acknowledges unmatched captures, so the redeliver side is unpickable — settled with a derivation naming the sibling; the staged naming Decision fails the first prong — a spelling changes nothing the product's user gets — and is settled as an honest technical call; each re-presents plain under --gate auto: auto-approved, no raise composed, no decision menu, no user turn",
+  "origin": "the dispose check's two below-bar verdicts had thin coverage: a synthesizer can stage a Decision beside the very sibling whose approval forecloses one of its sides — the observed live failure — and can dress a purely technical fork as a Decision, and the session's own re-derivation must settle both rather than stop. This walks the analysis loop through both in one pass: a plain webhook-guard proposal takes the auto opt-in; the staged surfacing Decision is re-derived with the walk's own approvals in context and found one-sided — the approved guard acknowledges unmatched captures, so the redeliver side is unpickable — settled with a derivation naming the sibling; the staged test-double Decision fails the first prong — how a test drives its subject changes nothing the product's user gets — and is settled as an honest technical call; each re-presents plain under --gate auto: auto-approved, no raise composed, no decision menu, no user turn",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -29,6 +29,7 @@
     "skills/workflow-implementation-process/references/analysis-loop.md",
     "skills/workflow-shared/references/raising-a-decision.md",
     "skills/workflow-implementation-process/references/invoke-analysis.md",
+    "skills/workflow-implementation-process/references/finding-floor.md",
     "skills/workflow-implementation-process/references/invoke-synthesizer.md",
     "skills/workflow-implementation-process/references/invoke-task-author.md",
     "skills/workflow-implementation-process/references/invoke-task-writer.md",
@@ -120,7 +121,8 @@
       "manifest delete pay.implementation.pay bank",
       "manifest set pay.planning.pay storage_paths",
       "git add -A",
-      "git add --all"
+      "git add --all",
+      "comment corrections"
     ]
   }
 }

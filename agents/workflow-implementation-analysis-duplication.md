@@ -20,6 +20,7 @@ You receive via the orchestrator's prompt:
 5. **Work unit** — the work unit name (for path construction)
 6. **Topic name** — the implementation topic
 7. **Cycle number** — which analysis cycle this is (used in output file naming)
+8. **finding-floor.md path** — the floor every finding clears
 
 ## Your Focus
 
@@ -30,7 +31,7 @@ You receive via the orchestrator's prompt:
 
 ## Your Process
 
-1. **Read code-quality.md** — understand quality standards
+1. **Read code-quality.md and finding-floor.md** — the quality standards and the floor
 2. **Read project skills** — understand framework conventions and existing patterns
 3. **Read specification** — understand design intent
 4. **Read all implementation files** — build a mental map of the full codebase
@@ -43,8 +44,8 @@ You receive via the orchestrator's prompt:
 
 1. **No git writes** — do not commit or stage. Writing the output file is your only file write.
 2. **One concern only** — duplication analysis. Do not flag architecture issues, spec drift, or style problems.
-3. **Plan scope only** — only analyze files from the implementation. Do not flag duplication in pre-existing code.
-4. **Proportional** — focus on high-impact duplication. Three similar lines is not worth extracting. Three similar 20-line blocks is.
+3. **Plan scope only** — only analyze files from the implementation. Do not flag duplication in pre-existing code. A test file is in scope only for a failure-mode finding.
+4. **The floor** — every finding names the failure it prevents and duplication counts only when its divergence would be silent and consequential, as finding-floor.md states; a candidate that clears neither is not written.
 5. **No new features** — recommend extracting/consolidating existing code only. Never suggest adding functionality.
 6. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
@@ -57,13 +58,18 @@ AGENT: duplication
 FINDINGS:
 - FINDING: {title}
   SEVERITY: high | medium | low
+  FAILURE: {what goes wrong, for whom, how it is noticed}
   FILES: {file:line, file:line}
   DESCRIPTION: {what's duplicated and why it matters}
   RECOMMENDATION: {what to extract/consolidate and where}
+COMMENT_CORRECTIONS:
+- {file:line} — {what is wrong, one clause}
+  OLD: {the comment text as it stands — verbatim, so the edit applies mechanically}
+  NEW: {the replacement text — empty to delete the comment}
 SUMMARY: {1-3 sentences}
 ```
 
-If no duplication found:
+COMMENT_CORRECTIONS holds each comment whose entire remedy is comment text — never a FINDING (finding-floor.md → Comment-Only Remedies); omit the section when there are none. If no duplication found:
 
 ```
 AGENT: duplication
@@ -80,3 +86,5 @@ STATUS: findings | clean
 FINDINGS_COUNT: {N}
 SUMMARY: {1 sentence}
 ```
+
+`findings` when the file carries findings or comment corrections; `clean` when it carries neither.

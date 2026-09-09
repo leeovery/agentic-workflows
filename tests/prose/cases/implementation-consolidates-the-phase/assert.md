@@ -18,8 +18,9 @@ The prose should have taken this path:
 5. the executor stub fires for pay-1-2 and completes; the reviewer
    stub's first firing approves and carries one BANK entry
 6. the review's BANK entry deposits the moment the report arrives —
-   one `manifest push … bank` with source reviewer, before the task
-   gate — and the fix machinery is never touched
+   one `manifest push … bank` with source reviewer and the entry's
+   failure line, before the task gate — and the fix machinery is never
+   touched
 7. the result header renders, the summary follows, the task gate
    menu is emitted, and the third scripted answer approves
 8. progress lands for pay-1-2: frontmatter flips to completed, and
@@ -34,16 +35,25 @@ The prose should have taken this path:
    and the durable state (staging and consolidated_phases both print
    empty), sees a plan-authored phase label with no resume state,
    and dispatches the consolidation finder
-10. the finder stub writes the findings file and returns STATUS
+10. the finder stub writes the findings file — one finding naming the
+    failure it prevents, one comment correction — and returns STATUS
     findings with the banked entry confirmed; the findings commit
     runs (the file was written) and picks it up
-11. the orchestrator judges: the findings file records no spec
+11. the orchestrator judges: it loads the floor and the one finding
+    names its failure, so it stands; the findings file records no spec
     defect, so nothing is routed to the historical-artifact
-    correction and no specification file is touched; the one finding
-    folds into one staged proposal — title, placement, class tag,
-    Problem and Solution only, with no Do, Acceptance Criteria or
-    Tests, since nothing has yet been agreed to build — and the
-    staging file is written to consolidation-tasks-p1.md
+    correction and no specification file is touched; the one comment
+    correction is applied with the Edit tool — the webhook header at
+    src/webhooks/capture.js has its two-line OLD text replaced by the
+    NEW text verbatim, the claim about the rest of the system gone and
+    the idempotency clause kept — and committed as a code commit
+    naming that one file (`commit --paths src/webhooks/capture.js …
+    --for pay implementation/pay`, message `impl(pay): phase 1 comment
+    corrections`), with no agent, no fix round and no user turn; the
+    one finding folds into one staged proposal — title, placement,
+    class tag, Problem and Solution only, with no Do, Acceptance
+    Criteria or Tests, since nothing has yet been agreed to build —
+    and the staging file is written to consolidation-tasks-p1.md
 12. the walk's gate state initialises (staging.p1.tasks.1 pending),
     the tasks-overview renders, and the proposed task renders gated
     at proposal altitude — the payload carries problem and solution,
@@ -105,5 +115,9 @@ Further claims:
   file's Phase 1 table carries its row
 - the helper source and test files exist as the stub gave them;
   pay-1-1's task file and test are untouched, and its source changed
-  only by the consolidation task's call-site edit
+  only by the consolidation task's call-site edit;
+  src/webhooks/capture.js carries the corrected header — `// Consume
+  gateway capture webhooks and mark the order paid.` over
+  `// Duplicate deliveries are idempotent.` — and otherwise changed
+  only by the same call-site edit
 - no fix-tracking file and no attempt-findings cache file exist

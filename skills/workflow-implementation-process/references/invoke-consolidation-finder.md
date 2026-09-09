@@ -35,9 +35,10 @@ Dispatch a **fresh** agent via the Task tool — fresh context is the point: the
 3. **Specification path** — from the specification (if available)
 4. **Project skill paths** — from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
 5. **code-quality.md path** — `.claude/skills/workflow-implementation-process/references/code-quality.md`
-6. **Work unit** — the work unit name (for path construction)
-7. **Topic name** — the implementation topic
-8. **Phase number** — `{N}`, and the commit grep token `impl({work_unit}): T{topic}-{N}-` for reading the phase's diff
+6. **finding-floor.md path** — `.claude/skills/workflow-implementation-process/references/finding-floor.md`
+7. **Work unit** — the work unit name (for path construction)
+8. **Topic name** — the implementation topic
+9. **Phase number** — `{N}`, and the commit grep token `impl({work_unit}): T{topic}-{N}-` for reading the phase's diff
 
 The agent writes its findings to `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md`.
 
@@ -54,7 +55,7 @@ BANK: {confirmed M | no entries}
 SUMMARY: {1 sentence}
 ```
 
-- `findings`: consolidation is owed, or a spec defect is recorded — findings and spec defects are in the findings file
-- `clean`: nothing above the bar and no spec defects — no file is written
+- `findings`: the findings file is written — a finding survived the bar, a spec defect is recorded, or a comment correction is owed; the judge reads all three from the file
+- `clean`: none of the three — no file is written
 
 → Return to caller.

@@ -212,6 +212,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed, confirm in one line total — `{count} spec correction(s) recorded.` — never a per-correction recap; nothing when none did.
 
+Then apply the report's `## Comment Corrections`, each with the Edit tool — its OLD text replaced by its NEW text at the named file, verbatim; an empty NEW deletes the comment. A correction whose OLD text no longer matches the file is dropped — name the dropped ones in one line. Commit the corrected files as a code commit; nothing when the report carries none:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {corrected files} -m "impl({work_unit}): analysis cycle {N} — comment corrections" --for {work_unit} implementation/{topic}
+```
+
 #### If the cycle stages no proposal
 
 The synthesis staged none and the record settled every defect.

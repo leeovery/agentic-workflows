@@ -32,9 +32,12 @@ The prose should have taken this path:
    dispatches the consolidation finder
 9. the finder stub writes the findings file and returns STATUS
    findings; the findings commit runs and picks it up
-10. the judge re-applies the bar first: the plan's open tasks are read
-    through the format's reading adapter and neither finding's ground
-    is already owned by one
+10. the judge re-applies the bar and the floor first: both findings
+    name the failure they prevent, so both stand; the plan's open
+    tasks are read through the format's reading adapter and neither
+    finding's ground is already owned by one. The findings file
+    carries no Comment Corrections section, so no source file is
+    edited and no corrections commit runs
 11. the spec defect is settled before any proposal is written — the
     entry routes into the historical-artifact correction for this
     work unit's own concluded specification, and the record settles

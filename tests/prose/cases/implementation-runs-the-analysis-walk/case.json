@@ -1,5 +1,5 @@
 {
-  "origin": "the analysis loop had no coverage at all — every implementation case stopped at or before the task loop's exit. This is its mainline: the plan's work is done and the phase already consolidated, so the session routes straight into analysis. The cycle records, the three agents dispatch, the synthesis stages a refactor-class proposal beside a graded one and reports a specification defect the tree measures, the record settles that defect silently mid-judge, the gated walk approves one proposal and declines the other, and the author expands only the survivor before the writer lands it in a new analysis phase",
+  "origin": "the analysis loop had no coverage at all — every implementation case stopped at or before the task loop's exit. This is its mainline: the plan's work is done and the phase already consolidated, so the session routes straight into analysis. The cycle records, the three agents dispatch, the synthesis stages a refactor-class proposal beside a graded one and reports a specification defect the tree measures, the record settles that defect silently mid-judge, the one comment correction the standards agent reported is applied in place and committed before the overview renders, the gated walk approves one proposal and declines the other, and the author expands only the survivor before the writer lands it in a new analysis phase",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -28,6 +28,7 @@
     "skills/workflow-implementation-process/references/report-register.md",
     "skills/workflow-implementation-process/references/analysis-loop.md",
     "skills/workflow-implementation-process/references/invoke-analysis.md",
+    "skills/workflow-implementation-process/references/finding-floor.md",
     "skills/workflow-implementation-process/references/invoke-synthesizer.md",
     "skills/workflow-shared/references/correcting-historical-artifacts.md",
     "skills/workflow-implementation-process/references/invoke-task-author.md",
@@ -69,6 +70,8 @@
       "--topic specification/pay",
       "--kb",
       "--sweep",
+      "impl(pay): analysis cycle 1 — comment corrections",
+      "commit --paths src/webhooks/capture.js",
       "render tasks-overview pay.implementation.pay",
       "render proposed-task pay.implementation.pay",
       "--gate gated",
@@ -92,6 +95,7 @@
       "manifest get pay.specification.pay status",
       "knowledge.cjs index .workflows/pay/specification/pay/specification.md",
       "specification(pay): corrigendum from implementation/pay",
+      "impl(pay): analysis cycle 1 — comment corrections",
       "render tasks-overview pay.implementation.pay",
       "staging.c1.tasks.1 approved",
       "staging.c1.tasks.2 skipped",

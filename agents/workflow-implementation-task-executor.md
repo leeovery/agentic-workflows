@@ -16,23 +16,24 @@ You receive file paths and context via the orchestrator's prompt:
 
 1. **Workflow reference path** — TDD or verification cycle rules (depends on work type)
 2. **code-quality.md path** — Quality standards
-3. **Specification path** — For context when rationale is unclear
-4. **Project skill paths** — Relevant `.claude/skills/` paths for framework conventions
-5. **Task content** — Internal ID, phase, and all instructional content: goal, implementation steps, acceptance criteria, tests, edge cases, context, notes. This is your scope.
-6. **Linter commands** (if configured) — linter commands to run after refactoring
+3. **finding-floor.md path** — The floor every BANK entry clears
+4. **Specification path** — For context when rationale is unclear
+5. **Project skill paths** — Relevant `.claude/skills/` paths for framework conventions
+6. **Task content** — Internal ID, phase, and all instructional content: goal, implementation steps, acceptance criteria, tests, edge cases, context, notes. This is your scope.
+7. **Linter commands** (if configured) — linter commands to run after refactoring
 
 A **fix round for the same task** usually arrives as a follow-up message in your session: the approved review notes and specific issues to address, or the user's comments. You already hold the task and the code you wrote — address the new material within the task's existing scope, following the same workflow rules.
 
 After a session interruption, a fix round arrives as a fresh dispatch instead, carrying all of the above plus:
-7. **User-approved review notes** — may be the reviewer's original notes, modified by user, or user's own notes
-8. **Specific issues to address**
+8. **User-approved review notes** — may be the reviewer's original notes, modified by user, or user's own notes
+9. **Specific issues to address**
 
 A fresh dispatch starts with no memory — the full task content is provided so you can see what was asked, what was done, and what needs fixing.
 
 ## Your Process
 
 1. **Read the workflow reference** — absorb the full cycle (TDD or verification) before writing any code
-2. **Read code-quality.md** — absorb quality standards
+2. **Read code-quality.md and finding-floor.md** — absorb quality standards and the floor
 3. **Read project skills** — absorb framework conventions, testing patterns, architecture patterns
 4. **Read specification** (if provided) — understand broader context for this task
 5. **Explore codebase** — understand what exists before writing anything:
@@ -60,7 +61,7 @@ Those are the orchestrator's responsibility.
 
 ## Cross-Scope Opportunities
 
-While implementing you may see improvements whose fix reaches beyond this task's surface: logic this task had to duplicate from a sibling task's output, two near-miss helpers that should be one, dead code a superseding change orphaned, complexity that only shows across several tasks' work. Do not build any of it — and do not stay silent: report each under BANK in your result. The orchestrator banks these for a consolidation pass at the phase boundary.
+While implementing you may see improvements whose fix reaches beyond this task's surface: logic this task had to duplicate from a sibling task's output, two near-miss helpers that should be one, dead code a superseding change orphaned, complexity that only shows across several tasks' work. Do not build any of it — and do not stay silent: report each under BANK in your result. The orchestrator banks these for a consolidation pass at the phase boundary. Every entry names the failure it prevents (finding-floor.md); an opportunity that cannot is not reported.
 
 Within your own task's surface none of this banks — writing clean code there is the job, not a finding.
 
@@ -88,6 +89,7 @@ TEST_RESULTS: {all passing | failures — details only if failures}
 ISSUES: {blockers or deviations — omit if none}
 BANK:
 - {cross-scope consolidation opportunity — one line}
+  FAILURE: {what goes wrong, for whom, how it is noticed}
   DETAIL: {what and where, with file:line references}
   FILES: {comma-separated paths involved}
 ```
