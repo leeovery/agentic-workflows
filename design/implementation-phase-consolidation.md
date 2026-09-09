@@ -1,17 +1,21 @@
-# Implementation: End-of-Phase Consolidation — the bank, the boundary pass, the seeded backstop
+# Implementation: End-of-Phase Consolidation — the bank, the boundary pass, and the analysis loop's floor
 
-**Status:** built — stack #911 awaiting review. The build notes below
-record where the build diverged from the sketch.
+**Status:** built — stack #911 (2026-08-17); revised by the 2026-09-09
+stack: the bank confined to one plan phase, a consequence floor on
+every finding, a directions ledger, the cycle gate keyed to lifetime.
 
-The implementation phase gets a consolidation pass at every phase
+The implementation phase gets a consolidation pass at every plan-phase
 boundary — a sweep over what the phase just built that the plan could
 not have authored, because the opportunities only exist once the
-phase's tasks have landed. Fed by a running bank of refactor
-opportunities the executor and reviewer deposit as they work, judged
-by the orchestrator, authored by the existing task-writer, executed
-by the normal task loop. Design log for the stack. Opened 2026-08-15
-from idea 40 (`ideas/implementation-end-of-phase-pass.md`), evidence
-from Portal's `theming-system` feature.
+phase's tasks have landed. Fed by a bank of refactor opportunities the
+executor and reviewer deposit as the phase's tasks run, judged by the
+orchestrator, authored by the existing task-writer, executed by the
+normal task loop, and emptied when the phase closes. The
+end-of-implementation analysis loop runs after the plan on its own
+findings alone, under the same floor. Opened 2026-08-15 from idea 40
+(`ideas/implementation-end-of-phase-pass.md`), evidence from Portal's
+`theming-system` feature; revised on evidence from Portal's
+`resume-hooks-silently-lost` bugfix.
 
 ## Motivation (2026-08-15)
 
@@ -47,23 +51,75 @@ from Portal's `theming-system` feature.
   loaded, instead of accumulating debt for a global sweep that never
   catches up.
 
-## The Design (agreed 2026-08-15)
+## Evidence from the first build (2026-09-09)
 
-### The bank
+Portal's `resume-hooks-silently-lost` bugfix ran the built stack end
+to end: 23 plan-authored tasks in five phases, then the machinery.
 
-A running ledger of refactor opportunities, durable across the whole
-implementation. Fed continuously during the task loop by the executor
-and the reviewer; also by the boundary finder for pre-existing-debt
-findings it may not act on (tagged as such). Drained twice:
+- **The boundary pass did what it was built for.** Five passes,
+  27 tasks, 23 of them work a senior engineer would do unprompted,
+  none out of the spec's remit, net −134 lines of code.
+- **The analysis loop ran away.** Four cycles proposed 25, 35, 49
+  and 52 tasks — 161 in all, every one approved under auto. The
+  three agents' own findings fell 22 → 22 → 18 → 13. What grew was
+  the bank handed to the synthesizer each cycle: 39 → 121 → 130 →
+  117. Tasks in an analysis-made phase deposit into the bank like
+  any task, an analysis-made phase takes no boundary pass, so the
+  only consumer of those deposits was the next cycle's synthesizer,
+  whose test was "still true in the tree". At roughly two and a half
+  deposits per task and a rising conversion (24% → 33% → 40%), each
+  task begat one task before the agents' findings were counted.
+- **The work was mostly the machine consolidating its own
+  scaffolding.** By cycle 4, 77% of proposals concerned artefacts an
+  earlier machine-made phase had created; test files grew by 92 and
+  source-scanning guard tests from 26 to 58 during "consolidation";
+  twelve chains reversed or reworked a direction an earlier cycle had
+  settled; two production regressions were introduced by the loop
+  and caught by it two cycles later. Every synthesizer report from
+  cycle 3 on opened by declaring the hook machinery sound.
+- **The findings that reached the walk had no floor.** Renaming
+  test files to a convention, a vacuous clause in a comment, a stale
+  method name in a log string, two fixture helpers with different
+  names, 222 fixtures setting a variable a helper already set. Each
+  was true; none named a failure it prevented. Duplication is
+  scale-free — two similar things can always be found — so a sweep
+  without a consequence floor cannot terminate.
+- **The loop's one stop button never appeared.** The cycle gate
+  counted cycles per session and every session restart reset it, so
+  four cycles across four sessions never tripped the limit of three.
 
-- each phase's boundary pass takes everything **that phase caused**;
-- the end-of-implementation analysis loop consumes the **residue** as
-  seed input for its first cycle — the cold start removed. Today
-  every cycle starts from zero; seeding is the one adaptation the
-  analysis loop takes.
+## The Design
 
-Entries beyond even the work unit's remit **drop** — recording what
-nothing consumes is noise, not diligence.
+### The bank — born and consumed inside one plan phase
+
+A ledger of refactor opportunities, scoped to the plan phase whose
+tasks deposit it.
+
+- **Deposited** while a plan phase's own tasks run: every executor
+  report, reviewer report, and confirmation withdrawal carrying BANK
+  entries deposits on arrival (task loop B/D and the confirmation
+  round), so no verdict path, fix round, or crash drops one.
+- **Switched by the engine.** `task start` answers `do_banking`,
+  derived from the manifest: the topic's lifetime analysis-cycle
+  count is zero, the task's phase is not in `consolidated_phases`,
+  and the phase's boundary walk (`staging.p{N}`) does not exist.
+  Plan-authored tasks get `true`; consolidation tasks, analysis-cycle
+  tasks and review-remediation tasks get `false`. The prose loads the
+  deposit reference only when the flag is true — the loop is
+  bank-blind everywhere else, by progressive disclosure rather than
+  by a rule the loop has to remember.
+- **Consumed** by the phase's boundary finder, which verdicts every
+  entry against the phase's final state: caused by this phase and
+  still real → folded into a finding; anything else → gone. The pass
+  ends with the bank deleted on every path — a clean sweep, a walk
+  that declined everything, tasks landed. Conclude keeps a backstop
+  delete for a pass interrupted mid-way.
+- **Never carried.** No residue, no pre-existing-debt deposits, no
+  entry crosses a phase boundary, nothing seeds the analysis loop,
+  and nothing is recorded as an observation anywhere. Debt a phase
+  merely sits beside is rediscovered by a later phase's pass if that
+  phase touches it and it is still real; if no phase touches it, it
+  was not this work unit's to fix.
 
 ### Who acts, who banks
 
@@ -74,7 +130,11 @@ nothing consumes is noise, not diligence.
   review scope (the task-reviewer can no longer tell what belongs to
   the task) and risks trampling a sibling task's ground. Mirrors the
   review phase's contained/spreading doctrine, one phase earlier.
-- **Reviewer** — banks only. It never writes code today; that stays.
+- **Reviewer** — banks only. It never writes code; that stays.
+- Both report BANK unconditionally; the orchestrator deposits only
+  when the task's `do_banking` is true. A consolidation task or an
+  analysis-cycle task runs with the same charters and its BANK lines
+  fall on the floor.
 
 ### The boundary
 
@@ -82,17 +142,20 @@ Fires when the task loop's phase-completion check finds no open tasks
 in the current phase, **before** `--phase-complete` is recorded. The
 invariant is structural: a phase only ever completes consolidated.
 Crash-resume falls out of existing task-loop machinery, and the next
-phase's tasks never interleave with consolidation work.
+phase's tasks never interleave with consolidation work. Quick-fix
+plans and machinery-created phases (`Analysis (Cycle N)`,
+`Review Remediation`) record without a sweep.
 
 ### One finder agent
 
-A single new agent — the only new agent in the design. Input: the
-phase's commit range (identifiable via the
-`{topic}-{phase_id}-{task_id}` internal ID convention), the bank, and
-the remit + exclusion bar baked into its charter. Output: findings —
-each naming its class, its evidence, its proposed consolidation
-shape, and which banked entries it confirms or moots against the
-phase's final state (a later task may have mooted an early deposit).
+A single agent. Input: the phase's commit range (identifiable via the
+`{topic}-{phase_id}-{task_id}` internal ID convention), the bank, the
+specification, and the remit, exclusion bar and consequence floor
+baked into its charter. Output: findings — each naming its class, its
+evidence, the failure it prevents, its proposed consolidation shape,
+and which banked entries it confirms — plus spec defects the landed
+work reveals. Nothing below the bar is written: no observations
+section, no pre-existing-debt section, no named discards.
 
 One agent, deliberately not per-class fan-out: the classes overlap
 heavily (a near-miss helper *is* duplication), and per-class agents
@@ -113,8 +176,8 @@ authored.
    should have called.
 3. **Consistency drift** — the same operation done different ways
    across tasks: error-handling shape, naming for the same concept,
-   parameter conventions. Flagged at design time as the
-   likeliest class to creep — judgment-heavy; watch it.
+   parameter conventions. Judgment-heavy; the floor is what keeps it
+   from creeping.
 4. **Accretion complexity** — a function or module several tasks
    appended to, whose final shape now wants decomposition.
 5. **Dead code from supersession** — scaffolding, stubs, exports task
@@ -128,13 +191,15 @@ authored.
 ### The exclusion bar
 
 - **No behaviour change.** Pure refactor: tests stay green, test
-  semantics untouched.
+  semantics untouched. A candidate that changes what the code does is
+  a finding of class `behaviour`, reported as one — a defect the phase
+  introduced or exposed, a contract its code now violates.
 - **Cause vs subject.** Every finding must be *caused by the phase's
   changes*; the *fix* may reach outside the diff. Consolidating
   phase-duplicated logic into a pre-existing helper — touching its
   existing call sites if the merge needs it — is in-remit. A refactor
   whose subject is wholly pre-existing code the phase merely sat next
-  to is out: banked, tagged pre-existing, left for the analysis loop.
+  to is not a finding.
 - **No architecture re-litigation.** Cross-phase structural patterns
   stay the analysis loop's remit.
 - **The plan-authorable test.** A finding that *could* have been in
@@ -142,23 +207,100 @@ authored.
   consolidation. It routes through the ad hoc plan change path with
   its own gate.
 
+### The consequence floor
+
+One bar, stated once in a shared reference, loaded by every party
+that produces or judges a finding: the three analysis agents, the
+boundary finder, the executor's and reviewer's BANK, the synthesizer,
+the boundary judge.
+
+> A finding names the failure it prevents: what goes wrong, for whom,
+> and how it would be noticed. A finding that cannot is not written.
+>
+> Duplication is a finding only when the copies encode a rule whose
+> divergence would be silent — no test, no compile error, no visible
+> symptom — and consequential. Two similar things that would fail
+> loudly if they drifted are not a finding. Names, file placement,
+> argument order, symmetry between test helpers, and unrouted call
+> sites of a helper never are.
+
+Three consequences of the floor:
+
+- **Test files are in scope only for failure-mode findings** — a
+  guard that passes while checking nothing, an isolation hole that
+  reaches the developer's machine, a reproduced flake on the thing
+  being shipped. Never for reuse, naming or symmetry: nothing in a
+  test file ships, so nothing in it can fail for the user.
+- **Duplication terminates.** "Silent and consequential" is not
+  scale-free; a sweep under it has an end.
+- **The walk carries only what matters.** A proposal that reaches the
+  user names a failure; the user judges the failure, never the
+  tidiness.
+
+### Comment-only findings and one-line fixes
+
+- A finding whose entire remedy is comment text never becomes a
+  task. At both judgment points the orchestrator checks each against
+  the comment bar in `code-quality.md` — a comment earns its place
+  only by carrying what the code cannot — applies the survivors
+  directly, and lands them in one commit for the pass. Mirrors the
+  task reviewer's comment corrections.
+- A finding that clears the floor but whose fix is a line — a log
+  string naming a method that no longer exists — is not a task of its
+  own. The judge or synthesizer folds every such one-liner from the
+  pass into a single corrections task, executed and reviewed once.
+
+### The complete-set rule
+
+A consolidation task that routes call sites through a shared helper
+names the complete set, measured (a grep count in the task body), and
+converts all of it. The reviewer checks the count. The self-generated
+pattern — a task converting the sites it named, the next cycle finding
+the rest — is closed at authoring, and a later "the remaining N sites"
+finding has no failure to name.
+
 ### Orchestrator judges, task-writer authors
 
 The finder proposes; the orchestrator disposes. The orchestrator is
 the only party holding session context — what the user deliberately
 deferred, what an ad hoc change already settled, what a finding would
-trample. It applies the exclusion bar, dedups, and folds the
-survivors into task-shaped units at normal planning granularity — no
-giant single task; the count is dictated by the work, never capped.
+trample. It re-applies the bar and the floor, dedups, settles spec
+defects, and folds the survivors into task-shaped units at normal
+planning granularity — no giant single task; the count is dictated by
+the work, never capped.
 
-No synthesizer stage: synthesis exists to merge several agents'
-outputs; with one finder the orchestrator judges directly.
+No synthesizer stage at the boundary: synthesis exists to merge
+several agents' outputs; with one finder the orchestrator judges
+directly.
 
 The existing `workflow-implementation-task-writer` authors the
 approved set into the **current phase** via the plan's format
-adapter — the same path the analysis loop already uses. Charters stay
+adapter — the same path the analysis loop uses. Charters stay
 narrow: the orchestrator never writes tasks, the task-writer never
 judges.
+
+### The directions ledger
+
+A later pass must not undo what an earlier pass settled on taste.
+When the boundary pass or the analysis loop lands tasks, the
+orchestrator pushes one entry per task onto the implementation item's
+`directions` array — `{task, direction}`, the direction being the
+staged proposal's settled Solution in one line. The boundary judge
+and the synthesizer receive the ledger with one rule:
+
+> A proposal that reverses a listed direction is dropped unless the
+> finding shows that direction wrong by measurement, the
+> specification, or a project rule — and then the proposal names the
+> ground.
+
+"Reverses", not "touches": extending, completing or building on a
+direction is not a reversal. A measured defect is always grounds — a
+regression an earlier pass introduced stays catchable. A reversal
+without grounds is dropped, never raised to the user as a fork. The
+three analysis agents, the executor and the reviewer never see the
+ledger: the agents run with clean context by design, and the ledger
+constrains proposals, not fixes. The ledger is the work unit's
+record and is left in place at conclude.
 
 ### The gate
 
@@ -170,123 +312,59 @@ phase gates.
 One pass per boundary. When the consolidation tasks complete (through
 the normal executor → reviewer loop like any task), the next phase
 begins — no re-check. Re-checking is "loop until clean" reborn at
-phase scale, the exact failure mode this design exists to kill;
-agents always find something. The guards are structural, not
-convergent:
+phase scale, the failure mode this design exists to kill; agents
+always find something. The guards are structural, not convergent:
 
 1. the consolidation tasks are themselves executed and reviewed;
-2. anything the reviewer banks *during* consolidation stays in the
-   bank — it is a running ledger, not phase-scoped;
-3. the analysis loop — kept unbounded, deliberately — is the terminal
-   backstop.
+2. nothing they bank is kept — `do_banking` is false for them;
+3. the analysis loop is the backstop, on its own findings.
 
-The two mechanisms cover each other's tails: phase passes drain the
-bank of what each phase caused; the analysis loop catches what
-escaped, seeded by the ledger instead of cold. Neither needs to
-converge alone.
+### The analysis loop
 
-### What does not change
+Runs after the plan's last phase, unchanged in shape: three agents
+with clean context, a synthesizer, a walk, a phase of tasks, again
+until the agents return clean. Two things hold it:
 
-The end-of-implementation analysis loop keeps its shape and its
-unbounded cycle count — it exists for cross-phase seams and residue,
-and the expectation is that phase passes shrink its findings
-naturally, not that a cap forces them down. Its only edit is the
-seeded first cycle. The review phase downstream is untouched and
-should simply see less duplication to triage.
+- **The floor and the ledger** apply to its synthesizer exactly as
+  to the boundary judge.
+- **The cycle gate counts the topic's lifetime.** `task
+  analysis-cycle` increments `analysis_cycle_total` alone and answers
+  `over_cycle_limit` past three; from the fourth cycle every cycle
+  opens with the convergence diagnostic and the proceed/skip menu,
+  whatever the session history. The user decides; the loop never
+  skips on its own.
 
-## Build plan
+## Engine surface
 
-- **PR1** — this design log.
-- **PR2** — the bank: storage, engine surface, entry shape, the
-  feed/drain lifecycle.
-- **PR3** — executor and reviewer charter edits: act-in-scope /
-  bank-cross-scope.
-- **PR4** — the boundary: finder agent, task-loop boundary step, the
-  gate, the task-writer path into the current phase.
-- **PR5** — analysis-loop seeding from the residual bank.
+- `task start` → `do_banking` (derived, never stored).
+- `task analysis-cycle` → `{cycle_total, over_cycle_limit,
+  analysis_gate_mode}`; `render cycle-limit` reads the lifetime
+  counter; `task init` resets gate modes only.
+- `bank` and `directions`: plain array fields on
+  `implementation.{topic}`, written with the generic `manifest push`,
+  cleared with `manifest delete` — the review phase's `out_of_scope`
+  and `dismissed_grounds` precedent. No engine storage code.
+- Staging reuses the guarded container: `staging.p{N}` for the
+  boundary walk beside the analysis loop's `staging.c{N}`;
+  `tasks-overview` and `proposed-task` serve both.
 
-Rough — the stack is as deep as the work needs. Tests ride each
-layer: pipeline simulation for engine changes, prose case(s) for the
-boundary flow.
+## Build plan (2026-09-09)
+
+- **PR0** — this design, standalone.
+- **PR1** — engine: `do_banking`, the lifetime cycle gate, tests and
+  the pipeline simulation.
+- **PR2** — the bank's lifecycle in prose: the deposit reference
+  behind the flag, the boundary pass emptying the bank, the analysis
+  loop unseeded, the finder's charter.
+- **PR3** — the consequence floor: the shared reference and its
+  loaders, test-file scope, comment handling, the corrections task,
+  the complete-set rule.
+- **PR4** — the directions ledger.
+
+Tests ride each layer: engine suites and the pipeline simulation for
+PR1 and PR4, prose cases and snapshots for the flows they change.
 
 ## Open at build time
 
-- Bank storage and shape — manifest field vs file under the
-  implementation directory; whether entries get engine numbering;
-  what an entry carries (class tag, origin task, evidence, pre-existing
-  flag).
-- The gate's render surface and wording.
-- The finder agent's name.
-
-## Build notes (2026-08-15)
-
-- **The bank needs no engine storage code.** The review phase's
-  `out_of_scope` set is the exact precedent: a plain array field
-  written with the generic `manifest push` (objects JSON-parse on the
-  way in, `pull` removes by deep equality), semantics entirely
-  prose-owned, render surfaces receiving counts as integers. The bank
-  mirrors it: `implementation.{topic}.bank`, entries
-  `{task, source, summary, detail, files}` (the finder's pre-existing
-  debt entries carry `{source: "finder", pre_existing: true}` and no
-  task), deposited the moment each executor or reviewer report
-  arrives (task loop B/D). PR2 becomes the feed (charters + deposit),
-  not an engine surface.
-- **Staging reuses the guarded container.** `staging.<key>.tasks.<n>`
-  validation is key-generic, so the boundary walk records approvals
-  under `staging.p{N}` beside analysis's `staging.c{N}` with no
-  engine change; the `tasks-overview` and `proposed-task` render
-  surfaces are payload-driven and serve the boundary gate as-is. The
-  one real engine touch left is `consolidation_gate_mode` joining the
-  session-reset set in `initTasks`.
-- **The seed rides to the synthesizer, not the analysis agents.**
-  Analysis dispatch has a hard clean-context rule (priming biases
-  results; cross-cycle synthesis lives in the synthesizer by design),
-  so the residual bank becomes a synthesizer input, verified against
-  current code before proposal — and when the analysis agents return
-  clean while residue exists, the synthesizer still runs, over the
-  residue alone.
-- **The boundary lives in the task loop's stage H**, keyed on
-  `completed_phases` vs a `consolidated_phases` marker: a phase whose
-  tasks are done but which is not yet consolidated defers both the
-  plan-side phase-completion transition and `--phase-complete`,
-  detours to the pass, and records completion once the pass (and any
-  tasks it authored, via the task-writer's existing `per-task`
-  placement into the still-open phase) has landed. A retrieve-side
-  guard re-enters an interrupted pass: no task from a later phase
-  starts while the current phase sits complete-but-unrecorded.
-  Synthetic remediation phases (`Analysis (Cycle N)`,
-  `Review Remediation`) never take the detour.
-
-## Review pass (2026-08-16/17)
-
-Two full finder fleets over the built stack reshaped four contracts;
-the rest of the findings were mechanical and landed in the owning
-PRs.
-
-- **Deposits are per report, not per milestone.** Every executor or
-  reviewer report carrying BANK deposits on arrival (task loop B/D) —
-  no verdict path, fix round, or crash can drop an entry; near
-  duplicates are folded by the boundary pass.
-- **The placement contract survives every format.** The task-writer
-  carves one exception for a prompt-declared consolidation-boundary
-  placement; tick reopens `done` ancestors when an open child is
-  created under them (verified by live probe — parent and topic both
-  reopen), local-markdown's derived phase state self-corrects, linear
-  defers natively. A writer refusal halts loudly at E, with resolve
-  and abandon arms.
-- **The fix gate lost `skip`.** A needs-changes review resolves by
-  fixing or by challenge: a fresh confirmation reviewer adjudicates
-  the disputed findings (stands/withdrawn, verdict recomputed);
-  beyond-scope withdrawals return under BANK, and the original
-  review's comment corrections still apply on the approved arm.
-- **Quick-fix never takes the boundary** — its plan never grows
-  (`ad-hoc-plan-changes.md`'s ceiling doctrine), enforced at H's
-  disposition and backstopped in the pass prelude.
-
-Accepted residue: a crash between the task-writer landing tasks and
-E's tail resolves through H's `completing` — the folded bank entries
-ride to the analysis synthesizer (which verdicts them against code
-and discards the done ones) and the session-memory list of
-plan-authorable set-asides is lost, as any non-durable list is. The
-findings path (B–E) and the challenge branch have no prose-test case
-yet.
+- The deposit reference's name and the floor reference's name.
+- The corrections task's shape in the staging file.
