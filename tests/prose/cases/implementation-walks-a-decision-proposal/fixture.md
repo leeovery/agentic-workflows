@@ -11,7 +11,7 @@ The implementation item exists from that previous session: `task init`
 has run (gates all `gated`, counters zeroed), so this session's entry
 resumes rather than creates. `completed_phases`, `consolidated_phases`,
 and `bank` are absent — no phase has closed and nothing has been
-banked.
+banked; no earlier walk has approved a proposal.
 
 The concluded specification carries a `## Design notes` section whose
 one line says intent creation lives at `src/checkout/intent.js`. The

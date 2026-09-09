@@ -39,8 +39,9 @@ The prose should have taken this path:
    besides. Two return findings, so the all-clean arm never applies: the findings commit
    lands scoped to the implementation topic and the flow proceeds to
    the synthesis — the bank is never read
-9. the synthesizer is dispatched with work unit, topic, cycle number
-   and the floor's path, and nothing else. The stub writes the report —
+9. the manifest's staging is read — absent, so the print is empty — and
+   the synthesizer is dispatched with work unit, topic, cycle number
+   and the floor's path, no settled directions, and nothing else. The stub writes the report —
    its Spec Defects entry and the one comment correction collected
    verbatim — and the staging file and returns tasks_proposed with two. The gate state
    initialises in ONE batched write — both rows pending — and only then
@@ -95,7 +96,8 @@ The prose should have taken this path:
     the phase label `Analysis (Cycle 1)` as its placement and the
     approved numbers read back from the manifest; the stub creates
     tasks/pay-2-1.md, appends the new phase and its single row to the
-    planning file, and records the task_map entry
+    planning file, and records the task_map entry; nothing is pushed for
+    directions — a later pass reads them from this staging file
 19. the planning item already carries storage_paths, so it is not
     recorded again. Two commits land in order: the staging file under the
     implementation topic, then the tasks with --plan
@@ -132,8 +134,8 @@ Further claims:
   task_gate_mode, fix_gate_mode and consolidation_gate_mode
 - the manifest's implementation item ends with analysis_cycle_total 1,
   completed_tasks still exactly pay-1-1 and pay-1-2, current_task empty,
-  completed_phases and consolidated_phases both still exactly [1], and
-  no bank field
+  completed_phases and consolidated_phases both still exactly [1], no
+  bank field, and no directions field
 - the staging file's second task is exactly as the synthesis staged it —
   no Do, no Acceptance Criteria, no Tests — while the first carries the
   three the author added, and neither carried them before the walk

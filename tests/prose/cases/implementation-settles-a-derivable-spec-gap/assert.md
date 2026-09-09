@@ -32,8 +32,9 @@ The prose should have taken this path:
    free-collaborators finding. Two return findings, so the all-clean arm
    never applies: the findings commit lands scoped to the implementation
    topic, and the bank is never read
-8. the synthesizer dispatches with work unit, topic and cycle number
-   and nothing else. The stub writes the report and the staging file
+8. the manifest's staging is read — absent, so the print is empty — and
+   the synthesizer dispatches with work unit, topic, cycle number and
+   the floor's path, no settled directions, and nothing else. The stub writes the report and the staging file
    and returns tasks_proposed with ONE task. The gate state initialises with exactly one pending
    row, and only then does the synthesis commit land
 9. the spec defect is settled before the overview renders. The
@@ -94,7 +95,8 @@ The prose should have taken this path:
     the phase label `Analysis (Cycle 1)` as its placement and the
     approved number read back from the manifest; the stub creates
     tasks/pay-2-1.md, appends the new phase and its single row to the
-    planning file, and records the task_map entry
+    planning file, and records the task_map entry; nothing is pushed for
+    directions — a later pass reads them from this staging file
 17. the planning item already carries storage_paths, so it is not
     recorded again. Two commits land in order: the staging file under
     the implementation topic, then the tasks with --plan
@@ -138,8 +140,8 @@ Further claims:
   consolidation_gate_mode all stay gated
 - the manifest's implementation item ends with analysis_cycle_total 1,
   completed_tasks still exactly pay-1-1 and pay-1-2, current_task empty,
-  completed_phases and consolidated_phases both still exactly [1], and
-  no bank field
+  completed_phases and consolidated_phases both still exactly [1], no
+  bank field, and no directions field
 - all three findings files exist for cycle 1, the duplication one
   recording no findings, alongside the report and the staging file
 - tasks/pay-2-1.md exists with status pending and phase 2; the planning

@@ -32,8 +32,10 @@ The prose should have taken this path:
    dispatches the consolidation finder
 9. the finder stub writes the findings file and returns STATUS
    findings; the findings commit runs and picks it up
-10. the judge re-applies the bar and the floor first: both findings
-    name the failure they prevent, so both stand; the plan's open
+10. the judge re-applies the bar, the floor, and the settled directions
+    first: the prelude's staging read named no earlier walk — no pass has
+    landed a task — so nothing is there to reverse; both findings name the failure
+    they prevent, so both stand; the plan's open
     tasks are read through the format's reading adapter and neither
     finding's ground is already owned by one. The findings file
     carries no Comment Corrections section, so no source file is
@@ -122,7 +124,10 @@ The prose should have taken this path:
 20. only once the author has returned is the task writer invoked,
     with the per-task consolidation-boundary placement; the writer
     stub creates tasks/pay-1-3.md and tasks/pay-1-4.md, appends both
-    planning rows, and records both task_map entries
+    planning rows, and records both task_map entries; nothing is
+    pushed for directions — a later pass reads them from this staging
+    file, whose second Solution is the short-capture handling the user
+    chose
 21. the bank check finds no field — nothing was ever deposited — so
     nothing is deleted, and the two consolidation commits land via the
     engine: the staging file under the implementation topic, the tasks
@@ -165,7 +170,7 @@ Further claims:
 - the manifest's implementation item ends with pay-1-1 and pay-1-2 in
   completed_tasks, current_task null, phase 1 in consolidated_phases
   and NOT in completed_phases — the phase stays open behind the two
-  tasks the boundary added — and no bank field
+  tasks the boundary added — no bank field, and no directions field
 - tasks/pay-1-3.md and tasks/pay-1-4.md exist with status: pending,
   and the planning file's Phase 1 table carries both rows
 - no code was written for either consolidation task:

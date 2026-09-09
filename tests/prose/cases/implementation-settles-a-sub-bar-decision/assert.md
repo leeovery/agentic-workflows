@@ -32,8 +32,9 @@ The prose should have taken this path:
    prevents. One returns findings, so the all-clean arm
    never applies: the findings commit lands scoped to the implementation
    topic, and the bank is never read
-8. the synthesizer dispatches with work unit, topic and cycle number
-   and stages three proposals — the webhook guard as a plain proposal whose Solution
+8. the manifest's staging is read — absent, so the print is empty — and
+   the synthesizer dispatches with work unit, topic, cycle number and
+   the floor's path, no settled directions; it stages three proposals — the webhook guard as a plain proposal whose Solution
    carries the settled direction (look the intent up; log and
    acknowledge a miss); the unmatched-capture surfacing proposal
    carrying a **Decision** line, a **Stakes** line, and two sides
@@ -94,7 +95,8 @@ The prose should have taken this path:
     approved numbers read back from the manifest; the stub creates
     tasks/pay-2-1.md, tasks/pay-2-2.md and tasks/pay-2-3.md, appends
     the new phase with three rows to the planning file, and records the
-    three task_map entries
+    three task_map entries; nothing is pushed for directions — a later
+    pass reads them from this staging file as the walk left it
 17. the planning item already carries storage_paths, so it is not
     recorded again. Two commits land in order: the staging file under
     the implementation topic, then the tasks with --plan
@@ -128,8 +130,8 @@ Further claims:
   fix_gate_mode and consolidation_gate_mode all stay gated
 - the manifest's implementation item ends with analysis_cycle_total 1,
   completed_tasks still exactly pay-1-1 and pay-1-2, current_task empty,
-  completed_phases and consolidated_phases both still exactly [1], and
-  no bank field
+  completed_phases and consolidated_phases both still exactly [1], no
+  bank field, and no directions field
 - all three findings files exist for cycle 1 — the duplication and
   architecture ones recording no findings, the standards one recording
   three — alongside the report and the staging file

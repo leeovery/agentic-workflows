@@ -12,7 +12,8 @@ through its consolidation boundary: the manifest carries `1` in both
 The implementation item exists from that previous session — `task init`
 has run, all four gates are `gated` — so this session's entry resumes
 rather than creates. `analysis_cycle_total` is `0`: no analysis cycle has
-ever run. `bank` is absent — nothing was ever deposited.
+ever run. `bank` is absent — nothing was ever deposited — and no
+earlier walk approved a proposal: phase 1's boundary landed no task.
 
 The webhook module trusts every capture it is handed:
 `handleCaptureWebhook` marks `event.intentId` paid without looking the
