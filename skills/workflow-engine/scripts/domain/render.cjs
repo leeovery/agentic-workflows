@@ -46,7 +46,7 @@ const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_T
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments, waits, itemOf, OUTSTANDING_RESEARCH_STATUSES } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
-const { gateOf, counterOf, FIX_THRESHOLD, SESSION_CYCLE_LIMIT } = require('./tasks.cjs');
+const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
@@ -4174,11 +4174,11 @@ function cycleLimit(cwd, args) {
   }
   const item = itemOf(manifest, 'implementation', topic);
   if (!item) throw new Error(`render cycle-limit: no implementation item "${topic}"`);
-  const session = typeof item.analysis_cycle_session === 'number' ? item.analysis_cycle_session : 0;
-  if (session <= SESSION_CYCLE_LIMIT) {
-    throw new Error(`render cycle-limit: analysis_cycle_session is ${session}, within the session limit of ${SESSION_CYCLE_LIMIT}`);
+  const total = counterOf(item, 'analysis_cycle_total');
+  if (total <= CYCLE_LIMIT) {
+    throw new Error(`render cycle-limit: analysis_cycle_total is ${total}, within the cycle limit of ${CYCLE_LIMIT}`);
   }
-  return cycleLimitDisplay(session, SESSION_CYCLE_LIMIT);
+  return cycleLimitDisplay(total, CYCLE_LIMIT);
 }
 
 /** @returns {string} */

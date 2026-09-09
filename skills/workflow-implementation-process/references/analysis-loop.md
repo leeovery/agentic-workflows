@@ -7,7 +7,7 @@
 Each cycle follows stages A through H sequentially. Always start at **A. Cycle Gate**.
 
 ```
-A. Cycle gate (record the cycle, warn if over the session limit)
+A. Cycle gate (record the cycle, warn if over the lifetime cycle limit)
 B. Git checkpoint
 C. Dispatch analysis agents → invoke-analysis.md
 D. Dispatch synthesis agent → invoke-synthesizer.md
@@ -48,18 +48,18 @@ A crash between the synthesizer's write and the init — initialise the cycle fr
 
 #### Otherwise
 
-Record the cycle via the engine (increments both the lifetime and session counters):
+Record the cycle via the engine (increments the topic's lifetime counter):
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task analysis-cycle {work_unit} {topic}
 ```
 
 `{N}` throughout this loop refers to the response's `cycle_total`; **F. Process Task**'s `{analysis_gate_mode}` is the response's `analysis_gate_mode`.
 
-#### If the response's `over_session_limit` is `false`
+#### If the response's `over_cycle_limit` is `false`
 
 → Proceed to **B. Git Checkpoint**.
 
-#### If the response's `over_session_limit` is `true`
+#### If the response's `over_cycle_limit` is `true`
 
 **Do NOT skip analysis autonomously.** This gate is an escape hatch for the user — not a signal to stop. The expected default is to continue running analysis until no issues are found. Present the choice and let the user decide.
 

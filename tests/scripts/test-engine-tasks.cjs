@@ -45,7 +45,6 @@ function freshItem() {
     consolidation_gate_mode: 'gated',
     fix_attempts: 0,
     analysis_cycle_total: 0,
-    analysis_cycle_session: 0,
     linters: [],
     project_skills: [],
     current_phase: 1,
@@ -63,7 +62,6 @@ function inFlightItem() {
     consolidation_gate_mode: 'auto',
     fix_attempts: 2,
     analysis_cycle_total: 7,
-    analysis_cycle_session: 2,
     linters: ['run the linter'],
     project_skills: ['project-conventions'],
     current_phase: 2,
@@ -130,7 +128,7 @@ describe('engine task init', () => {
       ok: true,
       mode: 'created',
       gates: GATED_GATES,
-      counters: { fix_attempts: 0, analysis_cycle_total: 0, analysis_cycle_session: 0 },
+      counters: { fix_attempts: 0, analysis_cycle_total: 0 },
     });
     assert.deepStrictEqual(implItem(dir), freshItem());
   });
@@ -147,7 +145,7 @@ describe('engine task init', () => {
       ok: true,
       mode: 'resumed',
       gates: GATED_GATES,
-      counters: { fix_attempts: 0, analysis_cycle_total: 7, analysis_cycle_session: 0 },
+      counters: { fix_attempts: 0, analysis_cycle_total: 7 },
     });
 
     const expected = inFlightItem();
@@ -156,8 +154,19 @@ describe('engine task init', () => {
     expected.analysis_gate_mode = 'gated';
     expected.consolidation_gate_mode = 'gated';
     expected.fix_attempts = 0;
-    expected.analysis_cycle_session = 0;
     assert.deepStrictEqual(implItem(dir), expected);
+  });
+
+  it('leaves a legacy analysis_cycle_session where it lies — never read, never reset', () => {
+    const phases = planPhases();
+    const item = inFlightItem();
+    item.analysis_cycle_session = 2;
+    phases.implementation = { items: { 'auth-flow': item } };
+    createManifest(dir, 'auth', { phases });
+
+    const res = engine(dir, ['init', 'auth', 'auth-flow']);
+    assert.deepStrictEqual(res.counters, { fix_attempts: 0, analysis_cycle_total: 7 });
+    assert.strictEqual(implItem(dir).analysis_cycle_session, 2);
   });
 
   it('resume returns a bounded gate to gated — the session is the outer bound of both auto modes', () => {
@@ -188,10 +197,9 @@ describe('engine task init', () => {
       ok: true,
       mode: 'resumed',
       gates: GATED_GATES,
-      counters: { fix_attempts: 2, analysis_cycle_total: 7, analysis_cycle_session: 0 },
+      counters: { fix_attempts: 2, analysis_cycle_total: 7 },
     });
     assert.strictEqual(implItem(dir).fix_attempts, 2);
-    assert.strictEqual(implItem(dir).analysis_cycle_session, 0);
     assert.strictEqual(fs.readFileSync(trackingPath(dir, 'auth-flow-2-1'), 'utf8'), '## Attempt 1\n\none\n\n## Attempt 2\n\ntwo\n');
   });
 
@@ -230,6 +238,7 @@ describe('engine task start', () => {
       task: 'auth-flow-1-2',
       mode: 'started',
       gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
+      do_banking: false,
     });
     assert.strictEqual(implItem(dir).fix_attempts, 0);
     assert.strictEqual(implItem(dir).current_task, 'auth-flow-1-2');
@@ -248,6 +257,7 @@ describe('engine task start', () => {
       task: 'auth-flow-2-1',
       mode: 'resumed',
       gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
+      do_banking: false,
     });
     assert.strictEqual(implItem(dir).fix_attempts, 2);
     assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
@@ -271,10 +281,76 @@ describe('engine task start', () => {
     assert.strictEqual(implItem(dir).fix_attempts, 0);
   });
 
-  it('rejects unknown topic, missing internal id, and path-unsafe ids', () => {
+  it('rejects unknown topic, missing internal id, path-unsafe ids, and an id carrying no phase', () => {
     assert.match(engineFails(dir, ['start', 'auth', 'ghost', 'x-1-1']).error, /no implementation item "ghost"/);
     assert.match(engineFails(dir, ['start', 'auth', 'auth-flow']).error, /Usage: engine task start/);
     assert.match(engineFails(dir, ['start', 'auth', 'auth-flow', '../escape']).error, /invalid internal id/);
+    assert.match(engineFails(dir, ['start', 'auth', 'auth-flow', 'oddly-shaped-id']).error, /cannot derive the phase from "oddly-shaped-id"/);
+    assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
+  });
+});
+
+describe('engine task start answers do_banking', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  // A plan phase's bank is open only while its own tasks run: a work type
+  // whose plan takes a boundary, no analysis cycle on the topic yet, the
+  // phase's boundary walk not staged, the phase not consolidated. Derived
+  // from the manifest on every call — both modes answer it, nothing is stored.
+
+  /** @param {Record<string, unknown>} fields @param {Record<string, unknown>} [manifest] */
+  function seed(fields, manifest = {}) {
+    const phases = planPhases();
+    phases.implementation = { items: { 'auth-flow': { status: 'in-progress', analysis_cycle_total: 0, ...fields } } };
+    createManifest(dir, 'auth', { phases, ...manifest });
+  }
+
+  /** Start `internalId` fresh, then again over its in-flight pair — one answer per mode. */
+  function bothModes(internalId) {
+    const first = engine(dir, ['start', 'auth', 'auth-flow', internalId]);
+    assert.strictEqual(first.mode, 'started');
+    fs.mkdirSync(path.dirname(trackingPath(dir, internalId)), { recursive: true });
+    fs.writeFileSync(trackingPath(dir, internalId), '## Attempt 1\n\none\n');
+    const again = engine(dir, ['start', 'auth', 'auth-flow', internalId]);
+    assert.strictEqual(again.mode, 'resumed');
+    return { started: first.do_banking, resumed: again.do_banking };
+  }
+
+  it('a plan task before any boundary banks — started and resumed alike', () => {
+    seed({});
+    assert.deepStrictEqual(bothModes('auth-flow-1-1'), { started: true, resumed: true });
+  });
+
+  it('a phase in consolidated_phases no longer banks — its boundary pass has drained it', () => {
+    seed({ consolidated_phases: [1], completed_phases: [1] });
+    assert.deepStrictEqual(bothModes('auth-flow-1-1'), { started: false, resumed: false });
+    assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: true, resumed: true });
+  });
+
+  it('a phase whose boundary walk is staged no longer banks', () => {
+    seed({ staging: { p1: { tasks: { 1: 'pending' } } } });
+    assert.deepStrictEqual(bothModes('auth-flow-1-1'), { started: false, resumed: false });
+    assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: true, resumed: true });
+  });
+
+  it('once an analysis cycle has run, no phase banks', () => {
+    seed({ analysis_cycle_total: 1 });
+    assert.deepStrictEqual(bothModes('auth-flow-1-1'), { started: false, resumed: false });
+    assert.deepStrictEqual(bothModes('auth-flow-2-1'), { started: false, resumed: false });
+  });
+
+  it('a quick-fix never banks — its plan takes no boundary, so nothing would drain a deposit', () => {
+    seed({}, { work_type: 'quick-fix' });
+    assert.deepStrictEqual(bothModes('auth-flow-1-1'), { started: false, resumed: false });
+  });
+
+  it('absent arrays and staging read as empty', () => {
+    const phases = planPhases();
+    phases.implementation = { items: { 'auth-flow': { status: 'in-progress' } } };
+    createManifest(dir, 'auth', { phases });
+    assert.strictEqual(engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']).do_banking, true);
   });
 });
 
@@ -647,14 +723,13 @@ describe('engine task analysis-cycle', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  function seed(total, session, gateMode = 'gated') {
+  function seed(total, gateMode = 'gated') {
     const phases = planPhases();
     phases.implementation = {
       items: {
         'auth-flow': {
           status: 'in-progress',
           analysis_cycle_total: total,
-          analysis_cycle_session: session,
           analysis_gate_mode: gateMode,
         },
       },
@@ -662,36 +737,49 @@ describe('engine task analysis-cycle', () => {
     createManifest(dir, 'auth', { phases });
   }
 
-  it('increments both counters; session 3 is within the limit', () => {
-    seed(7, 2);
+  it('increments the lifetime counter; cycle 3 is within the limit', () => {
+    seed(2);
     const res = engine(dir, ['analysis-cycle', 'auth', 'auth-flow']);
     assert.deepStrictEqual(res, {
-      ok: true, cycle_total: 8, cycle_session: 3, over_session_limit: false, analysis_gate_mode: 'gated',
+      ok: true, cycle_total: 3, over_cycle_limit: false, analysis_gate_mode: 'gated',
     });
     const item = implItem(dir);
-    assert.strictEqual(item.analysis_cycle_total, 8);
-    assert.strictEqual(item.analysis_cycle_session, 3);
+    assert.strictEqual(item.analysis_cycle_total, 3);
+    assert.strictEqual('analysis_cycle_session' in item, false);
   });
 
-  it('session 4 crosses the limit; the gate mode is carried in the response', () => {
-    seed(10, 3, 'auto');
+  it('cycle 4 crosses the limit; the gate mode is carried in the response', () => {
+    seed(3, 'auto');
     const res = engine(dir, ['analysis-cycle', 'auth', 'auth-flow']);
     assert.deepStrictEqual(res, {
-      ok: true, cycle_total: 11, cycle_session: 4, over_session_limit: true, analysis_gate_mode: 'auto',
+      ok: true, cycle_total: 4, over_cycle_limit: true, analysis_gate_mode: 'auto',
     });
   });
 
-  it('missing counters start from zero', () => {
+  it('the limit counts the topic\'s lifetime — a legacy session counter is neither read nor bumped', () => {
+    // Three cycles from earlier sessions: the fourth trips the gate whatever
+    // the retired per-session counter says.
+    const phases = planPhases();
+    phases.implementation = {
+      items: { 'auth-flow': { status: 'in-progress', analysis_cycle_total: 3, analysis_cycle_session: 0 } },
+    };
+    createManifest(dir, 'auth', { phases });
+    const res = engine(dir, ['analysis-cycle', 'auth', 'auth-flow']);
+    assert.strictEqual(res.over_cycle_limit, true);
+    assert.strictEqual(implItem(dir).analysis_cycle_session, 0);
+  });
+
+  it('a missing counter starts from zero', () => {
     const phases = planPhases();
     phases.implementation = { items: { 'auth-flow': { status: 'in-progress' } } };
     createManifest(dir, 'auth', { phases });
     const res = engine(dir, ['analysis-cycle', 'auth', 'auth-flow']);
     assert.strictEqual(res.cycle_total, 1);
-    assert.strictEqual(res.cycle_session, 1);
+    assert.strictEqual(res.over_cycle_limit, false);
   });
 
   it('rejects unknown work unit and topic', () => {
-    seed(0, 0);
+    seed(0);
     assert.match(engineFails(dir, ['analysis-cycle', 'ghost', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['analysis-cycle', 'auth', 'ghost']).error, /no implementation item "ghost"/);
   });
@@ -749,18 +837,18 @@ describe('engine task verbs answer with pure JSON', () => {
     seedGates('auto');
     let raw = engineRaw(dir, ['analysis-cycle', 'auth', 'auth-flow']);
     assert.strictEqual(raw.sections, '');
-    assert.strictEqual(raw.res.over_session_limit, false);
+    assert.strictEqual(raw.res.over_cycle_limit, false);
 
     cleanupFixture(dir);
     dir = setupFixture();
     const phases = planPhases();
     phases.implementation = {
-      items: { 'auth-flow': { status: 'in-progress', analysis_cycle_session: 3, analysis_gate_mode: 'auto' } },
+      items: { 'auth-flow': { status: 'in-progress', analysis_cycle_total: 3, analysis_gate_mode: 'auto' } },
     };
     createManifest(dir, 'auth', { phases });
     raw = engineRaw(dir, ['analysis-cycle', 'auth', 'auth-flow']);
     assert.strictEqual(raw.sections, '');
-    assert.strictEqual(raw.res.over_session_limit, true);
+    assert.strictEqual(raw.res.over_cycle_limit, true);
   });
 });
 
@@ -1254,22 +1342,22 @@ describe('engine render task surfaces', () => {
 
   it('cycle-limit renders the over-limit callout, refuses within the limit', () => {
     const phases = planPhases();
-    phases.implementation = { items: { 'auth-flow': { status: 'in-progress', analysis_cycle_session: 4 } } };
+    phases.implementation = { items: { 'auth-flow': { status: 'in-progress', analysis_cycle_total: 4 } } };
     createManifest(dir, 'auth', { phases });
     assert.strictEqual(
       render(['cycle-limit', 'auth.implementation.auth-flow']),
       [
         '=== DISPLAY: cycle limit (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
-        '⚑ Analysis cycle 4 this session — over the session limit of 3.',
+        '⚑ Analysis cycle 4 on this topic — over the cycle limit of 3.',
         '',
       ].join('\n'));
 
     cleanupFixture(dir);
     dir = setupFixture();
     const within = planPhases();
-    within.implementation = { items: { 'auth-flow': { status: 'in-progress', analysis_cycle_session: 3 } } };
+    within.implementation = { items: { 'auth-flow': { status: 'in-progress', analysis_cycle_total: 3 } } };
     createManifest(dir, 'auth', { phases: within });
-    assert.match(renderFails(['cycle-limit', 'auth.implementation.auth-flow']).error, /within the session limit/);
+    assert.match(renderFails(['cycle-limit', 'auth.implementation.auth-flow']).error, /within the cycle limit/);
   });
 });
 

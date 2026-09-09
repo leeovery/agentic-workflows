@@ -117,10 +117,10 @@ Further claims:
 - staging.c1 ends with exactly two rows — the first approved, the second
   skipped — and no third; analysis_gate_mode ends gated, as do
   task_gate_mode, fix_gate_mode and consolidation_gate_mode
-- the manifest's implementation item ends with analysis_cycle_total and
-  analysis_cycle_session both 1, completed_tasks still exactly pay-1-1
-  and pay-1-2, current_task empty, completed_phases and
-  consolidated_phases both still exactly [1], and no bank field
+- the manifest's implementation item ends with analysis_cycle_total 1,
+  completed_tasks still exactly pay-1-1 and pay-1-2, current_task empty,
+  completed_phases and consolidated_phases both still exactly [1], and
+  no bank field
 - the staging file's second task is exactly as the synthesis staged it —
   no Do, no Acceptance Criteria, no Tests — while the first carries the
   three the author added, and neither carried them before the walk

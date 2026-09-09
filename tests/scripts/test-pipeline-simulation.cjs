@@ -443,7 +443,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   const implInit = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
-  sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
+  assert.strictEqual(sim.run(['task', 'start', wu, topic, `${topic}-1-1`]).do_banking, true,
+    'the first plan task banks — the deposits below are made while its phase is still open');
   // The loop's two stops: an executor that comes back blocked (task-loop C),
   // and the analysis loop's checkpoint over files implementation never wrote.
   sim.render(['executor-block-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
@@ -749,7 +750,8 @@ describe('pipeline simulation', () => {
     const init = sim.run(['task', 'init', wu, wu]);
     assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${wu}`]);
-    sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
+    assert.strictEqual(sim.run(['task', 'start', wu, wu, `${wu}-1-1`]).do_banking, false,
+      'a quick-fix task never banks — no boundary would ever drain the deposit');
     // Quick-fix takes no consolidation boundary (its plan never grows), so the
     // completion keeps the fused --phase-complete.
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--phase', '1', '--next-task', '~', '--phase-complete']);
@@ -1876,6 +1878,7 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${wu}`]);
     const firstStart = sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
     assert.strictEqual(firstStart.mode, 'started', 'a task taken up fresh dispatches the executor');
+    assert.strictEqual(firstStart.do_banking, true, 'a plan task before any boundary banks — its phase is still taking deposits');
     // The brief announces the dispatch — the shared task header plus summary and watch.
     const briefPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
       { id: `${wu}-1-1`, title: 'Wire the auth entry point', current: 1, total: 2, phase: '1 — Core', position: '1 of 2 in phase', summary: 'Wire the auth entry point.', watch: ['the login redirect'] });
@@ -1902,8 +1905,9 @@ describe('pipeline simulation', () => {
     // executor blind to findings the user has never answered.
     assert.strictEqual(sim.run(['task', 'init', wu, wu]).counters.fix_attempts, 1,
       'the in-flight pair survives the session reset');
-    assert.strictEqual(sim.run(['task', 'start', wu, wu, `${wu}-1-1`]).mode, 'resumed',
-      'restarting the in-flight task reports the resume');
+    const resumedStart = sim.run(['task', 'start', wu, wu, `${wu}-1-1`]);
+    assert.strictEqual(resumedStart.mode, 'resumed', 'restarting the in-flight task reports the resume');
+    assert.strictEqual(resumedStart.do_banking, true, 'the resume answers the banking question too');
     assert.strictEqual(sim.manifest(wu).phases.implementation.items[wu].fix_attempts, 1,
       'the resume leaves the attempt count untouched');
     // The result header is one surface for every presentation moment.
@@ -1925,16 +1929,14 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: fix gate/, 'threshold-forced fix gate renders its menu');
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--phase', '1', '--next-task', `${wu}-1-2`]);
-    sim.run(['task', 'analysis-cycle', wu, wu]);
-    assert.match(sim.render(['cycle-gate'], { expect: 'content' }),
-      /MENU: cycle gate/, 'cycle gate renders its menu');
 
     // Auto gates render a continuation artifact — the loop never ends a turn by
     // silence. The task gate takes the phase-bounded opt-in (`b/bounded`), the
     // fix gate the full one (`a/auto`): both render the same continuation, and
     // only the phase record below tells them apart.
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode=bounded', 'fix_gate_mode=auto']);
-    sim.run(['task', 'start', wu, wu, `${wu}-1-2`]);
+    assert.strictEqual(sim.run(['task', 'start', wu, wu, `${wu}-1-2`]).do_banking, true,
+      'the phase is still open — its next plan task banks too');
     // Every task start gets its brief; the stale first-task payload refuses, the rewritten one renders.
     const staleBrief = spawnSync('node', [ENGINE, 'render', 'task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload],
       { cwd: sim.dir, encoding: 'utf8' });
@@ -2053,6 +2055,8 @@ describe('pipeline simulation', () => {
     // finds the phase consolidated and records it.
     const started = sim.run(['task', 'start', wu, wu, `${wu}-1-3`]);
     assert.strictEqual(started.gates.task_gate_mode, 'bounded', 'the consolidation task runs under the same bounded auto');
+    assert.strictEqual(started.do_banking, false,
+      'the consolidation task never banks — its phase has staged its walk and recorded the pass, and either closes the bank');
     assert.match(sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /DISPLAY: task gate auto-approved/, 'a bounded task gate is an auto gate until the phase closes');
     const closed = sim.run(['task', 'complete', wu, wu, `${wu}-1-3`, '--phase', '1', '--next-task', '~', '--phase-complete']);
@@ -2064,6 +2068,17 @@ describe('pipeline simulation', () => {
     assert.strictEqual(loopItem.task_gate_mode, 'gated', 'bounded ends with the phase — the next task\'s gate is a menu');
     assert.strictEqual(loopItem.fix_gate_mode, 'auto', 'full auto is the session\'s and outlives the phase');
 
+    // The analysis loop's cycle gate (analysis-loop.md A): the record counts
+    // the topic's lifetime — one counter, no per-session twin — and the
+    // over-limit callout refuses while the count sits within the limit.
+    const cycle = sim.run(['task', 'analysis-cycle', wu, wu]);
+    assert.deepStrictEqual(cycle, { ok: true, cycle_total: 1, over_cycle_limit: false, analysis_gate_mode: 'gated' },
+      'the cycle record answers the lifetime count and its verdict against the limit');
+    assert.strictEqual('analysis_cycle_session' in sim.manifest(wu).phases.implementation.items[wu], false,
+      'no session counter is ever written');
+    sim.refuses(['render', 'cycle-limit', `${wu}.implementation.${wu}`], /within the cycle limit/);
+    assert.match(sim.render(['cycle-gate'], { expect: 'content' }),
+      /MENU: cycle gate/, 'cycle gate renders its menu');
     // An analysis cycle's staging walks the manifest; all-skipped is a legal exit.
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1', 'skipped']);
@@ -2074,6 +2089,21 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank',
       `{"task":"${wu}-1-2","source":"executor","summary":"pre-existing debt","detail":"src/legacy.js predates the phase","files":["src/legacy.js"]}`]);
     sim.run(['manifest', 'delete', `${wu}.implementation.${wu}`, 'bank']);
+
+    // A second cycle stages a task the user approves, and the writer lands it
+    // in a machinery-created phase (analysis-loop.md H). A task of that phase
+    // never banks — the bank fed the analysis loop, and the loop has run.
+    assert.strictEqual(sim.run(['task', 'analysis-cycle', wu, wu]).cycle_total, 2, 'the count carries across cycles');
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'pending']);
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'approved']);
+    sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-2-1`, `${wu}-2-1`]);
+    const analysisTask = sim.run(['task', 'start', wu, wu, `${wu}-2-1`]);
+    assert.strictEqual(analysisTask.mode, 'started', 'the analysis task is taken up fresh');
+    assert.strictEqual(analysisTask.do_banking, false,
+      'once an analysis cycle has run, no task banks — nothing downstream would drain the deposit');
+    // A machinery-created phase takes no consolidation boundary — the fused
+    // completion closes it (task-loop H).
+    sim.run(['task', 'complete', wu, wu, `${wu}-2-1`, '--phase', '2', '--next-task', '~', '--phase-complete']);
 
     // The ad hoc plan-changes gate stages under its own family key (ad-hoc-plan-changes.md E/F)
     // and renders the shared proposed-task surface without the synthesis-only fields.
@@ -2102,8 +2132,10 @@ describe('pipeline simulation', () => {
     assert.strictEqual(resumed.gates.task_gate_mode, 'gated', 'resume resets bounded to gated');
     assert.strictEqual(resumed.gates.fix_gate_mode, 'gated', 'resume resets auto to gated');
     assert.strictEqual(resumed.gates.consolidation_gate_mode, 'gated', 'the boundary gate resets with the session');
+    assert.deepStrictEqual(resumed.counters, { fix_attempts: 0, analysis_cycle_total: 2 },
+      'the resume leaves the lifetime cycle count alone — the limit outlives the session');
     const completed = sim.manifest(wu).phases.implementation.items[wu].completed_tasks;
-    assert.deepStrictEqual([...completed].sort(), [`${wu}-1-1`, `${wu}-1-2`, `${wu}-1-3`],
+    assert.deepStrictEqual([...completed].sort(), [`${wu}-1-1`, `${wu}-1-2`, `${wu}-1-3`, `${wu}-2-1`],
       'completed_tasks carries each id once — the boundary re-record must not double-count');
   });
 
