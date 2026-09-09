@@ -42,10 +42,8 @@ The prose should have taken this path:
     correction and no specification file is touched; the one finding
     folds into one staged proposal — title, placement, class tag,
     Problem and Solution only, with no Do, Acceptance Criteria or
-    Tests, since nothing has yet been agreed to build — the bank
-    disposition records the entry as folded, no pre-existing debt
-    exists to push, and the staging file is written to
-    consolidation-tasks-p1.md
+    Tests, since nothing has yet been agreed to build — and the
+    staging file is written to consolidation-tasks-p1.md
 12. the walk's gate state initialises (staging.p1.tasks.1 pending),
     the tasks-overview renders, and the proposed task renders gated
     at proposal altitude — the payload carries problem and solution,
@@ -62,7 +60,8 @@ The prose should have taken this path:
     with the per-task consolidation-boundary placement; the writer
     stub creates tasks/pay-1-3.md carrying the authored body,
     appends the planning row, and records task_map.pay-1-3
-14. the folded bank entry is pulled — the bank empties — and the
+14. the bank is emptied — the manifest holds one, so the field is
+    deleted whole; its one entry is now the staged task — and the
     consolidation commits land via the engine: the staging file under
     the implementation topic, the tasks with --plan
 15. the loop's next fetch sees pay-1-3: started, briefed, executed
@@ -91,12 +90,12 @@ Further claims:
 - the manifest's implementation item ends with all three internal
   ids in completed_tasks, current_task null, phase 1 in both
   completed_phases and consolidated_phases, every gate mode gated,
-  and the bank an empty array — deposited once, pulled once
+  and no bank field — deposited once, emptied at the boundary
 - staging.p1.tasks.1 ends approved; no other staging.p1 row exists
 - consolidation-findings-p1.md and consolidation-tasks-p1.md both
   exist in the implementation directory, the staging file carrying
-  the task and a Bank Disposition marking the entry folded; the
-  task's Do, Acceptance Criteria and Tests blocks are there because
+  the task; the task's Do, Acceptance Criteria and Tests blocks are
+  there because
   the author added them after approval, never from the judge
 - the specification is byte-identical to the fixture's — no
   corrigenda section, no edit, and no knowledge re-index of it

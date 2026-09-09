@@ -34,10 +34,6 @@ The findings file:
 - **Claim**: "Intent creation lives in `src/checkout/intent.js`." (§ Design notes)
 - **Observed**: `ls src/checkout` lists `payment-intent.js` and nothing else; `createPaymentIntent` is defined at src/checkout/payment-intent.js:4
 - **Read**: spec stale — a path the tree settles by direct measurement, not a design question
-
-## Observations
-
-- none
 ```
 
 The status block:

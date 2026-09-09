@@ -1,9 +1,9 @@
 # stub: finder-sweep-clean
 
 A consolidation finder's clean sweep: the phase's combined surface
-owes nothing — no finding survives the bar, and no bank entries were
-passed to verdict. Return the block below to the caller. Write no
-file — with no findings, no bank verdicts, and no observations there
+owes nothing — no finding survives the bar, no specification claim is
+indicted, and no bank entries were passed. Return the block below to
+the caller. Write no file — with no findings and no spec defects there
 is nothing for a findings file to carry.
 
 ---

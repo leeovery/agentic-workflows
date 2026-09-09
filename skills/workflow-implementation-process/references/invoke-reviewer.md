@@ -55,7 +55,7 @@ NOTES:
 - `approved`: task passes all five review dimensions
 - `needs-changes`: ISSUES contains specific, actionable items with fix recommendations and confidence levels
 - COMMENT_CORRECTIONS may accompany either verdict — prose-only fixes that never count toward the verdict. On `approved`, the orchestrator applies them directly; on `needs-changes`, they travel to the executor with the findings
-- BANK may accompany either verdict and never counts toward it — opportunities whose fix reaches beyond the task's scope, deposited to the manifest the moment the report arrives ([task-loop.md](task-loop.md) **D. Review Task**)
+- BANK may accompany either verdict and never counts toward it — opportunities whose fix reaches beyond the task's scope, deposited on arrival while the task's `do_banking` is `true` ([bank-deposit.md](bank-deposit.md))
 
 → Return to caller.
 

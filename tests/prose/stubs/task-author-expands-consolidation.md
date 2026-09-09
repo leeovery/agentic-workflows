@@ -5,8 +5,8 @@ Edit the staging file in place, under the approved task's existing
 `## Task 1` heading: leave its title, its `placement:` and `severity:`
 lines, and its Problem and Solution exactly as staged, and add the
 three blocks below beneath them. Nothing else in the file moves — no
-other proposal, no Bank Disposition — and no other file is written and
-no git runs. Then return the status block.
+other proposal — and no other file is written and no git runs. Then
+return the status block.
 
 ---
 

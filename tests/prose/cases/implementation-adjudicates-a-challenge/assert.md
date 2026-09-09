@@ -14,7 +14,8 @@ The prose should have taken this path:
    brief renders before the dispatch
 4. the executor stub fires once for pay-1-1 and completes; the
    reviewer stub's first firing returns needs-changes with one
-   issue and no BANK — nothing deposits
+   issue and no BANK — the task's do_banking is true, so the deposit
+   reference loads and finds nothing to push
 5. stage E writes the findings to the attempt cache and records the
    attempt via fix-attempt (attempt 1, threshold not reached); the
    result header renders as needs-changes, the findings are

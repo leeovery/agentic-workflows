@@ -4,8 +4,8 @@
 // implemented by a previous session, pay-1-2 pending, the environment doc
 // and empty project defaults routing Steps 1, 3 and 4 to their short arms
 // — with one addition: the concluded specification carries a design note
-// naming a checkout path the tree does not have. Nothing is banked, so the
-// boundary's bank machinery stays out of this walk.
+// naming a checkout path the tree does not have. The bank is absent —
+// nothing was ever deposited, so the boundary finds no field to empty.
 
 const fs = require('fs');
 const path = require('path');

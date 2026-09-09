@@ -1,5 +1,5 @@
 {
-  "origin": "the consolidation boundary's findings path had no walk — every prior case took the clean sweep. This walks the whole drain: the reviewer banks a cross-scope opportunity mid-loop, the finder confirms it as a finding, the orchestrator folds it into a staged proposal carrying no body, the gated walk approves it, the task author expands it in the staging file and only then does the task-writer land it in the still-open phase, the bank entry is pulled, the consolidation task builds through the ordinary loop, and only then does the phase record complete",
+  "origin": "the consolidation boundary's findings path had no walk — every prior case took the clean sweep. This walks the whole drain: the reviewer banks a cross-scope opportunity mid-loop, the finder confirms it as a finding, the orchestrator folds it into a staged proposal carrying no body, the gated walk approves it, the task author expands it in the staging file and only then does the task-writer land it in the still-open phase, the bank is emptied, the consolidation task builds through the ordinary loop, and only then does the phase record complete",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -31,6 +31,7 @@
     "skills/workflow-implementation-process/references/task-normalisation.md",
     "skills/workflow-implementation-process/references/invoke-executor.md",
     "skills/workflow-implementation-process/references/invoke-reviewer.md",
+    "skills/workflow-implementation-process/references/bank-deposit.md",
     "skills/workflow-implementation-process/references/consolidation-pass.md",
     "skills/workflow-implementation-process/references/invoke-consolidation-finder.md",
     "skills/workflow-implementation-process/references/invoke-task-author.md",
@@ -48,7 +49,7 @@
     "executor-task-complete": "when the workflow-implementation-task-executor agent is dispatched for task pay-1-2 — create that task's source and test files as the stub gives them and return that task's STATUS block; one firing",
     "executor-consolidation-task": "when the workflow-implementation-task-executor agent is dispatched for the consolidation task pay-1-3 — create the helper's source and test files, apply the call-site edits, and return the stub's STATUS block; one firing",
     "reviewer-banks-then-approves": "each time the workflow-implementation-task-reviewer agent is dispatched — first firing (pay-1-2's review) returns the approved-with-BANK block, any later firing (the consolidation task's review) returns the plain approved block; write no file",
-    "finder-sweep-findings": "when the workflow-implementation-consolidation-finder agent is dispatched — write the findings file at the dispatched path via the .txt-then-rename mechanism, quoting the banked entry's JSON verbatim as received, and return the stub's status block",
+    "finder-sweep-findings": "when the workflow-implementation-consolidation-finder agent is dispatched — write the findings file at the dispatched path via the .txt-then-rename mechanism, naming the banked entry it confirms on the finding's Bank line, and return the stub's status block",
     "task-author-expands-consolidation": "when the workflow-implementation-task-author agent is dispatched — add the stub's blocks under the approved proposal in the staging file and return the stub's status block; one firing",
     "task-writer-creates-consolidation": "when the workflow-implementation-task-writer agent is dispatched — create the approved consolidation task from the staging file exactly as the stub directs, record the task_map entry, and return the stub's status block"
   },
@@ -72,7 +73,8 @@
       "staging.p1.tasks.1 approved",
       "manifest push pay.implementation.pay consolidated_phases 1",
       "manifest set pay.planning.pay task_map.pay-1-3 pay-1-3",
-      "manifest pull pay.implementation.pay bank",
+      "manifest exists pay.implementation.pay bank",
+      "manifest delete pay.implementation.pay bank",
       "task start pay pay pay-1-3",
       "impl(pay): Tpay-1-3",
       "--phase-complete"
@@ -88,7 +90,7 @@
       "staging.p1.tasks.1 approved",
       "manifest push pay.implementation.pay consolidated_phases 1",
       "write:.workflows/pay/planning/pay/tasks/pay-1-3.md",
-      "manifest pull pay.implementation.pay bank",
+      "manifest delete pay.implementation.pay bank",
       "task start pay pay pay-1-3",
       "--phase-complete",
       "impl(pay): Tpay-1-3"

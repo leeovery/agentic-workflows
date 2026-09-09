@@ -43,9 +43,8 @@ The prose should have taken this path:
 9. the orchestrator judges: no spec defect is recorded, so no
    specification file is touched; the one finding folds into one
    staged proposal at proposal altitude — title, placement, class
-   tag, Problem and Solution only — the bank disposition marks the
-   entry folded, and the staging file is written to
-   consolidation-tasks-p1.md
+   tag, Problem and Solution only — and the staging file is written
+   to consolidation-tasks-p1.md
 10. the walk's gate state initialises (staging.p1.tasks.1 pending),
     the tasks-overview renders, and the proposed task renders gated —
     the consolidation walk has its own gate mode, so the bounded task
@@ -56,8 +55,9 @@ The prose should have taken this path:
     invokes the task author over the staging file, and only once it
     has returned the task writer, which creates tasks/pay-1-3.md in
     phase 1, appends its row to the Phase 1 table (the Phase 2 table
-    is untouched), and records task_map.pay-1-3; the folded bank entry
-    is pulled and the consolidation commits land — the staging file
+    is untouched), and records task_map.pay-1-3; the bank is emptied —
+    the manifest holds one, so the field is deleted whole — and the
+    consolidation commits land — the staging file
     under the implementation topic, the tasks with --plan; the pass
     returns to the loop without recording the phase
 12. the loop's next fetch orders by phase and sees pay-1-3 ahead of
@@ -95,8 +95,10 @@ The prose should have taken this path:
     state (no staging.p2, consolidated_phases holds 1 only, no
     findings file), and dispatches the consolidation finder for
     phase 2; the stub returns clean with no file, so nothing is judged
-    and nothing is staged; the pass records the phase:
-    consolidated_phases gains 2, the plan-side completion lands, the
+    and nothing is staged; the pass records the phase: the bank check
+    finds no field (phase 1's boundary emptied it) so nothing is
+    deleted, consolidated_phases gains 2, the plan-side completion
+    lands, the
     engine re-records pay-2-1 with --phase 2 --phase-complete, and the
     scoped commit closes the pass
 19. retrieval finds no available and no open tasks, reports all tasks
@@ -127,8 +129,8 @@ Further claims:
 - the manifest's implementation item ends with pay-1-1, pay-1-2,
   pay-1-3, and pay-2-1 in completed_tasks, current_task null,
   current_phase 2, completed_phases holding 1 and 2,
-  consolidated_phases holding 1 and 2, every gate mode gated, and the
-  bank an empty array — deposited once, pulled once
+  consolidated_phases holding 1 and 2, every gate mode gated, and no
+  bank field — deposited once, emptied at phase 1's boundary
 - staging.p1.tasks.1 ends approved with no other staging.p1 row; no
   staging.p2 subtree exists
 - consolidation-findings-p1.md and consolidation-tasks-p1.md both exist
