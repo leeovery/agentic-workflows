@@ -20,8 +20,8 @@ The prose should have taken this path:
    loop, emits its heading and blurb, and enters at the cycle gate
 6. none of the cycle gate's crash-resume guards match — no staging
    subtree, no analysis staging file on disk, no previous cycle — so the
-   cycle records: the engine returns cycle 1, session 1, not over the
-   session limit, gate gated. No cycle-limit display, no convergence
+   cycle records: the engine returns cycle 1, not over the
+   cycle limit, gate gated. No cycle-limit display, no convergence
    analysis and no cycle gate menu are produced, and no scripted answer
    is consumed there
 7. the git checkpoint runs and finds nothing to checkpoint: the only path

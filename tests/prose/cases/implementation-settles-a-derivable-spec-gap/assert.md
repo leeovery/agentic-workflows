@@ -18,7 +18,7 @@ The prose should have taken this path:
    skill, which routes to the analysis loop
 5. none of the cycle gate's crash-resume guards match — no staging
    subtree, no analysis staging file on disk, no previous cycle — so the
-   cycle records: cycle 1, session 1, not over the session limit, gate
+   cycle records: cycle 1, not over the cycle limit, gate
    gated. No cycle-limit display and no cycle gate menu are produced, and
    no scripted answer is consumed there
 6. the git checkpoint finds nothing outside .workflows dirty — no
