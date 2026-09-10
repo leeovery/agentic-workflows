@@ -26,7 +26,7 @@ A surviving Decision whose staged block lacks a Stakes line gains one now, in `{
 
 #### If the Decision falls below the bar
 
-Settle it: investigate or derive, and rewrite the staged proposal in `{staging_file}` — Solution becomes the settled direction with its derivation; the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
+Settle it on what leans — the convention or precedent, searched for in the tree and the plan's landed criteria before any call is made; the staging's `(recommended)` marker is its argument, never a ground; an honest call only where nothing leans. Rewrite the staged proposal in `{staging_file}` — Solution becomes the settled direction with its derivation naming what decided it; the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
 
 → Return to caller.
 

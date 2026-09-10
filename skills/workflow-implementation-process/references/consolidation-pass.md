@@ -75,12 +75,6 @@ The pass ran; only the phase record is outstanding.
 
 > **CHECKPOINT**: Do not proceed until the finder has returned.
 
-When the finder wrote its file, commit the findings (the scoped commit covers the file and the manifest):
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidation — findings" --topic implementation/{topic}
-```
-
 #### If `STATUS` is `clean`
 
 > *Output the next fenced block as a code block:*
@@ -92,6 +86,12 @@ Consolidation sweep: nothing owed.
 → Proceed to **F. Record the Phase**.
 
 #### If `STATUS` is `findings`
+
+Commit the findings (the scoped commit covers the file and the manifest):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): phase {N} consolidation — findings" --topic implementation/{topic}
+```
 
 → Proceed to **B. Judge the Findings**.
 

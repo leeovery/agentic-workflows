@@ -104,7 +104,8 @@
       "git add --all",
       "staging.p1.tasks",
       "consolidation_gate_mode auto",
-      "manifest delete pay.implementation.pay bank"
+      "manifest delete pay.implementation.pay bank",
+      "impl(pay): phase 1 consolidation — findings"
     ]
   }
 }

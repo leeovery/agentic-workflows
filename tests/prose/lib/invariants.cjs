@@ -46,13 +46,39 @@ const WORKFLOWS = '.workflows/';
 // for the shell as readily — `printf … > .workflows/…` creates state
 // just as surely, and an Opus walk was observed doing exactly that while
 // a tool-only check reported that nothing had been written at all.
-// Segment separators bound the match so a redirect elsewhere in a
-// compound command is not mistaken for one into the workflow directory.
-const SHELL_WRITE = /(>>?|\btee\b|\bcp\b|\bmv\b|\binstall\b)[^|;&]*\.workflows\//;
+//
+// What counts is the write's target — the operand a redirect, tee, cp,
+// mv or install lands on — never the rest of the command. The recorder
+// flattens a heredoc onto its command's line, so a findings file written
+// with `cat > … << 'EOF'` carries its whole body in the one record, and
+// a body that named a path (a FILES line naming the spec) once satisfied
+// that path's write: token and failed a walk whose real edit sat exactly
+// where the case declared it.
+const REDIRECT_TARGET = /(?:>>?|\btee\b(?:\s+-\S+)*)\s*(\S*\.workflows\/\S+)/g;
+// cp, mv and install take their operands in the next few tokens, bounded
+// at the segment's end; the bound keeps a heredoc body that happens to
+// contain one of the words from reaching a path further along.
+const MOVE_OPERANDS = /\b(?:cp|mv|install)\b((?:\s+[^\s|;&<>]+){1,4})/g;
+const WORKFLOWS_PATH = /\S*\.workflows\/\S+/g;
+
+function shellWriteTargets(detail) {
+  const targets = [];
+  for (const m of detail.matchAll(REDIRECT_TARGET)) targets.push(m[1]);
+  for (const m of detail.matchAll(MOVE_OPERANDS)) {
+    targets.push(...(m[1].match(WORKFLOWS_PATH) || []));
+  }
+  return targets;
+}
+
+/** The workflow paths a recorded action writes — empty when it writes none. */
+function writeTargets(row) {
+  if (WRITE_TOOLS.has(row.tool)) return row.detail.includes(WORKFLOWS) ? [row.detail] : [];
+  if (row.tool !== 'Bash') return [];
+  return shellWriteTargets(row.detail);
+}
 
 function isWrite(row) {
-  if (WRITE_TOOLS.has(row.tool)) return row.detail.includes(WORKFLOWS);
-  return row.tool === 'Bash' && SHELL_WRITE.test(row.detail);
+  return writeTargets(row).length > 0;
 }
 
 const NAMES = ['engine_before_write', 'calls_include', 'calls_exclude', 'calls_in_order'];
@@ -103,9 +129,12 @@ function undeclaredProse(rows, declared) {
 // false positive for a false negative.
 const SEARCH_HEAD = /^(grep|egrep|fgrep|rg|ag|find)\b/;
 
+// Where one shell statement ends and the next begins.
+const SEGMENT = /\s*(?:&&|;)\s*/;
+
 function withoutSearches(detail) {
   return detail
-    .split(/\s*(?:&&|;)\s*/)
+    .split(SEGMENT)
     .filter((segment) => !SEARCH_HEAD.test(segment.trim()))
     .join(' && ');
 }
@@ -204,14 +233,32 @@ const WRITE_TOKEN = 'write:';
  * later edits to the same file never satisfy it, so a file created out of
  * order fails however many times it is touched afterwards.
  */
+/**
+ * The walk's actions as an ordered list of statements. A walker joins two
+ * calls the prose prescribes separately with `&&` readily enough, and they
+ * still ran in that order — so a Bash row is one event per statement,
+ * letting a compound row satisfy consecutive entries and never satisfy
+ * them reversed. Declared entries carry no separator (validated), so a
+ * needle can never straddle the split.
+ */
+function statements(rows) {
+  const out = [];
+  for (const r of rows) {
+    if (r.event !== 'PreToolUse') continue;
+    if (r.tool !== 'Bash') { out.push(r); continue; }
+    for (const detail of r.detail.split(SEGMENT)) out.push({ ...r, detail });
+  }
+  return out;
+}
+
 function callsInOrder(rows, sequence) {
-  const events = rows.filter((r) => r.event === 'PreToolUse');
+  const events = statements(rows);
   let at = 0;
   for (const wanted of sequence) {
     let found;
     if (wanted.startsWith(WRITE_TOKEN)) {
       const path = bare(wanted.slice(WRITE_TOKEN.length));
-      found = events.findIndex((r) => isWrite(r) && bare(r.detail).includes(path));
+      found = events.findIndex((r) => writeTargets(r).some((t) => bare(t).includes(path)));
       if (found !== -1 && found < at) {
         const prefix = sequence.slice(0, sequence.indexOf(wanted));
         return {
@@ -291,6 +338,9 @@ function declarationErrors(declared) {
     }
     if (key === 'calls_in_order' && value.length < 2) {
       errors.push('calls_in_order needs at least two commands — one has no order');
+    }
+    if (key === 'calls_in_order' && value.some((v) => SEGMENT.test(v))) {
+      errors.push('a calls_in_order entry cannot span a statement separator (&& or ;) — the walk is ordered one statement at a time');
     }
     if (key !== 'calls_in_order' && value.some((v) => v.startsWith(WRITE_TOKEN))) {
       errors.push(`${key} cannot carry write: tokens — a write is ordered, never merely present; use calls_in_order`);
