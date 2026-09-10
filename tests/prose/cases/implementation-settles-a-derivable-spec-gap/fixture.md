@@ -11,9 +11,8 @@ through its consolidation boundary: the manifest carries `1` in both
 
 The implementation item exists from that previous session — `task init`
 has run, all four gates are `gated` — so this session's entry resumes
-rather than creates. `analysis_cycle_total` and `analysis_cycle_session`
-are both `0`: no analysis cycle has ever run. `bank` is absent — nothing
-was ever deposited.
+rather than creates. `analysis_cycle_total` is `0`: no analysis cycle has
+ever run. `bank` is absent — nothing was ever deposited.
 
 The concluded specification carries a `## Client call bounds` section:
 the feature's two synchronous external calls — the checkout's intent

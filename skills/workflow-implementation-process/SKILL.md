@@ -78,7 +78,7 @@ Refresh the tmux session label — a no-op unless the user opted in and this ses
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} implementation {topic}
 ```
 
-Initialize or resume implementation tracking (idempotent — creates the manifest entry with default gates and counters, or resets the gate modes and session counters of an existing one; lifetime counters and progress are preserved):
+Initialize or resume implementation tracking (idempotent — creates the manifest entry with default gates and counters, or resets the gate modes of an existing one and, outside a live fix round, `fix_attempts`; the cycle count and progress are preserved):
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task init {work_unit} {topic}
 ```

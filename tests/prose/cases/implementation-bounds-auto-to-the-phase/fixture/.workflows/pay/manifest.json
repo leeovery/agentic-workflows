@@ -61,7 +61,6 @@
           "consolidation_gate_mode": "gated",
           "fix_attempts": 0,
           "analysis_cycle_total": 0,
-          "analysis_cycle_session": 0,
           "linters": [],
           "project_skills": [],
           "current_phase": 1,

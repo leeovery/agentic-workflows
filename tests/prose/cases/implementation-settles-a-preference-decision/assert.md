@@ -127,10 +127,10 @@ Further claims:
 - staging.c1 ends with exactly two rows, both approved, and no third;
   analysis_gate_mode ends auto while task_gate_mode, fix_gate_mode and
   consolidation_gate_mode all stay gated
-- the manifest's implementation item ends with analysis_cycle_total
-  and analysis_cycle_session both 1, completed_tasks still exactly
-  pay-1-1 and pay-1-2, current_task empty, completed_phases and
-  consolidated_phases both still exactly [1], and no bank field
+- the manifest's implementation item ends with analysis_cycle_total 1,
+  completed_tasks still exactly pay-1-1 and pay-1-2, current_task empty,
+  completed_phases and consolidated_phases both still exactly [1], and
+  no bank field
 - all three findings files exist for cycle 1 — the duplication and
   architecture ones recording no findings, the standards one recording
   two — alongside the report and the staging file
