@@ -66,7 +66,7 @@ Write the report file with this structure:
 
 ## Staging File Format
 
-Write the staging file with this structure. `severity` is what keys the task author's test contract: a pure refactor — behaviour unchanged, existing tests green — takes its consolidation class (`duplication`, `near-miss`, `drift`, `dead-code`, `complexity`, `comments`); everything else keeps the finding's grade.
+Write the staging file with this structure. `severity` is what keys the task author's test contract: a pure refactor — behaviour unchanged, existing tests green — takes its consolidation class (`duplication`, `near-miss`, `drift`, `dead-code`, `complexity`); everything else keeps the finding's grade.
 
 ```markdown
 # Review Tasks: {Scope} (Cycle {N})

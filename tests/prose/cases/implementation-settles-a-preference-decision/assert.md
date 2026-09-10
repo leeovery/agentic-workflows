@@ -41,7 +41,9 @@ The prose should have taken this path:
    batched write — both rows pending — and the synthesis commit lands
 9. the report carries no Spec Defects section, so the
    historical-artifact correction is never loaded, no corrigendum is
-   written, no knowledge index runs, and no correction line is spoken
+   written, no knowledge index runs, and no correction line is spoken;
+   it carries no Comment Corrections section either, so no source file
+   is edited and no corrections commit runs
 10. the overview payload is written with both rows pending and the
     tasks overview renders
 11. the first proposal — the guard — renders with --gate gated: the

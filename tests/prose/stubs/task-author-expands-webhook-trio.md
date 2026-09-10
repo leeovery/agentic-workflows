@@ -26,13 +26,13 @@ Under the surfacing proposal:
 
 **Tests**: `an unmatched capture is recorded for follow-up` — one entry per miss, none on a match.
 
-Under the spelling proposal:
+Under the test proposal, with `{settled double}` read from that task's Solution as the walk left it:
 
-**Do**: Rename the losing spelling of the payment identifier to the settled one across `src/checkout/payment-intent.js` and `src/webhooks/capture.js`, and touch nothing else.
+**Do**: In `tests/checkout/payment-intent.test.js` and `tests/webhooks/capture.test.js`, replace each empty body with a test that drives its entry point through `{settled double}` for the collaborator it reaches — `gateway` for checkout, `orders` for the webhook — and asserts the guarantee the test names: a card-only intent created against the order's id on checkout start; the order marked paid on a capture for a known intent.
 
-**Acceptance Criteria**: One spelling for the gateway identifier at both entry points; behaviour unchanged; the existing tests stay green.
+**Acceptance Criteria**: Neither test body is empty; each fails when the guarantee it names is broken; both suites run with no ambient collaborator in scope.
 
-**Tests**: existing suites only — the rename is behaviour-neutral, and green tests are the check.
+**Tests**: `creates a card-only intent on checkout start` and `marks the order paid on capture webhook` — filled, each driving its entry point through `{settled double}`.
 
 The status block:
 

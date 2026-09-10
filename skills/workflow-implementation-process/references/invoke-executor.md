@@ -38,10 +38,11 @@ The dispatch includes these file paths:
 
 1. **Workflow reference**: the file determined above
 2. **code-quality.md**: `.claude/skills/workflow-implementation-process/references/code-quality.md`
-3. **Specification path**: from the specification (if available)
-4. **Project skill paths**: from session context — the `project_skills` discovered in Step 3 (Project Skills Discovery)
-5. **Task content**: normalised task content (see [task-normalisation.md](task-normalisation.md))
-6. **Linter commands**: from session context — the `linters` configured in Step 4 (Linter Discovery), if any
+3. **finding-floor.md**: `.claude/skills/workflow-implementation-process/references/finding-floor.md`
+4. **Specification path**: from the specification (if available)
+5. **Project skill paths**: from session context — the `project_skills` discovered in Step 3 (Project Skills Discovery)
+6. **Task content**: normalised task content (see [task-normalisation.md](task-normalisation.md))
+7. **Linter commands**: from session context — the `linters` configured in Step 4 (Linter Discovery), if any
 
 A fresh dispatch starts with no memory — this payload is everything the executor sees.
 
@@ -57,7 +58,7 @@ Continue that same executor — it already holds the task, the codebase context 
 
 Any round may also carry an **ad hoc addition** ([ad-hoc-plan-changes.md](ad-hoc-plan-changes.md) section C) — the user's instruction, marked as an addition from the user, included with the round's material.
 
-If the send fails — the recorded id no longer resolves, or a context refresh dropped it — dispatch a fresh executor with items 1–6 above plus the round's material as items 7 (**User-approved review notes**: verbatim or as modified by the user) and 8 (**Specific issues to address**: the ISSUES from the review); the full payload restores everything the continued executor would have held. When the conversation no longer holds the round's material, read it from the latest `## Attempt {N}` section of the task's fix tracking file (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`).
+If the send fails — the recorded id no longer resolves, or a context refresh dropped it — dispatch a fresh executor with items 1–7 above plus the round's material as items 8 (**User-approved review notes**: verbatim or as modified by the user) and 9 (**Specific issues to address**: the ISSUES from the review); the full payload restores everything the continued executor would have held. When the conversation no longer holds the round's material, read it from the latest `## Attempt {N}` section of the task's fix tracking file (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`).
 
 → Proceed to **Expected Result**.
 
@@ -75,6 +76,7 @@ TEST_RESULTS: {all passing | failures — details only if failures}
 ISSUES: {blockers or deviations — omit if none}
 BANK:
 - {cross-scope consolidation opportunity — one line}
+  FAILURE: {what goes wrong, for whom, how it is noticed}
   DETAIL: {what and where, with file:line references}
   FILES: {comma-separated paths involved}
 ```

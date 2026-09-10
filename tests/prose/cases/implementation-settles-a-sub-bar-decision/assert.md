@@ -27,8 +27,9 @@ The prose should have taken this path:
 7. all three analysis agents dispatch in parallel with the same inputs
    and cycle number 1; the duplication and architecture stubs return
    clean, the standards stub returns its three findings — the unguarded
-   webhook, the invisible unmatched capture, and the two-way spelling of
-   the gateway identifier. One returns findings, so the all-clean arm
+   webhook, the invisible unmatched capture, and the phase's two tests
+   passing while checking nothing — each naming the failure it
+   prevents. One returns findings, so the all-clean arm
    never applies: the findings commit lands scoped to the implementation
    topic, and the bank is never read
 8. the synthesizer dispatches with work unit, topic and cycle number
@@ -37,12 +38,14 @@ The prose should have taken this path:
    acknowledge a miss); the unmatched-capture surfacing proposal
    carrying a **Decision** line, a **Stakes** line, and two sides
    written as product end states with the first marked (recommended);
-   and the identifier-spelling proposal carrying its own **Decision**,
+   and the test-double proposal carrying its own **Decision**,
    **Stakes** and two sides. The gate state initialises in ONE batched
    write — all three rows pending — and the synthesis commit lands
 9. the report carries no Spec Defects section, so the
    historical-artifact correction is never loaded, no corrigendum is
-   written, no knowledge index runs, and no correction line is spoken
+   written, no knowledge index runs, and no correction line is spoken;
+   it carries no Comment Corrections section either, so no source file
+   is edited and no corrections commit runs
 10. the overview payload is written with all three rows pending and the
     tasks overview renders
 11. the first proposal — the guard — renders with --gate gated: the
@@ -71,13 +74,15 @@ The prose should have taken this path:
     scripted answer is consumed
 14. the third proposal also carries a Decision, so the walk loads the
     shared arm again and its dispose settles this one on the first
-    prong: a spelling changes how the tree names one concept, never
-    what the product's user gets or how it behaves — a technical call,
-    settled honestly: one spelling chosen, either defensible, with the
-    derivation stated. No raise is composed, no
-    decision menu is shown; the staged proposal is rewritten plain —
-    Solution absorbs the settled spelling, Decision and Stakes gone —
-    and it re-presents at --gate auto: auto-approved, no user turn
+    prong: how a test builds the double it drives its subject through
+    changes nothing the product's user gets or how the product behaves
+    — test structure is the bar's own example of a fork that never
+    leaves the tree — a technical call, settled honestly: one double
+    chosen, either defensible, with the derivation stated. No raise is
+    composed, no decision menu is shown; the staged proposal is
+    rewritten plain — Solution absorbs the settled double, Decision and
+    Stakes gone — and it re-presents at --gate auto: auto-approved, no
+    user turn
 15. all three rows are approved, so the no-tasks-approved commit never
     runs and the flow goes to the plan write: the task author is
     invoked over the staging file with the three task numbers; the stub
@@ -111,8 +116,8 @@ Further claims:
 - the staging file's second task ends with a Solution carrying the
   operator-facing record of unmatched captures and the reason the
   other side fell — a derivation naming the first proposal's approval
-  in this walk — and its third task's Solution carries one settled
-  spelling with the reason it was picked; the file holds no
+  in this walk — and its third task's Solution carries one settled test
+  double with the reason it was picked; the file holds no
   **Decision** and no **Stakes** line anywhere, and all three tasks
   carry the bodies the author added, none of which existed before the
   walk
@@ -138,8 +143,8 @@ Further claims:
 - no code was written: src/checkout/payment-intent.js and
   src/webhooks/capture.js hold exactly what the fixture left them
   holding — no guard was implemented, no unmatched-captures store
-  created — and no new source or test file exists outside the
-  workflow directory
+  created, no test body filled — and no new source or test file
+  exists outside the workflow directory
 - no fix-tracking file and no attempt-findings cache file exist
 - the working tree is clean at the stop — everything the walk wrote
   sits inside one of its commits

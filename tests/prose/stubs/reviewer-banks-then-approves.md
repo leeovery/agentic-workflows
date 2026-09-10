@@ -21,6 +21,7 @@ CONVENTIONS: followed
 ARCHITECTURE: sound
 BANK:
 - Gateway result handling is hand-rolled in both checkout entry points
+  FAILURE: A gateway shape change handled at one site and missed at the other — checkout and capture disagree on whether a payment succeeded, and an order paid at the gateway is never marked paid
   DETAIL: src/checkout/payment-intent.js:5 and src/webhooks/capture.js:5 each unwrap the gateway result inline — a shared helper reaches across both tasks
   FILES: src/checkout/payment-intent.js, src/webhooks/capture.js
 NOTES:

@@ -17,6 +17,7 @@ AGENT: architecture
 FINDINGS:
 - FINDING: Both entry points bind their collaborator as a free identifier
   SEVERITY: medium
+  FAILURE: Either module loaded where its collaborator is not already in scope throws at the first call — the shopper's checkout opens no intent, a capture never marks its order paid — and nothing catches it before production, since neither module can be driven by a test.
   FILES: src/checkout/payment-intent.js:5, src/webhooks/capture.js:4
   DESCRIPTION: `gateway` is referenced by the checkout module and `orders` by the webhook module, neither imported nor passed in. Neither module declares what it depends on, and neither can be exercised without whatever ambient definition happens to be in scope — which is why both of the phase's tests are empty stubs.
   RECOMMENDATION: Import each collaborator explicitly at its call site so the dependency is declared where it is used. Behaviour is unchanged and the existing tests stay green.

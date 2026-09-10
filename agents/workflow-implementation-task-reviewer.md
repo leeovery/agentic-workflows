@@ -20,9 +20,10 @@ You receive via the orchestrator's prompt:
 3. **Project skill paths** — Relevant `.claude/skills/` paths for checking framework convention adherence
 4. **Work type** — `quick-fix` switches acceptance criteria and test adequacy to their completeness and verification-workflow variants
 5. **code-quality.md path** — Quality standards, including the comment discipline
-6. **Executor's report** — The executor's structured result for this attempt: claims to verify, not findings to trust
-7. **Challenged findings** — confirmation dispatch only (see Confirmation Dispatch): the disputed ISSUES, verbatim
-8. **The user's challenge** — confirmation dispatch only: their argument, verbatim
+6. **finding-floor.md path** — The floor every BANK entry clears
+7. **Executor's report** — The executor's structured result for this attempt: claims to verify, not findings to trust
+8. **Challenged findings** — confirmation dispatch only (see Confirmation Dispatch): the disputed ISSUES, verbatim
+9. **The user's challenge** — confirmation dispatch only: their argument, verbatim
 
 ## Your Process
 
@@ -30,7 +31,7 @@ You receive via the orchestrator's prompt:
 2. **Check unstaged changes** — use `git diff` and `git status` to identify files changed by the executor
 3. **Read all changed files** — implementation code and test code
 4. **Read project skills** — understand framework conventions, testing patterns, architecture patterns
-5. **Read code-quality.md** — the quality standards the executor worked to, including its comment discipline
+5. **Read code-quality.md and finding-floor.md** — the quality standards the executor worked to, including its comment discipline, and the floor every BANK entry clears
 6. **Evaluate all five review dimensions** (see below), classifying comment findings per **Comment Corrections**
 
 ## Review Dimensions
@@ -51,6 +52,8 @@ Are all criteria genuinely met — not just self-reported?
 - Are all target files updated?
 - Do any occurrences of the old pattern remain in scope?
 - Were exclusions respected?
+
+**For a consolidation task that routes call sites through a shared helper**: re-run the grep its body quotes as the complete-set measurement. A site the grep reaches that the task left unconverted is an ISSUE.
 
 ### 3. Test Adequacy
 Do tests actually verify the criteria? Are assertions precise? Are edge cases covered?
@@ -91,7 +94,7 @@ Corrections are mandatory findings — an incorrect comment never ships — but 
 
 ## Banked Opportunities
 
-Reviewing one task against a codebase several sibling tasks are building will surface improvements whose fix crosses the task boundary: this task's code duplicating a sibling task's output, two near-miss helpers that should be one, dead code a superseding change orphaned, complexity that only shows across several tasks' work. These are never ISSUES — the verdict covers this task alone — and never dropped: report each under BANK. The orchestrator banks them for a consolidation pass at the phase boundary.
+Reviewing one task against a codebase several sibling tasks are building will surface improvements whose fix crosses the task boundary: this task's code duplicating a sibling task's output, two near-miss helpers that should be one, dead code a superseding change orphaned, complexity that only shows across several tasks' work. These are never ISSUES — the verdict covers this task alone — and never dropped: report each under BANK. The orchestrator banks them for a consolidation pass at the phase boundary. Every entry names the failure it prevents (finding-floor.md); an opportunity that cannot is not reported.
 
 The line is the fix's reach, not the finding's subject: duplication or complexity the task introduced *within its own scope* stays an ISSUE; an improvement that would touch another task's output goes to BANK. NOTES remain for observations that ask for no change at all.
 
@@ -152,6 +155,7 @@ COMMENT_CORRECTIONS:
   NEW: {the replacement text — empty to delete the comment}
 BANK:
 - {cross-scope consolidation opportunity — one line}
+  FAILURE: {what goes wrong, for whom, how it is noticed}
   DETAIL: {what and where, with file:line references}
   FILES: {comma-separated paths involved}
 NOTES:

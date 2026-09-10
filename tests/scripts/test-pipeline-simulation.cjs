@@ -465,10 +465,10 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // report arrives (bank-deposit.md, loaded while `do_banking` is true) —
   // durable on the manifest, emptied at the phase boundary.
   const bankPush = sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
-    `{"task":"${topic}-1-1","source":"executor","summary":"helper duplicated from a sibling task","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}`]);
+    `{"task":"${topic}-1-1","source":"executor","summary":"helper duplicated from a sibling task","failure":"a rule change lands in one copy and not the other — the two callers disagree silently","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}`]);
   assert.strictEqual(bankPush.length, 1, 'first bank deposit creates the array');
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
-    `{"task":"${topic}-1-1","source":"reviewer","summary":"dead scaffolding a later task orphaned","detail":"src/c.js:8 export unused","files":["src/c.js"]}`]);
+    `{"task":"${topic}-1-1","source":"reviewer","summary":"dead scaffolding a later task orphaned","failure":"a reader wires the orphaned export into new code and ships a path nothing tests","detail":"src/c.js:8 export unused","files":["src/c.js"]}`]);
   const bank = JSON.parse(sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'bank']));
   assert.strictEqual(bank.length, 2, 'bank accumulates entries');
   assert.strictEqual(bank[0].source, 'executor', 'entries store as objects, not strings');
@@ -1972,7 +1972,7 @@ describe('pipeline simulation', () => {
     // its flag (task-loop H `boundary` disposition), the pass stages a
     // consolidation task in the still-open phase (consolidation-pass.md B–E),
     // and the phase records once it lands.
-    const bankEntry = `{"task":"${wu}-1-2","source":"reviewer","summary":"near-miss helpers","detail":"src/x.js:3 vs src/y.js:9","files":["src/x.js","src/y.js"]}`;
+    const bankEntry = `{"task":"${wu}-1-2","source":"reviewer","summary":"near-miss helpers","failure":"a gateway shape change handled at one site and missed at the other — an order paid and never marked paid","detail":"src/x.js:3 vs src/y.js:9","files":["src/x.js","src/y.js"]}`;
     sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank', bankEntry]);
     const boundary = sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--phase', '1', '--next-task', '~']);
     assert.strictEqual(boundary.recorded.gates_reset, undefined, 'the deferred completion is not the phase\'s close');
@@ -2099,6 +2099,19 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['task', 'analysis-cycle', wu, wu]).cycle_total, 2, 'the count carries across cycles');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'pending']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'approved']);
+    // The cycle's one-edit fixes fold into a single corrections proposal
+    // (analysis-loop.md E, consolidation-pass.md B); its `corrections`
+    // severity rides both shared surfaces like any class tag.
+    const correctionsOverview = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/tasks-overview.json`,
+      { label: 'Analysis cycle 2', tasks: [{ title: 'Corrections', severity: 'corrections', status: 'approved' }] });
+    assert.match(sim.render(['tasks-overview', `${wu}.implementation.${wu}`, '--file', correctionsOverview], { expect: 'content' }),
+      /\[corrections\]/, 'the corrections bundle carries its severity as the worklist tag');
+    const correctionsPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+      current: 1, total: 1, title: 'Corrections', severity: 'corrections', sources: 'standards',
+      problem: 'p', solution: 's',
+    });
+    assert.match(sim.render(['proposed-task', `${wu}.implementation.${wu}`, '--file', correctionsPayload, '--gate', 'gated'], { expect: 'content' }),
+      /\*\*`▪ Corrections`\*\* \(corrections\)/, 'a corrections proposal renders its severity beside the head');
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-2-1`, `${wu}-2-1`]);
     // The flow that lands a machinery-created phase records it (analysis-loop.md H,
     // the review loop's remediation landing) — the switch the engine keys on.

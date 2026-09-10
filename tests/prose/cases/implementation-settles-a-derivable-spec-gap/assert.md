@@ -70,7 +70,9 @@ The prose should have taken this path:
     nothing: no second task is appended to the staging file and no
     second staging row is written. The pass says only that one
     correction was recorded — `1 spec correction(s) recorded.` — one
-    line, no per-correction recap
+    line, no per-correction recap. The report carries no Comment
+    Corrections section, so no source file is edited and no
+    corrections commit runs
 13. one proposal is staged, so the staging file and the cycle's statuses
     are read, the overview payload is written to the cache with its one
     row pending, and the tasks overview renders

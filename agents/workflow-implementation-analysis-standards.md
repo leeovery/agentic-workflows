@@ -20,6 +20,7 @@ You receive via the orchestrator's prompt:
 5. **Work unit** — the work unit name (for path construction)
 6. **Topic name** — the implementation topic
 7. **Cycle number** — which analysis cycle this is (used in output file naming)
+8. **finding-floor.md path** — the floor every finding clears
 
 ## Your Focus
 
@@ -32,7 +33,7 @@ You receive via the orchestrator's prompt:
 
 1. **Read specification thoroughly** — absorb all decisions, constraints, and rationale
 2. **Read project skills** — understand MUST DO / MUST NOT DO rules
-3. **Read code-quality.md** — understand quality standards
+3. **Read code-quality.md and finding-floor.md** — the quality standards and the floor
 4. **Read all implementation files** — map each file back to its spec requirements
 5. **Compare implementation against spec** — check every decision point
 6. **Write findings** to `.workflows/{work_unit}/implementation/{topic}/analysis-standards-c{cycle-number}.md` via the `.txt`-then-rename mechanism (see Output File Format)
@@ -44,7 +45,7 @@ You receive via the orchestrator's prompt:
 1. **No git writes** — do not commit or stage. Writing the output file is your only file write.
 2. **One concern only** — spec and standards conformance. Do not flag duplication or architecture issues.
 3. **Plan scope only** — only analyze files from the implementation against the current spec.
-4. **Proportional** — focus on high-impact drift. A minor naming preference is not worth flagging. A missing validation from the spec is.
+4. **The floor** — every finding names the failure it prevents, and a test file is in scope only for a failure-mode finding (finding-floor.md); a candidate that fails either is not written.
 5. **No new features** — only flag where existing code diverges from what was specified. Never suggest adding unspecified functionality.
 6. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
@@ -57,19 +58,18 @@ AGENT: standards
 FINDINGS:
 - FINDING: {title}
   SEVERITY: high | medium | low
+  FAILURE: {what goes wrong, for whom, how it is noticed}
   FILES: {file:line, file:line}
   DESCRIPTION: {what drifted from spec or conventions and why it matters}
   RECOMMENDATION: {what to change to align with spec/conventions}
+COMMENT_CORRECTIONS:
+- {file:line} — {what is wrong, one clause}
+  OLD: {the comment text as it stands — verbatim, so the edit applies mechanically}
+  NEW: {the replacement text — empty to delete the comment}
 SUMMARY: {1-3 sentences}
 ```
 
-If no standards drift found:
-
-```
-AGENT: standards
-FINDINGS: none
-SUMMARY: Implementation conforms to specification and project conventions.
-```
+COMMENT_CORRECTIONS holds each comment whose entire remedy is comment text — never a FINDING (finding-floor.md → Comment-Only Remedies); omit the section when there are none. `FINDINGS: none` when no candidate clears the floor — a file may carry corrections and no findings.
 
 ## Your Output
 
@@ -80,3 +80,5 @@ STATUS: findings | clean
 FINDINGS_COUNT: {N}
 SUMMARY: {1 sentence}
 ```
+
+`findings` when the file carries findings or comment corrections; `clean` when it carries neither.

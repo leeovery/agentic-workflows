@@ -32,14 +32,17 @@ The prose should have taken this path:
    commit runs, and no scripted answer is consumed
 8. scope comes from the git history grep for this topic's task commits —
    the four source and test files across pay-1-1 and pay-1-2. All three
-   analysis agents dispatch in parallel, each with the same inputs and
-   cycle number 1, and each stub writes its own findings file. Two return
-   findings, so the all-clean arm never applies: the findings commit
+   analysis agents dispatch in parallel, each with the same inputs —
+   the floor's path among them — and cycle number 1, and each stub
+   writes its own findings file, every finding carrying the failure it
+   prevents and the standards file carrying one comment correction
+   besides. Two return findings, so the all-clean arm never applies: the findings commit
    lands scoped to the implementation topic and the flow proceeds to
    the synthesis — the bank is never read
-9. the synthesizer is dispatched with work unit, topic and cycle number
-   and nothing else. The stub writes the report and the
-   staging file and returns tasks_proposed with two. The gate state
+9. the synthesizer is dispatched with work unit, topic, cycle number
+   and the floor's path, and nothing else. The stub writes the report —
+   its Spec Defects entry and the one comment correction collected
+   verbatim — and the staging file and returns tasks_proposed with two. The gate state
    initialises in ONE batched write — both rows pending — and only then
    does the synthesis commit land
 10. the spec defect is settled before the overview renders. The
@@ -60,34 +63,43 @@ The prose should have taken this path:
     is appended to the staging file and no third staging row is written.
     The pass says only that one correction was recorded — one line, no
     per-correction recap
-12. two proposals are staged, so the staging file and the cycle's
+12. the report's one comment correction is applied before the overview
+    renders: the webhook header at src/webhooks/capture.js is edited
+    with the Edit tool — its two-line OLD text replaced by the NEW text
+    verbatim, the claim about the rest of the system gone and the
+    idempotency clause kept — and committed as a code commit naming
+    that one file (`commit --paths src/webhooks/capture.js … --for pay
+    implementation/pay`, message `impl(pay): analysis cycle 1 — comment
+    corrections`). No agent is dispatched for it, no fix round opens,
+    no question is asked, and no scripted answer is consumed
+13. two proposals are staged, so the staging file and the cycle's
     statuses are read, the overview payload is written to the cache with
     both rows pending, and the tasks overview renders
-13. the first proposal renders gated: its payload carries problem and
+14. the first proposal renders gated: its payload carries problem and
     solution, no decision key, and the refactor class as its severity.
     The response is MENU: task approval and the walk STOPS. The third
     scripted answer approves — the row records approved, and the gate
     mode is NOT flipped to auto, because the answer was yes and not auto
-14. the second proposal renders next, gated again, carrying its graded
+15. the second proposal renders next, gated again, carrying its graded
     severity. The fourth scripted answer declines — the row records
     skipped. No auto-approval display is emitted for either proposal
-15. no pending row remains, and one row is approved, so the no-tasks-
+16. no pending row remains, and one row is approved, so the no-tasks-
     approved commit never runs and the flow goes to the plan write
-16. the task author is invoked over the staging file with the approved
+17. the task author is invoked over the staging file with the approved
     task numbers alone — one number, not two; the stub adds that task's
     Do, Acceptance Criteria and Tests beneath its existing heading,
     leaving titles, control lines, Problem and Solution as staged, and
     leaving the declined proposal untouched. The author returns complete,
     so the failure branch is never entered
-17. only once the author has returned is the task writer invoked, with
+18. only once the author has returned is the task writer invoked, with
     the phase label `Analysis (Cycle 1)` as its placement and the
     approved numbers read back from the manifest; the stub creates
     tasks/pay-2-1.md, appends the new phase and its single row to the
     planning file, and records the task_map entry
-18. the planning item already carries storage_paths, so it is not
+19. the planning item already carries storage_paths, so it is not
     recorded again. Two commits land in order: the staging file under the
     implementation topic, then the tasks with --plan
-19. the loop returns to the caller; tasks were created in the plan, so
+20. the loop returns to the caller; tasks were created in the plan, so
     the skill routes back to the task loop — and the walk stops there. No
     task is started, no phase completion is recorded, and implementation
     is never marked complete
@@ -97,7 +109,9 @@ Further claims:
 - exactly six agent dispatches fired: three analysis agents (duplication,
   standards, architecture), one synthesizer, one task author, one task
   writer — in that order. The author ran only after the walk had settled
-  both proposals, and the writer only after the author returned
+  both proposals, and the writer only after the author returned; no
+  agent was dispatched for the comment correction — the session applied
+  it itself
 - the specification's design note now names
   `src/checkout/payment-intent.js`, and the file ends with a Corrigenda
   section holding exactly one entry, dated and attributed to
@@ -106,8 +120,8 @@ Further claims:
   change
 - the four scripted answers were consumed by the two setup gates and the
   two proposal gates, in that order and nowhere else — neither the
-  specification correction, nor the cycle gate, nor a pre-analysis
-  checkpoint took a user turn
+  specification correction, nor the comment correction, nor the cycle
+  gate, nor a pre-analysis checkpoint took a user turn
 - all three findings files exist for cycle 1, the duplication one
   recording no findings, alongside the report and the staging file
 - the proposed-task payload left under .workflows/.cache is the second
@@ -126,10 +140,12 @@ Further claims:
 - tasks/pay-2-1.md exists with status pending and phase 2; the planning
   file carries a Phase 2 headed `Analysis (Cycle 1)` with exactly one
   row; no pay-2-2 exists and the Phase 1 table is unchanged
-- no code was written: src/checkout/payment-intent.js and
-  src/webhooks/capture.js hold exactly what the fixture left them
-  holding, and no new source or test file exists outside the workflow
-  directory
+- no code was written: src/checkout/payment-intent.js holds exactly what
+  the fixture left it holding; src/webhooks/capture.js differs from the
+  fixture only in its header — the two comment lines now read
+  `// Consume gateway capture webhooks and mark the order paid.` and
+  `// Duplicate deliveries are idempotent.`, the function body untouched
+  — and no new source or test file exists outside the workflow directory
 - no fix-tracking file and no attempt-findings cache file exist
 - the working tree is clean at the stop — everything the walk wrote sits
-  inside one of its commits
+  inside one of its commits, the corrected header in its own code commit

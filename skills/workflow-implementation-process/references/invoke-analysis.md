@@ -22,7 +22,7 @@ This captures all files touched by this topic's task commits (internal IDs embed
 
 ## Dispatch All Three Agents
 
-> **CRITICAL**: Dispatch with clean context. Pass each agent **only** the seven inputs listed below. Do **not** include prior cycle findings, summaries of what earlier cycles caught or missed, your own hunches, or any framing that suggests where to look. Each cycle must run independently — cross-cycle synthesis happens in the synthesizer, not in the agents. Priming biases results (a clean cycle-N report after a high-finding cycle-(N-1) is a red flag, not convergence).
+> **CRITICAL**: Dispatch with clean context. Pass each agent **only** the eight inputs listed below. Do **not** include prior cycle findings, summaries of what earlier cycles caught or missed, your own hunches, or any framing that suggests where to look. Each cycle must run independently — cross-cycle synthesis happens in the synthesizer, not in the agents. Priming biases results (a clean cycle-N report after a high-finding cycle-(N-1) is a red flag, not convergence).
 
 Dispatch **all three in parallel** via the Task tool. Each agent receives the same inputs:
 
@@ -33,6 +33,7 @@ Dispatch **all three in parallel** via the Task tool. Each agent receives the sa
 5. **Work unit** — the work unit name (for path construction)
 6. **Topic name** — the implementation topic
 7. **Cycle number** — from `analysis_cycle_total` in the manifest: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} analysis_cycle_total`
+8. **finding-floor.md path** — `.claude/skills/workflow-implementation-process/references/finding-floor.md`
 
 Each agent knows its own output path convention and writes findings independently.
 
@@ -62,7 +63,7 @@ FINDINGS_COUNT: {N}
 SUMMARY: {1 sentence}
 ```
 
-- `findings`: the agent recorded issues in its output file
+- `findings`: the agent recorded findings or comment corrections in its output file
 - `clean`: the agent found nothing to report
 
 If any agent fails (error, timeout), record the failure and continue — the synthesizer works with whatever findings files are available.

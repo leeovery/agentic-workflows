@@ -40,8 +40,10 @@ The prose should have taken this path:
    dispatches the consolidation finder for phase 1; the finder stub
    writes the findings file and returns STATUS findings with the
    banked entry confirmed; the findings commit picks the file up
-9. the orchestrator judges: no spec defect is recorded, so no
-   specification file is touched; the one finding folds into one
+9. the orchestrator judges: it loads the floor and the one finding
+   names its failure, so it stands; no spec defect is recorded, so no
+   specification file is touched; no comment correction is recorded,
+   so no source file is edited and no corrections commit runs; the one finding folds into one
    staged proposal at proposal altitude — title, placement, class
    tag, Problem and Solution only — and the staging file is written
    to consolidation-tasks-p1.md
