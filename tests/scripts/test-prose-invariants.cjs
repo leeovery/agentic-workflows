@@ -94,6 +94,11 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
     assert.equal(invariants.check(rows, declared)[0].ok, true);
   });
 
+  it('does not let a heredoc body that names workflow state count as a write into it', () => {
+    const rows = [bash("cd . && cat > /tmp/notes.txt << 'EOF' see .workflows/pay/manifest.json EOF")];
+    assert.equal(invariants.check(rows, declared)[0].ok, true);
+  });
+
   it('does not let a redirect elsewhere in a compound command count', () => {
     const rows = [bash('cd . && cat notes.md > /tmp/out.txt && ls .workflows/')];
     assert.equal(invariants.check(rows, declared)[0].ok, true);
@@ -310,6 +315,40 @@ describe('calls_in_order — presence is not sequence', () => {
     assert.equal(result.ok, true);
   });
 
+  it('never lets a heredoc body that names the path satisfy a write: token — the target decides', () => {
+    // Observed live: the standards agent's findings file, written with
+    // `cat > … << 'EOF'`, carried a FILES line naming the specification;
+    // the recorder flattens the body onto the command's line, and the
+    // token for the spec matched that record instead of the real edit.
+    const rows = [
+      bash(`${ENGINE} topic start pay discussion pay`),
+      bash("cd . && cat > .workflows/pay/implementation/pay/analysis-standards-c1.txt << 'EOF' FINDING: x FILES: .workflows/pay/discussion/pay.md EOF mv .workflows/pay/implementation/pay/analysis-standards-c1.txt .workflows/pay/implementation/pay/analysis-standards-c1.md"),
+      bash(`${ENGINE} manifest get pay.specification.pay status`),
+      wrote('./.workflows/pay/discussion/pay.md'),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: [
+        'topic start pay discussion pay',
+        'manifest get pay.specification.pay status',
+        'write:.workflows/pay/discussion/pay.md',
+      ],
+    });
+    assert.equal(result.ok, true, result.detail);
+  });
+
+  it('counts the rename after a heredoc as the first write of its target', () => {
+    // The .txt-then-rename mechanism: the file the case names exists only
+    // once the mv lands, and that mv sits after the flattened body.
+    const rows = [
+      bash(`${ENGINE} topic start pay discussion pay`),
+      bash("cd . && cat > .workflows/pay/discussion/pay.txt << 'EOF' body EOF mv .workflows/pay/discussion/pay.txt .workflows/pay/discussion/pay.md"),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['topic start pay discussion pay', 'write:.workflows/pay/discussion/pay.md'],
+    });
+    assert.equal(result.ok, true, result.detail);
+  });
+
   it('never lets a Bash call that merely names the path satisfy a write: token', () => {
     const rows = [
       bash(`${ENGINE} topic start pay discussion pay`),
@@ -317,6 +356,30 @@ describe('calls_in_order — presence is not sequence', () => {
     ];
     const [result] = invariants.check(rows, {
       calls_in_order: ['topic start pay discussion pay', 'write:.workflows/pay/discussion/pay.md'],
+    });
+    assert.equal(result.ok, false);
+  });
+
+  it('lets a compound Bash call satisfy consecutive entries in its own order', () => {
+    // Observed live: the approval row and the gate-mode write, two calls
+    // in the prose, issued as one `a && b` — they ran in that order.
+    const rows = [
+      bash(`${ENGINE} render proposed-task pay.implementation.pay --gate gated`),
+      bash(`${ENGINE} manifest set pay.implementation.pay staging.c1.tasks.1 approved && ${ENGINE} manifest set pay.implementation.pay analysis_gate_mode auto`),
+      bash(`${ENGINE} manifest push pay.implementation.pay machine_phases 2`),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['--gate gated', 'staging.c1.tasks.1 approved', 'analysis_gate_mode auto', 'machine_phases 2'],
+    });
+    assert.equal(result.ok, true, result.detail);
+  });
+
+  it('never lets a compound Bash call satisfy entries it ran reversed', () => {
+    const rows = [
+      bash(`${ENGINE} manifest set pay.implementation.pay analysis_gate_mode auto && ${ENGINE} manifest set pay.implementation.pay staging.c1.tasks.1 approved`),
+    ];
+    const [result] = invariants.check(rows, {
+      calls_in_order: ['staging.c1.tasks.1 approved', 'analysis_gate_mode auto'],
     });
     assert.equal(result.ok, false);
   });
@@ -406,6 +469,11 @@ describe('declaration validation', () => {
       invariants.declarationErrors({ calls_exclude: ['write:.workflows/pay/discussion/pay.md'] })[0],
       /cannot carry write: tokens/,
     );
+  });
+
+  it('rejects a calls_in_order entry that spans a statement separator', () => {
+    const errors = invariants.declarationErrors({ calls_in_order: ['a && b', 'c'] });
+    assert.match(errors[0], /cannot span a statement separator/);
   });
 
   it('rejects a write: token with no path', () => {

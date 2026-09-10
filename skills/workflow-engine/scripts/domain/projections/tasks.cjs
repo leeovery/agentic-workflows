@@ -135,6 +135,20 @@ function cycleLimitDisplay(total, limit) {
   );
 }
 
+/**
+ * The one-line confirmation that a pass corrected the specification — the
+ * count is the session's (it landed the corrigenda), so it rides the call.
+ * @param {number} count
+ * @returns {string}
+ */
+function specCorrectionsDisplay(count) {
+  return section(
+    'DISPLAY: spec corrections',
+    CONTINUE_INSTRUCTION,
+    `${count} spec correction${count === 1 ? '' : 's'} recorded.`,
+  );
+}
+
 /** The analysis cycle-limit gate menu. Static by design. @returns {string} */
 function cycleGateMenu() {
   return section(
@@ -147,4 +161,4 @@ function cycleGateMenu() {
   );
 }
 
-module.exports = { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu };
+module.exports = { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu };

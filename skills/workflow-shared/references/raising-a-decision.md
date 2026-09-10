@@ -20,13 +20,23 @@ Sections A through D run in order. Always start at **A. Dispose**.
 
 ## A. Dispose
 
-The staging proposed; this session disposes. Re-derive the Decision against the bar — it stands only when the fork lives at product level (what the product's user gets or how it behaves, never how the tree achieves it), the costs conflict irreducibly (no measurement, convention, spec entry, or further trace breaks the tie), a side visibly costs the user (a fork every side of which leaves the user well served is a preference, not a decision — settled on whatever convention or precedent leans, an honest call where none does), and the tie-break is the user's — with the context the staging lacked: user rulings, deferrals, ground that has moved — proposals approved earlier in this same walk included. The Stakes line is the staging's argument, never its evidence: a cost it asserts is read against the tree before it counts, and a cost the tree shows hypothetical — a path no input the product actually receives reaches — carries nothing. And a side no informed user would choose is not a side: a fork with one live side is settled.
+The staging proposed; this session disposes. Re-derive the Decision against the bar, with the context the staging lacked — user rulings, deferrals, ground that has moved, and the proposals approved earlier in this same walk. It stands only when every prong holds:
+
+- **Product level** — the fork is what the product's user gets or how it behaves, never how the tree achieves it.
+- **Irreducible** — no measurement, convention, spec entry, or further trace breaks the tie.
+- **A side visibly costs the user** — a fork every side of which leaves the user well served is a preference, not a decision.
+- **The tie-break is the user's.**
+
+Two rules govern the evidence:
+
+- **The Stakes line is the staging's argument, never its evidence.** A cost it asserts is read against the tree before it counts; a cost the tree shows hypothetical — a path no input the product actually receives reaches — carries nothing.
+- **A side no informed user would choose is not a side.** A fork with one live side is settled.
 
 A surviving Decision whose staged block lacks a Stakes line gains one now, in `{staging_file}`, from this re-derivation.
 
 #### If the Decision falls below the bar
 
-Settle it: investigate or derive, and rewrite the staged proposal in `{staging_file}` — Solution becomes the settled direction with its derivation; the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
+Settle it on what leans — the convention or precedent, searched for in the tree and the plan's landed criteria before any call is made; the staging's `(recommended)` marker is its argument, never a ground; an honest call only where nothing leans. Rewrite the staged proposal in `{staging_file}` — Solution becomes the settled direction with its derivation naming what decided it; the Decision and Stakes lines go. The caller's loop re-presents it as a plain proposal.
 
 → Return to caller.
 
