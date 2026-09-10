@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.33] - 2026-09-10
+
+✨ Added
+- Analysis and consolidation findings now name the concrete failure they prevent, and comment-only fixes are corrected in place instead of becoming tasks.
+- A single "Corrections" task now bundles one-line fixes from a pass instead of spawning a separate task per line.
+- A later analysis or consolidation pass no longer reverses a direction an earlier pass already approved unless a measurement, the spec, or a project rule proves it wrong.
+- Consolidation tasks that route call sites through a shared helper now measure and convert the complete set, and review re-checks the count.
+
+🔧 Changed
+- Cross-task consolidation opportunities are now banked only while a plan phase's own tasks are running, and get cleared out cleanly at the phase boundary instead of carrying forward as residue.
+- The end-of-implementation analysis loop's cycle cap now counts across the topic's whole lifetime instead of resetting every session, so restarting a session no longer dodges the convergence check.
+- Test files are now flagged in review only for genuine failure risks (broken guards, flaky tests, isolation holes) — not for naming, symmetry, or reuse preferences.
+
 ## [0.7.32] - 2026-09-07
 
 🐛 Fixed
