@@ -19,7 +19,7 @@ const { titlecase, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = 
 const { section, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
-const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
+const { blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbNameGate, absorbConfirmGate, planTopicsMenu } = require('./projections/start.cjs');
 const {
@@ -4181,6 +4181,19 @@ function cycleLimit(cwd, args) {
   return cycleLimitDisplay(total, CYCLE_LIMIT);
 }
 
+/**
+ * The spec-correction confirmation. Address-free: the count is the session's
+ * own (the corrigenda it just landed), never manifest state.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function specCorrections(_cwd, args) {
+  const count = Number(args.count);
+  if (args.count === undefined || !Number.isInteger(count) || count < 1) {
+    throw new Error(`render spec-corrections: --count must be a whole number of at least 1, got ${JSON.stringify(args.count)}`);
+  }
+  return specCorrectionsDisplay(count);
+}
+
 /** @returns {string} */
 function blockedTasks() {
   return blockedTasksMenu();
@@ -4769,6 +4782,7 @@ const SURFACES = {
   'fix-gate': fixGate,
   'blocked-tasks': blockedTasks,
   'cycle-limit': cycleLimit,
+  'spec-corrections': specCorrections,
   'cycle-gate': cycleGate,
   'workunit-receipt': workunitReceiptSurface,
   'topic-receipt': topicReceiptSurface,

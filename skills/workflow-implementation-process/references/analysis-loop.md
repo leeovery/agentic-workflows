@@ -211,7 +211,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} pending
    ```
 
-   An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed, confirm in one line total — `{count} spec correction(s) recorded.` — never a per-correction recap; nothing when none did.
+   An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed — nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim as a code block:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render spec-corrections --count {count}
+   ```
 
    **Otherwise:** nothing to settle — continue.
 2. **Apply the comment corrections** — each `## Comment Corrections` entry with the Edit tool: its OLD text replaced by its NEW text at the named file, verbatim; an empty NEW deletes the comment. A correction whose NEW text is already in place was applied by an earlier run — skip it silently; one whose OLD text is otherwise absent is dropped — name the dropped ones in one line. Commit the files a correction changed as a code commit; nothing when none changed:

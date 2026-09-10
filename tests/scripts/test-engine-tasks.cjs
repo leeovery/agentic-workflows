@@ -1363,6 +1363,19 @@ describe('engine render task surfaces', () => {
     createManifest(dir, 'auth', { phases: within });
     assert.match(renderFails(['cycle-limit', 'auth.implementation.auth-flow']).error, /within the cycle limit/);
   });
+  it('spec-corrections renders the one-line confirmation, plural by count, refusing below one', () => {
+    assert.strictEqual(
+      render(['spec-corrections', '--count', '1']),
+      [
+        '=== DISPLAY: spec corrections (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+        '1 spec correction recorded.',
+        '',
+      ].join('\n'));
+    assert.match(render(['spec-corrections', '--count', '3']), /^3 spec corrections recorded\.$/m);
+    assert.match(renderFails(['spec-corrections', '--count', '0']).error, /at least 1/);
+    assert.match(renderFails(['spec-corrections', '--count', 'two']).error, /at least 1/);
+    assert.match(renderFails(['spec-corrections']).error, /at least 1/);
+  });
 });
 
 describe('engine task usage', () => {

@@ -2136,6 +2136,11 @@ describe('pipeline simulation', () => {
       'the fourth cycle on the topic trips the lifetime limit');
     assert.match(sim.render(['cycle-limit', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /Analysis cycle 4 on this topic — over the cycle limit of 3/, 'the callout names the lifetime count');
+    // A pass that corrected the specification confirms it in one engine line
+    // (analysis-loop.md E, consolidation-pass.md B, review-actions-loop.md C).
+    assert.match(sim.render(['spec-corrections', '--count', '1'], { expect: 'content' }),
+      /^1 spec correction recorded\.$/m, 'the confirmation is singular for one');
+    sim.refuses(['render', 'spec-corrections', '--count', '0'], /at least 1/);
 
     // The ad hoc plan-changes gate stages under its own family key (ad-hoc-plan-changes.md E/F)
     // and renders the shared proposed-task surface without the synthesis-only fields.

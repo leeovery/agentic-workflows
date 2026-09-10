@@ -285,6 +285,7 @@ Commands:
   render fix-gate          <wu.implementation.topic>
   render blocked-tasks
   render cycle-limit       <wu.implementation.topic>
+  render spec-corrections  --count <N>
   render cycle-gate
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
   render topic-receipt     <wu.phase.topic> --verb complete|cancel|reactivate [--warn]

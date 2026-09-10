@@ -214,7 +214,7 @@ engine session repair                               # boot's stranded-label pass
 engine session cleanup [session-id]                 # SessionEnd hook target; reads stdin JSON when no argument
 ```
 
-**`task`** — implementation-task bookkeeping: format-blind, manifest-side only. The engine never reads or writes a task backend and knows no plan-format names — the session does the plan surgery, these commands record it against `phases.implementation.items.{topic}`. Each command is load → apply → save plus one decision-ready JSON line; no git commit (the session's per-task commit cadence picks the manifest change up). The loop's brief, result header, and gate sections are served by their own `render` surfaces (`task-brief`, `task-result`, `task-gate`, `fix-gate`, `blocked-tasks`, `cycle-limit`, `cycle-gate`), fetched at the stage that displays them.
+**`task`** — implementation-task bookkeeping: format-blind, manifest-side only. The engine never reads or writes a task backend and knows no plan-format names — the session does the plan surgery, these commands record it against `phases.implementation.items.{topic}`. Each command is load → apply → save plus one decision-ready JSON line; no git commit (the session's per-task commit cadence picks the manifest change up). The loop's brief, result header, and gate sections are served by their own `render` surfaces (`task-brief`, `task-result`, `task-gate`, `fix-gate`, `blocked-tasks`, `cycle-limit`, `spec-corrections`, `cycle-gate`), fetched at the stage that displays them.
 
 ```bash
 engine task init <work-unit> <topic>                       # create-or-resume the implementation item
@@ -377,6 +377,7 @@ engine render task-gate <wu>.implementation.<topic>               # the task loo
 engine render fix-gate <wu>.implementation.<topic>                # the fix approval gate over the in-flight current_task: MENU: fix gate when fix_gate_mode is gated or fix_attempts is at the threshold (the a/auto and b/bounded options render only while gated), DISPLAY: fix gate auto-accepted (the continuation line) when auto or bounded below the threshold
 engine render blocked-tasks                                       # the blocked-tasks stop menu — static; the blocked-task list is plan-format state the session renders, this menu carries the decision
 engine render cycle-limit <wu>.implementation.<topic>             # the ⚑ over-limit callout over analysis_cycle_total; refuses within the cycle limit
+engine render spec-corrections --count <N>                        # the one-line confirmation that a pass corrected the specification N times — the count is the session's (it landed the corrigenda); refuses below 1
 engine render cycle-gate                                          # the analysis cycle-limit menu — static
 engine render workunit-receipt <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]  # lifecycle confirmation from manifest state (--pipeline: the bridge's "{Type} Completed" banner; pivot: advisory-only); refuses when the state doesn't match the verb
 engine render topic-receipt <wu>.<phase>.<topic> --verb complete|cancel|reactivate [--warn]  # topic lifecycle confirmation (complete: advisory-only, empty without --warn; reactivate reads the restored status)
