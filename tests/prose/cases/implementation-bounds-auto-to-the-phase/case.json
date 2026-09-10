@@ -70,6 +70,7 @@
       "impl(pay): Tpay-1-2",
       "commit --paths",
       "manifest get pay.implementation.pay consolidation_gate_mode",
+      "manifest get pay.implementation.pay staging",
       "manifest get pay.implementation.pay bank",
       "phase 1 consolidation — findings",
       "staging.p1.tasks.1=pending",

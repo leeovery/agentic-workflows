@@ -40,8 +40,10 @@ The prose should have taken this path:
    dispatches the consolidation finder for phase 1; the finder stub
    writes the findings file and returns STATUS findings with the
    banked entry confirmed; the findings commit picks the file up
-9. the orchestrator judges: it loads the floor and the one finding
-   names its failure, so it stands; no spec defect is recorded, so no
+9. the orchestrator judges: it loads the floor, derives the settled
+   directions from the prelude's staging read — no earlier walk, so
+   nothing is there to reverse — and the one finding names its failure, so it stands; no
+   spec defect is recorded, so no
    specification file is touched; no comment correction is recorded,
    so no source file is edited and no corrections commit runs; the one finding folds into one
    staged proposal at proposal altitude — title, placement, class
@@ -57,9 +59,9 @@ The prose should have taken this path:
     invokes the task author over the staging file, and only once it
     has returned the task writer, which creates tasks/pay-1-3.md in
     phase 1, appends its row to the Phase 1 table (the Phase 2 table
-    is untouched), and records task_map.pay-1-3; the bank is emptied —
-    the manifest holds one, so the field is deleted whole — and the
-    consolidation commits land — the staging file
+    is untouched), and records task_map.pay-1-3; then the bank is emptied — the manifest
+    holds one, so the field is deleted whole — and the consolidation
+    commits land — the staging file
     under the implementation topic, the tasks with --plan; the pass
     returns to the loop without recording the phase
 12. the loop's next fetch orders by phase and sees pay-1-3 ahead of
@@ -131,8 +133,10 @@ Further claims:
 - the manifest's implementation item ends with pay-1-1, pay-1-2,
   pay-1-3, and pay-2-1 in completed_tasks, current_task null,
   current_phase 2, completed_phases holding 1 and 2,
-  consolidated_phases holding 1 and 2, every gate mode gated, and no
-  bank field — deposited once, emptied at phase 1's boundary
+  consolidated_phases holding 1 and 2, every gate mode gated, no bank
+  field — deposited once, emptied at phase 1's boundary — and no
+  directions field: settled directions are read from the staging files,
+  never stored
 - staging.p1.tasks.1 ends approved with no other staging.p1 row; no
   staging.p2 subtree exists
 - consolidation-findings-p1.md and consolidation-tasks-p1.md both exist

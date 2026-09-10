@@ -39,8 +39,10 @@ The prose should have taken this path:
     failure it prevents, one comment correction — and returns STATUS
     findings with the banked entry confirmed; the findings commit
     runs (the file was written) and picks it up
-11. the orchestrator judges: it loads the floor and the one finding
-    names its failure, so it stands; the findings file records no spec
+11. the orchestrator judges: it loads the floor, derives the settled
+    directions from the prelude's staging read — no earlier walk, so
+    nothing is there to reverse — and the one finding names its failure, so it stands; the
+    findings file records no spec
     defect, so nothing is routed to the historical-artifact
     correction and no specification file is touched; the one comment
     correction is applied with the Edit tool — the webhook header at
@@ -72,9 +74,11 @@ The prose should have taken this path:
     with the per-task consolidation-boundary placement; the writer
     stub creates tasks/pay-1-3.md carrying the authored body,
     appends the planning row, and records task_map.pay-1-3
-14. the bank is emptied — the manifest holds one, so the field is
-    deleted whole; its one entry is now the staged task — and the
-    consolidation commits land via the engine: the staging file under
+14. nothing is pushed for directions — a later pass reads them from the
+    staging file — then the bank is
+    emptied — the manifest holds one, so the field is deleted whole; its
+    one entry is now the staged task — and the consolidation commits
+    land via the engine: the staging file under
     the implementation topic, the tasks with --plan
 15. the loop's next fetch sees pay-1-3: started, briefed, executed
     by the consolidation executor stub, reviewed by the reviewer
@@ -104,7 +108,9 @@ Further claims:
 - the manifest's implementation item ends with all three internal
   ids in completed_tasks, current_task null, phase 1 in both
   completed_phases and consolidated_phases, every gate mode gated,
-  and no bank field — deposited once, emptied at the boundary
+  no bank field — deposited once, emptied at the boundary — and no
+  directions field: settled directions are read from the staging files,
+  never stored
 - staging.p1.tasks.1 ends approved; no other staging.p1 row exists
 - consolidation-findings-p1.md and consolidation-tasks-p1.md both
   exist in the implementation directory, the staging file carrying

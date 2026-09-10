@@ -31,8 +31,9 @@ The prose should have taken this path:
    unescaped. One returns findings, so the all-clean arm never applies:
    the findings commit lands scoped to the implementation topic, and
    the bank is never read
-8. the synthesizer dispatches with work unit, topic and cycle number
-   and stages two proposals — the webhook guard as a plain proposal whose Solution
+8. the manifest's staging is read — absent, so the print is empty — and
+   the synthesizer dispatches with work unit, topic, cycle number and
+   the floor's path, no settled directions; it stages two proposals — the webhook guard as a plain proposal whose Solution
    carries the settled direction (look the intent up; log and
    acknowledge a miss), and the reference proposal carrying a
    **Decision** line, a **Stakes** line, and two sides written as
@@ -93,7 +94,10 @@ The prose should have taken this path:
     the phase label `Analysis (Cycle 1)` as its placement and the
     approved numbers read back from the manifest; the stub creates
     tasks/pay-2-1.md and tasks/pay-2-2.md, appends the new phase with
-    two rows to the planning file, and records both task_map entries
+    two rows to the planning file, and records both task_map entries;
+    nothing is pushed for directions — a later pass reads them from this
+    staging file, whose second Solution is the refusal the walk settled,
+    never the escaped-support side the staging recommended
 16. the planning item already carries storage_paths, so it is not
     recorded again. Two commits land in order: the staging file under
     the implementation topic, then the tasks with --plan
@@ -131,8 +135,8 @@ Further claims:
   consolidation_gate_mode all stay gated
 - the manifest's implementation item ends with analysis_cycle_total 1,
   completed_tasks still exactly pay-1-1 and pay-1-2, current_task empty,
-  completed_phases and consolidated_phases both still exactly [1], and
-  no bank field
+  completed_phases and consolidated_phases both still exactly [1], no
+  bank field, and no directions field
 - all three findings files exist for cycle 1 — the duplication and
   architecture ones recording no findings, the standards one recording
   two — alongside the report and the staging file
