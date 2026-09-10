@@ -1769,11 +1769,13 @@ function findingsSummary(cwd, { dotpath, file }) {
 
 // review-presentation — the review's outcome, after the do-now work has
 // been applied. What is listed is only what the user acts on: the findings
-// that failed the review and must be planned. Corrections are a count —
-// they are already made, gated by the suite and verified, so a list would
-// put pages nobody reads in front of the one decision that matters. The
-// judgment (which items, worded how) rides as the payload; the shape is
-// this surface's rule, so it cannot drift per verdict or per author.
+// that failed the review and must be planned, and — as a count, named in
+// the report — the criteria the review could not measure. Corrections are
+// a count — they are already made, gated by the suite and verified, so a
+// list would put pages nobody reads in front of the one decision that
+// matters. The judgment (which items, worded how) rides as the payload;
+// the shape is this surface's rule, so it cannot drift per verdict or per
+// author.
 
 /**
  * @param {string} cwd
@@ -1852,6 +1854,13 @@ function reviewPresentation(cwd, { dotpath, file }) {
   }
   if (Number(p.discarded) > 0) {
     tail.push(`Discarded: ${p.discarded} — reasons in the report.`);
+  }
+  if (p.not_measured !== undefined) {
+    const n = p.not_measured;
+    if (!Number.isInteger(n) || n < 0) {
+      throw new Error('render review-presentation: "not_measured" must be a non-negative integer');
+    }
+    if (n > 0) tail.push(`Not measured: ${n} criteri${n === 1 ? 'on' : 'a'} — named in the report.`);
   }
   if (tail.length) body.push(tail.join('\n'));
   if (body.length) {
