@@ -4,19 +4,19 @@
 
 ---
 
-The verifiers each saw one task. Nothing upstream knows that six findings target one sentence, that a fix would breach a guard expressed three packages away, or that a finding names a helper the tree does not contain. This step establishes all of that before anything is written or applied.
+Each verifier saw one task or one section. Nothing upstream knows that six findings target one sentence, that a fix would breach a guard expressed three packages away, that a section's finding and a task's finding name the same defect, or that a finding names a helper the tree does not contain. This step establishes all of that before anything is written or applied.
 
 Every agent here is read-only. They judge; nothing is edited.
 
 ## A. Collect the Findings
 
-Read the `report-*.md` files in `.workflows/{work_unit}/review/{topic}/` and collect the FINDINGS entries. Blocking issues are already handled by the verdict and are not prepped.
+Read the `report-*.md` files and this cycle's `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/` — `{N}` as **A. Derive Sections** of **[invoke-change-set-verifiers.md](invoke-change-set-verifiers.md)** derives it — and collect the FINDINGS entries from both streams. Blocking issues are already handled by the verdict and are not prepped.
 
-**When `unreviewed_tasks` is set and the review file already exists** (a later cycle over remediation work), collect only from those tasks' reports — the earlier cycle's findings were already resolved, and re-collecting them would redo decided work. With no review file on disk the cycle never completed: collect from every report, whatever `unreviewed_tasks` holds.
+**When `unreviewed_tasks` is set and the review file already exists** (a later cycle over remediation work), collect from those tasks' reports and from this cycle's change-set files — the earlier cycle's findings, its change-set files' included, were already resolved, and re-collecting them would redo decided work. With no review file on disk the cycle never completed: collect from every report and from this cycle's change-set files, whatever `unreviewed_tasks` holds.
 
 Each finding arrives carrying its scope (`[in-scope]` or `[out-of-scope]`), its blast radius (`[contained]` or `[spreading]`), and the failure it names. Those are the verifier's calls, made with the code open — carry them through untouched.
 
-Give each finding a stable id of `{phase_id}-{task_id}-{n}` — its report's task suffix plus its position in that report's list, so an action always traces back to the verifier that raised it.
+Give each finding a stable id — `{phase_id}-{task_id}-{n}` for a per-task report's finding (its task suffix plus its position in that report's list), `{section-slug}-{n}` for a change-set file's (its section slug plus its position in that file's list) — so an action always traces back to the verifier that raised it.
 
 #### If no findings were collected
 
@@ -88,12 +88,12 @@ Read `actions.json`. It is the input to the review document and to every step th
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} out_of_scope '{action json}'
 ```
 
-Commit the durable dirt of verification and prep — the per-task reports and the manifest — so the apply that follows starts from a clean tree and a crash from here forward loses nothing expensive:
+Commit the durable dirt of verification and prep — the per-task reports, the change-set files, and the manifest — so the apply that follows starts from a clean tree and a crash from here forward loses nothing expensive:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): verification and prep" --topic review/{topic}
 ```
 
-The findings are never rewritten or deleted — the per-task reports stand as the record of what was raised. What prep produces is the layer above them: what survived, what merged, what was corrected, and what was discarded with its reason.
+The findings are never rewritten or deleted — the per-task reports and the change-set files stand as the record of what was raised. What prep produces is the layer above them: what survived, what merged, what was corrected, and what was discarded with its reason.
 
 → Return to caller.

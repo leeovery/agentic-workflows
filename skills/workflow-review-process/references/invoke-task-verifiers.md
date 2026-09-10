@@ -140,7 +140,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}
    - Collect all test issues (under/over-tested)
    - Collect all code quality concerns
    - Include specific file:line references
-   - Check overall plan completion (see [review-checklist.md](review-checklist.md) — Plan Completion Check)
 3. Collect every `UNSETTLED` entry other than `- None` into `.workflows/.cache/{work_unit}/review/{topic}/unsettled.txt` with the Write tool — one block per criterion, opening with `[{task suffix}]` and carrying the entry verbatim. When there are none, delete any `unsettled.txt` an earlier run left there and write nothing: the executing pass treats an absent file as no unsettled criteria
 
 > **CHECKPOINT**: Do not proceed until ALL task verifiers have returned and findings are aggregated.

@@ -15,23 +15,50 @@ The prose should have taken this path:
    each report lands at its task's suffix, each return is complete with
    nothing found
 5. both verified task ids are pushed onto the reviewed list, and the
-   aggregation reads every per-task report
-6. findings prep collects nothing — neither report carries a finding —
-   so it returns without assessing, and no prep agent is dispatched
-7. the do-now apply finds no actions and returns without announcing,
+   aggregation reads every per-task report — no criterion was recorded
+   as unsettled, so no unsettled file is written
+6. the change-set verification splits the specification — it has no
+   numbered sections, so the split is one section named for the
+   document and the test surface — finds neither of this cycle's files
+   (`change-set-c1-…`) already written, gathers the brief (the first
+   task commit and the file list, the linter names — the fixture
+   declares none — the project skills, the finding floor path, and the
+   statement that nothing was unsettled, since no unsettled file
+   exists), and dispatches the two agents in parallel — stubbed: each
+   section's file is clean, carrying a coverage map and no finding; the
+   tree is checked with nothing outside `.workflows/` modified or
+   untracked, the reconciliation reads both section files from disk and
+   finds nothing to reconcile, and no `not-measured.txt` is written
+7. findings prep collects nothing — neither per-task report nor either
+   section file carries a finding — so it returns without assessing,
+   and no prep agent is dispatched
+8. the do-now apply finds no actions and returns without announcing,
    dispatching, or committing anything
-8. the review report is produced from the template with a Pass verdict
-   and no findings section, and committed
-9. the outcome renders through the review presentation surface as a
+9. the review report is produced from the template with a Pass verdict
+   and no findings section — its Specification Compliance carrying the
+   two sections' coverage maps as their files record them, its Plan
+   Completion's bold `Criteria not measured` line reading `none` — and
+   committed
+10. the outcome renders through the review presentation surface as a
    pass with nothing listed and nothing counted, and the summary
    follows product-first; at the review gate the user completes
-10. the compliance self-check refreshes the session's instructions;
+11. the compliance self-check refreshes the session's instructions;
    the actions loop reads the Pass verdict, the review completes
    through the engine, the completion commit lands, and the walk stops
    at the pipeline continuation — the bridge is never invoked
 
 Further claims:
 
+- the change-set verification is dispatched exactly once, after both
+  task verifiers have returned and coverage is pushed, and before
+  findings prep — its section files exist before prep reads anything
+- the section agents are given the specification path, the change-set,
+  the project's conventions, the finding floor path and the statement
+  that there are no unsettled criteria — never a per-task report
+- the working tree is checked after the section agents return, and the
+  review continues only because nothing outside `.workflows/` is
+  modified or untracked — the review's own uncommitted reports and
+  section files under `.workflows/` do not stop it
 - no synthesis is offered or dispatched — the pass arm never routes
   to it
 - no prep, apply or inbox work happens: with nothing found there is
@@ -45,8 +72,13 @@ Further claims:
 EXPECTED WORLD — from an implemented feature with no review:
 
 - a review report at `.workflows/pay/review/pay/report.md` holding a
-  Pass verdict over both tasks, plus one per-task report file for
-  each task suffix, each recording complete with no blocking issues
+  Pass verdict over both tasks, a Specification Compliance section
+  carrying the two coverage maps, and a Plan Completion whose
+  criteria-not-measured line reads `none`; plus one per-task report
+  file for each task suffix, each recording complete with no blocking
+  issues, and the two change-set files for this cycle —
+  `change-set-c1-specification.md` and `change-set-c1-test-surface.md`
+  — each clean with its coverage map
 - the manifest holding the review completed, with reviewed_tasks
   carrying both internal ids
 - the plan, tasks, specification, and source files untouched; no

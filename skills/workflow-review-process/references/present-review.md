@@ -19,11 +19,12 @@ Write it with the Write tool to `.workflows/.cache/{work_unit}/review/{topic}/pr
   "corrected": {"applied": 0, "reverted": 0, "suite": "green|red"},
   "replan": [{"summary": "…", "ref": "file:line", "fails": "…"}],
   "out_of_scope": 0,
-  "discarded": 0
+  "discarded": 0,
+  "not_measured": 0
 }
 ```
 
-`corrected` is omitted when nothing was applied; `replan` carries entries only on a fail; `out_of_scope` is the count of findings banked in the manifest. Each `summary` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism. What is listed and what is counted is the surface's rule, not a judgment made here.
+`corrected` is omitted when nothing was applied; `replan` carries entries only on a fail; `out_of_scope` is the count of findings banked in the manifest; `not_measured` is the count of blocks in `.workflows/.cache/{work_unit}/review/{topic}/not-measured.txt` — omitted or `0` when the file is absent. Each `summary` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism. What is listed and what is counted is the surface's rule, not a judgment made here.
 
 Render and emit every section verbatim per its marker — the title, the verdict, and the findings:
 
@@ -67,6 +68,6 @@ On return: → Return to **B. Review Gate**.
 
 #### If ask
 
-Answer the question using the review file, the per-task reports, the specification, and the plan as context.
+Answer the question using the review file, the per-task reports, this cycle's change-set files, the specification, and the plan as context.
 
 → Return to **B. Review Gate**.

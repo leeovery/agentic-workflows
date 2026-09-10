@@ -18,12 +18,18 @@
 ## QA Verification
 
 ### Specification Compliance
-[Implementation aligns with specification / Note any deviations]
+[One sub-heading per change-set section, carrying that section's COVERAGE entries as its file records them; a section whose agent failed is named as not covered. The change-set files stay authoritative]
+
+#### {Section name}
+- [The section's coverage entries — the property, where it lives, how it was checked]
 
 ### Plan Completion
 - [ ] Phase N acceptance criteria met
 - [ ] All tasks completed or deliberately discarded (list any skipped/cancelled tasks here — discards are disclosed, never silent)
 - [ ] No scope creep
+
+**Criteria not measured**
+[The criteria neither reading nor the change-set verification could settle — each quoted with its task suffix — or `none` when every criterion was settled or measured]
 
 ### Code Quality
 [Issues or "No issues found"]

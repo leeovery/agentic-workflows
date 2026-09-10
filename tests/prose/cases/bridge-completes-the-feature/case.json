@@ -20,6 +20,7 @@
     "skills/workflow-knowledge/references/knowledge-usage.md",
     "skills/workflow-review-process/references/invoke-task-verifiers.md",
     "skills/workflow-review-process/references/review-checklist.md",
+    "skills/workflow-review-process/references/invoke-change-set-verifiers.md",
     "skills/workflow-review-process/references/prep-findings.md",
     "skills/workflow-review-process/references/apply-do-now.md",
     "skills/workflow-review-process/references/produce-review.md",
@@ -35,7 +36,8 @@
     "c — continue to review actions"
   ],
   "stubs": {
-    "review-task-verified": "each time a task verifier is dispatched via the Task tool — write the content below to that task's report file and return the STATUS block; one firing per task"
+    "review-task-verified": "each time a task verifier is dispatched via the Task tool — write the content below to that task's report file and return the STATUS block; one firing per task",
+    "change-set-section-clean": "when a change-set verifier for any section — the document section, the test surface — is dispatched via the Task tool; one firing per section — write the content below to that section's file with its SECTION line filled and return the status stated"
   },
   "invariants": {
     "engine_before_write": true,
@@ -45,6 +47,8 @@
       "topic start pay review pay",
       "impl(pay): T",
       "push pay.review.pay reviewed_tasks",
+      "manifest get pay.implementation.pay linters",
+      "git status",
       "review(pay): complete review",
       "topic complete pay review pay",
       "review(pay): complete review phase",
@@ -58,6 +62,8 @@
       "topic start pay review pay",
       "impl(pay): T",
       "push pay.review.pay reviewed_tasks",
+      "write:.workflows/pay/review/pay/change-set-",
+      "git status",
       "review(pay): complete review",
       "topic complete pay review pay",
       "review(pay): complete review phase",
