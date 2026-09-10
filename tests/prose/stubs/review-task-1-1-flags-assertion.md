@@ -37,7 +37,10 @@ CODE QUALITY:
 - Issues: one assertion that cannot fail
 
 BLOCKING ISSUES:
-- none
+- None
 
 FINDINGS:
 - [in-scope] [contained] tests/checkout/payment-intent.test.js:5-6 — the test builds `intent` locally and asserts its own literal back; build it through `createPaymentIntent(order)` and assert the gateway payload instead — FAILS: the test stays green whatever the intent builder sends
+
+UNSETTLED:
+- None
