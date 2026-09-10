@@ -20,8 +20,8 @@ The prose should have taken this path:
    loop, emits its heading and blurb, and enters at the cycle gate
 6. none of the cycle gate's crash-resume guards match — no staging
    subtree, no analysis staging file on disk, no previous cycle — so the
-   cycle records: the engine returns cycle 1, session 1, not over the
-   session limit, gate gated. No cycle-limit display, no convergence
+   cycle records: the engine returns cycle 1, not over the
+   cycle limit, gate gated. No cycle-limit display, no convergence
    analysis and no cycle gate menu are produced, and no scripted answer
    is consumed there
 7. the git checkpoint runs and finds nothing to checkpoint: the only path
@@ -35,11 +35,10 @@ The prose should have taken this path:
    analysis agents dispatch in parallel, each with the same inputs and
    cycle number 1, and each stub writes its own findings file. Two return
    findings, so the all-clean arm never applies: the findings commit
-   lands scoped to the implementation topic, the bank is read and prints
-   empty, and the flow proceeds to the synthesis
+   lands scoped to the implementation topic and the flow proceeds to
+   the synthesis — the bank is never read
 9. the synthesizer is dispatched with work unit, topic and cycle number
-   and no banked residue — the bank field is absent, so nothing is passed
-   and the bank is never deleted. The stub writes the report and the
+   and nothing else. The stub writes the report and the
    staging file and returns tasks_proposed with two. The gate state
    initialises in ONE batched write — both rows pending — and only then
    does the synthesis commit land

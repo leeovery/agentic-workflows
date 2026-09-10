@@ -18,7 +18,7 @@ Emit the call's MENU section verbatim per its marker.
 
 #### If `yes`
 
-**If the manifest still holds a `bank`** (`manifest exists {work_unit}.implementation.{topic} bank` — a session exited the analysis loop with residue undecided): delete it — implementation is over and the residue's consumer with it:
+**If the manifest still holds a `bank`** (`manifest exists {work_unit}.implementation.{topic} bank` — a boundary pass interrupted before it emptied it): delete it — no pass follows implementation:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank

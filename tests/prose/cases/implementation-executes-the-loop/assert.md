@@ -62,8 +62,9 @@ The prose should have taken this path:
     label with no resume state, and dispatches the consolidation
     finder — the stub returns clean with no file, so no findings
     commit runs; the clean announce renders
-18. the pass records the phase: nothing to pull from the bank (no
-    entry was ever deposited), consolidated_phases gains 1, the
+18. the pass records the phase: the bank check finds no field (no
+    entry was ever deposited) so nothing is deleted, consolidated_phases
+    gains 1, the
     plan-side phase completion lands via the format's updating
     transition, the engine re-records pay-1-2 with --phase 1
     --phase-complete, and the scoped commit closes the pass

@@ -462,8 +462,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', '--paths', `src/${topic}-untouched.js`, '-m', `chore(${topic}): the rest`,
     '--for', wu, `implementation/${topic}`]);
   // Each executor and reviewer report's BANK entries deposit the moment the
-  // report arrives (task-loop B/D) — durable on the manifest, drained at the
-  // phase boundary.
+  // report arrives (bank-deposit.md, loaded while `do_banking` is true) —
+  // durable on the manifest, emptied at the phase boundary.
   const bankPush = sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
     `{"task":"${topic}-1-1","source":"executor","summary":"helper duplicated from a sibling task","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}`]);
   assert.strictEqual(bankPush.length, 1, 'first bank deposit creates the array');
@@ -473,16 +473,24 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.strictEqual(bank.length, 2, 'bank accumulates entries');
   assert.strictEqual(bank[0].source, 'executor', 'entries store as objects, not strings');
   // Phase boundary: the completion defers its flag, the consolidation pass
-  // verdicts the banked entries residue (they ride to the end-of-implementation
-  // analysis), and the re-record closes the phase (consolidation-pass.md F).
+  // empties the bank — every entry folded into a finding or dropped by the
+  // finder — marks the boundary, and the re-record closes the phase
+  // (consolidation-pass.md F). Nothing crosses the boundary.
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
+  assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${topic}`, 'bank']), 'true',
+    'the guard reads the field before the delete — an absent bank refuses the delete');
+  sim.run(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank']);
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
   assert.strictEqual(sim.manifest(wu).phases.implementation.items[topic].current_task, null,
     'a closed phase leaves no task in flight');
-  // The analysis loop's synthesizer consumes the residue (invoke-synthesizer.md);
-  // conclude's hygiene covers a loop that never got its verdicts in.
-  sim.run(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank']);
+  assert.strictEqual('bank' in sim.manifest(wu).phases.implementation.items[topic], false,
+    'the boundary leaves no bank behind');
+  // Conclude's backstop (conclude-implementation.md) guards the same way: the
+  // field is gone, so the delete is never issued — and would refuse if it were.
+  assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${topic}`, 'bank']), 'false',
+    'nothing for the backstop to delete');
+  sim.refuses(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank'], /not found/);
   sim.render(['conclude-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 
@@ -2049,8 +2057,9 @@ describe('pipeline simulation', () => {
     // point resumes at task creation, never a re-sweep.
     sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'consolidated_phases', '1']);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`, `task_map.${wu}-1-3`, `${wu}-1-3`]);
-    // The folded bank entry is consumed once its task exists in the plan.
-    sim.run(['manifest', 'pull', `${wu}.implementation.${wu}`, 'bank', bankEntry]);
+    // The bank empties once the tasks exist in the plan — the whole field,
+    // never an entry at a time (consolidation-pass.md E).
+    sim.run(['manifest', 'delete', `${wu}.implementation.${wu}`, 'bank']);
     // The consolidation task runs through the ordinary loop; its completion
     // finds the phase consolidated and records it.
     const started = sim.run(['task', 'start', wu, wu, `${wu}-1-3`]);
@@ -2064,7 +2073,7 @@ describe('pipeline simulation', () => {
     const loopItem = sim.manifest(wu).phases.implementation.items[wu];
     assert.deepStrictEqual(loopItem.consolidated_phases, [1], 'the boundary marker survives');
     assert.deepStrictEqual(loopItem.completed_phases, [1], 'the phase records complete after consolidation');
-    assert.deepStrictEqual(loopItem.bank, [], 'the folded entry left the bank');
+    assert.strictEqual('bank' in loopItem, false, 'the boundary emptied the bank');
     assert.strictEqual(loopItem.task_gate_mode, 'gated', 'bounded ends with the phase — the next task\'s gate is a menu');
     assert.strictEqual(loopItem.fix_gate_mode, 'auto', 'full auto is the session\'s and outlives the phase');
 
@@ -2084,15 +2093,9 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1', 'skipped']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.2', 'skipped']);
 
-    // The synthesizer's dispatch consumes the residual bank — verdicts land in
-    // its report, then the field is deleted (invoke-synthesizer.md).
-    sim.run(['manifest', 'push', `${wu}.implementation.${wu}`, 'bank',
-      `{"task":"${wu}-1-2","source":"executor","summary":"pre-existing debt","detail":"src/legacy.js predates the phase","files":["src/legacy.js"]}`]);
-    sim.run(['manifest', 'delete', `${wu}.implementation.${wu}`, 'bank']);
-
     // A second cycle stages a task the user approves, and the writer lands it
     // in a machinery-created phase (analysis-loop.md H). A task of that phase
-    // never banks — the bank fed the analysis loop, and the loop has run.
+    // never banks — no boundary follows it, so nothing would drain a deposit.
     assert.strictEqual(sim.run(['task', 'analysis-cycle', wu, wu]).cycle_total, 2, 'the count carries across cycles');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'pending']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c2.tasks.1', 'approved']);

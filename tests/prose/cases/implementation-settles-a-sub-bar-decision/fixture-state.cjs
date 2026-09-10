@@ -14,9 +14,8 @@
 // test drop the mainline's "an unknown intent is logged and ignored"
 // clause, so the record decides nothing about unmatched captures and
 // the staged fork's sides are foreclosed by nothing but the walk's own
-// approvals. Nothing is banked and nothing indicts the specification,
-// so the bank machinery and the corrigendum route both stay out of the
-// walk.
+// approvals. The bank is absent, and nothing indicts the specification,
+// so the corrigendum route stays out of the walk.
 
 const m = require('../../mainlines/feature.cjs');
 

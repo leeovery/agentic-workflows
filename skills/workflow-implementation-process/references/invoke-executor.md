@@ -81,7 +81,7 @@ BANK:
 
 - `complete`: all acceptance criteria met, tests passing
 - `blocked` or `failed`: ISSUES explains why and what decision is needed
-- BANK: opportunities whose fix reaches beyond the task's scope, omitted when there are none — deposited to the manifest the moment the report arrives ([task-loop.md](task-loop.md) **B. Execute Task**), never acted on mid-task
+- BANK: opportunities whose fix reaches beyond the task's scope, omitted when there are none — deposited on arrival while the task's `do_banking` is `true` ([bank-deposit.md](bank-deposit.md)), never acted on mid-task
 
 Keep the report minimal. "All passing" is sufficient for TEST_RESULTS when nothing failed. ISSUES can be omitted entirely on a clean run.
 

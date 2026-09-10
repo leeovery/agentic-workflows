@@ -18,7 +18,7 @@ The prose should have taken this path:
    returns to the skill, which routes to the analysis loop
 5. none of the cycle gate's crash-resume guards match — no staging
    subtree, no analysis staging file on disk, no previous cycle — so
-   the cycle records: cycle 1, session 1, not over the session limit,
+   the cycle records: cycle 1, not over the cycle limit,
    gate gated. No cycle-limit display and no cycle gate menu are
    produced, and no scripted answer is consumed there
 6. the git checkpoint finds nothing outside .workflows dirty — no
@@ -30,9 +30,9 @@ The prose should have taken this path:
    webhook, the invisible unmatched capture, and the two-way spelling of
    the gateway identifier. One returns findings, so the all-clean arm
    never applies: the findings commit lands scoped to the implementation
-   topic, and the bank is read and prints empty
-8. the synthesizer dispatches with no banked residue and stages three
-   proposals — the webhook guard as a plain proposal whose Solution
+   topic, and the bank is never read
+8. the synthesizer dispatches with work unit, topic and cycle number
+   and stages three proposals — the webhook guard as a plain proposal whose Solution
    carries the settled direction (look the intent up; log and
    acknowledge a miss); the unmatched-capture surfacing proposal
    carrying a **Decision** line, a **Stakes** line, and two sides

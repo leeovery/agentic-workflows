@@ -18,7 +18,7 @@ The prose should have taken this path:
    skill, which routes to the analysis loop
 5. none of the cycle gate's crash-resume guards match — no staging
    subtree, no analysis staging file on disk, no previous cycle — so the
-   cycle records: cycle 1, session 1, not over the session limit, gate
+   cycle records: cycle 1, not over the cycle limit, gate
    gated. No cycle-limit display and no cycle gate menu are produced, and
    no scripted answer is consumed there
 6. the git checkpoint finds nothing outside .workflows dirty — no
@@ -31,11 +31,10 @@ The prose should have taken this path:
    returns the unset-bound finding, the architecture stub returns the
    free-collaborators finding. Two return findings, so the all-clean arm
    never applies: the findings commit lands scoped to the implementation
-   topic, and the bank is read and prints empty
-8. the synthesizer dispatches with no banked residue — the bank field is
-   absent, so nothing is passed and the bank is never deleted. The stub
-   writes the report and the staging file and returns tasks_proposed
-   with ONE task. The gate state initialises with exactly one pending
+   topic, and the bank is never read
+8. the synthesizer dispatches with work unit, topic and cycle number
+   and nothing else. The stub writes the report and the staging file
+   and returns tasks_proposed with ONE task. The gate state initialises with exactly one pending
    row, and only then does the synthesis commit land
 9. the spec defect is settled before the overview renders. The
    specification is this work unit's own and this session's phase is

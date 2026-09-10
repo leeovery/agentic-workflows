@@ -65,7 +65,7 @@ Settled in conversation 2026-08-27/28.
 ### 1. Judges produce proposals, not tasks
 
 Stage B (consolidation) and the two synthesizer agents still apply
-their bars, fold findings, and settle bank verdicts — but the staging
+their bars, fold findings, and confirm or drop the banked entries — but the staging
 file they write holds **proposals**: title, class tag, **Problem**,
 **Solution** (what will be done), optional **Outcome** (included only
 when it adds something Solution doesn't carry). No Do steps, no

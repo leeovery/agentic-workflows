@@ -16,8 +16,7 @@
 // states the order write's bound. The bounds live on the shared client
 // configuration, which is ambient (the modules reach `gateway` and
 // `orders` as free identifiers), so nothing in the tree carries either
-// value. Nothing is banked, so the loop's bank machinery stays out of
-// the walk.
+// value. The bank is absent — nothing was ever deposited.
 
 const fs = require('fs');
 const path = require('path');

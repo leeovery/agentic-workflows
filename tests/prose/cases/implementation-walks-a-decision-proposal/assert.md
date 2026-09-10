@@ -58,10 +58,9 @@ The prose should have taken this path:
     amount comparison) and adds a **Decision** with the question, a
     **Stakes** line arguing the stop, and the two sides — each written
     as the product end state if that side is chosen, never the work to
-    do, the recommended side first, marked (recommended). There are no bank
-    verdicts and no pre-existing debt to push (nothing was ever
-    banked), and the staging file is written to
-    consolidation-tasks-p1.md
+    do, the recommended side first, marked (recommended). Nothing was
+    ever banked, so no finding carries a Bank line, and the staging
+    file is written to consolidation-tasks-p1.md
 13. the walk's gate state initialises in one batched write — both
     rows pending — and the tasks-overview renders
 14. the first proposal renders gated at proposal altitude: its
@@ -121,10 +120,10 @@ The prose should have taken this path:
     with the per-task consolidation-boundary placement; the writer
     stub creates tasks/pay-1-3.md and tasks/pay-1-4.md, appends both
     planning rows, and records both task_map entries
-21. nothing is pulled from the bank — nothing was ever deposited —
-    and the two consolidation commits land via the engine: the
-    staging file under the implementation topic, the tasks with
-    --plan
+21. the bank check finds no field — nothing was ever deposited — so
+    nothing is deleted, and the two consolidation commits land via the
+    engine: the staging file under the implementation topic, the tasks
+    with --plan
 22. the pass returns to the loop, retrieval sees the newly created
     work, and the walk stops there — no task is started and no phase
     completion is recorded

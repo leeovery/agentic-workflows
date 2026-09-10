@@ -9,7 +9,7 @@
 //
 // One perturbation on top of the mainline: the concluded specification
 // carries a design note naming a checkout path the tree does not have.
-// Nothing is banked, so the loop's bank machinery stays out of the walk.
+// The bank is absent — nothing was ever deposited.
 
 const fs = require('fs');
 const path = require('path');

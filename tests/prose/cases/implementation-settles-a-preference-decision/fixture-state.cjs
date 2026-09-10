@@ -14,9 +14,9 @@
 // criteria record), and every reference the tree mints is `ord_` plus a
 // ULID — `src/orders/reference.js`, pre-existing code the phase never
 // touched — so a cost the staged Stakes will assert against refusing a
-// `~`-prefixed reference is one the tree shows hypothetical. Nothing is
-// banked and nothing indicts the specification, so the bank machinery
-// and the corrigendum route both stay out of the walk.
+// `~`-prefixed reference is one the tree shows hypothetical. The bank is
+// absent, and nothing indicts the specification, so the corrigendum
+// route stays out of the walk.
 
 const m = require('../../mainlines/feature.cjs');
 

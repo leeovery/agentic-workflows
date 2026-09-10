@@ -166,19 +166,7 @@ Commit the analysis findings — the scoped commit covers the findings files and
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — findings" --topic implementation/{topic}
 ```
 
-Read the bank (an absent field prints empty):
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} bank
-```
-
-#### If all three agents returned `STATUS: clean` and the bank holds entries
-
-The phase boundaries left residue — the synthesizer runs over the bank alone for its verdicts.
-
-→ Proceed to **D. Dispatch Synthesis Agent**.
-
-#### If all three agents returned `STATUS: clean` and the bank is empty
+#### If all three agents returned `STATUS: clean`
 
 → Return to **[the skill](../SKILL.md)** for **Step 8**.
 
@@ -353,6 +341,12 @@ Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engi
 → Load **[invoke-task-writer.md](invoke-task-writer.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
+
+**Record the phase as machinery-created** — the writer's `PHASES` names the phase the tasks landed in; a task of that phase never banks. Skip the push when `machine_phases` already contains the number:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} machine_phases {phase}
+```
 
 **If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
 

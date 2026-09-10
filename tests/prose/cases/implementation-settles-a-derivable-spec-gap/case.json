@@ -58,7 +58,6 @@
       "task analysis-cycle pay pay",
       "--grep=impl(pay): Tpay-",
       "impl(pay): analysis cycle 1 — findings",
-      "manifest get pay.implementation.pay bank",
       "staging.c1.tasks.1=pending",
       "impl(pay): analysis cycle 1 — synthesis",
       "manifest get pay.specification.pay status",
@@ -74,6 +73,7 @@
       "staging.c1.tasks.1 approved",
       "analysis_gate_mode auto",
       "manifest set pay.planning.pay task_map.pay-2-1",
+      "manifest push pay.implementation.pay machine_phases 2",
       "impl(pay): analysis cycle 1 — staged tasks",
       "impl(pay): add analysis cycle 1",
       "--plan pay"
@@ -97,6 +97,7 @@
       "analysis_gate_mode auto",
       "write:.workflows/pay/planning/pay/tasks/pay-2-1.md",
       "manifest set pay.planning.pay task_map.pay-2-1",
+      "manifest push pay.implementation.pay machine_phases 2",
       "impl(pay): analysis cycle 1 — staged tasks",
       "--plan pay"
     ],
@@ -119,6 +120,7 @@
       "task start pay pay",
       "task complete pay pay",
       "--phase-complete",
+      "manifest get pay.implementation.pay bank",
       "manifest delete pay.implementation.pay bank",
       "manifest set pay.planning.pay storage_paths",
       "git add -A",

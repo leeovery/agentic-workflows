@@ -31,7 +31,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 Dispatch a **fresh** agent via the Task tool — fresh context is the point: the finder reads the phase's final surface with no memory of how it was built. Pass:
 
 1. **Phase files** — the file list from scope identification
-2. **Bank entries** — the full bank JSON (the finder verdicts every entry against the phase's final state)
+2. **Bank entries** — the full bank JSON (the finder confirms or drops each against the phase's final state)
 3. **Specification path** — from the specification (if available)
 4. **Project skill paths** — from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
 5. **code-quality.md path** — `.claude/skills/workflow-implementation-process/references/code-quality.md`
@@ -50,11 +50,11 @@ The agent returns a brief status:
 ```
 STATUS: findings | clean
 FINDINGS_COUNT: {N}
-BANK: {confirmed M, mooted K, residue R | no entries}
+BANK: {confirmed M | no entries}
 SUMMARY: {1 sentence}
 ```
 
-- `findings`: consolidation is owed, or a spec defect is recorded — findings, spec defects and bank verdicts are in the findings file
-- `clean`: nothing above the bar, no spec defects and no confirmed bank entries. The findings file is still written when bank verdicts, pre-existing debt, or Observations exist, and not at all otherwise
+- `findings`: consolidation is owed, or a spec defect is recorded — findings and spec defects are in the findings file
+- `clean`: nothing above the bar and no spec defects — no file is written
 
 → Return to caller.

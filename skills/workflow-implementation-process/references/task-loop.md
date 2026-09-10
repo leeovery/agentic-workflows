@@ -108,7 +108,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
-   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — `gated`, `auto` (the rest of this session), or `bounded` (to the end of the current plan phase — the engine returns it to `gated` as the phase records complete). Stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` or `b/bounded` opt-in is made by this flow itself, so you already know the current mode.
+   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — `gated`, `auto` (the rest of this session), or `bounded` (to the end of the current plan phase — the engine returns it to `gated` as the phase records complete). Stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` or `b/bounded` opt-in is made by this flow itself, so you already know the current mode. The response's `do_banking` says whether the task's plan phase still takes BANK deposits — stages B, D and F branch on it; hold it in session context for the task.
 4. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 The `start` response's `mode` says whether this task is being taken up or resumed.
@@ -139,11 +139,15 @@ The turn does not end here — the executor dispatch follows in the same turn.
 
 > **CHECKPOINT**: Do not proceed until the executor has returned its result.
 
-**Deposit banked opportunities** — every executor report that carries BANK entries deposits them the moment it arrives, whatever its STATUS. They are decided at the phase boundary, which may be tasks away, and conversation context does not survive that long — the manifest does; the pushes ride the next commit that stages it. A near-duplicate of an earlier round's entry is fine — the boundary pass folds them. Push each entry:
+#### If `do_banking` is `true`
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} bank '{"task":"{internal_id}","source":"executor","summary":"{one line}","detail":"{what and where, file:line}","files":["{path}"]}'
-```
+→ Load **[bank-deposit.md](bank-deposit.md)** with source = `executor`.
+
+→ On return, proceed to the **`STATUS`** branches below.
+
+#### Otherwise
+
+→ Proceed to the **`STATUS`** branches below.
 
 #### If `STATUS` is `blocked` or `failed`
 
@@ -193,7 +197,15 @@ Emit the call's MENU section verbatim per its marker.
 
 > **CHECKPOINT**: Do not proceed until the reviewer has returned its result.
 
-**Deposit banked opportunities** — every review that carries BANK entries deposits them the moment it arrives, whatever its verdict: push each as at **B. Execute Task**, with `"source":"reviewer"`.
+#### If `do_banking` is `true`
+
+→ Load **[bank-deposit.md](bank-deposit.md)** with source = `reviewer`.
+
+→ On return, proceed to the **`VERDICT`** branches below.
+
+#### Otherwise
+
+→ Proceed to the **`VERDICT`** branches below.
 
 #### If `VERDICT` is `needs-changes`
 
@@ -333,7 +345,15 @@ Answer the user's questions about the review.
 
 > **CHECKPOINT**: Do not proceed until the confirmation has returned.
 
-Deposit any BANK entries the confirmation carries, as at **B**.
+**If `do_banking` is `true`:**
+
+→ Load **[bank-deposit.md](bank-deposit.md)** with source = `reviewer`.
+
+→ On return, proceed to the confirmation's **`VERDICT`** branches below.
+
+**Otherwise:**
+
+→ Proceed to the confirmation's **`VERDICT`** branches below.
 
 **If every blocking finding is withdrawn** (the confirmation's `VERDICT` is `approved`):
 
