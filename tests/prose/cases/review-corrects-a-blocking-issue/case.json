@@ -1,0 +1,93 @@
+{
+  "origin": "the blocking route and the assessor's remedy question had no coverage — this walks a review where a verifier records an acceptance criterion unmet: prep carries the blocking issue into the payloads beside the finding that prescribes its remedy, synthesis routes it do-now on that remedy's contained radius with a blocking marker, the report names it as blocking and corrected, and the verdict derives pass since nothing needs planning; beside it a finding prescribing comment text for a behaviour defect is re-aimed at the code by the assessor's remedy verdict, its radius re-read by synthesis with the code open",
+  "entry": "workflow-review-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-review-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-review-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/code-session-gate.md",
+    "skills/workflow-review-entry/references/invoke-skill.md",
+    "skills/workflow-review-process/SKILL.md",
+    "skills/workflow-review-process/references/read-plans.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/reading.md",
+    "skills/workflow-review-process/references/load-project-skills.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-review-process/references/invoke-task-verifiers.md",
+    "skills/workflow-review-process/references/review-checklist.md",
+    "skills/workflow-review-process/references/invoke-change-set-verifiers.md",
+    "skills/workflow-review-process/references/prep-findings.md",
+    "skills/workflow-review-process/references/apply-do-now.md",
+    "skills/workflow-review-process/references/produce-review.md",
+    "skills/workflow-review-process/references/template.md",
+    "skills/workflow-review-process/references/present-review.md",
+    "skills/workflow-shared/references/product-lens.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-review-process/references/review-actions-loop.md"
+  ],
+  "answers": [
+    "c — complete the review"
+  ],
+  "stubs": {
+    "review-task-1-1-blocks-on-card-only": "when the task verifier for task pay-1-1 is dispatched via the Task tool — write the content below to that task's report file and return the STATUS block",
+    "review-task-1-2-prescribes-a-comment-for-a-defect": "when the task verifier for task pay-1-2 is dispatched via the Task tool — write the content below to that task's report file and return the STATUS block",
+    "change-set-section-clean": "when a change-set verifier for any section — the payment-intent section, the capture section, the test surface — is dispatched via the Task tool; one firing per section — write the content below to that section's file with its SECTION line filled and return the status stated",
+    "finding-assessed-blocking-and-remedy": "when a workflow-review-finding-assessor agent is dispatched",
+    "finding-guards-checked-blocking-and-remedy": "when a workflow-review-finding-guards agent is dispatched",
+    "finding-relationships-pairs-blocking": "when the workflow-review-finding-relationships agent is dispatched",
+    "finding-synthesised-blocking-and-remedy": "when the workflow-review-finding-synthesis agent is dispatched",
+    "fix-applied-blocking-and-remedy": "when a workflow-review-fix-applier agent is dispatched",
+    "fix-verified": "when a workflow-review-fix-verifier agent is dispatched"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.review.pay",
+      "topic start pay review pay",
+      "impl(pay): T",
+      "push pay.review.pay reviewed_tasks",
+      "manifest get pay.implementation.pay linters",
+      "git status",
+      "review(pay): verification and prep",
+      "commit --paths",
+      "render review-presentation pay.review.pay",
+      "render review-gate pay.review.pay --verdict pass",
+      "review(pay): complete review",
+      "topic complete pay review pay",
+      "review(pay): complete review phase"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.review.pay",
+      "topic start pay review pay",
+      "push pay.review.pay reviewed_tasks",
+      "write:.workflows/pay/review/pay/change-set-",
+      "git status",
+      "write:.workflows/.cache/pay/review/pay/findings.txt",
+      "write:.workflows/.cache/pay/review/pay/actions.json",
+      "review(pay): verification and prep",
+      "review(pay): complete review",
+      "render review-presentation pay.review.pay",
+      "render review-gate pay.review.pay",
+      "topic complete pay review pay"
+    ],
+    "calls_exclude": [
+      "topic reopen",
+      "set pay.review.pay staging",
+      "render proposed-task",
+      "render tasks-overview",
+      "restart review",
+      "workunit create",
+      "task start",
+      "manifest push pay.review.pay out_of_scope",
+      "--verdict fail",
+      "--replan",
+      "stage review remediation",
+      "re-open implementation tracking"
+    ]
+  }
+}

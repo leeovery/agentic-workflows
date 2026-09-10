@@ -133,6 +133,6 @@ Verify what you cite:
 
 Report only what is wrong:
 
-- **Blocking**: the work cannot be called delivered — acceptance criteria unmet in substance, or behaviour that is broken. Never a finding whose entire remedy is comment or documentation text
+- **Blocking**: the work cannot be called delivered — acceptance criteria unmet in substance, or behaviour that is broken. Never a finding whose entire remedy is comment or documentation text. Each entry names its remedy, or points at the FINDINGS line that prescribes it, so it can be routed
 - **A finding**: something broken or incorrect, or a violation of the spec, the plan, or the project's standards — carrying the concrete failure that follows from leaving it
 - **Not reported at all**: a preference none of those require. A fold, an extraction, a rename, a reordering. Ease of doing it is not a reason to raise it

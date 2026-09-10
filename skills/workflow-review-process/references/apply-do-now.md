@@ -4,7 +4,7 @@
 
 ---
 
-The `do-now` route is work that is wrong and contained — one edit at one site, which the suite settles. It is finished here, before the review is presented, because leaving it costs more than doing it: these findings are never re-found on a later cycle, and the remediation that may follow builds on corrected code rather than on files still carrying false claims.
+The `do-now` route is work that is wrong and contained — one edit at one site, which the suite settles. A blocking issue whose remedy is contained is among it, applied like any other action; the report names it as blocking and corrected. It is finished here, before the review is presented, because leaving it costs more than doing it: these findings are never re-found on a later cycle, and the remediation that may follow builds on corrected code rather than on files still carrying false claims.
 
 Low value is not a reason to defer. Blast radius is the axis, and everything routed here has none.
 

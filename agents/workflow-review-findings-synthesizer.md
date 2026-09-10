@@ -23,7 +23,7 @@ You receive via the orchestrator's prompt:
 
 ## Your Process
 
-1. **Read the actions** — the `replan` actions in the actions path are the work: each already deduplicated, its wording corrected, any guard condition attached. Read the report's blocking issues too — they join the set where no replan action already covers them
+1. **Read the actions** — the `replan` actions in the actions path are the work: each already deduplicated, its wording corrected, any guard condition attached. A blocking issue still outstanding is one of them, carrying `blocking` — the report holds no blocking issue the actions do not
 2. **Consult the per-task reports and the change-set files** only where an action's sources need more context than it carries — a task-suffixed id lives in a `report-*.md`, a section-slugged id in a `change-set-c{N}-*.md`
 3. **Never re-judge** — routing is decided. Nothing routed `do-now`, `out-of-scope` or discarded becomes a task; a `replan` action is never dropped for looking small. The one exception is step 4's move: an action whose evidence indicts the specification is reported onward under `## Spec Defects`, never dropped — the orchestrator routes it from there
 4. **Read the specification where an action indicts it** — an action whose evidence shows the claim in `.workflows/{work_unit}/specification/{topic}/specification.md` is what's wrong, rather than the code, belongs under `## Spec Defects` rather than the staging file: record it with your read of which side is wrong. Nothing is dropped — the orchestrator classifies authoritatively and routes a code-wrong verdict back as a proposal; you report
@@ -98,7 +98,7 @@ sources: report-2-4
 **MANDATORY. No exceptions.**
 
 1. **No new features** — only address issues found in the review. Every proposal must trace back to a specific review finding.
-2. **Never discard blocking** — blocking issues from QA always become proposals.
+2. **Never discard blocking** — an action carrying `blocking` always becomes a proposal.
 3. **Self-contained proposals** — every proposal must be independently executable. No proposal should depend on another.
 4. **Faithful synthesis** — do not invent findings. Every proposal must trace back to at least one QA finding.
 5. **Proposals only** — no Do steps, no acceptance criteria, no tests. The walk decides which proposals live; the task author writes the bodies for those.
