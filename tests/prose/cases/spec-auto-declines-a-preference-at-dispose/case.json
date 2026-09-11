@@ -1,0 +1,74 @@
+{
+  "origin": "A specification review under auto stopped twice on findings the input review agent had staged as choices, neither naming what was searched. The sibling case pins the first repair: a staged choice the record settles is rewritten settled and rides auto. This one pins the other arm of the same dispose — a staged choice that is a preference, a presentational fork no side of which costs the customer with nothing in the discussion, the specification, or the tree leaning, is declined at dispose with its reason, the Move left as staged, and never rendered: no menu, no auto-apply, no auto-override line, nothing landing in the specification. The arm needs its own proof because it is the one path where a finding leaves the walk without reaching the user: the perimeter never walks prose, and the invariants can pin what ran and in what order but never that a third render did not run — only a walk that holds the preference beside a settled call riding auto and a genuine choice that still stops, with the asserter counting the recorded renders, can show the dispose declined the preference on its merits rather than blanket-settling or blanket-stopping.",
+  "entry": "workflow-specification-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-specification-entry/references/validate-source.md",
+    "skills/workflow-specification-entry/references/validate-phase.md",
+    "skills/workflow-specification-entry/references/invoke-skill.md",
+    "skills/workflow-specification-process/SKILL.md",
+    "skills/workflow-specification-process/references/verify-source-material.md",
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-shared/references/specification-body.md",
+    "skills/workflow-specification-process/references/session-setup.md",
+    "skills/workflow-specification-process/references/specification-principles.md",
+    "skills/workflow-specification-process/references/spec-construction.md",
+    "skills/workflow-specification-process/references/resolve-source-incoherence.md",
+    "skills/workflow-specification-process/references/exhaustive-extraction.md",
+    "skills/workflow-specification-process/references/spec-review.md",
+    "skills/workflow-shared/references/convergence-analysis.md",
+    "skills/workflow-specification-process/references/review-tracking-format.md",
+    "skills/workflow-specification-process/references/process-review-findings.md",
+    "skills/workflow-specification-process/references/spec-completion.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/compliance-check.md",
+    "skills/workflow-shared/references/reconcile-advisory.md"
+  ],
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. At the first finding — the missing 30-day refund window — they see the discussion already decided it and say so: they choose auto, because they do not want to be stopped again for things the record has already settled. They know the discussion cold and treat what it determines as decided, not theirs to re-litigate. If asked how the refund confirmation should be worded — which of the amount and the card comes first — they say it makes no difference to them, either reads fine, and they ask why they are being stopped over it. The failed-webhook retry ceiling is different and they treat it differently: nothing decided how long the checkout keeps waiting, and both ways cost a customer something real. Asked, they reject the recommendation — three attempts is too few for a bank having a bad morning, and they would rather hold a customer's order for a day than lose it — and pick the 24-hour reconciliation option instead. With auto set, the follow-up review cycle runs without asking them and comes back clean, and the session moves to completion on its own; at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
+  "stubs": {
+    "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool (any cycle), and when it dispatches the input review agent for review cycle 2 or later — each returns the content below and writes no file",
+    "spec-input-preference-and-open-choice": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
+  },
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render resume-gate pay.specification.pay",
+      "manifest set pay.specification.pay review_cycle=1",
+      "tracking.review-input-tracking-c1 in-progress",
+      "render findings-summary pay.specification.pay",
+      "render finding pay.specification.pay",
+      "finding_gate_mode auto",
+      "tracking.review-input-tracking-c1 complete",
+      "manifest set pay.specification.pay review_cycle 2",
+      "topic complete pay specification pay"
+    ],
+    "calls_exclude": [
+      "render spec-review-gate pay.specification.pay --variant reloop",
+      "render incoherence-gate",
+      "presence scan",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
+      "topic reopen",
+      "topic triage",
+      "sources stale",
+      "workunit create"
+    ],
+    "calls_in_order": [
+      "tracking.review-input-tracking-c1 in-progress",
+      "render finding pay.specification.pay",
+      "finding_gate_mode auto",
+      "render finding pay.specification.pay",
+      "tracking.review-input-tracking-c1 complete",
+      "manifest set pay.specification.pay review_cycle 2",
+      "topic complete pay specification pay"
+    ]
+  }
+}
