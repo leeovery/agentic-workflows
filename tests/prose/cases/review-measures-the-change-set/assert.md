@@ -48,8 +48,8 @@ The prose should have taken this path:
    the per-task reports, the section files and the manifest as the
    verification-and-prep checkpoint, so the apply starts from a clean
    tree
-9. the do-now apply announces the correction in prose, dispatches an
-   applier — stubbed: applied, nothing skipped — then the verifier over
+9. the do-now apply marks its step and announces the one correction
+   in its signpost, dispatches an applier — stubbed: applied, nothing skipped — then the verifier over
    the uncommitted diff — stubbed: nothing to repair, suite green — and
    commits the correction through the engine's code commit as one body
    of work
