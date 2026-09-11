@@ -1,11 +1,11 @@
-# stub: spec-input-settled-and-choice
+# stub: spec-input-preference-and-open-choice
 
-An input review agent returning three findings across the two moves the
-gate presents: two `settled` calls the sources determine, and one
-`choice` the sources leave genuinely open — its search named, where the
-record ran out named, and each side's cost to the customer stated, so
-the choice clears the bar when the session disposes it. Write the
-tracking file to
+An input review agent returning three findings: one `settled` call the
+discussion determines; one staged as a `choice` over a presentational
+fork in the refund confirmation's wording — which of its two facts
+comes first — one option marked recommended and no search named; and
+one `choice` the sources leave genuinely open, its search named and
+each side's cost to the customer stated. Write the tracking file to
 `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c1.md`
 via the `.txt`-then-rename mechanism, with the content below, then
 return the status block. Nothing else: no git activity, no other files.
@@ -48,28 +48,23 @@ the Refunds section.
 
 ---
 
-### 2. Partial Refunds Unstated
+### 2. Refund Confirmation Order Unstated
 
 **Source**: discussion/pay.md · Refunds
-**Category**: Enhancement to existing topic
-**Move**: settled
+**Category**: Gap/Ambiguity
+**Move**: choice
 **Affects**: Refunds
 
 **Problem**:
-Nothing says whether a refund can be for part of the amount, so a
-builder would guess — and a full-only implementation would have to be
-torn out when the first partial refund is asked for.
+When a refund lands, the confirmation the customer reads carries two
+facts, the amount and the card it went back to, and nothing says which
+comes first. One build writes "Refunded £42.00 to the card ending
+4242" and another "The card ending 4242 has been refunded £42.00";
+both carry the same two facts, and the specification does not pick.
 
-**Proposal**:
-The discussion decides partial refunds are supported, down to a single
-line item. I would state that alongside the window.
-
-**Current**:
-- Refunds are issued against the original payment intent.
-
-**Proposed Text**:
-- Refunds are issued against the original payment intent, in full or
-  per line item.
+**Options**:
+- Amount first, then the card — "Refunded £42.00 to the card ending 4242" (recommended)
+- Card first, then the amount — "The card ending 4242 has been refunded £42.00"
 
 **Resolution**: Pending
 **Notes**:
@@ -89,14 +84,16 @@ checkout keeps waiting before it treats the payment as unconfirmed. A
 customer whose bank is slow either gets their order or gets told the
 payment failed, and the record does not decide which. Searched the
 discussion end to end — its Gateway Integration decision confirms
-capture by webhook and rules out polling, and its Refunds decision is
-silent on confirmation — and the specification's Gateway Integration
-and Refunds sections: no source states a ceiling, no other timeout in
-either document sets a precedent, no measurement pins one, and the
-feature's premise (confirm by webhook, never poll) holds under either
-side. The record ran out at the trade itself, which is appetite: a
-customer's order lost against a customer's order held in limbo — each
-side costs a customer something the other does not.
+capture by webhook and rules out polling, its Quoted Total decision
+governs the amount and not the confirmation, and its Refunds decision
+is silent on confirmation — and the specification's Gateway
+Integration, Quoted Total, and Refunds sections: no source states a
+ceiling, no other timeout in either document sets a precedent, no
+measurement pins one, and the feature's premise (confirm by webhook,
+never poll) holds under either side. The record ran out at the trade
+itself, which is appetite: a customer's order lost against a
+customer's order held in limbo — each side costs a customer something
+the other does not.
 
 **Options**:
 - Give up after three delivery attempts and mark the payment unconfirmed — the customer hears within minutes, and a customer whose bank is slow loses the order (recommended)
@@ -113,5 +110,5 @@ The status block:
 ```
 STATUS: findings
 FINDINGS_COUNT: 3
-SUMMARY: Two refund details the discussion decides and the spec omits; one genuinely open call on how long a failed webhook keeps retrying.
+SUMMARY: The 30-day refund window the discussion decides is missing; the refund confirmation's order of amount and card is unstated; how long a failed webhook keeps retrying is genuinely open.
 ```

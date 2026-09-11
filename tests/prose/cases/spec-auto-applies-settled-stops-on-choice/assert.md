@@ -24,14 +24,21 @@ Expected path:
 7. **Finding 2 (settled — partial refunds)** rides auto: it is
    rendered, applied, and announced in a line, with no stop and no
    menu. This is the behaviour the auto gate exists to give
-8. **Finding 3 (choice — the failed-webhook retry ceiling)** stops
-   anyway, `auto` notwithstanding, because only the user can pick. Its
-   menu opens on the engine's auto-override line — auto is on and the
-   stop is deliberate — then numbered options with the recommendation
-   first and no `a/auto` row. The user picks the 24-hour
-   reconciliation option — the one **not** recommended — and that is
-   what lands in Gateway Integration, with the Resolution set to
-   Approved and a note naming the option chosen
+8. **Finding 3 (choice — the failed-webhook retry ceiling)** is
+   disposed before it renders: the session re-derives the staged
+   choice against the bar and it stands — the fork is what the
+   customer gets (an order lost against an order held in limbo),
+   nothing in the discussion, the specification, a measurement, or a
+   precedent breaks the tie, each side visibly costs a customer, and
+   the tie-break is appetite. The tracking row keeps Move `choice`;
+   nothing is rewritten settled. Only then does it stop, `auto`
+   notwithstanding, because only the user can pick. Its menu opens on
+   the engine's auto-override line — auto is on and the stop is
+   deliberate — then numbered options with the recommendation first
+   and no `a/auto` row. The user picks the 24-hour reconciliation
+   option — the one **not** recommended — and that is what lands in
+   Gateway Integration, with the Resolution set to Approved and a note
+   naming the option chosen
 9. gap analysis runs third and returns clean through its stub; the
    cycle-1 input tracking entry flips to `complete`
 10. with `finding_gate_mode` `auto` and findings surfaced, the review
@@ -50,6 +57,11 @@ Also true:
   has rubber-stamped a choice rather than presented it
 - no finding is skipped or declined: every row in the tracking file
   ends Approved
+- the retry-ceiling row still reads Move `choice` at the end, with its
+  Options intact and no Proposal — a walk that rewrote it settled and
+  applied the recommendation under auto has demoted a choice the bar
+  holds, which is the failure the dispose exists to refuse in that
+  direction
 - nothing routes to a source: no `incoherence-gate` render, no triage,
   no reopen. All three findings belong to the specification
 - the discussion document is untouched — no finding here indicts it

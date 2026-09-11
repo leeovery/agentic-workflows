@@ -1,0 +1,32 @@
+{
+  "name": "pay",
+  "work_type": "feature",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Accept card payments at checkout",
+  "phases": {
+    "discussion": {
+      "items": {
+        "pay": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "pay": {
+          "status": "in-progress",
+          "sources": {
+            "pay": {
+              "status": "incorporated"
+            }
+          },
+          "review_cycle": 0,
+          "finding_gate_mode": "gated",
+          "construction_gate_mode": "gated",
+          "date": "2026-01-01"
+        }
+      }
+    }
+  }
+}

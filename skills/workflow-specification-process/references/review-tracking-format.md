@@ -59,17 +59,17 @@ Tracking files are **never deleted** — pure markdown, no frontmatter; previous
 
 Some tracking files name the **Proposed Text** field **Proposed Change** or **Proposed Addition** — read all three as the same field. Older files write a `Skipped` resolution — read it as `Declined`.
 
-`Declined` records a finding discussed with the user and left as-is, with the reason in Notes. It is never offered as a menu row: it exists only as the outcome of the gate's Discuss exchange — a decline without a stated reason is a skip whatever it is called.
+`Declined` records a finding left as-is with the reason in Notes: the outcome of the gate's Discuss or Comment exchange, or a point declined at dispose — a preference no side of which costs the user, or a mechanism that is the builder's, nothing leaning, so the specification states no rule for it. It is never offered as a menu row — a decline without a stated reason is a skip whatever it is called.
 
 ## The Move
 
 The move is what the reader has to do about the finding, and it alone decides how the finding is presented. Category describes what the reviewer found; it never picks the shape.
 
 - **settled** — the sources or the specification's own decisions admit exactly one defensible answer. The finding carries the call and what determined it; `auto` applies it without a stop.
-- **choice** — real options exist and picking between them is the reader's — a verdict earned by searching, never a default: anything the sources yield is `settled`, and a point they are silent on that a measurement or sibling artifact pins is `route`. A staged choice names what was searched and where the record ran out. The finding proposes nothing and presents the options; the stop holds even under `auto` — the search left the pick to the reader.
+- **choice** — real options exist and picking between them is the reader's — a verdict earned by searching, never a default: anything the sources yield is `settled`, and a point they are silent on that a measurement or sibling artifact pins is `route`. It holds only where the fork is what the product's user gets or how it behaves, nothing in the record breaks the tie, a side visibly costs the user, and the tie-break is product intent, which only the reader holds. A fork in how the tree achieves it is the builder's, and a fork every side of which leaves the user well served is a preference, not a decision: either settles on what leans, and where nothing leans it is not the specification's to fix — the spec states no rule for it. A staged choice names what was searched and where the record ran out. The finding proposes nothing and presents the options; the stop holds even under `auto` — the search left the pick to the reader.
 - **route** — the ground belongs to a source document, not this specification. It goes back to the document that owns it.
 
-A finding whose stated derivation does not hold, or that you cannot yourself stand behind, is a `choice` — never a `settled` call made on the reader's behalf. Reclassification only ever moves toward the reader.
+The reviewer proposes the move; the orchestrator disposes it against the live session before the finding renders, in both directions, on a derivation written into the finding — a `settled` call whose derivation does not hold, or that it cannot itself stand behind, becomes a `choice` and takes the bar; a `choice` below the bar becomes `settled` or `route`, or is declined outright — Resolution `Declined`, the Move left as staged — its derivation recorded (**[process-review-findings.md](process-review-findings.md)**). A choice that names no search is re-derived from scratch.
 
 Two categories always take the `route` move, and their findings are never applied, adjusted, or presented at the gate — the orchestrator routes them per [resolve-source-incoherence.md](resolve-source-incoherence.md), and the resolution lands as `Routed`:
 
@@ -83,6 +83,7 @@ Two categories always take the `route` move, and their findings are never applie
 3. Present the summary to the user (from the tracking file)
 4. Work through items one at a time:
    - A `route` finding routes per **[process-review-findings.md](process-review-findings.md)** — Resolution `Routed`, never presented at the gate
+   - A finding the dispose declines — Resolution `Declined` with its reason, never presented at the gate
    - Every other item: present it by its move, discuss and refine, get approval, log to specification
    - Update the tracking file: mark resolution, add notes
 5. After all items resolved, record the flip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`
