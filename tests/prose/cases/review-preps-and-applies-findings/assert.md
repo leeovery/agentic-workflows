@@ -46,7 +46,8 @@ The prose should have taken this path:
    verdict — its Specification Compliance carrying the three sections'
    coverage maps as their files record them, its Plan Completion's bold
    `Criteria not measured` line reading `none`, its corrected section
-   recording what was applied — and committed
+   recording what was applied, and none of the template's bracketed
+   authoring guidance carried into it — and committed
 10. the outcome renders through the review presentation surface as a
    pass — the corrections a count, nothing listed, since nothing in this
    review is the user's to decide — and at the review gate the user

@@ -34,7 +34,8 @@ The prose should have taken this path:
    is written
 6. findings prep collects three entries out of the per-task reports into
    its own payloads — the section files carry none — the blocking entry
-   marked [blocking], its id built from its task suffix and its position
+   marked `[blocking]` in both payloads, the tag written where a finding's
+   scope and radius tags sit, its id built from its task suffix and its position
    in that report's blocking list, and the two findings with ids built
    from their task suffixes and positions — then dispatches the
    assessment agents — assessor, guards and relationships — with
