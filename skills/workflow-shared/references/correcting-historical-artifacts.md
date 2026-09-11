@@ -105,7 +105,7 @@ The document is live in its own phase — corrections flow through it. Tell the 
 
 → Return to caller.
 
-#### If a presence row matches `specification`/`{topic}` with `held` and `live` both true
+#### If a presence row matches `specification`/`{topic}` with `held` true
 
 A session holds that document. Leave the entry alone this pass — it stays unsettled, and a later pass re-finds it.
 

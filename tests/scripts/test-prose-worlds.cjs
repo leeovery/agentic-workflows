@@ -14,8 +14,7 @@ const { execFileSync } = require('child_process');
 
 const cases = require('../prose/lib/cases.cjs');
 const worlds = require('../prose/lib/worlds.cjs');
-
-const STALE_AFTER_SECONDS = 900;
+const { scanPresence, ownsRow } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
 
 /** `git status --porcelain` in a materialised world. */
 function statusLines(dir) {
@@ -30,7 +29,7 @@ describe('buildWorld: sidecar materialisation', () => {
   // The one case declaring both shapes of dirt and a peer's heartbeat.
   const CASE = 'discussion-sweeps-a-dead-peers-leavings';
 
-  it('lands declared dirt as declared, and a peer heartbeat fresh enough to read live', function () {
+  it('lands declared dirt as declared, and a peer heartbeat that reads held', function () {
     if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
     const dir = worlds.buildWorld(CASE);
     try {
@@ -51,13 +50,16 @@ describe('buildWorld: sidecar materialisation', () => {
       assert.notStrictEqual(committed, fs.readFileSync(path.join(dir, modified), 'utf8'),
         'the working tree carries the snapshot, the index carries the sidecar');
 
-      // The heartbeat is stamped after every commit, so its mtime is the
-      // freshest thing in the world. A peer that reads stale is a peer the
-      // walk sails straight past.
+      // An identity-less sidecar row is stamped as pid 1 — alive for as long
+      // as the machine is, and nobody's own — so the engine reads it held. A
+      // peer that reads unheld is a peer the walk sails straight past.
       const beat = path.join(dir, '.workflows/.cache/search-relevance/research/relevance-measurement/presence');
       assert.ok(fs.existsSync(beat), 'the declared peer holds a heartbeat');
-      const age = (Date.now() - fs.statSync(beat).mtimeMs) / 1000;
-      assert.ok(age < STALE_AFTER_SECONDS, `the peer's heartbeat must read live, aged ${age}s`);
+      const row = scanPresence(dir, 'search-relevance').sessions
+        .find((r) => r.phase === 'research' && r.topic === 'relevance-measurement');
+      assert.strictEqual(row.held, true, 'the peer\'s heartbeat must read held');
+      assert.strictEqual(row.pid, 1);
+      assert.ok(!ownsRow(row), 'and is never the walker\'s own');
       assert.ok(!statusLines(dir).some((l) => l.includes('.cache')), 'and never shows up as dirt');
     } finally {
       worlds.destroyWorld(dir);

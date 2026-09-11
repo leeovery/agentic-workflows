@@ -55,10 +55,17 @@ code session at a time. Design log for the stack; decisions converged
 - **Every block is advisory.** No gate in the system is
   unoverridable. The machine's verdict is precise about process
   existence (`held` verifies pid + start time — a SIGKILLed session
-  reads unheld on the next scan); what no mechanism can judge is
-  intent — an open-but-abandoned session holds forever, and only the
-  user knows it is dead weight. The gate states the facts and the
-  risk; the user decides.
+  reads unheld on the next scan; a record with no identity is never
+  held); what no mechanism can judge is intent — an open-but-abandoned
+  session holds forever, and only the user knows it is dead weight.
+  The gate states the facts and the risk; the user decides.
+- **Idle time is shown, never judged.** `held` is the one verdict.
+  The heartbeat's mtime is the row's last write, rendered as
+  `last active {age} ago` wherever a hold is named — the deferral
+  callout, the struck menu row, the map cue, the gates — so the user
+  can weigh a session idle for hours against one that wrote a minute
+  ago. No surface turns that age into a verdict: a session left open
+  is still a session, and the analyses defer to it.
 
 ## Principles
 
@@ -101,7 +108,7 @@ Safe already, untouched by this stack: manifest lock, cache
 partitioning, KB store locking, harness stale-write protection, the
 commit lock and index.lock retry, `TOPIC_COMMIT_ARTIFACTS` (all seven
 phases), triage sidecar (research/discussion/investigation), the
-`held`/`live` identity verdicts, the SessionEnd cleanup hook.
+`held` identity verdict, the SessionEnd cleanup hook.
 
 The gaps, each owned by a PR below:
 
@@ -126,7 +133,7 @@ The gaps, each owned by a PR below:
    (see Motivation).
 6. **Work-unit-wide staging unprotected beyond one consumer.**
    `.state/` analysis files carry overwrite-any-prior-pass
-   semantics; only the topic-discovery dispatch defers on live
+   semantics; only the topic-discovery dispatch defers on held
    presence. The spec-entry grouping analysis does not.
 7. **Build-order sequencing race.** Two spec completions can both
    set `build_order_stale` and both sequence; B's pass can clear a
@@ -234,8 +241,8 @@ visible check with a deterministic backstop instead of silent loss.
 ### Riders
 
 - **Deferral extension**: the spec-entry grouping analysis takes the
-  same live-presence deferral the topic-discovery dispatch already
-  runs — hold off while any source-phase presence is live; the
+  same presence deferral the topic-discovery dispatch already runs —
+  hold off while any source-phase row is held, however long idle; the
   cache self-heals at the next entry. `.state/` stays work-unit-wide
   (grouping is inherently epic-wide; one pass at a time is the
   correct semantics).
@@ -263,7 +270,7 @@ visible check with a deterministic backstop instead of silent loss.
 | Sweeper/deliverer stamping foreign topics live | Sweep suppression flag; triage never beats | 2 |
 | Two code sessions clash on tree + index | Code gate at every entry route, red, overridable | 7 |
 | Second session on a held same topic | Same-topic gate upgraded to the family | 7 |
-| Grouping analysis tramples under live sources | Deferral extension | 8 |
+| Grouping analysis tramples under held sources | Deferral extension | 8 |
 | Build-order double-sequence race | Re-check inside the manifest lock | 8 |
 | Sweep auto-commits a dead session's half-finished code | Code dirt surfaced, never committed | 6 |
 
@@ -368,10 +375,10 @@ Settled 2026-08-27, as the stack landed:
   its identity there. The hold would be swept at session end either
   way; the conservative reading costs nothing.
 - Deferrals count source phases alone (PR 8). `presence scan` answers
-  `live_sources` — research and discussion — because those are the
+  `held_sources` — research and discussion — because those are the
   corpora the epic-wide analyses read. The widened `PHASES` had made
-  the dispatch's `live > 0` mean "any session anywhere", which would
-  have deferred the gap analysis behind a live planning or code
+  the dispatch's `held > 0` mean "any session anywhere", which would
+  have deferred the gap analysis behind a held planning or code
   session that touches nothing it reads.
 - Dead code dirt is surfaced by the next code session, not by a
   sweep (PR 9 review). The components section promised the conclude
@@ -386,14 +393,14 @@ Settled 2026-08-27, as the stack landed:
 - Foreign-topic `--kb` takes `--sweep`, and suppression outranks the
   clear (PR 9 review). The spec-side incoherence flow's source-doc
   commit reindexes a document another session may hold idle-but-alive
-  (`held && !live` passes its gate); an unconditional `--kb` clear
-  there destroys that hold. `--sweep` now suppresses beat and clear
-  alike, and every foreign-topic `--kb` site carries it. The same
-  pass closed the resume window on the code gate (the empty render
-  beats its entrant, so the slot is held from entry, not from the
-  first commit), gave investigation's triage sidecar its place in
-  the topic commit scope, narrowed the corrigenda commit, and routed
-  the legacy-split apply through the commit door.
+  (`held` passes its gate however long the row has idled); an
+  unconditional `--kb` clear there destroys that hold. `--sweep` now
+  suppresses beat and clear alike, and every foreign-topic `--kb`
+  site carries it. The same pass closed the resume window on the code
+  gate (the empty render beats its entrant, so the slot is held from
+  entry, not from the first commit), gave investigation's triage
+  sidecar its place in the topic commit scope, narrowed the corrigenda
+  commit, and routed the legacy-split apply through the commit door.
 - The restart paths reorder instead of growing an engine form
   (PR 9, user-approved). Cleanup commits via `--plan` while the
   planning item still resolves; the manifest entry deletes last,
@@ -409,12 +416,12 @@ Settled 2026-08-27, as the stack landed:
   (PR 8 review). A fall-through to the prior pass's display was
   ordered for the automatic rerun route and then refuted by
   reachability: `analysis-rerun` is defined by emptiness (no
-  proposed groupings, no specifications), and a live discussion
+  proposed groupings, no specifications), and an open discussion
   flips the scenario to `blocked-discussions-open` before the
   analysis is reached — so the deferred rerun's only arrival is a
-  live research session over a state with nothing to show. If the
+  held research session over a state with nothing to show. If the
   route should ever end somewhere other than a stop, the honest fix
-  is in the scenario derivation (a display naming the live source
+  is in the scenario derivation (a display naming the held source
   session), not a branch in the analysis flow — noted, not built.
 
 Settled 2026-08-28, from the review pass:
@@ -450,8 +457,8 @@ Settled 2026-08-28, from the review pass:
 
 - **`--state`, in two scopes.** The components section deliberately left
   the analysis commits work-unit-wide, "protected by the deferral." The
-  deferral does not cover it: it counts `live_sources` (research and
-  discussion only), so a live specification, planning or code session in
+  deferral does not cover it: it counts `held_sources` (research and
+  discussion only), so a held specification, planning or code session in
   the same work unit is invisible to it — and the grouping analysis's
   `engine commit {wu}` then swept that session's half-written document
   into a `spec(…): reconcile proposed groupings` commit. Two finders

@@ -4,15 +4,15 @@
 
 ---
 
-## A. Live Source Check
+## A. Held Source Check
 
-The analysis reads the completed discussions and rewrites `.state/` staging that is work-unit-wide — a live peer session is mid-conversation on material it would read, and the pass would overwrite whatever an earlier one staged. Check first:
+The analysis reads the completed discussions and rewrites `.state/` staging that is work-unit-wide — a peer session holding a source topic open is mid-conversation on material it would read, and the pass would overwrite whatever an earlier one staged. Check first:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}
 ```
 
-#### If the response has `live_sources` greater than `0`
+#### If the response has `held_sources` greater than `0`
 
 Hold off — the analysis reads the settled record, so it waits for those sessions and runs at the next entry. Emit the response's `DISPLAY: presence deferral` section verbatim at this moment.
 

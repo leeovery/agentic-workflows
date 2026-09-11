@@ -1293,7 +1293,7 @@ function linters(cwd, { dotpath, file, variant }) {
 //   gap-route — the gap raise plus its acknowledgement gate: the menu states
 //               the routing intent and confirms it (no "no" — an objection
 //               arrives as Comment and drops into the settleable exchange)
-//   held-doc  — the fallback when a live session holds the owning document
+//   held-doc  — the fallback when another session holds the owning document
 // The raise body takes the finding idiom: bold head, one meta bullet per
 // cited quote, a labelled context paragraph, stakes beneath.
 // ---------------------------------------------------------------------------

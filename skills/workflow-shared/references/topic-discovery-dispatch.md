@@ -39,13 +39,13 @@ Nothing to run. `new_arrivals` stays empty.
 
 #### If the cache is `stale`
 
-The analysis reads completed corpora, and a live peer session is mid-conversation on material it would read. Check first:
+The analysis reads completed corpora, and a peer session holding a source topic open is mid-conversation on material it would read. Check first:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}
 ```
 
-**If the response has `live_sources` greater than `0`:**
+**If the response has `held_sources` greater than `0`:**
 
 Hold off — the cache self-heals at the next entry once those sessions conclude. Emit the response's `DISPLAY: presence deferral` section verbatim at this moment. `new_arrivals` stays empty.
 

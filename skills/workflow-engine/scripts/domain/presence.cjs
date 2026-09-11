@@ -4,16 +4,16 @@
 // Domain ring: session presence — a per-topic heartbeat file in the topic's
 // cache directory. Awareness, never mutual exclusion: the epic view marks
 // topics another session holds open, the analysis dispatch defers an epic-wide
-// analysis while a peer session is live, the conclude sweep leaves a held
-// peer's dirt alone, the code gate reads the whole project's rows and stamps
-// the entrant's when the slot is free, and the
-// spec-side resolution flow checks the target discussion before editing its
-// document in place. The file records the
-// owning Claude process's identity
-// (pid + start time + session id); `held` is true while that exact process
-// still runs — however long it sits idle — and the mtime is the activity
-// signal (`live` = held and beaten within the staleness window). A record
-// without identity (no CLAUDE_PID at beat time) degrades to mtime-only.
+// analysis while a peer session holds a source topic, the conclude sweep
+// leaves a held peer's dirt alone, the code gate reads the whole project's
+// rows and stamps the entrant's when the slot is free, and the spec-side
+// resolution flow checks the target discussion before editing its document in
+// place. The file records the owning Claude process's identity (pid + start
+// time + session id); `held` — the one verdict — is true while that exact
+// process still runs, however long it sits idle. The mtime is display only:
+// the row's "last active" age, shown wherever a hold is named and never
+// judged. A record without identity (no CLAUDE_PID at beat time) cannot be
+// verified and is never held.
 //
 // Beats are mechanical: the engine stamps them as a side effect of the verbs
 // a session already runs on its own topic (`beatQuietly`), and the terminal
@@ -37,12 +37,11 @@ const { processStartTime, processAlive } = require('../kernel/process.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { section, CONTINUE_INSTRUCTION, callout } = require('./projections/surfaces.cjs');
 
-const STALE_AFTER_SECONDS = 900;
 // Every phase a session sits in — the schema's list minus discovery.
 const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 // The phases that write the tree and the index — the unpartitionable pair.
 const CODE_PHASES = ['implementation', 'review'];
-// The corpora the epic-wide analyses read. A live session in any other phase
+// The corpora the epic-wide analyses read. A held session in any other phase
 // is no reason to defer an analysis that never looks at its material.
 const SOURCE_PHASES = ['research', 'discussion'];
 
@@ -92,7 +91,7 @@ function fmtAge(seconds) {
 
 /**
  * Refresh the topic's heartbeat. Cache-resident and gitignored; the content
- * is the owning session's identity record, the mtime is the activity signal.
+ * is the owning session's identity record, the mtime its last write.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  */
 function beatPresence(cwd, workUnit, phase, topic) {
@@ -139,10 +138,11 @@ function beatQuietly(cwd, workUnit, phase, topic) {
  * only that. A read (`topic queue`, `agent scan`) is reachable for any topic
  * — a foreign topic's queue is legitimately checked from another session —
  * so creating a hold here would manufacture a phantom, and stamping over a
- * peer's record would re-attribute a live hold. Ownership was established by
+ * peer's record would re-attribute a hold. Ownership was established by
  * the write-shaped verbs that are self-referential by construction (`topic
- * start`, the entry renders, the cadence commit); this keeps that hold live
- * through quiet polling turns. Same silence as `beatQuietly`.
+ * start`, the entry renders, the cadence commit); this keeps that hold's
+ * last-active age honest through quiet polling turns. Same silence as
+ * `beatQuietly`.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  */
 function refreshQuietly(cwd, workUnit, phase, topic) {
@@ -170,10 +170,9 @@ function clearQuietly(cwd, workUnit, phase, topic) {
  * @typedef {object} PresenceRow
  * @property {string} phase
  * @property {string} topic
- * @property {number} age_seconds
+ * @property {number} age_seconds  since the last write — "last active", never a verdict
  * @property {boolean} held  the owning process still runs (identity verified;
- *                           mtime-fallback when the record carries none)
- * @property {boolean} live  held and beaten within the staleness window
+ *                           a record carrying none is never held)
  * @property {string|null} session_id
  * @property {number|null} pid  the owning Claude process, when the record carries one
  */
@@ -192,7 +191,20 @@ function startTimeReader() {
 }
 
 /**
- * Every heartbeat under one work unit's cache, liveness applied.
+ * Does the record's process still run? Pid + start time where the record
+ * carries both, bare aliveness where it predates start times. A record with
+ * no identity cannot be verified and is never held.
+ * @param {PresenceRecord|null} record
+ * @param {(pid: number) => string|null|undefined} startOf
+ * @returns {boolean}
+ */
+function heldBy(record, startOf) {
+  if (!record || !record.pid) return false;
+  return record.pid_start ? startOf(record.pid) === record.pid_start : processAlive(record.pid);
+}
+
+/**
+ * Every heartbeat under one work unit's cache, the held verdict applied.
  * @param {string} cwd @param {string} workUnit
  * @param {(pid: number) => string|null|undefined} startOf
  * @returns {PresenceRow[]}
@@ -213,17 +225,11 @@ function collectRows(cwd, workUnit, startOf) {
       try {
         stat = fs.statSync(file);
       } catch { continue; }
-      const age = Math.max(0, Math.floor((Date.now() - stat.mtimeMs) / 1000));
       const record = readRecord(file);
-      let held;
-      if (record && record.pid) {
-        held = record.pid_start ? startOf(record.pid) === record.pid_start : processAlive(record.pid);
-      } else {
-        held = age < STALE_AFTER_SECONDS;
-      }
       rows.push({
-        phase, topic, age_seconds: age,
-        held, live: held && age < STALE_AFTER_SECONDS,
+        phase, topic,
+        age_seconds: Math.max(0, Math.floor((Date.now() - stat.mtimeMs) / 1000)),
+        held: heldBy(record, startOf),
         session_id: record ? record.session_id || null : null,
         pid: record ? record.pid ?? null : null,
       });
@@ -232,25 +238,29 @@ function collectRows(cwd, workUnit, startOf) {
   return rows;
 }
 
+/** The held rows an epic-wide analysis would read over. @param {PresenceRow[]} sessions */
+function heldSources(sessions) {
+  return sessions.filter((r) => r.held && SOURCE_PHASES.includes(r.phase));
+}
+
 /**
- * Every heartbeat in the work unit's cache, with liveness applied — the one
- * read every consumer shares. `held` answers "does a session hold this topic
- * open" (unbounded by time); `live` answers "is it actively working".
+ * Every heartbeat in the work unit's cache, the held verdict applied — the
+ * one read every consumer shares. `held` answers "does a session hold this
+ * topic open", unbounded by time; `age_seconds` says how long since it last
+ * wrote, and is shown, never judged.
  * @param {string} cwd @param {string} workUnit
- * @returns {{work_unit: string, stale_after_seconds: number, live: number, live_sources: number, held: number, sessions: PresenceRow[]}}
+ * @returns {{work_unit: string, held: number, held_sources: number, sessions: PresenceRow[]}}
  */
 function scanPresence(cwd, workUnit) {
   assertArgs(cwd, workUnit, undefined);
   const sessions = collectRows(cwd, workUnit, startTimeReader()).sort((a, b) => a.age_seconds - b.age_seconds);
   return {
     work_unit: workUnit,
-    stale_after_seconds: STALE_AFTER_SECONDS,
-    live: sessions.filter((r) => r.live).length,
-    // The analyses read research and discussion; `live_sources` is the count
-    // that decides a deferral, so a live planning or spec session never holds
-    // one up.
-    live_sources: sessions.filter((r) => r.live && SOURCE_PHASES.includes(r.phase)).length,
     held: sessions.filter((r) => r.held).length,
+    // The analyses read research and discussion; `held_sources` is the count
+    // that decides a deferral, so a held planning or spec session never holds
+    // one up.
+    held_sources: heldSources(sessions).length,
     sessions,
   };
 }
@@ -258,10 +268,10 @@ function scanPresence(cwd, workUnit) {
 /**
  * Every heartbeat in the project, work unit named per row — the read the code
  * gate needs, which asks "is any session anywhere in a code phase" and has no
- * work unit to scope by. Same row shape and same totals as the per-work-unit
- * scan, plus `work_unit`; `scope` names the form.
+ * work unit to scope by. Same row shape and the same `held` total as the
+ * per-work-unit scan, plus `work_unit`; `scope` names the form.
  * @param {string} cwd
- * @returns {{scope: string, stale_after_seconds: number, live: number, held: number, sessions: (PresenceRow & {work_unit: string})[]}}
+ * @returns {{scope: string, held: number, sessions: (PresenceRow & {work_unit: string})[]}}
  */
 function scanProject(cwd) {
   const cacheRoot = path.join(cwd, '.workflows', '.cache');
@@ -279,8 +289,6 @@ function scanProject(cwd) {
   sessions.sort((a, b) => a.age_seconds - b.age_seconds);
   return {
     scope: 'project',
-    stale_after_seconds: STALE_AFTER_SECONDS,
-    live: sessions.filter((r) => r.live).length,
     held: sessions.filter((r) => r.held).length,
     sessions,
   };
@@ -358,24 +366,24 @@ function cleanupPresence(cwd, sessionId) {
 /**
  * The deferral callout, rendered engine-side so calling flows emit it
  * verbatim (only where an analysis defers — the marker says so). Counts the
- * source phases alone, like the deferral itself. Empty when no source session
- * is live.
+ * source phases alone, like the deferral itself, naming each held row with
+ * its last-active age. Empty when no source session is held.
  * @param {{sessions: PresenceRow[]}} scan
  * @returns {string}
  */
 function deferralSection(scan) {
-  const live = scan.sessions.filter((r) => r.live && SOURCE_PHASES.includes(r.phase));
-  if (live.length === 0) return '';
-  const names = live.map((r) => `${r.phase}/${r.topic}`).join(', ');
+  const held = heldSources(scan.sessions);
+  if (held.length === 0) return '';
+  const names = held.map((r) => `${r.phase}/${r.topic} (last active ${fmtAge(r.age_seconds)} ago)`).join(', ');
   return section(
     'DISPLAY: presence deferral',
     `only at an analysis deferral: ${CONTINUE_INSTRUCTION}`,
-    callout(`Analyses deferred — ${live.length} live session(s): ${names}. They read the settled record, so they wait for those sessions to conclude.`),
+    callout(`Analyses deferred — ${held.length} session(s): ${names}. They read the settled record, so they wait for those sessions to conclude.`),
   );
 }
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly,
   scanPresence, scanProject, heldCodeSessions, cleanupPresence, deferralSection,
-  fmtAge, ownsRow, CODE_PHASES, STALE_AFTER_SECONDS,
+  fmtAge, ownsRow, CODE_PHASES,
 };

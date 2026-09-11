@@ -72,8 +72,8 @@ engine.agents.reviewArming(cwd, wu, topic)        // → { armed, cycles, map_mo
 engine.session.nextSessionNumber(sessionsDir)     // → next session-NNN number from the on-disk logs (1 when none)
 
 // domain: session presence
-engine.presence.scanPresence(cwd, wu)             // → { work_unit, live, live_sources, held, stale_after_seconds, sessions[] } — one work unit's heartbeats
-engine.presence.scanProject(cwd)                  // → the same shape and totals but no `live_sources`, with `scope: "project"` in place of `work_unit` and `work_unit` per row
+engine.presence.scanPresence(cwd, wu)             // → { work_unit, held, held_sources, sessions[] } — one work unit's heartbeats; a row's `age_seconds` is "last active", never a verdict
+engine.presence.scanProject(cwd)                  // → the same row shape and `held` total but no `held_sources`, with `scope: "project"` in place of `work_unit` and `work_unit` per row
 engine.presence.heldCodeSessions(cwd)             // → the project's held implementation/review rows, minus the caller's own — the code gate's read
 engine.presence.ownsRow(row)                      // → does the calling session own this heartbeat (its session id, or its pid)? Filter with it before marking any row as a peer's
 engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / `12m` / `3h` / `2d`

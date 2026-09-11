@@ -31,6 +31,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const cases = require('./cases.cjs');
+const { processStartTime } = require('../../../skills/workflow-engine/scripts/kernel/process.cjs');
 
 const ROOT = cases.ROOT;
 const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
@@ -65,10 +66,13 @@ const WORLD_HISTORY = '.world-history.json';
 // [, "session_id", "pid", "pid_start"]}]. Presence files are excluded
 // from every snapshot (timing noise no case claim can pin), so a
 // fixture that needs a peer's hold declares it here instead, and
-// materialise stamps it last: the mtime is the liveness signal and
-// must read fresh for the walk that follows. Omit the identity fields
-// for the mtime-fallback record — held while the file is younger than
-// the staleness window, which no walk outlives.
+// materialise stamps it last: the mtime is the row's "last active"
+// age, and it reads freshest of anything in the world. A row that
+// omits `pid` is stamped as pid 1 with pid 1's real start time —
+// always alive, never the walker's own process, no session id — so
+// it reads held and owned by nobody. A row that declares its own
+// identity is stamped as declared: a dead pid on purpose reads
+// unheld.
 const WORLD_PRESENCE = '.world-presence.json';
 
 // Snapshot paths left OUT of the world's commits. Everything a recipe
@@ -526,7 +530,7 @@ function buildWorld(caseId) {
   // Last, after every commit: what a peer session left behind. The dirt
   // stands untracked because it was held back from the commits above;
   // the heartbeats are stamped here so their mtimes are the freshest
-  // thing in the world, which is what makes a peer read live.
+  // thing in the world.
   for (const rel of dirt.keys()) {
     const dest = path.join(dir, rel);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -535,11 +539,10 @@ function buildWorld(caseId) {
   for (const row of presence) {
     const file = path.join(dir, '.workflows', '.cache', row.work_unit, row.phase, row.topic, 'presence');
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({
-      pid: row.pid ?? null,
-      pid_start: row.pid_start ?? null,
-      session_id: row.session_id ?? null,
-    }) + '\n');
+    const identity = row.pid === undefined
+      ? { pid: 1, pid_start: processStartTime(1) }
+      : { pid: row.pid, pid_start: row.pid_start ?? null };
+    fs.writeFileSync(file, JSON.stringify({ ...identity, session_id: row.session_id ?? null }) + '\n');
   }
 
   return dir;

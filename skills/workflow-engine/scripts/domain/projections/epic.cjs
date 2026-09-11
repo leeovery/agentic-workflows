@@ -231,13 +231,16 @@ function arrivalCallouts(newArrivals) {
 // Discovery-map topic rows as kernel tree nodes. No tag column — the
 // lifecycle rides a `↳ state` line beneath the summary, so long titles never
 // stretch a shared column across the whole map.
-/** @param {EpicDetail} detail @param {Set<string>} heldTopics */
-function mapNodes(detail, heldTopics) {
+/** @param {EpicDetail} detail @param {Map<string, number>} heldAges topic → last-active age of the session holding it */
+function mapNodes(detail, heldAges) {
   return detail.discovery_map.map((row) => {
     const body = [];
     if (row.summary) body.push(row.summary);
     if (row.source_provenance) body.push(derivedFrom(row.source_provenance));
-    body.push(stateNote(heldTopics.has(row.name) ? `${lifecycleLabel(row)} · in session` : lifecycleLabel(row)));
+    const age = heldAges.get(row.name);
+    body.push(stateNote(age === undefined
+      ? lifecycleLabel(row)
+      : `${lifecycleLabel(row)} · in session (last active ${fmtAge(age)} ago)`));
     return {
       title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
       body,
@@ -248,6 +251,21 @@ function mapNodes(detail, heldTopics) {
 /** Held rows from a presence scan — sessions whose owning process still runs. @param {PresenceRow[]|undefined} presence @returns {PresenceRow[]} */
 function heldSessions(presence) {
   return (presence || []).filter((r) => r.held);
+}
+
+/**
+ * Held topics with the freshest last-active age among the sessions holding
+ * each — a map row spans research and discussion, so one topic can be held
+ * twice.
+ * @param {PresenceRow[]|undefined} presence @returns {Map<string, number>}
+ */
+function heldTopicAges(presence) {
+  /** @type {Map<string, number>} */
+  const ages = new Map();
+  for (const r of heldSessions(presence)) {
+    ages.set(r.topic, Math.min(r.age_seconds, ages.get(r.topic) ?? Infinity));
+  }
+  return ages;
 }
 
 /** First-matching recommendation for the no-map dashboard, or null. @param {EpicDetail} detail */
@@ -313,7 +331,7 @@ function plansNotReadyBlock(detail) {
  */
 function epicDashboard(workUnit, detail, opts = {}) {
   const newArrivals = opts.newArrivals || {};
-  const heldTopics = new Set(heldSessions(opts.presence).map((r) => r.topic));
+  const heldAges = heldTopicAges(opts.presence);
   const hasMap = detail.discovery_map.length > 0;
   const phaseNames = Object.keys(detail.phases);
 
@@ -343,7 +361,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
     const total = detail.map_summary ? detail.map_summary.total : detail.discovery_map.length;
     block += treeHeader(`RESEARCH & DISCUSSION (${total} topic${total === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
-    block += renderTree(mapNodes(detail, heldTopics), { width: TREE_WIDTH, gap: true });
+    block += renderTree(mapNodes(detail, heldAges), { width: TREE_WIDTH, gap: true });
     stages.push(block);
   }
 

@@ -85,7 +85,7 @@ A `(code session: …)` marker needs no gate here — implementation and review 
 
 **If the selected entry carries an `(in session: …)` marker:**
 
-Another live session holds this topic open. Fetch and emit the `MENU: in-session gate — {key}` section for the selected entry:
+Another session holds this topic open. Fetch and emit the `MENU: in-session gate — {key}` section for the selected entry:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {work_unit} {key}

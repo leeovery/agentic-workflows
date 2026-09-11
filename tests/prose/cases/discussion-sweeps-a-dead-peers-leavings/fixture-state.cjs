@@ -16,10 +16,10 @@
 // relevance-measurement belongs to a session that is still alive: same
 // shape, uncommitted document and all, plus a heartbeat. The heartbeat
 // is declared rather than beaten — presence files are excluded from
-// every snapshot, so materialise stamps it last with a fresh mtime. It
-// carries no identity, the legacy record's shape, which reads `held`
-// from mtime alone: held for far longer than a walk runs, and owned by
-// nobody, so the concluding session cannot mistake it for its own.
+// every snapshot, so materialise stamps it last. The row declares no
+// identity, so it is stamped as pid 1: alive for as long as the machine
+// is, and owned by nobody, so the concluding session cannot mistake it
+// for its own.
 //
 // The pair is the point. Identical dirt, opposite verdicts.
 
