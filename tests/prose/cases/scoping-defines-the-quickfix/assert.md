@@ -32,8 +32,10 @@ EXPECTED WORLD — from a work unit holding only its discovery carrier:
 
 - a specification at
   `.workflows/support-email/specification/support-email/specification.md`
-  carrying the scoping shape — change description, scope, exclusions,
-  verification — and naming both the old and new addresses
+  in the shape every specification carries — `## Specification` holding
+  four numbered sections (change description, scope, exclusions,
+  verification) and an empty `## Working Notes` — naming both the old
+  and new addresses
 - the scope reflecting what the user actually said: the checkout footer
   and contact page as known sites, the transactional template as
   suspected, with the exact locations left to implementation to confirm

@@ -8,31 +8,39 @@ Write a lightweight specification directly. No agents, no review cycles — the 
 
 ## A. Write the Spec
 
-Create the specification file at `.workflows/{work_unit}/specification/{topic}/specification.md`:
+→ Load **[specification-body.md](../../workflow-shared/references/specification-body.md)** and follow its instructions as written.
+
+Create the specification file at `.workflows/{work_unit}/specification/{topic}/specification.md` in the body's shape — four numbered sections beneath `## Specification`, `## Working Notes` empty:
 
 ```markdown
 # Specification: {Topic:(titlecase)}
 
-## Change Description
+## Specification
+
+### 1. Change Description
 
 {What is being changed and why — 2-3 sentences}
 
-## Scope
+### 2. Scope
 
 {Files, directories, or patterns affected. Be specific:}
 {- "All .go files in pkg/" or "grep -r 'interface{}' --include='*.go'"}
 {- Include file counts or pattern matches if known}
 
-## Exclusions
+### 3. Exclusions
 
 {Anything explicitly excluded from the change, or "None"}
 
-## Verification
+### 4. Verification
 
 {How to verify the change is correct — typically:}
 {- All existing tests pass after the change}
 {- No occurrences of the old pattern remain in scope}
 {- Any additional checks specific to this change}
+
+---
+
+## Working Notes
 ```
 
 Confirm the spec was written:
@@ -42,6 +50,8 @@ Confirm the spec was written:
 ```
 Specification written: .workflows/{work_unit}/specification/{topic}/specification.md
 ```
+
+→ On return, proceed to **B. Register in Manifest**.
 
 ## B. Register in Manifest
 
