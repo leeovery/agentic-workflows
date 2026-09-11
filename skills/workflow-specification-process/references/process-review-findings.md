@@ -59,7 +59,12 @@ Work through each unresolved finding **sequentially** — a finding whose Resolu
 
 Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: the answer owned by a source document rather than by this specification → `route` — a point the sources are silent on that a measurement or a sibling artifact pins is this move too (an Unsourced decision: the derivation belongs in the owning document, never the spec alone); exactly one defensible answer the sources or the specification's own decisions yield → `settled`, the derivation carried as the Proposal's reasoning; real options the search genuinely leaves to the user → `choice`, naming what was searched.
 
-Then confirm that move against the live session. A `settled` finding whose stated derivation no longer holds — a decision made since the tracking file was written, ground the session has moved — or whose call you cannot yourself stand behind, is a `choice`: update the Move, replace its Proposal with Options, and present it that way. Reclassification only ever moves toward the user; a `choice` is never demoted to `settled` to save a stop.
+Then dispose the move. The tracking file proposed; this session decides — against the bar, with the context the reviewer lacked: user rulings this sitting, findings landed earlier in this walk, the specification's own decisions, ground that has moved. Reclassification runs in both directions, always on a derivation written down.
+
+- A `settled` finding whose stated derivation no longer holds, or whose call you cannot yourself stand behind, is a `choice` — and takes the test below like any other.
+- A `choice` stands only when every prong holds: the fork is what the product's user gets or how it behaves; it is irreducible — no source, specification decision, measurement, sibling artifact, precedent, or constraint breaks the tie; a side visibly costs the user — a fork every side of which leaves the user well served is a preference, not a decision, settled on what leans; and the tie-break is product intent, which only the user holds. The staged `(recommended)` marker is the reviewer's argument, never a ground; a fork with one live side — a side no informed user would choose — is settled; a choice that names no search is not a verdict — run the search yourself. Below the bar it is `settled` where the sources, the specification's own decisions, or a defensible derivation — precedent, constraints, the feature's stated premise — yield exactly one answer (a point a source delegated to the specification included), and `route` where the sources are silent and a measurement or a sibling artifact pins the answer. A point that stays underivable stands as a `choice` — the specification never invents product intent.
+
+Where the disposal moved anything — the move, or a search the staged choice never named — record it in the tracking file before anything renders. To `settled`: Move rewritten, the Proposal written with the derivation naming what decided it, the Options removed, Proposed Text — and Current where existing content changes — supplied as the format requires. To `choice`: Move rewritten, the Proposal replaced with Options, the search named. To `route`: Move rewritten, Proposal and Proposed Text removed.
 
 **If the next unresolved finding's Move is `route`:**
 
@@ -71,9 +76,9 @@ Then confirm that move against the live session. A `settled` finding whose state
 
 ### Route Source-Lane Findings
 
-A `route` finding — Category **Source defect** or **Unsourced decision** — indicts a source, not the specification. It is never applied or adjusted here, and never rides `auto`. Instead of presenting it:
+A `route` finding — every Source defect and Unsourced decision, and any finding **B** disposed to the owning document — indicts a source, not the specification. It is never applied or adjusted here, and never rides `auto`. Instead of presenting it:
 
-→ Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with doc = `{the owning source's topic}` (for an unsourced decision, whichever of this specification's **own sources** should own the missing decision — the route never leaves the spec's sources; a spec cites no discussion it doesn't source), category = `{the finding's Category}`, lane = `review`, taking the finding's Problem as the material to classify.
+→ Load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with doc = `{the owning source's topic}` (for an unsourced decision or a point **B** routed, whichever of this specification's **own sources** should own the missing decision — the route never leaves the spec's sources; a spec cites no discussion it doesn't source), category = `{the finding's Category}`, lane = `review`, taking the finding's Problem as the material to classify.
 
 On return, land the outcome by what actually happened there:
 
@@ -212,7 +217,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — applied.
 2. Update the tracking file: set resolution to "Approved"
 3. Update `finding_gate_mode` to `auto` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto`)
 4. Commit
-5. Process each remaining finding from **B** — the mode change removes the approval stops for settled calls, never the per-finding pass: `route` findings still route, a `choice` still stops, and every finding is still rendered
+5. Process each remaining finding from **B** — the mode change removes the approval stops for settled calls, never the per-finding pass: `route` findings still route, a `choice` that stands at **B**'s dispose still stops, and every finding is still rendered
 
 → Return to **B. Process One Item at a Time**.
 

@@ -90,14 +90,23 @@ that determines presentation is *who can answer it*.
   *being stopped*, not over *being shown*, and it is not a batching
   switch. The default stays `gated`.
 
-- **F3 — a choice always overrides `auto`.** This is the fourth member
-  of the stays-gated family (Context Resurfacing, Reconcile Stale
-  Sources, decision-worthy incoherence —
-  [spec-side-coherence.md](spec-side-coherence.md)), and it joins on
-  the family's own terms: membership is *a choice exists*, never a
+- **F3 — a choice that clears the bar always overrides `auto`.** The
+  fourth member of the stays-gated family (Context Resurfacing,
+  Reconcile Stale Sources, decision-worthy incoherence —
+  [spec-side-coherence.md](spec-side-coherence.md)), joining on the
+  family's own terms: membership is *a choice exists*, never a
   category. `auto` means "don't pause me for what you can decide"; it
-  has never meant "decide what you can't". #957's carve-out reached
-  for this and keyed on the wrong thing.
+  never means "decide what you can't". A choice exists only past the
+  bar, every prong holding: the fork is product-level (what the user
+  gets or how it behaves); irreducible (no source, spec decision,
+  measurement, sibling artifact, precedent, or constraint breaks the
+  tie); a side visibly costs the user (a fork every side of which
+  leaves the user well served is a preference, not a decision — it
+  settles on what leans); and the tie-break is product intent, which
+  only the user holds. The spec has no judgment tier: a derivable
+  point is settled or routed, never stopped, and an underivable one is
+  a product-intent gap that stops as a choice — the spec never
+  invents.
 
 - **F4 — a finding is report-class content.** It leads with what is
   wrong in product terms and what Claude would do about it, in the
@@ -128,12 +137,26 @@ that determines presentation is *who can answer it*.
   it stops. A choice finding presents options and proposes none as
   fait accompli.
 
-- **F8 — classification promotes toward the user, never away.** L3.
-  The move is re-derived at presentation time against the live
-  session: a settled finding whose derivation no longer holds, or that
-  Claude cannot itself stand behind, becomes a choice. Never the
-  reverse. This is what keeps a misclassification cheap — one
-  exchange, not a false menu or a stalled spec.
+- **F8 — the reviewer proposes the move; the session disposes it, in
+  both directions.** The agent stages a move cold; the session
+  re-derives it before anything renders, with the context the agent
+  lacked — user rulings this sitting, findings landed earlier in the
+  walk, the spec's own decisions, ground that has moved. A settled
+  finding whose derivation no longer holds, or that Claude cannot
+  itself stand behind, becomes a choice and takes the F3 bar. A choice
+  is held to the same bar: below it, the session settles it (the
+  sources, the spec's own decisions, or a defensible derivation from
+  precedent, constraints, or the feature's stated premise yield one
+  answer — a point a source delegated to the spec included) or routes
+  it (a source-silent point a measurement or sibling artifact pins
+  belongs in the owning document), and writes the derivation into the
+  tracking row before the finding renders. The staged `(recommended)`
+  marker is the agent's argument, never a ground; a choice naming no
+  search is re-derived from scratch. Neither verdict is final on its
+  own, and both are accountable in writing: a stop costs a derivation
+  the session could not complete, a settle costs the derivation it
+  wrote — either way a misclassification is one exchange at the gate,
+  never a false menu or a stalled spec.
 
 ## Divergence from the lanes protocol
 
@@ -180,8 +203,10 @@ natural-break deferral. One finding at a time, as now.
    collision.
 
 Prose cases alongside: a settled finding riding `auto`, a choice
-stopping over `auto`, an unsourced decision taking the new branch.
-Simulation re-pin where call sequences move.
+stopping over `auto` after it clears the bar at dispose, a derivable
+choice the session settles at dispose and applies under `auto` with no
+stop, an unsourced decision taking the new branch. Simulation re-pin
+where call sequences move.
 
 ## Decisions taken
 
