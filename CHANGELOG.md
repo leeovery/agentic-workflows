@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.37] - 2026-09-11
+
+🔧 Changed
+- Presence tracking now reports a single "held" status per session instead of separate held/live states, and shows idle time as an informational "last active" age instead of treating idle sessions as stale — a session left open no longer gets silently deprioritized just because it's been quiet.
+- Analyses and gates that used to wait only on "live" (recently active) sessions now defer to any held session, however long it's been idle, so background work never runs over material a paused-but-open session still owns.
+- Discussion/research review gates and prompts now say "review" instead of "final review" and offer y/n instead of skip, since a review pass may not be the last one.
+- Process start-time comparisons are now pinned to a fixed timezone/locale so presence checks stay correct across sessions running in different timezones.
+
+🐛 Fixed
+- The epic map and deferral messages now show which session is holding a topic and how long ago it was last active, instead of only a vague "in session" marker.
+- A presence heartbeat with no process identity is no longer treated as held, preventing an unverifiable record from blocking other sessions indefinitely.
+
 ## [0.7.36] - 2026-09-11
 
 🔧 Changed
