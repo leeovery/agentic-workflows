@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.35] - 2026-09-11
+
+🐛 Fixed
+- Review reports no longer silently pass phase acceptance criteria that were never actually measured — unmeasured criteria are now explicitly disclosed instead of checked off.
+
+🔧 Changed
+- The review process's change-set cycle count is now derived with an explicit command, correctly reading zero for a topic with no prior review cycles.
+
 ## [0.7.34] - 2026-09-11
 
 ✨ Added
