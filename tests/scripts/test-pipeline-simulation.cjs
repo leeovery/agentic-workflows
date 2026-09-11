@@ -497,8 +497,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // Review — verification, then the prepped pipeline: out-of-scope
   // findings bank durably on the manifest, the report is produced from
   // the action list after the do-now apply, the outcome renders through
-  // its surfaces, and the pass completes the phase. The offer at a pass
-  // consumes the banked set and deletes the field.
+  // its surfaces — naming the criteria the review could not measure — and
+  // the pass completes the phase. The offer at a pass consumes the banked
+  // set and deletes the field.
   sim.render(['entry-gate', `${wu}.review.${topic}`], { expect: 'empty' });
   sim.render(['code-gate', `${wu}.review.${topic}`], { expect: 'empty' });
   label(sim, wu, 'review', topic);
@@ -522,8 +523,10 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     corrected: { applied: 2, reverted: 0, suite: 'green' },
     out_of_scope: 1,
     discarded: 1,
+    not_measured: 2,
   });
-  sim.render(['review-presentation', `${wu}.review.${topic}`, '--file', presentation], { expect: 'content' });
+  assert.match(sim.render(['review-presentation', `${wu}.review.${topic}`, '--file', presentation], { expect: 'content' }),
+    /Not measured: 2 criteria — named in the report\./, 'the presentation discloses what the review could not measure');
   sim.render(['review-gate', `${wu}.review.${topic}`, '--verdict', 'pass', '--out-of-scope', '1'], { expect: 'content' });
   sim.run(['manifest', 'delete', `${wu}.review.${topic}`, 'out_of_scope']);
   sim.run(['topic', 'complete', wu, 'review', topic]);

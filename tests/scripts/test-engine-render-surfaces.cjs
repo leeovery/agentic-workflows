@@ -4224,6 +4224,43 @@ describe('render review-presentation', () => {
     assert.ok(!out.includes('Discarded'));
   });
 
+  it('names the criteria the review could not measure, singular at one', () => {
+    const three = render({ topic: 'checkout', verdict: 'pass', discarded: 45, not_measured: 3 });
+    assert.match(three, /Not measured: 3 criteria — named in the report\./);
+    const one = render({ topic: 'checkout', verdict: 'pass', discarded: 45, not_measured: 1 });
+    assert.match(one, /Not measured: 1 criterion — named in the report\./);
+  });
+
+  it('says nothing about measurement when every criterion was measured', () => {
+    const zero = render({ topic: 'checkout', verdict: 'pass', discarded: 45, not_measured: 0 });
+    assert.ok(!zero.includes('Not measured'), 'zero renders nothing');
+    const absent = render({ topic: 'checkout', verdict: 'pass', discarded: 45 });
+    assert.ok(!absent.includes('Not measured'), 'absent renders nothing');
+  });
+
+  it('the not-measured line closes the tail, after the held and discarded counts', () => {
+    const out = render({ topic: 'checkout', verdict: 'pass', corrected: { applied: 4, suite: 'green' }, out_of_scope: 2, discarded: 45, not_measured: 3 });
+    const oi = out.indexOf('Outside this spec: 2');
+    const di = out.indexOf('Discarded: 45');
+    const ni = out.indexOf('Not measured: 3');
+    assert.ok(out.indexOf('Corrected in this session') < oi && oi < di && di < ni, 'the tail keeps its order');
+  });
+
+  it('a pass with nothing but unmeasured criteria still opens the findings section', () => {
+    const out = render({ topic: 'checkout', verdict: 'pass', not_measured: 3 });
+    assert.match(out, /DISPLAY: review findings/);
+    assert.match(out, /Not measured: 3 criteria — named in the report\./);
+    assert.ok(!out.includes('Corrected'));
+    assert.ok(!out.includes('Discarded'));
+  });
+
+  it('refuses a not-measured count that is not a non-negative integer', () => {
+    const message = /render review-presentation: "not_measured" must be a non-negative integer/;
+    assert.throws(() => render({ topic: 'checkout', verdict: 'pass', not_measured: -1 }), message);
+    assert.throws(() => render({ topic: 'checkout', verdict: 'pass', not_measured: 1.5 }), message);
+    assert.throws(() => render({ topic: 'checkout', verdict: 'pass', not_measured: '3' }), message);
+  });
+
   it('refuses a verdict that disagrees with the list', () => {
     assert.throws(() => render({ topic: 'checkout', verdict: 'fail' }), /a fail must carry at least one "replan" finding/);
     assert.throws(
