@@ -1,5 +1,5 @@
 {
-  "origin": "research feeds discussion — a discussion whose same-named research is still outstanding is held shut at the door, every work type: the entry fetches the engine's gate before it reads any status, emits the blocker pair, and stops. Retires the shape where the entry let the session in, the advisory held the reconcile flag, and only the conclusion met the wait gate — a sitting opened over research still to land, and the block came at the end of it instead of the door",
+  "origin": "research feeds discussion \u2014 a discussion whose same-named research is still outstanding is held shut at the door, every work type: the entry fetches the engine's gate before it reads any status, emits the blocker pair, and stops. Retires the shape where the entry let the session in, the advisory held the reconcile flag, and only the conclusion met the wait gate \u2014 a sitting opened over research still to land, and the block came at the end of it instead of the door",
   "entry": "workflow-discussion-entry",
   "files": [
     "skills/workflow-discussion-entry/SKILL.md",
@@ -25,7 +25,8 @@
       "topic start",
       "topic reopen",
       "topic queue",
-      "workflow-discussion-process"
+      "workflow-discussion-process",
+      "engine.cjs commit"
     ]
   }
 }

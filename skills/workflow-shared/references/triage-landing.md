@@ -110,7 +110,7 @@ Surface the engine's error verbatim — it names the recovery path (e.g. a cance
 
 **Otherwise:**
 
-Set `landed_topic = {target}` and `result = landed`. When the response carries `reconcile_flagged` or `sources_staled`, the landing marked downstream work to reconcile — on a research-side landing, the target's discussion, live or decided (a live one can no longer conclude until the research lands); on a discussion-side landing, the specification(s) sourcing the target, named in `sources_staled`, whose extracted rows are now `stale` (`sources_staled` can arrive alone when the spec already carried a flag). The caller's landing line should say which.
+Set `landed_topic = {target}` and `result = landed`. When the response carries `reconcile_flagged` or `sources_staled`, the landing marked downstream work to reconcile — on a research-side landing, the target's discussion, live or decided (held at entry until the research lands, then reconciled against it — a live one already in session cannot conclude before then); on a discussion-side landing, the specification(s) sourcing the target, named in `sources_staled`, whose extracted rows are now `stale` (`sources_staled` can arrive alone when the spec already carried a flag). The caller's landing line should say which.
 
 → Return to caller.
 

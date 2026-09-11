@@ -4,7 +4,7 @@
 
 ---
 
-Check the research prerequisite — the engine derives the verdict from the topic's research item, whether or not a discussion item exists (research feeds discussion: while the same-named research is in flight or parked, the discussion is held at entry, every work type):
+Check the research prerequisite — the engine derives the verdict from the topic's research item, whether or not a discussion item exists:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.discussion.{topic}

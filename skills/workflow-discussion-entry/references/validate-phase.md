@@ -45,3 +45,9 @@ Set source="continue".
 → Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
 
 → Return to caller.
+
+#### Otherwise
+
+The discussion is cancelled — it returns through the epic menu's reactivate option, never through entry. Tell the user in one line.
+
+**STOP.** Do not proceed — terminal condition.

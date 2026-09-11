@@ -182,7 +182,7 @@ Then say where the ball sits:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Paused with the waits queued — the closing ceremony runs once everything this discussion waits on has landed. Run `/clear`, then `/workflow-start`: the menu carries the way in, and this discussion concludes once every wait releases.
+> Paused with the waits queued — the closing ceremony runs once everything this discussion waits on has landed. Run `/clear`, then `/workflow-start`: the menu carries the way in — research this discussion waits on is entered first, and the discussion's own door stays shut until it lands — and this discussion concludes once every wait releases.
 ```
 
 **STOP.** Do not proceed — terminal condition.
