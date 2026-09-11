@@ -34,6 +34,11 @@ a menu was absent — is settled here, not by the walker's account of it.
 Where the account describes an output the record contradicts, the record
 wins and the discrepancy is itself worth reporting.
 
+An output ending `…[truncated]` was cut by the recorder, not by the
+command: it settles what appears before the cut and nothing about what
+followed it. Never read absence into a truncated output — a row missing
+from a cut JSON list is unrecorded, not absent.
+
 {{actions}}
 
 === checks ===
