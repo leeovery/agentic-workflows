@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.34] - 2026-09-11
+
+✨ Added
+- Review now runs a second detection layer after per-task checks — a change-set verification pass that holds the whole delivered diff against each specification section, running project linters/build/tests where conventions allow and reporting a coverage map of what it checked.
+- Review's presentation now surfaces a "Not measured" count for acceptance criteria that neither per-task reading nor the change-set pass could settle.
+- A blocking issue with a fix confined to one site is now corrected automatically during review and reported as "blocking and corrected," instead of always failing the review.
+
+🔧 Changed
+- The review assessor now also judges whether a comment-only fix is really the right remedy, and re-routes it to a code fix when the underlying defect is behavioural.
+- Review coverage tracking is now recorded after every batch of task verifiers instead of only at the end, so a crash or rate limit no longer loses already-completed verification work.
+- Quick-fix specifications now share the same numbered-section body format used by every other work type, instead of a bespoke four-heading layout.
+
+🐛 Fixed
+- Review crash-resume now correctly re-enters when verification finished but the report was lost, instead of mishandling that state.
+
 ## [0.7.33] - 2026-09-10
 
 ✨ Added
