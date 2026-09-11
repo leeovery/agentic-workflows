@@ -9,6 +9,7 @@
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
@@ -35,6 +36,7 @@
   ],
   "invariants": {
     "calls_include": [
+      "render entry-gate search-relevance.discussion.behavioural-ranking",
       "manifest get search-relevance.discussion.behavioural-ranking status",
       "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
       "manifest get search-relevance.research.behavioural-ranking status",
@@ -43,6 +45,8 @@
       "topic queue search-relevance discussion behavioural-ranking"
     ],
     "calls_in_order": [
+      "render entry-gate search-relevance.discussion.behavioural-ranking",
+      "manifest get search-relevance.discussion.behavioural-ranking status",
       "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
       "manifest get search-relevance.research.behavioural-ranking status",
       "manifest delete search-relevance.discussion.behavioural-ranking reconcile_needed",
