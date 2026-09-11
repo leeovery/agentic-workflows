@@ -96,19 +96,22 @@ that determines presentation is *who can answer it*.
   [spec-side-coherence.md](spec-side-coherence.md)), joining on the
   family's own terms: membership is *a choice exists*, never a
   category. `auto` means "don't pause me for what you can decide"; it
-  never means "decide what you can't". A choice exists only past the
-  bar, every prong holding: the fork is product-level (what the user
-  gets or how it behaves); irreducible (no source, spec decision,
-  measurement, sibling artifact, precedent, or constraint breaks the
-  tie); a side visibly costs the user (a fork every side of which
-  leaves the user well served is a preference, not a decision — it
-  settles on what leans); and the tie-break is product intent, which
-  only the user holds. The spec has no judgment tier: a derivable
-  point is settled or routed, never stopped, and an underivable one is
-  a product-intent gap that stops as a choice — the spec never
-  invents. A preference nothing leans on is neither: no side costs the
-  user, so the spec states no rule for it — declined at dispose, with
-  its reason.
+  never means "decide what you can't". In the specification loop a
+  choice exists only past the bar, every prong holding: the fork is
+  product-level (what the user gets or how it behaves); irreducible (no
+  source, spec decision, measurement, sibling artifact, precedent, or
+  constraint breaks the tie); a side visibly costs the user (a fork
+  every side of which leaves the user well served is a preference, not
+  a decision — it settles on what leans); and the tie-break is product
+  intent, which only the user holds. The spec has no judgment tier: a
+  derivable point is settled or routed, never stopped, and an
+  underivable one is a product-intent gap that stops as a choice — the
+  spec never invents. A point the spec has no rule for — a preference
+  no side of which costs the user, a mechanism that is the builder's —
+  is neither: nothing leans, so it is declined at dispose with its
+  reason. The planning loop keeps the lanes' one-way promotion (L3): a
+  settled call it cannot stand behind becomes a choice, never the
+  reverse, and every choice stops over `auto`.
 
 - **F4 — a finding is report-class content.** It leads with what is
   wrong in product terms and what Claude would do about it, in the
@@ -131,7 +134,10 @@ that determines presentation is *who can answer it*.
   routed. "Leave it" remains reachable as the *outcome of a
   conversation* through feedback — never as a one-keystroke exit past
   a known defect. This mirrors L5: deferral is the user's answer,
-  never a lane the reviewer offers.
+  never a lane the reviewer offers. A point the spec has no rule for
+  is not a found problem: the specification loop declines it at
+  dispose with its reason (F3), which is the one decline no exchange
+  precedes.
 
 - **F7 — a settled finding carries its fix; a choice does not.** L8,
   restated for this surface. A settled finding must carry the call
@@ -139,24 +145,25 @@ that determines presentation is *who can answer it*.
   it stops. A choice finding presents options and proposes none as
   fait accompli.
 
-- **F8 — the reviewer proposes the move; the session disposes it, in
-  both directions.** The agent stages a move cold; the session
-  re-derives it before anything renders, with the context the agent
-  lacked — user rulings this sitting, findings landed earlier in the
-  walk, the spec's own decisions, ground that has moved. A settled
-  finding whose derivation no longer holds, or that Claude cannot
-  itself stand behind, becomes a choice and takes the F3 bar. A choice
-  is held to the same bar: below it, the session settles it (the
-  sources, the spec's own decisions, or a defensible derivation from
-  precedent, constraints, or the feature's stated premise yield one
-  answer — a point a source delegated to the spec included), routes
+- **F8 — in the specification loop the reviewer proposes the move; the
+  session disposes it, in both directions.** The agent stages a move
+  cold; the session re-derives it before anything renders, with the
+  context the agent lacked — user rulings this sitting, findings landed
+  earlier in the walk, the spec's own decisions, ground that has moved,
+  the source document read where the row's excerpt does not settle the
+  point. A settled finding whose derivation no longer holds, or that
+  Claude cannot itself stand behind, becomes a choice and takes the F3
+  bar. A choice is held to the same bar: below it, the session settles
+  it (the sources, the spec's own decisions, or a defensible derivation
+  from precedent, constraints, or the feature's stated premise yield
+  one answer — a point a source delegated to the spec included), routes
   it (a source-silent point a measurement or sibling artifact pins
-  belongs in the owning document), or declines it (a preference
-  nothing leans on — no side costs the user, so the spec states no
-  rule for it), and writes the derivation into the tracking row before
-  the finding renders. The staged `(recommended)`
+  belongs in the owning document), or declines it (a point the spec has
+  no rule for — nothing leans), and writes the derivation into the
+  tracking row before the finding renders. The staged `(recommended)`
   marker is the agent's argument, never a ground; a choice naming no
-  search is re-derived from scratch. Neither verdict is final on its
+  search is re-derived from scratch; a finding the gate's own exchange
+  revised is presented as it stands. Neither verdict is final on its
   own, and both are accountable in writing: a stop costs a derivation
   the session could not complete, a settle costs the derivation it
   wrote — either way a misclassification is one exchange at the gate,
@@ -164,9 +171,12 @@ that determines presentation is *who can answer it*.
 
 ## Divergence from the lanes protocol
 
-The lanes vocabulary and classification rules carry over; the
-batching does not, and `auto` survives here where L3 argued it was
-unnecessary. The two surfaces have different shapes for a reason:
+The lanes vocabulary carries over; the batching does not, `auto`
+survives here where L3 argued it was unnecessary, and in the
+specification loop the one-way direction does not carry either — what
+fences `auto` there is the bar applied at dispose with the derivation
+written down (F8), not one-way promotion. The two surfaces have
+different shapes for a reason:
 
 `background-agent-surfacing.md` handles findings that *arrive
 uninvited* mid-session, where volume is the complaint and the batch
@@ -209,8 +219,9 @@ natural-break deferral. One finding at a time, as now.
 Prose cases alongside: a settled finding riding `auto`, a choice
 stopping over `auto` after it clears the bar at dispose, a derivable
 choice the session settles at dispose and applies under `auto` with no
-stop, an unsourced decision taking the new branch. Simulation re-pin
-where call sequences move.
+stop, a preference the session declines at dispose with nothing
+rendered, an unsourced decision taking the new branch. Simulation
+re-pin where call sequences move.
 
 ## Decisions taken
 
@@ -230,14 +241,17 @@ where call sequences move.
   regardless: `add-task` and `add-phase` findings take the same
   `content` dump path.
 
-- **The reviewer proposes the move; the session disposes it.** Both
-  directions, against the bar, before the finding renders: a settled
-  call the session cannot stand behind becomes a choice; a choice the
-  record settles is rewritten settled with its derivation, or routed
-  where a measurement or sibling artifact pins a source-silent point.
-  Spec has no judgment tier: an underivable point stops as a choice,
-  and a preference nothing leans on — no side costs the user — is
-  declined at dispose with its reason, never stated as a rule.
+- **In the specification loop the reviewer proposes the move; the
+  session disposes it.** Both directions, against the bar, before the
+  finding renders: a settled call the session cannot stand behind
+  becomes a choice; a choice the record settles is rewritten settled
+  with its derivation, or routed where a measurement or sibling
+  artifact pins a source-silent point. Spec has no judgment tier: an
+  underivable point stops as a choice, and a point the spec has no rule
+  for — a preference no side of which costs the user, a mechanism that
+  is the builder's, nothing leaning — is declined at dispose with its
+  reason, never stated as a rule. The planning loop keeps one-way
+  promotion.
 
 - **The claims agent's `Unreproducible → Gap/Ambiguity` mapping
   stands.** Under F1 it needs no category of its own: restate
