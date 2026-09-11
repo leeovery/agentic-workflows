@@ -10,7 +10,13 @@ This step dispatches `workflow-review-change-set-verifier` agents once per revie
 
 ## A. Derive Sections
 
-The cycle number `{N}` is the one **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** → Determine Cycle Number derives — the count of `review-report-c*.md` files in `.workflows/{work_unit}/implementation/{topic}/` plus one. Every file this step writes or reads carries it, so a later cycle measures the change-set as it then stands rather than reading the previous cycle's files.
+The cycle number `{N}` is the one **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** → Determine Cycle Number derives — the count of `review-report-c*.md` files in the implementation directory plus one, the count reading zero when the directory does not exist yet:
+
+```bash
+ls .workflows/{work_unit}/implementation/{topic}/review-report-c*.md 2>/dev/null | wc -l
+```
+
+Every file this step writes or reads carries it, so a later cycle measures the change-set as it then stands rather than reading the previous cycle's files.
 
 Read the specification at `.workflows/{work_unit}/specification/{topic}/specification.md`. The split keys on the work type read in **[invoke-task-verifiers.md](invoke-task-verifiers.md)** → B. Extract All Tasks, never on the document's headings:
 
@@ -46,7 +52,7 @@ Every agent receives the same change-set and the same project conventions.
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} linters
    ```
 3. **The project conventions** — the project's `CLAUDE.md` when one exists at the project root, and the project skill paths from Step 3
-4. **The finding floor** — `.claude/skills/workflow-implementation-process/references/finding-floor.md`
+4. **The finding floor** — the path `.claude/skills/workflow-implementation-process/references/finding-floor.md`, handed on unread; the agents load it
 5. **The unsettled criteria** — `.workflows/.cache/{work_unit}/review/{topic}/unsettled.txt`; absent means the task verifiers settled every criterion by reading, and the agents are told so
 
 → Proceed to **C. Dispatch**.
