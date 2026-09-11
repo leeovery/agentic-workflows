@@ -34,6 +34,7 @@ const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
 const schema = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
 const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/derivations.cjs'));
 const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
+const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -138,6 +139,9 @@ function auditState(dir, label) {
           assert.ok(vocab.includes(item.status),
             ctx(`${wu}.${phase}.${topic}: status "${item.status}" not in ${phase} vocabulary`));
         }
+        // A research item's thread register derives: every row in
+        // vocabulary, every parent top-level, a note on a parked row alone.
+        if (phase === 'research') registerState(manifest, topic);
       }
       // Derivation must hold for every phase present.
       derivations.phaseStatus(manifest, phase);
@@ -621,8 +625,13 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'research', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
     assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }), /awaits research on "Ledger" \(in flight\)/);
+    // The single-topic register keys on the work unit's own name; an open
+    // thread is a fine way to conclude — the gate shows it and asks the same.
+    sim.run(['research-threads', 'add', wu, wu, 'balance-rounding', '--question', 'Where does the ledger round a balance?', '--origin', 'seed']);
     sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): open the question`, '--topic', `research/${wu}`]);
+    assert.match(sim.render(['research-conclude-gate', `${wu}.research.${wu}`], { expect: 'content' }),
+      /Research Threads — Ledger \(1 thread\)\n {2}└─ ○ Where does the ledger round a balance\?\s+\[seed\]\n=== MENU: research conclude gate/);
     sim.run(['topic', 'complete', wu, 'research', wu]);
     // Landed: the gates release and the discussion resumes.
     sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
@@ -903,6 +912,38 @@ describe('pipeline simulation', () => {
 
     // Alpha: research then discussion; regenerated-brief reconcile flag rides.
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
+    // The thread register — what alpha set out to learn. Every verb is a
+    // locked manifest write with no commit; the register renders as a lens
+    // at the session's transitions, and the conclude gate carries it as the
+    // hand-off whenever a thread stands — nothing gates on a thread's state.
+    assert.ok(!sim.render(['research-conclude-gate', `${wu}.research.alpha`], { expect: 'content' }).includes('DISPLAY: research threads'),
+      'an empty register prepends nothing to the conclude gate');
+    assert.match(sim.render(['research-threads', `${wu}.research.alpha`], { expect: 'content' }), /Research Threads — Alpha \(0 threads\)/);
+    sim.refuses(['research-threads', 'add', wu, 'beta', 'scope', '--question', 'What must beta cover?', '--origin', 'seed'],
+      /no research item "beta"/);
+    const seeded = sim.run(['research-threads', 'add', wu, 'alpha', 'scope', '--question', 'What does alpha have to cover?', '--origin', 'seed']);
+    assert.strictEqual(seeded.status, 'open');
+    sim.run(['research-threads', 'add', wu, 'alpha', 'edges', '--question', 'Which edges does the brief name?', '--origin', 'brief', '--parent', 'scope']);
+    sim.refuses(['research-threads', 'add', wu, 'alpha', 'deeper', '--question', 'Deeper still?', '--origin', 'user', '--parent', 'edges'], /two levels max/);
+    sim.refuses(['research-threads', 'add', wu, 'alpha', 'scope', '--question', 'Again?', '--origin', 'user'], /already exists/);
+    sim.refuses(['research-threads', 'add', wu, 'alpha', 'typo', '--question', 'Q?', '--origin', 'deep-dive-x'], /thread origin must be/);
+    sim.run(['research-threads', 'set', wu, 'alpha', 'scope', 'digging']);
+    sim.run(['research-threads', 'set', wu, 'alpha', 'scope=learned', 'edges=learned']);
+    sim.refuses(['research-threads', 'set', wu, 'alpha', 'scope', 'edges=open'], /never mixed/);
+    sim.run(['research-threads', 'add', wu, 'alpha', 'cold-start', '--question', 'How does alpha behave on a cold start?', '--origin', 'conversation']);
+    sim.run(['research-threads', 'set', wu, 'alpha', 'cold-start', 'parked', '--note', 'needs a machine cycle']);
+    sim.refuses(['research-threads', 'set', wu, 'alpha', 'cold-start', 'open', '--note', 'still'], /parked thread alone/);
+    sim.run(['research-threads', 'reframe', wu, 'alpha', 'cold-start', '--question', 'Does alpha place correctly on a cold start?']);
+    sim.refuses(['research-threads', 'remove', wu, 'alpha', 'scope'], /"edges" nests under it/);
+    const merged = sim.run(['research-threads', 'remove', wu, 'alpha', 'edges']);
+    assert.deepStrictEqual(merged.counts, { open: 0, digging: 0, learned: 1, parked: 1 });
+    assert.match(sim.render(['research-threads', `${wu}.research.alpha`], { expect: 'content' }),
+      /Research Threads — Alpha \(2 threads — 1 learned · 1 parked\)/);
+    const gate = sim.render(['research-conclude-gate', `${wu}.research.alpha`, '--dead-end'], { expect: 'content' });
+    assert.ok(gate.indexOf('DISPLAY: research threads') < gate.indexOf('MENU: research conclude gate'),
+      'the register rides above the conclude gate as the hand-off');
+    assert.match(gate, /↳ Needs a machine cycle/);
+    assert.match(gate, /d\/dead-end/);
     // Research in flight is no concern of a discussion entry — the soft gate
     // is empty for every discussion action while alpha's research runs.
     sim.render(['epic-soft-gate', wu, '--action', 'start_discussion', '--topic', 'beta'], { expect: 'empty' });

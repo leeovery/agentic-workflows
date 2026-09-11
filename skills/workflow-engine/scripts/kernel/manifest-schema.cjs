@@ -100,6 +100,32 @@ function compareExperimentIds(a, b) {
   return (am ?? 0) - (bm ?? 0);
 }
 
+// A kebab-case slug — the key shape of every engine-keyed register row
+// (thread slugs, thread origins, experiment slugs).
+const KEBAB_SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+// One thread in a research topic's register
+// (`phases.research.items.{topic}.threads.{slug}.status`): descriptive
+// states — nothing gates on any of them, and any state may follow any other.
+// Consumed by the thread verbs and the simulation's audit, so the two
+// readers can never drift.
+const VALID_THREAD_STATUSES = ['open', 'digging', 'learned', 'parked'];
+
+// Where a thread entered the register: the fixed sources, a deep dive's
+// store id (`deep-dive-NNN`, with or without its label suffix), or the name
+// of the topic that rerouted the question in. Every form is a kebab slug;
+// the dive prefix is pinned so a malformed id can never pass as a topic name.
+const THREAD_FIXED_ORIGINS = ['seed', 'brief', 'user', 'conversation'];
+const DEEP_DIVE_ID_PATTERN = /^deep-dive-\d{3,}(-[a-z0-9]+(-[a-z0-9]+)*)?$/;
+
+/** @param {string} origin */
+function isThreadOrigin(origin) {
+  if (typeof origin !== 'string') return false;
+  if (THREAD_FIXED_ORIGINS.includes(origin)) return true;
+  if (origin.startsWith('deep-dive-')) return DEEP_DIVE_ID_PATTERN.test(origin);
+  return KEBAB_SLUG_PATTERN.test(origin);
+}
+
 // The two conversation phases — the ones whose sessions spawn experiments
 // (each spawn locks the spawning phase's own item, `awaiting_experiments`,
 // research and discussion identically) and the ones that hold waits.
@@ -152,6 +178,11 @@ module.exports = {
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
   compareExperimentIds,
+  KEBAB_SLUG_PATTERN,
+  VALID_THREAD_STATUSES,
+  THREAD_FIXED_ORIGINS,
+  DEEP_DIVE_ID_PATTERN,
+  isThreadOrigin,
   EXPERIMENT_SPAWN_PHASES,
   VALID_GATE_MODES,
   GATE_FIELDS,

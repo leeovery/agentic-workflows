@@ -194,6 +194,21 @@ function discussionGlyph(state) {
   return DISCUSSION_GLYPH[/** @type {keyof typeof DISCUSSION_GLYPH} */ (state)] || '';
 }
 
+// Research-thread glyph vocabulary — register states. The live states take
+// the item-state family's hollow and half forms, a learned thread fills,
+// and `◌` marks a thread parked with its reason.
+const RESEARCH_GLYPH = {
+  open: '○',
+  digging: '◐',
+  learned: '●',
+  parked: '◌',
+};
+
+/** @param {string} state */
+function researchGlyph(state) {
+  return RESEARCH_GLYPH[/** @type {keyof typeof RESEARCH_GLYPH} */ (state)] || '';
+}
+
 // Specification legend vocabulary — the Key block's term descriptions, by
 // category. Projections compose a Key from whichever terms the display shows.
 const SPEC_LEGEND = {
@@ -218,5 +233,5 @@ module.exports = {
   titlecaseLabel,
   TREE_WIDTH, treeHeader, capitalise, titlecase, kebabcase, tag, derivedFrom, stateNote, title, materialBlock,
   discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
-  discussionGlyph, DISCUSSION_GLYPH, WORKLIST_GLYPH, SPEC_LEGEND,
+  discussionGlyph, DISCUSSION_GLYPH, researchGlyph, RESEARCH_GLYPH, WORKLIST_GLYPH, SPEC_LEGEND,
 };

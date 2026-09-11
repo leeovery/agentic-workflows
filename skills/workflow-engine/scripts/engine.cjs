@@ -22,7 +22,8 @@ const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/r
 const { commitPathspecScoped, commitPathspecWithKb, discoveryScope, KB_DIR } = require('./domain/commit.cjs');
 const { dirtyPaths, stageableSpecs, hasStagedDeletions } = require('./kernel/git.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
-const { VALID_ROUTINGS, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
+const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadReframe, recordThreadRemove } = require('./domain/research-threads.cjs');
+const { VALID_ROUTINGS, VALID_THREAD_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
@@ -132,6 +133,11 @@ Commands:
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discussion-map set <work-unit> <topic> <subtopic>=<state> [<subtopic>=<state> …]
+  research-threads add <work-unit> <topic> <slug> --question <text> --origin <origin> [--parent <slug>]
+  research-threads set <work-unit> <topic> <slug> <state> [--note <text>]
+  research-threads set <work-unit> <topic> <slug>=<state> [<slug>=<state> …]
+  research-threads reframe <work-unit> <topic> <slug> --question <text>
+  research-threads remove <work-unit> <topic> <slug>
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map add <work-unit> <name> <research|discussion>
@@ -234,6 +240,7 @@ Commands:
   render triage-block     <wu.phase.topic>
   render requeue-offer    <wu.phase.topic> --file <payload.json>
   render reroute-offer    <wu.phase.topic> --file <payload.json>
+  render research-threads <wu.research.topic>
   render research-conclude-gate <wu.research.topic> [--dead-end]
   render deep-dive-offer  <wu.research.topic> --file <payload.json>
   render in-flight-agents-gate <wu.research.topic> --count N
@@ -487,6 +494,66 @@ function runDiscussionMap(argv) {
       }
     } else {
       throw new Error('Usage: engine discussion-map <add|set> …');
+    }
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// research-threads — the thread register's writes. Every verb is a domain
+// transaction (domain/research-threads.cjs): load → apply → save under the
+// work unit's manifest lock → one decision-ready JSON line, no git commit
+// (the session's commit cadence picks the manifest change up).
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runResearchThreads(argv) {
+  const [command, ...rest] = argv;
+  const { opts, positional } = parseArgs(rest);
+  const cwd = process.cwd();
+
+  try {
+    const [workUnit, topic, slug, state] = positional;
+    if (command === 'add') {
+      if (!workUnit || !topic || !slug || !opts.question || !opts.origin) {
+        throw new Error('Usage: engine research-threads add <work-unit> <topic> <slug> --question <text> --origin <origin> [--parent <slug>]');
+      }
+      respond(recordThreadAdd(cwd, workUnit, topic, slug, { question: opts.question, origin: opts.origin, parent: opts.parent ?? null }));
+    } else if (command === 'set') {
+      const pairs = positional.slice(2);
+      if (pairs.some((p) => p.includes('='))) {
+        // Uniform batch — every argument a <slug>=<state> pair, never mixed
+        // with the positional form (the manifest set grammar); a note names
+        // one parked thread's reason, so it rides the positional form alone.
+        if (!workUnit || !topic || !pairs.length || !pairs.every((p) => /^[^=]+=[^=]+$/.test(p))) {
+          throw new Error('Usage: engine research-threads set <work-unit> <topic> <slug>=<state> [<slug>=<state> …] — uniform pairs, never mixed with the positional form');
+        }
+        if (opts.note !== undefined) {
+          throw new Error('--note is legal with parked alone and takes the positional form: engine research-threads set <work-unit> <topic> <slug> parked --note <text>');
+        }
+        respond(recordThreadStates(cwd, workUnit, topic, pairs.map((p) => {
+          const i = p.indexOf('=');
+          return [p.slice(0, i), p.slice(i + 1)];
+        })));
+      } else {
+        if (!workUnit || !topic || !slug || !state) {
+          throw new Error(`Usage: engine research-threads set <work-unit> <topic> <slug> <${VALID_THREAD_STATUSES.join('|')}> [--note <text>] — or a uniform <slug>=<state> batch`);
+        }
+        respond(recordThreadState(cwd, workUnit, topic, slug, state, { note: opts.note }));
+      }
+    } else if (command === 'reframe') {
+      if (!workUnit || !topic || !slug || !opts.question) {
+        throw new Error('Usage: engine research-threads reframe <work-unit> <topic> <slug> --question <text>');
+      }
+      respond(recordThreadReframe(cwd, workUnit, topic, slug, opts.question));
+    } else if (command === 'remove') {
+      if (!workUnit || !topic || !slug) {
+        throw new Error('Usage: engine research-threads remove <work-unit> <topic> <slug>');
+      }
+      respond(recordThreadRemove(cwd, workUnit, topic, slug));
+    } else {
+      throw new Error('Usage: engine research-threads <add|set|reframe|remove> …');
     }
   } catch (err) {
     failJson(err);
@@ -1767,6 +1834,9 @@ function runCli(argv) {
       break;
     case 'discussion-map':
       runDiscussionMap(rest);
+      break;
+    case 'research-threads':
+      runResearchThreads(rest);
       break;
     case 'discovery-map':
       runDiscoveryMap(rest);
