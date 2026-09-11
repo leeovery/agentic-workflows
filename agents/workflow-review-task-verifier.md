@@ -65,6 +65,8 @@ Search the codebase:
 
 **The code is the source of truth.** Implementations legitimately move past the plan's text, and the spec is not always updated to follow — nor should it be. A divergence from the spec or the task's wording is a question, never automatically a finding: judge whether the change is sound, consistent with the record, and better than or equal to what was written. Report a divergence only when it is a loss — behaviour the intent still needs, gone, or a change with no defensible reason — never because the words no longer match.
 
+**A criterion reading cannot settle is recorded, never passed over.** Some criteria hold only under something run or observed — a suite run, a repeated-run stability check, a cache experiment, a live server. Judge such a criterion neither way: quote it under `UNSETTLED` with what would have to be run or observed to settle it. It is never a finding and never a blocking issue, and it moves `STATUS` nowhere — the status is judged over what reading settled.
+
 **For quick-fix work**: Instead of acceptance criteria, verify completeness against the task's Verification section:
 - Are all target files updated?
 - Do any occurrences of the old pattern remain in scope?
@@ -142,7 +144,9 @@ Every finding carries a `file:line` anchor, and every claim inside it must hold 
 
 ## Output File Format
 
-Write to `.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md` — in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context. Use this format:
+Write to `.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md` — in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context.
+
+`STATUS` is one of three values — `complete`: delivered, nothing to report; `issues_found`: delivered, non-blocking findings present; `incomplete`: a blocking issue — an acceptance criterion unmet in substance, or behaviour broken. A list heading with nothing under it carries `- None`. Use this format:
 
 ```
 TASK: [Task name/description]
@@ -176,6 +180,9 @@ BLOCKING ISSUES:
 
 FINDINGS:
 - [{in-scope|out-of-scope}] [{contained|spreading}] {file:line} — {what is wrong and the change that fixes it} — FAILS: {the concrete consequence of leaving it}
+
+UNSETTLED:
+- "{the acceptance criterion, quoted}" — {what would have to be run or observed to settle it}
 ```
 
 ## Your Output
@@ -195,6 +202,6 @@ SUMMARY: {1 sentence}
 3. **Be specific** — include file paths and line numbers, verified per **Citation Discipline**
 4. **Balanced test review** — flag both under-testing AND over-testing
 5. **Report findings** — don't fix anything, just report what you find
-6. **No test execution** — Bash is solely for the output-file rename. Judge test adequacy by reading the test code; never try to run the suite or any other command
+6. **No test execution** — Bash is solely for the output-file rename. Judge test adequacy by reading the test code; never try to run the suite or any other command. You read; an executing pass over the whole change-set runs after the verifier batches and measures what reading could not settle — which is why a criterion you cannot settle is recorded under `UNSETTLED` for that pass, never judged either way
 7. **No git writes** — writing the output file is your only file write
 8. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.

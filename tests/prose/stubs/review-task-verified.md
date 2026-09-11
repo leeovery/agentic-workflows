@@ -39,7 +39,10 @@ CODE QUALITY:
 - Issues: none
 
 BLOCKING ISSUES:
-- none
+- None
 
 FINDINGS:
-- none
+- None
+
+UNSETTLED:
+- None

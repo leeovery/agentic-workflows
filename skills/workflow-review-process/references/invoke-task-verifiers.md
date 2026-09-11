@@ -74,12 +74,22 @@ Dispatch verifiers in **batches of 5** via the Task tool.
 
 - **Agent path**: `../../../agents/workflow-review-task-verifier.md`
 
-1. Group tasks into batches of 5
+Before the first batch, read the recorded coverage once and hold it as a local set — `push` appends unconditionally, so a crash-resume re-run must never double-record (empty stdout means none):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
+```
+
+1. Group tasks into batches of 5 — no task to verify is no batch, and the step falls through to the excluded tasks and the aggregation, which re-reads the reports already on disk
 2. For each batch:
    - Dispatch all agents in the batch in parallel
    - Wait for all agents in the batch to return
    - Record statuses
-3. After all batches complete, proceed to aggregation
+   - Push the internal ID of each task whose verifier returned and that is not already in the set, and add it to the set — coverage lands per batch, so a crash mid-verification resumes from the batch it lost, never from the start; a failed verifier's task stays unrecorded, so the next session picks it up:
+     ```bash
+     node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} reviewed_tasks "{internal_id}"
+     ```
+3. After all batches complete, proceed to the excluded tasks
 
 Each verifier receives:
 
@@ -106,20 +116,17 @@ SUMMARY: {1 sentence}
 
 Full findings are written to `.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md`.
 
-→ Proceed to **F. Update Reviewed Tasks**.
+→ Proceed to **F. Record Excluded Tasks**.
 
 ---
 
-## F. Update Reviewed Tasks
+## F. Record Excluded Tasks
 
-After all verifiers complete, read `reviewed_tasks` once and push each verified task's internal ID that is not already recorded — `push` appends unconditionally, so a crash-resume re-run must not double-record. Push the ids excluded as skipped/cancelled at extraction too (excluded-by-design is covered — without this, the resume gate counts them unreviewed forever):
+Push the ids excluded as skipped/cancelled at extraction — excluded-by-design is covered; without this, the resume gate counts them unreviewed forever. `push` appends unconditionally: skip any id already in the set.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} reviewed_tasks "{internal_id}"
 ```
-
-This enables incremental review detection on subsequent review sessions.
 
 → Proceed to **G. Aggregate Findings**.
 
@@ -129,11 +136,12 @@ This enables incremental review detection on subsequent review sessions.
 
 1. Read every `.workflows/{work_unit}/review/{topic}/report-*.md` file from disk — the aggregation draws from the files as they stand, never from memory of the dispatches that produced them. Make each Read before aggregating; a read not actually made is never claimed or paraphrased from the dispatch summaries
 2. Synthesize findings from file contents:
-   - Collect all tasks with `STATUS: incomplete` or `STATUS: issues_found` as blocking issues
+   - Collect the blocking issues from each report's `BLOCKING ISSUES` section — every entry other than `- None`. Never infer one from `STATUS`: `issues_found` is a delivered task with non-blocking findings
    - Collect all test issues (under/over-tested)
    - Collect all code quality concerns
    - Include specific file:line references
    - Check overall plan completion (see [review-checklist.md](review-checklist.md) — Plan Completion Check)
+3. Collect every `UNSETTLED` entry other than `- None` into `.workflows/.cache/{work_unit}/review/{topic}/unsettled.txt` with the Write tool — one block per criterion, opening with `[{task suffix}]` and carrying the entry verbatim. When there are none, delete any `unsettled.txt` an earlier run left there and write nothing: the executing pass treats an absent file as no unsettled criteria
 
 > **CHECKPOINT**: Do not proceed until ALL task verifiers have returned and findings are aggregated.
 

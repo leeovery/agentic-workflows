@@ -37,7 +37,10 @@ CODE QUALITY:
 - Issues: one comment claim the code falsifies
 
 BLOCKING ISSUES:
-- none
+- None
 
 FINDINGS:
 - [in-scope] [contained] src/webhooks/capture.js:2-3 — the comment claims a missing delivery is recovered "by polling the gateway on a timer"; no polling path exists and the spec pins capture as webhook-only — delete the recovery clause, leaving the webhook sentence — FAILS: a reader trusts the comment and hunts for a polling fallback that does not exist
+
+UNSETTLED:
+- None
