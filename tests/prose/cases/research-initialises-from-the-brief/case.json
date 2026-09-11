@@ -26,6 +26,9 @@
       "manifest get search-relevance.discovery.relevance-measurement brief_path",
       "manifest set search-relevance.discovery.relevance-measurement brief_incorporated true",
       "topic start search-relevance research relevance-measurement",
+      "research-threads add search-relevance relevance-measurement",
+      "--origin brief",
+      "render research-threads search-relevance.research.relevance-measurement",
       "research(search-relevance): initialize relevance-measurement research"
     ],
     "calls_in_order": [
@@ -35,6 +38,8 @@
       "manifest set search-relevance.discovery.relevance-measurement brief_incorporated true",
       "write:.workflows/search-relevance/research/relevance-measurement.md",
       "topic start search-relevance research relevance-measurement",
+      "research-threads add search-relevance relevance-measurement",
+      "render research-threads search-relevance.research.relevance-measurement",
       "research(search-relevance): initialize relevance-measurement research"
     ],
     "calls_exclude": [
@@ -43,7 +48,9 @@
       "topic reopen",
       "knowledge.cjs query",
       "knowledge.cjs index",
-      "workunit create"
+      "workunit create",
+      "--origin seed",
+      "--origin user"
     ]
   }
 }

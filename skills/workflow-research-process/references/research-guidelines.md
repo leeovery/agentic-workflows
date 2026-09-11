@@ -100,9 +100,11 @@ The research file is your memory. Context compaction is lossy — what's not on 
 
 These are natural pauses, not every exchange. Capture the substance — not a verbatim transcript.
 
-**After writing, commit** (`engine commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): {what changed}"`; an agent-finding engagement's subject carries `({id} {finding})`, e.g. `(review-003 F2)`). Commits let you track, backtrack, and recover after compaction. Don't batch — commit each time you write.
+**After writing, commit** (`engine commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): {what changed}"`; a deep dive's fold carries the dive's id, e.g. `(deep-dive-001)`). Commits let you track, backtrack, and recover after compaction. Don't batch — commit each time you write.
 
 **Create the file early.** After understanding the starting point, create the research file with initial context. Don't wait for findings.
+
+**The register carries the questions; the file carries the answers.** A question this topic set out to learn is a thread on the register (`research-threads`), and it moves as the conversation moves — learned when the file holds its answer, reframed when the answer reshapes it, parked when the user sets it aside. The file's **Open Threads** section is written once, at conclusion, from whatever the register still holds open — the hand-off the discussion reads in full — never maintained by hand during the session.
 
 ## Critical Rules
 

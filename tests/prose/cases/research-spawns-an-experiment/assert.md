@@ -6,8 +6,9 @@ The prose should have taken this path:
    processing skill without asking the user anything; the epic context
    arm reads the map item's source, finds it map-shaped rather than
    direct-start, and gathers nothing
-2. the process reads the status again, finds the file, renders resume
-   detection, and the user continues; initialisation is skipped
+2. the process reads the status again, finds the file, renders the
+   thread register once (empty here — the header line alone) above
+   resume detection, and the user continues; initialisation is skipped
 3. the walk passes through file strategy and the guidelines, addresses
    the knowledge base once as a contextual query, and routes into the
    epic research session; the session loop's triage check reads the
@@ -36,9 +37,8 @@ The prose should have taken this path:
    that order
 8. the now-or-later gate is fetched from the engine and its menu
    emitted verbatim; the user takes now
-9. the session pauses mid-phase with no closing ceremony — no final
-   review, no document review, no completion attempt — says where the
-   ball sits (E1 queued, the menu carries the way in, fresh context via
+9. the session pauses mid-phase with no closing ceremony — no document
+   review, no completion attempt — says where the ball sits (E1 queued, the menu carries the way in, fresh context via
    /clear then /workflow-start), and stops at the terminal condition
 
 Further claims:

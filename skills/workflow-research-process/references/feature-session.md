@@ -6,9 +6,7 @@
 
 ## A. Background Agents
 
-Two types of background agent operate during research, and the topic's triage queue surfaces through a third protocol file. Load their instructions now — they run at the appropriate moments during the session loop.
-
-→ Load **[review-agent.md](review-agent.md)** and follow its instructions as written.
+One kind of background agent operates during research — the deep dive — and the topic's triage queue surfaces through a protocol file. Load their instructions now — they run at the appropriate moments during the session loop.
 
 → Load **[deep-dive-agent.md](deep-dive-agent.md)** and follow its instructions as written.
 
@@ -28,21 +26,21 @@ Focused, single-topic session — one research file; off-topic concerns route th
 
 When the topic feels well-explored or the user indicates they're done:
 
-→ Proceed to **D. In-Flight Agent Handling**.
+→ Proceed to **D. In-Flight Dive Handling**.
 
 ---
 
-## D. In-Flight Agent Handling
+## D. In-Flight Dive Handling
 
-Before concluding, check for in-flight agents — run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` and read the response's `in_flight` list (agents dispatched but not yet returned). An agent dispatched by an earlier session cannot still be running — each row's `created` timestamp tells you which those are; close each (`agent incorporate`), re-scan, and count only this session's.
+Before concluding, check for in-flight deep dives — run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` and read the response's `in_flight` list (dives dispatched but not yet returned). A dive an earlier session dispatched cannot still be running — each row's `created` timestamp tells you which those are; close each per **C. Land and Fold** in **[deep-dive-agent.md](deep-dive-agent.md)**, re-scan, and count only this session's.
 
-#### If no agents are in flight
+#### If no dive is in flight
 
 → Load **[topic-completion.md](topic-completion.md)** and follow its instructions as written.
 
 → Return to **B. Session Loop**.
 
-#### If agents are still running
+#### If dives are still running
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render in-flight-agents-gate {work_unit}.research.{topic} --count {N}
@@ -54,7 +52,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `wait`:**
 
-Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, delegate surfacing to the shared protocol loaded by review-agent.md and deep-dive-agent.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
+Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, fold each per **C. Land and Fold** in **[deep-dive-agent.md](deep-dive-agent.md)** — phase conclusion is the natural break.
 
 → Return to **B. Session Loop**.
 

@@ -26,11 +26,20 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 **If `count` is `0`:**
 
-1. Mark the research completed — the engine sets the status and indexes the artifact into the knowledge base:
+1. Write the hand-off. Read the thread register:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} threads
+   ```
+
+   **If any thread is `open`, `digging`, or `parked`:** write them into the research file's `## Open Threads` section — the file's closing section, created here or replaced whole when an earlier conclusion wrote one — one line per thread: the question as it stands, its state, a parked thread's note carried (`- {question} — parked: {note}`), a `digging` thread named as a dive that never landed. The discussion reads this section in full; a `learned` thread's answer is already in the body.
+
+   **Otherwise:** nothing to write — every thread is learned, or the register is empty.
+
+2. Mark the research completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} research {topic}
    ```
-2. Final commit:
+3. Final commit — the Open Threads write rides it:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} --kb -m "research({work_unit}): complete {topic} research"
    ```
@@ -41,7 +50,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
    node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.research.{topic} --verb complete --warn
    ```
 
-3. Sweep for leavings:
+4. Sweep for leavings:
 
    ```bash
    git status --porcelain -- .workflows/{work_unit}
@@ -51,11 +60,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
    **Otherwise:** nothing to sweep — continue.
 
-4. Closing recap:
+5. Closing recap:
 
    → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `research`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-5. Closure signpost:
+6. Closure signpost:
 
 **If `closure` is `discussion`:**
 
@@ -73,4 +82,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 > Research complete — the topic is closed as a dead end, so no discussion follows. It stays on the map and in the knowledge base as record and seed material, and reopening it from the map makes it actionable again.
 ```
 
-6. Invoke `/workflow-bridge {work_unit} research`.
+7. Invoke `/workflow-bridge {work_unit} research`.

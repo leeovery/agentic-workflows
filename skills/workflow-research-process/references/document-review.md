@@ -4,7 +4,7 @@
 
 ---
 
-The review agent catches *topical* gaps — areas that should have been explored. This check catches *conversational* gaps — substance that was discussed in the session but never made it into the research file. Only the main orchestrator can do this: you were in the conversation, a sub-agent wasn't.
+This check catches *conversational* gaps — substance that was discussed in the session but never made it into the research file. Only the main orchestrator can do this: you were in the conversation, a sub-agent wasn't.
 
 > *Output the next fenced block as markdown (not a code block):*
 

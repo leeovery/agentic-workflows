@@ -12,7 +12,8 @@ The conclusion released the research's wait and flagged the item —
 nothing has re-entered the research since, so the flag stands and the
 document still names the question as awaiting E1.
 
-No review has ever run on the topic, its triage queue is empty, the
-other topics have not started, and no other session is mid-flight. The
+No deep dive has ever run on the topic and its thread register is
+empty, its triage queue is empty, the other topics have not started,
+and no other session is mid-flight. The
 context was cleared at the pause — this session opens cold at the
 research entry with its three arguments and what is on disk.
