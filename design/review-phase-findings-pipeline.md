@@ -1,6 +1,6 @@
 # Review Phase: Findings Pipeline
 
-**Status:** built, live-tested at full scale, audited. Stack #900 (PRs #898–#905) awaiting final review and merge.
+**Status:** shipped (stack #900, v0.6.67) and run live once at full scale; recall audited. The executing pass is decided and building.
 **Started:** 2026-08-12, from a live incident on Portal's `theming-system` feature.
 
 ---
@@ -187,19 +187,49 @@ So this corpus **overstates raw volume** and **understates prep's proportional v
 ### Pipeline
 
 ```
-findings
- → prep (split agents, ONE remit each, parallel, read-only)
-     validity · standards · guards · duplication · overlap/coupling · contradiction
- → synthesis        merge into coherent actions, dedupe the pipeline's own findings
- → review pass      over the synthesis, not the raw findings
- → review doc       updated additively — originals struck, not deleted
- → lanes            assigned from the merged actions
- → apply            a few forked-context agents (inherit orchestrator context)
- → self-review      each checks its own work
- → orchestrator     reviews the whole, fixes what it catches
+per-task verification   one read-only verifier per task; a criterion reading
+                        cannot settle is recorded under its own heading,
+                        never passed over
+ → executing pass       once, after the batches; three to five change-set
+                        verifiers over the whole change-set, split by the
+                        specification's numbered sections plus one over the
+                        test surface; measures where the project gives a
+                        way to; takes the unsettled criteria as items to
+                        measure; one findings file + one coverage map per
+                        section
+ → prep                 assessor (validity · standards · remedy) ×N · guards
+                        (inventory first, depends verdict) ×N · relationships
+                        (both streams as one set, duplicates collapsed) ×1
+ → synthesis            verify claims, collapse collisions, route, derive the
+                        verdict; out-of-scope banked on the manifest;
+                        checkpoint commit
+ → apply                batched appliers (whole connected file-sets,
+                        sequential) → fix-verifier over the complete
+                        uncommitted diff (runs the suite) → one commit
+ → report               written from the outcome; Specification Compliance
+                        is the coverage maps; Plan Completion names what
+                        neither layer could measure
+ → present              verdict tier · findings · gate: p/plan | c/complete
 ```
 
-Synthesis before the review pass: reviewing raw findings repeats the prep agents' work, whereas reviewing merged actions catches the dangerous class — a bad merge silently discarding one of several competing intents.
+Two detection layers, one routing. Per-task verification holds each task against its criteria and the spec by reading; the executing pass holds the whole system against the specification's intent and the product by measuring. Everything downstream is shared — the same prep agents, the same lanes, the same derived verdict.
+
+Verification-side rules:
+
+- A blocking issue with a contained remedy routes do-now; the report's Corrected in this session section names it as blocking and corrected. A spreading one replans. Aggregation reads the BLOCKING ISSUES section, never `STATUS` — `issues_found` is a status clean reports also use.
+- Coverage (`reviewed_tasks`) is pushed after every batch, never once at the end.
+- The assessor asks one question with the code open: is a comment remedy a comment remedy because the prose is wrong, or because it was the easy edit? When the remedy changes to code, synthesis re-reads blast radius with the code open — the one case where a verifier's call is not carried through untouched.
+- The per-task verifier keeps its no-execution rule, stated beside the reason the pass exists, so the two contracts never blur.
+
+### The executing pass
+
+- Runs after every verifier batch, once per review cycle, over the whole change-set as it then stands. Wall clock is not the priority; one dispatch that can take the verifiers' unsettled criteria is.
+- Three to five `workflow-review-change-set-verifier` agents in fresh context, split by the specification's numbered sections plus one over the test surface; sections merge when there are more than agents. A quick-fix gets one agent over its scoping document.
+- Authority is the specification's intent and the product, never the task's criteria. A spec gap the work introduced is in scope; spreading, it replans and fails the review. A pre-existing defect inside the work's own problem is out of scope and banked. No new routes.
+- Execution rules come from the project, never from the workflows: the manifest's declared linters, the project skills, and the project's own conventions for running a package's tests or standing up a disposable dependency. Measure where the project gives a way to, read where it does not. Package-scoped runs only, never the suite — the fix-verifier runs the suite. The tree is clean after the pass; the orchestrator checks and surfaces dirt, never reverts blind.
+- Reads no per-task report. Makes no edit. Loads the shared `finding-floor.md` — the three rules every finder clears; the comment-correction shape the implementation's finders report in lives in the code standard, not the floor.
+- Writes one file per section, named for the cycle; a crash resumes by dispatching only the cycle's missing sections, and a later cycle measures again rather than reading the previous cycle's files. The tree check after the pass reads everything outside `.workflows/`, where the review's own uncommitted artifacts sit.
+- Returns findings in the verifier's format into the same prep pipeline, and a coverage map per section — what it checked and found sound. The report's Specification Compliance section is those maps: a coverage map is the only evidence an empty findings list can offer. What the pass also cannot measure is disclosed under Plan Completion as a named list, never absorbed.
 
 ### Lanes
 
@@ -316,13 +346,12 @@ Re-arming a clone for another 10-task run: trim the sample's ids from `reviewed_
 
 ## Open Questions
 
-- Does a properly split prep pipeline plus sequential/forked apply get the failure count to zero, or only reduce it? Guard breaches arising from *implementation choice* (the package-scope var) may be unreachable by any static pass.
-- Is the forked-context applier materially better than a briefed one? Untested.
-- Does the bar earn its place at all once lanes exist? Current view: demote to a classifier, keep the materiality language, drop it as a filter.
-- Does the whole-plan lens pass become a permanent addition? It found one thing 175 verifiers structurally could not.
-- How much of this corpus's volume is an artefact of the comment-standard split, and what does a post-change feature look like?
-- Should the analysis cycles survive if the end-of-phase pass lands?
-
+- Per-task verification's size once the implementation phase's analysis loop stops generating tasks. In the first live run the machinery phases were 140 of 190 verified tasks and 29 of 35 findings. With that surface gone, whether one verifier per task still earns its dispatch count, or the executing pass carries the plan-phase surface alone, is unmeasured.
+- Whether the executing pass should own spec-gap findings' routing beyond today's lanes. A spec gap the work introduced rides the lanes as a code finding; the specification's own correction — whether it is owed, and by whom — is unassigned.
+- Whether 0.18 findings per task is the post-change baseline or the recall gap's signature. One run cannot separate the two; the first run with the pass in place can.
+- The applier seam rate: the fix-verifier repaired 9 of 27 applied items against 4 of 109 in the cold run. Whether that tracks batch shape or finding shape is unmeasured.
+- Whether the assessor's remedy question satisfices inside the validity remit, as guards did in prep v1 before it got its own agent.
+- What the executing pass costs against per-task verification. The audit that stood in for it spent ~1.4M tokens over five agents.
 
 ---
 
@@ -388,6 +417,94 @@ Three fresh hostile auditors over the run's every judgment:
 5. **A discard reason is a verdict, verified like any claim.**
 6. **Presentation chrome** — TITLE anchor, verdict tier (red on fail), findings display.
 
+## The First Live Run (2026-09-09)
+
+### The run
+
+Portal, bugfix work unit `resume-hooks-silently-lost`, skills v0.7.32, review session 10:31–16:03 BST. The first review under the new verifier contract — the cold run reused old-contract reports, so this is the layer that had never been exercised.
+
+| Source | Phases | Tasks |
+|---|---|---|
+| plan | 1–5 | ~50 |
+| implementation analysis loop | 6–9 | 25 · 35 · 49 · 52 |
+| fix | 10 | 1 |
+
+212 tasks completed, 22 cancelled, 190 verified through 195 verifier dispatches (5 retries after a session rate limit at task 180). Change-set: 796 files, +57,695 / −17,310; 98 production Go files, 369 test files.
+
+**Verification.** 35 findings from 31 reports, none tagged spreading. Density 0.18 per task:
+
+| Era | A | B | C | D | this run |
+|---|---|---|---|---|---|
+| per task | 1.14 | 1.53 | 0.75 | 2.79 | **0.18** |
+
+| Source | Tasks | Findings | Per task |
+|---|---|---|---|
+| plan phases 1–5 | 50 | 6 | 0.12 |
+| machinery phases 6–10 | 140 | 29 | 0.21 |
+
+**Prep.** Assessor: 35 valid, 4 amendable — about a third cited a line 1–3 off with substance intact. Guards: 0 violates, 5 depends. Relationships: 6 groups over 12 findings.
+
+**Synthesis.** Pass — 27 do-now · 2 out-of-scope · 0 replan · 0 discarded. 2 rescued; 2 out-of-scope calls overturned to in-scope.
+
+**Apply.** 4 sequential appliers, 27/27. The fix-verifier repaired 9 items — two partials, seven insert scars, one false `.golangci.yml` rationale an applier had introduced — and ran both lanes and lint green. One commit: 40 files, +316 / −182.
+
+The user chose complete; the pipeline closed; the release CI passed. The three earlier Portal work units under the previous design each carried two "Review Remediation" cycles; this run created none. Precision was perfect: nothing the review reported was wrong.
+
+### What the audit found
+
+Five independent Opus agents with execution allowed — build, vet, single-package tests, a throwaway tmux server — one per specification area plus one over the test surface, ~1.4M tokens in total, 15–20 minutes each, over the same tree. Seven items, none surfaced by the review:
+
+1. **Duplicate enumeration.** A tmux grouped session or `link-window` lists one pane under two sessions: capture writes two records with one token, restore arms both, the resume hook fires twice, and `hook set` / `hook rm` in either pane act on both. A behaviour defect the work introduced — a regression against the positional key in that corner, reproduced on tmux 3.7c — and a spec gap: the spec never considered enumeration duplication.
+2. **An unparseable `hooks.json` reads as empty**, so the next `hook set` writes a one-entry file over every other registration at exit 0. Pre-existing since March, inside the work's own problem (silent hook loss); the work renamed the type on that exact line. Verified live against a built binary.
+3. **The phase-10 test-cache fix reads the anchor directory, not the judged closure**, so the guard that keeps harness code out of the production binary is served a cached pass after an import is added under `cmd/`. Proven by experiment. The task's own verifier saw it — "is served exactly the stale cached pass this task exists to remove" — prescribed comment text, and it landed as a doc correction.
+4. **The lock re-entrancy source guard** keys on receiver `s` and hand-named methods with no matched-anything check, and forbids `Save` and `Get`, which the work deleted — a rename would have made it pass over nothing. The spec's final corrigendum also names `Save`.
+5. **The discard-logger guard** is a substring match on one spelling; CLAUDE.md claims an invariant twenty-plus test constructions falsify.
+6. **Doctor and sweep disagree on judgeability** for an empty store; the parity test that exists to pin agreement lacks that case.
+7. **Four false claims** in comments and CLAUDE.md.
+
+Two behaviour defects, four weak or vacuous guards, five false claims. All landed as Portal PRs the next day, the two hard ones as inbox captures.
+
+### The diagnosis
+
+Three structural causes, all in the verifier contract:
+
+| | Cause | Evidence |
+|---|---|---|
+| a | **No execution.** Verifiers may not run anything. | Items 1, 2 and 3 needed a server, a binary or a cache experiment. Six verifiers wrote that a criterion "could not be settled by reading"; the review passed over those criteria. |
+| b | **Authority is the task's criteria plus the spec.** A spec gap and a pre-existing defect inside the work's problem belong to no verifier; nothing holds the whole system. | Items 1 and 2. The whole-plan lens had been left an open question after t3. |
+| c | **"A finding whose entire remedy is comment text never blocks"** let a verifier choose the comment remedy for a code defect. | Item 3. |
+
+Two execution defects in the run:
+
+- One verifier recorded an acceptance criterion unmet under BLOCKING ISSUES; the orchestrator relabelled it non-blocking; the report said no task was found incomplete. The prose has no arm for a blocking issue with a contained remedy, and the aggregation step equates `STATUS: issues_found` with blocking — a status eleven clean reports also used.
+- Coverage (`reviewed_tasks`) is recorded only after every batch, so the rate limit at task 180 of 190 found nothing durable.
+
+One design point earned its place: the whole-diff fix-verifier caught the false rationale an applier introduced.
+
+The report's Specification Compliance section, presented as a holistic assessment, was composed from the per-task reports in about a minute.
+
+### The decisions (2026-09-10)
+
+Detection changes; routing does not. The lanes, the prep pipeline and the derived verdict stand.
+
+- **An executing pass over the whole change-set runs after the verifier batches, once per review cycle.** Wall clock is not the priority; one dispatch that can take the verifiers' unsettled criteria is. Three to five agents (`workflow-review-change-set-verifier`), fresh context, split by the specification's numbered sections plus one over the test surface, sections merged when there are more; a quick-fix gets one agent over its scoping document. Authority is the specification's intent and the product: a spec gap the work introduced is in scope and, when spreading, replans and fails the review; a pre-existing defect inside the work's problem is out of scope and banked. No new routes.
+- **Execution rules come from the project, never from the workflows**: the manifest's declared linters, the project skills, and whatever the project's own conventions say about running a package's tests or standing up a disposable dependency. The mandate: measure where the project gives you a way to, read where it does not. Package-scoped runs only, never the suite — the fix-verifier runs the suite. The tree is clean after the pass; the orchestrator checks and surfaces dirt, never reverts blind.
+- **The pass reads no per-task report and makes no edit.** It writes one file per section per cycle so a crash resumes by dispatching only the cycle's missing sections and a later cycle measures the remediated change-set afresh, and feeds findings in the verifier's format into the same prep pipeline, where the relationships agent collapses duplicates.
+- **A verifier that cannot settle a criterion by reading records it under its own heading**; the orchestrator hands those to the pass as items to measure. What the pass also cannot measure is disclosed in the report under Plan Completion as a named list, never absorbed.
+- **Each pass agent returns a coverage map** — what it checked and found sound. The report's Specification Compliance section carries those maps: a coverage map is the only evidence an empty findings list can offer.
+- **The assessor gains one question, with the code open**: is a comment remedy a comment remedy because the prose is wrong, or because it was the easy edit? When the remedy changes to code, synthesis re-reads blast radius with the code open — the one case where a verifier's call is not carried through untouched.
+- **A blocking issue with a contained remedy routes do-now**, and the report's Corrected in this session section names it as blocking and corrected; a spreading one replans. Aggregation reads the BLOCKING ISSUES section, never `STATUS`. The verdict stays derived.
+- **Coverage is pushed after every batch.**
+- **The verifier keeps its no-execution rule**, stated explicitly beside the reason the pass exists, so the two contracts never blur.
+- **One finding floor.** The shared `finding-floor.md` is the file the pass loads — the three rules every finder clears. Its comment-correction shape, which only the implementation's finders report in, lives in the code standard's Comments section, so loading the floor commits the pass to nothing the review routes differently.
+- **Two prose cases** pin the design: the pass dispatched after the batches, the unsettled hand-off measured, findings flowing into prep; and the blocking-with-contained-remedy route.
+
 ## Where This Stands
 
-Remaining before the next tuning cycle: walk the two prose cases post-release (usual process), run a fresh feature under the full new verifier contract (the one untested layer), and watch two things — the blast-radius loosening (the one directional widening) and prose accretion in synthesis (split before adding rules if satisficing appears). The harvest of the cold run's corrections into the real project runs as ordinary work from a port manifest; the review phase itself is never re-run on released work.
+Two live runs. The cold run (2026-08-14) exercised everything downstream of verification over reused reports; the first live run (2026-09-09) exercised the whole pipeline under the new verifier contract. In both, routing held, precision was perfect, apply landed in one commit with the fix-verifier doing the last mile, and no remediation cycle was created. The cold run's two watches closed clean: none of 35 findings was tagged spreading, and synthesis handled the set with no satisficing visible.
+
+Recall is the open gap. An audit with execution found seven items the review could not — two behaviour defects, four vacuous guards, five false claims — and every structural cause sits in the verifier contract: no execution, authority bounded to the task, and a comment remedy the contract let stand for a code defect.
+
+The executing pass is the answer, decided 2026-09-10: `workflow-review-change-set-verifier`, dispatched once after the batches, measuring where the project gives a way to, findings into the same prep. Four holes close with it: the unsettled-criterion hand-off, the blocking-with-contained-remedy route, aggregation by section rather than status, coverage pushed per batch. The floor the pass loads is the shared one, its comment-correction shape moved to the code standard where only the implementation's finders read it. Two prose cases pin the design.
+
+The first run of the pass answers what nothing else can: whether its coverage maps stay honest or drift to boilerplate, what it costs against per-task verification, and whether 0.18 per task was the post-change baseline or the recall gap's signature.
