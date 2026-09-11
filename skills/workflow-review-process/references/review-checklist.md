@@ -74,7 +74,7 @@ After task-level and change-set verification, check overall plan completion:
 ### Phase Acceptance Criteria
 
 For each phase:
-- Are all phase-level acceptance criteria met?
+- Are all phase-level acceptance criteria that were settled or measured met? An unmeasured criterion counts neither way — it is named under Criteria Not Measured
 - Were all tasks in the phase completed? (Tasks the backend marks skipped or cancelled are deliberate discards — they don't count against completion)
 
 ### Scope
