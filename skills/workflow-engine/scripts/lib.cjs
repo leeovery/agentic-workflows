@@ -90,6 +90,7 @@ module.exports = {
   agents: {
     completedReviewCycles: agentState.completedReviewCycles,
     reviewArming: agentState.reviewArming,
+    latestReview: agentState.latestReview,
   },
   session: {
     nextSessionNumber: discoverySession.nextSessionNumber,

@@ -4,7 +4,7 @@
 
 ---
 
-The passage from conversation to conclusion runs two gates: the **review gate** — is a final review owed, and does the user want it — then the **conclude gate**. Nothing here proceeds silently: whatever the classification, the user hears what comes next and answers.
+The passage from conversation to conclusion runs two gates: the **review gate** — is a review still owed, or one more worth offering, and does the user want it — then the **conclude gate**. Nothing here proceeds silently: whatever the classification, the user hears what comes next and answers.
 
 The triage queue precedes both gates — a queued concern is work the conclusion cannot pass, and a review dispatched over it would read a document the walk is about to move. Check it first:
 
@@ -78,9 +78,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work
 
 → Proceed to **E. In-Flight Agent Check**.
 
-**If `skip`:**
+**If `no`:**
 
-Another final review is declined for this conclusion attempt — Step 6 honours the decline, and a later attempt classifies afresh and offers again.
+One more review is declined for this conclusion attempt — Step 6 honours the decline, and a later attempt classifies afresh and offers again.
 
 → Proceed to **D. Conclude Gate**.
 

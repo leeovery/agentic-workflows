@@ -42,7 +42,7 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user settled how card payments at checkout should work in earlier sessions and is returning only to close the discussion out. Everything they cared about is decided and documented — capture confirmed by gateway webhooks, hosted fields keeping card data off their servers, a pinned retry policy — and they add nothing new: picking the session back up they confirm in a sentence that nothing has changed for them, say that covers it, and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: another final review is skipped when offered, offers of new threads are declined. They never introduce new material.",
+  "conduct": "The user settled how card payments at checkout should work in earlier sessions and is returning only to close the discussion out. Everything they cared about is decided and documented — capture confirmed by gateway webhooks, hosted fields keeping card data off their servers, a pinned retry policy — and they add nothing new: picking the session back up they confirm in a sentence that nothing has changed for them, say that covers it, and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: one more review is declined when offered, offers of new threads are declined. They never introduce new material.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   },
