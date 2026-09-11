@@ -1299,7 +1299,7 @@ describe('epic projections: the topic-grain experiment entry', () => {
   });
 });
 
-describe('epic projections: the research row above the topic\'s own entry', () => {
+describe('epic projections: outstanding research is the topic\'s row — the discussion is held for it', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -1316,10 +1316,10 @@ describe('epic projections: the research row above the topic\'s own entry', () =
   }
   const numbered = (d) => epicMenu('v1', d).keys.filter((k) => /^\d+$/.test(k.key)).map((k) => [k.key, k.action, k.topic]);
 
-  it('a discussing topic with research in flight: continue research leads, recommended, its discussion row beneath', () => {
+  it('a discussing topic with research in flight: the topic\'s one row is its research, recommended — the discussion is not offered', () => {
     const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
     const { keys, rendered } = epicMenu('v1', d);
-    assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing'], ['2', 'continue_discussion', 'billing']]);
+    assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing']]);
     assert.strictEqual(keys[0].route, '/workflow-research-entry epic v1 billing');
     assert.strictEqual(keys[0].recommended, true, 'the research row is first when its topic is first');
     assert.strictEqual(rendered, [
@@ -1327,18 +1327,52 @@ describe('epic projections: the research row above the topic\'s own entry', () =
       '**`◆ What would you like to do?`**',
       '',
       '**`1`**           → Continue "Billing" — *research* (recommended)',
-      '**`2`**           → Continue "Billing" — *discussion*',
       '**`d/discuss`**   → Start a discussion on a new topic',
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
       '**`a/cancel`**    → Cancel a topic (phase work)',
     ].join('\n'));
+    // With a map the discussion phase renders no item rows — the map row
+    // carries the wait, so the key owes no blocked cue.
+    assert.strictEqual(d.phases.discussion[0].blocked_by[0], 'research');
+    assert.ok(!epicKey(d).includes('blocked (discussion)'), epicKey(d));
   });
 
-  it('a discussing topic with a parked stub: start research with the triage tail leads', () => {
+  it('a discussing topic with a parked stub: start research with the triage tail is the topic\'s row', () => {
     const d = billing({ status: 'triaged' }, { status: 'in-progress' });
-    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing'], ['2', 'continue_discussion', 'billing']]);
+    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing']]);
     assert.strictEqual(epicMenu('v1', d).keys[0].label, 'Start research for "Billing" — *triage waiting*');
+  });
+
+  it('no map: a discussion whose research is outstanding gets no continue row — the tree tags it blocked and the key explains', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { billing: { status: 'in-progress' } } },
+        discussion: { items: { billing: { status: 'in-progress' }, fees: { status: 'in-progress' } } },
+      },
+    });
+    assert.deepStrictEqual(d.phases.discussion.map((e) => [e.name, e.blocked_by]), [['billing', ['research']], ['fees', undefined]]);
+    assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing'], ['2', 'continue_discussion', 'fees']]);
+    const out = epicDashboard('v1', d);
+    assert.match(out, /Billing\s+\[in-progress · blocked\]/, out);
+    assert.match(out, /Fees\s+\[in-progress\]/, out);
+    assert.ok(epicKey(d).includes(
+      '    blocked (discussion)    — its research is still outstanding;\n'
+      + '                              land it and the item returns to\n'
+      + '                              the menu'), epicKey(d));
+    // Landed research releases it: the row returns, the tag and the cue go.
+    const landed = detailFor(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { billing: { status: 'completed' } } },
+        discussion: { items: { billing: { status: 'in-progress' } } },
+      },
+    });
+    assert.strictEqual(landed.phases.discussion[0].blocked_by, undefined);
+    assert.deepStrictEqual(numbered(landed).map((r) => r[1]), ['continue_discussion']);
+    assert.match(epicDashboard('v2', landed), /Billing\s+\[in-progress\]/);
+    assert.ok(!epicKey(landed).includes('blocked (discussion)'));
   });
 
   it('the triage tail speaks for the row\'s own phase — a parked research stub never tags the discussion row', () => {
@@ -1392,17 +1426,15 @@ describe('epic projections: the research row above the topic\'s own entry', () =
     assert.deepStrictEqual(numbered(billing({ status: 'cancelled', previous_status: 'in-progress' }, { status: 'cancelled', previous_status: 'in-progress' })), []);
   });
 
-  it('a held research session strikes the research row per phase and hands the recommendation to the discussion row', () => {
+  it('a held research session strikes the topic\'s one row — the held discussion is no substitute, and nothing is recommended', () => {
     const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
     const { keys } = epicMenu('v1', d, {
       presence: [{ phase: 'research', topic: 'billing', age_seconds: 30, held: true, live: true, session_id: 'peer', pid: null }],
     });
     assert.strictEqual(keys[0].action, 'continue_research');
     assert.strictEqual(keys[0].in_session, true);
-    assert.strictEqual(keys[0].recommended, undefined);
-    assert.strictEqual(keys[1].action, 'continue_discussion');
-    assert.strictEqual(keys[1].in_session, undefined);
-    assert.strictEqual(keys[1].recommended, true);
+    assert.ok(!keys.some((k) => k.action === 'continue_discussion'), 'the discussion stays held');
+    assert.ok(keys.every((k) => k.recommended !== true), 'a struck row is never the recommendation');
   });
 
   it('the map row cues the waiting discussion — awaiting research, awaiting E1, or both', () => {
@@ -1443,10 +1475,10 @@ describe('epic projections: the research row above the topic\'s own entry', () =
     assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing']]);
     assert.strictEqual(epicMenu('v1', d).keys[0].label, 'Continue "Billing" — *research* · triage waiting');
     assert.strictEqual(cueOf(d), '↳ Researching · triage waiting · input moved');
-    // A discussion row beneath the same topic stays clean while only the research queue holds files.
+    // Beneath a live discussion the research row is the topic's only row, and the cue rides it alone.
     const both = billing({ status: 'in-progress' }, { status: 'in-progress' });
     const labels = epicMenu('v1', both).keys.filter((k) => k.topic === 'billing').map((k) => k.label);
-    assert.deepStrictEqual(labels, ['Continue "Billing" — *research* · triage waiting', 'Continue "Billing" — *discussion*']);
+    assert.deepStrictEqual(labels, ['Continue "Billing" — *research* · triage waiting']);
   });
 
   it('a parked discussion stub beneath landed research: the after-research start row carries the cue', () => {

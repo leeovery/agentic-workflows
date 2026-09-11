@@ -41,10 +41,10 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
-const { waitGate } = require('./projections/wait.cjs');
+const { waitGate, researchWaitState } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments, waits, itemOf, OUTSTANDING_RESEARCH_STATUSES } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments, waits, itemOf, outstandingResearch, outstandingResearchPhrase } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -3722,9 +3722,9 @@ function blocker(fact, guidance) {
 // ---------------------------------------------------------------------------
 // direct-entry-gate — the epic menu's d/r doors take a free-typed topic name.
 // A name already on the map is not a new topic: the menu row is the way in,
-// so the door refuses, naming where the topic stands — a parked research
-// stub included, whose row the menu carries above the topic's own. Empty
-// when the name is new, or the work unit carries no map.
+// so the door refuses, naming where the topic stands — outstanding research
+// first, at either door, since its row is the topic's own. Empty when the
+// name is new, or the work unit carries no map.
 // ---------------------------------------------------------------------------
 
 /**
@@ -3741,16 +3741,11 @@ function directEntryGate(cwd, { dotpath }) {
   const item = phaseItems(manifest, 'discovery').find((i) => i.name === topic);
   if (!item) return '';
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
-  // The r door over outstanding research names the research, not the
-  // discussion beside it — that is the phase the user asked for, and its
-  // row is the one the menu leads with.
-  const outstanding = OUTSTANDING_RESEARCH_STATUSES.includes(research_state ?? '');
-  const stands = phase === 'research' && outstanding
-    ? `research is ${research_state === 'triaged' ? 'parked on it (triage waiting)' : 'in flight on it'}`
-    : lifecyclePhrase(lifecycle, research_state, item.routing);
+  const research = outstandingResearch(manifest, topic);
+  const stands = research ? outstandingResearchPhrase(research) : lifecyclePhrase(lifecycle, research_state, item.routing);
   return blocker(
     `"${titlecase(topic)}" is already on the map — ${stands}`,
-    `Return to the epic menu — ${outstanding ? 'its research row is the way in' : 'its row for the topic names the next step'}.`,
+    `Return to the epic menu — ${research ? 'its research row is the way in' : 'its row for the topic names the next step'}.`,
   );
 }
 
@@ -3783,6 +3778,19 @@ function entryGate(cwd, { dotpath, own }) {
       );
     }
     return '';
+  }
+
+  if (phase === 'discussion') {
+    // Research feeds discussion: outstanding research holds the discussion
+    // shut at entry, every work type — the birth guard's read, rendered.
+    const research = outstandingResearch(manifest, topic);
+    if (!research) return '';
+    return blocker(
+      `Entry blocked — this discussion awaits research on "${t}" (${researchWaitState(research)})`,
+      manifest.work_type === 'epic'
+        ? 'Return to the epic menu — its research row is the way in.'
+        : 'Continue the work unit — the research is its next step.',
+    );
   }
 
   if (phase === 'planning') {
@@ -3927,7 +3935,7 @@ function entryGate(cwd, { dotpath, own }) {
     return '';
   }
 
-  throw new Error(`render entry-gate: no prerequisite rules for phase "${phase}" (planning|implementation|review|specification)`);
+  throw new Error(`render entry-gate: no prerequisite rules for phase "${phase}" (discussion|planning|implementation|review|specification)`);
 }
 
 // ---------------------------------------------------------------------------

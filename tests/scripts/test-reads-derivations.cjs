@@ -16,7 +16,7 @@ const {
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
-  awaitedExperiments, experimentWaits, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, lifecyclePhrase,
+  awaitedExperiments, experimentWaits, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, lifecyclePhrase,
   TIER_RANK,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
@@ -1232,9 +1232,15 @@ describe('reads + derivations', () => {
       assert.strictEqual(computeNextAction('discussion', 'ready_for_discussion'), 'start_discussion_after_research');
     });
 
-    it('discussing → continue_discussion', () => {
+    it('discussing → continue_discussion; outstanding research beneath it is the row\'s own action instead', () => {
       assert.strictEqual(computeNextAction('research', 'discussing'), 'continue_discussion');
       assert.strictEqual(computeNextAction('discussion', 'discussing'), 'continue_discussion');
+      assert.strictEqual(computeNextAction('discussion', 'discussing', 'completed'), 'continue_discussion');
+      assert.strictEqual(computeNextAction('discussion', 'discussing', null), 'continue_discussion');
+      // Research feeds discussion — the discussion is held until it lands.
+      assert.strictEqual(computeNextAction('discussion', 'discussing', 'in-progress'), 'continue_research');
+      assert.strictEqual(computeNextAction('discussion', 'discussing', 'triaged'), 'start_research');
+      assert.strictEqual(computeNextAction('research', 'discussing', 'in-progress'), 'continue_research');
     });
 
     it('decided → null (no next action)', () => {
@@ -1521,6 +1527,28 @@ describe('reads + derivations', () => {
     });
   });
 
+  describe('outstandingResearch — the one read behind every surface that holds a discussion for its research', () => {
+    const unit = (research) => ({
+      name: 'lab', work_type: 'feature',
+      phases: research ? { research: { items: { lab: research } } } : {},
+    });
+
+    it('answers the status while in flight or parked; null once landed, closed, or never begun', () => {
+      assert.strictEqual(outstandingResearch(unit({ status: 'in-progress' }), 'lab'), 'in-progress');
+      assert.strictEqual(outstandingResearch(unit({ status: 'triaged' }), 'lab'), 'triaged');
+      for (const status of ['completed', 'cancelled', 'superseded']) {
+        assert.strictEqual(outstandingResearch(unit({ status }), 'lab'), null, status);
+      }
+      assert.strictEqual(outstandingResearch(unit(undefined), 'lab'), null);
+      assert.strictEqual(outstandingResearch(unit({ status: 'in-progress' }), 'other'), null, 'another topic\'s research holds nothing');
+    });
+
+    it('phrases where the research stands in the refusals\' voice', () => {
+      assert.strictEqual(outstandingResearchPhrase('triaged'), 'research is parked on it (triage waiting)');
+      assert.strictEqual(outstandingResearchPhrase('in-progress'), 'research is in flight on it');
+    });
+  });
+
   describe('computeNextPhase — a linear unit routes to the research parked beneath its live discussion', () => {
     it('a triaged research stub beneath an in-progress discussion is the next phase; landed research hands back', () => {
       const feature = (research) => ({
@@ -1532,6 +1560,9 @@ describe('reads + derivations', () => {
       });
       assert.deepStrictEqual(computeNextPhase(feature('triaged')),
         { next_phase: 'research', phase_label: 'research (parked — feeds the discussion)' });
+      // Research in flight is live to the walk itself — the earliest in-flight phase.
+      assert.deepStrictEqual(computeNextPhase(feature('in-progress')),
+        { next_phase: 'research', phase_label: 'research (in-progress)' });
       assert.deepStrictEqual(computeNextPhase(feature('completed')),
         { next_phase: 'discussion', phase_label: 'discussion (in-progress)' });
     });

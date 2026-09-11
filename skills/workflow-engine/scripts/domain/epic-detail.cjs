@@ -15,6 +15,7 @@ const path = require('path');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 const {
   phaseItems,
+  outstandingResearch,
   computeAnalysisCacheStatus,
   buildDiscoveryMap,
 } = require('./derivations.cjs');
@@ -56,7 +57,9 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  *                                             top-level records, id order; the menu's
  *                                             topic-grain entry reads them for its tail
  * @property {SpecSource[]} [sources]          specification items
- * @property {string[]} [blocked_by]           specification items whose source is back in-progress
+ * @property {string[]} [blocked_by]           what holds the item's entry shut — a specification's
+ *                                             source discussions back in-progress, or `['research']`
+ *                                             on a discussion whose research is outstanding
  * @property {string} [format]                 planning items
  * @property {boolean} [deps_satisfied]        planning items
  * @property {DepBlocking[]} [deps_blocking]   planning items with unmet deps
@@ -312,6 +315,15 @@ function epicDetail(cwd, manifest) {
   }
 
   const discussionItems = phaseItems(manifest, 'discussion');
+
+  // Research feeds discussion: a live discussion whose research is still
+  // outstanding is held at entry until it lands — the menu carries no row
+  // for it (the research row is the way in) and the display tree shows the
+  // blocked state.
+  for (const e of phases.discussion || []) {
+    if (!TERMINAL_STATUSES.includes(e.status) && outstandingResearch(manifest, e.name)) e.blocked_by = ['research'];
+  }
+
   const unaccountedDiscussions = [];
   for (const d of discussionItems) {
     if (d.status === 'completed' && !groupedDiscussions.has(d.name)) {

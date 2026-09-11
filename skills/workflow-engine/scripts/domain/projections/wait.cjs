@@ -16,6 +16,13 @@ const { titlecase } = require('../conventions.cjs');
 
 const MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
 
+// Where the awaited research stands, in the gates' voice — the wait gate and
+// the discussion entry gate read as one.
+/** @param {string} status  an outstanding research status */
+function researchWaitState(status) {
+  return status === 'triaged' ? 'parked — not yet started' : 'in flight';
+}
+
 /**
  * @param {string} phase  the holding phase — `research` or `discussion`
  * @param {string} topic
@@ -30,7 +37,7 @@ function waitGate(phase, topic, waits) {
   const queued = [];
   const lands = [];
   if (research) {
-    owed.push(`research on "${titlecase(topic)}" (${research.status === 'triaged' ? 'parked — not yet started' : 'in flight'})`);
+    owed.push(`research on "${titlecase(topic)}" (${researchWaitState(research.status)})`);
     queued.push('the research');
     lands.push('the research');
   }
@@ -59,4 +66,4 @@ function waitGate(phase, topic, waits) {
   ].join('\n');
 }
 
-module.exports = { waitGate };
+module.exports = { waitGate, researchWaitState };
