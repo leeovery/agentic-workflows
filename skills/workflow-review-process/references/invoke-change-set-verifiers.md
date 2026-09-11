@@ -12,7 +12,10 @@ This step dispatches `workflow-review-change-set-verifier` agents once per revie
 
 The cycle number `{N}` is the one **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** → Determine Cycle Number derives — the count of `review-report-c*.md` files in `.workflows/{work_unit}/implementation/{topic}/` plus one. Every file this step writes or reads carries it, so a later cycle measures the change-set as it then stands rather than reading the previous cycle's files.
 
-Read the specification at `.workflows/{work_unit}/specification/{topic}/specification.md`. The split is its numbered sections — each `### N.` heading beneath `## Specification` with everything under it — plus one section named `test surface`, over the change-set's test files held against everything the specification asks them to guard. A document with no numbered sections is one section named for the document, slug `specification`; for a quick-fix that section is the whole split, with no test surface — its scoping document carries its own verification.
+Read the specification at `.workflows/{work_unit}/specification/{topic}/specification.md`. The split keys on the work type read in **[invoke-task-verifiers.md](invoke-task-verifiers.md)** → B. Extract All Tasks, never on the document's headings:
+
+- **Quick-fix** — one section over the whole document, slug `specification`, and no test surface: the document carries its own verification.
+- **Every other work type** — the document's numbered sections, each `### N.` heading beneath `## Specification` with everything under it, plus one section named `test surface`, over the change-set's test files held against everything the specification asks them to guard. A document with no numbered sections is one section named for the document, slug `specification`, plus the test surface.
 
 When the numbered sections exceed four, merge adjacent sections from the lowest numbers up — the first with the second, then the next two — until four remain, so that with the test surface there are at most five. A merged section carries both names and both bodies.
 
