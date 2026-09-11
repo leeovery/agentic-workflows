@@ -25,10 +25,10 @@ The prose should have taken this path:
    the classification is never-reviewed. The decision write's commit
    is never read as movement from the dead row's timestamp
 8. the mandatory review gate renders — a final gap review is owed, no
-   skip available — and the user, agreeable to required steps, says
-   yes. The optional gate (the offer of another final review, with its
-   skip) never renders: had it been offered, this user would have
-   skipped it and the discussion would have concluded with no review
+   decline available — and the user, agreeable to required steps, says
+   yes. The optional gate (the offer of one more review, with its
+   no) never renders: had it been offered, this user would have
+   declined it and the discussion would have concluded with no review
    ever run
 9. the in-flight check finds no running agents; the final gap review
    step re-derives the same state — the highest row is incorporated
@@ -49,7 +49,7 @@ Further claims:
 - review-001 stays inert throughout: never acknowledged, never
   surfaced, never treated as a running agent
 - the gate the user answers for the review is the mandatory shape
-  (proceed or keep going — no skip option), per their conduct of
+  (proceed or keep going — no decline option), per their conduct of
   accepting required steps
 
 EXPECTED WORLD — changed as follows:

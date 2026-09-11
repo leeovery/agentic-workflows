@@ -66,7 +66,7 @@ Take the highest-numbered `review` row from the **A** scan and branch on its sta
 
 The prior review was fully drained. A fresh one is warranted only when the discussion moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. The movement check anchors on the last **real** review: the highest-numbered `review` row whose report exists on disk (`.workflows/.cache/{work_unit}/discussion/{topic}/{id}.md`, non-empty) — an `incorporated` row with no report is a killed dispatch closed as bookkeeping, never a review.
 
-**If the user declined another final review at this conclusion attempt's closing gate:**
+**If the user declined one more review at this conclusion attempt's closing gate:**
 
 The decline stands — do not re-litigate it. A later conclusion attempt classifies afresh and offers again.
 

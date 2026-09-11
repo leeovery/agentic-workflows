@@ -45,7 +45,7 @@ The prose should have taken this path:
    gates load
 7. the user passes the review gate per their conduct (a mandatory
    review proceeds — the stubbed report comes back clean; the optional
-   offer of another final review is skipped), confirms the conclude
+   offer of one more review is declined), confirms the conclude
    gate, and the final gap review and document review steps run
    without unwinding the timeline — the revision landing survives
    reconciliation intact

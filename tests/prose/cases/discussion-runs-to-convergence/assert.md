@@ -44,7 +44,7 @@ The prose should have taken this path:
     landed before the last review dispatched, so the window comes back
     empty; `re-review` when one landed after it, since a subtopic
     explored since the last review is real movement, and the optional
-    offer of another final review then renders and is declined.
+    offer of one more review then renders and is declined.
     Nothing in the prose fixes which side of the review dispatch a
     write-up falls on, so the
     classification is not a property this case pins. What must hold on

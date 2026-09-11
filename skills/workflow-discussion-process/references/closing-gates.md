@@ -78,9 +78,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work
 
 → Proceed to **E. In-Flight Agent Check**.
 
-**If `skip`:**
+**If `no`:**
 
-Another final review is declined for this conclusion attempt — Step 6 honours the decline, and a later attempt classifies afresh and offers again.
+One more review is declined for this conclusion attempt — Step 6 honours the decline, and a later attempt classifies afresh and offers again.
 
 → Proceed to **D. Conclude Gate**.
 
