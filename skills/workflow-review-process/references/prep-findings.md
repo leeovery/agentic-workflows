@@ -10,7 +10,7 @@ Every agent here is read-only. They judge; nothing is edited.
 
 ## A. Collect the Findings
 
-Read the `report-*.md` files and this cycle's `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/` — `{N}` as **A. Derive Sections** of **[invoke-change-set-verifiers.md](invoke-change-set-verifiers.md)** derives it — and collect from both streams: every `FINDINGS` entry, and every `BLOCKING ISSUES` entry other than `- None`. A blocking entry joins the payloads marked `[blocking]` in place of the scope and radius tags. It usually pairs with a `FINDINGS` line in the same report that prescribes its remedy — carry both; the relationships agent sees the pair as one group, and synthesis routes the blocking issue by the remedy's radius.
+Read the `report-*.md` files and this cycle's `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/` — `{N}` as **A. Derive Sections** of **[invoke-change-set-verifiers.md](invoke-change-set-verifiers.md)** derives it — and collect from both streams: every `FINDINGS` entry, and every `BLOCKING ISSUES` entry other than `- None`. A blocking entry usually pairs with a `FINDINGS` line in the same report that prescribes its remedy — carry both; the relationships agent sees the pair as one group, and synthesis routes the blocking issue by the remedy's radius.
 
 **When `unreviewed_tasks` is set and the review file already exists** (a later cycle over remediation work), collect from those tasks' reports and from this cycle's change-set files — the earlier cycle's findings, its change-set files' included, were already resolved, and re-collecting them would redo decided work. With no review file on disk the cycle never completed: collect from every report and from this cycle's change-set files, whatever `unreviewed_tasks` holds.
 
@@ -28,8 +28,8 @@ Nothing is written — the payloads exist only for findings.
 
 Write two payloads with the Write tool:
 
-- `.workflows/.cache/{work_unit}/review/{topic}/findings.txt` — one block per finding, opening with `[{id}]`, carrying the finding verbatim
-- `.workflows/.cache/{work_unit}/review/{topic}/findings-index.txt` — the same findings grouped under `### {file}` headings by the file each targets, one summary line each
+- `.workflows/.cache/{work_unit}/review/{topic}/findings.txt` — one block per finding, opening with `[{id}]`, carrying the finding verbatim with its scope and radius tags; a blocking entry's block carries `[blocking]` where those tags would sit
+- `.workflows/.cache/{work_unit}/review/{topic}/findings-index.txt` — the same findings grouped under `### {file}` headings by the file each targets, one summary line each, a blocking entry's line carrying `[blocking]`
 
 → Proceed to **B. Assess**.
 
