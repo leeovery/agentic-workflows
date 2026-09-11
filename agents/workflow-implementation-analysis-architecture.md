@@ -73,7 +73,7 @@ COMMENT_CORRECTIONS:
 SUMMARY: {1-3 sentences}
 ```
 
-COMMENT_CORRECTIONS holds each comment whose entire remedy is comment text — never a FINDING (finding-floor.md → Comment-Only Remedies); omit the section when there are none. `FINDINGS: none` when no candidate clears the floor — a file may carry corrections and no findings.
+COMMENT_CORRECTIONS holds each comment whose entire remedy is comment text — never a FINDING (code-quality.md → Comment corrections); omit the section when there are none. `FINDINGS: none` when no candidate clears the floor — a file may carry corrections and no findings.
 
 ## Your Output
 

@@ -56,6 +56,10 @@ Code shows what; a comment earns its place only by carrying what the code cannot
 
 When a change makes a nearby comment false, fix it in the same edit — and prefer deleting the claim to re-arguing it.
 
+### Comment corrections
+
+Where an output format names a comment-correction shape, a finding whose entire remedy is comment text is reported there — the file and line, what is wrong, the OLD text verbatim, the NEW text (empty to delete) — never as a finding. A correction must itself clear the bar above: a comment earns its place only by carrying what the code cannot, and a comment that cannot is deleted, never reworded.
+
 ## Anti-Patterns to Avoid
 - God classes
 - Magic numbers/strings
