@@ -16,8 +16,11 @@ const { execFileSync } = require('child_process');
  */
 function processStartTime(pid) {
   try {
+    // `lstart` is printed in the caller's timezone and locale; the recorded
+    // string is compared verbatim by whichever session reads it later, so
+    // both are pinned or two terminals with different TZs never match.
     const out = execFileSync('ps', ['-p', String(pid), '-o', 'lstart='], {
-      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, TZ: 'UTC', LC_ALL: 'C' },
     });
     return out.trim() || null;
   } catch { return null; }

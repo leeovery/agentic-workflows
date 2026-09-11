@@ -1,5 +1,5 @@
 {
-  "origin": "concurrent-phases (design/concurrent-phases.md, riders) — the grouping analysis rewrites work-unit-wide `.state/` staging and reads the source corpus, so it holds off while a source session is live; nothing walked the deferral",
+  "origin": "concurrent-phases (design/concurrent-phases.md, riders) — the grouping analysis rewrites work-unit-wide `.state/` staging and reads the source corpus, so it holds off while a peer session holds a source topic open; nothing walked the deferral",
   "entry": "workflow-specification-entry",
   "files": [
     "skills/workflow-specification-entry/SKILL.md",

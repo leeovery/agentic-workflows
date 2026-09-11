@@ -242,10 +242,10 @@ visible check with a deterministic backstop instead of silent loss.
 
 - **Deferral extension**: the spec-entry grouping analysis takes the
   same presence deferral the topic-discovery dispatch already runs —
-  hold off while any source-phase row is held, however long idle; the
-  cache self-heals at the next entry. `.state/` stays work-unit-wide
-  (grouping is inherently epic-wide; one pass at a time is the
-  correct semantics).
+  hold off while a peer session holds any source-phase row, however
+  long idle, never behind the caller's own; the cache self-heals at
+  the next entry. `.state/` stays work-unit-wide (grouping is
+  inherently epic-wide; one pass at a time is the correct semantics).
 - **Build-order**: `build-order sequence` re-reads
   `build_order_stale` and the live set inside the manifest lock —
   last writer over identical inputs, converges, no prose involved.
@@ -267,7 +267,7 @@ visible check with a deterministic backstop instead of silent loss.
 | Doc sessions invisible outside research/discussion | `PHASES` widening | 2 |
 | Prose beats silently dropped | Mechanical beats on self-referential verbs | 2 |
 | Conclusion ordering: clear then beat resurrects the hold | `--kb` clears instead of beats | 2 |
-| Sweeper/deliverer stamping foreign topics live | Sweep suppression flag; triage never beats | 2 |
+| Sweeper/deliverer stamping foreign topics held | Sweep suppression flag; triage never beats | 2 |
 | Two code sessions clash on tree + index | Code gate at every entry route, red, overridable | 7 |
 | Second session on a held same topic | Same-topic gate upgraded to the family | 7 |
 | Grouping analysis tramples under held sources | Deferral extension | 8 |

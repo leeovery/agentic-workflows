@@ -31,7 +31,6 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const cases = require('./cases.cjs');
-const { processStartTime } = require('../../../skills/workflow-engine/scripts/kernel/process.cjs');
 
 const ROOT = cases.ROOT;
 const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
@@ -63,16 +62,15 @@ const WORLD_HISTORY = '.world-history.json';
 // world itself.
 //
 // Heartbeats a PEER session holds — [{"work_unit", "phase", "topic"
-// [, "session_id", "pid", "pid_start"]}]. Presence files are excluded
-// from every snapshot (timing noise no case claim can pin), so a
-// fixture that needs a peer's hold declares it here instead, and
-// materialise stamps it last: the mtime is the row's "last active"
-// age, and it reads freshest of anything in the world. A row that
-// omits `pid` is stamped as pid 1 with pid 1's real start time —
-// always alive, never the walker's own process, no session id — so
-// it reads held and owned by nobody. A row that declares its own
-// identity is stamped as declared: a dead pid on purpose reads
-// unheld.
+// [, "session_id", "pid"]}]. Presence files are excluded from every
+// snapshot (timing noise no case claim can pin), so a fixture that
+// needs a peer's hold declares it here instead, and materialise beats
+// it last through the engine's own verb, as that peer: the mtime is
+// the row's "last active" age, and it reads freshest of anything in
+// the world. A row that omits `pid` is beaten as pid 1 — always alive,
+// never the walker's own process, no session id — so it reads held
+// and owned by nobody. A declared `pid` is beaten as that process: a
+// dead one on purpose reads unheld.
 const WORLD_PRESENCE = '.world-presence.json';
 
 // Snapshot paths left OUT of the world's commits. Everything a recipe
@@ -537,12 +535,11 @@ function buildWorld(caseId) {
     fs.writeFileSync(dest, snap.get(rel));
   }
   for (const row of presence) {
-    const file = path.join(dir, '.workflows', '.cache', row.work_unit, row.phase, row.topic, 'presence');
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const identity = row.pid === undefined
-      ? { pid: 1, pid_start: processStartTime(1) }
-      : { pid: row.pid, pid_start: row.pid_start ?? null };
-    fs.writeFileSync(file, JSON.stringify({ ...identity, session_id: row.session_id ?? null }) + '\n');
+    const env = { ...recipeEnv(), CLAUDE_PID: String(row.pid ?? 1), CLAUDE_CODE_SESSION_ID: row.session_id ?? '' };
+    const res = spawnSync('node', [ENGINE, 'presence', 'beat', row.work_unit, row.phase, row.topic], { cwd: dir, encoding: 'utf8', env });
+    if (res.status !== 0) {
+      throw new Error(`peer heartbeat failed: ${row.work_unit} ${row.phase}/${row.topic}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+    }
   }
 
   return dir;

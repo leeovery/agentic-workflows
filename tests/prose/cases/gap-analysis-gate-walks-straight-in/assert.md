@@ -4,7 +4,7 @@ The prose should have taken this path:
    into continue-epic for the one active epic; the scoped discovery run
    reports the gap-analysis cache stale
 2. the topic-discovery dispatch checks presence before reading anything —
-   no peer session is live — and enters the analysis orchestration on the
+   no peer session holds a source topic — and enters the analysis orchestration on the
    stale branch
 3. the stale branch reads the staging state first and finds candidates
    still `pending`, so it **reuses** them: the gap analysis itself never

@@ -12,8 +12,8 @@
 // time + session id); `held` — the one verdict — is true while that exact
 // process still runs, however long it sits idle. The mtime is display only:
 // the row's "last active" age, shown wherever a hold is named and never
-// judged. A record without identity (no CLAUDE_PID at beat time) cannot be
-// verified and is never held.
+// judged. A record without identity cannot be verified and is never held,
+// so a beat with no CLAUDE_PID refuses rather than write one.
 //
 // Beats are mechanical: the engine stamps them as a side effect of the verbs
 // a session already runs on its own topic (`beatQuietly`), and the terminal
@@ -44,6 +44,9 @@ const CODE_PHASES = ['implementation', 'review'];
 // The corpora the epic-wide analyses read. A held session in any other phase
 // is no reason to defer an analysis that never looks at its material.
 const SOURCE_PHASES = ['research', 'discussion'];
+// The phases whose document a specification extracts from — what the
+// spec-side held-doc check looks for a holder on.
+const DOCUMENT_PHASES = ['research', 'discussion', 'investigation'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
@@ -99,10 +102,11 @@ function beatPresence(cwd, workUnit, phase, topic) {
   const p = presencePath(cwd, workUnit, phase, topic);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   const pid = Number(process.env.CLAUDE_PID) || null;
+  if (!pid) throw new Error('presence beat: CLAUDE_PID is not set — a heartbeat without identity is never held, so none is written');
   /** @type {PresenceRecord} */
   const record = {
     pid,
-    pid_start: pid ? processStartTime(pid) : null,
+    pid_start: processStartTime(pid),
     session_id: process.env.CLAUDE_CODE_SESSION_ID || null,
   };
   fs.writeFileSync(p, JSON.stringify(record) + '\n');
@@ -238,9 +242,28 @@ function collectRows(cwd, workUnit, startOf) {
   return rows;
 }
 
-/** The held rows an epic-wide analysis would read over. @param {PresenceRow[]} sessions */
+/**
+ * The held rows an epic-wide analysis would read over — a peer's, never the
+ * caller's own: a session that parked its own research and stepped back to
+ * the menu is not mid-conversation on it, and a deferral naming that row
+ * would wait on the session reading it.
+ * @param {PresenceRow[]} sessions
+ */
 function heldSources(sessions) {
-  return sessions.filter((r) => r.held && SOURCE_PHASES.includes(r.phase));
+  return sessions.filter((r) => r.held && SOURCE_PHASES.includes(r.phase) && !ownsRow(r));
+}
+
+/**
+ * The freshest held row a peer holds on one document — the spec-side
+ * held-doc gate's read, naming the holder's last-active age. Null when no
+ * peer holds it.
+ * @param {string} cwd @param {string} workUnit @param {string} doc  the document's topic name
+ * @returns {PresenceRow|null}
+ */
+function heldDocument(cwd, workUnit, doc) {
+  const rows = scanPresence(cwd, workUnit).sessions
+    .filter((r) => r.held && r.topic === doc && DOCUMENT_PHASES.includes(r.phase) && !ownsRow(r));
+  return rows[0] || null;
 }
 
 /**
@@ -368,22 +391,24 @@ function cleanupPresence(cwd, sessionId) {
  * verbatim (only where an analysis defers — the marker says so). Counts the
  * source phases alone, like the deferral itself, naming each held row with
  * its last-active age. Empty when no source session is held.
- * @param {{sessions: PresenceRow[]}} scan
+ * @param {{work_unit: string, sessions: PresenceRow[]}} scan
  * @returns {string}
  */
 function deferralSection(scan) {
   const held = heldSources(scan.sessions);
   if (held.length === 0) return '';
   const names = held.map((r) => `${r.phase}/${r.topic} (last active ${fmtAge(r.age_seconds)} ago)`).join(', ');
+  const [first] = held;
+  const release = `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear ${scan.work_unit} ${first.phase} ${first.topic}`;
   return section(
     'DISPLAY: presence deferral',
     `only at an analysis deferral: ${CONTINUE_INSTRUCTION}`,
-    callout(`Analyses deferred — ${held.length} session(s): ${names}. They read the settled record, so they wait for those sessions to conclude.`),
+    callout(`Analyses deferred — ${held.length} session(s): ${names}. They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with \`${release}\`.`),
   );
 }
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly,
-  scanPresence, scanProject, heldCodeSessions, cleanupPresence, deferralSection,
+  scanPresence, scanProject, heldCodeSessions, heldDocument, cleanupPresence, deferralSection,
   fmtAge, ownsRow, CODE_PHASES,
 };

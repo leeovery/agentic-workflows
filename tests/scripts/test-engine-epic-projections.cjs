@@ -815,6 +815,18 @@ describe('epic projections: presence join', () => {
     assert.strictEqual(epicKey(d), '', 'the ↳ state line carries the words — no session legend');
   });
 
+  it('a hold idle for hours is still a hold — struck, gated, and cued with its age', () => {
+    const idle = { ...heldRow, age_seconds: 10800 };
+    const d = twoTopicDetail();
+    const { keys, rendered } = epicMenu('v1', d, { presence: [idle] });
+    const marked = keys.find((k) => k.in_session);
+    assert.strictEqual(marked.topic, 'topic-a');
+    assert.notStrictEqual(marked.recommended, true, 'never recommended, however long idle');
+    assert.ok(/~~Continue "Topic A" — \*discussion\*~~ · in session \(last\n +active 3h ago\)/.test(rendered), rendered);
+    assert.match(epicInSessionGate('v1', marked), /"Topic A" is open in another session — last active 3h ago\./);
+    assert.match(epicDashboard('v1', d, { presence: [idle] }), /↳ Discussing · in session \(last active 3h ago\)/);
+  });
+
   it('a topic held in two phases cues the freshest session\'s age', () => {
     const research = { phase: 'research', topic: 'topic-a', age_seconds: 7200, held: true, session_id: 's2' };
     const out = epicDashboard('v1', twoTopicDetail(), { presence: [research, heldRow] });

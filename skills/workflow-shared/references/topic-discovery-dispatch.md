@@ -39,7 +39,7 @@ Nothing to run. `new_arrivals` stays empty.
 
 #### If the cache is `stale`
 
-The analysis reads completed corpora, and a peer session holding a source topic open is mid-conversation on material it would read. Check first:
+The analysis reads completed corpora, and a peer session holding a source topic open — however long it has idled — is still working material it would read. Check first:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}

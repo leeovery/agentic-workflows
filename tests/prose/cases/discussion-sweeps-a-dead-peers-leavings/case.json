@@ -1,5 +1,5 @@
 {
-  "origin": "concurrent-phases (design/concurrent-phases.md) — the conclude sweep collects what a dead session never committed and leaves a live one's alone, and the verdict rests on a presence read; nothing walked either half",
+  "origin": "concurrent-phases (design/concurrent-phases.md) — the conclude sweep collects what a dead session never committed and leaves a held one's alone, and the verdict rests on a presence read; nothing walked either half",
   "entry": "workflow-discussion-entry",
   "world": "claims",
   "files": [

@@ -23,11 +23,14 @@ function setup() {
 function cleanup(dir) {
   fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
-// The beating session's identity: this process, alive with a real start
-// time, so the records it writes are verifiable and read held.
+// Two session identities. OWN is this process — alive with a real start
+// time, so its records read held — and is what every scan runs as. PEER is
+// pid 1: alive for as long as the machine is and never this process, so its
+// rows read held and belong to somebody else.
 const OWN = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' };
-function engine(dir, args) {
-  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...OWN } });
+const PEER = { CLAUDE_PID: '1', CLAUDE_CODE_SESSION_ID: 'sess-peer' };
+function engine(dir, args, identity = OWN) {
+  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...identity } });
   const nl = out.indexOf('\n');
   return { res: JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim()), sections: nl === -1 ? '' : out.slice(nl + 1) };
 }
@@ -35,14 +38,14 @@ function engine(dir, args) {
 function unwrapped(sections) {
   return sections.replace(/\n +/g, ' ');
 }
-function engineFails(dir, args) {
-  const r = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
+function engineFails(dir, args, env = {}) {
+  const r = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...env } });
   assert.strictEqual(r.status, 1);
   return JSON.parse(r.stderr.trim());
 }
 function engineWith(dir, args, { env = {}, input } = {}) {
   const r = spawnSync('node', [ENGINE, ...args], {
-    cwd: dir, encoding: 'utf8', env: { ...process.env, ...env }, input: input ?? '',
+    cwd: dir, encoding: 'utf8', env: { ...process.env, ...OWN, ...env }, input: input ?? '',
   });
   assert.strictEqual(r.status, 0, r.stderr);
   const nl = r.stdout.indexOf('\n');
@@ -64,7 +67,7 @@ describe('engine presence', () => {
   afterEach(() => { cleanup(dir); });
 
   it('beat creates the heartbeat; scan reports it held with the deferral section', () => {
-    const beat = engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']).res;
+    const beat = engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER).res;
     assert.deepStrictEqual(beat, { ok: true, work_unit: 'pay', phase: 'discussion', topic: 'alpha', beat: true });
     assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/pay/discussion/alpha/presence')));
 
@@ -82,8 +85,8 @@ describe('engine presence', () => {
     ), `deferral marker carries its qualifier and the continuation instruction: ${sections}`);
     assert.ok(sections.includes('\n  ⚑ Analyses deferred — 1 session(s): discussion/alpha (last'), `callout flag line at the 2-space indent: ${sections}`);
     assert.match(unwrapped(sections),
-      /⚑ Analyses deferred — 1 session\(s\): discussion\/alpha \(last active \d+s ago\)\. They read the settled record, so they wait for those sessions to conclude\./,
-      `the callout names the row with its last-active age: ${sections}`);
+      /⚑ Analyses deferred — 1 session\(s\): discussion\/alpha \(last active \d+s ago\)\. They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs presence clear pay discussion alpha`\./,
+      `the callout names the row with its last-active age and the release: ${sections}`);
     // The body is a callout: wrapped at the display width, continuations at
     // the 4-space hang — never a hand-wrapped fixed column.
     const { displayWidth } = require('../../skills/workflow-engine/scripts/kernel/terminal.cjs');
@@ -93,18 +96,32 @@ describe('engine presence', () => {
     }
   });
 
+  it('the caller\'s own hold never defers — a session does not wait on itself', () => {
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
+    const own = engine(dir, ['presence', 'scan', 'pay']);
+    assert.strictEqual(own.res.held, 1, 'the row is held');
+    assert.strictEqual(own.res.held_sources, 0, 'but it is this session\'s — an analysis run here is not waiting on it');
+    assert.strictEqual(own.sections, '');
+
+    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
+    const mixed = engine(dir, ['presence', 'scan', 'pay']);
+    assert.strictEqual(mixed.res.held_sources, 1);
+    assert.ok(unwrapped(mixed.sections).includes('1 session(s): research/beta (last active'), mixed.sections);
+    assert.ok(!mixed.sections.includes('discussion/alpha'), `the own row is never named: ${mixed.sections}`);
+  });
+
   it('a held session outside the source phases defers no analysis', () => {
     // The analyses read research and discussion; a laboratory, planning, or
     // code session holds nothing they look at.
     for (const phase of ['planning', 'specification', 'implementation', 'review', 'scoping', 'investigation', 'experiment']) {
-      engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']);
+      engine(dir, ['presence', 'beat', 'pay', phase, 'alpha'], PEER);
     }
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.held, 7, 'every session is held');
     assert.strictEqual(res.held_sources, 0, 'none of them is source material');
     assert.strictEqual(sections, '', 'nothing to defer, nothing rendered');
 
-    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta']);
+    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
     const second = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(second.res.held_sources, 1);
     assert.ok(second.sections.includes('research/beta'), second.sections);
@@ -114,8 +131,8 @@ describe('engine presence', () => {
   it('held_sources counts held source rows alone — a dead source session is not one', () => {
     const dead = spawnSync('node', ['-e', '']);
     craftRecord(dir, 'research', 'beta', { pid: dead.pid, pid_start: null, session_id: 'gone' });
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
-    engine(dir, ['presence', 'beat', 'pay', 'planning', 'gamma']);
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
+    engine(dir, ['presence', 'beat', 'pay', 'planning', 'gamma'], PEER);
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions.length, 3, 'every row is listed, held or not');
@@ -128,7 +145,7 @@ describe('engine presence', () => {
   it('an idle heartbeat stays held and still defers — the callout carries its age', () => {
     // A session left idle for hours is still a session. The age is shown so
     // the user can weigh it; no surface turns it into a verdict.
-    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta']);
+    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
     const p = path.join(dir, '.workflows/.cache/pay/research/beta/presence');
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
@@ -143,8 +160,8 @@ describe('engine presence', () => {
   });
 
   it('the deferral names every held source row with its own age, freshest first', () => {
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'platform-support']);
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'storage-and-sync']);
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'platform-support'], PEER);
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'storage-and-sync'], PEER);
     for (const [topic, minutes] of [['platform-support', 19], ['storage-and-sync', 20]]) {
       const p = presenceFile(dir, 'discussion', topic);
       const past = new Date(Date.now() - minutes * 60 * 1000);
@@ -154,7 +171,7 @@ describe('engine presence', () => {
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.held_sources, 2);
     assert.ok(unwrapped(sections).includes(
-      '⚑ Analyses deferred — 2 session(s): discussion/platform-support (last active 19m ago), discussion/storage-and-sync (last active 20m ago). They read the settled record, so they wait for those sessions to conclude.',
+      '⚑ Analyses deferred — 2 session(s): discussion/platform-support (last active 19m ago), discussion/storage-and-sync (last active 20m ago). They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear pay discussion platform-support`.',
     ), sections);
   });
 
@@ -172,7 +189,7 @@ describe('engine presence', () => {
   });
 
   it('clear drops the heartbeat and is a no-op when never set', () => {
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
     const cleared = engine(dir, ['presence', 'clear', 'pay', 'discussion', 'alpha']).res;
     assert.strictEqual(cleared.cleared, true);
     assert.strictEqual(engine(dir, ['presence', 'scan', 'pay']).res.sessions.length, 0);
@@ -208,8 +225,8 @@ describe('engine presence', () => {
 
   it('the work-unit-less scan walks the whole cache root, naming each row\'s work unit', () => {
     fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
-    engine(dir, ['presence', 'beat', 'ship', 'implementation', 'beta']);
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
+    engine(dir, ['presence', 'beat', 'ship', 'implementation', 'beta'], PEER);
 
     const { res, sections } = engine(dir, ['presence', 'scan']);
     assert.deepStrictEqual(Object.keys(res), ['ok', 'scope', 'held', 'sessions'], 'the held total alone — no source count, no window');
@@ -234,8 +251,7 @@ describe('engine presence', () => {
   });
 
   it('beat records the owning session identity; scan reports it held', () => {
-    engineWith(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'],
-      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    engineWith(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
     const record = JSON.parse(fs.readFileSync(presenceFile(dir, 'discussion', 'alpha'), 'utf8'));
     assert.strictEqual(record.pid, process.pid);
     assert.ok(record.pid_start, 'the beating process\'s start time is captured');
@@ -244,6 +260,12 @@ describe('engine presence', () => {
     const row = engineWith(dir, ['presence', 'scan', 'pay']).sessions[0];
     assert.strictEqual(row.held, true);
     assert.strictEqual(row.session_id, 'sess-one');
+  });
+
+  it('a hold survives a timezone or locale change between the beat and the scan', () => {
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], { ...PEER, TZ: 'UTC', LC_ALL: 'C' });
+    const row = engine(dir, ['presence', 'scan', 'pay'], { ...OWN, TZ: 'America/New_York', LC_ALL: 'en_GB.UTF-8' }).res.sessions[0];
+    assert.strictEqual(row.held, true, 'the recorded start time is compared verbatim, so it must not depend on the reader\'s clock settings');
   });
 
   it('a recycled pid reads unheld instantly — fresh mtime notwithstanding', () => {
@@ -262,12 +284,14 @@ describe('engine presence', () => {
     assert.strictEqual(rows.find((r) => r.topic === 'beta').held, false);
   });
 
+  it('a beat with no CLAUDE_PID refuses — a record nothing can hold is never written', () => {
+    const err = engineFails(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], { CLAUDE_PID: '', CLAUDE_CODE_SESSION_ID: '' });
+    assert.match(err.error, /CLAUDE_PID is not set/);
+    assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')), 'nothing written');
+  });
+
   it('an identity-less heartbeat is never held — a record that cannot be verified', () => {
-    engineWith(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'],
-      { env: { CLAUDE_PID: '', CLAUDE_CODE_SESSION_ID: '' } });
-    const record = JSON.parse(fs.readFileSync(presenceFile(dir, 'discussion', 'alpha'), 'utf8'));
-    assert.strictEqual(record.pid, null);
-    assert.strictEqual(record.session_id, null);
+    craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: null });
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions[0].held, false, 'fresh mtime notwithstanding');
     assert.strictEqual(res.held_sources, 0);
@@ -357,8 +381,7 @@ describe('engine presence', () => {
   });
 
   it('a queue read stamps nothing where no heartbeat exists — reads never manufacture a hold', () => {
-    const res = engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha'],
-      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    const res = engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha']);
     assert.strictEqual(res.count, 0);
     assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')),
       'a foreign topic\'s queue check leaves no presence behind');
@@ -370,8 +393,7 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha'],
-      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha']);
     const record = JSON.parse(fs.readFileSync(p, 'utf8'));
     assert.strictEqual(record.session_id, 'sess-one');
     assert.strictEqual(record.pid, process.pid, 'the refresh re-stamps the full identity');
@@ -386,12 +408,11 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha'],
-      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha']);
     const record = JSON.parse(fs.readFileSync(p, 'utf8'));
     assert.strictEqual(record.session_id, 'peer-sess', 'the peer\'s identity stands');
     assert.strictEqual(record.pid, null);
-    assert.ok(fs.statSync(p).mtimeMs < Date.now() - 15 * 60 * 1000, 'and its activity signal is untouched');
+    assert.ok(fs.statSync(p).mtimeMs < Date.now() - 15 * 60 * 1000, 'and its last-active age is untouched');
   });
 
   it('an identity-less heartbeat is not refreshed by a read — an unowned record is never claimed', () => {
@@ -400,8 +421,7 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha'],
-      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha']);
     assert.ok(fs.statSync(p).mtimeMs < Date.now() - 15 * 60 * 1000, 'an unowned record is never claimed');
   });
 
@@ -409,9 +429,19 @@ describe('engine presence', () => {
     fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress', phases: {},
     }, null, 2));
-    engineWith(dir, ['agent', 'scan', 'pay', 'discussion', 'alpha'],
-      { env: { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' } });
+    engineWith(dir, ['agent', 'scan', 'pay', 'discussion', 'alpha']);
     assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')),
       'reading a foreign topic\'s agents leaves no presence behind');
+  });
+});
+
+describe('fmtAge', () => {
+  const { fmtAge } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+
+  it('rounds to the unit a reader weighs a hold in — seconds, minutes, hours, days', () => {
+    assert.deepStrictEqual(
+      [0, 89, 90, 5369, 5370, 10800, 126000, 129600, 777600].map(fmtAge),
+      ['0s', '89s', '2m', '89m', '2h', '3h', '35h', '2d', '9d'],
+    );
   });
 });

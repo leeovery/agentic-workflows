@@ -1067,6 +1067,8 @@ describe('pipeline simulation', () => {
     const present = sim.run(['presence', 'scan', wu]);
     assert.strictEqual(rowOf(present, 'research', 'alpha').held, true);
     assert.ok(!('live' in rowOf(present, 'research', 'alpha')), 'held is the one verdict — idle time is shown, never judged');
+    assert.strictEqual(present.held_sources, 0, 'a session\'s own rows never defer it');
+    assert.strictEqual(sim.sections, '', 'and no deferral section rides its scan');
     sim.run(['presence', 'clear', wu, 'research', 'alpha']);
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'research', 'alpha'), undefined);
     // The project-wide scan is the code gate's read: every work unit's rows,
@@ -2582,8 +2584,8 @@ describe('pipeline simulation', () => {
       return res.pid;
     };
 
-    const specSession = sim.session('spec-session');
-    const talkSession = sim.session('discussion-session');
+    const specSession = sim.session('spec-session', process.ppid);
+    const talkSession = sim.session('discussion-session', 1);
     const codeSession = sim.session('code-session');
     const secondCoder = sim.session('review-session', reapedPid());
 
@@ -2658,6 +2660,8 @@ describe('pipeline simulation', () => {
     assert.ok(specRow.held && talkRow.held, 'both document sessions read held');
     assert.strictEqual(interleaved.held_sources, 1,
       'only the discussion counts as a source — a held spec session defers no analysis');
+    assert.ok(sim.sections.includes('=== DISPLAY: presence deferral') && sim.sections.replace(/\n +/g, ' ').includes('discussion/ranking (last active'),
+      `the deferral section rides the scan the dispatch prose reads it from: ${sim.sections}`);
 
     // --- the code slot ------------------------------------------------------
     // The slot is taken at the entry chokepoint, not at the first commit:

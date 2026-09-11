@@ -107,7 +107,7 @@ The document is live in its own phase — corrections flow through it. Tell the 
 
 #### If a presence row matches `specification`/`{topic}` with `held` true
 
-A session holds that document. Leave the entry alone this pass — it stays unsettled, and a later pass re-finds it.
+A session holds that document — read the `sessions` rows only; the response's deferral section is the analysis dispatch's and is not emitted here. Leave the entry alone this pass — it stays unsettled, and a later pass re-finds it.
 
 → Return to caller.
 

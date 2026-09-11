@@ -122,7 +122,7 @@ migrations unlocked.
 - **P6 — a safety net, not a mechanism.** Correctness of *when*
   things get committed doesn't matter as long as nothing is lost. A
   presence-gated cleanup pass at conclude sweeps dirt whose owner is
-  gone (crash recovery) and leaves dirt whose owner is live.
+  gone (crash recovery) and leaves dirt whose owner still holds it.
 
 ## The components
 
@@ -175,21 +175,21 @@ belonged, a simpler conclude check, a cleaner restart.
 
 ### Presence heartbeat
 
-A per-topic timestamp refreshed at each session-step entry, stale
-after minutes (same discipline as the lock files). Consumers:
+A per-topic heartbeat file in the topic's cache directory carrying the
+owning process's identity. `held` — that process still runs, however
+long it has idled — is the one verdict; the file's age is shown as
+"last active", never judged. Consumers:
 
-- `triage-landing.md` — a cue that the target's session is live
-  ("will drain shortly") vs parked.
-- The bridge — defer coherence/gap analysis while any discussion
-  presence is fresh. The analyses are cached and self-healing;
-  skipping a pass is already a supported state, so this is one
-  condition in existing prose, not machinery.
+- The bridge — defer coherence/gap analysis while a peer session holds
+  any research or discussion. The analyses are cached and
+  self-healing; skipping a pass is already a supported state, so this
+  is one condition in existing prose, not machinery.
 - The conclude cleanup pass — `git status --porcelain -- .workflows`;
-  foreign dirt with fresh presence is left (theirs to commit), with
-  stale or no presence is swept (crash recovery — exactly the case
-  where a sweep is correct). An unconditional sweep would re-create
-  the theft the commit door removed; the presence check is what makes
-  the net safe.
+  foreign dirt under a held row is left (theirs to commit), under a
+  dead session's is swept (crash recovery — exactly the case where a
+  sweep is correct). An unconditional sweep would re-create the theft
+  the commit door removed; the presence check is what makes the net
+  safe.
 
 ### Hygiene riders
 
@@ -325,11 +325,13 @@ Settled in PR 5 (2026-07-31):
 Settled in the presence layer (2026-08-01):
 
 - Presence is a per-topic heartbeat file in the topic's cache dir
-  (gitignored, mtime is the signal) — the textbook ephemeral session
-  machinery. Staleness 900s; loops beat per turn; concludes clear on
-  orderly exit; a crash ages out. `presence scan` is the one shared
-  read, rendering the deferral callout as an engine section.
-- The conclude sweep is presence-gated and action-scoped: a live
+  (gitignored) carrying the owning process's identity — the textbook
+  ephemeral session machinery. `held` is the one verdict, unbounded
+  by time; the engine beats as a side effect of a session's own verbs;
+  concludes clear on orderly exit; a crashed process reads unheld on
+  the next scan. `presence scan` is the one shared read, rendering
+  the deferral callout as an engine section.
+- The conclude sweep is presence-gated and action-scoped: a held
   row's dirt is the peer's; a dead session's leavings commit per
   dirty topic via `--topic`, never a whole-index sweep.
 - Boot serialisation: accepted edge — migrations are idempotent and

@@ -6,7 +6,7 @@
 
 ## A. Held Source Check
 
-The analysis reads the completed discussions and rewrites `.state/` staging that is work-unit-wide — a peer session holding a source topic open is mid-conversation on material it would read, and the pass would overwrite whatever an earlier one staged. Check first:
+The analysis reads the completed discussions and rewrites `.state/` staging that is work-unit-wide — a peer session holding a source topic open, however long it has idled, is still working material it would read, and the pass would overwrite whatever an earlier one staged. Check first:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}
