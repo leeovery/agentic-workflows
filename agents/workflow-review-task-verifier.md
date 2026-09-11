@@ -176,7 +176,7 @@ CODE QUALITY:
 - Issues: [Specific problems if any]
 
 BLOCKING ISSUES:
-- [Only where the work cannot be called delivered: a task's acceptance criteria unmet in substance, or behaviour that is broken. Never a finding whose entire remedy is comment or documentation text]
+- [Only where the work cannot be called delivered: a task's acceptance criteria unmet in substance, or behaviour that is broken. Never a finding whose entire remedy is comment or documentation text. Each entry names its remedy, or points at the FINDINGS line that prescribes it, so it can be routed]
 
 FINDINGS:
 - [{in-scope|out-of-scope}] [{contained|spreading}] {file:line} — {what is wrong and the change that fixes it} — FAILS: {the concrete consequence of leaving it}

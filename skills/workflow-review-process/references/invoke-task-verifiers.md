@@ -136,7 +136,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}
 
 1. Read every `.workflows/{work_unit}/review/{topic}/report-*.md` file from disk — the aggregation draws from the files as they stand, never from memory of the dispatches that produced them. Make each Read before aggregating; a read not actually made is never claimed or paraphrased from the dispatch summaries
 2. Synthesize findings from file contents:
-   - Collect the blocking issues from each report's `BLOCKING ISSUES` section — every entry other than `- None`. Never infer one from `STATUS`: `issues_found` is a delivered task with non-blocking findings
+   - Note each report's `BLOCKING ISSUES` entries other than `- None` — prep collects and routes them; never infer one from `STATUS`: `issues_found` is a delivered task with non-blocking findings
    - Collect all test issues (under/over-tested)
    - Collect all code quality concerns
    - Include specific file:line references

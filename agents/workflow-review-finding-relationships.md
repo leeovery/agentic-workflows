@@ -28,6 +28,8 @@ Four kinds of relationship:
 - **`coupled`** — findings in **different files** that must move together because something binds them. A guard comparing documentation against code is the common case: editing one side alone passes every per-file check and reddens the suite. Find these by searching the guards for bindings, not by reading the findings.
 - **`contradictory`** — findings asking for opposite outcomes. One says keep it, another says delete it; one asserts a claim another proves false. Whichever lands last wins, and the losing intent is never reported.
 
+A `[blocking]` entry and the finding in the same report that prescribes its remedy — the line it points at, or the finding at its own site — are one `overlap` group: the entry states the failure, the finding the edit.
+
 For `overlap` and `duplicate`, state the single merged intent — what the one surviving edit should achieve. For `contradictory`, state both sides; the synthesis stage decides.
 
 `coupled` is the one that breaks the build silently. Be thorough on it.

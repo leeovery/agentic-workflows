@@ -7,4 +7,4 @@ below to the output path the dispatch names, one JSON object per line and
 nothing else. The counts are also what the agent returns.
 
 ---
-{"id":"1-payment-intent-1","valid":"valid","standard":"n/a","rule":"-","note":"the assertion reads back the literal the test itself built"}
+{"id":"1-payment-intent-1","valid":"valid","standard":"n/a","rule":"-","remedy":"-","note":"the assertion reads back the literal the test itself built"}

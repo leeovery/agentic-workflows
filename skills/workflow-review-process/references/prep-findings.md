@@ -10,13 +10,13 @@ Every agent here is read-only. They judge; nothing is edited.
 
 ## A. Collect the Findings
 
-Read the `report-*.md` files and this cycle's `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/` — `{N}` as **A. Derive Sections** of **[invoke-change-set-verifiers.md](invoke-change-set-verifiers.md)** derives it — and collect the FINDINGS entries from both streams. Blocking issues are already handled by the verdict and are not prepped.
+Read the `report-*.md` files and this cycle's `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/` — `{N}` as **A. Derive Sections** of **[invoke-change-set-verifiers.md](invoke-change-set-verifiers.md)** derives it — and collect from both streams: every `FINDINGS` entry, and every `BLOCKING ISSUES` entry other than `- None`. A blocking entry joins the payloads marked `[blocking]` in place of the scope and radius tags. It usually pairs with a `FINDINGS` line in the same report that prescribes its remedy — carry both; the relationships agent sees the pair as one group, and synthesis routes the blocking issue by the remedy's radius.
 
 **When `unreviewed_tasks` is set and the review file already exists** (a later cycle over remediation work), collect from those tasks' reports and from this cycle's change-set files — the earlier cycle's findings, its change-set files' included, were already resolved, and re-collecting them would redo decided work. With no review file on disk the cycle never completed: collect from every report and from this cycle's change-set files, whatever `unreviewed_tasks` holds.
 
-Each finding arrives carrying its scope (`[in-scope]` or `[out-of-scope]`), its blast radius (`[contained]` or `[spreading]`), and the failure it names. Those are the verifier's calls, made with the code open — carry them through untouched.
+Each finding arrives carrying its scope (`[in-scope]` or `[out-of-scope]`), its blast radius (`[contained]` or `[spreading]`), and the failure it names. Those are the verifier's calls, made with the code open — carry them through untouched. A blocking entry carries neither tag; its radius is its paired finding's.
 
-Give each finding a stable id — `{phase_id}-{task_id}-{n}` for a per-task report's finding (its task suffix plus its position in that report's list), `{section-slug}-{n}` for a change-set file's (its section slug plus its position in that file's list) — so an action always traces back to the verifier that raised it.
+Give each finding a stable id — `{phase_id}-{task_id}-{n}` for a per-task report's finding (its task suffix plus its position in that report's list), `{phase_id}-{task_id}-b{n}` for a per-task report's blocking entry (its position in that report's blocking list), `{section-slug}-{n}` for a change-set file's (its section slug plus its position in that file's list) — so an action always traces back to the verifier that raised it.
 
 #### If no findings were collected
 
@@ -72,7 +72,7 @@ Dispatch the synthesis agent once.
 4. **Output path** — `.workflows/.cache/{work_unit}/review/{topic}/actions.json`
 5. **Work unit** and **topic**
 
-It resolves each finding, collapses the collisions into single actions, routes each survivor, and derives the verdict.
+It resolves each finding — re-aiming at the code any comment remedy the assessor found standing in for a code change — collapses the collisions into single actions, routes each survivor, blocking issues by their remedy's radius, and derives the verdict.
 
 → Proceed to **D. Record**.
 
