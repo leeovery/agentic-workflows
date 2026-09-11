@@ -1,6 +1,7 @@
 The prose should have taken this path:
 
-1. the entry validates the in-progress discussion and routes to
+1. the entry asks the engine whether research is outstanding on the
+   topic (it is not), validates the in-progress discussion and routes to
    resume; the process finds the discussion file and puts the resume
    choice to the user, who continues
 2. the resumed session re-reads its ground — the map shows both

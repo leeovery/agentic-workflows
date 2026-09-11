@@ -1,7 +1,8 @@
 The prose should have taken this path:
 
 1. the entry resolves the topic from its arguments — no topic question
-   is put to the user
+   is put to the user — and asks the engine whether research is
+   outstanding on the topic (it is not)
 2. the discussion status reads empty, so the walk takes the new-entry
    arm; ensuring the discovery item finds it already on the map and
    creates nothing

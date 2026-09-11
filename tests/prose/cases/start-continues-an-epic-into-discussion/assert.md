@@ -22,7 +22,9 @@ The prose should have taken this path:
    behavioural-ranking discussion entry; no soft gate fires (a
    discussion entry carries none) and the route is invoked with epic,
    the work unit, and the topic
-7. discussion entry validates a fresh phase — status reads empty — and
+7. discussion entry asks the engine whether research is outstanding on
+   the topic (it is not), validates a fresh phase — status reads empty
+   — and
    the discovery item already exists, so nothing is added to the map;
    its Gather Context reads the map item's source, finds it map-shaped,
    and gathers nothing — the handoff carries session identity only into

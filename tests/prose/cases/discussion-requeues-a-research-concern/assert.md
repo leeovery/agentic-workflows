@@ -1,6 +1,7 @@
 The prose should have taken this path:
 
-1. the entry reads the discussion status, finds it in progress, emits
+1. the entry asks the engine whether research is outstanding on the
+   topic (it is not), then reads the discussion status, finds it in progress, emits
    the resuming phase note, checks the reconcile flag (absent —
    silent), and hands off with source: existing discussion
 2. the process renders resume detection — the map with result-caching

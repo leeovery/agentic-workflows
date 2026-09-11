@@ -1,6 +1,7 @@
 The prose should have taken this path:
 
-1. the entry reads the discussion status, finds it in progress (the
+1. the entry asks the engine whether research is outstanding on the
+   topic (it is not), then reads the discussion status, finds it in progress (the
    triage reopen left it so), emits the resuming phase note, checks the
    reconcile flag (absent — silent), reads the map item's source and
    gathers nothing — asking the user nothing — and hands off with

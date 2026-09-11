@@ -1,6 +1,7 @@
 The prose should have taken this path:
 
-1. the entry reads the discussion status and finds it `triaged` — a
+1. the entry asks the engine whether research is outstanding on the
+   topic (it is not), then reads the discussion status and finds it `triaged` — a
    first start: the entry proceeds through its new-entry path gathering
    nothing
 2. initialisation reads the topic's brief, creates the discussion file
