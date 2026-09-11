@@ -2072,12 +2072,12 @@ function inFlightAgentsGate(cwd, { dotpath, count }) {
   ], { glyphLabel: false }));
 }
 
-// review-findings-gate — the conclusion's drain offer over a review report
-// whose findings are still to be walked. The count is the row's own
-// (`remaining` on the acknowledged review row), so the surface reads the
-// agent store and refuses any state the calling prose never renders it
-// from. Research and discussion share it, and the report may be a
-// background pass or the closing pass — the wording claims neither.
+// review-findings-gate — the discussion conclusion's drain offer over a
+// review report whose findings are still to be walked. The count is the
+// row's own (`remaining` on the acknowledged review row), so the surface
+// reads the agent store and refuses any state the calling prose never
+// renders it from. The report may be a background pass or the closing pass
+// — the wording claims neither.
 
 /**
  * @param {string} cwd
@@ -2086,10 +2086,10 @@ function inFlightAgentsGate(cwd, { dotpath, count }) {
  */
 function reviewFindingsGate(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'review-findings-gate');
-  if (phase !== 'research' && phase !== 'discussion') {
-    throw new Error(`render review-findings-gate: address must be <work_unit>.research|discussion.<topic>, got phase "${phase}"`);
+  if (phase !== 'discussion') {
+    throw new Error(`render review-findings-gate: address must be <wu>.discussion.<topic> — the discussion close is the flow that runs this gate; got phase "${phase}"`);
   }
-  const row = latestReview(cwd, workUnit, phase, topic);
+  const row = latestReview(cwd, workUnit, topic);
   if (!row) {
     throw new Error('render review-findings-gate: no review has been dispatched on this topic — the gate follows an acknowledged report');
   }

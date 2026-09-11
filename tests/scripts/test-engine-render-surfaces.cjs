@@ -3870,10 +3870,16 @@ describe('render review-findings-gate', () => {
     assert.doesNotMatch(out, /final review/i);
   });
 
-  it('a lone finding takes the singular, and research shares the surface', () => {
-    store('research', { status: 'acknowledged', findings: ['F1'], surfaced: [] });
-    assert.match(renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.research.checkout' }),
+  it('a lone finding takes the singular', () => {
+    store('discussion', { status: 'acknowledged', findings: ['F1'], surfaced: [] });
+    assert.match(renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' }),
       /`◆ The review left 1 finding still to walk\.`/);
+  });
+
+  it('a research address is refused whatever its store holds — the gate is the discussion close\'s', () => {
+    store('research', { status: 'acknowledged', findings: ['F1'], surfaced: [] });
+    assert.throws(() => renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.research.checkout' }),
+      /render review-findings-gate: address must be <wu>\.discussion\.<topic> — the discussion close is the flow that runs this gate; got phase "research"/);
   });
 
   it('refuses every state the calling prose never renders it from', () => {
@@ -3886,7 +3892,7 @@ describe('render review-findings-gate', () => {
     assert.throws(() => renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' }),
       /"review-001" is incorporated/);
     assert.throws(() => renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.planning.checkout' }),
-      /address must be <work_unit>\.research\|discussion\.<topic>, got phase "planning"/);
+      /address must be <wu>\.discussion\.<topic> — the discussion close is the flow that runs this gate; got phase "planning"/);
   });
 
   it('anchors on the latest review row, not an earlier drained one', () => {

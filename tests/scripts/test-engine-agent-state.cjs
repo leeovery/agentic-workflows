@@ -79,40 +79,86 @@ describe('engine agent — lifecycle store', () => {
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
   it('dispatch allocates sequential ids per kind, records in-flight, creates no file', () => {
-    const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001');
-    assert.strictEqual(a.file, '.workflows/.cache/pay/research/alpha/review-001.md');
+    assert.strictEqual(a.file, '.workflows/.cache/pay/discussion/alpha/review-001.md');
     assert.ok(!fs.existsSync(path.join(dir, a.file)), 'no skeleton file');
-    const b = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(b.id, 'review-002');
-    const c = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
-    assert.strictEqual(c.id, 'deep-dive-001-auth', 'kinds number independently, label suffixes');
-    const store = readStore(dir, 'pay', 'research', 'alpha');
+    const c = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'auth']);
+    assert.strictEqual(c.id, 'perspective-001-auth', 'kinds number independently, label suffixes');
+    const store = readStore(dir, 'pay', 'discussion', 'alpha');
     assert.strictEqual(store.agents['review-001'].status, 'in-flight');
   });
 
   it('dispatch numbers past legacy files already in the cache dir', () => {
-    writeContent(dir, '.workflows/.cache/pay/research/alpha/review-003.md', '---\nstatus: pending\n---\nlegacy');
-    const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    writeContent(dir, '.workflows/.cache/pay/discussion/alpha/review-003.md', '---\nstatus: pending\n---\nlegacy');
+    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-004', 'never collides with pre-programme files');
   });
 
   it('numbering survives past 999 — ids and sets stay distinct at four digits', () => {
-    writeContent(dir, '.workflows/.cache/pay/research/alpha/review-999.md', 'legacy');
-    const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
-    assert.strictEqual(a.id, 'review-1000');
+    writeContent(dir, '.workflows/.cache/pay/research/alpha/deep-dive-999-auth.md', 'legacy');
+    const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.strictEqual(a.id, 'deep-dive-1000-auth');
     writeContent(dir, `.workflows/.cache/pay/research/alpha/${a.id}.md`);
     const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    assert.ok(scan.pending.some((r) => r.id === 'review-1000'), 'the four-digit row promotes like any other');
-    const b = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
-    assert.strictEqual(b.id, 'review-1001', 'allocation reads the four-digit id, not a truncation');
+    assert.ok(scan.pending.some((r) => r.id === 'deep-dive-1000-auth'), 'the four-digit row promotes like any other');
+    const b = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.strictEqual(b.id, 'deep-dive-1001-auth', 'allocation reads the four-digit id, not a truncation');
   });
 
   it('dispatch refuses unknown kind, phase, work unit, and bad labels', () => {
     assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'oracle']).error, /Invalid agent kind/);
     assert.match(runFails(dir, ['dispatch', 'pay', 'cooking', 'alpha', '--kind', 'review']).error, /Invalid phase/);
     assert.match(runFails(dir, ['dispatch', 'ghost', 'research', 'alpha', '--kind', 'review']).error, /not found/);
-    assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review', '--label', 'a/b']).error, /Invalid label/);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'a/b']).error, /Invalid label/);
+  });
+
+  it('research carries the deep dive alone — every other kind is refused naming the phase\'s instrument', () => {
+    const err = runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']).error;
+    assert.match(err, /research carries no review — the deep dive is the phase's instrument \(--kind deep-dive\)/);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'perspective', '--label', 'lens']).error,
+      /research carries no perspective/);
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/pay/research/alpha/state.json')), 'nothing recorded');
+    assert.strictEqual(runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']).id,
+      'deep-dive-001-auth');
+  });
+
+  it('a research store tolerates review rows of every status — closed, never bucketed, never addressed', () => {
+    const closed = (id, status, findings = [], surfaced = []) => [id, {
+      id, kind: 'review', phase: 'research', topic: 'alpha', set: '001', status, announced: false,
+      findings, surfaced, created: '2026-08-01T00:00:00.000Z',
+    }];
+    fs.mkdirSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json'), JSON.stringify({
+      agents: Object.fromEntries([
+        closed('review-001', 'in-flight'),
+        closed('review-002', 'pending'),
+        closed('review-003', 'acknowledged', ['F1', 'F2'], ['F1']),
+        closed('review-004', 'incorporated', ['F1'], ['F1']),
+      ]),
+    }));
+    writeContent(dir, '.workflows/.cache/pay/research/alpha/review-001.md');
+    const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
+    assert.deepStrictEqual([scan.in_flight, scan.pending, scan.acknowledged, scan.incorporated], [[], [], [], []],
+      'no bucket carries a review row');
+    assert.strictEqual(readStore(dir, 'pay', 'research', 'alpha').agents['review-001'].status, 'in-flight',
+      'a landed report never promotes a closed row');
+    assert.match(runFails(dir, ['ack', 'pay', 'research', 'alpha', 'review-002', '--clean']).error,
+      /No agent "review-002" for research\/alpha\. No agents dispatched there\./);
+    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', 'review-003', 'F2']).error, /No agent "review-003"/);
+    assert.match(runFails(dir, ['incorporate', 'pay', 'research', 'alpha', 'review-001']).error, /No agent "review-001"/);
+    const dive = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.strictEqual(dive.id, 'deep-dive-001-auth');
+    assert.match(runFails(dir, ['announce', 'pay', 'research', 'alpha', 'review-003']).error,
+      /Known agents there: deep-dive-001-auth\./, 'the closed rows never surface, the hint included');
+    writeContent(dir, dive.file);
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).pending.map((r) => r.id), [dive.id],
+      'the dive walks the store beside the closed rows');
+    assert.strictEqual(runJson(dir, ['ack', 'pay', 'research', 'alpha', dive.id, '--clean']).status, 'incorporated');
+    assert.deepStrictEqual(Object.keys(readStore(dir, 'pay', 'research', 'alpha').agents),
+      ['review-001', 'review-002', 'review-003', 'review-004', dive.id], 'the closed rows stay on disk, untouched');
   });
 
   it('review dispatch refuses while the triage queue holds entries, clears when it drains', () => {
@@ -127,58 +173,58 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('the triage guard holds review dispatches only — other kinds pass a full queue', () => {
-    writeContent(dir, '.workflows/pay/research/.triage/alpha/001-parked.md', '### Parked\n');
-    const dive = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
-    assert.strictEqual(dive.id, 'deep-dive-001-auth');
-    assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']).error, /review dispatch blocked/);
+    writeContent(dir, '.workflows/pay/discussion/.triage/alpha/001-parked.md', '### Parked\n');
+    const lens = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'auth']);
+    assert.strictEqual(lens.id, 'perspective-001-auth');
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error, /review dispatch blocked/);
     // Non-.md dirt (editor swap files, .DS_Store) and non-file entries never
     // count as queued concerns — only what queueStatus itself would count.
-    fs.unlinkSync(path.join(dir, '.workflows/pay/research/.triage/alpha/001-parked.md'));
-    writeContent(dir, '.workflows/pay/research/.triage/alpha/.DS_Store', 'dirt');
-    fs.mkdirSync(path.join(dir, '.workflows/pay/research/.triage/alpha/nested.md'), { recursive: true });
-    const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    fs.unlinkSync(path.join(dir, '.workflows/pay/discussion/.triage/alpha/001-parked.md'));
+    writeContent(dir, '.workflows/pay/discussion/.triage/alpha/.DS_Store', 'dirt');
+    fs.mkdirSync(path.join(dir, '.workflows/pay/discussion/.triage/alpha/nested.md'), { recursive: true });
+    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001');
   });
 
   it('scan promotes in-flight to pending only once the content file exists with content', () => {
-    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     let scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['review-001']);
+    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['deep-dive-001-auth']);
     assert.ok(scan.in_flight[0].created, 'in-flight rows carry created for the earlier-session judgment');
 
     fs.mkdirSync(path.dirname(path.join(dir, d.file)), { recursive: true });
     fs.writeFileSync(path.join(dir, d.file), '');
     scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['review-001'], 'an empty file is not completion');
+    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['deep-dive-001-auth'], 'an empty file is not completion');
 
     writeContent(dir, d.file);
     scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    assert.strictEqual(scan.pending[0].id, 'review-001');
+    assert.strictEqual(scan.pending[0].id, 'deep-dive-001-auth');
   });
 
   it('ack records findings and moves to acknowledged; --clean incorporates immediately', () => {
-    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     writeContent(dir, d.file);
     runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    const acked = runJson(dir, ['ack', 'pay', 'research', 'alpha', 'review-001', '--findings', 'F1,F2']);
+    const acked = runJson(dir, ['ack', 'pay', 'research', 'alpha', d.id, '--findings', 'F1,F2']);
     assert.strictEqual(acked.status, 'acknowledged');
     assert.deepStrictEqual(acked.remaining, ['F1', 'F2']);
 
-    const e = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const e = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'perf']);
     writeContent(dir, e.file);
     runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    const clean = runJson(dir, ['ack', 'pay', 'research', 'alpha', 'review-002', '--clean']);
+    const clean = runJson(dir, ['ack', 'pay', 'research', 'alpha', e.id, '--clean']);
     assert.strictEqual(clean.status, 'incorporated', 'a clean report needs no surfacing');
   });
 
   it('ack refuses off the legal path: in-flight rows, duplicates, missing rows, both/neither flag', () => {
-    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
-    assert.match(runFails(dir, ['ack', 'pay', 'research', 'alpha', 'review-001', '--clean']).error,
+    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.match(runFails(dir, ['ack', 'pay', 'research', 'alpha', 'deep-dive-001-auth', '--clean']).error,
       /is in-flight — only a pending row/);
     assert.match(runFails(dir, ['ack', 'pay', 'research', 'alpha', 'ghost-001', '--clean']).error,
-      /No agent "ghost-001".*Known agents there: review-001/);
-    assert.match(runFails(dir, ['ack', 'pay', 'research', 'alpha', 'review-001']).error, /Usage/);
-    assert.match(runFails(dir, ['ack', 'pay', 'research', 'alpha', 'review-001', '--findings', 'F1,F1']).error,
+      /No agent "ghost-001".*Known agents there: deep-dive-001-auth/);
+    assert.match(runFails(dir, ['ack', 'pay', 'research', 'alpha', 'deep-dive-001-auth']).error, /Usage/);
+    assert.match(runFails(dir, ['ack', 'pay', 'research', 'alpha', 'deep-dive-001-auth', '--findings', 'F1,F1']).error,
       /duplicate/);
   });
 
@@ -205,25 +251,25 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('surface takes a comma batch — a lane lands in one call, all-or-nothing', () => {
-    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     writeContent(dir, d.file);
-    runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    runJson(dir, ['ack', 'pay', 'research', 'alpha', d.id, '--findings', 'F1,F2,F3,F4']);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    runJson(dir, ['ack', 'pay', 'discussion', 'alpha', d.id, '--findings', 'F1,F2,F3,F4']);
 
-    const b = runJson(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F1,F3']);
+    const b = runJson(dir, ['surface', 'pay', 'discussion', 'alpha', d.id, 'F1,F3']);
     assert.deepStrictEqual(b.surfaced, ['F1', 'F3']);
     assert.deepStrictEqual(b.remaining, ['F2', 'F4']);
     assert.strictEqual(b.status, 'acknowledged');
 
     // A bad entry fails the batch whole — the good ids in it stay unsurfaced.
-    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2,F9']).error, /no finding "F9"/);
-    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2,F1']).error, /already surfaced/);
-    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2,F2']).error, /duplicate ids/);
-    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2,']).error, /no empty entries/);
-    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).acknowledged[0].remaining, ['F2', 'F4'],
+    assert.match(runFails(dir, ['surface', 'pay', 'discussion', 'alpha', d.id, 'F2,F9']).error, /no finding "F9"/);
+    assert.match(runFails(dir, ['surface', 'pay', 'discussion', 'alpha', d.id, 'F2,F1']).error, /already surfaced/);
+    assert.match(runFails(dir, ['surface', 'pay', 'discussion', 'alpha', d.id, 'F2,F2']).error, /duplicate ids/);
+    assert.match(runFails(dir, ['surface', 'pay', 'discussion', 'alpha', d.id, 'F2,']).error, /no empty entries/);
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'discussion', 'alpha']).acknowledged[0].remaining, ['F2', 'F4'],
       'a refused batch records nothing');
 
-    const last = runJson(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F2, F4']);
+    const last = runJson(dir, ['surface', 'pay', 'discussion', 'alpha', d.id, 'F2, F4']);
     assert.strictEqual(last.status, 'incorporated', 'a batch draining the row incorporates it');
     assert.deepStrictEqual(last.surfaced, ['F1', 'F3', 'F2', 'F4']);
   });
@@ -290,15 +336,15 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('deleting the topic cache dir is a complete cleanse — state is colocated', () => {
-    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
-    runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'review']);
+    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'deep-dive', '--label', 'auth']);
     fs.rmSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).in_flight, [],
       'the restart rm -rf removes rows with the content');
-    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'beta']).in_flight.map((r) => r.id), ['review-001'],
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'beta']).in_flight.map((r) => r.id), ['deep-dive-001-auth'],
       'the sibling topic is untouched');
-    const fresh = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
-    assert.strictEqual(fresh.id, 'review-001', 'a cleansed topic restarts its numbering');
+    const fresh = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.strictEqual(fresh.id, 'deep-dive-001-auth', 'a cleansed topic restarts its numbering');
   });
 
   it('a pending perspective and a pending review are both listed, kinds intact', () => {
@@ -313,13 +359,13 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('rows expose set and created; incorporated rows come back whole', () => {
-    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     writeContent(dir, d.file);
     runJson(dir, ['scan', 'pay', 'research', 'alpha']);
     runJson(dir, ['ack', 'pay', 'research', 'alpha', d.id, '--clean']);
     const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
     const row = scan.incorporated[0];
-    assert.strictEqual(row.id, 'review-001');
+    assert.strictEqual(row.id, 'deep-dive-001-auth');
     assert.strictEqual(row.set, '001');
     assert.ok(typeof row.created === 'string' && row.created.length > 0,
       'created rides every row for freshness checks');
@@ -350,35 +396,35 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('a mid-drain row and a fresh report coexist: remaining and pending both stand', () => {
-    const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    runJson(dir, ['ack', 'pay', 'research', 'alpha', 'review-001', '--findings', 'F1,F2']);
-    runJson(dir, ['surface', 'pay', 'research', 'alpha', 'review-001', 'F1']);
+    runJson(dir, ['ack', 'pay', 'research', 'alpha', a.id, '--findings', 'F1,F2']);
+    runJson(dir, ['surface', 'pay', 'research', 'alpha', a.id, 'F1']);
 
-    const b = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const b = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'perf']);
     writeContent(dir, b.file);
     const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
     assert.deepStrictEqual(scan.acknowledged[0].remaining, ['F2'], 'the mid-drain row keeps F2 owed');
-    assert.strictEqual(scan.pending[0].id, 'review-002');
+    assert.strictEqual(scan.pending[0].id, 'deep-dive-002-perf');
   });
 
   it('phase/topic isolation: rows never leak across addresses', () => {
-    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
-    runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'review']);
+    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'deep-dive', '--label', 'auth']);
     const scan = runJson(dir, ['scan', 'pay', 'research', 'beta']);
-    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['review-001'], 'beta sees only its own agent');
-    assert.match(runFails(dir, ['ack', 'pay', 'research', 'beta', 'review-002', '--clean']).error, /No agent/);
+    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['deep-dive-001-auth'], 'beta sees only its own agent');
+    assert.match(runFails(dir, ['ack', 'pay', 'research', 'beta', 'deep-dive-002-auth', '--clean']).error, /No agent/);
   });
 
   it('corrupt store refuses loudly instead of resetting', () => {
-    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json'), '{nope');
     assert.match(runFails(dir, ['scan', 'pay', 'research', 'alpha']).error, /Corrupt agent state/);
   });
 
   it('a row whose findings or surfaced is not an array refuses loudly, never a TypeError', () => {
-    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     const storeFile = path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json');
     const state = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
     state.agents[d.id].status = 'acknowledged';
@@ -394,12 +440,12 @@ describe('engine agent — lifecycle store', () => {
   it('every verb refuses a traversal topic — dispatch and ack included', () => {
     for (const topic of ['../../../escape', 'a/b', '..', '.', '']) {
       // '' is refused one layer up, at the CLI's usage check — still a refusal.
-      assert.match(runFails(dir, ['dispatch', 'pay', 'research', topic, '--kind', 'review']).error, /Invalid topic|Usage:/);
-      assert.match(runFails(dir, ['ack', 'pay', 'research', topic, 'review-001', '--clean']).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['dispatch', 'pay', 'research', topic, '--kind', 'deep-dive', '--label', 'auth']).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['ack', 'pay', 'research', topic, 'deep-dive-001-auth', '--clean']).error, /Invalid topic|Usage:/);
       assert.match(runFails(dir, ['scan', 'pay', 'research', topic]).error, /Invalid topic|Usage:/);
-      assert.match(runFails(dir, ['announce', 'pay', 'research', topic, 'review-001']).error, /Invalid topic|Usage:/);
-      assert.match(runFails(dir, ['surface', 'pay', 'research', topic, 'review-001', 'F1']).error, /Invalid topic|Usage:/);
-      assert.match(runFails(dir, ['incorporate', 'pay', 'research', topic, 'review-001']).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['announce', 'pay', 'research', topic, 'deep-dive-001-auth']).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['surface', 'pay', 'research', topic, 'deep-dive-001-auth', 'F1']).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['incorporate', 'pay', 'research', topic, 'deep-dive-001-auth']).error, /Invalid topic|Usage:/);
     }
     assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', 'escape')), false);
     assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'a')), false);
@@ -521,24 +567,13 @@ describe('engine agent — discussion review arming', () => {
       reason: 'quiet — 0 of 1 map moves since review-001',
     });
     assert.strictEqual(runJson(dir, ['scan', 'pay', 'research', 'auth']).review_arming, undefined,
-      'research has no map to measure');
-  });
-
-  it('research reviews never take the movement gate', () => {
-    const a = runJson(dir, ['dispatch', 'pay', 'research', 'auth', '--kind', 'review']);
-    writeContent(dir, a.file, '# Findings\n');
-    runJson(dir, ['scan', 'pay', 'research', 'auth']);
-    runJson(dir, ['ack', 'pay', 'research', 'auth', a.id, '--clean']);
-    const b = runJson(dir, ['dispatch', 'pay', 'research', 'auth', '--kind', 'review']);
-    assert.strictEqual(b.id, 'review-002', 'no refusal, cycles notwithstanding');
-    assert.strictEqual(readStore(dir, 'pay', 'research', 'auth').agents['review-002'].map_snapshot, undefined,
-      'no snapshot outside discussion');
+      'research carries no review');
   });
 
   it('--final is refused outside a discussion review, like --set off its kind', () => {
-    assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'auth', '--kind', 'review', '--final']).error,
+    assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'auth', '--kind', 'deep-dive', '--label', 'scope', '--final']).error,
       /--final bypasses a discussion review's movement gate/);
-    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'deep-dive', '--label', 'scope', '--final']).error,
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'perspective', '--label', 'scope', '--final']).error,
       /legal only with --kind review in the discussion phase/);
   });
 

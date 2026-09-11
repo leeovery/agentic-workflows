@@ -38,6 +38,11 @@ const AGENT_KINDS = [
 
 const AGENT_STATUSES = ['in-flight', 'pending', 'acknowledged', 'incorporated'];
 
+// Research carries the deep dive alone; a review — the clean-slate read that
+// reports gaps — is discussion's instrument. A row of any other kind in a
+// research store is closed: scan never buckets it and no verb addresses it.
+const RESEARCH_KINDS = ['deep-dive'];
+
 // Review-arming backoff: review n+1 needs min(n, MOVEMENT_CAP) map moves
 // since the last dispatch. The cap keeps late reviews permanently reachable
 // on genuinely new ground instead of climbing toward a de-facto ceiling.
@@ -89,10 +94,18 @@ function validatePhase(phase) {
   }
 }
 
-/** @param {string} kind */
-function validateKind(kind) {
+/** @param {string} phase @param {string} kind */
+function phaseCarries(phase, kind) {
+  return phase !== 'research' || RESEARCH_KINDS.includes(kind);
+}
+
+/** @param {string} kind @param {string} phase */
+function validateKind(kind, phase) {
   if (!AGENT_KINDS.includes(kind)) {
     throw new Error(`Invalid agent kind "${kind}". Must be one of: ${AGENT_KINDS.join(', ')}`);
+  }
+  if (!phaseCarries(phase, kind)) {
+    throw new Error(`research carries no ${kind} — the deep dive is the phase's instrument (--kind deep-dive)`);
   }
 }
 
@@ -127,14 +140,23 @@ function saveState(cwd, workUnit, phase, topic, state) {
 }
 
 /**
+ * The rows a phase's verbs see — a row of a kind the phase does not carry is
+ * closed and invisible.
+ * @param {string} phase @param {{agents: Record<string, any>}} state
+ */
+function phaseRows(phase, state) {
+  return Object.values(state.agents).filter((r) => phaseCarries(phase, r.kind));
+}
+
+/**
  * The row addressed by id, or a loud miss naming what exists.
  * @param {{agents: Record<string, any>}} state
  * @param {string} phase @param {string} topic @param {string} id
  */
 function requireRow(state, phase, topic, id) {
   const row = state.agents[id];
-  if (!row) {
-    const siblings = Object.keys(state.agents);
+  if (!row || !phaseCarries(phase, row.kind)) {
+    const siblings = phaseRows(phase, state).map((r) => r.id);
     const hint = siblings.length ? ` Known agents there: ${siblings.join(', ')}.` : ' No agents dispatched there.';
     throw new Error(`No agent "${id}" for ${phase}/${topic}.${hint}`);
   }
@@ -289,9 +311,8 @@ function settleFoldedSubtopic(cwd, workUnit, topic, subtopic) {
  * dispatch closed as bookkeeping, never a review — anchoring on it would
  * hide every map move between the real review and the kill. Rows with no
  * snapshot (dispatched before arming existed) arm permissively — the next
- * dispatch stamps one and the damping engages. Discussion only: research
- * has no map to measure against. Tolerant reads throughout — the verdict
- * rides displays and must never brick one.
+ * dispatch stamps one and the damping engages. Tolerant reads throughout —
+ * the verdict rides displays and must never brick one.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  * @returns {ReviewArming}
  */
@@ -322,14 +343,14 @@ function reviewArming(cwd, workUnit, topic) {
 }
 
 /**
- * The topic's latest review row, read without side effects — the highest-
- * numbered `review` row in scan order, in scan's public shape, or null when
- * no review has been dispatched. A render reads it to word a gate; nothing
- * is promoted or saved.
- * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * A discussion topic's latest review row, read without side effects — the
+ * highest-numbered `review` row in scan order, in scan's public shape, or
+ * null when no review has been dispatched. A render reads it to word a
+ * gate; nothing is promoted or saved.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
  */
-function latestReview(cwd, workUnit, phase, topic) {
-  const rows = Object.values(loadState(cwd, workUnit, phase, topic).agents)
+function latestReview(cwd, workUnit, topic) {
+  const rows = Object.values(loadState(cwd, workUnit, 'discussion', topic).agents)
     .filter((r) => r.kind === 'review')
     .sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
   return rows.length ? publicRow(rows[rows.length - 1]) : null;
@@ -339,12 +360,12 @@ function latestReview(cwd, workUnit, phase, topic) {
  * Dispatch: allocate the next id for this kind, record the row in-flight,
  * and answer with the content-file path the sub-agent must write. No file
  * is created — the content file's later existence is the completion signal.
- * A review dispatch refuses while the topic's triage queue holds entries —
+ * A discussion review refuses while the topic's triage queue holds entries —
  * a queued rerouted concern is a pending change to the document the review
- * would read, so the report would be stale on arrival. A discussion review
- * additionally refuses while unarmed (`reviewArming`) — `final: true`, the
- * mandatory closing pass, bypasses the movement gate; every discussion
- * review row is stamped with the map snapshot arming measures against.
+ * would read, so the report would be stale on arrival — and while unarmed
+ * (`reviewArming`); `final: true`, the mandatory closing pass, bypasses the
+ * movement gate. Every discussion review row is stamped with the map
+ * snapshot arming measures against.
  * Numbering starts after both existing rows AND any legacy files already in
  * the cache dir (pre-programme skeletons keep their names; ids never collide).
  * @param {string} cwd @param {string} workUnit @param {string} phase
@@ -354,7 +375,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateSegment(topic, 'topic');
-  validateKind(kind);
+  validateKind(kind, phase);
   for (const label of labels) {
     if (typeof label !== 'string' || label === '' || /[\/.]/.test(label)) {
       throw new Error(`Invalid label ${JSON.stringify(label)}: a short slash- and dot-free slug`);
@@ -376,7 +397,9 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
     throw new Error('--final bypasses a discussion review\'s movement gate — legal only with --kind review in the discussion phase');
   }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    if (kind === 'review' && (phase === 'research' || phase === 'discussion')) {
+    /** @type {Record<string, string> | null} */
+    let mapSnapshot = null;
+    if (kind === 'review' && phase === 'discussion') {
       const queueDir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
       let queued = 0;
       try {
@@ -386,10 +409,6 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
       if (queued > 0) {
         throw new Error(`review dispatch blocked: ${queued} rerouted concern(s) wait in the ${phase}/${topic} triage queue — absorb them (topic absorb) before dispatching a review`);
       }
-    }
-    /** @type {Record<string, string> | null} */
-    let mapSnapshot = null;
-    if (kind === 'review' && phase === 'discussion') {
       if (!final) {
         const arming = reviewArming(cwd, workUnit, topic);
         if (!arming.armed) {
@@ -524,7 +543,7 @@ function scanAgents(cwd, workUnit, phase, topic) {
   validateSegment(topic, 'topic');
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
-    const rows = Object.values(state.agents)
+    const rows = phaseRows(phase, state)
       .sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
 
     let promoted = false;
@@ -547,7 +566,7 @@ function scanAgents(cwd, workUnit, phase, topic) {
       acknowledged: byStatus('acknowledged').map(publicRow),
       incorporated: byStatus('incorporated').map(publicRow),
       // The dispatch check reads drained state and the arming verdict from
-      // this one scan — discussion only; research has no map to measure.
+      // this one scan.
       ...(phase === 'discussion' ? { review_arming: reviewArming(cwd, workUnit, topic) } : {}),
     };
   });
