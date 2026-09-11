@@ -17,7 +17,9 @@ The prose should have taken this path:
 5. both verified task ids are pushed onto the reviewed list, and the
    aggregation reads every per-task report — no criterion was recorded
    as unsettled, so no unsettled file is written
-6. the change-set verification derives its sections from the
+6. the change-set verification reads the cycle number as 1 — the
+   implementation directory does not exist, the count reads zero, no
+   error to recover from — derives its sections from the
    specification's numbered headings — the payment-intent section, the
    capture section, and the test surface — finds none of this cycle's
    files (`change-set-c1-…`) already written, gathers the brief (the

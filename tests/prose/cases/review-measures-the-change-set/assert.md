@@ -78,7 +78,8 @@ Further claims:
 - the section agents are given the specification path, the change-set,
   the project's conventions — the root `CLAUDE.md` among them — the
   finding floor path and the unsettled file path — never a per-task
-  report
+  report; the floor travels as a path, which the review itself never
+  reads
 - the working tree is checked after the section agents return, and the
   review continues only because nothing outside `.workflows/` is
   modified or untracked — the review's own uncommitted reports and
