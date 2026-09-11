@@ -1,12 +1,10 @@
 'use strict';
 
-// The feature is fully implemented; review has never run. The specification
-// carries the numbered sections the change-set verification splits on. Two
-// real defects ride in the delivered source files — the material the
-// review's findings name: payment-intent.js passes the order's own methods
-// to the gateway, so card-only is not enforced; capture.js claims a capture
-// for an unknown intent is ignored while the paid write runs for every
-// delivery.
+// The feature is fully implemented; review has never run. Two real defects
+// ride in the delivered source files — the material the review's findings
+// name: payment-intent.js passes the order's own methods to the gateway, so
+// card-only is not enforced; capture.js claims a capture for an unknown
+// intent is ignored while the paid write runs for every delivery.
 
 const m = require('../../mainlines/feature.cjs');
 
@@ -16,28 +14,6 @@ module.exports = {
     m.create(h);
     m.discuss(h);
     m.specify(h);
-    // The specification in its canonical shape — numbered sections beneath
-    // the heading, which is what the change-set verification derives its
-    // split from. Not in any history group, so it lands in the baseline.
-    h.write('.workflows/pay/specification/pay/specification.md', [
-      '# Specification: Pay',
-      '',
-      '## Specification',
-      '',
-      '### 1. Payment Intent',
-      '',
-      '- Checkout creates a payment intent against the existing gateway account.',
-      '- Card payments only; wallet flows are out of scope for v1.',
-      '- A gateway rejection surfaces as a user-visible checkout error.',
-      '- A duplicate checkout start reuses the existing intent.',
-      '',
-      '### 2. Capture',
-      '',
-      '- Capture is confirmed by gateway webhook, never by polling.',
-      '- Duplicate deliveries are idempotent.',
-      '- A capture naming an intent no order carries is logged and ignored.',
-      '',
-    ].join('\n'));
     m.plan(h);
     m.implement(h);
     // Overwrite the delivered files with defect-bearing content. History

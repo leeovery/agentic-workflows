@@ -1,7 +1,6 @@
 A feature implemented to the end of its plan: two tasks completed, the
 code and tests committed per task under the implementation convention,
-the plan and specification completed — the specification in its numbered
-shape, two sections beneath its heading. The project's root `CLAUDE.md`
+the plan and specification completed. The project's root `CLAUDE.md`
 documents its one test command — `npx jest <file>`, one file at a time to
 confirm a single behaviour. No review has ever run.
 

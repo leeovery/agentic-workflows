@@ -15,7 +15,7 @@ rather than creates. `analysis_cycle_total` is `0`: no analysis cycle has
 ever run. `bank` is absent — nothing was ever deposited — and no
 earlier walk approved a proposal: phase 1's boundary landed no task.
 
-The concluded specification carries a `## Client call bounds` section:
+The concluded specification carries a `### 3. Client Call Bounds` section:
 the feature's two synchronous external calls — the checkout's intent
 creation against the gateway, and the webhook consumer's order write
 against the orders store — both run under explicit client timeouts,

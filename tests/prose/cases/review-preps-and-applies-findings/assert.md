@@ -13,17 +13,17 @@ The prose should have taken this path:
 4. both verified task ids are pushed onto the reviewed list, and the
    aggregation reads every per-task report — no criterion was recorded
    as unsettled, so no unsettled file is written
-5. the change-set verification splits the specification — it has no
-   numbered sections, so the split is one section named for the
-   document and the test surface — finds neither of this cycle's files
-   (`change-set-c1-…`) already written, gathers the brief (the first
-   task commit and the file list, the linter names — the fixture
+5. the change-set verification derives its sections from the
+   specification's numbered headings — the payment-intent section, the
+   capture section, and the test surface — finds none of this cycle's
+   files (`change-set-c1-…`) already written, gathers the brief (the
+   first task commit and the file list, the linter names — the fixture
    declares none — the project skills, the finding floor path, and the
    statement that nothing was unsettled, since no unsettled file
-   exists), and dispatches the two agents in parallel — stubbed: each
+   exists), and dispatches the three agents in parallel — stubbed: each
    section's file is clean, carrying a coverage map and no finding; the
    tree is checked with nothing outside `.workflows/` modified or
-   untracked, the reconciliation reads both section files from disk and
+   untracked, the reconciliation reads every section file from disk and
    finds nothing to reconcile, and no `not-measured.txt` is written
 6. findings prep collects the two findings out of the per-task reports
    into its own payloads — the section files carry none — giving each a
@@ -43,7 +43,7 @@ The prose should have taken this path:
    and commits the corrections through the engine's code commit as
    one body of work
 9. the review report is produced from the action list with a Pass
-   verdict — its Specification Compliance carrying the two sections'
+   verdict — its Specification Compliance carrying the three sections'
    coverage maps as their files record them, its Plan Completion's bold
    `Criteria not measured` line reading `none`, its corrected section
    recording what was applied — and committed
@@ -88,13 +88,14 @@ Further claims:
 EXPECTED WORLD — from an implemented feature with no review:
 
 - a review report at `.workflows/pay/review/pay/report.md` carrying a
-  Pass verdict, a Specification Compliance section carrying the two
+  Pass verdict, a Specification Compliance section carrying the three
   coverage maps, a Plan Completion whose criteria-not-measured line
   reads `none`, and a corrected-in-this-session record of the two
   actions; plus one per-task report file for each task suffix, each
-  recording complete with its findings intact, and the two change-set
-  files for this cycle — `change-set-c1-specification.md` and
-  `change-set-c1-test-surface.md` — each clean with its coverage map
+  recording complete with its findings intact, and one change-set file
+  per section for this cycle — `change-set-c1-1-payment-intent.md`,
+  `change-set-c1-2-capture-webhooks.md`, `change-set-c1-test-surface.md`
+  — each clean with its coverage map
 - the manifest holding the review completed, with reviewed_tasks
   carrying both internal ids and no out_of_scope field
 - the false polling-recovery claim gone from `src/webhooks/capture.js`

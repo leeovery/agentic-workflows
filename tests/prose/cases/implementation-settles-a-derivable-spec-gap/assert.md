@@ -57,7 +57,7 @@ The prose should have taken this path:
     yielding 500 milliseconds. It settles the point in place rather
     than returning it open
 11. the settle is the four record-settled steps, silently: the missing
-    bound is ADDED to the Client call bounds section — the section that
+    bound is ADDED to the Client Call Bounds section (§3) — the section that
     owns the ground, nothing replaced elsewhere; one dated corrigendum
     attributed to `implementation/pay` is appended under a Corrigenda
     section the file did not have, stating the point the specification
@@ -116,7 +116,7 @@ Further claims:
   the one proposal gate, in that order and nowhere else — the
   specification correction took no user turn: nothing about it was
   asked, offered, or waited on
-- the specification's Client call bounds section now states the order
+- the specification's Client Call Bounds section (§3) now states the order
   write's bound at 500 milliseconds with its derivation — twice the
   store's documented 250 millisecond p99, by the same rule the section
   records for the intent-creation bound; the intent-creation bullet and

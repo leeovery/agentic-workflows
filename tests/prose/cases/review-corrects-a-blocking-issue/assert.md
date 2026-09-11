@@ -122,8 +122,8 @@ EXPECTED WORLD — from an implemented feature with no review:
   each task suffix — the payment-intent task's recording incomplete with
   its blocking issue and finding intact — and one change-set file per
   section for this cycle — `change-set-c1-1-payment-intent.md`,
-  `change-set-c1-2-capture.md`, `change-set-c1-test-surface.md` — each
-  clean with its coverage map
+  `change-set-c1-2-capture-webhooks.md`, `change-set-c1-test-surface.md`
+  — each clean with its coverage map
 - the manifest holding the review completed, with reviewed_tasks
   carrying both internal ids and no out_of_scope field
 - `src/checkout/payment-intent.js` creating the intent with

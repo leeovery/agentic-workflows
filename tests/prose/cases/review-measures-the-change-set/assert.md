@@ -112,9 +112,9 @@ EXPECTED WORLD — from an implemented feature with no review:
 - one per-task report file for each task suffix, the payment-intent
   task's carrying its two unsettled criteria, plus one change-set file
   per section for this cycle — `change-set-c1-1-payment-intent.md`,
-  `change-set-c1-2-capture.md`, `change-set-c1-test-surface.md` — each
-  recording what it measured, what it could not, its findings and its
-  coverage map
+  `change-set-c1-2-capture-webhooks.md`, `change-set-c1-test-surface.md`
+  — each recording what it measured, what it could not, its findings
+  and its coverage map
 - the review cache holding `not-measured.txt` with one block — `[1-1]`
   and the quoted duplicate-start criterion
 - the manifest holding the review completed, with reviewed_tasks
