@@ -4,7 +4,7 @@
 
 ---
 
-This reference is loaded at phase conclusion when a final-review agent has produced a report. It renders a two-option menu (review / skip) and delegates the lane routing to the shared surfacing protocol. Lifecycle state lives in the engine's agent store.
+This reference is loaded at phase conclusion when a review agent's report is waiting. It renders a two-option menu (review / skip) and delegates the lane routing to the shared surfacing protocol. Lifecycle state lives in the engine's agent store.
 
 **Parameters** (provided by caller via Load directive):
 
@@ -62,16 +62,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {ph
 
 ## B. Render Menu
 
-Conclusion is a decision point every time — whether the drain started mid-session or at a prior conclusion attempt, the user chooses between continuing the walk-through and concluding with the rest on record.
+Conclusion is a decision point every time — whether the drain started mid-session or at a prior conclusion attempt, the user chooses between continuing the walk-through and concluding with the rest on record. Fetch the gate and emit its MENU section verbatim per its marker — the count is the row's own:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**`◆ Final review: {N} area(s) still unreviewed.`**
-
-**`r/review`** → Work through them now
-**`s/skip`**   → Acknowledge and conclude the topic
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render review-findings-gate {work_unit}.{phase}.{topic}
 ```
 
 Record the announce:

@@ -945,7 +945,15 @@ describe('pipeline simulation', () => {
     assert.match(
       sim.render(['finding-announce', `${wu}.discussion.beta`, '--file', '.workflows/.cache/scratch/announce.json'], { expect: 'content' }),
       /Work through them now\?/, 'the announce gate renders from the payload');
-    sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev1.id, '--clean']);
+    // The conclusion's drain offer reads the acknowledged row's own count and
+    // refuses every other state — pending before the ack, incorporated after
+    // the last finding surfaces.
+    sim.refuses(['render', 'review-findings-gate', `${wu}.discussion.beta`], /"review-001" is pending/);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev1.id, '--findings', 'F1']);
+    assert.match(sim.render(['review-findings-gate', `${wu}.discussion.beta`], { expect: 'content' }),
+      /The review left 1 finding still to walk\./, 'the drain offer counts the row\'s unsurfaced findings');
+    sim.run(['agent', 'surface', wu, 'discussion', 'beta', rev1.id, 'F1']);
+    sim.refuses(['render', 'review-findings-gate', `${wu}.discussion.beta`], /"review-001" is incorporated/);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /review dispatch blocked: quiet — 0 of 1 map moves since review-001/);
     const quietScan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);

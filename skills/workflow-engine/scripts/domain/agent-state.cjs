@@ -322,6 +322,20 @@ function reviewArming(cwd, workUnit, topic) {
 }
 
 /**
+ * The topic's latest review row, read without side effects — the highest-
+ * numbered `review` row in scan order, in scan's public shape, or null when
+ * no review has been dispatched. A render reads it to word a gate; nothing
+ * is promoted or saved.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function latestReview(cwd, workUnit, phase, topic) {
+  const rows = Object.values(loadState(cwd, workUnit, phase, topic).agents)
+    .filter((r) => r.kind === 'review')
+    .sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
+  return rows.length ? publicRow(rows[rows.length - 1]) : null;
+}
+
+/**
  * Dispatch: allocate the next id for this kind, record the row in-flight,
  * and answer with the content-file path the sub-agent must write. No file
  * is created — the content file's later existence is the completion signal.
@@ -669,5 +683,6 @@ module.exports = {
   incorporateAgent,
   completedReviewCycles,
   reviewArming,
+  latestReview,
   settleFoldedSubtopic,
 };

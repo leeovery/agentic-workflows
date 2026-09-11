@@ -31,6 +31,7 @@ const { baselineState } = require('./baseline.cjs');
 const { migrationGate, labelGate } = require('./projections/boot.cjs');
 const { heldCodeSessions, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
+const { latestReview } = require('./agent-state.cjs');
 const {
   roadmapMapView,
   roadmapAddGate,
@@ -2067,6 +2068,40 @@ function inFlightAgentsGate(cwd, { dotpath, count }) {
     cmdOption('w', 'wait', 'Wait for results before concluding'),
     cmdOption('p', 'proceed', 'Conclude now (results will persist in cache for reference)'),
   ], { glyphLabel: false }));
+}
+
+// review-findings-gate — the conclusion's drain offer over a review report
+// whose findings are still to be walked. The count is the row's own
+// (`remaining` on the acknowledged review row), so the surface reads the
+// agent store and refuses any state the calling prose never renders it
+// from. Research and discussion share it, and the report may be a
+// background pass or the closing pass — the wording claims neither.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function reviewFindingsGate(cwd, { dotpath }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'review-findings-gate');
+  if (phase !== 'research' && phase !== 'discussion') {
+    throw new Error(`render review-findings-gate: address must be <work_unit>.research|discussion.<topic>, got phase "${phase}"`);
+  }
+  const row = latestReview(cwd, workUnit, phase, topic);
+  if (!row) {
+    throw new Error('render review-findings-gate: no review has been dispatched on this topic — the gate follows an acknowledged report');
+  }
+  if (row.status !== 'acknowledged') {
+    throw new Error(`render review-findings-gate: the latest review row "${row.id}" is ${row.status} — the gate follows an acknowledged report with findings still to walk`);
+  }
+  const n = row.remaining.length;
+  return section('MENU: review findings gate', STOP_FOR_RESPONSE, menu(
+    `The review left ${n} finding${n === 1 ? '' : 's'} still to walk.`,
+    [
+      cmdOption('r', 'review', 'Work through them now'),
+      cmdOption('s', 'skip', 'Acknowledge and conclude the topic'),
+    ],
+  ));
 }
 
 // off-topic-offer — the single-topic counterpart of reroute-offer: with no
@@ -4752,6 +4787,7 @@ const SURFACES = {
   'research-conclude-gate': researchConcludeGate,
   'deep-dive-offer': deepDiveOffer,
   'in-flight-agents-gate': inFlightAgentsGate,
+  'review-findings-gate': reviewFindingsGate,
   'reroute-candidates': rerouteCandidates,
   'off-topic-offer': offTopicOffer,
   'map-op-gate': mapOpGate,

@@ -3813,6 +3813,66 @@ describe('selection not-found display', () => {
   });
 });
 
+describe('render review-findings-gate', () => {
+  let dir;
+  const store = (phase, row) => writePayload(dir, `.workflows/.cache/pay/${phase}/checkout/state.json`, { agents: { 'review-001': {
+    id: 'review-001', kind: 'review', phase, topic: 'checkout', set: 1, announced: false, created: '2026-09-11T10:00:00.000Z', ...row,
+  } } });
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: { checkout: { status: 'in-progress' } } },
+        discussion: { items: { checkout: { status: 'in-progress' } } },
+      },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  it('counts the acknowledged row\'s unsurfaced findings and names no pass — byte-exact', () => {
+    store('discussion', { status: 'acknowledged', findings: ['F1', 'F2', 'F3'], surfaced: ['F2'] });
+    const out = renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' });
+    assert.strictEqual(out, [
+      "=== MENU: review findings gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ The review left 2 findings still to walk.`**',
+      '',
+      '**`r/review`** → Work through them now',
+      '**`s/skip`**   → Acknowledge and conclude the topic',
+      '',
+    ].join('\n'));
+    assert.doesNotMatch(out, /final review/i);
+  });
+
+  it('a lone finding takes the singular, and research shares the surface', () => {
+    store('research', { status: 'acknowledged', findings: ['F1'], surfaced: [] });
+    assert.match(renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.research.checkout' }),
+      /`◆ The review left 1 finding still to walk\.`/);
+  });
+
+  it('refuses every state the calling prose never renders it from', () => {
+    assert.throws(() => renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' }),
+      /render review-findings-gate: no review has been dispatched on this topic/);
+    store('discussion', { status: 'pending', findings: [], surfaced: [] });
+    assert.throws(() => renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' }),
+      /the latest review row "review-001" is pending — the gate follows an acknowledged report/);
+    store('discussion', { status: 'incorporated', findings: ['F1'], surfaced: ['F1'] });
+    assert.throws(() => renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' }),
+      /"review-001" is incorporated/);
+    assert.throws(() => renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.planning.checkout' }),
+      /address must be <work_unit>\.research\|discussion\.<topic>, got phase "planning"/);
+  });
+
+  it('anchors on the latest review row, not an earlier drained one', () => {
+    writePayload(dir, '.workflows/.cache/pay/discussion/checkout/state.json', { agents: {
+      'review-001': { id: 'review-001', kind: 'review', phase: 'discussion', topic: 'checkout', set: 1, status: 'incorporated', announced: true, findings: ['F1'], surfaced: ['F1'], created: '2026-09-11T09:00:00.000Z' },
+      'review-002': { id: 'review-002', kind: 'review', phase: 'discussion', topic: 'checkout', set: 2, status: 'acknowledged', announced: false, findings: ['F1', 'F2'], surfaced: [], created: '2026-09-11T10:00:00.000Z' },
+    } });
+    assert.match(renderSurface(dir, 'review-findings-gate', { dotpath: 'pay.discussion.checkout' }),
+      /The review left 2 findings still to walk\./);
+  });
+});
+
 describe('catalogue dispatch', () => {
   it('the CLI usage banner lists every registered surface', () => {
     // A surface reachable from the catalogue but absent from the banner is
@@ -3831,7 +3891,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate\)/);
   });
 });
 
