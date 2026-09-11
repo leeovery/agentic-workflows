@@ -4,7 +4,7 @@
 
 ---
 
-The passage from conversation to conclusion runs two gates: the **review gate** — is a final review owed, and does the user want it — then the **conclude gate**. Nothing here proceeds silently: whatever the classification, the user hears what comes next and answers.
+The passage from conversation to conclusion runs two gates: the **review gate** — is a review still owed, or one more worth offering, and does the user want it — then the **conclude gate**. Nothing here proceeds silently: whatever the classification, the user hears what comes next and answers.
 
 The triage queue precedes both gates — a queued concern is work the conclusion cannot pass, and a review dispatched over it would read a document the walk is about to move. Check it first:
 

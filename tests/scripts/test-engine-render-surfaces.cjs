@@ -4947,11 +4947,11 @@ describe('render — the adopted phase gates', () => {
   it('closing-gate: the discussion close\'s four consents, variant-keyed', () => {
     const reReview = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 're-review' });
     assert.match(reReview, /MENU: re-review gate/);
-    assert.match(unwrap(reReview), /The discussion has moved since the last review read it\. One more pass can catch what that movement opened — or conclude as the document stands\./);
+    assert.match(unwrap(reReview), /The discussion has moved since the last review read it\. One more pass can catch what that movement opened — or conclude without one\./);
     assert.match(reReview, /`◆ Run one more review\?`/);
     assert.match(unwrap(reReview), /\*\*`y\/yes`\*\*\s+→ Run one more review before concluding/);
-    assert.match(unwrap(reReview), /\*\*`n\/no`\*\*\s+→ Conclude as it stands — the movement stays unreviewed/);
-    assert.doesNotMatch(reReview, /final review/);
+    assert.match(unwrap(reReview), /\*\*`n\/no`\*\*\s+→ Conclude without it — the movement stays unreviewed/);
+    assert.doesNotMatch(unwrap(reReview), /final review/);
     assert.match(unwrap(reReview), /\*\*Keep going\*\* → Tell me what else to explore/);
 
     const owed = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'findings-owed' });

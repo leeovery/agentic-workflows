@@ -124,7 +124,7 @@ module.exports = {
     // marker. World commits are stamped at materialise time, so it
     // postdates the dead dispatch by timestamp: a classifier that
     // anchored on the dead row would read it as movement and offer an
-    // optional re-review, which this case's user would skip.
+    // optional re-review, which this case's user would decline.
     h.write('.world-history.json', JSON.stringify([
       { message: `discussion(${WU}/${WU}): decided failed payment retries`,
         files: [`.workflows/${WU}/discussion/${WU}.md`] },

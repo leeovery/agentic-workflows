@@ -2506,11 +2506,11 @@ function concludeGate(cwd, { dotpath }) {
 const CLOSING_GATES = {
   're-review': () => ({
     name: 'MENU: re-review gate',
-    label: 'The discussion has moved since the last review read it. One more pass can catch what that movement opened — or conclude as the document stands.',
+    label: 'The discussion has moved since the last review read it. One more pass can catch what that movement opened — or conclude without one.',
     question: 'Run one more review?',
     options: [
       cmdOption('y', 'yes', 'Run one more review before concluding'),
-      cmdOption('n', 'no', 'Conclude as it stands — the movement stays unreviewed'),
+      cmdOption('n', 'no', 'Conclude without it — the movement stays unreviewed'),
       promptOption('Keep going', 'Tell me what else to explore'),
     ],
   }),

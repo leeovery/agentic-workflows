@@ -27,9 +27,9 @@ The prose should have taken this path:
 8. the mandatory review gate renders — a final gap review is owed, no
    decline available — and the user, agreeable to required steps, says
    yes. The optional gate (the offer of one more review, with its
-   no) never renders: had it been offered, this user would have
-   declined it and the discussion would have concluded with no review
-   ever run
+   decline) never renders: had it been offered, this user would
+   have declined it and the discussion would have concluded with no
+   review ever run
 9. the in-flight check finds no running agents; the final gap review
    step re-derives the same state — the highest row is incorporated
    but reportless, so no review has ever completed — and dispatches
