@@ -27,7 +27,7 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailWithKb, commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { phaseItems, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, OUTSTANDING_RESEARCH_STATUSES, lifecyclePhrase, awaitedExperiments, experimentWaits, waits, settleItemStatus } = require('./derivations.cjs');
+const { phaseItems, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase, awaitedExperiments, experimentWaits, waits, settleItemStatus } = require('./derivations.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
 
@@ -122,12 +122,32 @@ function phaseItem(manifest, phase, topic) {
  * @property {string[]} warnings non-blocking failures (knowledge-base index)
  */
 
+// Research feeds discussion: while the same-named research is outstanding —
+// in flight, or parked as a stub — the discussion is held shut at its birth
+// (absent or parked) and at its reopen, for every work type; the menu's
+// research row is the way in. A discussion already in session resumes: the
+// entry gate is its door, and the conclusion refusal (completeTopic's waits)
+// is the backstop for research a peer session parks beneath it mid-session.
+
+/**
+ * @param {object} manifest @param {string} phase @param {string} topic
+ * @param {'start'|'reopen'} verb  the refused move
+ */
+function assertResearchLanded(manifest, phase, topic, verb) {
+  if (phase !== 'discussion') return;
+  const status = outstandingResearch(manifest, topic);
+  if (!status) return;
+  throw new Error(
+    `discussion can't ${verb} on "${topic}" — ${outstandingResearchPhrase(status)}; research feeds discussion, so it lands first — the menu names the way in`,
+  );
+}
+
 // The map decides which of research/discussion a topic can be born into —
 // the same join the epic menu renders its rows from, so the engine is never
 // the permissive path around it. The gate is on birth alone: an in-progress
 // item resumes regardless (the map already shows that phase live), and
 // outstanding research always starts — research feeds discussion, so it is
-// the way in first, and the menu carries its row above the topic's own.
+// the way in first.
 
 /**
  * @param {object} manifest @param {string} phase @param {string} topic
@@ -182,6 +202,7 @@ function startTopic(cwd, workUnit, phase, topic) {
       const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
     }
+    if (!existing || existing.status === 'triaged') assertResearchLanded(manifest, phase, topic, 'start');
     assertMapAllowsStart(manifest, phase, topic, existing);
 
     let created = false;
@@ -948,6 +969,7 @@ function reopenTopic(cwd, workUnit, phase, topic) {
     if (item.status !== 'completed') {
       throw new Error(`${phase} item "${topic}" is not completed (status: ${item.status ?? 'none'}) — only a completed item can be reopened`);
     }
+    assertResearchLanded(manifest, phase, topic, 'reopen');
     item.status = 'in-progress';
     const fd = flagDownstream(manifest, manifest.work_type, phase, topic);
 

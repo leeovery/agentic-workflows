@@ -68,9 +68,32 @@ function awaitedExperiments(manifest, phase, topic) {
  * @typedef {{kind: 'research', status: string} | {kind: 'experiment', id: string}} Wait
  */
 
-// Research statuses that hold the same-named discussion's conclusion shut —
-// in flight, or parked as a stub of concerns no session has drained.
+// Research statuses that hold the same-named discussion shut — its entry and
+// its conclusion alike — in flight, or parked as a stub of concerns no
+// session has drained.
 const OUTSTANDING_RESEARCH_STATUSES = ['in-progress', 'triaged'];
+
+/**
+ * The research still outstanding on a topic — its item's status while in
+ * flight or parked — or null once it has landed or never existed. The one
+ * read behind every surface that holds a discussion for its research: the
+ * birth and reopen guards, the entry gates, the conclusion wait, the menu.
+ * Work-type agnostic; the discussion item need not exist.
+ * @param {object} manifest @param {string} topic
+ * @returns {string|null}
+ */
+function outstandingResearch(manifest, topic) {
+  const research = itemOf(manifest, 'research', topic);
+  const status = research ? research.status : undefined;
+  return OUTSTANDING_RESEARCH_STATUSES.includes(status ?? '') ? status : null;
+}
+
+// Where outstanding research stands, in the refusals' voice — the birth and
+// reopen guards and the direct-entry door share it.
+/** @param {string} status  an outstanding research status */
+function outstandingResearchPhrase(status) {
+  return status === 'triaged' ? 'research is parked on it (triage waiting)' : 'research is in flight on it';
+}
 
 /**
  * Every wait holding one item's conclusion shut, in presentation order: a
@@ -85,10 +108,8 @@ function waits(manifest, phase, topic) {
   /** @type {Wait[]} */
   const out = [];
   if (!itemOf(manifest, phase, topic)) return out;
-  const research = phase === 'discussion' ? itemOf(manifest, 'research', topic) : undefined;
-  if (research && OUTSTANDING_RESEARCH_STATUSES.includes(research.status)) {
-    out.push({ kind: 'research', status: research.status });
-  }
+  const research = phase === 'discussion' ? outstandingResearch(manifest, topic) : null;
+  if (research) out.push({ kind: 'research', status: research });
   for (const id of awaitedExperiments(manifest, phase, topic)) out.push({ kind: 'experiment', id });
   return out;
 }
@@ -184,10 +205,11 @@ function computeNextPhase(manifest) {
         }
         // Research feeds discussion: a stub parked beneath the live
         // discussion is invisible to the phase walk (pre-live), yet it holds
-        // the discussion's conclusion shut — the way in is the research.
+        // the discussion shut — at its door and its conclusion — so the way
+        // in is the research.
         if (phase === 'discussion') {
           const live = phaseItems(manifest, phase).find((i) => i.status === 'in-progress');
-          if (live && waits(manifest, phase, live.name).some((w) => w.kind === 'research')) {
+          if (live && outstandingResearch(manifest, live.name)) {
             return { next_phase: 'research', phase_label: 'research (parked — feeds the discussion)' };
           }
         }
@@ -451,7 +473,8 @@ function computeNeedsSequencing(mapItems) {
 // (parked rerouted concerns, no session yet). It is a rider, not a lifecycle
 // — a triaged stub renders as `fresh` by fall-through, and the rider survives
 // on every branch (a `discussing` topic can still hold a parked research
-// stub — the research row above it on the epic menu is its way in). `reconcile_pending`
+// stub — the research is then the row's own next action, and the discussion
+// is held until it lands). `reconcile_pending`
 // is the third rider: either phase item carries a live reconcile flag, so
 // the map row can cue `input moved` — with a map, phase-item rows never
 // render for research/discussion, making this the topic's only surface.
@@ -517,6 +540,10 @@ function computeTopicLifecycle(manifest, topicName) {
   return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
 }
 
+// The lifecycles a topic leaves the board under — no row, no action, and
+// research reopened beneath one names the closure, not the research.
+const CLOSED_LIFECYCLES = ['cancelled', 'handled'];
+
 // Why a lifecycle stands in the way of a move — the map ops' refusals and
 // the phase-birth guard share it, so the engine and the epic menu's
 // conversational rejections never drift. Derived from the actual research
@@ -525,9 +552,8 @@ function computeTopicLifecycle(manifest, topicName) {
 function lifecyclePhrase(lifecycle, researchState, routing) {
   switch (lifecycle) {
     case 'fresh':
-      if (researchState === 'triaged') return 'research is parked on it and comes first';
       return routing ? `it is routed to ${routing} and nothing has started` : 'nothing has started on it';
-    case 'researching': return 'research is in flight on it';
+    case 'researching': return outstandingResearchPhrase('in-progress');
     case 'discussing': return 'discussion is in flight on it';
     case 'ready_for_discussion':
       return researchState === 'superseded'
@@ -548,23 +574,26 @@ const CONVERSATION_ACTIONS = {
 };
 
 /**
- * The map row's next action. Research parked on a topic that has no
- * discussion yet leads whatever the routing says — research feeds
- * discussion, so the stub is the way in first.
+ * The map row's next action. Outstanding research is the row's own action
+ * whatever the routing or the discussion says — research feeds discussion,
+ * so a parked stub leads a fresh topic, and a discussing topic's row is its
+ * research row until the research lands (the discussion is held shut).
  * @param {string|undefined} routing @param {string} lifecycle @param {string|null} [researchState]
  * @returns {string|null}
  */
 function computeNextAction(routing, lifecycle, researchState) {
+  const outstanding = OUTSTANDING_RESEARCH_STATUSES.includes(researchState ?? '');
+  const researchAction = researchState === 'triaged' ? 'start_research' : 'continue_research';
   switch (lifecycle) {
     case 'fresh':
-      if (OUTSTANDING_RESEARCH_STATUSES.includes(researchState ?? '')) return 'start_research';
+      if (outstanding) return researchAction;
       return routing === 'research' ? 'start_research' : 'start_discussion';
     case 'researching':
       return 'continue_research';
     case 'ready_for_discussion':
       return 'start_discussion_after_research';
     case 'discussing':
-      return 'continue_discussion';
+      return outstanding ? researchAction : 'continue_discussion';
     case 'decided':
     case 'cancelled':
     case 'handled':
@@ -716,6 +745,8 @@ module.exports = {
   waits,
   topicWaits,
   OUTSTANDING_RESEARCH_STATUSES,
+  outstandingResearch,
+  outstandingResearchPhrase,
   settleItemStatus,
   computeNextPhase,
   computeInProgressPhases,
@@ -726,6 +757,7 @@ module.exports = {
   computeTopicLifecycle,
   computeNextAction,
   CONVERSATION_ACTIONS,
+  CLOSED_LIFECYCLES,
   lifecyclePhrase,
   itemOf,
   computeMapSummary,

@@ -594,19 +594,41 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     // The discussion's own requeue parks a concern research-side: the stub is
     // pre-live to the phase walk, yet research feeds discussion — the linear
-    // continue routes to it, and the discussion cannot conclude over it.
+    // continue routes to it, and the discussion is held at entry and at its
+    // conclusion alike, the entry gate naming the work unit's next step. The
+    // session already inside resumes: the engine holds births, not resumes.
     sim.run(['topic', 'triage', wu, 'research', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
+    assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
+    assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
+      /Entry blocked — this discussion awaits research on "Ledger" \(parked — not yet started\)[\s\S]*Continue the work unit — the research is its next step\./);
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits research on the topic/);
     assert.match(sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
       /awaits research on "Ledger" \(parked — not yet started\)/);
     sim.run(['topic', 'start', wu, 'research', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
+    assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }), /awaits research on "Ledger" \(in flight\)/);
     sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): open the question`, '--topic', `research/${wu}`]);
     sim.run(['topic', 'complete', wu, 'research', wu]);
+    // Landed: the gates release and the discussion resumes.
     sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
+    sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'discussion');
+    assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
+    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    // A concluded discussion is held the same way: a research-side landing
+    // beneath it reopens the research, and the discussion's reopen refuses
+    // until that research lands again.
+    assert.strictEqual(sim.run(['topic', 'triage', wu, 'research', wu]).reopened, true);
+    sim.refuses(['topic', 'reopen', wu, 'discussion', wu],
+      /discussion can't reopen on "ledger" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
+    sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nThe second question.\n`);
+    sim.run(['commit', wu, '-m', `research(${wu}): the second question`, '--topic', `research/${wu}`]);
+    sim.run(['topic', 'complete', wu, 'research', wu]);
+    sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
+    assert.strictEqual(sim.run(['topic', 'reopen', wu, 'discussion', wu]).status, 'in-progress');
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });
 
@@ -623,34 +645,67 @@ describe('pipeline simulation', () => {
     const rows = (topic) => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
       .filter((k) => k.topic === topic).map((k) => [k.action, k.label]);
 
-    // A research-side concern parks on alpha before any discussion exists.
+    // A research-side concern parks on alpha before any discussion exists —
+    // the research is alpha's own row, and the discussion is held for it at
+    // the birth guard, the d door, and the entry gate alike.
     sim.run(['topic', 'triage', wu, 'research', 'alpha']);
     assert.deepStrictEqual(rows('alpha'), [['start_research', 'Start research for "Alpha" — *triage waiting*']]);
-    sim.refuses(['topic', 'start', wu, 'discussion', 'alpha'], /research is parked on it and comes first/);
-    assert.match(sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }), /research is parked on it and comes first/);
+    sim.refuses(['topic', 'start', wu, 'discussion', 'alpha'],
+      /discussion can't start on "alpha" — research is parked on it \(triage waiting\); research feeds discussion, so it lands first — the menu names the way in/);
+    assert.match(sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }),
+      /research is parked on it \(triage waiting\)[\s\S]*its research row is the way in/);
+    assert.match(sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }),
+      /Entry blocked — this discussion awaits research on "Alpha" \(parked — not yet started\)[\s\S]*Return to the epic menu — its research row is the way in\./);
     sim.refuses(['discovery-map', 'handle', wu, 'alpha'], /rerouted concerns are parked in its research triage/);
 
-    // The research lands — the discussion row returns, and the discussion is born.
+    // The research lands — the discussion row returns, the gate clears, and
+    // the discussion is born.
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
     assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['start_discussion_after_research']);
+    sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
 
-    // A reopen of the research beneath the discussion now in flight flags it,
-    // holds its conclusion shut, and leads the topic's rows; the soft gate
-    // passes the research row's actions.
+    // A reopen of the research beneath the discussion now in flight flags it
+    // and holds it shut at both ends: the topic's one row is its research
+    // (the discussion is not offered), the entry gate refuses, the
+    // conclusion refuses — while the session already inside resumes; the
+    // soft gate passes the research row's actions.
     const hop = sim.run(['topic', 'reopen', wu, 'research', 'alpha']);
     assert.deepStrictEqual(hop.reconcile_flagged, [{ phase: 'discussion', topic: 'alpha' }]);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.reconcile_needed, 'research');
     sim.refuses(['topic', 'complete', wu, 'discussion', 'alpha'], /awaits research on the topic/);
-    assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_research', 'continue_discussion']);
+    assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_research']);
+    assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', 'alpha']).created, false);
+    assert.match(sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }), /awaits research on "Alpha" \(in flight\)/);
+    // A landing is the engine's own act — never held, whichever side it parks on.
+    assert.strictEqual(sim.run(['topic', 'triage', wu, 'discussion', 'alpha']).status, 'in-progress');
     sim.render(['epic-soft-gate', wu, '--action', 'continue_research', '--topic', 'alpha'], { expect: 'empty' });
     sim.render(['epic-soft-gate', wu, '--action', 'start_research', '--topic', 'beta'], { expect: 'empty' });
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+    // Landed: the wait and the gate release, the discussion row returns, and
+    // the discussion resumes.
     sim.render(['wait-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
+    sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
+    assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_discussion']);
+    assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', 'alpha']).created, false);
     sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
+
+    // A concluded discussion is held the same way: a research-side landing
+    // beneath it reopens the research, and the discussion's reopen refuses
+    // until that research lands again.
+    assert.strictEqual(sim.run(['topic', 'triage', wu, 'research', 'alpha']).reopened, true);
+    sim.refuses(['topic', 'reopen', wu, 'discussion', 'alpha'],
+      /discussion can't reopen on "alpha" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
+    assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_research']);
+    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n\nThe landed concern.\n');
+    sim.run(['commit', wu, '-m', `research(${wu}): alpha lands the concern`, '--topic', 'research/alpha']);
+    sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+    sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
+    assert.strictEqual(sim.run(['topic', 'reopen', wu, 'discussion', 'alpha']).status, 'in-progress');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
   });
 
@@ -1147,15 +1202,18 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'in-progress');
     // The parked stub is a wait the discussion cannot conclude over — derived
     // from the stub's status, never stored. The refusal names it, the wait
-    // gate is its graceful face, and the epic menu carries beta's research
-    // row directly above its discussion row.
+    // gate is its graceful face, and the epic menu's row for beta is its
+    // research row — the discussion is held at entry, not offered.
     sim.refuses(['topic', 'complete', wu, 'discussion', 'beta'],
       /awaits research on the topic — conclude once it lands, or cancel the research to release the wait/);
     const waitGate = sim.render(['wait-gate', `${wu}.discussion.beta`], { expect: 'content' });
     assert.match(waitGate, /Conclusion blocked — this discussion awaits research on "Beta" \(parked — not yet started\)/);
     const betaRows = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
       .filter((k) => k.topic === 'beta').map((k) => k.action);
-    assert.deepStrictEqual(betaRows, ['start_research', 'continue_discussion'], 'the research row leads its topic');
+    assert.deepStrictEqual(betaRows, ['start_research'], 'the research row is the topic\'s own');
+    assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', 'beta']).created, false, 'the session inside resumes');
+    assert.match(sim.render(['entry-gate', `${wu}.discussion.beta`], { expect: 'content' }),
+      /Entry blocked — this discussion awaits research on "Beta" \(parked — not yet started\)/);
     assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).replace(/\n[ │]+/g, ' '),
       /Discussing · awaiting research · triage waiting · input moved/);
     // The research row is the way in: the stub starts (the birth guard's
@@ -1171,6 +1229,7 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `research(${wu}): beta`, '--topic', 'research/beta']);
     sim.run(['topic', 'complete', wu, 'research', 'beta']);
     sim.render(['wait-gate', `${wu}.discussion.beta`], { expect: 'empty' });
+    sim.render(['entry-gate', `${wu}.discussion.beta`], { expect: 'empty' });
     // The re-entry's reconcile clears the flag (prose-owned); the discussion concludes.
     sim.run(['manifest', 'delete', `${wu}.discussion.beta`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);

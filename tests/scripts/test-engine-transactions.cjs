@@ -1098,6 +1098,23 @@ describe('engine topic reopen', () => {
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
   });
 
+  it('a discussion refuses to reopen while its research is outstanding — research feeds discussion', () => {
+    const withResearch = (status) => {
+      const m = epicManifest();
+      m.phases.research.items['session-model'] = { status };
+      writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    };
+    withResearch('triaged');
+    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
+    assert.match(err.error, /discussion can't reopen on "session-model" — research is parked on it \(triage waiting\); research feeds discussion, so it lands first — the menu names the way in/);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+    withResearch('in-progress');
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).error, /research is in flight on it/);
+    withResearch('completed');
+    assert.strictEqual(engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).status, 'in-progress');
+  });
+
   it('refuses a superseded item — supersession stays its own flow', () => {
     engine(dir, ['topic', 'supersede', 'payments', 'research', 'auth-flow', '--by', 'fee-model']);
     const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
@@ -2069,10 +2086,11 @@ describe('engine topic start — the discovery map gates the birth of a phase it
             epsilon: { routing: 'research', source: 'discovery' },
             zeta: { routing: 'research', source: 'discovery' },
             eta: { routing: 'discussion', source: 'discovery' },
+            theta: { routing: 'discussion', source: 'discovery' },
           },
         },
-        research: { items: { gamma: { status: 'triaged' }, delta: { status: 'completed' }, zeta: { status: 'in-progress' }, eta: { status: 'triaged' } } },
-        discussion: { items: { gamma: { status: 'in-progress' }, epsilon: { status: 'triaged' }, zeta: { status: 'in-progress' } } },
+        research: { items: { gamma: { status: 'triaged' }, delta: { status: 'completed' }, zeta: { status: 'in-progress' }, eta: { status: 'triaged' }, theta: { status: 'triaged' } } },
+        discussion: { items: { gamma: { status: 'in-progress' }, epsilon: { status: 'triaged' }, zeta: { status: 'in-progress' }, theta: { status: 'triaged' } } },
       },
     }, null, 2) + '\n');
     commitAll(dir, 'init');
@@ -2098,14 +2116,27 @@ describe('engine topic start — the discovery map gates the birth of a phase it
 
   it('research parked on a discussion-routed topic comes first — the discussion cannot be born over it', () => {
     const err = engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'eta']);
-    assert.match(err.error, /discussion can't start on "eta" — research is parked on it and comes first/);
+    assert.match(err.error, /discussion can't start on "eta" — research is parked on it \(triage waiting\); research feeds discussion, so it lands first — the menu names the way in/);
+    assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.eta, undefined);
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'research', 'eta']).created, false);
   });
 
-  it('a parked research stub starts from its menu row — even beneath a live discussion', () => {
+  it('a parked research stub starts from its menu row — even beneath a live discussion, which resumes: the hold is at its door, not the engine', () => {
+    // gamma: research triaged, discussion in-progress — the discussion is
+    // already in session; the entry gate holds it, and complete's wait is
+    // the backstop, so start (a resume, not a birth) passes.
+    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'gamma']).created, false);
     const res = engine(dir, ['topic', 'start', 'mapped', 'research', 'gamma']);
     assert.strictEqual(res.status, 'in-progress');
     assert.strictEqual(res.created, false);
+  });
+
+  it('a parked discussion stub cannot be born over parked research — the stub\'s one exit is held too', () => {
+    // theta: both stubs parked — the research one exits first.
+    assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'theta']).error,
+      /discussion can't start on "theta" — research is parked on it \(triage waiting\); research feeds discussion, so it lands first — the menu names the way in/);
+    assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.theta.status, 'triaged', 'nothing touched');
+    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'research', 'theta']).created, false);
   });
 
   it('the map\'s own next action passes: a fresh discussion-routed topic, a discussion after completed research', () => {
@@ -2114,14 +2145,31 @@ describe('engine topic start — the discovery map gates the birth of a phase it
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'research', 'alpha']).created, true);
   });
 
-  it('an in-progress item resumes regardless of what the map shows live', () => {
+  it('an in-progress research resumes whatever the map shows live, and so does the in-progress discussion beside it', () => {
     // zeta: research and discussion both in flight — the lifecycle reads
-    // discussing, yet the research session's resume is not a birth.
+    // discussing, yet neither resume is a birth; the discussion's hold sits
+    // at the entry gate and at its conclusion, never on its resume.
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'research', 'zeta']).created, false);
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'zeta']).created, false);
+    assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.zeta.status, 'in-progress');
   });
 
-  it('a topic off the map, and every non-epic work unit, are ungated', () => {
+  for (const workType of ['feature', 'cross-cutting']) {
+    it(`every work type holds a discussion's birth for its research — a ${workType} refuses the same way`, () => {
+      writeFile(dir, '.workflows/unit/manifest.json', JSON.stringify({
+        name: 'unit', work_type: workType, status: 'in-progress',
+        phases: { research: { items: { unit: { status: 'in-progress' } } } },
+      }, null, 2) + '\n');
+      assert.match(engineFails(dir, ['topic', 'start', 'unit', 'discussion', 'unit']).error,
+        /discussion can't start on "unit" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
+      assert.strictEqual(readManifest(dir, 'unit').phases.discussion, undefined, 'nothing born');
+      assert.strictEqual(engine(dir, ['topic', 'start', 'unit', 'research', 'unit']).created, false);
+      engine(dir, ['topic', 'complete', 'unit', 'research', 'unit']);
+      assert.strictEqual(engine(dir, ['topic', 'start', 'unit', 'discussion', 'unit']).created, true, 'landed research releases the birth');
+    });
+  }
+
+  it('a topic off the map, and every non-epic work unit, are ungated by the map', () => {
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'unmapped']).created, true);
     writeFile(dir, '.workflows/feat/manifest.json', JSON.stringify({
       name: 'feat', work_type: 'feature', status: 'in-progress',

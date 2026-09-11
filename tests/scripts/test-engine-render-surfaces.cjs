@@ -3700,9 +3700,35 @@ describe('render entry-gate', () => {
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are back in-progress: a, b/);
   });
 
+  it('discussion: outstanding research holds the entry shut, every work type — landed, absent, or closed research clears it', () => {
+    const feature = (research) => manifestWith({
+      ...(research ? { research: { items: { pay: research } } } : {}),
+      discussion: { items: { pay: { status: 'in-progress' } } },
+    }, 'feature');
+    feature({ status: 'in-progress' });
+    const out = renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.pay' });
+    assert.match(out, /DISPLAY: entry blocker/);
+    assert.match(out, /⚑ Entry blocked — this discussion awaits research on "Pay" \(in flight\)/);
+    assert.match(out, /DISPLAY: blocker guidance[\s\S]*> Continue the work unit — the research is its next step\./);
+    feature({ status: 'triaged' });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.pay' }), /awaits research on "Pay" \(parked — not yet started\)/);
+    for (const research of [undefined, { status: 'completed' }, { status: 'cancelled', previous_status: 'in-progress' }, { status: 'superseded', superseded_by: 'other' }]) {
+      feature(research);
+      assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.pay' }), '', JSON.stringify(research));
+    }
+    // An epic's guidance names its menu; the discussion item need not exist yet, and a concluded one is held the same way.
+    manifestWith({ research: { items: { auth: { status: 'triaged' } } } }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }),
+      /awaits research on "Auth" \(parked — not yet started\)[\s\S]*> Return to the epic menu — its research row is the way in\./);
+    manifestWith({ research: { items: { auth: { status: 'in-progress' } } }, discussion: { items: { auth: { status: 'completed', reconcile_needed: 'research' } } } }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }), /awaits research on "Auth" \(in flight\)/);
+    manifestWith({ research: { items: { other: { status: 'in-progress' } } }, discussion: { items: { auth: { status: 'in-progress' } } } }, 'epic');
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }), '', 'another topic\'s research holds nothing');
+  });
+
   it('an unsupported phase is a loud error', () => {
     manifestWith({});
-    assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }), /no prerequisite rules for phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.research.auth' }), /no prerequisite rules for phase "research"/);
   });
 });
 
@@ -5187,12 +5213,12 @@ describe('render direct-entry-gate', () => {
     assert.match(out, /DISPLAY: blocker guidance[\s\S]*Return to the epic menu — its row for the topic names the next step\./);
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.beta' }), /routed to discussion and nothing has started/);
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.delta' }), /research is in flight on it/);
-    // The r door over outstanding research names the research the user asked for, and its row.
+    // Outstanding research names itself at either door — its row is the topic's own.
     const parked = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.research.gamma' });
     assert.match(parked, /⚑ "Gamma" is already on the map — research is parked on it \(triage waiting\)/);
     assert.match(parked, /Return to the epic menu — its research row is the way in\./);
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.research.delta' }), /research is in flight on it[\s\S]*its research row is the way in/);
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.gamma' }), /discussion is in flight on it[\s\S]*its research row is the way in/);
+    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.gamma' }), /research is parked on it \(triage waiting\)[\s\S]*its research row is the way in/);
   });
 
   it('a fresh discussion-routed topic with a parked stub names the research first at either door', () => {
@@ -5203,8 +5229,28 @@ describe('render direct-entry-gate', () => {
         research: { items: { eta: { status: 'triaged' } } },
       },
     });
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.discussion.eta' }), /research is parked on it and comes first/);
+    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.discussion.eta' }), /research is parked on it \(triage waiting\)[\s\S]*its research row is the way in/);
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.research.eta' }), /research is parked on it \(triage waiting\)/);
+  });
+
+  it('a closed topic names its closure at either door, research reopened beneath it notwithstanding — its empty menu is the closure\'s', () => {
+    writeManifest(dir, 'closed', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: {
+          dead: { routing: 'research', source: 'discovery', handled: true },
+          gone: { routing: 'research', source: 'discovery' },
+        } },
+        research: { items: { dead: { status: 'in-progress' }, gone: { status: 'cancelled', previous_status: 'in-progress' } } },
+        discussion: { items: { dead: { status: 'completed' }, gone: { status: 'cancelled', previous_status: 'in-progress' } } },
+      },
+    });
+    for (const phase of ['discussion', 'research']) {
+      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.dead` }),
+        /⚑ "Dead" is already on the map — it is closed as a dead end and stays on the map as record[\s\S]*its row for the topic names the next step\./);
+      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.gone` }),
+        /it has phase work in cancelled state and stays on the map as historical record/);
+    }
   });
 
   it('empty for a new name, for a feature, and refuses a phase outside research|discussion', () => {
