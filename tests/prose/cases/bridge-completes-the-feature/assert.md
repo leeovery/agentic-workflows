@@ -7,23 +7,30 @@ The prose should have taken this path:
 2. the process registers the review, reads the plans and specification,
    scopes verification from the per-task implementation commits, and
    dispatches a verifier per task — stubbed clean; both task ids land
-   on the reviewed list
-3. the review report is produced with a Pass verdict — no
+   on the reviewed list, and the aggregation finds nothing unsettled
+3. the change-set verification splits the specification — no numbered
+   sections, so the document section plus the test surface — gathers
+   the brief (the first task commit, the file list, no declared
+   linters, the finding floor, no unsettled file) and dispatches one
+   agent per section — stubbed clean, each with a coverage map — then
+   checks the tree with nothing outside `.workflows/` dirty and has
+   nothing to reconcile, so no `not-measured.txt` is written
+4. the review report is produced with a Pass verdict — no
    `actions.json` exists on the clean path, so the verdict derives
    from nothing outstanding — and committed; the presentation renders
    with zero counts, the scripted answer continues past the gate, and
    the compliance self-check runs
-4. the review completes through the engine, and the completion commit
+5. the review completes through the engine, and the completion commit
    lands
-5. the pipeline continuation invokes the bridge with the work unit and
+6. the pipeline continuation invokes the bridge with the work unit and
    the completed phase review, and the walk crosses into the bridge
-6. the bridge reads the work type — feature, not discovery, not epic —
+7. the bridge reads the work type — feature, not discovery, not epic —
    and runs its discovery gateway, whose output derives next_phase as
    done
-7. routing selects the feature continuation, whose terminal check
+8. routing selects the feature continuation, whose terminal check
    matches done first: the work unit is completed through the engine's
    one-command completion — status, timestamp, and commit together
-8. the completion banner is fetched via render workunit-receipt with
+9. the completion banner is fetched via render workunit-receipt with
    the pipeline flag, its confirmation section is emitted verbatim,
    and the walk
    stops at the terminal condition — no early-completion gate, no
@@ -41,6 +48,10 @@ Further claims:
 - no cache directory for the work unit remains at
   `.workflows/.cache/pay/` after the completion
 - the review report at `.workflows/pay/review/pay/report.md` holds a
-  Pass verdict; one per-task report file exists per task suffix
+  Pass verdict, its Specification Compliance carrying the two coverage
+  maps and its Criteria not measured line reading none; one per-task
+  report file exists per task suffix, and one change-set file per
+  section — `change-set-c1-specification.md` and
+  `change-set-c1-test-surface.md`
 - the plan, tasks, specification, and source files are untouched; no
   second work unit exists

@@ -506,6 +506,13 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['topic', 'start', wu, 'review', topic]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'reviewed_tasks', `${topic}-1-1`]);
   sim.render(['resume-gate', `${wu}.review.${topic}`, '--variant', 'review'], { expect: 'content' });
+  // The change-set verification reads the declared linter names and writes one
+  // file per section per cycle beside the per-task reports; prep's checkpoint
+  // commit carries both classes under the review topic's scope.
+  sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'linters']);
+  sim.write(`.workflows/${wu}/review/${topic}/report-1-1.md`, 'TASK: 1-1\n\nFINDINGS:\n- None\n');
+  sim.write(`.workflows/${wu}/review/${topic}/change-set-c1-specification.md`, 'SECTION: specification\n\nFINDINGS:\n- None\n');
+  sim.run(['commit', wu, '-m', `review(${wu}): verification and prep`, '--topic', `review/${topic}`]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'out_of_scope',
     '{"id":"A3","kind":"quick-fix","summary":"a guard the spec never asked for"}']);
   // The apply lane writes code: in-scope, contained findings land in-session

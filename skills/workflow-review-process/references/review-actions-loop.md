@@ -168,7 +168,7 @@ Each pass reads the next pending proposal from the staging file as it now stands
 
 #### If the next pending proposal carries a Decision
 
-→ Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.review.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, payload_path = `.workflows/.cache/{work_unit}/review/{topic}/proposed-task.json`, gate_mode = `{gate_mode}`, row_address = `staging.c{N}.tasks.{n}`, comment_hint = `Tell me what to change`, findings_paths = the cycle's `review-report-c{N}.md` and the per-task `report-*.md` files in `.workflows/{work_unit}/review/{topic}/`.
+→ Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.review.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, payload_path = `.workflows/.cache/{work_unit}/review/{topic}/proposed-task.json`, gate_mode = `{gate_mode}`, row_address = `staging.c{N}.tasks.{n}`, comment_hint = `Tell me what to change`, findings_paths = the cycle's `review-report-c{N}.md`, the per-task `report-*.md` files and the `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/`.
 
 → On return, return to **D. Process Task**.
 
@@ -247,7 +247,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 
 The approved proposals carry no bodies — the author expands exactly those, in the staging file, before the writer transcribes them:
 
-→ Load **[invoke-task-author.md](../../workflow-implementation-process/references/invoke-task-author.md)** and follow its instructions as written, with staging file path = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, findings file paths = the cycle's `review-report-c{N}.md` and the per-task `report-*.md` files in `.workflows/{work_unit}/review/{topic}/`, approved task numbers = the task numbers whose `staging.c{N}` rows are `approved`.
+→ Load **[invoke-task-author.md](../../workflow-implementation-process/references/invoke-task-author.md)** and follow its instructions as written, with staging file path = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, findings file paths = the cycle's `review-report-c{N}.md`, the per-task `report-*.md` files and the `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/`, approved task numbers = the task numbers whose `staging.c{N}` rows are `approved`.
 
 > **CHECKPOINT**: Do not proceed until the task author has returned.
 

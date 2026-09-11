@@ -38,7 +38,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
-2. **Read review and synthesis files** for the current topic. Review documents are at `.workflows/{work_unit}/review/{topic}/report.md` with per-task report files alongside (`report-{phase_id}-{task_id}.md`). Synthesis staging files are at `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`. These hold the staged proposals — bodies exist only once the task author has run after the walk; the per-task decisions and `gate_mode` live in the manifest's `staging.c{N}` subtree.
+2. **Read review and synthesis files** for the current topic. Review documents are at `.workflows/{work_unit}/review/{topic}/report.md` with per-task report files (`report-{phase_id}-{task_id}.md`) and change-set verification files (`change-set-c{N}-{section-slug}.md`, one per section per review cycle) alongside. Synthesis staging files are at `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`. These hold the staged proposals — bodies exist only once the task author has run after the walk; the per-task decisions and `gate_mode` live in the manifest's `staging.c{N}` subtree.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 4. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
 
@@ -114,11 +114,13 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 
 **If all tasks reviewed and the review file exists:**
 
-→ Proceed to **Step 9**.
+→ Proceed to **Step 10**.
 
 **If all tasks reviewed and no review file exists** (verification finished; everything after it was lost):
 
-→ Proceed to **Step 6**.
+Set `unreviewed_tasks` = `[]` — nothing to dispatch; the aggregation re-reads the reports on disk, and the change-set verification dispatches only the sections whose files are missing.
+
+→ Proceed to **Step 1**.
 
 **Otherwise** (no tracking data):
 
@@ -141,7 +143,7 @@ Order matters — the review file is deleted last, so a crash mid-restart re-off
 2. Delete any synthesis staging files (`review-tasks-c*.md`) in `.workflows/{work_unit}/implementation/{topic}/` — stale proposals from the abandoned run. The synthesis reports (`review-report-c*.md`) stay — the cycle counter reads them
 3. If the planning item carries no `storage_paths` (a plan initialised before the field existed): record it now — read the format's authoring.md (format from `manifest get {work_unit}.planning.{topic} format`) → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`)
 4. **If the abandoned run's `Review Remediation (Cycle {N})` phase already landed in the plan**: mark each of that phase's tasks whose id is **not** in `{work_unit}.implementation.{topic}` `completed_tasks` skipped per the format's **updating.md** (format from `manifest get {work_unit}.planning.{topic} format`) — abandoned remediation must never execute, and a partially-executed phase keeps only what already ran
-5. Delete the review file and all report files (`report-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`)
+5. Delete the review file, all report files (`report-*.md`) and all change-set files (`change-set-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`), and the topic's review cache directory (`.workflows/.cache/{work_unit}/review/{topic}/`) — the abandoned run's collected criteria and staged payloads
 6. Commit the deletions under the topics that held them, then the plan — `--plan` stages the planning topic, the manifests, and the plan's declared storage (the skip-markings live there):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review — clear reports and staging" --topic review/{topic}
@@ -223,7 +225,27 @@ Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and fol
 
 ---
 
-## Step 6: Prep Findings
+## Step 6: Change-Set Verification
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Change-Set Verification`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Holding the whole change-set against the specification's intent, one agent per section — measuring what reading could not settle, where the project's own conventions give a way to.
+```
+
+Load **[invoke-change-set-verifiers.md](references/invoke-change-set-verifiers.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 7**.
+
+---
+
+## Step 7: Prep Findings
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -234,16 +256,16 @@ Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and fol
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Each verifier saw one task. Checking every finding against the code and the code standard, against the guards it could breach, and against the other findings it collides with.
+> Each verifier saw one task or one section. Checking every finding against the code and the code standard, against the guards it could breach, and against the other findings it collides with.
 ```
 
 Load **[prep-findings.md](references/prep-findings.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 7**.
+→ On return, proceed to **Step 8**.
 
 ---
 
-## Step 7: Apply Do-Now
+## Step 8: Apply Do-Now
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -259,11 +281,11 @@ Load **[prep-findings.md](references/prep-findings.md)** and follow its instruct
 
 Load **[apply-do-now.md](references/apply-do-now.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 8**.
+→ On return, proceed to **Step 9**.
 
 ---
 
-## Step 8: Produce Review
+## Step 9: Produce Review
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -279,11 +301,11 @@ Load **[apply-do-now.md](references/apply-do-now.md)** and follow its instructio
 
 Load **[produce-review.md](references/produce-review.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 9**.
+→ On return, proceed to **Step 10**.
 
 ---
 
-## Step 9: Present Review
+## Step 10: Present Review
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -299,18 +321,18 @@ Load **[produce-review.md](references/produce-review.md)** and follow its instru
 
 Load **[present-review.md](references/present-review.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 10**.
-
----
-
-## Step 10: Compliance Self-Check
-
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
-
 → On return, proceed to **Step 11**.
 
 ---
 
-## Step 11: Review Actions
+## Step 11: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 12**.
+
+---
+
+## Step 12: Review Actions
 
 Load **[review-actions-loop.md](references/review-actions-loop.md)** and follow its instructions as written.
