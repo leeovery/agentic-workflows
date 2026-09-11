@@ -64,8 +64,11 @@ code session at a time. Design log for the stack; decisions converged
   `last active {age} ago` wherever a hold is named — the deferral
   callout, the struck menu row, the map cue, the gates — so the user
   can weigh a session idle for hours against one that wrote a minute
-  ago. No surface turns that age into a verdict: a session left open
-  is still a session, and the analyses defer to it.
+  ago. Each surface names the hold it is about: the map cue reads
+  research and discussion holds alone, a planning or code session on
+  the same topic showing on its own menu row. No surface turns that
+  age into a verdict: a session left open is still a session, and the
+  analyses defer to it.
 
 ## Principles
 

@@ -827,6 +827,15 @@ describe('epic projections: presence join', () => {
     assert.match(epicDashboard('v1', d, { presence: [idle] }), /↳ Discussing · in session \(last active 3h ago\)/);
   });
 
+  it('the map cue reads research and discussion holds alone — a planning session\'s age never lands on the row', () => {
+    const planning = { phase: 'planning', topic: 'topic-a', age_seconds: 45, held: true, session_id: 's3' };
+    const alone = epicDashboard('v1', twoTopicDetail(), { presence: [planning] });
+    assert.doesNotMatch(alone, /in session/, `a planning-only hold cues nothing on the map: ${alone}`);
+    const both = epicDashboard('v1', twoTopicDetail(), { presence: [planning, { ...heldRow, age_seconds: 259200 }] });
+    assert.match(both, /↳ Discussing · in session \(last active 3d ago\)/, both);
+    assert.doesNotMatch(both, /45s ago/, both);
+  });
+
   it('a topic held in two phases cues the freshest session\'s age', () => {
     const research = { phase: 'research', topic: 'topic-a', age_seconds: 7200, held: true, session_id: 's2' };
     const out = epicDashboard('v1', twoTopicDetail(), { presence: [research, heldRow] });

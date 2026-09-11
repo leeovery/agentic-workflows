@@ -410,5 +410,5 @@ function deferralSection(scan) {
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly,
   scanPresence, scanProject, heldCodeSessions, heldDocument, cleanupPresence, deferralSection,
-  fmtAge, ownsRow, CODE_PHASES,
+  fmtAge, ownsRow, CODE_PHASES, SOURCE_PHASES,
 };

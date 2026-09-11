@@ -15,7 +15,7 @@ const { WORK_TYPE_PIPELINES, DERIVED_PHASES } = require('../../kernel/manifest-s
 const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menuFrame, cmdOption, callout } = require('./surfaces.cjs');
-const { fmtAge, CODE_PHASES } = require('../presence.cjs');
+const { fmtAge, CODE_PHASES, SOURCE_PHASES } = require('../presence.cjs');
 const { buildOrderLive } = require('../build-order.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
@@ -254,15 +254,18 @@ function heldSessions(presence) {
 }
 
 /**
- * Held topics with the freshest last-active age among the sessions holding
- * each — a map row spans research and discussion, so one topic can be held
- * twice.
+ * Held map topics with the freshest last-active age among the sessions
+ * holding each. The map is the research-and-discussion tree, so only those
+ * phases' holds cue a row — a planning or code session on the same topic
+ * shows on its own menu row, never as this row's age. A row spans both
+ * phases, so one topic can be held twice.
  * @param {PresenceRow[]|undefined} presence @returns {Map<string, number>}
  */
 function heldTopicAges(presence) {
   /** @type {Map<string, number>} */
   const ages = new Map();
   for (const r of heldSessions(presence)) {
+    if (!SOURCE_PHASES.includes(r.phase)) continue;
     ages.set(r.topic, Math.min(r.age_seconds, ages.get(r.topic) ?? Infinity));
   }
   return ages;
