@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.36] - 2026-09-11
+
+🔧 Changed
+
+- Outstanding research now holds a discussion shut at its door, not just at conclusion — every work type must land the topic's research before its discussion can be entered or reopened.
+- The epic menu carries one row per topic instead of a separate research row above the discussion — outstanding research is now the topic's own row until it lands.
+- Epic soft-gate messaging and cues updated to name discussion-blocked-by-research alongside the existing spec-blocked cue.
+- A discussion session already in progress when its research is reopened underneath it keeps running and meets the hold only at its conclusion, instead of being interrupted mid-session.
+
 ## [0.7.35] - 2026-09-11
 
 🐛 Fixed
