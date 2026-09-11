@@ -59,12 +59,26 @@ Work through each unresolved finding **sequentially** — a finding whose Resolu
 
 Read the next unresolved finding's **Move** — it decides everything that follows. Where the finding names none, classify it and record it in the tracking file: the answer owned by a source document rather than by this specification → `route` — a point the sources are silent on that a measurement or a sibling artifact pins is this move too (an Unsourced decision: the derivation belongs in the owning document, never the spec alone); exactly one defensible answer the sources or the specification's own decisions yield → `settled`, the derivation carried as the Proposal's reasoning; real options the search genuinely leaves to the user → `choice`, naming what was searched.
 
-Then dispose the move. The tracking file proposed; this session decides — against the bar, with the context the reviewer lacked: user rulings this sitting, findings landed earlier in this walk, the specification's own decisions, ground that has moved. Reclassification runs in both directions, always on a derivation written down.
+Then dispose the move. The tracking file proposed; this session decides — against the bar, with the context the reviewer lacked: user rulings this sitting, findings landed earlier in this walk, the specification's own decisions, ground that has moved. Reclassification runs in both directions, always on a derivation written down. A `settled` finding whose stated derivation no longer holds, or whose call you cannot yourself stand behind, is a `choice` and takes the bar like any other. A `choice` stands only when every prong holds:
 
-- A `settled` finding whose stated derivation no longer holds, or whose call you cannot yourself stand behind, is a `choice` — and takes the test below like any other.
-- A `choice` stands only when every prong holds: the fork is what the product's user gets or how it behaves; it is irreducible — no source, specification decision, measurement, sibling artifact, precedent, or constraint breaks the tie; a side visibly costs the user — a fork every side of which leaves the user well served is a preference, not a decision, settled on what leans; and the tie-break is product intent, which only the user holds. The staged `(recommended)` marker is the reviewer's argument, never a ground; a fork with one live side — a side no informed user would choose — is settled; a choice that names no search is not a verdict — run the search yourself. Below the bar it is `settled` where the sources, the specification's own decisions, or a defensible derivation — precedent, constraints, the feature's stated premise — yield exactly one answer (a point a source delegated to the specification included), and `route` where the sources are silent and a measurement or a sibling artifact pins the answer. A point that stays underivable stands as a `choice` — the specification never invents product intent.
+- **Product level** — the fork is what the product's user gets or how it behaves, never how the tree achieves it.
+- **Irreducible** — no source, specification decision, measurement, sibling artifact, precedent, or constraint breaks the tie.
+- **A side visibly costs the user** — a fork every side of which leaves the user well served is a preference, not a decision.
+- **The tie-break is product intent** — appetite, or a fact only the user holds.
+
+Three rules govern the evidence:
+
+- The staged `(recommended)` marker is the reviewer's argument, never a ground.
+- A fork with one live side — a side no informed user would choose — is settled.
+- A choice that names no search is not a verdict: run the search yourself.
+
+Below the bar: `settled` where the sources, the specification's own decisions, or a defensible derivation — precedent, constraints, the feature's stated premise — yield exactly one answer (a point a source delegated to the specification included; a preference settled on what leans); `route` where the sources are silent and a measurement or a sibling artifact pins the answer; `Declined` for a preference nothing leans on — no side costs the user, so the specification states no rule for it: set Resolution `Declined` with the reason in Notes, announce it in a line, commit, and render nothing. A point that stays underivable stands as a `choice` — the specification never invents product intent.
 
 Where the disposal moved anything — the move, or a search the staged choice never named — record it in the tracking file before anything renders. To `settled`: Move rewritten, the Proposal written with the derivation naming what decided it, the Options removed, Proposed Text — and Current where existing content changes — supplied as the format requires. To `choice`: Move rewritten, the Proposal replaced with Options, the search named. To `route`: Move rewritten, Proposal and Proposed Text removed.
+
+**If the disposal declined the finding:**
+
+→ Return to **B. Process One Item at a Time**.
 
 **If the next unresolved finding's Move is `route`:**
 
@@ -187,7 +201,7 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
 
 - **The exchange revises the content**: update the tracking file with the revised content — **B** re-presents the finding from the updated file, once.
 - **The exchange ends in agreement to apply**: land it as the `yes` branch does.
-- **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it exists only here, as the outcome of this exchange.
+- **The exchange concludes the finding should not land** — it is wrong, or real but not worth the ink: set Resolution `Declined` with the reason in Notes, announce it in a line, and commit. Declined is never offered as a menu row — it lands only here, as the outcome of this exchange, and at **B**'s dispose of a preference nothing leans on.
 
 → Return to **B. Process One Item at a Time**.
 

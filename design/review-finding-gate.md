@@ -106,7 +106,9 @@ that determines presentation is *who can answer it*.
   only the user holds. The spec has no judgment tier: a derivable
   point is settled or routed, never stopped, and an underivable one is
   a product-intent gap that stops as a choice — the spec never
-  invents.
+  invents. A preference nothing leans on is neither: no side costs the
+  user, so the spec states no rule for it — declined at dispose, with
+  its reason.
 
 - **F4 — a finding is report-class content.** It leads with what is
   wrong in product terms and what Claude would do about it, in the
@@ -147,10 +149,12 @@ that determines presentation is *who can answer it*.
   is held to the same bar: below it, the session settles it (the
   sources, the spec's own decisions, or a defensible derivation from
   precedent, constraints, or the feature's stated premise yield one
-  answer — a point a source delegated to the spec included) or routes
+  answer — a point a source delegated to the spec included), routes
   it (a source-silent point a measurement or sibling artifact pins
-  belongs in the owning document), and writes the derivation into the
-  tracking row before the finding renders. The staged `(recommended)`
+  belongs in the owning document), or declines it (a preference
+  nothing leans on — no side costs the user, so the spec states no
+  rule for it), and writes the derivation into the tracking row before
+  the finding renders. The staged `(recommended)`
   marker is the agent's argument, never a ground; a choice naming no
   search is re-derived from scratch. Neither verdict is final on its
   own, and both are accountable in writing: a stop costs a derivation
@@ -225,6 +229,15 @@ where call sequences move.
   passes the same move field, and it needs the presentation fix
   regardless: `add-task` and `add-phase` findings take the same
   `content` dump path.
+
+- **The reviewer proposes the move; the session disposes it.** Both
+  directions, against the bar, before the finding renders: a settled
+  call the session cannot stand behind becomes a choice; a choice the
+  record settles is rewritten settled with its derivation, or routed
+  where a measurement or sibling artifact pins a source-silent point.
+  Spec has no judgment tier: an underivable point stops as a choice,
+  and a preference nothing leans on — no side costs the user — is
+  declined at dispose with its reason, never stated as a rule.
 
 - **The claims agent's `Unreproducible → Gap/Ambiguity` mapping
   stands.** Under F1 it needs no category of its own: restate
