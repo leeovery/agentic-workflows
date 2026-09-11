@@ -284,11 +284,13 @@ Settled in PR 5 (2026-07-31):
   engine owning the layout: the `topic queue` read verb answers
   `{count, files}`, and no skill prose spells `.triage/`.
 - Mid-session triage surfacing (2026-08-01): the session loops'
-  findings check polls `topic queue`; a mid-flow landing is offered
+  triage check polls `topic queue`; a mid-flow landing is offered
   at the next natural break (drain now / later). Deferral is
   thread-scoped — the offer re-raises at every subsequent natural
-  break, the review-findings cadence — and the conclusion gate
-  remains the never-lost backstop.
+  break, the cadence at which landed agents are picked up
+  (discussion's review findings, research's deep dives — see
+  `design/research-aids.md`) — and the conclusion gate remains the
+  never-lost backstop.
 - Landing phase is judged, not liveness-derived (2026-08-01): the
   origin session judges research-vs-discussion from the concern's
   nature and recommends at the existing reroute gate; the delivery
