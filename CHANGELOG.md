@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.38] - 2026-09-11
+
+🔧 Changed
+- Specification review findings now hold to a stricter "choice" bar — only forks that change what the product does or how it behaves, that nothing in the record already settles, and where a side visibly costs the user, stop for a decision; everything else is settled automatically or declined with a reason.
+- The specification session, not just the reviewer, now has final say on each finding's classification — it can promote a settled finding to a choice or resolve/decline a choice, in both directions, before presenting it.
+
 ## [0.7.37] - 2026-09-11
 
 🔧 Changed
