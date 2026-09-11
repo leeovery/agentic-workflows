@@ -19,8 +19,10 @@ The prose should have taken this path:
 4. the user takes the move; one `topic requeue` transaction renumbers
    the file into synonym-handling's research queue, creates the
    research item as `triaged` (parked, never started), and commits
-   action-scoped; the session announces where the concern now waits
-   and, the queue being empty, emits the clear line
+   action-scoped; the session announces where the concern now waits —
+   that this discussion cannot conclude, nor be re-entered once this
+   session closes, until the research lands, the menu carrying the way
+   in — and, the queue being empty, emits the clear line
 5. the concern never becomes session material: no subtopic is added
    for it, no breakdown is presented, nothing about it is written
    into the discussion document
