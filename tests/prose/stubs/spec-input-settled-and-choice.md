@@ -2,7 +2,10 @@
 
 An input review agent returning three findings across the two moves the
 gate presents: two `settled` calls the sources determine, and one
-`choice` the sources leave genuinely open. Write the tracking file to
+`choice` the sources leave genuinely open — its search named, where the
+record ran out named, and each side's cost to the customer stated, so
+the choice clears the bar when the session disposes it. Write the
+tracking file to
 `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c1.md`
 via the `.txt`-then-rename mechanism, with the content below, then
 return the status block. Nothing else: no git activity, no other files.
@@ -85,14 +88,19 @@ When the gateway's webhook delivery fails, nothing says how long the
 checkout keeps waiting before it treats the payment as unconfirmed. A
 customer whose bank is slow either gets their order or gets told the
 payment failed, and the record does not decide which. Searched the
-discussion's Gateway Integration and Refund Handling sections and the
-specification's payment flow — no source states a ceiling, no
-measurement pins one, and the trade is appetite: how long a customer
-waits against how long the checkout holds unresolved state.
+discussion end to end — its Gateway Integration decision confirms
+capture by webhook and rules out polling, and its Refunds decision is
+silent on confirmation — and the specification's Gateway Integration
+and Refunds sections: no source states a ceiling, no other timeout in
+either document sets a precedent, no measurement pins one, and the
+feature's premise (confirm by webhook, never poll) holds under either
+side. The record ran out at the trade itself, which is appetite: a
+customer's order lost against a customer's order held in limbo — each
+side costs a customer something the other does not.
 
 **Options**:
-- Give up after three delivery attempts and mark the payment unconfirmed — fastest feedback, and a slow bank loses the order (recommended)
-- Keep accepting delivery for 24 hours and reconcile late confirmations — no lost orders, and the checkout holds unresolved state for a day
+- Give up after three delivery attempts and mark the payment unconfirmed — the customer hears within minutes, and a customer whose bank is slow loses the order (recommended)
+- Keep accepting delivery for 24 hours and reconcile late confirmations — no customer loses an order, and a customer whose bank is slow waits up to a day with no confirmation and no dispatch
 
 **Resolution**: Pending
 **Notes**:

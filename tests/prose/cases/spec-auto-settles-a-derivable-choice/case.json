@@ -1,5 +1,5 @@
 {
-  "origin": "The finding gate presented a call Claude had already made as a y-or-skip stop over an approved auto gate, because the shape came from the finding's category rather than the move it owed. This pins the contract that replaced it: a settled call rides auto with no stop, and a choice stops anyway — auto means don't pause me for what you can decide, never decide what you can't. The choice here is one the session's dispose holds: its search is named and each side costs the customer, so it clears the bar and stops on merit rather than on the agent's say-so.",
+  "origin": "A specification review under auto stopped twice on findings the input review agent had staged as choices, neither naming what was searched — one asked which rule governs a list after a re-render when the discussion tied the rule switch to exactly one event, the user's hand edit; the derivation sat in the agent's own recommended option. The agent's choice was final because the loop only ever promoted settled to choice and never disposed a choice against the bar. This pins the dispose: a staged choice the record settles is rewritten settled with its derivation before it renders, and rides auto with no stop — while a choice that clears the bar in the same walk still stops, so the dispose discriminates rather than blanket-settles.",
   "entry": "workflow-specification-entry",
   "world": "claims",
   "files": [
@@ -33,10 +33,10 @@
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-shared/references/reconcile-advisory.md"
   ],
-  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. At the first finding — the missing 30-day refund window — they see the discussion already decided it and say so: they choose auto, because they do not want to be stopped again for things the record has already settled. When the second refund detail lands without asking them, that is what they wanted. The third finding is different and they treat it differently: nothing decided how long a failed webhook keeps retrying, and both ways cost something real. They reject the recommendation — three attempts is too few for a bank having a bad morning, and they would rather hold state for a day than lose orders — and pick the 24-hour reconciliation option instead. With auto set, the follow-up review cycle runs without asking them and comes back clean, and the session moves to completion on its own; at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
+  "conduct": "The user is resuming their card-payments specification to run its review; construction finished last sitting, so offered the resume choice they continue. At the first finding — the missing 30-day refund window — they see the discussion already decided it and say so: they choose auto, because they do not want to be stopped again for things the record has already settled. They know the discussion cold and treat what it determines as decided, not theirs to re-litigate — the quoted total was settled with one release only, the customer's own edit to the cart, and they hold to that reading whenever it comes up. The failed-webhook retry ceiling is different and they treat it differently: nothing decided how long the checkout keeps waiting, and both ways cost a customer something real. Asked, they reject the recommendation — three attempts is too few for a bank having a bad morning, and they would rather hold a customer's order for a day than lose it — and pick the 24-hour reconciliation option instead. With auto set, the follow-up review cycle runs without asking them and comes back clean, and the session moves to completion on its own; at sign-off they confirm. Throughout they answer concretely and never reopen decided questions.",
   "stubs": {
     "spec-review-clean": "when the prose dispatches the claims verification or gap analysis agent via the Task tool (any cycle), and when it dispatches the input review agent for review cycle 2 or later — each returns the content below and writes no file",
-    "spec-input-settled-and-choice": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
+    "spec-input-derivable-and-open-choice": "when the prose dispatches the input review agent via the Task tool for review cycle 1 — write the tracking file and return the status block as the stub describes"
   },
   "invariants": {
     "engine_before_write": true,
@@ -54,6 +54,8 @@
     "calls_exclude": [
       "render spec-review-gate pay.specification.pay --variant reloop",
       "render incoherence-gate",
+      "presence scan",
+      "knowledge.cjs index .workflows/pay/discussion/pay.md",
       "topic reopen",
       "topic triage",
       "sources stale",
