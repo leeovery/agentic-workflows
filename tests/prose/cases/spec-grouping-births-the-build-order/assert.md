@@ -4,7 +4,7 @@ The prose should have taken this path:
    the grouping analysis — both discussions are concluded, so the
    analyze route passes its gates
 2. the analysis checks presence before reading anything — no source
-   session is live, so nothing defers and no deferral is emitted
+   session is held, so nothing defers and no deferral is emitted
 3. the analysis forms groupings from the two concluded discussions
    (their exact shape and names are the model's judgment) and persists
    the whole reconcile through one `manifest apply`

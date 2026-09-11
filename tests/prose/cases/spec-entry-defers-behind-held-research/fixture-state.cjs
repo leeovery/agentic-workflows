@@ -6,11 +6,10 @@
 // topic's research is under way right now, in another session.
 //
 // The hold is declared rather than beaten. Heartbeats are excluded from
-// every snapshot, so materialise stamps this one from the sidecar with
-// a fresh mtime; it carries no identity, the legacy record's shape,
-// which reads `held` from mtime alone — held for longer than any walk
-// runs, and owned by nobody, so the walking session cannot mistake it
-// for its own.
+// every snapshot, so materialise stamps this one from the sidecar; the
+// row declares no identity, so it is stamped as pid 1 — alive for as
+// long as the machine is, and owned by nobody, so the walking session
+// cannot mistake it for its own.
 
 const e = require('../../mainlines/epic.cjs');
 
@@ -23,7 +22,7 @@ module.exports = {
     e.harvest(h);
     e.completeDiscussions(h);
 
-    // The live peer: a research session part-way through the topic the
+    // The held peer: a research session part-way through the topic the
     // epic's own map routed to research.
     h.engine('topic', 'start', WU, 'research', 'relevance-measurement');
     h.write(`.workflows/${WU}/research/relevance-measurement.md`, [

@@ -2880,6 +2880,19 @@ describe('render proposed-task', () => {
     assert.ok(held.includes('MENU: incoherence held doc'));
     assert.ok(held.includes('**`◆ How do you want to continue?`**'));
     assert.ok(/\*\*`s\/stop`\*\* +→ Stop here/.test(held));
+    assert.ok(unwrap(held).includes('"synonym-handling" is open in another session, so the fix belongs there; this topic waits for it.'),
+      `no holder found at render time — the gate names no age: ${held}`);
+  });
+
+  it('incoherence-gate held-doc names the holder\'s last-active age, however long idle', () => {
+    const peer = path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'synonym-handling', 'presence');
+    fs.mkdirSync(path.dirname(peer), { recursive: true });
+    fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
+    const idle = new Date(Date.now() - 3 * 3600 * 1000);
+    fs.utimesSync(peer, idle, idle);
+    const file = writePayload(dir, 'ig2c.json', { doc: 'synonym-handling', lane: 'review' });
+    const held = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'held-doc' });
+    assert.ok(unwrap(held).includes('"synonym-handling" is open in another session — last active 3h ago — so the fix belongs there; this topic waits for it.'), held);
   });
 
   it('cancel-cascade-gate derives the collapse set — started cancelled, proposed discarded; refuses when nothing sources the topic', () => {
@@ -3466,11 +3479,17 @@ describe('render code-gate', () => {
   });
   afterEach(() => teardown(dir));
 
-  /** A held heartbeat owned by another session. */
+  // Sessions are processes. `mine` runs as this process — alive with a real
+  // start time, so its beats are verifiable. `theirs` is only ever the gated
+  // entrant, which stamps nothing, so a reaped pid serves: never this
+  // process, never the pid-1 holder, so neither owns the other's rows.
+  const PID_OF = { mine: process.pid, theirs: require('child_process').spawnSync('node', ['-e', '']).pid };
+
+  /** A held heartbeat owned by another session — pid 1, always alive and never a session here. */
   function holdCode(workUnit, phase, topic, ageSeconds = 0) {
     const file = path.join(dir, '.workflows', '.cache', workUnit, phase, topic, 'presence');
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ pid: null, pid_start: null, session_id: 'peer' }) + '\n');
+    fs.writeFileSync(file, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
     if (ageSeconds) {
       const when = new Date(Date.now() - ageSeconds * 1000);
       fs.utimesSync(file, when, when);
@@ -3481,14 +3500,14 @@ describe('render code-gate', () => {
   /**
    * Render as a named session. Identity is what presence records and what
    * every consumer compares against, so a test about two sessions is a test
-   * about two identities — and the pid is stripped so ownership rests on the
-   * session id alone (both "sessions" are this one process).
+   * about two identities — session id and pid both, from PID_OF.
+   * @param {'mine'|'theirs'} sessionId @param {string} dotpath
    */
   function renderAs(sessionId, dotpath) {
     const session = process.env.CLAUDE_CODE_SESSION_ID;
     const pid = process.env.CLAUDE_PID;
     process.env.CLAUDE_CODE_SESSION_ID = sessionId;
-    delete process.env.CLAUDE_PID;
+    process.env.CLAUDE_PID = String(PID_OF[/** @type {keyof typeof PID_OF} */ (sessionId)]);
     try {
       return renderSurface(dir, 'code-gate', { dotpath });
     } finally {
@@ -3523,7 +3542,7 @@ describe('render code-gate', () => {
     assert.match(out, /⚑ Another session is implementing "Pay" \(pay\)/, out);
 
     // The holder re-reading its own gate stays empty and refreshes its hold —
-    // backdated past the staleness window, the re-render brings it back.
+    // backdated, the re-render brings its last-active age back to now.
     const slot = slotOf('pay', 'implementation', 'pay');
     const stale = new Date(Date.now() - 600 * 1000);
     fs.utimesSync(slot, stale, stale);
@@ -3537,6 +3556,13 @@ describe('render code-gate', () => {
     assert.notStrictEqual(renderAs('mine', 'pay.review.pay'), '');
     assert.ok(!fs.existsSync(slotOf('pay', 'review', 'pay')),
       'the gate is a stop, not an entry — nothing is held until the slot is free');
+  });
+
+  it('a holder idle for hours still holds the slot — the gate names its age and nothing else changes', () => {
+    holdCode('ship', 'implementation', 'checkout-flow', 3 * 3600);
+    const out = renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' });
+    assert.match(out, /⚑ Another session is implementing "Checkout Flow" \(ship\) — last active 3h ago\./, out);
+    assert.match(out, /=== MENU: code gate/, out);
   });
 
   it('states the holder in the red register and offers back first, proceed second', () => {

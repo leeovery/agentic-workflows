@@ -256,7 +256,7 @@ supersession → the class decision 5 makes silent).
   folded per-PR, children restacked. Rulings:
   - **The silent route verifies its ground**: entry B reads the spec
     item's status (anything but `completed` routes out) and scans
-    presence (a held-and-live spec session defers the entry) — the
+    presence (a held spec session defers the entry) — the
     resolve-source-incoherence precedent, both checks.
   - **The decision question leaves the chrome**: it renders as the
     display body's `**Decision**:` line; the menu asks the engine's

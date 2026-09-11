@@ -29,7 +29,7 @@ const {
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
 const { migrationGate, labelGate } = require('./projections/boot.cjs');
-const { heldCodeSessions, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
+const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const {
   roadmapMapView,
@@ -1293,7 +1293,7 @@ function linters(cwd, { dotpath, file, variant }) {
 //   gap-route — the gap raise plus its acknowledgement gate: the menu states
 //               the routing intent and confirms it (no "no" — an objection
 //               arrives as Comment and drops into the settleable exchange)
-//   held-doc  — the fallback when a live session holds the owning document
+//   held-doc  — the fallback when another session holds the owning document
 // The raise body takes the finding idiom: bold head, one meta bullet per
 // cited quote, a labelled context paragraph, stakes beneath.
 // ---------------------------------------------------------------------------
@@ -1323,7 +1323,7 @@ function incoherenceGate(cwd, args) {
     throw new Error('render incoherence-gate: --variant must be "conflict", "gap-route", or "held-doc"');
   }
   if (!file) throw new Error('render incoherence-gate: --file <payload.json> is required');
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'incoherence-gate');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'incoherence-gate');
   const p = readJsonPayload(cwd, file, 'incoherence-gate');
   if (!isFilled(p.doc)) throw new Error('render incoherence-gate: "doc" must be a non-empty string');
   if (!Object.hasOwn(LANE_GATE_FIELDS, p.lane)) {
@@ -1387,8 +1387,10 @@ function incoherenceGate(cwd, args) {
       )),
     ].join('\n');
   }
+  const holder = heldDocument(cwd, workUnit, p.doc);
+  const lastActive = holder ? ` — last active ${fmtAge(holder.age_seconds)} ago —` : ',';
   return section('MENU: incoherence held doc', INCOHERENCE_STOP, menu(
-    `${overAuto ? `${AUTO_OVERRIDE_LINE}\n\n` : ''}"${p.doc}" is open in another session right now, so the fix belongs there — this topic waits for it.`,
+    `${overAuto ? `${AUTO_OVERRIDE_LINE}\n\n` : ''}"${p.doc}" is open in another session${lastActive} so the fix belongs there; this topic waits for it.`,
     [
       cmdOption('n', 'next', 'Queue the resolution and carry on here'),
       cmdOption('s', 'stop', 'Stop here; re-enter after that session lands it'),

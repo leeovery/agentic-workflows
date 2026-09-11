@@ -62,13 +62,15 @@ const WORLD_HISTORY = '.world-history.json';
 // world itself.
 //
 // Heartbeats a PEER session holds — [{"work_unit", "phase", "topic"
-// [, "session_id", "pid", "pid_start"]}]. Presence files are excluded
-// from every snapshot (timing noise no case claim can pin), so a
-// fixture that needs a peer's hold declares it here instead, and
-// materialise stamps it last: the mtime is the liveness signal and
-// must read fresh for the walk that follows. Omit the identity fields
-// for the mtime-fallback record — held while the file is younger than
-// the staleness window, which no walk outlives.
+// [, "session_id", "pid"]}]. Presence files are excluded from every
+// snapshot (timing noise no case claim can pin), so a fixture that
+// needs a peer's hold declares it here instead, and materialise beats
+// it last through the engine's own verb, as that peer: the mtime is
+// the row's "last active" age, and it reads freshest of anything in
+// the world. A row that omits `pid` is beaten as pid 1 — always alive,
+// never the walker's own process, no session id — so it reads held
+// and owned by nobody. A declared `pid` is beaten as that process: a
+// dead one on purpose reads unheld.
 const WORLD_PRESENCE = '.world-presence.json';
 
 // Snapshot paths left OUT of the world's commits. Everything a recipe
@@ -526,20 +528,18 @@ function buildWorld(caseId) {
   // Last, after every commit: what a peer session left behind. The dirt
   // stands untracked because it was held back from the commits above;
   // the heartbeats are stamped here so their mtimes are the freshest
-  // thing in the world, which is what makes a peer read live.
+  // thing in the world.
   for (const rel of dirt.keys()) {
     const dest = path.join(dir, rel);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, snap.get(rel));
   }
   for (const row of presence) {
-    const file = path.join(dir, '.workflows', '.cache', row.work_unit, row.phase, row.topic, 'presence');
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({
-      pid: row.pid ?? null,
-      pid_start: row.pid_start ?? null,
-      session_id: row.session_id ?? null,
-    }) + '\n');
+    const env = { ...recipeEnv(), CLAUDE_PID: String(row.pid ?? 1), CLAUDE_CODE_SESSION_ID: row.session_id ?? '' };
+    const res = spawnSync('node', [ENGINE, 'presence', 'beat', row.work_unit, row.phase, row.topic], { cwd: dir, encoding: 'utf8', env });
+    if (res.status !== 0) {
+      throw new Error(`peer heartbeat failed: ${row.work_unit} ${row.phase}/${row.topic}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+    }
   }
 
   return dir;

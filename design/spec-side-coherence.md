@@ -118,9 +118,9 @@ resolution as-you-go, one mechanism.
   decided in that session — no meta-narration of where it came from.
   Then `knowledge index <path>` (single-file re-chunk) and an
   action-scoped commit naming the repair.
-- **Presence guard.** Discussions can be live in concurrent sessions.
+- **Presence guard.** Discussions can be open in concurrent sessions.
   Before any spec-side doc update: `presence scan`; if the target
-  discussion is held and live, do not edit — land the resolution as a
+  discussion is held, do not edit — land the resolution as a
   triage concern for that session to fold in instead.
 - **Cross-spec staleness (the safety valve).** `row.status = 'stale'`
   currently has exactly one assignment site: the reverse join on

@@ -5,11 +5,10 @@
 // implementation topic.
 //
 // The hold is declared, not beaten: a heartbeat is excluded from every
-// snapshot, so materialise stamps it from the sidecar with a fresh
-// mtime. It carries no identity, which is the legacy record's shape and
-// the one that reads `held` from mtime alone — held while the file is
-// younger than the staleness window, which outlasts any walk, and owned
-// by nobody, so the walking session can never mistake it for its own.
+// snapshot, so materialise stamps it from the sidecar. The row declares
+// no identity, so it is stamped as pid 1 — alive for as long as the
+// machine is, and owned by nobody, so the walking session can never
+// mistake it for its own.
 //
 // One work unit, not two: the collision the gate exists for is the
 // common one — the implementation session still open on the checkout

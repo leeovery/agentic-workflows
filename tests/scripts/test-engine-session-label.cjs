@@ -19,6 +19,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync, execFileSync } = require('child_process');
+const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
@@ -152,7 +153,7 @@ function writeStash(basename, record) {
 
 /** The suite process's kernel start time — a live owner identity for hand-written records. */
 function ownStartTime() {
-  return execFileSync('ps', ['-p', String(process.pid), '-o', 'lstart='], { encoding: 'utf8' }).trim();
+  return processStartTime(process.pid);
 }
 
 function optIn() {

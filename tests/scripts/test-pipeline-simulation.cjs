@@ -215,7 +215,14 @@ class Sim {
     // A real session always carries its identity, and presence reads it to
     // tell its own holds from a peer's — pin one so the sim never gates
     // against itself, whatever the host environment carries.
-    this.env = { ...process.env, WORKFLOWS_CONFIG_DIR: path.join(this.dir, '.wf-config'), CLAUDE_CODE_SESSION_ID: 'sim-session' };
+    // The sim's own identity: this process, alive with a real start time, so
+    // the rows its verbs beat read `held`.
+    this.env = {
+      ...process.env,
+      WORKFLOWS_CONFIG_DIR: path.join(this.dir, '.wf-config'),
+      CLAUDE_CODE_SESSION_ID: 'sim-session',
+      CLAUDE_PID: String(process.pid),
+    };
     delete this.env.TMUX;
     delete this.env.TMUX_PANE;
   }
@@ -1113,12 +1120,14 @@ describe('pipeline simulation', () => {
     const rowOf = (scan, phase, topic) => scan.sessions.find((r) => r.phase === phase && r.topic === topic);
     assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'research', 'beta'),
       'the verbs a session runs on its own topic leave a heartbeat behind');
-    // A beat reads live and held (deferral territory for the bridge,
-    // in-session territory for the epic view); the orderly clear drops it.
+    // A beat reads held (deferral territory for the bridge, in-session
+    // territory for the epic view); the orderly clear drops it.
     sim.run(['presence', 'beat', wu, 'research', 'alpha']);
     const present = sim.run(['presence', 'scan', wu]);
-    assert.strictEqual(rowOf(present, 'research', 'alpha').live, true);
     assert.strictEqual(rowOf(present, 'research', 'alpha').held, true);
+    assert.ok(!('live' in rowOf(present, 'research', 'alpha')), 'held is the one verdict — idle time is shown, never judged');
+    assert.strictEqual(present.held_sources, 0, 'a session\'s own rows never defer it');
+    assert.strictEqual(sim.sections, '', 'and no deferral section rides its scan');
     sim.run(['presence', 'clear', wu, 'research', 'alpha']);
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'research', 'alpha'), undefined);
     // The project-wide scan is the code gate's read: every work unit's rows,
@@ -2638,8 +2647,8 @@ describe('pipeline simulation', () => {
       return res.pid;
     };
 
-    const specSession = sim.session('spec-session');
-    const talkSession = sim.session('discussion-session');
+    const specSession = sim.session('spec-session', process.ppid);
+    const talkSession = sim.session('discussion-session', 1);
     const codeSession = sim.session('code-session');
     const secondCoder = sim.session('review-session', reapedPid());
 
@@ -2711,10 +2720,11 @@ describe('pipeline simulation', () => {
     const talkRow = rowOf(interleaved, 'discussion', 'ranking');
     assert.strictEqual(specRow.session_id, 'spec-session', "A's heartbeat carries A's identity");
     assert.strictEqual(talkRow.session_id, 'discussion-session', "B's heartbeat carries B's identity");
-    assert.ok(specRow.live && specRow.held && talkRow.live && talkRow.held,
-      'both document sessions read live and held');
-    assert.strictEqual(interleaved.live_sources, 1,
-      'only the discussion counts as a source — a live spec session defers no analysis');
+    assert.ok(specRow.held && talkRow.held, 'both document sessions read held');
+    assert.strictEqual(interleaved.held_sources, 1,
+      'only the discussion counts as a source — a held spec session defers no analysis');
+    assert.ok(sim.sections.includes('=== DISPLAY: presence deferral') && sim.sections.replace(/\n +/g, ' ').includes('discussion/ranking (last active'),
+      `the deferral section rides the scan the dispatch prose reads it from: ${sim.sections}`);
 
     // --- the code slot ------------------------------------------------------
     // The slot is taken at the entry chokepoint, not at the first commit:
@@ -2772,7 +2782,7 @@ describe('pipeline simulation', () => {
     // Three sessions hold, one of them code; the source count is unmoved.
     const holding = sim.run(['presence', 'scan', wu]);
     assert.strictEqual(holding.held, 3, 'two document sessions and one code session hold');
-    assert.strictEqual(holding.live_sources, 1, 'a live code session defers no analysis either');
+    assert.strictEqual(holding.held_sources, 1, 'a held code session defers no analysis either');
     assert.strictEqual(rowOf(holding, 'implementation', 'dispatch').session_id, 'code-session');
 
     // --- the dead peer's leavings ------------------------------------------
@@ -2797,7 +2807,6 @@ describe('pipeline simulation', () => {
     const afterSweep = rowOf(sim.run(['presence', 'scan', wu]), 'research', 'metrics');
     assert.strictEqual(afterSweep.session_id, 'ghost-session', 'the sweep left the dead record alone');
     assert.strictEqual(afterSweep.held, false, 'the swept topic is not resurrected');
-    assert.strictEqual(afterSweep.live, false);
 
     // The suppression is what did it: the same commit without `--sweep` beats.
     sim.write(`.workflows/${wu}/research/metrics.md`, '# Research — Metrics\n\nHalf a paragraph.\n\nPicked back up.\n');

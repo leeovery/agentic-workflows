@@ -620,10 +620,10 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     // The spec-side resolution edits and reindexes another phase's document,
     // so its commit carries both riders. `--kb` means the action touched the
     // store; it never means this session owns the topic — and a peer that is
-    // alive but idle still holds it. Clearing there would delete a live hold.
+    // alive but idle still holds it. Clearing there would delete a hold another session still owns.
     const peer = beatFile('discussion', 'topic-b');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
-    fs.writeFileSync(peer, JSON.stringify({ pid: null, pid_start: null, session_id: 'peer' }) + '\n');
+    fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
 
     writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\nresolution landed\n');
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',
@@ -643,7 +643,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     engine(dir, ['topic', 'complete', 'payments', 'discussion', 'topic-b']);
     const peer = beatFile('discussion', 'topic-b');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
-    fs.writeFileSync(peer, JSON.stringify({ pid: null, pid_start: null, session_id: 'peer' }) + '\n');
+    fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
 
     writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\nthe resolution landed\n');
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',

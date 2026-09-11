@@ -677,7 +677,7 @@ describe('epic projections: presence join', () => {
     });
   }
 
-  const heldRow = { phase: 'discussion', topic: 'topic-a', age_seconds: 120, held: true, live: true, session_id: 's1' };
+  const heldRow = { phase: 'discussion', topic: 'topic-a', age_seconds: 120, held: true, session_id: 's1' };
 
   it('a held topic keeps its position struck through; the recommendation skips to the next row in place', () => {
     const { keys, rendered } = epicMenu('v1', twoTopicDetail(), { presence: [heldRow] });
@@ -707,9 +707,9 @@ describe('epic projections: presence join', () => {
   });
 
   it('an unheld or phase-mismatched presence row marks nothing', () => {
-    const stale = { ...heldRow, held: false, live: false };
-    const wrongPhase = { phase: 'research', topic: 'topic-a', age_seconds: 10, held: true, live: true, session_id: 's2' };
-    const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [stale, wrongPhase] });
+    const dead = { ...heldRow, held: false };
+    const wrongPhase = { phase: 'research', topic: 'topic-a', age_seconds: 10, held: true, session_id: 's2' };
+    const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [dead, wrongPhase] });
     assert.ok(!keys.some((k) => k.in_session), 'no entry marked');
     assert.strictEqual(keys.find((k) => k.topic === 'topic-a').recommended, true);
   });
@@ -747,7 +747,7 @@ describe('epic projections: presence join', () => {
     const d = readyToImplementDetail();
     // A code session holding a different work unit's topic — one slot, one
     // checkout.
-    const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, live: true, session_id: 'peer' };
+    const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, session_id: 'peer' };
     const { keys, rendered } = epicMenu('v1', d, { presence: [], codeHeld: [codeRow] });
     const code = keys.find((k) => k.action === 'start_implementation');
     assert.ok(code, 'the implementation entry is on the menu');
@@ -763,7 +763,7 @@ describe('epic projections: presence join', () => {
 
   it('a code entry is marked by its own held topic too, and still carries the slot marker', () => {
     const d = readyToImplementDetail();
-    const ownRow = { phase: 'implementation', topic: 'topic-a', age_seconds: 30, held: true, live: true, session_id: 'peer' };
+    const ownRow = { phase: 'implementation', topic: 'topic-a', age_seconds: 30, held: true, session_id: 'peer' };
     const { keys, rendered } = epicMenu('v1', d, { presence: [ownRow], codeHeld: [] });
     const code = keys.find((k) => k.action === 'start_implementation');
     assert.strictEqual(code.in_session, true);
@@ -787,7 +787,7 @@ describe('epic projections: presence join', () => {
         planning: { items: { 'topic-a': { status: 'completed', format: 'local-markdown' } } },
       },
     });
-    const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, live: true, session_id: 'peer' };
+    const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, session_id: 'peer' };
 
     const free = epicMenu('v2', d, { presence: [], codeHeld: [] });
     assert.strictEqual(free.keys.find((k) => k.action === 'start_implementation').recommended, true,
@@ -807,12 +807,40 @@ describe('epic projections: presence join', () => {
     assert.doesNotMatch(gate, /Code phases run one at a time/, 'the code wording belongs to the code-gate surface');
   });
 
-  it('the dashboard cues held map rows on their ↳ state lines (no key legend needed)', () => {
+  it('the dashboard cues held map rows on their ↳ state lines, with the session\'s last-active age', () => {
     const d = twoTopicDetail();
     const out = epicDashboard('v1', d, { presence: [heldRow] });
-    assert.match(out, /◐ Topic A\n\s*│\s*↳ Discussing · in session/, out);
+    assert.match(out, /◐ Topic A\n\s*│\s*↳ Discussing · in session \(last active 2m ago\)\n/, out);
     assert.doesNotMatch(out, /↳ Fresh · routed to discussion · in session/, out);
     assert.strictEqual(epicKey(d), '', 'the ↳ state line carries the words — no session legend');
+  });
+
+  it('a hold idle for hours is still a hold — struck, gated, and cued with its age', () => {
+    const idle = { ...heldRow, age_seconds: 10800 };
+    const d = twoTopicDetail();
+    const { keys, rendered } = epicMenu('v1', d, { presence: [idle] });
+    const marked = keys.find((k) => k.in_session);
+    assert.strictEqual(marked.topic, 'topic-a');
+    assert.notStrictEqual(marked.recommended, true, 'never recommended, however long idle');
+    assert.ok(/~~Continue "Topic A" — \*discussion\*~~ · in session \(last\n +active 3h ago\)/.test(rendered), rendered);
+    assert.match(epicInSessionGate('v1', marked), /"Topic A" is open in another session — last active 3h ago\./);
+    assert.match(epicDashboard('v1', d, { presence: [idle] }), /↳ Discussing · in session \(last active 3h ago\)/);
+  });
+
+  it('the map cue reads research and discussion holds alone — a planning session\'s age never lands on the row', () => {
+    const planning = { phase: 'planning', topic: 'topic-a', age_seconds: 45, held: true, session_id: 's3' };
+    const alone = epicDashboard('v1', twoTopicDetail(), { presence: [planning] });
+    assert.doesNotMatch(alone, /in session/, `a planning-only hold cues nothing on the map: ${alone}`);
+    const both = epicDashboard('v1', twoTopicDetail(), { presence: [planning, { ...heldRow, age_seconds: 259200 }] });
+    assert.match(both, /↳ Discussing · in session \(last active 3d ago\)/, both);
+    assert.doesNotMatch(both, /45s ago/, both);
+  });
+
+  it('a topic held in two phases cues the freshest session\'s age', () => {
+    const research = { phase: 'research', topic: 'topic-a', age_seconds: 7200, held: true, session_id: 's2' };
+    const out = epicDashboard('v1', twoTopicDetail(), { presence: [research, heldRow] });
+    assert.match(out, /↳ Discussing · in session \(last active 2m ago\)/, out);
+    assert.doesNotMatch(out, /2h ago/, out);
   });
 });
 
@@ -1291,7 +1319,7 @@ describe('epic projections: the topic-grain experiment entry', () => {
 
   it('a held laboratory session strikes the entry and hands the recommendation onward', () => {
     const { keys } = epicMenu('lab', labDetail(), {
-      presence: [{ phase: 'experiment', topic: 'timing', age_seconds: 60, held: true, live: true, session_id: 'peer', pid: null }],
+      presence: [{ phase: 'experiment', topic: 'timing', age_seconds: 60, held: true, session_id: 'peer', pid: null }],
     });
     const entry = keys.find((k) => k.action === 'continue_experiment');
     assert.strictEqual(entry.in_session, true);
@@ -1479,7 +1507,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
   it('a held research session strikes the topic\'s one row — the held discussion is no substitute, and nothing is recommended', () => {
     const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
     const { keys } = epicMenu('v1', d, {
-      presence: [{ phase: 'research', topic: 'billing', age_seconds: 30, held: true, live: true, session_id: 'peer', pid: null }],
+      presence: [{ phase: 'research', topic: 'billing', age_seconds: 30, held: true, session_id: 'peer', pid: null }],
     });
     assert.strictEqual(keys[0].action, 'continue_research');
     assert.strictEqual(keys[0].in_session, true);

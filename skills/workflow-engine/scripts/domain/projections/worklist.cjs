@@ -17,7 +17,7 @@
 //
 // Row text is markdown-escaped; a title may legitimately contain `*` or
 // `~`. Strikethrough marks a decided row — struck means done here, while
-// the epic menu's struck option means held by another live session; the
+// the epic menu's struck option means held by another session; the
 // two never share a surface.
 // ---------------------------------------------------------------------------
 
