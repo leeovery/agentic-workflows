@@ -4,21 +4,15 @@
 
 ---
 
-Check whether a discussion already exists for this work unit and topic. Branch on the `phase_status` the caller read in Step 1 — no re-read.
+Branch on the `phase_status` the caller read in Step 3 — no re-read.
 
-#### If `phase_status` is empty (discussion doesn't exist — fresh start)
+#### If status is `triaged`
 
-Nothing to validate — `source` keeps the value set in Step 1.
-
-→ Return to caller.
-
-#### If `phase_status` is `triaged`
-
-Rerouted concerns are parked on this topic, but no session has ever run — this is a first start, not a resume. No reopen, no phase note, no reconcile advisory. Set `source = "topic-provided"` unless already set.
+Rerouted concerns are parked on this topic, but no session has ever run — this is a first start, not a resume. No reopen, no phase note, no reconcile advisory; `source` keeps its value.
 
 → Return to caller.
 
-#### If discussion exists and status is `in-progress`
+#### If status is `in-progress`
 
 Render and emit the section verbatim:
 
@@ -32,7 +26,7 @@ Set source="continue".
 
 → Return to caller.
 
-#### If discussion exists and status is `completed`
+#### If status is `completed`
 
 Reopen it:
 
@@ -51,3 +45,9 @@ Set source="continue".
 → Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
 
 → Return to caller.
+
+#### Otherwise
+
+The discussion is cancelled — it returns through the epic menu's reactivate option, never through entry. Tell the user in one line.
+
+**STOP.** Do not proceed — terminal condition.

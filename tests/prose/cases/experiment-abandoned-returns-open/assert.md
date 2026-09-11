@@ -1,6 +1,7 @@
 The prose should have taken this path:
 
-1. the entry reads the discussion status, finds it in progress, and
+1. the entry asks the engine whether research is outstanding on the
+   topic (it is not), then reads the discussion status, finds it in progress, and
    emits the resuming phase note; the reconcile check finds
    `experiment` and takes the advisory's experiment branch: the
    wait-released callout, the series register rendered verbatim —

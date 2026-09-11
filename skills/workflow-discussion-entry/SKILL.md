@@ -37,25 +37,9 @@ Store work_unit for the handoff.
 
 #### If `topic` resolved
 
-Read the discussion phase status:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} status
-```
-
-Store the result as `phase_status`.
-
-**If empty (no discussion entry — new entry):**
-
 Set `source = "topic-provided"`.
 
-Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
-
-→ On return, proceed to **Step 3**.
-
-**Otherwise (an entry exists):**
-
-→ On return, proceed to **Step 2** (Validate Phase).
+→ Proceed to **Step 2**.
 
 #### If no `topic`
 
@@ -83,9 +67,25 @@ Emit both sections verbatim per their markers.
 
 **If the output is empty:**
 
-Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-discovery-item` in Step 2. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
+Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-discovery-item` in Step 3. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
 
-Read the discussion phase status for the resolved topic:
+→ Proceed to **Step 2**.
+
+---
+
+## Step 2: Validate Research
+
+Load **[validate-research.md](references/validate-research.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 3**.
+
+---
+
+## Step 3: Check Phase Entry
+
+Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`. On the direct-entry path (`source = "fresh"`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. On the topic-resolved path, omit both — the caller didn't derive them.
+
+Read the discussion phase status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} status
@@ -93,21 +93,25 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 Store the result as `phase_status`.
 
-→ Proceed to **Step 2** (Validate Phase).
+#### If output is empty (no discussion entry)
+
+→ Proceed to **Step 5**.
+
+#### Otherwise
+
+→ Proceed to **Step 4**.
 
 ---
 
-## Step 2: Validate Phase
-
-Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`. On the direct-entry path (`source = "fresh"`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. On the topic-resolved path, omit both — the caller didn't derive them.
+## Step 4: Validate Phase
 
 Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `{phase_status}`.
 
-→ On return, proceed to **Step 3**.
+→ On return, proceed to **Step 5**.
 
 ---
 
-## Step 3: Gather Context
+## Step 5: Gather Context
 
 Decide whether a context interview is needed. The durable inputs — the carrier, the discovery brief, completed research — are seeded by the processing skill, never from here; any read below only decides the route.
 
@@ -119,7 +123,7 @@ Single-phase work (feature, cross-cutting) shaped in discovery leaves its carrie
 
 A usable carrier exists — nothing to gather.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 6**.
 
 **Otherwise:**
 
@@ -127,7 +131,7 @@ No usable carrier — the log is missing or has no **Exploration**. Gather conte
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 4**.
+→ On return, proceed to **Step 6**.
 
 #### If `work_type` is `epic`
 
@@ -143,16 +147,16 @@ The topic was started fresh, not shaped on the map — there is no curated carri
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 4**.
+→ On return, proceed to **Step 6**.
 
 **Otherwise:**
 
 The topic was shaped on the discovery map — nothing to gather. A new discussion reads the brief at initialisation; a resumed one already carries its position in the discussion file.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 4: Invoke the Skill
+## Step 6: Invoke the Skill
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

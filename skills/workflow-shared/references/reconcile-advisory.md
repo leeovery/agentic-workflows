@@ -4,7 +4,7 @@
 
 ---
 
-Caller passes `work_type`, `work_unit`, `topic`, and `downstream_phase` — the entered phase, whose item may carry the flag. The flag's value names what moved upstream and keys the branch below. Every populated branch surfaces a non-blocking advisory (never a STOP gate) and clears the flag — the research branch alone holds it while the research is still outstanding.
+Caller passes `work_type`, `work_unit`, `topic`, and `downstream_phase` — the entered phase, whose item may carry the flag. The flag's value names what moved upstream and keys the branch below. Every populated branch surfaces a non-blocking advisory (never a STOP gate) and clears the flag — the research branch alone holds it while research a peer parked beneath this entry is outstanding.
 
 Read the reconcile flag on the item:
 
@@ -22,7 +22,7 @@ The common case. No output.
 
 #### If output is `research` (the topic's research moved)
 
-Research feeds this work. The topic's research moved after this work began — a concern landed on it, or it reopened — and what it finds may unseat decisions here. Whether it has landed decides what this entry does; read its status:
+Research feeds this work. The topic's research moved after this work began — a concern landed on it, or it reopened — and what it finds may unseat decisions here. Whether it landed, closed, or was parked again beneath this entry decides what this entry does; read its status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
@@ -48,17 +48,17 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
-**If `in-progress` or `triaged` (the research is still outstanding):**
+**If `in-progress` or `triaged` (a peer session parked research on this topic since this entry's door opened):**
 
-The research is in flight, or parked as concerns no session has drained. This work's decisions may rest on ground it re-examines, and this work cannot conclude until the research lands — the menu carries the way in. Surface the advisory and leave the flag in place: the entry that finds the research landed clears it.
+Leave the flag in place — the entry that finds the research landed clears it — and say so:
 
 > *Output the next fenced block as a code block:*
 
 ```
-  ⚑ Research on this topic is still outstanding — in flight or
-    parked. Decisions here may rest on ground it re-examines,
-    and this work cannot conclude until the research lands. The
-    menu carries the way in. Nothing has been overwritten.
+  ⚑ Research on this topic moved again since this entry opened —
+    a peer session parked it. Decisions here may rest on ground it
+    re-examines, and this work cannot conclude until it lands.
+    Nothing has been overwritten.
 ```
 
 → Return to caller.

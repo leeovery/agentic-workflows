@@ -1,10 +1,12 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from its arguments, reads the
-   discussion status, finds it in progress, and emits the resuming
-   phase note; the reconcile check finds `research` and reads the
-   research item's status before anything else — `completed` — so the
-   advisory's landed branch runs: the input-moved callout, then the
+1. the entry resolves the topic from its arguments and fetches the
+   engine's entry gate before any status read — the research has
+   landed, so it comes back empty and the entry carries on; it then
+   reads the discussion status, finds it in progress, and emits the
+   resuming phase note; the reconcile check finds `research` and reads
+   the research item's status before anything else — `completed` — so
+   the advisory's landed branch runs: the input-moved callout, then the
    research file read in full from disk, then the flag cleared with one
    manifest delete. All of it before the handoff, and none of it a
    question to the user

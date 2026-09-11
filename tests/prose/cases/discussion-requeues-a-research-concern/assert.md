@@ -1,6 +1,7 @@
 The prose should have taken this path:
 
-1. the entry reads the discussion status, finds it in progress, emits
+1. the entry asks the engine whether research is outstanding on the
+   topic (it is not), then reads the discussion status, finds it in progress, emits
    the resuming phase note, checks the reconcile flag (absent —
    silent), and hands off with source: existing discussion
 2. the process renders resume detection — the map with result-caching
@@ -25,10 +26,19 @@ The prose should have taken this path:
    into the discussion document
 6. the session works result caching to its decision, the map records
    it decided, and the write commits action-scoped
-7. the user wraps; the closing gates run the review machinery per the
-   conduct (the stubbed review returns clean); the conclude gate reads
-   the queue, finds it empty, and the discussion completes with the
-   `--kb` commit; the walk stops at the bridge invocation
+7. the user wraps; the concluding ceremony has no calls to flush and
+   fetches the wait gate before anything is deferred; the gate comes
+   back populated — the blocker naming research on Synonym Handling as
+   parked and not yet started (the stub this session's own move
+   created), the guidance naming the research as the first move and a
+   cancel as the release, and the pause/keep menu — emitted verbatim,
+   and the session stops. The map gate never runs, the closing gates
+   are never loaded, and no completion is attempted — the session
+   never asks the engine to do what it would refuse
+8. the user takes the pause; the cadence commit runs, the session says
+   where the ball sits — the ceremony runs once the research has
+   landed, and the menu carries the way in — and stops at the terminal
+   condition
 
 Further claims:
 
@@ -37,12 +47,13 @@ Further claims:
   `.workflows/search-relevance/research/.triage/synonym-handling/001-query-time-expansion-hooks.md`
   with its content intact — provenance line included
 - the manifest holds `research.synonym-handling` as `triaged` and
-  `discussion.synonym-handling` as `completed`
+  `discussion.synonym-handling` as `in-progress` — the wait held its
+  conclusion shut
 - the discussion document holds a decided result-caching subtopic and
   no trace of the tokenizer concern — no section, no map entry, no
   mention
 - git history holds the requeue commit (naming the move to research)
-  before the session's result-caching commit and the completion
-  commit
+  before the session's result-caching commit; no completion commit
+  exists
 - behavioural-ranking's and relevance-measurement's items are
   untouched

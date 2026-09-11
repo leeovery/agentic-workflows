@@ -1,7 +1,8 @@
 The prose should have taken this path:
 
 1. resolves the topic to the work unit, since only an epic is given one
-   explicitly
+   explicitly, and asks the engine whether research is outstanding on
+   it (it is not)
 2. reads the discussion status, finds nothing, and takes the new-entry
    arm — phase validation is for entries that already exist
 3. ensuring a discovery item returns immediately: the map is epic-only,

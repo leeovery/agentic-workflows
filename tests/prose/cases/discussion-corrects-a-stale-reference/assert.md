@@ -1,6 +1,7 @@
 The prose should have taken this path:
 
-1. the entry reads the discussion status — in-progress, reopened by
+1. the entry asks the engine whether research is outstanding on the
+   topic (it is not), then reads the discussion status — in-progress, reopened by
    the triage delivery — reads the map item's source and gathers
    nothing, and hands off into the processing skill
 2. the process reads the status, finds the file, renders resume

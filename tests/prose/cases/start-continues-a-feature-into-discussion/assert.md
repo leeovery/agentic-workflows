@@ -12,8 +12,9 @@ The prose should have taken this path:
 4. the feature's pipeline state renders; with nothing to revisit, no
    proceed-or-revisit menu is put to the user — the continue action's
    stored route is taken directly into the discussion entry
-5. the entry resolves the topic to the work unit, reads the discussion
-   status, finds nothing, and takes the new-entry arm; ensuring a
+5. the entry resolves the topic to the work unit, asks the engine
+   whether research is outstanding on it (it is not), reads the
+   discussion status, finds nothing, and takes the new-entry arm; ensuring a
    discovery item returns immediately for a feature
 6. the entry checks the session log's Exploration, finds a usable
    carrier, and gathers nothing — no questions, no reads beyond the

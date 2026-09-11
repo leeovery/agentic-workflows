@@ -26,7 +26,7 @@ Output: {output_path}
 
 #### If the context was gathered by interview
 
-gather-context-fresh ran at Step 3 — its answers fill the Context block, the one input only this session holds.
+gather-context-fresh ran at Step 5 — its answers fill the Context block, the one input only this session holds.
 
 Invoke the **workflow-discussion-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 

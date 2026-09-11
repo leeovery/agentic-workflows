@@ -1,6 +1,7 @@
 The prose should have taken this path:
 
-1. the entry finds no discussion recorded, takes the new-entry arm,
+1. the entry asks the engine whether research is outstanding on the
+   topic (it is not), finds no discussion recorded, takes the new-entry arm,
    no-ops the discovery-item ensure for a feature, checks the session
    log's Exploration and finds a usable carrier — asking the user
    nothing — and hands off with session identity only

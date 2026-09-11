@@ -555,7 +555,9 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Payments feature', '--session-log-file', log]);
 
     // First phase: discussion (topic = work unit for single-topic types).
+    // The entry fetches the research gate before any status read.
     label(sim, wu, 'discussion', wu);
+    sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
@@ -912,6 +914,7 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'pull', `${wu}.research.alpha`, 'dismissed_grounds',
       'Vendor pricing tiers beyond the shortlist']);
     assert.deepStrictEqual(sim.manifest(wu).phases.research.items.alpha.dismissed_grounds, []);
+    sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
@@ -926,6 +929,7 @@ describe('pipeline simulation', () => {
 
     // Beta discussed to a decided map; gamma-prime cancelled mid-flight and
     // reactivated later.
+    sim.render(['entry-gate', `${wu}.discussion.beta`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'beta']);
     sim.run(['discussion-map', 'add', wu, 'beta', 'retry-policy']);
     // Review arming: the first background review is free and snapshots the

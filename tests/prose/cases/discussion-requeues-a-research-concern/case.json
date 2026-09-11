@@ -1,5 +1,5 @@
 {
-  "origin": "a concern parked on the wrong side of the research/discussion pair had no exit — a session surfacing it could only decide it in the wrong register or leave it blocking conclusion; this walk pins the repair: the raise judges the queued entry owed the other phase-side, the engine-rendered offer gates the move, and one `topic requeue` transaction re-parks it without the concern ever touching this session's map or document",
+  "origin": "a concern parked on the wrong side of the research/discussion pair had no exit \u2014 a session surfacing it could only decide it in the wrong register or leave it blocking conclusion; this walk pins the repair: the raise judges the queued entry owed the other phase-side, the engine-rendered offer gates the move, and one `topic requeue` transaction re-parks it without the concern ever touching this session's map or document; its close then meets the engine's wait gate over the research it parked \u2014 the conclusion refusal that backs the entry hold \u2014 and pauses",
   "entry": "workflow-discussion-entry",
   "world": "claims",
   "files": [
@@ -10,6 +10,7 @@
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
@@ -41,11 +42,11 @@
     "skills/workflow-shared/references/closing-recap.md"
   ],
   "answers": [
-    "c — continue"
+    "c \u2014 continue"
   ],
-  "conduct": "The user returned to settle result caching. When the session opens on the queued concern's agenda they take it — discuss. Offered the move because the tokenizer question is exploration rather than a decision this discussion can make, they agree and take it; told it now waits research-side they carry on without another word about it. They settle result caching decisively — a per-session cache keyed on the normalised query, invalidated when the nightly aggregates refresh; no cross-session cache, no new infrastructure — and when it feels settled they say that covers it and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: another final review is skipped when offered, offers of new threads are declined. They never introduce new material.",
+  "conduct": "The user returned to settle result caching. When the session opens on the queued concern's agenda they take it \u2014 discuss. Offered the move because the tokenizer question is exploration rather than a decision this discussion can make, they agree and take it; told it now waits research-side they carry on without another word about it. They settle result caching decisively \u2014 a per-session cache keyed on the normalised query, invalidated when the nightly aggregates refresh; no cross-session cache, no new infrastructure \u2014 and when it feels settled they say that covers it and ask to wrap up. Told at the close that the discussion waits on the research they parked, they take the pause rather than keep talking \u2014 they are not going to open the research in this sitting. They decline optional extras and never introduce new material.",
   "stubs": {
-    "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
+    "discussion-review-clean": "when the engine records a dispatch of kind review \u2014 write the content to the path the dispatch response returned"
   },
   "invariants": {
     "engine_before_write": true,
@@ -55,8 +56,7 @@
       "render requeue-offer search-relevance.discussion.synonym-handling",
       "topic requeue search-relevance discussion research synonym-handling",
       "discussion-map set search-relevance synonym-handling result-caching decided",
-      "render conclude-gate search-relevance.discussion.synonym-handling",
-      "topic complete search-relevance discussion synonym-handling"
+      "render wait-gate search-relevance.discussion.synonym-handling"
     ],
     "calls_exclude": [
       "topic absorb search-relevance",
@@ -64,12 +64,15 @@
       "discovery-map add",
       "topic reopen search-relevance",
       "--kind perspective",
-      "knowledge.cjs index"
+      "knowledge.cjs index",
+      "topic complete",
+      "render conclude-gate",
+      "render closing-gate"
     ],
     "calls_in_order": [
       "render requeue-offer search-relevance.discussion.synonym-handling",
       "topic requeue search-relevance discussion research synonym-handling",
-      "topic complete search-relevance discussion synonym-handling"
+      "render wait-gate search-relevance.discussion.synonym-handling"
     ]
   }
 }
