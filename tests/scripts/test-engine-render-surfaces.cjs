@@ -5233,6 +5233,26 @@ describe('render direct-entry-gate', () => {
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.research.eta' }), /research is parked on it \(triage waiting\)/);
   });
 
+  it('a closed topic names its closure at either door, research reopened beneath it notwithstanding — its empty menu is the closure\'s', () => {
+    writeManifest(dir, 'closed', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: {
+          dead: { routing: 'research', source: 'discovery', handled: true },
+          gone: { routing: 'research', source: 'discovery' },
+        } },
+        research: { items: { dead: { status: 'in-progress' }, gone: { status: 'cancelled', previous_status: 'in-progress' } } },
+        discussion: { items: { dead: { status: 'completed' }, gone: { status: 'cancelled', previous_status: 'in-progress' } } },
+      },
+    });
+    for (const phase of ['discussion', 'research']) {
+      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.dead` }),
+        /⚑ "Dead" is already on the map — it is closed as a dead end and stays on the map as record[\s\S]*its row for the topic names the next step\./);
+      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.gone` }),
+        /it has phase work in cancelled state and stays on the map as historical record/);
+    }
+  });
+
   it('empty for a new name, for a feature, and refuses a phase outside research|discussion', () => {
     assert.strictEqual(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.omega' }), '');
     assert.strictEqual(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.research.omega' }), '');

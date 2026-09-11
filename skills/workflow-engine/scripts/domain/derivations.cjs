@@ -205,10 +205,11 @@ function computeNextPhase(manifest) {
         }
         // Research feeds discussion: a stub parked beneath the live
         // discussion is invisible to the phase walk (pre-live), yet it holds
-        // the discussion's conclusion shut — the way in is the research.
+        // the discussion shut — at its door and its conclusion — so the way
+        // in is the research.
         if (phase === 'discussion') {
           const live = phaseItems(manifest, phase).find((i) => i.status === 'in-progress');
-          if (live && waits(manifest, phase, live.name).some((w) => w.kind === 'research')) {
+          if (live && outstandingResearch(manifest, live.name)) {
             return { next_phase: 'research', phase_label: 'research (parked — feeds the discussion)' };
           }
         }
@@ -539,6 +540,10 @@ function computeTopicLifecycle(manifest, topicName) {
   return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
 }
 
+// The lifecycles a topic leaves the board under — no row, no action, and
+// research reopened beneath one names the closure, not the research.
+const CLOSED_LIFECYCLES = ['cancelled', 'handled'];
+
 // Why a lifecycle stands in the way of a move — the map ops' refusals and
 // the phase-birth guard share it, so the engine and the epic menu's
 // conversational rejections never drift. Derived from the actual research
@@ -547,9 +552,8 @@ function computeTopicLifecycle(manifest, topicName) {
 function lifecyclePhrase(lifecycle, researchState, routing) {
   switch (lifecycle) {
     case 'fresh':
-      if (researchState === 'triaged') return 'research is parked on it and comes first';
       return routing ? `it is routed to ${routing} and nothing has started` : 'nothing has started on it';
-    case 'researching': return 'research is in flight on it';
+    case 'researching': return outstandingResearchPhrase('in-progress');
     case 'discussing': return 'discussion is in flight on it';
     case 'ready_for_discussion':
       return researchState === 'superseded'
@@ -753,6 +757,7 @@ module.exports = {
   computeTopicLifecycle,
   computeNextAction,
   CONVERSATION_ACTIONS,
+  CLOSED_LIFECYCLES,
   lifecyclePhrase,
   itemOf,
   computeMapSummary,

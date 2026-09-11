@@ -16,7 +16,7 @@ const {
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
-  awaitedExperiments, experimentWaits, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, lifecyclePhrase,
+  awaitedExperiments, experimentWaits, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
@@ -1520,10 +1520,14 @@ describe('reads + derivations', () => {
       });
     });
 
-    it('lifecyclePhrase names a parked stub on a fresh topic, and a routing-less legacy item plainly', () => {
-      assert.strictEqual(lifecyclePhrase('fresh', 'triaged', 'discussion'), 'research is parked on it and comes first');
+    it('lifecyclePhrase names a fresh topic by its routing, a routing-less legacy item plainly, and research in flight in the refusals\' one voice', () => {
       assert.strictEqual(lifecyclePhrase('fresh', null, 'discussion'), 'it is routed to discussion and nothing has started');
       assert.strictEqual(lifecyclePhrase('fresh', null, undefined), 'nothing has started on it');
+      assert.strictEqual(lifecyclePhrase('researching', 'in-progress'), outstandingResearchPhrase('in-progress'));
+    });
+
+    it('CLOSED_LIFECYCLES names the two lifecycles that leave the board', () => {
+      assert.deepStrictEqual(CLOSED_LIFECYCLES, ['cancelled', 'handled']);
     });
   });
 

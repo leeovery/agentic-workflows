@@ -44,7 +44,7 @@ const { experimentRegister, experimentApprovalGate, experimentPick, experimentNe
 const { waitGate, researchWaitState } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
-const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments, waits, itemOf, outstandingResearch, outstandingResearchPhrase } = require('./derivations.cjs');
+const { phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, experimentWaits, awaitedExperiments, waits, itemOf, outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES } = require('./derivations.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
 const { sourceRows } = require('./transitions.cjs');
@@ -3723,7 +3723,8 @@ function blocker(fact, guidance) {
 // direct-entry-gate — the epic menu's d/r doors take a free-typed topic name.
 // A name already on the map is not a new topic: the menu row is the way in,
 // so the door refuses, naming where the topic stands — outstanding research
-// first, at either door, since its row is the topic's own. Empty when the
+// first, at either door, since its row is the topic's own; a closed topic
+// names its closure, which is what explains its empty menu. Empty when the
 // name is new, or the work unit carries no map.
 // ---------------------------------------------------------------------------
 
@@ -3741,7 +3742,7 @@ function directEntryGate(cwd, { dotpath }) {
   const item = phaseItems(manifest, 'discovery').find((i) => i.name === topic);
   if (!item) return '';
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
-  const research = outstandingResearch(manifest, topic);
+  const research = CLOSED_LIFECYCLES.includes(lifecycle) ? null : outstandingResearch(manifest, topic);
   const stands = research ? outstandingResearchPhrase(research) : lifecyclePhrase(lifecycle, research_state, item.routing);
   return blocker(
     `"${titlecase(topic)}" is already on the map — ${stands}`,

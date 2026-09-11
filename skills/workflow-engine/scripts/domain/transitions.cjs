@@ -123,15 +123,15 @@ function phaseItem(manifest, phase, topic) {
  */
 
 // Research feeds discussion: while the same-named research is outstanding —
-// in flight, or parked as a stub — the discussion is held shut at entry,
-// whatever its own status and for every work type; the menu's research row
-// is the way in. The conclusion refusal (completeTopic's waits) stays as the
-// backstop for research a peer session lands under a discussion already in
-// session.
+// in flight, or parked as a stub — the discussion is held shut at its birth
+// (absent or parked) and at its reopen, for every work type; the menu's
+// research row is the way in. A discussion already in session resumes: the
+// entry gate is its door, and the conclusion refusal (completeTopic's waits)
+// is the backstop for research a peer session parks beneath it mid-session.
 
 /**
  * @param {object} manifest @param {string} phase @param {string} topic
- * @param {string} verb  the refused move — `start` or `reopen`
+ * @param {'start'|'reopen'} verb  the refused move
  */
 function assertResearchLanded(manifest, phase, topic, verb) {
   if (phase !== 'discussion') return;
@@ -202,7 +202,7 @@ function startTopic(cwd, workUnit, phase, topic) {
       const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
       throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
     }
-    assertResearchLanded(manifest, phase, topic, 'start');
+    if (!existing || existing.status === 'triaged') assertResearchLanded(manifest, phase, topic, 'start');
     assertMapAllowsStart(manifest, phase, topic, existing);
 
     let created = false;

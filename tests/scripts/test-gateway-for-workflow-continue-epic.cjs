@@ -920,6 +920,23 @@ describe('workflow-continue-epic discovery', () => {
       assert.strictEqual(t.current_phase, 'discussion');
     });
 
+    it('lifecycle: discussion in-progress over outstanding research → discussing, ◐, the research action', () => {
+      for (const [status, action] of [['in-progress', 'continue_research'], ['triaged', 'start_research']]) {
+        createManifest(dir, 'v1', {
+          work_type: 'epic',
+          phases: {
+            discovery: { items: { topic: { routing: 'discussion', source: 'discovery' } } },
+            research: { items: { topic: { status } } },
+            discussion: { items: { topic: { status: 'in-progress' } } },
+          },
+        });
+        const t = discover(dir).epics[0].detail.discovery_map[0];
+        assert.strictEqual(t.lifecycle, 'discussing');
+        assert.strictEqual(t.next_action, action, status);
+        assert.deepStrictEqual(t.waits, [{ kind: 'research', status }]);
+      }
+    });
+
     it('lifecycle: discussion completed → decided, ✓, no next_action', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',

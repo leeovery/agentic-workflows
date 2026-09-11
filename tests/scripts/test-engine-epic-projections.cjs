@@ -1375,6 +1375,56 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     assert.ok(!epicKey(landed).includes('blocked (discussion)'));
   });
 
+  it('no map: the key\'s blocked cue follows the rendered tag — a held decided discussion reads input moved, and a flagless one blocked', () => {
+    const held = (discussion) => detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { billing: { status: 'in-progress' } } },
+        discussion: { items: { billing: discussion } },
+      },
+    });
+    const flagged = held({ status: 'completed', reconcile_needed: 'research' });
+    assert.deepStrictEqual(flagged.phases.discussion[0].blocked_by, ['research']);
+    assert.match(epicDashboard('v1', flagged), /Billing\s+\[completed · input moved\]/);
+    assert.ok(!epicKey(flagged).includes('blocked (discussion)'), 'no blocked tag on screen, no blocked cue');
+    assert.ok(epicKey(flagged).includes('input moved'));
+    const bare = held({ status: 'completed' });
+    assert.match(epicDashboard('v1', bare), /Billing\s+\[completed · blocked\]/);
+    assert.ok(epicKey(bare).includes('blocked (discussion)'));
+  });
+
+  it('a held decided discussion is no resume candidate: the completed sub-view withholds it, the c option and the reconcile recommendation follow', () => {
+    // billing decided, its research parked by a landing that flagged it —
+    // the main menu leads with the research row; the completed sub-view
+    // offers nothing (the reopen would be refused), so the c option goes too.
+    const d = billing({ status: 'triaged' }, { status: 'completed', reconcile_needed: 'research' });
+    assert.deepStrictEqual(d.completed, [{ name: 'billing', phase: 'discussion', reconcile_needed: 'research', blocked_by: ['research'] }]);
+    const picks = (detail) => epicCompletedMenu('v1', detail).keys.filter((k) => /^\d+$/.test(k.key));
+    assert.deepStrictEqual(picks(d), []);
+    const { keys } = epicMenu('v1', d);
+    assert.strictEqual(keys.find((k) => k.action === 'resume_completed'), undefined, 'no c option over a held item alone');
+    assert.strictEqual(keys.find((k) => k.action === 'start_research').recommended, true, 'the research row is the way in');
+    // Landed research releases it: the row and the option return.
+    const landed = billing({ status: 'completed' }, { status: 'completed', reconcile_needed: 'research' });
+    assert.strictEqual(landed.completed[0].blocked_by, undefined);
+    assert.ok(picks(landed).some((k) => k.phase === 'discussion'), 'the discussion resumes again');
+    assert.ok(epicMenu('v1', landed).keys.some((k) => k.action === 'resume_completed'));
+  });
+
+  it('a completed specification whose source is back in-progress is withheld from the completed sub-view the same way', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { fees: { routing: 'discussion', source: 'discovery' } } },
+        discussion: { items: { fees: { status: 'in-progress' } } },
+        specification: { items: { fees: { status: 'completed', sources: [{ topic: 'fees', status: 'stale' }] } } },
+      },
+    });
+    assert.deepStrictEqual(d.completed.map((c) => [c.phase, c.blocked_by]), [['specification', ['fees']]]);
+    assert.deepStrictEqual(epicCompletedMenu('v1', d).keys.filter((k) => /^\d+$/.test(k.key)), []);
+    assert.strictEqual(epicMenu('v1', d).keys.find((k) => k.action === 'resume_completed'), undefined);
+  });
+
   it('the triage tail speaks for the row\'s own phase — a parked research stub never tags the discussion row', () => {
     // research-routed topic, a parked DISCUSSION stub: the research row carries no tail
     assert.strictEqual(epicMenu('v1', billing(undefined, { status: 'triaged' }, { routing: 'research' })).keys[0].label, 'Start research for "Billing"');

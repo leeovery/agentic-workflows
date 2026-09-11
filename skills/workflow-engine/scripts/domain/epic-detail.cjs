@@ -74,6 +74,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} name
  * @property {string} phase
  * @property {string|boolean} [reconcile_needed]  completed items only — a live reconcile flag
+ * @property {string[]} [blocked_by]           completed items only — what holds the item's entry
+ *                                             shut (the phase entry's `blocked_by`); no resume row
  * @property {string|null} [previous_status]   cancelled items only
  */
 
@@ -212,6 +214,7 @@ function epicDetail(cwd, manifest) {
   const phases = {};
   const allSourcedDiscussions = new Set();
   const groupedDiscussions = new Set();
+  /** @type {ItemRef[]} */
   const completedItems = [];
   const inProgressItems = [];
   const cancelledItems = [];
@@ -316,10 +319,10 @@ function epicDetail(cwd, manifest) {
 
   const discussionItems = phaseItems(manifest, 'discussion');
 
-  // Research feeds discussion: a live discussion whose research is still
+  // Research feeds discussion: a discussion whose research is still
   // outstanding is held at entry until it lands — the menu carries no row
-  // for it (the research row is the way in) and the display tree shows the
-  // blocked state.
+  // for it (the research row is the way in); a map row carries the research
+  // it awaits, and without a map the display tree tags it blocked.
   for (const e of phases.discussion || []) {
     if (!TERMINAL_STATUSES.includes(e.status) && outstandingResearch(manifest, e.name)) e.blocked_by = ['research'];
   }
@@ -361,6 +364,13 @@ function epicDetail(cwd, manifest) {
   for (const e of phases.specification || []) {
     const b = specBlocked.find((x) => x.name === e.name);
     if (b) e.blocked_by = b.by;
+  }
+  // A completed item held at entry is no resume candidate either — the
+  // completed list carries its entry's blocked state, so the resume menu
+  // and the `c` option read the one fact the tree and the main menu read.
+  for (const c of completedItems) {
+    const e = (phases[c.phase] || []).find((x) => x.name === c.name);
+    if (e && e.blocked_by !== undefined) c.blocked_by = e.blocked_by;
   }
 
   // Proposed groupings are actionable from the epic menu — surface them as
