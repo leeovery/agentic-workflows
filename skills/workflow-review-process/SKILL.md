@@ -267,18 +267,6 @@ Load **[prep-findings.md](references/prep-findings.md)** and follow its instruct
 
 ## Step 8: Apply Do-Now
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Apply Do-Now`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Applying the contained corrections — low-impact, blast radius minimised. The whole body of work is verified and the suite run before anything lands.
-```
-
 Load **[apply-do-now.md](references/apply-do-now.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 9**.

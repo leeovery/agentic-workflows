@@ -48,8 +48,8 @@ The prose should have taken this path:
    the per-task reports, the section files and the manifest as the
    verification-and-prep checkpoint, so the apply starts from a clean
    tree
-9. the do-now apply announces the correction in prose, dispatches an
-   applier — stubbed: applied, nothing skipped — then the verifier over
+9. the do-now apply marks its step and announces the one correction
+   in its signpost, dispatches an applier — stubbed: applied, nothing skipped — then the verifier over
    the uncommitted diff — stubbed: nothing to repair, suite green — and
    commits the correction through the engine's code commit as one body
    of work
@@ -57,7 +57,9 @@ The prose should have taken this path:
    Compliance carries one sub-heading per section with that section's
    coverage entries, its Plan Completion carries the duplicate-start
    criterion with its task suffix under a bold `Criteria not measured`
-   line — disclosed, never a checkbox — its corrected section records
+   line — disclosed, never a checkbox — with the acceptance-criteria
+   checkbox above it reading as met except any named below, so the two
+   never contradict on the same screen — its corrected section records
    what was applied — and it is committed
 11. the outcome renders through the review presentation surface as a
    pass — the correction a count, the one unmeasured criterion a count
@@ -84,7 +86,8 @@ Further claims:
 - the not-measured criterion is disclosed, never absorbed: it is written
   to `not-measured.txt`, appears in the report's Plan Completion under
   the bold line and as a count of 1 in the presentation, and is not
-  ticked off as met
+  ticked off as met — no checkbox on that screen claims every phase
+  criterion met while one sits unmeasured beneath it
 - the prep agents are dispatched fresh, each given its payload path —
   none is asked to re-judge another's verdict, and synthesis runs only
   after all of them return
@@ -106,7 +109,8 @@ EXPECTED WORLD — from an implemented feature with no review:
 - a review report at `.workflows/pay/review/pay/report.md` carrying a
   Pass verdict, a Specification Compliance section with one sub-heading
   per change-set section carrying that section's coverage entries, a
-  Plan Completion whose bold `Criteria not measured` line names the
+  Plan Completion whose acceptance-criteria checkbox reads as met except
+  any named below and whose bold `Criteria not measured` line names the
   duplicate-start criterion with its task suffix, and a
   corrected-in-this-session record of the one action
 - one per-task report file for each task suffix, the payment-intent

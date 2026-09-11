@@ -18,7 +18,19 @@ Read the `do-now` actions from `.workflows/.cache/{work_unit}/review/{topic}/act
 
 #### Otherwise
 
-State in one or two markdown sentences: how many corrections are about to be applied, and their character — low-impact, contained, blast radius minimised — and that the whole body of work is verified and the suite run before anything lands. This is an announcement, not a gate: the user reads it while the work proceeds.
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Apply Do-Now`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Applying {count} contained {noun:[correction|corrections]} — low-impact, blast radius minimised. The whole body of work is verified and the suite run before anything lands.
+```
+
+This is an announcement, not a gate: the user reads it while the work proceeds.
 
 → Proceed to **B. Apply**.
 

@@ -52,8 +52,8 @@ The prose should have taken this path:
    since nothing needs planning; prep then commits the per-task reports,
    the section files and the manifest as the verification-and-prep
    checkpoint, so the apply starts from a clean tree
-8. the do-now apply announces the corrections in prose, dispatches an
-   applier — stubbed: both applied, the blocking one among them, nothing
+8. the do-now apply marks its step and announces the two corrections
+   in its signpost, dispatches an applier — stubbed: both applied, the blocking one among them, nothing
    skipped — then the verifier over the uncommitted diff — stubbed:
    nothing to repair, suite green — and commits the corrections through
    the engine's code commit as one body of work

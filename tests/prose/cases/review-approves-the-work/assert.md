@@ -32,8 +32,11 @@ The prose should have taken this path:
 7. findings prep collects nothing — neither per-task report nor any
    section file carries a finding — so it returns without assessing,
    and no prep agent is dispatched
-8. the do-now apply finds no actions and returns without announcing,
-   dispatching, or committing anything
+8. the do-now apply finds no actions and returns without dispatching
+   or committing anything — and renders nothing: no `Apply Do-Now`
+   step marker, no signpost, no sentence about applying corrections,
+   since the step's chrome lives inside the branch that has actions to
+   apply
 9. the review report is produced from the template with a Pass verdict
    and no findings section — its Specification Compliance carrying the
    three sections' coverage maps as their files record them, its Plan
