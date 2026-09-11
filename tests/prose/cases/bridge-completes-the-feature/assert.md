@@ -8,11 +8,12 @@ The prose should have taken this path:
    scopes verification from the per-task implementation commits, and
    dispatches a verifier per task — stubbed clean; both task ids land
    on the reviewed list, and the aggregation finds nothing unsettled
-3. the change-set verification splits the specification — no numbered
-   sections, so the document section plus the test surface — gathers
-   the brief (the first task commit, the file list, no declared
-   linters, the finding floor, no unsettled file) and dispatches one
-   agent per section — stubbed clean, each with a coverage map — then
+3. the change-set verification derives its sections from the
+   specification's numbered headings — the payment-intent section, the
+   capture section, and the test surface — gathers the brief (the
+   first task commit, the file list, no declared linters, the finding
+   floor, no unsettled file) and dispatches one agent per section,
+   three in all — stubbed clean, each with a coverage map — then
    checks the tree with nothing outside `.workflows/` dirty and has
    nothing to reconcile, so no `not-measured.txt` is written
 4. the review report is produced with a Pass verdict — no
@@ -48,10 +49,10 @@ Further claims:
 - no cache directory for the work unit remains at
   `.workflows/.cache/pay/` after the completion
 - the review report at `.workflows/pay/review/pay/report.md` holds a
-  Pass verdict, its Specification Compliance carrying the two coverage
-  maps and its Criteria not measured line reading none; one per-task
-  report file exists per task suffix, and one change-set file per
-  section — `change-set-c1-specification.md` and
-  `change-set-c1-test-surface.md`
+  Pass verdict, its Specification Compliance carrying the three
+  coverage maps and its Criteria not measured line reading none; one
+  per-task report file exists per task suffix, and one change-set file
+  per section — `change-set-c1-1-payment-intent.md`,
+  `change-set-c1-2-capture-webhooks.md`, `change-set-c1-test-surface.md`
 - the plan, tasks, specification, and source files are untouched; no
   second work unit exists

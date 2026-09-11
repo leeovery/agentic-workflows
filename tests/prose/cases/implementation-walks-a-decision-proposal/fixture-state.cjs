@@ -7,9 +7,6 @@
 // naming a checkout path the tree does not have. The bank is absent —
 // nothing was ever deposited, so the boundary finds no field to empty.
 
-const fs = require('fs');
-const path = require('path');
-
 const m = require('../../mainlines/feature.cjs');
 
 // The completed first task's file — same shape the mainline's
@@ -42,12 +39,12 @@ module.exports = {
     m.specify(h);
 
     // The defect the boundary's finder will report: a path claim the tree
-    // settles by direct measurement. Appended rather than rewritten so the
-    // rest of the spec stays the mainline's.
-    fs.appendFileSync(
-      path.join(h.dir, `.workflows/${m.WU}/specification/${m.WU}/specification.md`),
-      ['', '## Design notes', '', '- Intent creation lives in `src/checkout/intent.js`.', ''].join('\n'),
-    );
+    // settles by direct measurement. One section added to the mainline's
+    // specification; the rest stays as written.
+    h.write(`.workflows/${m.WU}/specification/${m.WU}/specification.md`, m.specification([
+      ...m.SPEC_SECTIONS,
+      { title: '3. Design Notes', lines: ['- Intent creation lives in `src/checkout/intent.js`.'] },
+    ]));
 
     m.plan(h);
     h.engine('manifest', 'set', 'project.defaults.project_skills', '[]');

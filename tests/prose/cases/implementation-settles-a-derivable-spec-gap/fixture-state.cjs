@@ -18,9 +18,6 @@
 // `orders` as free identifiers), so nothing in the tree carries either
 // value. The bank is absent — nothing was ever deposited.
 
-const fs = require('fs');
-const path = require('path');
-
 const m = require('../../mainlines/feature.cjs');
 
 // The completed tasks' files — the shape the mainline's implement()
@@ -54,14 +51,11 @@ module.exports = {
 
     // The gap the analysis cycle will report: the section bounds one
     // call with its reasoning, records the other call's documented p99,
-    // and never sets that call's bound. Appended rather than rewritten
-    // so the rest of the spec stays the mainline's.
-    fs.appendFileSync(
-      path.join(h.dir, `.workflows/${m.WU}/specification/${m.WU}/specification.md`),
-      [
-        '',
-        '## Client call bounds',
-        '',
+    // and never sets that call's bound. One section added to the
+    // mainline's specification; the rest stays as written.
+    h.write(`.workflows/${m.WU}/specification/${m.WU}/specification.md`, m.specification([
+      ...m.SPEC_SECTIONS,
+      { title: '3. Client Call Bounds', lines: [
         'The feature makes two synchronous external calls — the checkout\'s',
         'intent creation against the gateway, and the webhook consumer\'s',
         'order write against the orders store. Both run under explicit',
@@ -75,9 +69,8 @@ module.exports = {
         '- Order write: the platform documents the orders store\'s p99 at',
         '  250 milliseconds for single-order writes. The webhook path is',
         '  background work — the shopper is never waiting on it.',
-        '',
-      ].join('\n'),
-    );
+      ] },
+    ]));
 
     m.plan(h);
     h.engine('manifest', 'set', 'project.defaults.project_skills', '[]');

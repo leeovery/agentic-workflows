@@ -92,23 +92,44 @@ function discuss(h) {
   h.engine('topic', 'complete', WU, 'discussion', WU);
 }
 
+// The specification's numbered sections — the shape the format's Body
+// prescribes (`### N.` beneath `## Specification`), and what the
+// review's change-set verification splits on: one agent per numbered
+// section plus the test surface.
+const SPEC_SECTIONS = [
+  { title: '1. Payment Intent', lines: [
+    '- Checkout creates a payment intent against the existing gateway account.',
+    '- Card payments only; wallet flows are out of scope for v1.',
+    '- A gateway rejection surfaces as a user-visible checkout error.',
+    '- A duplicate checkout start reuses the existing intent.',
+  ] },
+  { title: '2. Capture Webhooks', lines: [
+    '- Capture is confirmed by gateway webhook, never by polling.',
+    '- Duplicate deliveries are idempotent.',
+    '- A capture naming an intent no order carries is logged and ignored.',
+  ] },
+];
+
+// The specification document in its canonical shape over the given
+// sections — a recipe that revises the spec composes its own list.
+function specification(sections = SPEC_SECTIONS) {
+  return [
+    '# Specification: Pay',
+    '',
+    '## Specification',
+    '',
+    ...sections.flatMap((s) => [`### ${s.title}`, '', ...s.lines, '']),
+    '---',
+    '',
+    '## Working Notes',
+    '',
+  ].join('\n');
+}
+
 function specify(h) {
   h.engine('topic', 'start', WU, 'specification', WU);
   h.engine('manifest', 'set', `${WU}.specification.${WU}`, `sources.${WU}.status`, 'pending');
-  h.write(`.workflows/${WU}/specification/${WU}/specification.md`, [
-    `# Specification — ${WU}`,
-    '',
-    '## Requirements',
-    '',
-    '- Checkout creates a payment intent against the existing gateway account.',
-    '- Card payments only; wallet flows are out of scope for v1.',
-    '- Capture is confirmed by gateway webhook, never by polling.',
-    '',
-    '## Out of scope',
-    '',
-    '- Wallet support (deferred by discussion).',
-    '',
-  ].join('\n'));
+  h.write(`.workflows/${WU}/specification/${WU}/specification.md`, specification());
   h.engine('manifest', 'set', `${WU}.specification.${WU}`, `sources.${WU}.status`, 'incorporated');
   h.engine('commit', WU, '-m', `spec(${WU}): construct`);
   h.engine('topic', 'complete', WU, 'specification', WU);
@@ -348,4 +369,4 @@ function implement(h) {
   h.engine('topic', 'complete', WU, 'implementation', WU);
 }
 
-module.exports = { WU, TASKS, P2_TASK, taskFile, init, create, discuss, specify, plan, planAuthored, planGraphed, implement };
+module.exports = { WU, TASKS, P2_TASK, SPEC_SECTIONS, specification, taskFile, init, create, discuss, specify, plan, planAuthored, planGraphed, implement };

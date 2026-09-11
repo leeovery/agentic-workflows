@@ -21,8 +21,8 @@ FINDINGS:
 - FINDING: The specification names a checkout path the tree does not have
   SEVERITY: low
   FAILURE: Whoever next follows the specification's note — a reviewer checking conformance, an engineer extending checkout — lands on a file that does not exist and has to rediscover where intent creation lives; noticed the first time the note is followed.
-  FILES: .workflows/pay/specification/pay/specification.md (Design notes), src/checkout/payment-intent.js:4
-  DESCRIPTION: The specification's Design notes say intent creation lives in `src/checkout/intent.js`. `ls src/checkout` lists `payment-intent.js` and nothing else, and `createPaymentIntent` is defined at src/checkout/payment-intent.js:4. The code sits where the specification's requirements expect it; only the path in the note is wrong.
+  FILES: .workflows/pay/specification/pay/specification.md (§3 Design Notes), src/checkout/payment-intent.js:4
+  DESCRIPTION: The specification's Design Notes (§3) say intent creation lives in `src/checkout/intent.js`. `ls src/checkout` lists `payment-intent.js` and nothing else, and `createPaymentIntent` is defined at src/checkout/payment-intent.js:4. The code sits where the specification's requirements expect it; only the path in the note is wrong.
   RECOMMENDATION: The specification is the side that is stale — the path it names should read `src/checkout/payment-intent.js`.
 - FINDING: Module headers assert behaviour neither module implements
   SEVERITY: medium

@@ -37,7 +37,7 @@ about the rest of the system.
 ## Spec Defects
 
 ### S1: The specification names a checkout path the tree does not have
-- **Claim**: "Intent creation lives in `src/checkout/intent.js`." (§ Design notes)
+- **Claim**: "Intent creation lives in `src/checkout/intent.js`." (§3 Design Notes)
 - **Observed**: `ls src/checkout` lists `payment-intent.js` and nothing else; `createPaymentIntent` is defined at src/checkout/payment-intent.js:4
 - **Read**: spec stale — the path is a factual value the tree settles by direct measurement, not a design question
 

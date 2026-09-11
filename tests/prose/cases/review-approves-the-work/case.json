@@ -35,7 +35,7 @@
   ],
   "stubs": {
     "review-task-verified": "each time a task verifier is dispatched via the Task tool \u2014 write the content below to that task's report file and return the STATUS block; one firing per task",
-    "change-set-section-clean": "when a change-set verifier for any section \u2014 the document section, the test surface \u2014 is dispatched via the Task tool; one firing per section \u2014 write the content below to that section's file with its SECTION line filled and return the status stated"
+    "change-set-section-clean": "when a change-set verifier for any section \u2014 the payment-intent section, the capture section, the test surface \u2014 is dispatched via the Task tool; one firing per section \u2014 write the content below to that section's file with its SECTION line filled and return the status stated"
   },
   "invariants": {
     "engine_before_write": true,

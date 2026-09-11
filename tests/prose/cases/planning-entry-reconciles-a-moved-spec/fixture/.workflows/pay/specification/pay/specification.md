@@ -1,12 +1,24 @@
-# Specification — pay
+# Specification: Pay
 
-## Requirements
+## Specification
+
+### 1. Payment Intent
 
 - Checkout creates a payment intent against the existing gateway account.
 - Card payments only; wallet flows are out of scope for v1.
+- A gateway rejection surfaces as a user-visible checkout error.
+- A duplicate checkout start reuses the existing intent.
+
+### 2. Capture Webhooks
+
 - Capture is confirmed by gateway webhook, never by polling.
+- Duplicate deliveries are idempotent.
+- A capture naming an intent no order carries is logged and ignored.
+
+### 3. Refunds
+
 - Refunds are issued through the gateway within 30 days of capture.
 
-## Out of scope
+---
 
-- Wallet support (deferred by discussion).
+## Working Notes

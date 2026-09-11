@@ -13,7 +13,7 @@ resumes rather than creates. `completed_phases`, `consolidated_phases`,
 and `bank` are absent — no phase has closed and nothing has been
 banked; no earlier walk has approved a proposal.
 
-The concluded specification carries a `## Design notes` section whose
+The concluded specification carries a `### 3. Design Notes` section whose
 one line says intent creation lives at `src/checkout/intent.js`. The
 tree has no such file: `src/checkout/payment-intent.js` is where
 `createPaymentIntent` is defined.

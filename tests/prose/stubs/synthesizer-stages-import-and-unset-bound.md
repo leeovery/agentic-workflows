@@ -36,7 +36,7 @@ bound.
 ## Spec Defects
 
 ### S1: The specification never set the order write's client bound
-- **Claim**: (omission — § Client call bounds) The section requires the feature's two synchronous external calls to run under explicit client timeouts on the shared clients, bounds intent creation at 4 seconds with its recorded reason (twice the gateway's documented p99 of 2 seconds), records the orders store's documented p99 of 250 milliseconds for the order write, and never states the order write's bound.
+- **Claim**: (omission — §3 Client Call Bounds) The section requires the feature's two synchronous external calls to run under explicit client timeouts on the shared clients, bounds intent creation at 4 seconds with its recorded reason (twice the gateway's documented p99 of 2 seconds), records the orders store's documented p99 of 250 milliseconds for the order write, and never states the order write's bound.
 - **Observed**: the bounds live on the shared client configuration and the shared clients are ambient — `grep -rn "timeout" src tests` returns nothing — so no landed change and no measurement against this tree yields the value.
 - **Read**: genuinely open — nothing the record states settles the bound directly, and nothing about it reaches the shopper: the webhook path is background work by the section's own line. The section records its reasoning for the sibling bound.
 

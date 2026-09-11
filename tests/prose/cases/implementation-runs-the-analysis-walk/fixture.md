@@ -15,9 +15,9 @@ rather than creates. `analysis_cycle_total` is `0`: no analysis cycle has
 ever run. `bank` is absent — nothing was ever deposited — and no
 earlier walk approved a proposal: phase 1's boundary landed no task.
 
-The concluded specification carries a `## Design notes` section whose one
-line says intent creation lives at `src/checkout/intent.js`. The tree has
-no such file: `src/checkout/payment-intent.js` is where
+The concluded specification carries a `### 3. Design Notes` section whose
+one line says intent creation lives at `src/checkout/intent.js`. The tree
+has no such file: `src/checkout/payment-intent.js` is where
 `createPaymentIntent` is defined.
 
 As in the sibling loop cases, the previous pass also left:
