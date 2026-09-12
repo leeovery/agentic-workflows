@@ -2,12 +2,13 @@
 
 // The plan is authored and graphed; cycle 1's traceability review wrote a
 // move-era tracking file — one settled finding the user will talk through
-// and decline, and one choice the user will answer by picking the option
-// that is not recommended. The session died before the walk began, so both
-// rows are Pending and the tracking entry is in-progress. This pins the
-// planning loop's two never-walked lanes: the Discuss exchange landing a
-// Declined resolution, and the choice menu rendering at all — the lane a
-// stale payload rule once crashed.
+// and decline, and one choice that clears the bar at the session's
+// dispose (search named, product-level, each side costing the customer)
+// which the user answers by picking the option that is not recommended.
+// The session died before the walk began, so both rows are Pending and
+// the tracking entry is in-progress. This pins the planning loop's two
+// gate paths: the Discuss exchange landing a Declined resolution, and a
+// choice standing at dispose and rendering its menu.
 
 const m = require('../../mainlines/feature.cjs');
 
@@ -26,45 +27,45 @@ module.exports = {
       '',
       '## Findings',
       '',
-      '### 1. Failure Telemetry Duplicated Per Task',
+      '### 1. Duplicate Delivery Idempotency Absent From Capture Task',
       '',
       '**Type**: Incomplete coverage',
-      '**Spec Reference**: Requirements — every checkout module emits payment telemetry at its boundary',
+      '**Spec Reference**: Capture Webhooks — duplicate deliveries are idempotent',
       '**Plan Reference**: Phase 2 / Handle Capture Webhooks',
       '**Move**: settled',
       '**Change Type**: add-to-task',
       '',
       '**Problem**:',
-      'A failed capture would land in the logs without the order id attached, so support cannot trace a customer complaint back to the failing order.',
+      'A gateway that redelivers a capture would have the consumer act on it twice — the same order marked paid a second time, and anything hung off that transition run again — because the capture task never says a repeat delivery changes nothing.',
       '',
       '**Proposal**:',
-      'The telemetry decision already covers failures — I would add the order-id attribute to the capture task\'s telemetry line.',
+      'The specification\'s Capture Webhooks section decides it: duplicate deliveries are idempotent. Carrying that into the capture task is not a new decision — I would state it in the task.',
       '',
       '**Current**:',
-      'Consume gateway capture webhooks and mark the order paid.',
+      'Consume gateway capture webhooks and mark the order paid; no polling path.',
       '',
       '**Proposed Text**:',
-      'Consume gateway capture webhooks and mark the order paid; emit capture telemetry carrying the order id.',
+      'Consume gateway capture webhooks and mark the order paid; no polling path. A repeat delivery of a capture already applied changes nothing.',
       '',
       '**Resolution**: Pending',
       '**Notes**:',
       '',
       '---',
       '',
-      '### 2. Intent Retry Ownership Unassigned',
+      '### 2. What The Customer Sees While Capture Is Pending',
       '',
       '**Type**: Incomplete coverage',
-      '**Spec Reference**: Requirements — checkout creates a payment intent against the existing gateway account',
-      '**Plan Reference**: Phase 1 / Attach Intent To Order',
+      '**Spec Reference**: Capture Webhooks — capture is confirmed by gateway webhook, never by polling',
+      '**Plan Reference**: Phase 2 / Handle Capture Webhooks',
       '**Move**: choice',
-      '**Change Type**: update-task',
+      '**Change Type**: add-to-task',
       '',
       '**Problem**:',
-      'A retried checkout either reuses the stored intent or mints a fresh one, and the plan does not say which — two builders would ship two different checkouts.',
+      'Because capture is confirmed only when the gateway\'s webhook lands, a customer who presses pay cannot be told the truth in that instant — and the plan never says what they are told. One builder shows the order as confirmed on the spot and takes it back if capture fails; another holds the customer on a pending page until the webhook arrives. Searched the specification end to end — its Payment Intent section (an intent on checkout start, card-only, a gateway rejection surfacing as a checkout error, a duplicate start reusing the intent) and its Capture Webhooks section (webhook-confirmed, idempotent deliveries, an unknown intent logged and ignored) — the discussion\'s three decisions and its deferred wallet support, and the plan\'s own phases: the rejection error is the one customer-facing moment the plan names, and it covers a rejected intent, not a pending capture; no measurement in this tree pins how long the gateway takes to deliver. The record ran out at the trade itself: a customer told they have paid who may later be told otherwise, against a customer left waiting with no confirmation.',
       '',
       '**Options**:',
-      '- Reuse the stored intent id on retry — one intent per order, and an abandoned retry cannot strand a duplicate (recommended)',
-      '- Mint a fresh intent per attempt and void the prior — simpler retry code, and the gateway dashboard shows one intent per click',
+      '- Confirm the order to the customer the moment they pay, and tell them afterwards if capture fails — the customer leaves with a confirmation in hand, and a customer whose capture fails learns that an order they were told was paid is not (recommended)',
+      '- Hold the customer on a payment-pending page until the capture webhook lands — no customer is ever told something later taken back, and a customer whose bank is slow waits with no confirmation and may abandon the order',
       '',
       '**Resolution**: Pending',
       '**Notes**:',
