@@ -5123,7 +5123,7 @@ describe('render — the adopted phase gates', () => {
       /address must be <work_unit>\.<phase>\.<topic>/);
   });
 
-  it('closing-gate: the discussion close\'s four consents, variant-keyed', () => {
+  it('closing-gate: the discussion close\'s five consents, variant-keyed', () => {
     const reReview = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 're-review' });
     assert.match(reReview, /MENU: re-review gate/);
     assert.match(unwrap(reReview), /The discussion has moved since the last review read it\. One more pass can catch what that movement opened — or conclude without one\./);
@@ -5139,9 +5139,18 @@ describe('render — the adopted phase gates', () => {
     assert.match(owed, /`◆ Walk them now\?`/);
     assert.match(unwrap(owed), /\*\*`y\/yes`\*\*\s+→ Walk what came back/);
 
-    const finalReview = renderSurface(dir, 'closing-gate', {
-      dotpath: 'pay.discussion.checkout', variant: 'final-review', reason: 'no review has run yet',
-    });
+    // A review still in flight at the close: yes is the wait, never a
+    // fresh dispatch — the surface must not read as "run another".
+    const running = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'review-running' });
+    assert.match(running, /MENU: review-running gate/);
+    assert.match(unwrap(running), /A review is still running over this discussion — what it finds must be heard before concluding\. Nothing new is dispatched\./);
+    assert.match(running, /`◆ Wait for it\?`/);
+    assert.match(unwrap(running), /\*\*`y\/yes`\*\*\s+→ Wait for it and walk what it finds/);
+    assert.doesNotMatch(unwrap(running), /[Rr]un the final review|final review/);
+    assert.doesNotMatch(unwrap(running), /`n\/no`|`p\/proceed`/);
+    assert.match(unwrap(running), /\*\*Keep going\*\* → Tell me what else to explore/);
+
+    const finalReview = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'final-review' });
     assert.match(finalReview, /MENU: final-review gate/);
     assert.match(unwrap(finalReview), /Next: a final gap review before concluding — no review has run yet\./);
     assert.match(finalReview, /`◆ Proceed\?`/);
@@ -5160,17 +5169,17 @@ describe('render — the adopted phase gates', () => {
     ].join('\n'));
   });
 
-  it('closing-gate: refuses out of place — wrong phase, unknown variant, a reason misplaced or missing', () => {
+  it('closing-gate: refuses out of place — wrong phase, unknown variant, a reason on any variant', () => {
     assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.research.checkout', variant: 'wrap-up' }),
       /address must be <wu>\.discussion\.<topic> — the discussion close is the flow that runs these gates; got phase "research"/);
     assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout' }),
-      /--variant must be one of re-review, findings-owed, final-review, wrap-up, got ""/);
+      /--variant must be one of re-review, findings-owed, review-running, final-review, wrap-up, got ""/);
     assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'conclude' }),
       /--variant must be one of/);
-    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'final-review' }),
-      /--reason is required with --variant final-review/);
-    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'wrap-up', reason: 'x' }),
-      /--reason belongs to --variant final-review alone, not "wrap-up"/);
+    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'final-review', reason: 'no review has run yet' }),
+      /takes no --reason — every variant carries its own wording/);
+    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'review-running', reason: 'x' }),
+      /takes no --reason/);
   });
 
   it('summary-backfill-gate: the static batch gate and the payload-named unsourced set', () => {
