@@ -48,6 +48,6 @@ The raise ends by saying what kind of reply moves things forward. One of three s
 
 A dead stop is not an ending: a raise that trails off after its position leaves the user unsure whether a reply is owed or the conversation broke. No keyed menu, no bundled follow-ups, no stock closer: "what do you think?" is never the ask, and a closing beat repeated verbatim across the walk reads as chrome, not a colleague — phrase it from the finding just raised. The beat draws only on what the opener already said — reaching into the held-back depth for a concrete pivot is how the case leaks back in one clause at a time.
 
-**The test**, before the raise goes out — read it as the user will, cold, in one glance: they can picture the behaviour, they know where you stand, and they know what reply is wanted, with no code identifier, no report named ahead of their situation, and no tuning number in front of them. A raise that fails is recomposed at altitude, never sent and explained after.
+**The test**, before the raise goes out — read it as the user will, cold, in one glance: they can picture the behaviour, they know where you stand, and they know what reply is wanted, with no code identifier, no report named ahead of their situation, no tuning number in front of them, and no second cost on the alternative. A raise that fails is recomposed at altitude, never sent and explained after.
 
 → Return to caller.
