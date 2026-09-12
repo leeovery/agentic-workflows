@@ -64,7 +64,15 @@ Emit its `DISPLAY: triage announce` section verbatim as a code block, then open 
 
 #### If at a natural break
 
-A concern landed mid-session, the user chose `later` earlier, or the sitting opened fresh with the queue announced. Consult the natural-breaks checklist — a recent `later` defers the re-offer until the conversation has genuinely moved on.
+A concern landed mid-session, the user chose `later` earlier, or the sitting opened fresh with the queue announced. Judge the break by the checklist — a recent `later` defers the re-offer until the conversation has genuinely moved on.
+
+→ Load **[natural-breaks.md](natural-breaks.md)** and follow its instructions as written.
+
+**If the checklist defers:**
+
+→ Return to caller.
+
+**Otherwise:**
 
 → Proceed to **B. Offer**.
 
