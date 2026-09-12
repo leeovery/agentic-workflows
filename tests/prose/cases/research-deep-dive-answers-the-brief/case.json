@@ -1,0 +1,76 @@
+{
+  "origin": "the deep dive's fold had no prose coverage — a landed report is folded as material in one transaction of judgment: the section written answers-first, the thread learned, the row closed clean, the opened lines judged into threads — a measurement line among them, the laboratory's cue kept on the register — the fold committed under the dive's id, and the answers spoken to the user in full. The report is written in code on purpose: a question brief's answers are what was asked and must reach the user whole, but at product altitude — what the product does before any symbol — so what the session says and what it leaves in the record are both checkable against the report",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/experiment-spawn.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user returns to the relevance-measurement research after a day away. They remember a deep dive was running when they left and want to hear what it found before anything else. They run the shop, not the search stack: they know what a bad result page costs them and which shoppers matter, and they do not read code — a function name, a config file, or a job schedule means nothing to them. They take what comes back as read, volunteer nothing new, ask nothing back, and steer the conversation nowhere else.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.research.relevance-measurement status",
+      "render research-threads search-relevance.research.relevance-measurement",
+      "render resume-gate search-relevance.research.relevance-measurement",
+      "topic queue search-relevance research relevance-measurement",
+      "agent scan search-relevance research relevance-measurement",
+      "research-threads set search-relevance relevance-measurement tail-regressions learned",
+      "agent ack search-relevance research relevance-measurement deep-dive-001-tail-regressions --clean",
+      "--origin deep-dive-001 --parent tail-regressions",
+      "research(search-relevance/relevance-measurement): fold",
+      "(deep-dive-001)"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.research.relevance-measurement status",
+      "render resume-gate search-relevance.research.relevance-measurement",
+      "agent scan search-relevance research relevance-measurement",
+      "write:.workflows/search-relevance/research/relevance-measurement.md",
+      "research-threads set search-relevance relevance-measurement tail-regressions learned",
+      "agent ack search-relevance research relevance-measurement deep-dive-001-tail-regressions --clean",
+      "research-threads add search-relevance relevance-measurement",
+      "(deep-dive-001)",
+      "render research-threads search-relevance.research.relevance-measurement"
+    ],
+    "calls_exclude": [
+      "agent dispatch",
+      "--kind review",
+      "agent announce",
+      "agent surface",
+      "agent incorporate",
+      "render finding-announce",
+      "render finding-batch",
+      "render deep-dive-offer",
+      "research-threads set search-relevance relevance-measurement tail-regressions open",
+      "experiment create",
+      "render experiment-spawn-gate",
+      "render research-conclude-gate",
+      "topic complete",
+      "knowledge.cjs index"
+    ]
+  }
+}

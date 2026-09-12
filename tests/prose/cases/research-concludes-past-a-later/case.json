@@ -1,0 +1,75 @@
+{
+  "origin": "the triage check's conclusion reading had no coverage — a recent `later` defers the queue's re-offer until the conversation moves on, but a conclusion attempt is the break the deferral was waiting for: the blocker names the queue, and the same turn offers it again rather than falling silent",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/epic-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-research-process/references/topic-completion.md",
+    "skills/workflow-shared/references/natural-breaks.md"
+  ],
+  "answers": [
+    "c — continue",
+    "l — later"
+  ],
+  "conduct": "The user comes back to close the measurement research out. They open by asking what is waiting in the queue for this topic, hear the concern offered, and say later — they want to say one thing first: that NDCG@10 over click-derived judgments is the metric they will take into the discussion, nothing more to add. Then they say they are done and want to conclude. They run the shop and introduce no new material; when the queue is offered again after the blocker, the walk has reached its stop and they answer nothing.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get search-relevance.research.relevance-measurement status",
+      "render resume-gate search-relevance.research.relevance-measurement",
+      "topic queue search-relevance research relevance-measurement",
+      "render triage-announce search-relevance.research.relevance-measurement",
+      "render triage-offer search-relevance.research.relevance-measurement",
+      "render triage-block search-relevance.research.relevance-measurement"
+    ],
+    "calls_in_order": [
+      "manifest get search-relevance.research.relevance-measurement status",
+      "render resume-gate search-relevance.research.relevance-measurement",
+      "render triage-announce search-relevance.research.relevance-measurement",
+      "render triage-offer search-relevance.research.relevance-measurement",
+      "render triage-block search-relevance.research.relevance-measurement",
+      "render triage-offer search-relevance.research.relevance-measurement"
+    ],
+    "calls_exclude": [
+      "topic absorb",
+      "topic requeue",
+      "topic complete",
+      "render wait-gate search-relevance.research.relevance-measurement",
+      "render research-conclude-gate",
+      "agent dispatch",
+      "--kind review",
+      "--kind deep-dive",
+      "render deep-dive-offer",
+      "render in-flight-agents-gate",
+      "research-threads set",
+      "research-threads add",
+      "research-threads reframe",
+      "research-threads remove",
+      "experiment create",
+      "topic triage",
+      "topic reopen",
+      "--dead-end"
+    ]
+  }
+}
