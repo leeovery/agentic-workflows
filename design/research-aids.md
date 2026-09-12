@@ -105,8 +105,8 @@ Research Threads — Space Homing (4 threads — 1 digging · 2 learned · 1 par
 1. Read the report in full.
 2. Write a section into the research file — `## {question} — deep-dive-NNN, {date}` — Answers first, then Material, sources kept inline. Commit with the dive's id in the subject (`research({wu}/{topic}): fold launch placement (deep-dive-001)`).
 3. `research-threads set {slug} learned`.
-4. For each Opened line: a question this topic will carry becomes a thread (`add`, origin the dive's id, parent the folded thread); one already covered or belonging elsewhere is folded as a note in the section instead. A measurement line is the laboratory's cue — the session makes the experiment offer.
-5. Speak to the user: the Answers verbatim when the brief asked questions; otherwise a digest of what was asked, what came back in three to five lines, and what it opened. A question only the user can answer — their environment, their intent — is asked here, once, with the session's lean beside it.
+4. For each Opened line: a question this topic will carry becomes a thread (`add`, origin the dive's id, parent the folded thread); one already covered or belonging elsewhere is folded as a note in the section instead. A measurement line becomes a thread the same way — what the measurement would settle — and is the laboratory's cue: the session makes the experiment offer now, or at the next natural break when the fold ends on a question.
+5. Speak to the user: the Answers in full when the brief asked questions — every answer's substance whole, told at product altitude, never the report's code pasted; otherwise a digest of what was asked, what came back in three to five lines, and what it opened. A question only the user can answer — their environment, their intent — is asked here, once, with the session's lean beside it.
 6. Render the register.
 
 The report is never pasted into the conversation. No announce menu, no lanes, no not-now, no dismissal — a dive returns what was asked for.
@@ -133,4 +133,5 @@ Design docs rewritten in place with this one: `review-maturity.md` (research no 
 
 ## Log
 
+- 2026-09-12 — Stack #1135 open: #1133 engine strip, #1134 register, #1136 research prose, #1137 shared references re-homed, plus the three cases. Fold step 4 gains the measurement thread (a fold that ends on a question kept no durable cue) and step 5 says in full at product altitude, never verbatim.
 - 2026-09-11 — Opened from the Fumi `space-homing` conclusion. Rulings R1–R9 agreed in conversation; the register's flexibility ("research can thread and bend and move based on results") and the answers-in-full return (R3) are the user's own framing.
