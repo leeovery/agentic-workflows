@@ -34,6 +34,7 @@ const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
 const schema = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
 const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/derivations.cjs'));
 const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
+const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
 const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
@@ -143,6 +144,10 @@ function auditState(dir, label) {
         // vocabulary, every parent top-level, a note on a parked row alone.
         if (phase === 'research') {
           assert.doesNotThrow(() => registerState(manifest, topic), ctx(`${wu}.research.${topic}: thread register`));
+        }
+        // A discussion item's map derives the same way: every subtopic in vocabulary.
+        if (phase === 'discussion') {
+          assert.doesNotThrow(() => mapState(manifest, topic), ctx(`${wu}.discussion.${topic}: discussion map`));
         }
       }
       // Derivation must hold for every phase present.

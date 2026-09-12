@@ -213,7 +213,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
 
     // The research move: the file must exist before anything mutates.
     const epicResearchDir = path.join(cwd, '.workflows', into, 'research');
-    /** @type {{from: string, target: string, status: string, threads?: Record<string, import('./research-threads.cjs').Thread>, dismissed_grounds?: string[], awaiting_experiments?: string[], reconcile_needed?: string}[]} */
+    /** @type {{from: string, target: string, status: string, item: Record<string, unknown>}[]} */
     const researchPlan = [];
     const researchItem = featureResearch[feature];
     if (researchItem !== undefined) {
@@ -225,16 +225,10 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       if (status === null) {
         throw new Error(`research item "${feature}" in "${feature}" has no status — fix the manifest before absorbing`);
       }
-      researchPlan.push({
-        from: feature,
-        target: topic,
-        status,
-        // The register travels whole — every thread, its state, its origin.
-        ...(researchItem.threads !== undefined ? { threads: JSON.parse(JSON.stringify(researchItem.threads)) } : {}),
-        ...(researchItem.dismissed_grounds !== undefined ? { dismissed_grounds: researchItem.dismissed_grounds } : {}),
-        ...(researchItem.awaiting_experiments !== undefined ? { awaiting_experiments: researchItem.awaiting_experiments } : {}),
-        ...(researchItem.reconcile_needed !== undefined ? { reconcile_needed: researchItem.reconcile_needed } : {}),
-      });
+      // The item travels whole: every field on it — the thread register, the
+      // dismissed grounds, a live reconcile flag, an evidence wait — is the
+      // topic's own state, and a field list is how state gets dropped.
+      researchPlan.push({ from: feature, target: topic, status, item: JSON.parse(JSON.stringify(researchItem)) });
     }
 
     const importPlan = planTrackedMoves(cwd, feature, into, 'imports', Array.isArray(featureManifest.imports) ? featureManifest.imports : []);
@@ -281,25 +275,13 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // paths.
     const epicPhases = ensureContainer(epicManifest, 'phases', 'phases');
     const discussion = ensureContainer(epicPhases, 'discussion', 'phases.discussion');
-    // A live reconcile flag travels with the topic: research, experiments,
-    // and discussion move together, so "the upstream input moved beneath
-    // this discussion" stays true in the epic — the map row cues it and the
-    // discussion's next entry clears it, same as any epic topic. The topic's
-    // dismissed grounds travel too: they are the user's standing
-    // do-not-report calls on this material, and the material is what moved —
-    // dropping them re-raises findings the user already turned down. A live
-    // evidence wait travels with its holder: the series it waits on moves in
-    // the same transaction, ids intact and topic-keyed alongside it, so the
-    // engine's completion refusal and release edges keep holding in the epic.
-    // The Discussion Map travels whole — every subtopic, its state, its
-    // parent — the way the research register and the experiment series do.
-    ensureContainer(discussion, 'items', 'phases.discussion.items')[topic] = {
-      status: discussionItem.status,
-      ...(discussionItem.subtopics !== undefined ? { subtopics: JSON.parse(JSON.stringify(discussionItem.subtopics)) } : {}),
-      ...(discussionItem.reconcile_needed !== undefined ? { reconcile_needed: discussionItem.reconcile_needed } : {}),
-      ...(discussionItem.dismissed_grounds !== undefined ? { dismissed_grounds: discussionItem.dismissed_grounds } : {}),
-      ...(discussionItem.awaiting_experiments !== undefined ? { awaiting_experiments: discussionItem.awaiting_experiments } : {}),
-    };
+    // The item travels whole — the Discussion Map, a live reconcile flag
+    // (the upstream material moves alongside, so the flag stays true and the
+    // epic's map row cues it), the dismissed grounds (the user's standing
+    // calls on this material), an evidence wait (its series moves in the same
+    // transaction, topic-keyed beside it). Every field is the topic's own
+    // state, and a field list is how state gets dropped.
+    ensureContainer(discussion, 'items', 'phases.discussion.items')[topic] = JSON.parse(JSON.stringify(discussionItem));
     if (experimentItem) {
       const experiment = ensureContainer(epicPhases, 'experiment', 'phases.experiment');
       // The item travels whole — derived status and every series record
@@ -311,13 +293,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       const research = ensureContainer(epicPhases, 'research', 'phases.research');
       const researchItems = ensureContainer(research, 'items', 'phases.research.items');
       for (const move of researchPlan) {
-        researchItems[move.target] = {
-          status: move.status,
-          ...(move.threads !== undefined ? { threads: move.threads } : {}),
-          ...(move.dismissed_grounds !== undefined ? { dismissed_grounds: move.dismissed_grounds } : {}),
-          ...(move.awaiting_experiments !== undefined ? { awaiting_experiments: move.awaiting_experiments } : {}),
-          ...(move.reconcile_needed !== undefined ? { reconcile_needed: move.reconcile_needed } : {}),
-        };
+        researchItems[move.target] = { ...move.item, status: move.status };
       }
     }
     for (const move of importPlan) {
@@ -332,7 +308,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
 
     return {
       discussionStatus: discussionItem.status,
-      researchMoves: researchPlan,
+      researchMoves: researchPlan.map(({ from, target, status }) => ({ from, target, status })),
       importMoves: importPlan,
       seedMoves: seedPlan,
       experimentMove: experimentItem

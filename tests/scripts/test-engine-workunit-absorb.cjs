@@ -349,6 +349,26 @@ describe('engine workunit absorb — happy path', () => {
       'the epic\'s own topic gains no field');
   });
 
+  it('a phase item travels key-complete — whatever a feature item carries, the epic item carries', () => {
+    const feature = featureManifest();
+    Object.assign(feature.phases.discussion.items['auth-flow'], {
+      subtopics: { rotation: { status: 'decided', parent: null } },
+      dismissed_grounds: ['x'], reconcile_needed: 'research', awaiting_experiments: [], future_field: { any: 'shape' },
+    });
+    Object.assign(feature.phases.research.items['auth-flow'], {
+      threads: { q: { question: 'Q?', status: 'open', origin: 'seed', parent: null } },
+      dismissed_grounds: ['y'], another_field: 7,
+    });
+    fix = setupFixture({ feature });
+    engine(fix, ABSORB);
+
+    const m = readManifest(fix, 'payments');
+    assert.deepStrictEqual(Object.keys(m.phases.discussion.items.auth).sort(), Object.keys(feature.phases.discussion.items['auth-flow']).sort());
+    assert.deepStrictEqual(Object.keys(m.phases.research.items.auth).sort(), Object.keys(feature.phases.research.items['auth-flow']).sort());
+    assert.deepStrictEqual(m.phases.discussion.items.auth.future_field, { any: 'shape' });
+    assert.strictEqual(m.phases.research.items.auth.another_field, 7);
+  });
+
   it('the Discussion Map travels whole — every subtopic, its state, its parent, at the new name', () => {
     const feature = featureManifest();
     const subtopics = {
