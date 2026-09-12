@@ -20,6 +20,7 @@ const {
   title,
   discoveryGlyph,
   discoveryLifecycleLabel,
+  researchGlyph,
 } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
 
 // A realistic discovery-map fixture, composed via the conventions layer (proving
@@ -265,7 +266,65 @@ describe('render shape: renderTree (discovery map)', () => {
   });
 });
 
+describe('render shape: renderTree (wrapped titles)', () => {
+  // A register-shaped fixture: rows are sentences, tags a column, one row
+  // carrying a note. childIndent 2 + bodyIndent 0 = everything beneath a row
+  // drops from its title's first letter.
+  const SENTENCES = [
+    {
+      title: '● Does a Space identify a home alone, or is home a display+Space pair?',
+      tag: 'seed',
+      children: [{ title: '● Which routes place a window on a non-active Space?', tag: 'brief' }],
+    },
+    { title: '◌ Cold-login placement', tag: 'conversation', body: [{ text: '↳ needs a machine cycle', hang: 2 }] },
+  ];
+  const opts = { width: 65, childIndent: 2, bodyIndent: 0, wrapTitles: true };
+
+  it('wraps a title at the width — tag on the first line, continuations under the title column, the column reserved out of the wrap', () => {
+    assert.strictEqual(renderTree(SENTENCES, opts), [
+      '  ├─ ● Does a Space identify a home alone, or    [seed]',
+      '  │    is home a display+Space pair?',
+      '  │    └─ ● Which routes place a window on a     [brief]',
+      '  │         non-active Space?',
+      '  └─ ◌ Cold-login placement                      [conversation]',
+      '       ↳ needs a machine cycle',
+      '',
+    ].join('\n'));
+  });
+
+  it('keeps every line within the width, the tag column included', () => {
+    for (const width of [49, 58, 65, 72]) {
+      for (const l of renderTree(SENTENCES, { ...opts, width }).split('\n')) {
+        assert.ok(l.length <= width, `width ${width}: "${l}" (${l.length}) overruns`);
+      }
+    }
+  });
+
+  it('leaves titles unwrapped by default', () => {
+    const lines = renderTree(SENTENCES, { width: 65, childIndent: 2 }).split('\n');
+    assert.ok(lines[0].startsWith('  ├─ ● Does a Space identify a home alone, or is home a display+Space pair?'));
+    assert.strictEqual(lines.length, 5, 'three titles, one body line, the trailing empty');
+  });
+
+  it('forgoes the reserve when it would starve the title — the tag column tightens as an unwrapped tree\'s does', () => {
+    const lines = renderTree(
+      [{ title: '○ A question that runs on past the narrow pane budget', tag: 'research complete · ready for discussion' }],
+      { width: 40, childIndent: 2, wrapTitles: true },
+    ).split('\n');
+    assert.strictEqual(lines[0], '  └─ ○ A question that runs on past [research complete · ready for discussion]');
+    assert.strictEqual(lines[1], '       the narrow pane budget');
+  });
+});
+
 describe('conventions (domain composition layer)', () => {
+  it('researchGlyph maps thread states to the canonical symbol set', () => {
+    assert.strictEqual(researchGlyph('open'), '○');
+    assert.strictEqual(researchGlyph('digging'), '◐');
+    assert.strictEqual(researchGlyph('learned'), '●');
+    assert.strictEqual(researchGlyph('parked'), '◌');
+    assert.strictEqual(researchGlyph('nope'), '');
+  });
+
   it('tag wraps in square brackets', () => {
     assert.strictEqual(tag('decided'), '[decided]');
   });

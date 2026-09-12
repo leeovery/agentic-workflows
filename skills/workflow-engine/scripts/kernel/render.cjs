@@ -142,6 +142,39 @@ function box(title, { width = WIDTH } = {}) {
 // Blank columns between the longest row and the tag column.
 const TAG_GAP = 4;
 
+// Below this title budget the tag reserve stops paying for itself — a long
+// tag in a narrow pane. The reserve is forgone, the title wraps at the full
+// budget, and the tag column tightens exactly as an unwrapped tree's does.
+const MIN_TITLE_BUDGET = 16;
+
+// The tag column's claim on the width when titles wrap: the gap plus the
+// widest `[tag]` across the whole tree, so every wrapped row's first line
+// leaves room for its tag and the column never has to tighten.
+/** @param {TreeNode[]} nodes @returns {number} */
+function tagReserve(nodes) {
+  let widest = 0;
+  (function walk(/** @type {TreeNode[]} */ list) {
+    for (const node of list) {
+      if (node.tag) widest = Math.max(widest, String(node.tag).length + 2);
+      if (node.children) walk(node.children);
+    }
+  })(nodes);
+  return widest ? TAG_GAP + widest : 0;
+}
+
+// A wrapped title: the first line under the branch glyph, continuations
+// under the child prefix — the title's own first column when `childIndent`
+// is the glyph width. One budget for every line, measured against the
+// longer (child) prefix so no line can overflow; the tag reserve comes off
+// it unless that would starve the title.
+/** @param {string} title @param {string} head @param {string} childPrefix @param {number} width @param {number} reserve @returns {string[]} */
+function titleLines(title, head, childPrefix, width, reserve) {
+  const full = width - childPrefix.length;
+  const reserved = full - reserve;
+  const [first, ...rest] = wrap(title, reserved >= MIN_TITLE_BUDGET ? reserved : full);
+  return [head + first, ...rest.map((seg) => childPrefix + seg)];
+}
+
 // Render nodes as a continuous-gutter tree. PURE LAYOUT: branch glyphs (├─/└─,
 // never ┌─ — the list hangs off whatever header precedes it), a continuous │
 // gutter at every depth, a connector from a parent down to its children, body
@@ -165,28 +198,38 @@ const TAG_GAP = 4;
 // glyph pass the glyph width so subtrees drop from the title's first letter,
 // not from the glyph. `bodyIndent` is how many columns a childless row's body
 // sits past the child prefix (default 3; glyphless trees pass 1 so the body
-// lands one column past the title's first character).
-/** @param {TreeNode[]} nodes @param {{width?: number, gap?: boolean, childIndent?: number, bodyIndent?: number}} [opts] @returns {string} */
-function renderTree(nodes, { width = displayWidth(), gap = false, childIndent = 0, bodyIndent = 3 } = {}) {
+// lands one column past the title's first character). `wrapTitles` wraps a
+// title that overruns the width — for trees whose rows are sentences rather
+// than labels — with continuations under the title's first column and the
+// tag on the first line, its column reserved out of the wrap.
+/** @param {TreeNode[]} nodes @param {{width?: number, gap?: boolean, childIndent?: number, bodyIndent?: number, wrapTitles?: boolean}} [opts] @returns {string} */
+function renderTree(nodes, { width = displayWidth(), gap = false, childIndent = 0, bodyIndent = 3, wrapTitles = false } = {}) {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     throw new Error('renderTree: nodes must be a non-empty array');
   }
   /** @type {{text: string, tag: string|null}[]} */
   const rows = [];
-  renderSiblings(nodes, '  ', width, rows, gap, childIndent, bodyIndent);
+  renderSiblings(nodes, '  ', width, rows, gap, childIndent, bodyIndent, wrapTitles ? tagReserve(nodes) : null);
   return columniseTags(rows, width).join('\n') + '\n';
 }
 
 // `prefix` is the accumulated gutter that precedes this level's branch glyphs.
-/** @param {TreeNode[]} nodes @param {string} prefix @param {number} width @param {{text: string, tag: string|null}[]} out @param {boolean} [gap] @param {number} [childIndent] @param {number} [bodyIndent] */
-function renderSiblings(nodes, prefix, width, out, gap = false, childIndent = 0, bodyIndent = 3) {
+// `titleReserve` is the tag column's claim when titles wrap; null leaves
+// titles unwrapped.
+/** @param {TreeNode[]} nodes @param {string} prefix @param {number} width @param {{text: string, tag: string|null}[]} out @param {boolean} [gap] @param {number} [childIndent] @param {number} [bodyIndent] @param {number|null} [titleReserve] */
+function renderSiblings(nodes, prefix, width, out, gap = false, childIndent = 0, bodyIndent = 3, titleReserve = null) {
   nodes.forEach((node, i) => {
     if (!node || !node.title) throw new Error(`renderTree: node ${i} needs a title`);
     const isLast = i === nodes.length - 1;
-    out.push({ text: prefix + (isLast ? '└─ ' : '├─ ') + node.title, tag: node.tag || null });
+    const head = prefix + (isLast ? '└─ ' : '├─ ');
     // Sub-content lives one level in. The last sibling drops the │ (blank) so
     // nothing dangles below └─.
     const childPrefix = prefix + (isLast ? '   ' : '│  ') + ' '.repeat(childIndent);
+    const [first, ...continuation] = titleReserve === null
+      ? [head + node.title]
+      : titleLines(node.title, head, childPrefix, width, titleReserve);
+    out.push({ text: first, tag: node.tag || null });
+    for (const line of continuation) out.push({ text: line, tag: null });
     const hasChildren = !!(node.children && node.children.length);
     // With children, the connector runs from this node's glyph through its
     // body down to the last child, so the subtree visibly descends from its
@@ -201,7 +244,7 @@ function renderSiblings(nodes, prefix, width, out, gap = false, childIndent = 0,
       }
     }
     if (node.children && node.children.length) {
-      renderSiblings(node.children, childPrefix, width, out, false, childIndent, bodyIndent);
+      renderSiblings(node.children, childPrefix, width, out, false, childIndent, bodyIndent, titleReserve);
     }
     if (gap && !isLast) out.push({ text: prefix + '│', tag: null });
   });

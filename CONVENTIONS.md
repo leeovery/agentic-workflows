@@ -26,7 +26,7 @@ All user-facing output uses five distinct visual tiers, each with a specific pur
 | 4 | Sub-step marker | Progress within a step | Markdown — `**`▪ Name`**` |
 | 5 | Status / menu | Data displays and interactive choices | Code block / markdown |
 
-The chrome family is the square glyphs at falling weight — `■` filled, `□` hollow, `▪` small — all in bold inline code so they render blue, the H1 adding its underline to the title alone. Squares are structure; circles and arrows (`○ ◐ → ✓ ⊙ ⊘`) are item state, `◆` is a decision, `⚑` is an alert, and `⏺` belongs to the host UI's gutter.
+The chrome family is the square glyphs at falling weight — `■` filled, `□` hollow, `▪` small — all in bold inline code so they render blue, the H1 adding its underline to the title alone. Squares are structure; circles and arrows (`○ ◐ ● ◌ → ✓ ⊙ ⊘`) are item state, `◆` is a decision, `⚑` is an alert, and `⏺` belongs to the host UI's gutter.
 
 Every skill invocation should produce at most one phase title. Signpost blockquotes appear at phase entry, before steps where context helps, and at phase completion.
 
@@ -79,7 +79,7 @@ Rules:
 - Exactly this shape: `# ` + `**` + backtick + `■ ` + title + backtick + `**`
 - Title text is the phase or context name (e.g., "Workflow Overview", "Planning Overview")
 - **Emitted as markdown** (use the markdown rendering instruction) — the styling comes from the renderer, so the title is correct at any terminal width
-- The glyph is always `■`. Squares are structure (`■` phase, `□` step, `▪` sub-step); circles and arrows are item state (`○ ◐ → ✓ ⊙ ⊘`), `◆` is a decision, and `⏺` is the host UI's own gutter — chrome never borrows another family's shape
+- The glyph is always `■`. Squares are structure (`■` phase, `□` step, `▪` sub-step); circles and arrows are item state (`○ ◐ ● ◌ → ✓ ⊙ ⊘`), `◆` is a decision, and `⏺` is the host UI's own gutter — chrome never borrows another family's shape
 
 Engine views carry their heading as a TITLE section — the same markdown H1 shape, emitted above the DISPLAY fence (see Engine Output Sections). Nothing draws boxes.
 
@@ -206,7 +206,7 @@ Two fenced styles, chosen by whether items have sub-detail. A transient list the
   • data-model
 ```
 
-**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Branch glyphs are positional: `├─` for non-final children, `└─` for the last child only. A tree hangs directly off its heading line — the header sits flush left, rows indent two columns beneath it, no blank line between the header and the first row; the `├─` head is what reads as attachment. Depth is recursive — child items can have their own branches. **Blank line between each top-level item** — engine trees whose rows carry bodies draw it as a gutter-only `│` line so the rail never breaks. Rows with bodies spell state and provenance as trailing `↳` lines beneath the body (`↳ From gap-analysis`, `↳ Discussing · in session (last active 2m ago)`) rather than a tag column. For numbered lists, show one full entry then `2. ...` to indicate repetition.
+**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Branch glyphs are positional: `├─` for non-final children, `└─` for the last child only. A tree hangs directly off its heading line — the header sits flush left, rows indent two columns beneath it, no blank line between the header and the first row; the `├─` head is what reads as attachment. Depth is recursive — child items can have their own branches. **Blank line between each top-level item** — engine trees whose rows carry bodies draw it as a gutter-only `│` line so the rail never breaks. Rows with bodies spell state and provenance as trailing `↳` lines beneath the body (`↳ From gap-analysis`, `↳ Discussing · in session (last active 2m ago)`) rather than a tag column — except a register whose glyph carries the state and whose tag carries provenance (the research thread register: `○ ◐ ● ◌` + `[origin]`), which keeps the column and hangs a `↳` note only beneath the rows that have one. A row whose title is a sentence rather than a label wraps under its own first column instead of clamping (`renderTree`'s `wrapTitles`), the tag column reserved out of the wrap. For numbered lists, show one full entry then `2. ...` to indicate repetition.
 
 ```
 1. {topic:(titlecase)}
@@ -264,7 +264,7 @@ A **worklist** is a transient list the session works through and throws away —
 
 ### Status Terms
 
-Engine-rendered tree rows carry their status as a right-aligned `[term]` column — one shared column per tree, computed against the longest row (`├─ ◐ Menu Management    [researching]`). Rows that carry a body (summaries, provenance) skip the column and spell their state on a trailing `↳ State` line instead — see List Display. Square brackets `[term]` are also the form everywhere a column can't exist: plain list rows (selection sub-views, completed pickers, inbox items) and prose references. Menu options carry status as an italic metadata tail — see Menus. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
+Engine-rendered tree rows carry their status as a right-aligned `[term]` column — one shared column per tree, computed against the longest row (`├─ ◐ Menu Management    [researching]`). Rows that carry a body (summaries, provenance) skip the column and spell their state on a trailing `↳ State` line instead — unless the column carries provenance and the glyph the state; see List Display. Square brackets `[term]` are also the form everywhere a column can't exist: plain list rows (selection sub-views, completed pickers, inbox items) and prose references. Menu options carry status as an italic metadata tail — see Menus. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
 
 **Which register applies is decided by the fence, not by taste.** Demoted content — status, provenance, the note under a row — reads italic in a menu, takes `↳` inside a fenced display, and takes the backticked `[term]` tag plus `↳` note in a markdown worklist, because markdown emphasis inside a code fence renders as literal asterisks. A display that wants italics is a display that should not be fenced (`DISPLAY: proposed task`, `DISPLAY: finding`); a display that needs columns or a tree keeps its fence and its `↳`.
 

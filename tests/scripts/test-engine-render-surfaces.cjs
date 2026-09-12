@@ -1182,6 +1182,73 @@ describe('render research-conclude-gate', () => {
     assert.match(out, /no discussion owed/);
     assert.match(out, /reversible from the map/);
   });
+
+  it('the menu stands alone while the register is empty', () => {
+    const out = renderSurface(dir, 'research-conclude-gate', { dotpath: 'pay.research.checkout' });
+    assert.ok(out.startsWith('=== MENU: research conclude gate'), 'no display precedes the menu');
+    assert.ok(!out.includes('DISPLAY: research threads'));
+  });
+
+  it('prepends the register above the menu whenever the topic holds a thread — with and without the dead-end row', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: { checkout: { status: 'in-progress', threads: {
+          'cart-persistence': { question: 'Does the cart survive a session?', status: 'learned', origin: 'seed', parent: null },
+          'guest-checkout': { question: 'Can a guest check out at all?', status: 'open', origin: 'brief', parent: null },
+        } } } },
+      },
+    });
+    for (const args of [{ dotpath: 'pay.research.checkout' }, { dotpath: 'pay.research.checkout', 'dead-end': '1' }]) {
+      const out = renderSurface(dir, 'research-conclude-gate', args);
+      assert.ok(out.startsWith('=== DISPLAY: research threads (emit verbatim as a code block) ===\n'), 'the display opens the response — a menu follows, so it carries no continue instruction');
+      assert.ok(out.indexOf('DISPLAY: research threads') < out.indexOf('=== MENU: research conclude gate'), 'display above the menu');
+      assert.match(out, /Research Threads — Checkout \(2 threads — 1 open · 1 learned\)/);
+      assert.match(out, /├─ ○ Can a guest check out at all\?\s+\[brief\]\n {2}└─ ● Does the cart survive a session\?\s+\[seed\]/);
+      assert.match(out, /\*\*`c\/conclude`\*\* → Mark this topic as complete, ready for discussion/);
+      assert.strictEqual(out.includes('dead end'), 'dead-end' in args, 'the dead-end row still follows the flag alone');
+    }
+  });
+});
+
+describe('render research-threads', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: {
+          checkout: { status: 'in-progress', threads: {
+            'cart-persistence': { question: 'Does the cart survive a session?', status: 'parked', origin: 'seed', parent: null, note: 'needs a device cycle' },
+          } },
+          shipping: { status: 'in-progress' },
+        } },
+        discussion: { items: { checkout: { status: 'in-progress' } } },
+      },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the register as one DISPLAY section — the whole response, so it carries the continue instruction', () => {
+    const out = renderSurface(dir, 'research-threads', { dotpath: 'pay.research.checkout' });
+    assert.strictEqual(out, [
+      '=== DISPLAY: research threads (emit verbatim as a code block — do not stop; continue as the workflow instructs) ===',
+      'Research Threads — Checkout (1 thread)',
+      '  └─ ◌ Does the cart survive a session?    [seed]',
+      '       ↳ Needs a device cycle',
+      '',
+    ].join('\n'));
+  });
+
+  it('answers empty over an empty register — nothing to emit, no header over nothing', () => {
+    assert.strictEqual(renderSurface(dir, 'research-threads', { dotpath: 'pay.research.shipping' }), '');
+  });
+
+  it('pins the research address and refuses a topic with no research item', () => {
+    assert.throws(() => renderSurface(dir, 'research-threads', { dotpath: 'pay.discussion.checkout' }),
+      /render research-threads: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'research-threads', { dotpath: 'pay.research.ghost' }),
+      /no research item "ghost" in the manifest/);
+  });
 });
 
 describe('render reroute-offer', () => {
@@ -3923,7 +3990,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, map-op-gate, candidate-gate, topic-collision-gate, triage-closed-target, conclude-gate, closing-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-format-gate, plan-review-gate, correction-gate, analysis-proceed-gate, proposed-task, incoherence-gate, cancel-cascade-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, direct-entry-gate, code-gate, early-completion-gate, revisit-gate, cancel-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, pivot-continuation, session-receipt, absorb-target, absorb-name-gate, absorb-confirm-gate, plan-topics, revisit-phases, roadmap-view, roadmap-add-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, roadmap-conclude-gate, name-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, migration-gate, label-gate\)/);
   });
 });
 
@@ -4916,13 +4983,13 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
   afterEach(() => teardown(dir));
 
   it('deep-dive-offer renders the statement then the ask byte-exactly — the question takes the glyph', () => {
-    const file = writePayload(dir, 'd.json', { thread: "The competitor's ranking pipeline" });
+    const file = writePayload(dir, 'd.json', { thread: 'How does the competitor rank a query it has never seen?' });
     assert.strictEqual(renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout', file }), [
       "=== MENU: deep dive offer (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      "The competitor's ranking pipeline looks like it could use a deep dive.",
+      'A thread worth digging: How does the competitor rank a query it has never seen?',
       '',
-      '**`◆ Want me to spin up a background investigation while we keep going?`**',
+      '**`◆ Send a deep dive after it while we keep going?`**',
       '',
       '**`y/yes`** → Dispatch a deep-dive agent',
       "**`n/no`**  → Skip, we'll cover it in conversation",

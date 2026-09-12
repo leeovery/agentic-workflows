@@ -349,6 +349,22 @@ describe('engine workunit absorb — happy path', () => {
       'the epic\'s own topic gains no field');
   });
 
+  it('the thread register travels whole — every thread, its state, its origin, at the new name', () => {
+    const feature = featureManifest();
+    const threads = {
+      'hosted-fields': { question: 'What does moving the checkout take?', status: 'open', origin: 'seed', parent: null },
+      'capture-confirm': { question: 'Does capture confirmation change?', status: 'open', origin: 'user', parent: 'hosted-fields' },
+      'second-provider': { question: 'A second provider?', status: 'parked', origin: 'conversation', parent: null, note: 'not this year' },
+    };
+    feature.phases.research.items['auth-flow'].threads = JSON.parse(JSON.stringify(threads));
+    fix = setupFixture({ feature });
+    engine(fix, ABSORB);
+
+    const m = readManifest(fix, 'payments');
+    assert.deepStrictEqual(m.phases.research.items.auth.threads, threads);
+    assert.strictEqual(m.phases.research.items.exploration.threads, undefined, 'the epic\'s own topic gains no register');
+  });
+
   it('the experiment series travels whole — records, statuses, verdicts, directory', () => {
     const feature = featureManifest();
     feature.phases.experiment = {

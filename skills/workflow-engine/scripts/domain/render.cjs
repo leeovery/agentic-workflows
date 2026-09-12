@@ -42,6 +42,8 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
+const { researchThreads } = require('./projections/research-threads.cjs');
+const { registerState } = require('./research-threads.cjs');
 const { waitGate, researchWaitState } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
@@ -1973,8 +1975,32 @@ function rerouteOffer(cwd, { dotpath, file }) {
   );
 }
 
-// research-conclude-gate — the topic-completion consent gate. The dead-end
-// row renders only when the session's own conclusion is that the topic gives
+// research-threads — the thread register: what the topic set out to learn,
+// rendered at the session's transitions and as the conclusion's hand-off.
+// The register is a lens — nothing gates on a thread's state, so the
+// display is the whole response and carries the continue instruction; an
+// empty register answers empty, so no caller renders a header over nothing.
+
+/** The register block wrapped as its DISPLAY section. @param {string} topic @param {object} manifest @param {string} instruction */
+function researchThreadsSection(topic, manifest, instruction) {
+  return section('DISPLAY: research threads', instruction, researchThreads(topic, manifest));
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function researchThreadsSurface(cwd, { dotpath }) {
+  const { topic, manifest } = resolveResearch(cwd, dotpath, 'research-threads');
+  if (registerState(manifest, topic).total === 0) return '';
+  return researchThreadsSection(topic, manifest, CONTINUE_INSTRUCTION);
+}
+
+// research-conclude-gate — the topic-completion consent gate, the register
+// above it whenever the topic holds a thread (open is a fine way to
+// conclude — the register is the hand-off, never a block). The dead-end row
+// renders only when the session's own conclusion is that the topic gives
 // the product nothing to carry forward under its own name — the judgment
 // travels as the --dead-end flag, never derived here.
 
@@ -1984,7 +2010,7 @@ function rerouteOffer(cwd, { dotpath, file }) {
  * @returns {string}
  */
 function researchConcludeGate(cwd, args) {
-  resolveResearch(cwd, args.dotpath, 'research-conclude-gate');
+  const { topic, manifest } = resolveResearch(cwd, args.dotpath, 'research-conclude-gate');
   const options = [
     cmdOption('c', 'conclude', 'Mark this topic as complete, ready for discussion'),
   ];
@@ -1992,11 +2018,15 @@ function researchConcludeGate(cwd, args) {
     options.push(cmdOption('d', 'dead-end', 'Close it as a dead end — completed and kept as record, no discussion owed; reversible from the map'));
   }
   options.push(cmdOption('k', 'keep', "Keep digging, there's more to understand"));
-  return section(
+  const gate = section(
     'MENU: research conclude gate',
     "emit verbatim as markdown, then STOP for the user's response",
     menu('', options, { question: 'This topic looks ready to conclude.' }),
   );
+  const register = registerState(manifest, topic).total > 0
+    ? researchThreadsSection(topic, manifest, 'emit verbatim as a code block')
+    : '';
+  return register + gate;
 }
 
 /**
@@ -2013,7 +2043,7 @@ function resolveResearch(cwd, dotpath, surface) {
 }
 
 // deep-dive-offer — the orchestrator's dispatch offer over a thread it judged
-// worth investigating independently. The thread description is the judgment
+// worth investigating independently. The thread's question is the judgment
 // content; the two-line opening and the y/n pair are fixed. The two lines
 // split by role: the statement names what was noticed and stays context, the
 // question beneath it is the ask and takes the decision glyph.
@@ -2028,15 +2058,15 @@ function deepDiveOffer(cwd, { dotpath, file }) {
   resolveResearch(cwd, dotpath, 'deep-dive-offer');
   const p = readJsonPayload(cwd, file, 'deep-dive-offer');
   if (!isFilled(p.thread)) {
-    throw new Error('render deep-dive-offer: "thread" must be a non-empty string — the thread description as it opens the offer');
+    throw new Error('render deep-dive-offer: "thread" must be a non-empty string — the thread\'s question as it opens the offer');
   }
   return section('MENU: deep dive offer', STOP_FOR_RESPONSE, menu(
-    `${p.thread} looks like it could use a deep dive.`,
+    `A thread worth digging: ${p.thread}`,
     [
       cmdOption('y', 'yes', 'Dispatch a deep-dive agent'),
       cmdOption('n', 'no', "Skip, we'll cover it in conversation"),
     ],
-    { question: 'Want me to spin up a background investigation while we keep going?' },
+    { question: 'Send a deep dive after it while we keep going?' },
   ));
 }
 
@@ -4786,6 +4816,7 @@ const SURFACES = {
   'triage-block': triageBlock,
   'requeue-offer': requeueOffer,
   'reroute-offer': rerouteOffer,
+  'research-threads': researchThreadsSurface,
   'research-conclude-gate': researchConcludeGate,
   'deep-dive-offer': deepDiveOffer,
   'in-flight-agents-gate': inFlightAgentsGate,
