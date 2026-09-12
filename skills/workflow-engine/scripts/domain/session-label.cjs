@@ -22,17 +22,18 @@
 //
 // The original name is stashed in the checkout's cache
 // (`.workflows/.cache/.session-labels/`, keyed by tmux socket + session
-// id), so a record is only ever read by the engine revision of the
-// checkout that wrote it. Re-labels across phases recompose from the true
-// original instead of compounding suffixes. A user rename mid-flight is
-// adopted as the new original at the next label; restore only ever renames
-// a session whose current name is exactly a name we applied.
+// id), so no other checkout's engine ever reads a record. Re-labels across
+// phases recompose from the true original instead of compounding suffixes.
+// A user rename mid-flight is adopted as the new original at the next
+// label; restore only ever renames a session whose current name is exactly
+// a name we applied.
 //
 // The stash key is not stable: tmux session ids renumber when the server
 // restarts, and name-restoring setups (tmux-resurrect, Portal) carry a
 // still-labelled name across the restart under a new id. Every original
-// lookup therefore resolves by exact applied-name match across the socket's
-// records — chained, because a record written against a stranded label
+// lookup therefore resolves by exact applied-name match across the
+// checkout's records for the socket — chained, because a record written
+// against a stranded label
 // carries that label inside its own `original` — and only a name matching
 // no record is adopted as the user's own. Records carry their owning
 // Claude process's identity (pid + start time, the presence discipline):
@@ -225,7 +226,7 @@ function allStashRecords(cwd) {
 }
 
 /**
- * The complete stash records on one socket — the chain-resolution set.
+ * This checkout's stash records on one socket — the chain-resolution set.
  * @param {string} cwd @param {string|null} socket
  * @returns {(LabelStash & {file: string})[]}
  */
@@ -263,8 +264,9 @@ function chainOriginal(records, name) {
 /**
  * Is the record's owning Claude process gone? Identity is pid + start time
  * (the presence discipline — a recycled pid carries a different start
- * time). A record without a pid predates owner identity and counts as
- * dead: exactly the strandings the sweeps exist to clear.
+ * time). A record without a pid carries no identity to verify and counts
+ * as dead: a label written with no CLAUDE_PID is sweepable by whoever
+ * finds it.
  * @param {LabelStash} stash
  */
 function ownerDead(stash) {
