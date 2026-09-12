@@ -51,12 +51,6 @@ name owns it. Design log for the stack. Opened 2026-08-04.
   rule. A rule that must be restated at every call site is a rule
   living in the wrong place.
 
-- **No prose case walks a research review.** One case touches the
-  research phase at all (`research-initialises-from-the-brief`, phase
-  initialisation). The research brief inherited a discussion-shaped
-  bar and lane vocabulary in #737 with no walk evidence on either
-  side.
-
 ## The contract
 
 - **M1 — one review, one axis.** Mid-session and final reviews differ
@@ -67,7 +61,7 @@ name owns it. Design log for the stack. Opened 2026-08-04.
   applies by construction.
 
 - **M2 — emphasis by maturity, not thresholds.** Three emphases,
-  stated plainly in each brief, with the agent interpolating from the
+  stated plainly in the brief, with the agent interpolating from the
   document rather than computing a boundary:
   - **early** (little decided): findings are fuel — areas untouched,
     questions worth asking, adjacent concerns. Offered as things to
@@ -78,25 +72,22 @@ name owns it. Design log for the stack. Opened 2026-08-04.
   - **settled** (mostly decided): the shipped bar as-is —
     contradictions, stale text, readiness for the consuming phase.
 
-- **M3 — the maturity signal is the phase's best evidence.**
-  Discussion: the agent derives maturity from the Discussion Map it
-  already reads — tracked state beats impression. Research: nothing
-  tracked exists, so the dispatching orchestrator passes a one-line
-  indication of where the session stands, and the agent weighs it
-  against its own read of the document — an input, never a verdict.
+- **M3 — the maturity signal is tracked state.** The agent derives
+  maturity from the Discussion Map it already reads — tracked state
+  beats impression.
 
 - **M4 — three owners, disjoint content.** The agent brief owns *what
-  earns a lane* (classification). The phase's caller reference owns
+  earns a lane* (classification). Discussion's caller reference owns
   *what approving a lane does* (vocabulary, headings, resolution — the
-  amendment shape, the landing). The shared surfacing file owns *how
+  amendment shape, the landing). The surfacing file owns *how
   findings reach the user* (lifecycle, announce, screens, ordering,
   promotion, never-dump). No sentence is shared between owners, so
   there is nothing to drift.
 
-- **M5 — the shared file matches its name.** Everything in
+- **M5 — the surfacing file matches its name.** Everything in
   `background-agent-surfacing.md` that is not surfacing mechanics
-  moves to its phase's caller reference. The caller's lane block is in
-  context before the shared file runs — the existing load-parameter
+  moves to discussion's caller reference. The caller's lane block is in
+  context before the surfacing file runs — the existing load-parameter
   mechanism, grouped into one declaration instead of scattered
   parameters. `walk_heading` is deleted.
 
@@ -119,47 +110,51 @@ name owns it. Design log for the stack. Opened 2026-08-04.
 
 | Content | From | To |
 |---|---|---|
-| Lane names, meanings, walk heading | surfacing §B/§F + `walk_heading` param | each phase's `review-agent.md` lane block |
-| Apply resolution (amendment shape, per-finding commit) | surfacing §E | discussion's `review-agent.md`; research variant cites sources, not decisions |
-| Route resolution (landing, batch record) | surfacing §G | phase lane block; judgement itself to `triage-landing.md` (M6) |
+| Lane names, meanings, walk heading | surfacing §B/§F + `walk_heading` param | discussion's `review-agent.md` lane block |
+| Apply resolution (amendment shape, per-finding commit) | surfacing §E | discussion's `review-agent.md` |
+| Route resolution (landing, batch record) | surfacing §G | discussion's lane block; judgement itself to `triage-landing.md` (M6) |
 | Landing-phase judgement | surfacing §G, `off-topic-epic.md`, `document-review.md` | `triage-landing.md`, stated once |
 | Screens, stops, store calls, ordering, promotion, never-dump | surfacing | stays |
 
-Synthesis tensions remain all-walk and need no lane block. Deep-dive
-findings likewise.
+Synthesis tensions remain all-walk and need no lane block. The
+research deep dive returns material, never findings, and enters no
+lane — see `design/research-aids.md`.
 
 ## The stack
 
 1. **Canonical landing phase** — the judgement moves into
    `triage-landing.md`; the three statements defer. Independent,
    smallest, de-risks the flakiest rule first.
-2. **The ownership split** — lane blocks move to the phase callers;
-   the surfacing file slims to its name; `walk_heading` deleted. Ships
-   with the inbound-route enumeration: every path into the shared
-   protocol (both session loops, `final-review-menu.md`, deep-dive,
-   closing gates) verified to have the phase's lane block in context.
-3. **Graded bars** — both briefs restate the bar as emphasis-by-
-   maturity (M2); discussion self-derives from the map, research gains
-   the dispatch indication (M3).
-4. **Coverage and docs** — a case walking a research review (the
-   phase's first), a case walking an early-maturity discussion review,
-   and the maturity sentence in `docs/research-and-discussion.md`.
+2. **The ownership split** — the lane block moves to discussion's
+   caller reference; the surfacing file slims to its name;
+   `walk_heading` deleted. Ships with the inbound-route enumeration:
+   every path into the protocol (the discussion session loop,
+   `final-review-menu.md`, the closing gates) verified to have
+   discussion's lane block in context.
+3. **Graded bar** — the brief restates the bar as emphasis-by-maturity
+   (M2), self-derived from the map (M3).
+4. **Coverage and docs** — a case walking an early-maturity discussion
+   review, and the maturity sentence in
+   `docs/research-and-discussion.md`.
 
 ## Open decisions
 
 - The three maturity words themselves (early / forming / settled is
-  the working set) and how each brief phrases the interpolation.
-- Whether research's early emphasis should route naturally into the
-  deep-dive offer — an early research finding's move is usually "go
-  look", which the deep-dive machinery already owns.
+  the working set) and how the brief phrases the interpolation.
 - Whether the docs' phase-neutral wording — *would the phase that
   consumes this document be wrong or blocked* — becomes the canonical
-  settled-end formulation in both briefs.
+  settled-end formulation in the brief.
 - Cadence numbers, ceilings, and the offer gate: out of scope until
   field data exists (M7). Answered 2026-08-20 — the field data arrived
   and settled a movement-gated backoff; see `design/review-cadence.md`.
 
 ## Log
+
+- 2026-09-11 — Research leaves the review-host set
+  (`design/research-aids.md`): the graded bar, the lane block, and
+  the review agent are discussion's alone, and the deep dive returns
+  material, never findings. M3 reads the map only; stack item 4's
+  research-review case retires with the phase's review.
 
 - 2026-08-04 — Final sweep, from the eleven-layer tip: 16 of 17 PASS,
   including two consecutive clean research walks (flake retired) and

@@ -125,10 +125,11 @@ rounds-per-topic is unchanged:
   predecessor or a pending queue entry is stale on arrival whoever
   asked.
 
-- **C6 — research waits.** Research shares the checklist but has no
-  map; its movement currency would be commits — cruder. All field
-  evidence is discussion-side. Research follows only if it hurts there
-  too.
+- **C6 — the gate is discussion's alone.** Research hosts no review —
+  no agent, no trigger checklist, no closing pass; its learning
+  instrument is the deep dive, which returns material, never findings
+  (see `design/research-aids.md`). Discussion's review loop is the
+  only one there is to damp.
 
 - **Legacy rows arm permissively.** A pre-upgrade review row carries no
   snapshot, so movement is uncomputable; the check arms rather than
@@ -195,3 +196,7 @@ question, superseding its deferral.
   absorbs, which move the map and re-arm naturally. Watch: whether
   `workunit pivot` can strand snapshot-bearing rows (absorb and
   lifecycle purge the cache; pivot untraced).
+
+- 2026-09-11 — C6 settles: research hosts no review
+  (`design/research-aids.md`), so the movement gate has one loop to
+  damp and it is discussion's.

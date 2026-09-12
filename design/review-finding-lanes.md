@@ -66,12 +66,10 @@ for the stack. Opened 2026-08-03 from live evidence in fumi.
   answerable at a glance.
 
 - **L2 — the protocol owns shapes; the caller owns lane names.**
-  Three presentation shapes live in the shared protocol —
-  **batch-apply**, **walk**, **batch-route**. Each calling reference
-  declares which of its lanes maps to which shape. Research findings
-  are not decisions ("this area is unexplored" is a gap to look into,
-  not a choice to make), so a discussion-specific vocabulary must
-  never be hardcoded in the shared file.
+  Three presentation shapes live in the protocol — **batch-apply**,
+  **walk**, **batch-route**. Each calling reference declares which of
+  its lanes maps to which shape and names them itself, so no caller's
+  vocabulary is hardcoded in the protocol.
 
 - **L3 — findings move toward the user, never away.** The
   orchestrator may promote a finding out of batch-apply into the walk
@@ -93,11 +91,10 @@ for the stack. Opened 2026-08-03 from live evidence in fumi.
   by the existing defer gate — never as a lane the reviewer puts them
   in.
 
-- **L6 — a bar, at the agent, before presentation.** Each review
-  brief states the sufficiency test its consumer imposes: discussion —
-  *would the specification be wrong, blocked, or built on a
-  contradiction without this?*; research — *would the discussion that
-  consumes this be wrong or blocked?* Findings that fail go to
+- **L6 — a bar, at the agent, before presentation.** The review brief
+  states the sufficiency test its consumer imposes — *would the
+  specification be wrong, blocked, or built on a contradiction without
+  this?* Findings that fail go to
   Observations in the report: written, auditable, never surfaced. The
   announce count is post-filter.
 
@@ -108,25 +105,26 @@ for the stack. Opened 2026-08-03 from live evidence in fumi.
   visible floor is what makes an unbounded-feeling process feel
   finite.
 
-- **L8 — Apply findings carry their fix; the others do not.** Both
-  review briefs currently forbid proposing solutions. That prohibition
-  is what forces every finding to arrive as open work. It is relaxed
-  for the Apply lane only — an Apply finding must carry its determined
-  fix *and* cite the decision it follows from, or the batch screen has
+- **L8 — Apply findings carry their fix; the others do not.** The
+  review brief forbids proposing solutions — the prohibition that
+  forces every finding to arrive as open work. It is relaxed for the
+  Apply lane only — an Apply finding must carry its determined fix
+  *and* cite the decision it follows from, or the batch screen has
   nothing to show. Walk and Route findings keep the prohibition
   intact.
 
 ## Lanes
 
-| Lane | Shape | Discussion | Research |
-|---|---|---|---|
-| Apply | batch-apply | fix follows from what's already decided | fix follows from what's already been found |
-| Decide / Explore | walk | this topic owns an open choice | a genuine gap; the move is to look |
-| Route | batch-route | a sibling topic owns it | a sibling topic owns it |
-| (below bar) | not surfaced | Observations in the report | Observations in the report |
+| Lane | Shape | Discussion |
+|---|---|---|
+| Apply | batch-apply | fix follows from what's already decided |
+| Decide | walk | this topic owns an open choice |
+| Route | batch-route | a sibling topic owns it |
+| (below bar) | not surfaced | Observations in the report |
 
 Synthesis tensions are inherently walk-shaped; perspective agents need
-no change.
+no change. The research deep dive returns material, never findings,
+and enters no lane — see `design/research-aids.md`.
 
 Lane order is **Apply → Decide → Route**. Route runs last so that a
 reroute generated *during* the walk joins the same batch — one send,
@@ -135,13 +133,13 @@ one commit, instead of two rounds.
 ## The stack
 
 1. **Groundwork** — `final-review-menu.md` stops cloning the
-   raise-one-finding step and loads the shared protocol instead. The
+   raise-one-finding step and loads the protocol instead. The
    clone has already drifted (its Present beat lacks the
-   scene-reconstruction arc the shared file gained); under this
+   scene-reconstruction arc the protocol gained); under this
    programme it would drift twice. No behaviour change.
 
 2. **The protocol** — `background-agent-surfacing.md` section D
-   becomes lane routing with three shapes; both review briefs gain the
+   becomes lane routing with three shapes; the review brief gains the
    bar, the lane field, and the L8 relaxation; `agent surface` gains
    its comma-list form (see below); four new prose cases; simulation
    re-pin.
@@ -204,6 +202,11 @@ the protocol already forbids reading it.
   for this programme.
 
 ## Log
+
+- 2026-09-11 — Research leaves the lane table
+  (`design/research-aids.md`): discussion's declaration is the one
+  review lane block, and the deep dive returns material, never
+  findings — nothing it brings back enters a lane.
 
 - 2026-08-03 — Landed whole in #737. Lanes across every surface that
   raises findings: discussion review, research review, deep-dive,
