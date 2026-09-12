@@ -35,7 +35,7 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user comes back to pick the research up after the laboratory reported. Shown the verdict they take the evidence as read — thirty percent is comfortably past the bar — and they want the file to carry the measured share, what it rests on, and behaviour-driven expansion recorded as the leading candidate for the discussion to weigh; they are explicit that the research documents the evidence and holds the decision for the discussion. With the number in hand they consider the question answered and ask to wrap the research up. On the way out they are agreeable to required steps — a mandatory review or check gets a yes — and decline optional extras: no deep dive, no further threads, and this is no dead end — the findings carry forward under the topic's own name. They introduce no new material.",
+  "conduct": "The user comes back to pick the research up after the laboratory reported. Shown the verdict they take the evidence as read — thirty percent is comfortably past the bar — and they want the file to carry the measured share, what it rests on, and behaviour-driven expansion recorded as the leading candidate for the discussion to weigh; they are explicit that the research documents the evidence and holds the decision for the discussion. With the number in hand they consider the question answered and ask to wrap the research up. On the way out they are agreeable to required steps — a mandatory check gets a yes — and decline optional extras: no deep dive, no further threads, and this is no dead end — the findings carry forward under the topic's own name. They introduce no new material.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [

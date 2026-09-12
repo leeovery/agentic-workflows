@@ -14,7 +14,7 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
    Then, at a natural break — a thread's pause, a synthesis moment, the user's done-signal, or the first iteration of a resumed session — check for landed deep dives: follow **C. Land and Fold** in **[deep-dive-agent.md](deep-dive-agent.md)**. Skip only when no dive has been dispatched — the store decides, not the iteration count: a resumed session may hold dives from an earlier sitting. Mid-thread, defer — a landed report keeps.
 
-2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next. A number about to bear a decision is the laboratory's cue — offer it through the session wrapper's **F. The Experiment Offer**.
+2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next. A number about to bear a decision — or a measurement thread on the register, a dive's Opened line — is the laboratory's cue: offer it through the session wrapper's **F. The Experiment Offer**.
 
    A question neither of you can answer from the room, worth more than a lookup, is the deep dive's cue — offer it through **A. Offer** in **[deep-dive-agent.md](deep-dive-agent.md)**.
 
@@ -55,7 +55,7 @@ The register is what this topic set out to learn — typed state in the manifest
   node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} parked --note "{why it waits}"
   ```
 
-- **A thread merges** into another when two questions turn out to be one: the survivor's file section carries the folded substance, then `research-threads remove {work_unit} {topic} {slug}` drops the absorbed row.
+- **A thread merges** into another when two questions turn out to be one: the survivor's file section carries the folded substance, then `research-threads remove {work_unit} {topic} {slug} --into {survivor}` drops the absorbed row and moves its children under the survivor. A thread a dive is digging is the survivor, never the absorbed one — the fold marks it.
 
 **Render the register once per move, at the natural break that follows it** — a thread learned, parked, added, or reframed since the last render — and when the user asks. An exchange that moved nothing renders nothing, and a state already shown is never shown again for its own sake:
 

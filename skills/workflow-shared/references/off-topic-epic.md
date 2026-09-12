@@ -32,7 +32,7 @@ On a `grown-thread` entry the current topic is never the answer — the thread g
 
 #### If the resolved target is the current topic
 
-It was a detail of this session's own topic after all, not a reroute — keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, fold it into the research file as a thread.
+It was a detail of this session's own topic after all, not a reroute — keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, add it to the register as a thread (`research-threads add {work_unit} {topic} {slug} --question "…" --origin conversation`) and carry it in the file.
 
 → Return to caller for **B. Session Loop**.
 
@@ -62,7 +62,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `keep`:**
 
-Keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, fold it into the research file as a thread.
+Keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, add it to the register as a thread (`research-threads add {work_unit} {topic} {slug} --question "…" --origin conversation`) and carry it in the file.
 
 → Return to caller for **B. Session Loop**.
 

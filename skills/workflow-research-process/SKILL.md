@@ -88,15 +88,15 @@ A first start, not a resume — no session has ever run. Parked concerns wait in
 > An in-progress research file exists for this topic — choose whether to pick it up or start fresh.
 ```
 
-Show the thread register so the continue-or-restart choice is informed:
+**If the status read returned a value:** show the thread register so the continue-or-restart choice is informed:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render research-threads {work_unit}.research.{topic}
 ```
 
-Emit the DISPLAY section verbatim as a code block — never the `===` marker lines.
+Emit the DISPLAY section verbatim as a code block — never the `===` marker lines. An empty response means no thread is registered; nothing is shown.
 
-Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `research`, file = `.workflows/{work_unit}/research/{topic}.md`, continue_step = `Step 2`, restart_targets = `the research file, the manifest's thread register (node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.research.{topic} threads), and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/research/{topic}/ — content and agent state together) — a landed report would otherwise fold into the restarted session as its own`, commit = `research({work_unit}): restart research`.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `research`, file = `.workflows/{work_unit}/research/{topic}.md`, continue_step = `Step 2`, restart_targets = `the research file, the manifest's thread register when the item carries one (node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.research.{topic} threads, then manifest delete on true), and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/research/{topic}/ — content and agent state together) — a landed report would otherwise fold into the restarted session as its own`, commit = `research({work_unit}): restart research`.
 
 ---
 

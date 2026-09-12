@@ -66,7 +66,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} re
 
 #### If the limit is reached
 
-Say so in a line; the thread stays `open` on the register and the offer fires again once a dive lands.
+Say so in a line; the thread stays `open` on the register — offer it again through **A. Offer** when a dive lands (the fold's last exit names it).
 
 → Return to caller.
 
@@ -75,6 +75,7 @@ Say so in a line; the thread stays `open` on the register and the offer fires ag
 Compose the brief — self-contained, the agent has no conversation history:
 
 - **The thread** — its question, why it matters to this topic, and the product question it serves
+- **The thread's slug** — `{slug}`, returned in the status block
 - **The kind** — one of the five above
 - **Questions** — the specific questions to answer, when the brief carries any (a survey, read, or landscape brief may carry none)
 - **Known ground** — what the research already holds that bears on the thread: constraints, findings, positions
@@ -133,7 +134,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} re
 
 #### If a row is `in_flight` and its `created` predates this session
 
-No agent can still be running — the dive is dead. Close the row and return its thread to `open`, so the offer can fire again:
+No agent can still be running — the dive is dead. Close the row and return its thread to `open` — the conversation offers it again when it reaches the question:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} research {topic} {id}
@@ -163,13 +164,15 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
    node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} research {topic} {id} --clean
    ```
 
+   A thread merged away while the dive ran has no row to mark — the survivor that took its question goes `learned` instead.
+
 4. **Judge each Opened line.** A question this topic will carry becomes a thread — origin the dive's id, parent the folded thread (or, when that thread is itself a child, its parent — two levels, like the map):
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question}" --origin deep-dive-{NNN} --parent {parent slug}
    ```
 
-   A line the file already covers, or one another topic owns, is folded as a note in the section instead — an epic's off-topic route carries an owned concern to its home when the session judges it worth sending. A measurement line becomes a thread the same way — what the measurement would settle, as the question — and is the laboratory's cue: offered below, or at the next natural break when this fold ends on a question.
+   A line the file already covers is folded as a note in the section instead. One another topic owns is folded as a note and, on an epic, raised through the session wrapper's **C. Topic Awareness** at the next break; a feature has no other topic, so the note stands. A measurement line becomes a thread the same way — what the measurement would settle, as the question — and is the laboratory's cue the session loop picks up at its next step.
 
    Then commit the fold — the section, the thread's move, and the opened threads in one write, nothing unrelated, the dive's id in the subject:
 
@@ -177,7 +180,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): fold {the thread, in a few words} (deep-dive-{NNN})"
    ```
 
-5. **Speak to the user** — markdown prose, one authored line per paragraph, never a fence and never a menu. When the brief asked questions, the Answers in full — every answer's substance whole, told at product altitude: what the product does or the user sees before any symbol, path, or snippet the report used to say it. Otherwise a digest: what was asked, what came back in three to five lines, what it opened. A question only the user holds — their environment, their intent for the product — is asked here, once, with your lean beside it; anything wanting a decision or more digging is a thread on the register, never a question in the room.
+5. **Speak to the user** — markdown prose, one authored line per paragraph, never a fence and never a menu. When the brief asked questions, the Answers in full — every answer's substance whole, told at product altitude: what the product does or the user sees before any symbol, path, or snippet the report used to say it. Otherwise a digest: what was asked, what came back, what it opened — as long as the return needs, never the report pasted. A question only the user holds — their environment, their intent for the product — is asked here, once, with your lean beside it; anything wanting a decision or more digging is a thread on the register, never a question in the room.
 
 6. **Render the register:**
 
@@ -189,20 +192,14 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
 
 **If step 5 put a question to the user:**
 
-The turn ends on it; a further landed dive folds at the next break, and a measurement thread is offered there through the session loop's laboratory cue.
+The turn ends on it; a further landed dive folds at the next break.
 
 **STOP.** Wait for user response.
 
 → Return to caller.
 
-**If an Opened line named a measurement:**
-
-Make the laboratory offer now, through the session wrapper's **F. The Experiment Offer** — its exits return to the session loop.
-
-→ Return to caller.
-
 **Otherwise:**
 
-The next landed dive folds in the same pass.
+The next landed dive folds in the same pass; when none remains, a thread the limit held back is offered again through **A. Offer**, and a measurement thread meets the loop's laboratory cue at its next step.
 
 → Return to **C. Land and Fold**.

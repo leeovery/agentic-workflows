@@ -32,7 +32,7 @@ When the topic feels well-explored or the user indicates they're done:
 
 ## D. In-Flight Dive Handling
 
-Before concluding, check for in-flight deep dives — run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` and read the response's `in_flight` list (dives dispatched but not yet returned). A dive an earlier session dispatched cannot still be running — each row's `created` timestamp tells you which those are; close each per **C. Land and Fold** in **[deep-dive-agent.md](deep-dive-agent.md)**, re-scan, and count only this session's.
+Before concluding, check for in-flight deep dives — run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` and read the response's `in_flight` list (dives dispatched but not yet returned). A dive an earlier session dispatched cannot still be running — each row's `created` timestamp tells you which those are; enter **C. Land and Fold** in **[deep-dive-agent.md](deep-dive-agent.md)** first — it closes the dead rows and folds every landed report — then re-scan and count this session's `in_flight` rows alone.
 
 #### If no dive is in flight
 
