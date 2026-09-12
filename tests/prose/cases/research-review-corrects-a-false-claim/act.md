@@ -1,5 +1,0 @@
-Execute skills/workflow-research-entry/SKILL.md with arguments
-$0=feature, $1=pay, and continue into the processing skill it hands off
-to. Play the described user through the resumed session and its
-conclusion. Stop at the hand-off that invokes the pipeline bridge — do
-not follow into it.

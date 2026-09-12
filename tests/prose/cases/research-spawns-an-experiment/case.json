@@ -23,26 +23,19 @@
     "skills/workflow-research-process/references/route-session.md",
     "skills/workflow-research-process/references/epic-session.md",
     "skills/workflow-research-process/references/session-loop.md",
-    "skills/workflow-research-process/references/review-agent.md",
     "skills/workflow-research-process/references/deep-dive-agent.md",
     "skills/workflow-shared/references/rerouted-concerns.md",
-    "skills/workflow-shared/references/background-agent-surfacing.md",
-    "skills/workflow-shared/references/composing-a-raise.md",
-    "skills/workflow-shared/references/making-it-land.md",
-    "skills/workflow-shared/references/natural-breaks.md",
     "skills/workflow-shared/references/experiment-spawn.md"
   ],
   "answers": [
     "c — continue"
   ],
   "conduct": "The user comes back to push the replacement question forward and goes straight at the number underneath it: what share of zero-result searches recover when the searcher reformulates within the same session. The choice between a curated replacement list and behaviour-driven expansion turns on that share — behaviour-driven expansion feeds on exactly those recoveries — and they are firm that it will not be settled on a guess or a quick skim: the sandbox logs exist, and the number has to be collected properly before the choice is worth arguing. Offered a controlled way to get it they take it without hesitation, and asked whether to work it now or keep talking they want it now — this session has nothing left to do until the number exists. They introduce no other topics, decline nothing else because nothing else is offered, and never ask to conclude the research.",
-  "stubs": {
-    "research-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
-  },
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
       "manifest get search-relevance.research.synonym-handling status",
+      "render research-threads search-relevance.research.synonym-handling",
       "topic queue search-relevance research synonym-handling",
       "experiment create search-relevance synonym-handling",
       "--from research",
@@ -69,7 +62,8 @@
       "render wait-gate",
       "render research-conclude-gate",
       "topic triage",
-      "--kind deep-dive"
+      "--kind deep-dive",
+      "--kind review"
     ]
   }
 }

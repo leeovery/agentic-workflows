@@ -12,7 +12,7 @@ The prose should have taken this path:
    pre-registered rule's mechanical outcome, the conversation's to
    override — and the flag is cleared before the handoff; the epic
    context arm finds the map-shaped source and gathers nothing
-3. the process renders resume detection and the user continues;
+3. the process renders the thread register once (empty here — the call answers nothing, so nothing is shown) above resume detection and the user continues;
    initialisation is skipped; the walk passes through file strategy,
    the guidelines, one contextual query, and into the epic research
    session
@@ -24,14 +24,15 @@ The prose should have taken this path:
 5. the user wraps; the triage queue reads empty and the wait-gate
    fetch comes back empty — the release already happened, so no gate
    is emitted and nothing blocks
-6. the closing gates run: the final review dispatches (no review row
-   has ever existed), the stubbed report returns clean and is
-   acknowledged; document review reconciles the file against the
-   session; the compliance check passes
+6. the closing checks run: document review reconciles the file against
+   the session; the compliance check passes. No review is dispatched —
+   research has none
 7. the conclude gate renders without the dead-end row — the session
    never judged this topic a dead end, and the findings carry forward
-   under its own name — and the user concludes
-8. the completion the wait once blocked now passes: the research
+   under its own name — and with no register display above it, the
+   register being empty; the user concludes
+8. the completion the wait once blocked now passes: the register holds
+   nothing open so no Open Threads section is written, the research
    completes and indexes, the `--kb` commit closes it, presence clears,
    the sweep finds no leavings, the closing recap runs, and the walk
    stops at the bridge invocation
@@ -48,12 +49,13 @@ Further claims:
   is recorded as the research's own
 - the reconcile flag is gone and `awaiting_experiments` never
   reappears
-- nothing was rerouted, no deep dive dispatched, no map operation ran
+- nothing was rerouted, no agent dispatched, no map operation ran, and
+  no thread was added to the register
 
 EXPECTED WORLD — the fixture plus: the research item `completed` with
 the reconcile flag absent; the research document carrying the measured
 share, its provenance, and the leading-candidate note as a dated entry
-beneath the awaiting note, which stays as the record of the wait; the
-stubbed review report in the topic's cache with its
-agent row closed; the experiment item and E1's row byte-unchanged; the
-research indexed into the knowledge store by the completion.
+beneath the awaiting note, which stays as the record of the wait; no
+agent row in the topic's cache; the experiment item and E1's row
+byte-unchanged; the research indexed into the knowledge store by the
+completion.

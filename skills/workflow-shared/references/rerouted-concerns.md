@@ -155,7 +155,7 @@ Present the concern in your own voice — name its origin in a sentence, then br
 
 **STOP.** Wait for user response.
 
-Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits, dispatch checks) runs as normal around it — the dispatch check's triage-queue box holds while entries remain, so no review launches mid-walk. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or bookmarked in the research file — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer.
+Then discuss it as real session material: engage, challenge, connect it to what this topic has already decided. Control belongs to the conversation — this may take one exchange or many, and the loop's other machinery (documenting, commits — and in discussion the dispatch check, whose triage-queue box holds while entries remain, so no review launches mid-walk) runs as normal around it. The concern on the table is the session's only subject and the only thing the user's agreement can cover: a tangent it surfaces is parked — on the Discussion Map as `pending`, or on the research thread register — and picked up after the queue empties, and no question or proposal spans another queued concern, however the user phrases their steer.
 
 **If the discussion reaches an outcome** — a decision, a direction, or the user explicitly parking it as a deferred thread; for a walked entry, when its last ask resolves (earlier asks' outcomes are documented and committed by the loop's machinery as they land):
 
@@ -195,7 +195,18 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_
 
 #### If `phase` is `research`
 
-Fold the concern into the freeform body as a `### {title}` thread opening with the provenance line, followed by the body and what the discussion made of it.
+Fold the concern into the freeform body as a `### {title}` section opening with the provenance line, followed by the body and what the discussion made of it. Then the thread register, the rerouting topic as the origin:
+
+- **The fold holds the answer** — enter it and mark it learned:
+  ```bash
+  node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {title:(kebabcase)} --question "{the concern's question}" --origin "{origin}"
+  node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {title:(kebabcase)} learned
+  ```
+- **Research is still owed** — enter it and leave it open:
+  ```bash
+  node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {title:(kebabcase)} --question "{the concern's question}" --origin "{origin}"
+  ```
+- **The slug is already on the register** — nothing enters twice; `research-threads set {work_unit} {topic} {title:(kebabcase)} learned` when the fold holds the answer, otherwise leave it as it stands.
 
 → Proceed to **E. Absorb**.
 

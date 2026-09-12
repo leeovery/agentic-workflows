@@ -8,7 +8,7 @@
 
 The current topic is converging — tradeoffs are clear, it's approaching decision territory.
 
-First check the topic's triage queue — a queued concern is work the conclusion cannot pass, and a review dispatched over it would read a file the walk is about to move:
+First check the topic's triage queue — a queued concern is work the conclusion cannot pass:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} research {topic}
@@ -62,8 +62,6 @@ Then say where the ball sits:
 
 **If the output is empty:**
 
-→ Load **[final-review.md](final-review.md)** and follow its instructions as written.
-
 → Load **[document-review.md](document-review.md)** and follow its instructions as written.
 
 → Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
@@ -74,7 +72,7 @@ Judge the dead-end question before rendering: pass `--dead-end` **only** when `w
 node .claude/skills/workflow-engine/scripts/engine.cjs render research-conclude-gate {work_unit}.research.{topic} [--dead-end]
 ```
 
-Emit the call's MENU section verbatim per its marker.
+The response carries the thread register as a DISPLAY section whenever the topic holds a thread — the hand-off, open threads included; nothing blocks on a thread's state. Emit that section verbatim per its marker when present, then the MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

@@ -4,39 +4,31 @@
 
 ---
 
-These instructions are loaded into context at the start of the research session but are not for immediate use. Deep-dive agents investigate specific threads independently in the background — competitor analysis, API exploration, technical feasibility, market landscapes. Apply the dispatch and results processing instructions below when the time is right.
+These instructions are loaded into context at the start of the research session but are not for immediate use. A deep dive is the phase's learning instrument: a background agent that answers a brief and reports material the session folds into the research file. Nothing it returns is a finding to walk, accept, or dismiss. Apply the offer, dispatch, and fold below when the time is right.
 
-**Trigger conditions** — offer a deep-dive agent when:
+**Kinds** — the brief names one:
 
-- A research thread is substantial enough to warrant independent investigation (not a quick lookup)
-- The thread is independent of the current conversation (exploring it won't block or depend on what's being discussed right now)
-- The investigation would benefit from dedicated tools (web search, source code review, documentation analysis)
+- `survey` — how N implementations do X
+- `read` — a source, import, or document against the thread's questions
+- `feasibility` — can the platform do X, from its documentation and code
+- `landscape` — what exists, what it costs, where the gaps are
+- `verify` — a claim, against sources — never by running it
 
-Two dispatch paths:
+**A dive never measures.** Nothing is run against the product or the environment. Where the answer is a number a decision would rest on, the dive reports the measurement it would take under its Opened list, and the session makes the laboratory offer.
 
-1. **User-initiated** — the user explicitly asks for a deep dive ("can you look into X while we keep going?"). No offer needed — proceed directly to dispatch.
-2. **Orchestrator-offered** — you identify a thread that fits the criteria above. Offer to dispatch.
+Two ids appear below: `{id}` is the row id the dispatch answers (`deep-dive-{NNN}-{label}`), what every `agent` verb takes; `deep-dive-{NNN}` — the id without its label — is what the register's origin and the fold's commit subject carry.
 
-Signals that suggest offering a deep dive:
-- A competitor or product is mentioned but not yet investigated
-- Technical feasibility is assumed but not verified
-- An API or service is referenced with uncertain capabilities
-- A market segment or user need is hypothesised but not validated
-- The review agent flagged a substantial gap that warrants dedicated investigation
+## A. Offer
 
-Do not fire for quick lookups, single searches, or questions that inform the next conversational turn — those stay in the main thread.
+Offer a dive where the conversation reaches a question neither party can answer from the room and the answer is worth more than a lookup — a substantial thread, independent of what is being discussed right now, that dedicated tools (web search, source code, documentation) would serve. Quick lookups, single searches, and questions that inform the next conversational turn stay in the main thread.
 
----
+The register is the anchor: the offer names a thread. A question new to the register is added first — origin `user` when the user raised it, `conversation` otherwise:
 
-## Lanes
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question, as asked}" --origin {user|conversation} [--parent {slug}]
+```
 
-Deep-dive findings are all walked — no batch lanes. Raises render under the heading `Needs Investigation`.
-
-Most deep-dive findings are knowledge, not asks — research surfaces material and holds decisions for discussion — so a raise here usually closes by saying nothing needs a call from the user and offering the pause. A finding that converges on a design call records the options and the lean as material for the discussion phase rather than asking the user to settle it now; the raise's genuine question is reserved for what only the user holds — their expectations, their environment, their intent for the product — and it is asked with a lean beside it: the position is owed whatever the phase, only the settling waits.
-
-## A. Offer Deep Dive
-
-#### If user-initiated
+#### If the user asked for the dive
 
 Skip the offer — the user already asked.
 
@@ -44,7 +36,7 @@ Skip the offer — the user already asked.
 
 #### Otherwise
 
-Write the offer payload to `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-offer.json` with the Write tool (`{"thread": "…"}` — the thread description as it should open the offer), then render it:
+Write the offer payload to `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-offer.json` with the Write tool (`{"thread": "…"}` — the thread's question as it should open the offer), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render deep-dive-offer {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/deep-dive-offer.json
@@ -56,7 +48,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `no`:**
 
-Continue the research session without dispatching.
+The thread stays on the register as it stands — the conversation covers it.
 
 → Return to caller.
 
@@ -64,26 +56,42 @@ Continue the research session without dispatching.
 
 → Proceed to **B. Dispatch**.
 
----
-
 ## B. Dispatch
 
-Compose a research brief for the agent. The brief must be self-contained — the agent has no conversation history. Include:
-- What to investigate and why
-- Relevant context from the research so far (constraints, findings that inform this thread)
-- Specific questions to answer if applicable
-- Boundaries — what's in scope and what isn't
-
-Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal). Labels are slash- and dot-free: drop any dots the thread name carries.
+Count the rows in flight first, excluding rows an earlier session dispatched (dead — **C. Land and Fold** closes them). Three to four in flight is the limit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind deep-dive --label {thread:(kebabcase)}
+node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}
 ```
 
-Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
+#### If the limit is reached
+
+Say so in a line; the thread stays `open` on the register — the fold offers it again once a dive lands.
+
+→ Return to caller.
+
+#### Otherwise
+
+Compose the brief — self-contained, the agent has no conversation history:
+
+- **The thread** — its question, why it matters to this topic, and the product question it serves
+- **The thread's slug** — `{slug}`, returned in the status block
+- **The kind** — one of the five above
+- **Questions** — the specific questions to answer, when the brief carries any (a survey, read, or landscape brief may carry none)
+- **Known ground** — what the research already holds that bears on the thread: constraints, findings, positions
+- **Boundaries** — what is in scope and what is not
+- **The standing rule** — nothing is measured or run against the product or the environment; a number a decision would rest on is reported as the measurement it would take
+
+Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal). The label is the thread's slug:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} dismissed_grounds
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind deep-dive --label {slug}
+```
+
+Mark the thread:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} digging
 ```
 
 **Agent path**: `../../../agents/workflow-research-deep-dive.md`
@@ -92,50 +100,116 @@ Dispatch **one agent** via the Task tool with `run_in_background: true`.
 
 The deep-dive agent receives:
 
-1. **Research brief** — the self-contained investigation brief
+1. **The brief** — composed above
 2. **Research file path** — `.workflows/{work_unit}/research/{topic}.md` (for background context)
-3. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
-4. **Dismissed grounds** — the list read above, verbatim. Omit this input entirely when the list is empty.
+3. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown in its definition's report contract, never frontmatter.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Deep-dive dispatched: {thread description}.
-Results will be surfaced when available.
+Deep dive dispatched on {the thread's question}. It folds in when it lands.
 ```
 
 The deep-dive agent returns:
 
 ```
 STATUS: complete
-THREAD: {thread name}
-FINDINGS: {F1,F2,… — every id in the report; omit when none}
-FINDINGS_COUNT: {N}
-SUMMARY: {1-2 sentences}
+THREAD: {slug}
+ANSWERED: {n} of {m}
+OPENED: {k}
+SUMMARY: {one sentence}
 ```
 
 The research session continues — do not wait for the agent to return.
 
-**Concurrency**: Before dispatching, count the `deep-dive` ids in `agent scan`'s `in_flight` list — excluding rows an earlier session dispatched (those agents are dead; incorporate them instead of counting them). Limit to 3-4 in flight at once. If the limit is reached, note the thread for later dispatch.
+→ Return to caller.
 
----
+## C. Land and Fold
 
-## C. Check and Surface
+Entered from the session loop's check at natural breaks — a thread's pause, a synthesis moment, the user's done-signal, and the first loop iteration of a resumed session — and from the in-flight gate's wait at conclusion. Read the store:
 
-Delegate all check-for-results and presentation behaviour to the shared surfacing protocol. Deep-dive reports are substantive and prone to wall-of-text dumps — the protocol's never-dump rules are especially important here.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}
+```
 
-→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `deep-dive`, work_unit = `{work_unit}`, phase = `research`, topic = `{topic}`.
+#### If a row is `in_flight` and its `created` predates this session
 
-**Promoting to its own topic** (epic work type only): If during presentation the user engages with findings substantial enough to warrant their own topic — and agrees or requests it — deliver them into that topic's triage queue, where its own session works them in context:
+No agent can still be running — the dive is dead. Close the row and return its thread to `open` — the conversation offers it again when it reaches the question:
 
-1. Name the `target` — an existing topic when one owns the ground, otherwise a kebab-case name derived from `{thread}` and confirmed with the user. Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**; findings are research-stage material, so `research` is the norm.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} research {topic} {id}
+node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} open
+```
 
-2. Build the `concern` from the findings themselves — the full substance, never a pointer. The cache report is ephemeral, purged when the work unit closes, so the queue file has to carry everything the target needs.
+A thread that left the register while the dive ran — merged or rerouted — has no row to reopen; the row closes and that is all.
 
-3. → Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`.
+→ Return to **C. Land and Fold**.
 
-4. **If `result` is `cancelled`:** the delivery was dropped — the findings stay in the cache file. Otherwise the concern landed in `{landed_topic}`'s `{landing_phase}` queue and the engine committed it; the target's own session builds its artifact when it starts.
+#### If no row is `pending`
 
-For feature work types, deep-dive findings fold into the existing research file — there is only one research topic per feature.
+Nothing has landed.
 
-**Findings the user rejects**: nothing lands in the research file either way — **Rejecting a raise** in **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
+**If this pass folded a report and a thread the dive limit held back is still `open`:**
+
+The user already said yes to that dive; it needs no second offer.
+
+→ Proceed to **A. Offer**.
+
+**Otherwise:**
+
+→ Return to caller.
+
+#### Otherwise
+
+Take the lowest-numbered `pending` row and fold it — one transaction of judgment:
+
+1. **Read the report in full** — `.workflows/.cache/{work_unit}/research/{topic}/{id}.md`. It is never pasted into the conversation.
+
+2. **Write the section** into the research file — `## {question} — deep-dive-{NNN}, {date}` — the Answers first, then the Material, sources kept inline.
+
+3. **Mark the thread learned** and close the row — a report carries material, never findings to surface:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} learned
+   node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} research {topic} {id} --clean
+   ```
+
+   A thread merged away while the dive ran has no row to mark — the survivor that took its question goes `learned` instead.
+
+4. **Judge each Opened line.** A question this topic will carry becomes a thread — origin the dive's id, parent the folded thread (or, when that thread is itself a child, its parent — two levels, like the map):
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question}" --origin deep-dive-{NNN} --parent {parent slug}
+   ```
+
+   A line the file already covers is folded as a note in the section instead. One another topic owns is folded as a note and raised through the session wrapper's off-topic route at the next break — **C. Topic Awareness** on an epic, **E. Off-Topic Concerns** on a single-topic work type. A measurement line becomes a thread the same way — what the measurement would settle, as the question — and is the laboratory's cue the session loop picks up at its next step; a fold at the close carries it into Open Threads, where the discussion's own laboratory offer meets it.
+
+   Then commit the fold — the section, the thread's move, and the opened threads in one write, nothing unrelated, the dive's id in the subject:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): fold {the thread, in a few words} (deep-dive-{NNN})"
+   ```
+
+5. **Speak to the user** — markdown prose, one authored line per paragraph, never a fence and never a menu. When the brief asked questions, the Answers in full — every answer's substance whole, told at product altitude: what the product does or the user sees before any symbol, path, or snippet the report used to say it. Otherwise a digest: what was asked, what came back, what it opened — as long as the return needs, never the report pasted. A question only the user holds — their environment, their intent for the product — is asked here, once, with your lean beside it; anything wanting a decision or more digging is a thread on the register, never a question in the room.
+
+6. **Render the register:**
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render research-threads {work_unit}.research.{topic}
+   ```
+
+   Emit the call's DISPLAY section verbatim per its marker.
+
+**If step 5 put a question to the user:**
+
+The turn ends on it; a further landed dive folds at the next break.
+
+**STOP.** Wait for user response.
+
+→ Return to caller.
+
+**Otherwise:**
+
+The next landed dive folds in the same pass.
+
+→ Return to **C. Land and Fold**.

@@ -40,7 +40,7 @@ The brief just read is the carrier — nothing more to read here.
 
 ## B. Create and Register
 
-The inputs just read are inherited ground, not a list of questions to re-ask. Exploring adjacent territory is this phase's job; putting a decision discovery already reached back to the user as an open question is not. Where exploration turns up something that genuinely undercuts one, surface that as a finding rather than reopening the decision.
+The inputs just read are inherited ground, not a list of questions to re-ask. Exploring adjacent territory is this phase's job; putting a decision discovery already reached back to the user as an open question is not. Where exploration turns up something that genuinely undercuts one, raise it in the conversation, or carry it as a thread (origin `conversation`), rather than reopening the decision.
 
 1. Load **[template.md](template.md)** — use it to create the research file at the Output path from the handoff (e.g., `.workflows/{work_unit}/research/{resolved_filename}`). When the file already exists, keep its content and write the template's working sections around it.
 2. Populate the Starting Point section from whatever seeded this phase: the handoff's `Context:` fields when the interview ran, otherwise the inputs read at **A** and anything the user said in the conversation that launched this session. When restarting (**A** was skipped), leave the section empty.
@@ -48,7 +48,16 @@ The inputs just read are inherited ground, not a list of questions to re-ask. Ex
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} research {topic}
    ```
-4. Commit:
+4. Seed the thread register — the questions the inputs leave open, judged: a question discovery already settled is inherited ground, not a thread; a question the seed, the carrier, or the brief leaves open is one. Origin `seed` for the seed material's and the carrier's questions, `brief` for the brief's, `user` for a question the interview or the launching conversation raised; a kebab slug per thread, the question as asked, `--parent` nesting a question under the top-level one it refines. When restarting (**A** was skipped), add nothing — threads enter from the conversation:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question, as asked}" --origin {seed|brief|user} [--parent {slug}]
+   ```
+   Then render the register once:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render research-threads {work_unit}.research.{topic}
+   ```
+   Emit the call's DISPLAY section verbatim per its marker — the response is empty when nothing was seeded.
+5. Commit — the manifest rides with the file:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}): initialize {topic} research"
    ```

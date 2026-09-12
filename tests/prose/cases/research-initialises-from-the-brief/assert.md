@@ -20,8 +20,11 @@ The prose should have taken this path:
    the topic's brief pointer and the brief file are read in full,
    recording the read on the map item without a commit; the research
    file is created from the template, its Starting Point populated
-   from the brief; the topic is registered through the engine and one
-   commit lands
+   from the brief; the topic is registered through the engine; the
+   thread register is seeded from the brief's open question — what a
+   good evaluation harness looks like — as a thread of origin `brief`
+   (the soft decision is inherited ground, never a thread) and rendered
+   once; and one commit lands, carrying the file and the manifest
 8. the walk stops there — no knowledge query runs, and the research
    session never starts
 
@@ -43,8 +46,11 @@ EXPECTED WORLD — from a harvested epic with no per-topic work:
   harness — with no findings recorded yet; the topic's triage queue
   is empty
 - the manifest holding one research item, relevance-measurement, in
-  progress — the epic's only per-phase item — and the topic's discovery
-  map item now carrying `brief_incorporated: true`
+  progress — the epic's only per-phase item — carrying a thread register
+  with an `open` thread of origin `brief` for the evaluation-harness
+  question and no thread for the settled measurement-before-tuning
+  ground; and the topic's discovery map item now carrying
+  `brief_incorporated: true`
 - the sibling map items exactly as the harvest left them
 - no discussion, specification, planning, implementation, or review
   artifacts anywhere; the work-unit description unchanged; no second

@@ -12,8 +12,9 @@ query-side vocabulary mismatches a dense retriever does not address. The
 file says so plainly — nothing under this topic's name is left for anyone
 to weigh, and the sizing arithmetic is what is worth keeping.
 
-The other three topics have not started. No review has ever run on this
-topic, its triage queue is empty, and no session is mid-flight.
+The other three topics have not started. No deep dive has ever run on
+this topic and its thread register is empty, its triage queue is empty,
+and no session is mid-flight.
 
 The context was cleared at the phase boundary — this session opens cold
 at the entry skill with nothing but its three arguments and what is on
