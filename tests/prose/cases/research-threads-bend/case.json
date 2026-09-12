@@ -1,0 +1,75 @@
+{
+  "origin": "the thread register's in-session moves had no prose coverage — a thread reframes when its answer reshapes it, nests a follow-on under it, goes learned once the file holds the answer, and parks with the user's reason as its note, each through the engine verb with the right shape; and the register renders at the transitions, never after every exchange. The single-topic session wrapper had no coverage at all",
+  "entry": "workflow-research-entry",
+  "world": "claims",
+  "files": [
+    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-research-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-research-entry/references/invoke-skill.md",
+    "skills/workflow-research-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-research-process/references/file-strategy.md",
+    "skills/workflow-research-process/references/research-guidelines.md",
+    "skills/workflow-knowledge/references/knowledge-usage.md",
+    "skills/workflow-knowledge/references/contextual-query.md",
+    "skills/workflow-research-process/references/route-session.md",
+    "skills/workflow-research-process/references/feature-session.md",
+    "skills/workflow-research-process/references/session-loop.md",
+    "skills/workflow-research-process/references/deep-dive-agent.md",
+    "skills/workflow-shared/references/rerouted-concerns.md"
+  ],
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user runs the shop and is coming back to the payments research with three things to bring, one at a time as the conversation reaches each. First, they have heard back from the gateway's account manager since last time: hosted card fields are supported on their account, but only on the gateway's newer checkout integration, not the legacy tokenisation form the site uses today — so what they actually want to know now is what moving the checkout onto the newer integration would take. Off the back of that they wonder whether moving would change how a capture gets confirmed back to them; they want that kept as a question under the same heading, and they will put it to the account manager themselves next week — they do not want anyone sent off to look into it. Second, on 3-D Secure they know the answer: the shop sells into the UK and the EU, strong customer authentication applies, and a challenge step on most card payments is mandatory rather than a choice; what it adds is a step the gateway hosts, and that settles the question for them. Third, on a second provider they are firm it is not this year's problem — one gateway, declines fall back to nothing for now — and they want it set aside with exactly that reason. They answer the session's questions from what they know and invent nothing, decline optional extras — no deep dive, no new threads beyond the one they asked for — and after the third point they say they have to step away for the day: the research is not finished, the integration question is still open, and they will pick it up next time.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "manifest get pay.research.pay status",
+      "render research-threads pay.research.pay",
+      "render resume-gate pay.research.pay",
+      "topic queue pay research pay",
+      "manifest get pay work_type",
+      "research-threads reframe pay pay hosted-fields --question",
+      "research-threads add pay pay",
+      "--origin user --parent hosted-fields",
+      "research-threads set pay pay three-d-secure learned",
+      "research-threads set pay pay second-provider parked --note",
+      "research(pay/pay):"
+    ],
+    "calls_in_order": [
+      "manifest get pay.research.pay status",
+      "render resume-gate pay.research.pay",
+      "topic queue pay research pay",
+      "research-threads set pay pay second-provider parked",
+      "render research-threads pay.research.pay"
+    ],
+    "calls_exclude": [
+      "agent dispatch",
+      "--kind review",
+      "--kind deep-dive",
+      "render deep-dive-offer",
+      "render finding-announce",
+      "agent announce",
+      "agent surface",
+      "learned --note",
+      "open --note",
+      "research-threads remove",
+      "experiment create",
+      "render research-conclude-gate",
+      "render wait-gate",
+      "topic complete",
+      "topic triage",
+      "discovery-map add",
+      "knowledge.cjs index"
+    ]
+  }
+}
