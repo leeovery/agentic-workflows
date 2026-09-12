@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.40] - 2026-09-12
+
+✨ Added
+- Research now has a thread register showing what a topic set out to learn and where each question stands (open, digging, learned, or parked).
+- Research deep dives come in five kinds — survey, read, feasibility, landscape, and verify — and report full sourced answers plus what they opened, rather than a generic finding list.
+- Discussion decisions can now be offered a two-lens perspective debate through a dedicated menu, matching the deep-dive offer's presentation.
+- Concluding research with open questions is now a supported path — unresolved and parked threads are written into the document's Open Threads for discussion to read.
+
+🔧 Changed
+- Research no longer runs a background reviewer or gap-analysis pass — its only instrument is the deep dive, which now folds findings straight into the document instead of surfacing them for review.
+- Absorbing a feature into an epic now carries every field of its discussion and research state across (including the new thread register), instead of a hand-picked list that could silently drop data.
+- Tree-style displays can now wrap long, sentence-like row titles instead of clamping them, with the tag column reserved so it still lines up.
+- Review-related shared references (background agent surfacing, composing a raise, the final-review menu) moved into discussion's own skill folder, since discussion is now the only phase that uses them.
+
+🗑️ Removed
+- The dedicated research-review agent and its final-review flow are gone, along with the research review agent's shared review lanes.
+
 ## [0.7.39] - 2026-09-12
 
 🐛 Fixed
