@@ -20,7 +20,7 @@ These instructions are loaded into context at the start of the discussion sessio
 - □ Calls queue empty? (`.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` absent or drained — a queued settled call is a pending change to this document, stale-on-arrival and self-healing the same way)
 - □ The user hasn't signalled conclusion? (a wrap-up signal hands review duty to the closing gates — their final review covers the closing commit; a dispatch now lands `pending` at classification and forces a drain detour)
 
-**Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being discussed produces stale analysis — the document will look different once those findings land, and the new review would be critiquing a version the user is already fixing. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check, so no trigger is lost — whether it dispatches is then the movement backoff's call. If the session ends before drainage completes, the final review in Step 6 picks up the outstanding findings via the shared surfacing protocol.
+**Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being discussed produces stale analysis — the document will look different once those findings land, and the new review would be critiquing a version the user is already fixing. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check, so no trigger is lost — whether it dispatches is then the movement backoff's call. If the session ends before drainage completes, the final review in Step 6 picks up the outstanding findings via the surfacing protocol.
 
 **If all checked:**
 
@@ -38,7 +38,7 @@ At natural conversational breaks, check for completed results.
 
 ## Lanes
 
-The shared surfacing protocol reads this declaration when presenting this phase's findings.
+The surfacing protocol reads this declaration when presenting this phase's findings.
 
 - `ask` — the walked lane. Raises render under the heading `Needs A Decision`.
 - `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs — the shape in **D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**; never the template's revision shape. The confirmation says amended, never removed.
@@ -95,10 +95,10 @@ The discussion continues — do not wait for the agent to return.
 
 ## B. Check and Surface
 
-Delegate all check-for-results and presentation behaviour to the shared surfacing protocol. This enforces the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection.
+Delegate all check-for-results and presentation behaviour to the surfacing protocol. This enforces the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection.
 
-→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, work_unit = `{work_unit}`, phase = `discussion`, topic = `{topic}`.
+→ Load **[background-agent-surfacing.md](background-agent-surfacing.md)** with agent_type = `review`, work_unit = `{work_unit}`, phase = `discussion`, topic = `{topic}`.
 
 **Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and record it on the Discussion Map as a `pending` subtopic (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
 
-**Findings the user rejects**: nothing lands in the discussion file either way — **Rejecting a raise** in **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
+**Findings the user rejects**: nothing lands in the discussion file either way — **Rejecting a raise** in **[background-agent-surfacing.md](background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
