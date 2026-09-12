@@ -35,7 +35,7 @@ Research feeds discussion. It answers what the seed, the brief, the user, and th
 
 - `question` — the thread as asked, a sentence. Reframing rewrites it in place; the file carries the history.
 - `status` — `open` | `digging` | `learned` | `parked`. Any state to any state is legal.
-- `origin` — `seed` | `brief` | `user` | `conversation` | a deep-dive id (`deep-dive-NNN`) | a topic name (a concern rerouted in). Recorded at add, never rewritten.
+- `origin` — `seed` | `brief` | `user` | `conversation` | a deep-dive id (`deep-dive-NNN`) | a topic name (a concern rerouted in — any name the map accepts). Recorded at add, never rewritten.
 - `parent` — a top-level slug or `null`; two levels, like the map. A split adds children under the thread that bent.
 - `note` — optional, one line; the reason a thread is parked.
 
@@ -46,12 +46,12 @@ engine research-threads add <wu> <topic> <slug> --question <text> --origin <orig
 engine research-threads set <wu> <topic> <slug> <state> [--note <text>]
 engine research-threads set <wu> <topic> <slug>=<state> [<slug>=<state> …]
 engine research-threads reframe <wu> <topic> <slug> --question <text>
-engine research-threads remove <wu> <topic> <slug>
+engine research-threads remove <wu> <topic> <slug> [--into <slug>]
 ```
 
-`remove` is the merge's mechanical half: the survivor's file section carries the folded substance, the absorbed row goes. `--note` is legal with `parked` alone. `add` refuses a slug already present and a parent that is itself a child.
+`remove` is the merge's mechanical half: the survivor's file section carries the folded substance, the absorbed row goes, and `--into` names the survivor so the absorbed thread's children move under it; bare, a thread with children is refused. `--note` is legal with `parked` alone. `add` refuses a slug already present and a parent that is itself a child.
 
-**Display** — `engine render research-threads <wu>.research.<topic>`, one `DISPLAY: research threads` section, a plain code block: the kernel tree under a `treeHeader`, glyph column from the item-state family (`○` open · `◐` digging · `●` learned · `◌` parked, a `RESEARCH_GLYPH` table beside `DISCUSSION_GLYPH` in `conventions.cjs`), the question as the row title, the origin as the right-aligned `[term]` column, a parked row's note as a `↳` line beneath it. Rows rank live first — `digging`, `open` — then `learned`, then `parked`; insertion order within a rank; children sort by the same rule under their parent. The header breakdown lists every non-zero category in rank order and is omitted when only one is present.
+**Display** — `engine render research-threads <wu>.research.<topic>`, one `DISPLAY: research threads` section, a plain code block: the kernel tree under a `treeHeader`, glyph column from the item-state family (`○` open · `◐` digging · `●` learned · `◌` parked, a `RESEARCH_GLYPH` table beside `DISCUSSION_GLYPH` in `conventions.cjs`), the question as the row title, the origin as the right-aligned `[term]` column, a parked row's note as a `↳` line beneath it. Rows rank live first — `digging`, `open` — then `learned`, then `parked`; insertion order within a rank; children sort by the same rule under their parent. The header breakdown lists every non-zero category in rank order and is omitted when only one is present. An empty register renders nothing — the surface answers empty, so no caller draws a header over nothing.
 
 ```
 Research Threads — Space Homing (4 threads — 1 digging · 2 learned · 1 parked)
@@ -105,8 +105,8 @@ Research Threads — Space Homing (4 threads — 1 digging · 2 learned · 1 par
 1. Read the report in full.
 2. Write a section into the research file — `## {question} — deep-dive-NNN, {date}` — Answers first, then Material, sources kept inline. Commit with the dive's id in the subject (`research({wu}/{topic}): fold launch placement (deep-dive-001)`).
 3. `research-threads set {slug} learned`.
-4. For each Opened line: a question this topic will carry becomes a thread (`add`, origin the dive's id, parent the folded thread); one already covered or belonging elsewhere is folded as a note in the section instead. A measurement line becomes a thread the same way — what the measurement would settle — and is the laboratory's cue: the session makes the experiment offer now, or at the next natural break when the fold ends on a question.
-5. Speak to the user: the Answers in full when the brief asked questions — every answer's substance whole, told at product altitude, never the report's code pasted; otherwise a digest of what was asked, what came back in three to five lines, and what it opened. A question only the user can answer — their environment, their intent — is asked here, once, with the session's lean beside it.
+4. For each Opened line: a question this topic will carry becomes a thread (`add`, origin the dive's id, parent the folded thread); one already covered is folded as a note in the section; one another topic owns is folded as a note and, on an epic, raised through the session's off-topic route at the next break. A measurement line becomes a thread the same way — what the measurement would settle — and is the laboratory's cue the session loop reads at its next step: the offer comes in the same turn when the fold asked no question, at the next break when it did.
+5. Speak to the user: the Answers in full when the brief asked questions — every answer's substance whole, told at product altitude, never the report's code pasted; otherwise a digest of what was asked, what came back, and what it opened — as long as the return needs, never the report pasted. A question only the user can answer — their environment, their intent — is asked here, once, with the session's lean beside it.
 6. Render the register.
 
 The report is never pasted into the conversation. No announce menu, no lanes, no not-now, no dismissal — a dive returns what was asked for.
@@ -115,9 +115,9 @@ The report is never pasted into the conversation. No announce menu, no lanes, no
 
 **Initialisation** seeds the register: the seed material's and the brief's questions as threads (origins `seed`, `brief`), judged — a question discovery already settled is inherited ground, not a thread.
 
-**The loop** — engage, explore, synthesise, document, commit. A thread enters when the conversation opens a question worth carrying (origin `user` or `conversation`); a thread reframes when its answer reshapes it; a thread parks when the user sets it aside, with the reason. The deep-dive offer rides the moment the register makes visible. At natural breaks the session checks for landed dives and folds them.
+**The loop** — engage, explore, synthesise, document, commit. A thread enters when the conversation opens a question worth carrying (origin `user` or `conversation`), when a rerouted concern is folded (origin the rerouting topic), and when an off-topic concern turns out to be this topic's own; a thread reframes when its answer reshapes it; a thread parks when the user sets it aside, with the reason; a thread that grows into its own topic takes its row with it. The deep-dive offer rides the moment the register makes visible; a measurement thread is the loop's laboratory cue. At natural breaks the session checks for landed dives and folds them.
 
-**The close** — triage queue → waits → in-flight dives (wait or proceed, as today) → document review → compliance → the register rendered above the conclude gate. The conclusion writes open and parked threads into the file's Open Threads. No review, no movement judgment, no decline to remember.
+**The close** — the fold of every landed dive and the in-flight gate (wait or proceed) → triage queue → waits → document review → compliance → the register rendered above the conclude gate. The conclusion writes open and parked threads into the file's Open Threads. No review, no movement judgment, no decline to remember.
 
 ## Implementation plan
 
@@ -133,5 +133,6 @@ Design docs rewritten in place with this one: `review-maturity.md` (research no 
 
 ## Log
 
+- 2026-09-12 — Review pass over the stack: the close folds landed dives before the in-flight gate; the measurement cue is the loop's; rerouted, kept, and grown threads move the register; `remove --into`; absorb carries the register; an empty register renders nothing; the offer opens on the question.
 - 2026-09-12 — Stack #1135 open: #1133 engine strip, #1134 register, #1136 research prose, #1137 shared references re-homed, plus the three cases. Fold step 4 gains the measurement thread (a fold that ends on a question kept no durable cue) and step 5 says in full at product altitude, never verbatim.
 - 2026-09-11 — Opened from the Fumi `space-homing` conclusion. Rulings R1–R9 agreed in conversation; the register's flexibility ("research can thread and bend and move based on results") and the answers-in-full return (R3) are the user's own framing.
