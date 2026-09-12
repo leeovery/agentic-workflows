@@ -6,7 +6,7 @@
 
 A final review ensures the discussion is thorough before moving to specification. Even if review agents ran during the session, the discussion may have progressed significantly since the last one.
 
-This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 6 re-runs — eventually all findings are drained and the engine incorporates the review, at which point Step 6 returns to the backbone to proceed toward conclusion.
+This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the surfacing protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 6 re-runs — eventually all findings are drained and the engine incorporates the review, at which point Step 6 returns to the backbone to proceed toward conclusion.
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the surfacing protocol.
 

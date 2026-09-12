@@ -64,7 +64,7 @@ Emit its `DISPLAY: triage announce` section verbatim as a code block, then open 
 
 #### If at a natural break
 
-A concern landed mid-session, the user chose `later` earlier, or the sitting opened fresh with the queue announced. Judge the break by the checklist — a recent `later` defers the re-offer until the conversation has genuinely moved on.
+A concern landed mid-session, the user chose `later` earlier, or the sitting opened fresh with the queue announced. Judge the break by the checklist — a recent `later` defers the re-offer until the conversation has genuinely moved on, and the checklist's just-opened signal does not count here: the announce spent it, and a break in the session's own thread is what qualifies.
 
 → Load **[natural-breaks.md](natural-breaks.md)** and follow its instructions as written.
 
