@@ -548,8 +548,8 @@ function runResearchThreads(argv) {
       }
       respond(recordThreadReframe(cwd, workUnit, topic, slug, opts.question));
     } else if (command === 'remove') {
-      if (!workUnit || !topic || !slug) {
-        throw new Error('Usage: engine research-threads remove <work-unit> <topic> <slug> [--into <slug>]');
+      if (!workUnit || !topic || !slug || ('into' in opts && !opts.into)) {
+        throw new Error('Usage: engine research-threads remove <work-unit> <topic> <slug> [--into <slug>] — --into names the survivor');
       }
       respond(recordThreadRemove(cwd, workUnit, topic, slug, { into: opts.into ?? null }));
     } else {

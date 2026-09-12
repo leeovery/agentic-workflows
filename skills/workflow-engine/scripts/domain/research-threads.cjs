@@ -108,7 +108,7 @@ function addThread(manifest, topic, slug, { question, origin, parent = null }) {
     throw new Error(`thread slug must be a kebab-case slug (got "${slug}")`);
   }
   if (!isThreadOrigin(origin)) {
-    throw new Error(`thread origin must be seed, brief, user, conversation, a deep-dive id (deep-dive-NNN), or a topic name — no slashes or dots (got "${origin}")`);
+    throw new Error(`thread origin must be seed, brief, user, conversation, a deep-dive id (deep-dive-NNN), or a topic name — one line, no slashes or dots (got "${origin}")`);
   }
   const asked = oneLine(question, 'question');
   if (!item.threads || typeof item.threads !== 'object') item.threads = {};

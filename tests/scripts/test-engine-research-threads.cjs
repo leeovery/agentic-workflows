@@ -393,7 +393,7 @@ describe('schema: the thread vocabulary', () => {
     for (const ok of ['seed', 'brief', 'user', 'conversation', 'deep-dive-001', 'deep-dive-001-auth', 'deep-dive-1234-a-b', 'auth-flow', 'x', 'Auth Flow', 'auth_flow', 'v2 ranking']) {
       assert.strictEqual(isThreadOrigin(ok), true, ok);
     }
-    for (const bad of ['deep-dive-', 'deep-dive-01', 'deep-dive-abc', 'deep-dive-001-Auth', 'auth/flow', 'auth.flow', 'a\\b', '', 7, null, undefined]) {
+    for (const bad of ['deep-dive-', 'deep-dive-01', 'deep-dive-abc', 'deep-dive-001-Auth', 'auth/flow', 'auth.flow', 'a\\b', 'a\nb', 'a\tb', '  ', ' seed', 'seed ', '', 7, null, undefined]) {
       assert.strictEqual(isThreadOrigin(/** @type {any} */ (bad)), false, String(bad));
     }
   });
@@ -466,6 +466,7 @@ describe('engine CLI: research-threads round-trip', () => {
     assert.match(refuses(['remove', 'fumi', 'space-homing', 'a', '--into', 'ghost']).error, /thread "ghost" not found/);
     assert.match(refuses(['remove', 'fumi', 'space-homing', 'a', '--into', 'bc']).error, /"bc" is itself a child of "b"/);
     assert.match(refuses(['remove', 'fumi', 'space-homing', 'a', '--into', 'a']).error, /can't merge into itself/);
+    assert.match(refuses(['remove', 'fumi', 'space-homing', 'a', '--into']).error, /--into names the survivor/);
     assert.deepStrictEqual(Object.keys(saved()), ['a', 'b', 'bc'], 'nothing written');
   });
 

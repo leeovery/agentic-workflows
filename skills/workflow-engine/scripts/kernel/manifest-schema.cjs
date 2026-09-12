@@ -113,7 +113,8 @@ const VALID_THREAD_STATUSES = ['open', 'digging', 'learned', 'parked'];
 // Where a thread entered the register: the fixed sources, a deep dive's
 // store id (`deep-dive-NNN`, with or without its label suffix), or the name
 // of the topic that rerouted the question in — any name the map accepts
-// (no slashes, no dots). The dive prefix is pinned so a malformed id can
+// (no slashes, no dots), one line with no surrounding whitespace, since the
+// origin renders as a tag. The dive prefix is pinned so a malformed id can
 // never pass as a topic name.
 const THREAD_FIXED_ORIGINS = ['seed', 'brief', 'user', 'conversation'];
 const DEEP_DIVE_ID_PATTERN = /^deep-dive-\d{3,}(-[a-z0-9]+(-[a-z0-9]+)*)?$/;
@@ -123,7 +124,7 @@ function isThreadOrigin(origin) {
   if (typeof origin !== 'string') return false;
   if (THREAD_FIXED_ORIGINS.includes(origin)) return true;
   if (origin.startsWith('deep-dive-')) return DEEP_DIVE_ID_PATTERN.test(origin);
-  return origin !== '' && !/[\\/.]/.test(origin);
+  return origin !== '' && origin.trim() === origin && !/[\x00-\x1f\x7f\\/.]/.test(origin);
 }
 
 // The two conversation phases — the ones whose sessions spawn experiments

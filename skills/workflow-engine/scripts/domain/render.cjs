@@ -2066,7 +2066,7 @@ function deepDiveOffer(cwd, { dotpath, file }) {
       cmdOption('y', 'yes', 'Dispatch a deep-dive agent'),
       cmdOption('n', 'no', "Skip, we'll cover it in conversation"),
     ],
-    { question: 'Want me to spin up a background investigation while we keep going?' },
+    { question: 'Send a deep dive after it while we keep going?' },
   ));
 }
 

@@ -4989,7 +4989,7 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
       DOTS,
       'A thread worth digging: How does the competitor rank a query it has never seen?',
       '',
-      '**`◆ Want me to spin up a background investigation while we keep going?`**',
+      '**`◆ Send a deep dive after it while we keep going?`**',
       '',
       '**`y/yes`** → Dispatch a deep-dive agent',
       "**`n/no`**  → Skip, we'll cover it in conversation",

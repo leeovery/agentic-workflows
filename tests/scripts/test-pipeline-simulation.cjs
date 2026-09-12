@@ -702,6 +702,11 @@ describe('pipeline simulation', () => {
     // soft gate passes the research row's actions.
     const hop = sim.run(['topic', 'reopen', wu, 'research', 'alpha']);
     assert.strictEqual(JSON.stringify(sim.manifest(wu).phases.research.items.alpha.threads), registerBefore, 'a reopen leaves the register whole');
+    // The restart's guarded delete: the register goes only when the item carries one.
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.research.alpha`, 'threads']).trim(), 'true');
+    sim.run(['manifest', 'delete', `${wu}.research.alpha`, 'threads']);
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.research.alpha`, 'threads']).trim(), 'false');
+    sim.refuses(['manifest', 'delete', `${wu}.research.alpha`, 'threads'], /not found/);
     assert.deepStrictEqual(hop.reconcile_flagged, [{ phase: 'discussion', topic: 'alpha' }]);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.reconcile_needed, 'research');
     sim.refuses(['topic', 'complete', wu, 'discussion', 'alpha'], /awaits research on the topic/);
@@ -1131,6 +1136,10 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'triage', wu, 'research', 'delta',
       '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'second-parked',
       '-m', `discussion(${wu}/alpha): reroute concern to delta`]);
+    // The fold enters the concern on the register with the rerouting topic as its origin.
+    const entered = sim.run(['research-threads', 'add', wu, 'delta', 'second-parked', '--question', 'More?', '--origin', 'alpha']);
+    assert.strictEqual(entered.origin, 'alpha');
+    sim.run(['research-threads', 'set', wu, 'delta', 'second-parked', 'learned']);
     const absorbed = sim.run(['topic', 'absorb', wu, 'research', 'delta',
       '--file', '002-second-parked.md', '-m', `research(${wu}/delta): absorb 002-second-parked (from alpha)`]);
     assert.strictEqual(absorbed.absorbed, '002-second-parked.md');
@@ -2356,16 +2365,23 @@ describe('pipeline simulation', () => {
     sim.refuses(['agent', 'dispatch', wu, 'research', '../../../escape', '--kind', 'deep-dive', '--label', 'auth'], /Invalid topic/);
     sim.refuses(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review'],
       /research carries no review — the deep dive is the phase's instrument/);
+    // The register thread the dive digs, marked as the fold prescribes.
+    sim.run(['research-threads', 'add', wu, 'alpha', 'auth', '--question', 'How does auth land?', '--origin', 'user']);
     const dive = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     assert.strictEqual(dive.id, 'deep-dive-001-auth');
+    sim.run(['research-threads', 'set', wu, 'alpha', 'auth', 'digging']);
     let scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
     assert.deepStrictEqual(scan.pending, [], 'nothing readable while the dive runs');
     sim.refuses(['agent', 'ack', wu, 'research', 'alpha', dive.id, '--clean'], /in-flight/);
     sim.write(dive.file, '# Nothing novel\n');
     scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
     assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), [dive.id]);
+    // The fold: the thread learned, the row closed clean, an opened line a child thread under it.
+    sim.run(['research-threads', 'set', wu, 'alpha', 'auth', 'learned']);
     const clean = sim.run(['agent', 'ack', wu, 'research', 'alpha', dive.id, '--clean']);
     assert.strictEqual(clean.status, 'incorporated');
+    const opened = sim.run(['research-threads', 'add', wu, 'alpha', 'auth-refresh', '--question', 'How does a refresh land?', '--origin', 'deep-dive-001', '--parent', 'auth']);
+    assert.strictEqual(opened.parent, 'auth');
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
 

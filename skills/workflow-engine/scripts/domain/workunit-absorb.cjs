@@ -213,7 +213,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
 
     // The research move: the file must exist before anything mutates.
     const epicResearchDir = path.join(cwd, '.workflows', into, 'research');
-    /** @type {{from: string, target: string, status: string, threads?: Record<string, object>, dismissed_grounds?: string[], awaiting_experiments?: string[], reconcile_needed?: string}[]} */
+    /** @type {{from: string, target: string, status: string, threads?: Record<string, import('./research-threads.cjs').Thread>, dismissed_grounds?: string[], awaiting_experiments?: string[], reconcile_needed?: string}[]} */
     const researchPlan = [];
     const researchItem = featureResearch[feature];
     if (researchItem !== undefined) {
