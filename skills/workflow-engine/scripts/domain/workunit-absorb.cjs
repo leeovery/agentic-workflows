@@ -291,8 +291,11 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // evidence wait travels with its holder: the series it waits on moves in
     // the same transaction, ids intact and topic-keyed alongside it, so the
     // engine's completion refusal and release edges keep holding in the epic.
+    // The Discussion Map travels whole — every subtopic, its state, its
+    // parent — the way the research register and the experiment series do.
     ensureContainer(discussion, 'items', 'phases.discussion.items')[topic] = {
       status: discussionItem.status,
+      ...(discussionItem.subtopics !== undefined ? { subtopics: JSON.parse(JSON.stringify(discussionItem.subtopics)) } : {}),
       ...(discussionItem.reconcile_needed !== undefined ? { reconcile_needed: discussionItem.reconcile_needed } : {}),
       ...(discussionItem.dismissed_grounds !== undefined ? { dismissed_grounds: discussionItem.dismissed_grounds } : {}),
       ...(discussionItem.awaiting_experiments !== undefined ? { awaiting_experiments: discussionItem.awaiting_experiments } : {}),

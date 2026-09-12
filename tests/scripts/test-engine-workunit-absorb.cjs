@@ -349,6 +349,21 @@ describe('engine workunit absorb — happy path', () => {
       'the epic\'s own topic gains no field');
   });
 
+  it('the Discussion Map travels whole — every subtopic, its state, its parent, at the new name', () => {
+    const feature = featureManifest();
+    const subtopics = {
+      'token-rotation': { status: 'decided', parent: null },
+      'refresh-window': { status: 'exploring', parent: 'token-rotation' },
+      'session-pinning': { status: 'deferred', parent: null },
+    };
+    feature.phases.discussion.items['auth-flow'].subtopics = JSON.parse(JSON.stringify(subtopics));
+    fix = setupFixture({ feature });
+    engine(fix, ABSORB);
+
+    const m = readManifest(fix, 'payments');
+    assert.deepStrictEqual(m.phases.discussion.items.auth.subtopics, subtopics);
+  });
+
   it('the thread register travels whole — every thread, its state, its origin, at the new name', () => {
     const feature = featureManifest();
     const threads = {

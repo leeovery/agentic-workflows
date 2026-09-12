@@ -1944,6 +1944,10 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', feat, 'research', feat]);
     sim.run(['topic', 'start', feat, 'discussion', feat]);
     sim.write(`.workflows/${feat}/discussion/${feat}.md`, '# Discussion — Stray\n');
+    // The Discussion Map the feature built travels with it.
+    sim.run(['discussion-map', 'add', feat, feat, 'cutover']);
+    sim.run(['discussion-map', 'add', feat, feat, 'rollback', '--parent', 'cutover']);
+    sim.run(['discussion-map', 'set', feat, feat, 'cutover=exploring', 'rollback=decided']);
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
     // A standing do-not-report call on this topic's material.
     sim.run(['manifest', 'push', `${feat}.discussion.${feat}`, 'dismissed_grounds',
@@ -1974,6 +1978,9 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(m.phases.research.items['stray-topic'].threads,
       { reach: { question: 'How far does stray reach?', status: 'parked', origin: 'seed', parent: null, note: 'not this year' } },
       'the thread register follows the material to its new name');
+    assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].subtopics,
+      { cutover: { status: 'exploring', parent: null }, rollback: { status: 'decided', parent: 'cutover' } },
+      'the Discussion Map follows the material to its new name');
     assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'discussion', 'stray-topic.md')),
       'discussion file moved into the epic');
 
