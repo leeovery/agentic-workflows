@@ -32,26 +32,25 @@
     "c — continue",
     "l — later"
   ],
-  "conduct": "The user comes back to close the measurement research out. They open by asking what is waiting in the queue for this topic, hear the concern offered, and say later — they want to say one thing first: that NDCG@10 over click-derived judgments is the metric they will take into the discussion, nothing more to add. Then they say they are done and want to conclude. They run the shop and introduce no new material; when the queue is offered again after the blocker, the walk has reached its stop and they answer nothing.",
+  "conduct": "The user comes back to close the measurement research out. The queue's one concern is offered to them at the door and they say later — they want to say one thing first, and want it written down: that NDCG@10 over click-derived judgments is the metric they will take into the discussion; the file still calls it the leading candidate, and they are done weighing. Then they say they are done and want to conclude. They run the shop and introduce no new material beyond that one position; when the queue is offered again after the blocker, the walk has reached its stop and they answer nothing.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
       "manifest get search-relevance.research.relevance-measurement status",
       "render resume-gate search-relevance.research.relevance-measurement",
       "topic queue search-relevance research relevance-measurement",
-      "render triage-announce search-relevance.research.relevance-measurement",
       "render triage-offer search-relevance.research.relevance-measurement",
       "render triage-block search-relevance.research.relevance-measurement"
     ],
     "calls_in_order": [
       "manifest get search-relevance.research.relevance-measurement status",
       "render resume-gate search-relevance.research.relevance-measurement",
-      "render triage-announce search-relevance.research.relevance-measurement",
       "render triage-offer search-relevance.research.relevance-measurement",
       "render triage-block search-relevance.research.relevance-measurement",
       "render triage-offer search-relevance.research.relevance-measurement"
     ],
     "calls_exclude": [
+      "render triage-announce",
       "topic absorb",
       "topic requeue",
       "topic complete",

@@ -8,19 +8,18 @@ The prose should have taken this path:
    thread register once above resume detection, and the user continues;
    initialisation is skipped
 3. the walk routes into the epic research session; the loop's first
-   check finds the queue holding one concern and the sitting freshly
-   opened, so the triage announce renders and the session opens from
-   its own material without offering yet
-4. the user asks what is waiting — that is the user asking for the
-   queue, which satisfies the first offer's deferral — and the offer
-   renders; the user says later
-5. the user says their one thing (the metric they are taking forward),
-   which the session documents and commits; then the user says they are
-   done, and the wrapper routes to its conclusion handling: the fold
-   check finds nothing landed, nothing is in flight, and the walk enters
-   topic completion, whose first act is the queue check — it reads one
-   entry and renders the blocker, returning to the session loop
-6. back in the loop, the triage check judges the break: the user
+   check finds the queue holding one concern and the sitting resumed —
+   the artifact predates this session — so the offer renders before any
+   session output, no announce; the user says later
+4. the user says their one thing — the metric they are taking forward,
+   asked to be written down — which the session documents in the
+   research file and commits with the cadence message; then the user
+   says they are done, and the wrapper routes to its conclusion
+   handling: the fold check finds nothing landed, nothing is in flight,
+   and the walk enters topic completion, whose first act is the queue
+   check — it reads one entry and renders the blocker, returning to the
+   session loop
+5. back in the loop, the triage check judges the break: the user
    chose `later` one turn ago, and the checklist's deferral would hold —
    except the user is now concluding, which is the break the deferral
    was waiting for; the offer renders again in the same turn, and the
