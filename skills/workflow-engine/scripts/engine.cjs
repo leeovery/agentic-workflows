@@ -237,7 +237,7 @@ Commands:
   render research-conclude-gate <wu.research.topic> [--dead-end]
   render deep-dive-offer  <wu.research.topic> --file <payload.json>
   render in-flight-agents-gate <wu.research.topic> --count N
-  render review-findings-gate <wu.research|discussion.topic>
+  render review-findings-gate <wu.discussion.topic>
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
   render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>

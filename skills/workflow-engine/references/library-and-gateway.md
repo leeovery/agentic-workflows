@@ -65,7 +65,7 @@ engine.discussionMap.setSubtopicState(manifest, topic, name, state) // mutates; 
 engine.discussionMap.mapState(manifest, topic)    // → { counts, total, all_decided, unresolved }
 
 // domain: background-agent derivations
-engine.agents.completedReviewCycles(cwd, wu, phase, topic) // → number — report-backed review cycles (legacy files counted by existence; tolerant reads)
+engine.agents.completedReviewCycles(cwd, wu, topic)   // → number — report-backed discussion review cycles (legacy files counted by existence; tolerant reads)
 engine.agents.reviewArming(cwd, wu, topic)        // → { armed, cycles, map_moves_seen, map_moves_needed, reason } — discussion review-arming verdict (tolerant reads)
 
 // domain: discovery-session queries

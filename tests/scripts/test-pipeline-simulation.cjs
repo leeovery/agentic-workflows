@@ -169,6 +169,10 @@ function auditState(dir, label) {
               ctx(`agent ${ph.name}/${tp.name}/${key}: status "${row.status}" not in vocabulary`));
             assert.ok(row.surfaced.every((f) => row.findings.includes(f)),
               ctx(`agent ${ph.name}/${tp.name}/${key}: surfaced ids must be recorded findings`));
+            if (ph.name === 'research') {
+              assert.strictEqual(row.kind, 'deep-dive',
+                ctx(`agent ${ph.name}/${tp.name}/${key}: research carries the deep dive alone — a "${row.kind}" row has no reader there`));
+            }
             if (ph.name === 'discussion' && row.kind === 'review') {
               assert.ok(row.map_snapshot && typeof row.map_snapshot === 'object',
                 ctx(`agent ${ph.name}/${tp.name}/${key}: a discussion review row must carry its dispatch-time map_snapshot — a stampless dispatch degrades to permanent permissive arming`));
@@ -912,17 +916,18 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.alpha`, 'reconcile_needed']), 'true');
     sim.run(['manifest', 'delete', `${wu}.research.alpha`, 'reconcile_needed']);
 
-    // A dismissed finding's ground rides the topic and is carried into every
-    // later review dispatch; the user's recall pulls it back off.
-    sim.run(['manifest', 'push', `${wu}.research.alpha`, 'dismissed_grounds',
-      'Vendor pricing tiers beyond the shortlist']);
-    assert.deepStrictEqual(sim.manifest(wu).phases.research.items.alpha.dismissed_grounds,
-      ['Vendor pricing tiers beyond the shortlist']);
-    sim.run(['manifest', 'pull', `${wu}.research.alpha`, 'dismissed_grounds',
-      'Vendor pricing tiers beyond the shortlist']);
-    assert.deepStrictEqual(sim.manifest(wu).phases.research.items.alpha.dismissed_grounds, []);
     sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
+
+    // A dismissed finding's ground rides the topic and is carried into every
+    // later review dispatch; the user's recall pulls it back off.
+    sim.run(['manifest', 'push', `${wu}.discussion.alpha`, 'dismissed_grounds',
+      'Vendor pricing tiers beyond the shortlist']);
+    assert.deepStrictEqual(sim.manifest(wu).phases.discussion.items.alpha.dismissed_grounds,
+      ['Vendor pricing tiers beyond the shortlist']);
+    sim.run(['manifest', 'pull', `${wu}.discussion.alpha`, 'dismissed_grounds',
+      'Vendor pricing tiers beyond the shortlist']);
+    assert.deepStrictEqual(sim.manifest(wu).phases.discussion.items.alpha.dismissed_grounds, []);
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
@@ -1054,10 +1059,11 @@ describe('pipeline simulation', () => {
     // acted on delta from this session, so the read stamps nothing.
     assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/.cache/${wu}/research/delta/presence`)),
       'a queue read never creates a heartbeat');
-    // The dispatch gate: a review never launches over a non-empty queue —
-    // each queued concern is a pending change to the document a review
-    // would read. Other kinds stay ungated.
-    sim.refuses(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'review'], /review dispatch blocked/);
+    // Research carries no review — the refusal is on kind, before any queue
+    // read — and the deep dive, the phase's one instrument, is never gated
+    // by the queue.
+    sim.refuses(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'review'],
+      /research carries no review — the deep dive is the phase's instrument/);
     sim.run(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'deep-dive', '--label', 'scope']);
     assert.ok(fs.existsSync(path.join(sim.dir, `.workflows/.cache/${wu}/research/delta/presence`)),
       'the write-shaped verb is what claims the slot');
@@ -1118,11 +1124,11 @@ describe('pipeline simulation', () => {
     assert.strictEqual(flagged.reconcile_flagged, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.reconcile_needed, 'research');
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'completed');
-    // The dispatch gate clears the moment the queue drains.
-    sim.refuses(['agent', 'dispatch', wu, 'research', 'beta', '--kind', 'review'], /review dispatch blocked/);
+    // The absorb drains the queue; a deep dive — research's one agent kind —
+    // dispatches over the drained topic.
     sim.run(['topic', 'absorb', wu, 'research', 'beta',
       '--file', '001-feasibility-question.md', '-m', `research(${wu}/beta): absorb 001-feasibility-question (from alpha)`]);
-    sim.run(['agent', 'dispatch', wu, 'research', 'beta', '--kind', 'review']);
+    sim.run(['agent', 'dispatch', wu, 'research', 'beta', '--kind', 'deep-dive', '--label', 'feasibility']);
     // Presence: heartbeats are mechanical, so the verbs already run on this
     // work unit's topics have stamped them — no prose ever beats.
     const rowOf = (scan, phase, topic) => scan.sessions.find((r) => r.phase === phase && r.topic === topic);
@@ -2270,119 +2276,132 @@ describe('pipeline simulation', () => {
     const wu = 'agents';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Agent lifecycle', '--session-log-file', sessionLog(sim, wu)]);
     const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
-      [{ name: 'alpha', routing: 'research', summary: 'Alpha' }]);
+      [{ name: 'alpha', routing: 'research', summary: 'Alpha' }, { name: 'beta', routing: 'discussion', summary: 'Beta' }]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
-    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): one topic`]);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): two topics`]);
+
+    // Research carries the deep dive alone: a review is refused on kind, and
+    // the dive walks the store's lifecycle — nothing readable while it runs,
+    // the report's existence its completion signal, a clean ack its close.
+    // A traversal topic refuses at every verb — the colocation promise
+    // depends on it.
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
-
-    // Dispatch two agents; no files exist until the sub-agents write them.
-    // A traversal topic refuses at every verb — the colocation promise depends on it.
-    sim.refuses(['agent', 'dispatch', wu, 'research', '../../../escape', '--kind', 'review'], /Invalid topic/);
-    const review = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
-    sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    sim.refuses(['agent', 'dispatch', wu, 'research', '../../../escape', '--kind', 'deep-dive', '--label', 'auth'], /Invalid topic/);
+    sim.refuses(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review'],
+      /research carries no review — the deep dive is the phase's instrument/);
+    const dive = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.strictEqual(dive.id, 'deep-dive-001-auth');
     let scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
-    assert.deepStrictEqual(scan.pending, [], 'nothing readable while agents run');
-
-    // The review agent finishes (writes content); the deep-dive is still out.
-    sim.write(review.file, '# Review findings\n\n## F1\n\n## F2\n');
+    assert.deepStrictEqual(scan.pending, [], 'nothing readable while the dive runs');
+    sim.refuses(['agent', 'ack', wu, 'research', 'alpha', dive.id, '--clean'], /in-flight/);
+    sim.write(dive.file, '# Nothing novel\n');
     scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
+    assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), [dive.id]);
+    const clean = sim.run(['agent', 'ack', wu, 'research', 'alpha', dive.id, '--clean']);
+    assert.strictEqual(clean.status, 'incorporated');
+    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
+    sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+
+    // The review's surfacing lifecycle, in the phase that carries it: no file
+    // exists until the sub-agent writes one; the report lands, the row
+    // promotes, and its findings drain by walk, by skip-all, by lane, and by
+    // screen. The rows past the first ride --final — a review the user asked
+    // for — so the map need not move between them; the movement gate is the
+    // epic mainline's to pin.
+    sim.run(['topic', 'start', wu, 'discussion', 'beta']);
+    const review = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    assert.deepStrictEqual(scan.pending, [], 'nothing readable while the review runs');
+    sim.write(review.file, '# Review findings\n\n## F1\n\n## F2\n');
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), ['review-001']);
-    sim.run(['agent', 'ack', wu, 'research', 'alpha', 'review-001', '--findings', 'F1,F2']);
-    sim.run(['agent', 'announce', wu, 'research', 'alpha', 'review-001']);
-    sim.run(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1']);
-    const last = sim.run(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F2']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', 'review-001', '--findings', 'F1,F2']);
+    sim.run(['agent', 'announce', wu, 'discussion', 'beta', 'review-001']);
+    sim.run(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F1']);
+    const last = sim.run(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F2']);
     assert.strictEqual(last.status, 'incorporated', 'last finding auto-incorporates');
 
     // Skip-all from acknowledged: declined ids stay recorded unsurfaced.
-    const skipAll = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
+    const skipAll = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review', '--final']);
     sim.write(skipAll.file, '# More findings\n\n### F9: x\n');
-    sim.run(['agent', 'scan', wu, 'research', 'alpha']);
-    sim.run(['agent', 'ack', wu, 'research', 'alpha', skipAll.id, '--findings', 'F9']);
-    const closedEarly = sim.run(['agent', 'incorporate', wu, 'research', 'alpha', skipAll.id]);
+    sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', skipAll.id, '--findings', 'F9']);
+    const closedEarly = sim.run(['agent', 'incorporate', wu, 'discussion', 'beta', skipAll.id]);
     assert.deepStrictEqual(closedEarly.remaining, ['F9'], 'skip-all keeps the declined record');
 
     // A surfacing lane: the batch renders from a payload, then drains in one
     // call — the apply/route screens' call sequence, not the walk's.
-    const laned = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
+    const laned = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review', '--final']);
     sim.write(laned.file, '# Laned findings\n\n### F1: a\n\n### F2: b\n\n### F3: c\n');
-    sim.run(['agent', 'scan', wu, 'research', 'alpha']);
-    sim.run(['agent', 'ack', wu, 'research', 'alpha', laned.id, '--findings', 'F1,F2,F3']);
-    sim.run(['agent', 'announce', wu, 'research', 'alpha', laned.id]);
-    const payload = `.workflows/.cache/${wu}/research/alpha/batch-apply.json`;
+    sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', laned.id, '--findings', 'F1,F2,F3']);
+    sim.run(['agent', 'announce', wu, 'discussion', 'beta', laned.id]);
+    const payload = `.workflows/.cache/${wu}/discussion/beta/batch-apply.json`;
     sim.write(payload, JSON.stringify({
       lane: 'apply',
       items: [{ title: 'a', detail: 'follows from the tier decision' }, { title: 'b', detail: 'retracted rationale, unstruck' }],
     }));
-    sim.render(['finding-batch', `${wu}.research.alpha`, '--file', payload], { expect: 'content' });
+    sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', payload], { expect: 'content' });
     // The decide lane carries the veto menu; a screen past the five-item cap
     // is refused whole — pagination is the prose's job, screens the engine's.
-    const decidePayload = `.workflows/.cache/${wu}/research/alpha/batch-decide.json`;
+    const decidePayload = `.workflows/.cache/${wu}/discussion/beta/batch-decide.json`;
     sim.write(decidePayload, JSON.stringify({
       lane: 'decide',
       items: [{ title: 'd', detail: 'determined by the tier decision' }],
     }));
-    assert.match(sim.render(['finding-batch', `${wu}.research.alpha`, '--file', decidePayload], { expect: 'content' }),
+    assert.match(sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', decidePayload], { expect: 'content' }),
       /\*\*Discuss\*\*/, 'the decide menu carries the discuss route');
     sim.write(decidePayload, JSON.stringify({
       lane: 'decide',
       items: Array.from({ length: 6 }, (_, i) => ({ title: `d${i}`, detail: 'x' })),
     }));
-    sim.refuses(['render', 'finding-batch', `${wu}.research.alpha`, '--file', decidePayload], /at most 5 items/);
+    sim.refuses(['render', 'finding-batch', `${wu}.discussion.beta`, '--file', decidePayload], /at most 5 items/);
     // The route lane requires each item's title alongside its target — a
     // producer still writing the bare {target, detail} pair fails here.
-    const routePayload = `.workflows/.cache/${wu}/research/alpha/batch-route.json`;
+    const routePayload = `.workflows/.cache/${wu}/discussion/beta/batch-route.json`;
     sim.write(routePayload, JSON.stringify({
       lane: 'route',
-      items: [{ title: 'c', target: 'beta', detail: 'their subtopic owns the claim' }],
+      items: [{ title: 'c', target: 'alpha', detail: 'their subtopic owns the claim' }],
     }));
-    assert.match(sim.render(['finding-batch', `${wu}.research.alpha`, '--file', routePayload], { expect: 'content' }),
-      /\[→ beta\]/, 'the destination rides the tag slot');
-    sim.write(routePayload, JSON.stringify({ lane: 'route', items: [{ target: 'beta', detail: 'd' }] }));
-    sim.refuses(['render', 'finding-batch', `${wu}.research.alpha`, '--file', routePayload], /item 1 is missing "title"/);
-    const applied = sim.run(['agent', 'surface', wu, 'research', 'alpha', laned.id, 'F1,F2']);
+    assert.match(sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', routePayload], { expect: 'content' }),
+      /\[→ alpha\]/, 'the destination rides the tag slot');
+    sim.write(routePayload, JSON.stringify({ lane: 'route', items: [{ target: 'alpha', detail: 'd' }] }));
+    sim.refuses(['render', 'finding-batch', `${wu}.discussion.beta`, '--file', routePayload], /item 1 is missing "title"/);
+    const applied = sim.run(['agent', 'surface', wu, 'discussion', 'beta', laned.id, 'F1,F2']);
     assert.deepStrictEqual(applied.remaining, ['F3'], 'a batch drains its lane and leaves the rest');
-    const walked = sim.run(['agent', 'surface', wu, 'research', 'alpha', laned.id, 'F3']);
+    const walked = sim.run(['agent', 'surface', wu, 'discussion', 'beta', laned.id, 'F3']);
     assert.strictEqual(walked.status, 'incorporated', 'the walk finishes what the batch left');
 
     // A lane past the cap drains over screens: render at most five with the
     // remainder on the confirm, surface that screen, return for the next.
-    const paged = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
+    const paged = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review', '--final']);
     const ids = Array.from({ length: 11 }, (_, i) => `F${i + 1}`);
     sim.write(paged.file, `# Paged findings\n\n${ids.map((f) => `### ${f}: x\n`).join('\n')}`);
-    sim.run(['agent', 'scan', wu, 'research', 'alpha']);
-    sim.run(['agent', 'ack', wu, 'research', 'alpha', paged.id, '--findings', ids.join(',')]);
-    sim.run(['agent', 'announce', wu, 'research', 'alpha', paged.id]);
+    sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', paged.id, '--findings', ids.join(',')]);
+    sim.run(['agent', 'announce', wu, 'discussion', 'beta', paged.id]);
     const screen = (from, remaining) => {
       sim.write(payload, JSON.stringify({
         lane: 'apply',
         remaining,
         items: ids.slice(from, from + 5).map((f) => ({ title: f, detail: 'd' })),
       }));
-      return sim.render(['finding-batch', `${wu}.research.alpha`, '--file', payload], { expect: 'content' });
+      return sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', payload], { expect: 'content' });
     };
     assert.match(screen(0, 6), /\(6 more after this\)/, 'screen one names the remainder');
-    let row = sim.run(['agent', 'surface', wu, 'research', 'alpha', paged.id, ids.slice(0, 5).join(',')]);
+    let row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, ids.slice(0, 5).join(',')]);
     assert.strictEqual(row.remaining.length, 6, 'first screen drains five');
     assert.match(screen(5, 1), /\(1 more after this\)/, 'screen two names the remainder');
-    row = sim.run(['agent', 'surface', wu, 'research', 'alpha', paged.id, ids.slice(5, 10).join(',')]);
+    row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, ids.slice(5, 10).join(',')]);
     assert.strictEqual(row.remaining.length, 1, 'second screen drains five more');
     assert.match(screen(10, 0), /Apply it, then move on\n/, 'the last screen is a singleton with no tail');
-    row = sim.run(['agent', 'surface', wu, 'research', 'alpha', paged.id, 'F11']);
+    row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, 'F11']);
     assert.strictEqual(row.status, 'incorporated', 'the last screen incorporates the row');
 
-    // Guards hold mid-lifecycle, and the conclusion gate still sees the straggler.
-    sim.refuses(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1'], /incorporated/);
-    sim.refuses(['agent', 'ack', wu, 'research', 'alpha', 'deep-dive-001-auth', '--clean'], /in-flight/);
-    scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
-    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['deep-dive-001-auth']);
-
-    // The straggler lands clean; the phase can conclude.
-    sim.write(`.workflows/.cache/${wu}/research/alpha/deep-dive-001-auth.md`, '# Nothing novel\n');
-    sim.run(['agent', 'scan', wu, 'research', 'alpha']);
-    const clean = sim.run(['agent', 'ack', wu, 'research', 'alpha', 'deep-dive-001-auth', '--clean']);
-    assert.strictEqual(clean.status, 'incorporated');
-    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
-    sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+    // Guards hold mid-lifecycle; the drained topic concludes.
+    sim.refuses(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F1'], /incorporated/);
+    sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
+    sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     // A perspective council in discussion: the pair is one set, synthesis
     // joins it by number, and a half-landed council is never synthesisable.
