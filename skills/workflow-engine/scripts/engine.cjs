@@ -786,6 +786,18 @@ function hookSessionId(rest, usage) {
   return sessionId;
 }
 
+/**
+ * The project root a SessionEnd hook acts on: the invocation cwd when it is
+ * a project root (has `.workflows`), else CLAUDE_PROJECT_DIR for a hook
+ * fired from a drifted cwd.
+ * @returns {string}
+ */
+function hookProjectDir() {
+  return fs.existsSync(path.join(process.cwd(), '.workflows'))
+    ? process.cwd()
+    : (process.env.CLAUDE_PROJECT_DIR || process.cwd());
+}
+
 /** @param {string[]} argv */
 function runPresence(argv) {
   const [command, ...rest] = argv;
@@ -820,14 +832,8 @@ function runPresence(argv) {
       return;
     }
     if (command === 'cleanup') {
-      // The SessionEnd hook's target. Root resolution favours the
-      // invocation cwd (a project root has `.workflows`), falling back to
-      // CLAUDE_PROJECT_DIR for hooks fired from a drifted cwd.
-      const sessionId = hookSessionId(rest, 'Usage: engine presence cleanup [session-id]');
-      const cwd = fs.existsSync(path.join(process.cwd(), '.workflows'))
-        ? process.cwd()
-        : (process.env.CLAUDE_PROJECT_DIR || process.cwd());
-      respond(cleanupPresence(cwd, sessionId));
+      // The SessionEnd hook's target.
+      respond(cleanupPresence(hookProjectDir(), hookSessionId(rest, 'Usage: engine presence cleanup [session-id]')));
       return;
     }
     throw new Error('Usage: engine presence <beat|clear|scan|cleanup> …');
@@ -862,9 +868,8 @@ function runSession(argv) {
       return;
     }
     if (command === 'cleanup') {
-      // The SessionEnd hook's target. The stash store is machine-global, so
-      // no project root is needed.
-      respond(restoreSessionLabel(hookSessionId(rest, 'Usage: engine session cleanup [session-id]')));
+      // The SessionEnd hook's target.
+      respond(restoreSessionLabel(hookProjectDir(), hookSessionId(rest, 'Usage: engine session cleanup [session-id]')));
       return;
     }
     throw new Error('Usage: engine session <label|label-config|repair|cleanup> …');

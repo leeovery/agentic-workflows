@@ -43,9 +43,9 @@ function engineFails(dir, args, env = {}) {
   assert.strictEqual(r.status, 1);
   return JSON.parse(r.stderr.trim());
 }
-function engineWith(dir, args, { env = {}, input } = {}) {
+function engineWith(dir, args, { env = {}, input, cwd = dir } = {}) {
   const r = spawnSync('node', [ENGINE, ...args], {
-    cwd: dir, encoding: 'utf8', env: { ...process.env, ...OWN, ...env }, input: input ?? '',
+    cwd, encoding: 'utf8', env: { ...process.env, ...OWN, ...env }, input: input ?? '',
   });
   assert.strictEqual(r.status, 0, r.stderr);
   const nl = r.stdout.indexOf('\n');
@@ -241,6 +241,17 @@ describe('engine presence', () => {
     assert.strictEqual(engine(dir, ['presence', 'scan', 'pay']).res.work_unit, 'pay', 'the per-work-unit form is unchanged');
   });
 
+  it('the session-label store at the cache root is no work unit — the project scan reports nothing for it', () => {
+    const store = path.join(dir, '.workflows', '.cache', '.session-labels');
+    fs.mkdirSync(store, { recursive: true });
+    fs.writeFileSync(path.join(store, 'abcd1234-7.json'), '{"tmux_id":"$7","original":"proj","applied":"proj · pay · discussion"}\n');
+    const res = engine(dir, ['presence', 'scan']).res;
+    assert.deepStrictEqual(res.sessions, []);
+    assert.strictEqual(res.held, 0);
+    assert.deepStrictEqual(engineWith(dir, ['presence', 'cleanup', 'sess-one']).cleared, []);
+    assert.ok(fs.existsSync(path.join(store, 'abcd1234-7.json')), 'the sweep leaves the store alone');
+  });
+
   it('the project scan answers empty on a project that has never cached anything', () => {
     const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-bare-'));
     fs.mkdirSync(path.join(bare, '.workflows'), { recursive: true });
@@ -370,6 +381,18 @@ describe('engine presence', () => {
     const viaStdin = engineWith(dir, ['presence', 'cleanup'], { input: JSON.stringify({ session_id: 'sess-b', reason: 'clear' }) });
     assert.deepStrictEqual(viaStdin.cleared, [{ work_unit: 'pay', phase: 'discussion', topic: 'gamma' }]);
     assert.strictEqual(engineWith(dir, ['presence', 'scan', 'pay']).sessions.length, 0);
+  });
+
+  it('cleanup fired outside the project root finds the heartbeat through CLAUDE_PROJECT_DIR', () => {
+    craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-a' });
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-outside-'));
+    try {
+      const swept = engineWith(dir, ['presence', 'cleanup', 'sess-a'], { cwd: outside, env: { CLAUDE_PROJECT_DIR: dir } });
+      assert.deepStrictEqual(swept.cleared, [{ work_unit: 'pay', phase: 'discussion', topic: 'alpha' }]);
+      assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')));
+    } finally {
+      cleanup(outside);
+    }
   });
 
   it('cleanup is hook-safe: no session id, empty stdin, malformed stdin all exit clean', () => {
