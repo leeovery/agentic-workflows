@@ -6,8 +6,9 @@
 // sitting that dispatched it ended. The brief's harness question is
 // learned, the user's label-freshness question open, a human-raters idea
 // parked with its reason. The triage queue is empty; no experiment exists.
-// The user comes back only to conclude — the close must fold what landed
-// before it reads the in-flight gate.
+// The user comes back only to conclude — the resumed session's first check
+// folds what landed, and the measurement it opened is offered once and
+// declined before the close.
 
 const e = require('../../mainlines/epic.cjs');
 
