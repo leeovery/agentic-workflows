@@ -16,7 +16,7 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
 2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next. A number about to bear a decision — or a measurement thread on the register, a dive's Opened line — is the laboratory's cue: offer it through the session wrapper's **F. The Experiment Offer**.
 
-   A question neither of you can answer from the room, worth more than a lookup, is the deep dive's cue — offer it through **A. Offer** in **[deep-dive-agent.md](deep-dive-agent.md)**.
+   A question neither of you can answer from the room, worth more than a lookup, is the deep dive's cue — offer it through **A. Offer** in **[deep-dive-agent.md](deep-dive-agent.md)**. A thread the user is carrying out to the conclusion is not reached, it is handed on: no offer rides a done-signal.
 
 3. **Engage** — Don't just collect the answer. React to it. Challenge assumptions. Explore implications. Follow promising tangents. Connect what the user just said to something from earlier. This is where your value as a research partner lives — you're thinking alongside, not just recording.
 
