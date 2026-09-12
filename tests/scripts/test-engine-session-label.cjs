@@ -3,8 +3,8 @@
 //
 // Tests for tmux session labels: `session label` / `session label-config` /
 // `session repair` / `session cleanup`, the config gate and project
-// override, the machine-global stash, phase-hop and cross-project
-// recomposition, user-rename adoption, id drift across a server restart
+// override, the per-checkout stash, phase-hop recomposition, peer-checkout
+// isolation, user-rename adoption, id drift across a server restart
 // (chain resolution, drifted restore, boot repair, orphan pruning), owner
 // identity, restore ownership, and the SessionEnd stdin contract. tmux
 // itself is a PATH stub modelling one session, backed by state files
@@ -126,7 +126,7 @@ function setTmuxId(id) {
 }
 
 function stashStore() {
-  return path.join(configDir, 'state', 'session-labels');
+  return path.join(dir, '.workflows', '.cache', '.session-labels');
 }
 
 /** The single stash file, or null when the store is empty/absent. */
@@ -188,14 +188,15 @@ describe('engine session label', () => {
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'tmux-error' });
   });
 
-  it('renames the tmux session and stashes the original machine-globally', () => {
+  it('renames the tmux session and stashes the original in the checkout\'s cache', () => {
     optIn();
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.strictEqual(res.labelled, true);
     assert.strictEqual(res.name, 'proj-abc · pay · discussion · alpha');
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
     const file = stashFile();
-    assert.ok(file, 'stash written under the config dir state store');
+    assert.ok(file, 'stash written under .workflows/.cache/.session-labels');
+    assert.ok(!fs.existsSync(path.join(configDir, 'state')), 'the config dir gains no state directory');
     const stash = JSON.parse(fs.readFileSync(file, 'utf8'));
     assert.strictEqual(stash.original, 'proj-abc');
     assert.strictEqual(stash.applied, 'proj-abc · pay · discussion · alpha');
@@ -229,17 +230,31 @@ describe('engine session label', () => {
     assert.strictEqual(stash.original, 'proj-abc');
   });
 
-  it('recomposes from the stashed original across projects — one tmux session, two repos', () => {
+  it('a peer checkout\'s cleanup and repair never touch this checkout\'s records', () => {
     optIn();
     const dirB = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-b-'));
     fs.mkdirSync(path.join(dirB, '.workflows', 'shop'), { recursive: true });
     try {
       engine(['session', 'label', 'pay', 'discussion', 'alpha']);
-      const res = engine(['session', 'label', 'shop', 'planning', 'shop'], { cwd: dirB, sessionId: 'sess-2' });
-      assert.strictEqual(res.name, 'proj-abc · shop · planning');
-      assert.strictEqual(tmuxName(), 'proj-abc · shop · planning');
-      const cleanup = engine(['session', 'cleanup', 'sess-2']);
-      assert.strictEqual(cleanup.restored, true);
+      const file = /** @type {string} */ (stashFile());
+      const record = fs.readFileSync(file, 'utf8');
+      const foreign = engine(['session', 'cleanup', 'sess-other'], { cwd: dirB });
+      assert.strictEqual(foreign.restored, false);
+      assert.strictEqual(fs.readFileSync(file, 'utf8'), record);
+      // The sweep that takes a dead-owner record at home finds nothing here.
+      const stash = JSON.parse(record);
+      stash.pid_start = 'a start time no live process carries';
+      const dead = JSON.stringify(stash) + '\n';
+      fs.writeFileSync(file, dead);
+      const swept = engine(['session', 'cleanup', 'sess-other'], { cwd: dirB });
+      assert.strictEqual(swept.restored, false);
+      const repair = engine(['session', 'repair'], { cwd: dirB });
+      assert.deepStrictEqual(repair, { ok: true, repaired: false });
+      assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+      assert.strictEqual(fs.readFileSync(file, 'utf8'), dead, 'this checkout\'s record is intact');
+      assert.ok(!fs.existsSync(path.join(dirB, '.workflows', '.cache', '.session-labels')), 'the peer gains no records');
+      const home = engine(['session', 'cleanup', 'sess-other']);
+      assert.strictEqual(home.restored, true, 'the record still does its job at home');
       assert.strictEqual(tmuxName(), 'proj-abc');
     } finally {
       fs.rmSync(dirB, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
@@ -294,7 +309,7 @@ describe('engine session label', () => {
 
   it('reports stash-error and leaves the name alone when the stash cannot be written', () => {
     optIn();
-    fs.writeFileSync(path.join(configDir, 'state'), ''); // a file where the state dir must go
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache'), ''); // a file where the cache dir must go
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'stash-error' });
     assert.strictEqual(tmuxName(), 'proj-abc');

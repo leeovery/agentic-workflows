@@ -20,14 +20,13 @@
 // terminal the suite runs in. `WORKFLOWS_CONFIG_DIR` overrides the config
 // directory for tests.
 //
-// The original name is stashed machine-globally (under the config dir's
-// `state/session-labels/`, keyed by tmux socket + session id) because the
-// resource it protects — the tmux session name — is machine-global: a
-// label from any project finds the same stash, so re-labels across phases
-// and projects recompose from the true original instead of compounding
-// suffixes. A user rename mid-flight is adopted as the new original at the
-// next label; restore only ever renames a session whose current name is
-// exactly a name we applied.
+// The original name is stashed in the checkout's cache
+// (`.workflows/.cache/.session-labels/`, keyed by tmux socket + session
+// id), so a record is only ever read by the engine revision of the
+// checkout that wrote it. Re-labels across phases recompose from the true
+// original instead of compounding suffixes. A user rename mid-flight is
+// adopted as the new original at the next label; restore only ever renames
+// a session whose current name is exactly a name we applied.
 //
 // The stash key is not stable: tmux session ids renumber when the server
 // restarts, and name-restoring setups (tmux-resurrect, Portal) carry a
@@ -174,16 +173,15 @@ function tmuxContext() {
   return { socket, id: out.slice(0, sep), name: out.slice(sep + 1) };
 }
 
-// Machine-global stash home: the tmux session name is machine-global, so
-// its restore record must be findable from any project.
-function stashDir() {
-  return path.join(configDir(), 'state', 'session-labels');
+/** The checkout's stash store, under its gitignored cache. @param {string} cwd */
+function stashDir(cwd) {
+  return path.join(cwd, '.workflows', '.cache', '.session-labels');
 }
 
-/** @param {string|null} socket @param {string} tmuxId */
-function stashPath(socket, tmuxId) {
+/** @param {string} cwd @param {string|null} socket @param {string} tmuxId */
+function stashPath(cwd, socket, tmuxId) {
   const server = crypto.createHash('sha256').update(socket || '').digest('hex').slice(0, 8);
-  return path.join(stashDir(), `${server}-${tmuxId.replace(/[^A-Za-z0-9_-]/g, '')}.json`);
+  return path.join(stashDir(cwd), `${server}-${tmuxId.replace(/[^A-Za-z0-9_-]/g, '')}.json`);
 }
 
 /**
@@ -209,16 +207,17 @@ function readStash(file) {
 /**
  * Every complete stash record, with its file path. Incomplete or
  * unreadable files are left for the sweeps to drop.
+ * @param {string} cwd
  * @returns {(LabelStash & {file: string})[]}
  */
-function allStashRecords() {
+function allStashRecords(cwd) {
   /** @type {(LabelStash & {file: string})[]} */
   const records = [];
   /** @type {string[]} */
   let files = [];
-  try { files = fs.readdirSync(stashDir()).filter((f) => f.endsWith('.json')).sort(); } catch { return records; }
+  try { files = fs.readdirSync(stashDir(cwd)).filter((f) => f.endsWith('.json')).sort(); } catch { return records; }
   for (const f of files) {
-    const file = path.join(stashDir(), f);
+    const file = path.join(stashDir(cwd), f);
     const stash = readStash(file);
     if (stash && stash.tmux_id && stash.applied && stash.original) records.push({ ...stash, file });
   }
@@ -227,11 +226,11 @@ function allStashRecords() {
 
 /**
  * The complete stash records on one socket — the chain-resolution set.
- * @param {string|null} socket
+ * @param {string} cwd @param {string|null} socket
  * @returns {(LabelStash & {file: string})[]}
  */
-function listStashes(socket) {
-  return allStashRecords().filter((r) => (r.socket || null) === (socket || null));
+function listStashes(cwd, socket) {
+  return allStashRecords(cwd).filter((r) => (r.socket || null) === (socket || null));
 }
 
 /**
@@ -311,11 +310,11 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
   try { ctx = tmuxContext(); } catch { /* tmux errored */ }
   if (!ctx) return { labelled: false, reason: process.env.TMUX ? 'tmux-error' : 'no-tmux' };
 
-  const file = stashPath(ctx.socket, ctx.id);
+  const file = stashPath(cwd, ctx.socket, ctx.id);
   // Resolve the original by applied-name chain, not by the id-keyed stash
   // alone: a server restart renumbers the id, so a stranded label's record
   // sits under a key this session will never look up directly.
-  const { original, visited } = chainOriginal(listStashes(ctx.socket), ctx.name);
+  const { original, visited } = chainOriginal(listStashes(cwd, ctx.socket), ctx.name);
   const position = topic === workUnit ? `${workUnit} · ${phase}` : `${workUnit} · ${phase} · ${topic}`;
   const name = `${original} · ${position}`;
   const pid = Number(process.env.CLAUDE_PID) || null;
@@ -333,7 +332,7 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
     pid_start: pid ? processStartTime(pid) : null,
   };
   try {
-    fs.mkdirSync(stashDir(), { recursive: true });
+    fs.mkdirSync(stashDir(cwd), { recursive: true });
     const tmp = `${file}.${process.pid}.tmp`;
     fs.writeFileSync(tmp, JSON.stringify(record) + '\n');
     fs.renameSync(tmp, file);
@@ -355,7 +354,7 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
 
 /**
  * Put the original tmux session name back — `session cleanup`, the
- * SessionEnd sweep over the machine-global stash store. Without a session
+ * SessionEnd sweep over the checkout's stash store. Without a session
  * id nothing is touched (an id-less sweep could take a live peer's label —
  * the presence sweep refuses the same way). Sweeps stashes the named
  * session owns (an ownerless stash counts) plus any whose owning process
@@ -368,12 +367,12 @@ function applySessionLabel(cwd, workUnit, phase, topic) {
  * one whose rename failed is kept for the next sweep, as is a link a live
  * session's name still chains through — dropping it would strand that
  * session's own recomposition. Never throws: a hook must exit clean.
- * @param {string|null} sessionId
+ * @param {string} cwd @param {string|null} sessionId
  * @returns {{restored: boolean}}
  */
-function restoreSessionLabel(sessionId) {
+function restoreSessionLabel(cwd, sessionId) {
   if (!sessionId) return { restored: false };
-  const dir = stashDir();
+  const dir = stashDir(cwd);
   /** @type {string[]} */
   let files = [];
   try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')); } catch { return { restored: false }; }
@@ -404,7 +403,7 @@ function restoreSessionLabel(sessionId) {
         if (wearer) targetId = wearer.id;
       }
       if (targetId) {
-        const { original, visited } = chainOriginal(listStashes(socket), stash.applied);
+        const { original, visited } = chainOriginal(listStashes(cwd, socket), stash.applied);
         try {
           tmux(['rename-session', '-t', targetId, original], socket);
           restored = true;
@@ -417,7 +416,7 @@ function restoreSessionLabel(sessionId) {
         }
       } else {
         const live = liveOn(socket);
-        if (live && live.some((s) => chainOriginal(listStashes(socket), s.name).visited.includes(p))) {
+        if (live && live.some((s) => chainOriginal(listStashes(cwd, socket), s.name).visited.includes(p))) {
           drop = false; // a live name still chains through this record
         }
       }
@@ -449,7 +448,7 @@ function repairSessionLabels(cwd) {
   try { ctx = tmuxContext(); } catch { /* tmux errored */ }
   if (!ctx) return { repaired: false };
   let repaired = false;
-  const records = listStashes(ctx.socket);
+  const records = listStashes(cwd, ctx.socket);
   const head = records.find((r) => r.applied === ctx.name);
   if (head && ownerDead(head)) {
     const { original, visited } = chainOriginal(records, ctx.name);
@@ -461,13 +460,13 @@ function repairSessionLabels(cwd) {
   }
   /** @type {Map<string, {id: string, name: string}[]|null>} */
   const liveCache = new Map();
-  for (const r of allStashRecords()) {
+  for (const r of allStashRecords(cwd)) {
     if (!ownerDead(r)) continue;
     const key = r.socket || '';
     if (!liveCache.has(key)) liveCache.set(key, liveSessions(r.socket || null));
     const live = liveCache.get(key);
     if (!live) continue; // server unreachable — keep, nothing is verifiable
-    const sameSocket = listStashes(r.socket || null);
+    const sameSocket = listStashes(cwd, r.socket || null);
     const needed = live.some((s) => chainOriginal(sameSocket, s.name).visited.includes(r.file));
     if (!needed) { try { fs.unlinkSync(r.file); } catch { /* raced away */ } }
   }
