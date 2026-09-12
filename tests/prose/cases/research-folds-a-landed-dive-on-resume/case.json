@@ -1,5 +1,5 @@
 {
-  "origin": "the close's fold had no coverage — a report that landed after the sitting ended must fold before the conclusion reads the in-flight gate, its opened lines becoming threads the hand-off carries, and no laboratory offer is made on the way out: a measurement thread rides Open Threads to the discussion",
+  "origin": "the fold on resume had no coverage — a report that landed after the sitting ended folds at the resumed session's first check, before the user has said a word; the measurement it opened meets the laboratory offer in the same turn and, declined, is not offered again on the way out: the thread rides Open Threads to the discussion",
   "entry": "workflow-research-entry",
   "world": "claims",
   "files": [
@@ -29,12 +29,13 @@
     "skills/workflow-research-process/references/document-review.md",
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-research-process/references/conclude-research.md",
-    "skills/workflow-shared/references/closing-recap.md"
+    "skills/workflow-shared/references/closing-recap.md",
+    "skills/workflow-shared/references/experiment-spawn.md"
   ],
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user comes back to close the measurement research out and says so in their first words. They remember a deep dive was running when they left, and when the session tells them what it found they take it as read — hold-or-weigh is the discussion's choice, not theirs today — and ask nothing back. They run the shop, not the search stack, and do not read code. Pressed at any point, the label-refresh question and whatever the dive opened travel with the topic, and the human-raters idea stays set aside for lack of budget. They are agreeable to required steps — a mandatory check gets a yes — and decline optional extras: no further dive, no measurement now, no new threads, and this is no dead end. They ask to wrap the research up and introduce no new material.",
+  "conduct": "The user comes back to close the measurement research out and says so as soon as the session lets them speak. They remember a deep dive was running when they left, and when the session tells them what it found they take it as read — hold-or-weigh is the discussion's choice, not theirs today — and ask nothing back. They run the shop, not the search stack, and do not read code. Offered a measurement, they decline it — no lab, no inline count, not today — and ask to wrap up. Pressed at any point, the label-refresh question and whatever the dive opened travel with the topic, and the human-raters idea stays set aside for lack of budget. They are agreeable to required steps — a mandatory check gets a yes — and decline optional extras: no further dive, no new threads, and this is no dead end. They introduce no new material.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
