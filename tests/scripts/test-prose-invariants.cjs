@@ -525,7 +525,7 @@ describe('entry points — where a walk may begin', () => {
 });
 
 describe('undeclared prose — the case list against what the walk opened', () => {
-  const rd = (detail) => ({ event: 'PreToolUse', tool: 'Read', detail });
+  const rd = (detail) => ({ event: 'PostToolUse', tool: 'Read', detail, outcome: 'ok' });
 
   it('names prose the walk opened that the case never declared', () => {
     const rows = [
@@ -557,5 +557,17 @@ describe('undeclared prose — the case list against what the walk opened', () =
     const f = './.claude/skills/workflow-start/references/active-work.md';
     assert.deepEqual(invariants.undeclaredProse([rd(f), rd(f)], []),
       ['skills/workflow-start/references/active-work.md']);
+  });
+
+  it('ignores a read that failed — a guessed path is not prose the walk opened', () => {
+    const guess = './.claude/skills/shared/references/instructions.md';
+    const rows = [
+      { event: 'PreToolUse', tool: 'Read', detail: guess },
+      { event: 'PostToolUseFailure', tool: 'Read', detail: guess, outcome: 'FAILED' },
+      { event: 'PreToolUse', tool: 'Read', detail: './.claude/skills/workflow-shared/references/instructions.md' },
+      rd('./.claude/skills/workflow-shared/references/instructions.md'),
+    ];
+    assert.deepEqual(invariants.undeclaredProse(rows, []),
+      ['skills/workflow-shared/references/instructions.md']);
   });
 });

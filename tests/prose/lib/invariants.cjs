@@ -88,11 +88,15 @@ const NAMES = ['engine_before_write', 'calls_include', 'calls_exclude', 'calls_i
  *
  * A world holds the skills at `.claude/skills/`; the corpus names them at
  * `skills/`. Same file, two addresses, so one is translated to the other.
+ *
+ * Only a read that returned counts. A walker guessing at a path leaves a
+ * PreToolUse row and a FAILED row for a file that does not exist; the
+ * PostToolUse row is the one a file it actually opened leaves.
  */
 function proseRead(rows) {
   const seen = new Set();
   for (const row of rows) {
-    if (row.tool !== 'Read') continue;
+    if (row.tool !== 'Read' || row.event !== 'PostToolUse') continue;
     const m = row.detail.match(/\.claude\/skills\/(.+\.md)$/);
     if (m) seen.add(`skills/${m[1]}`);
   }
