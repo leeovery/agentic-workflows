@@ -141,7 +141,9 @@ function auditState(dir, label) {
         }
         // A research item's thread register derives: every row in
         // vocabulary, every parent top-level, a note on a parked row alone.
-        if (phase === 'research') registerState(manifest, topic);
+        if (phase === 'research') {
+          assert.doesNotThrow(() => registerState(manifest, topic), ctx(`${wu}.research.${topic}: thread register`));
+        }
       }
       // Derivation must hold for every phase present.
       derivations.phaseStatus(manifest, phase);
@@ -685,7 +687,10 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
+    sim.run(['research-threads', 'add', wu, 'alpha', 'kept', '--question', 'Does the register survive the lifecycle?', '--origin', 'user']);
+    const registerBefore = JSON.stringify(sim.manifest(wu).phases.research.items.alpha.threads);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+    assert.strictEqual(JSON.stringify(sim.manifest(wu).phases.research.items.alpha.threads), registerBefore, 'completion leaves the register whole');
     assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['start_discussion_after_research']);
     sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
@@ -696,6 +701,7 @@ describe('pipeline simulation', () => {
     // conclusion refuses — while the session already inside resumes; the
     // soft gate passes the research row's actions.
     const hop = sim.run(['topic', 'reopen', wu, 'research', 'alpha']);
+    assert.strictEqual(JSON.stringify(sim.manifest(wu).phases.research.items.alpha.threads), registerBefore, 'a reopen leaves the register whole');
     assert.deepStrictEqual(hop.reconcile_flagged, [{ phase: 'discussion', topic: 'alpha' }]);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.reconcile_needed, 'research');
     sim.refuses(['topic', 'complete', wu, 'discussion', 'alpha'], /awaits research on the topic/);
@@ -918,7 +924,7 @@ describe('pipeline simulation', () => {
     // hand-off whenever a thread stands — nothing gates on a thread's state.
     assert.ok(!sim.render(['research-conclude-gate', `${wu}.research.alpha`], { expect: 'content' }).includes('DISPLAY: research threads'),
       'an empty register prepends nothing to the conclude gate');
-    assert.match(sim.render(['research-threads', `${wu}.research.alpha`], { expect: 'content' }), /Research Threads — Alpha \(0 threads\)/);
+    sim.render(['research-threads', `${wu}.research.alpha`], { expect: 'empty' });
     sim.refuses(['research-threads', 'add', wu, 'beta', 'scope', '--question', 'What must beta cover?', '--origin', 'seed'],
       /no research item "beta"/);
     const seeded = sim.run(['research-threads', 'add', wu, 'alpha', 'scope', '--question', 'What does alpha have to cover?', '--origin', 'seed']);
@@ -927,6 +933,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['research-threads', 'add', wu, 'alpha', 'deeper', '--question', 'Deeper still?', '--origin', 'user', '--parent', 'edges'], /two levels max/);
     sim.refuses(['research-threads', 'add', wu, 'alpha', 'scope', '--question', 'Again?', '--origin', 'user'], /already exists/);
     sim.refuses(['research-threads', 'add', wu, 'alpha', 'typo', '--question', 'Q?', '--origin', 'deep-dive-x'], /thread origin must be/);
+    sim.refuses(['research-threads', 'add', wu, 'alpha', 'orphan', '--question', 'Q?', '--origin', 'user', '--parent', 'ghost'], /parent thread "ghost" not found/);
     sim.run(['research-threads', 'set', wu, 'alpha', 'scope', 'digging']);
     sim.run(['research-threads', 'set', wu, 'alpha', 'scope=learned', 'edges=learned']);
     sim.refuses(['research-threads', 'set', wu, 'alpha', 'scope', 'edges=open'], /never mixed/);
@@ -934,9 +941,18 @@ describe('pipeline simulation', () => {
     sim.run(['research-threads', 'set', wu, 'alpha', 'cold-start', 'parked', '--note', 'needs a machine cycle']);
     sim.refuses(['research-threads', 'set', wu, 'alpha', 'cold-start', 'open', '--note', 'still'], /parked thread alone/);
     sim.run(['research-threads', 'reframe', wu, 'alpha', 'cold-start', '--question', 'Does alpha place correctly on a cold start?']);
-    sim.refuses(['research-threads', 'remove', wu, 'alpha', 'scope'], /"edges" nests under it/);
+    sim.refuses(['research-threads', 'remove', wu, 'alpha', 'scope'], /"edges" nests under it; pass --into <survivor>/);
+    // A merge with children moves them under the survivor in the same write.
+    sim.run(['research-threads', 'add', wu, 'alpha', 'reach', '--question', 'How far does alpha reach?', '--origin', 'Legacy Topic']);
+    const mergedInto = sim.run(['research-threads', 'remove', wu, 'alpha', 'scope', '--into', 'reach']);
+    assert.strictEqual(mergedInto.into, 'reach');
+    assert.strictEqual(sim.manifest(wu).phases.research.items.alpha.threads.edges.parent, 'reach', 'the child moved under the survivor');
+    sim.refuses(['research-threads', 'remove', wu, 'alpha', 'edges', '--into', 'edges'], /can't merge into itself/);
     const merged = sim.run(['research-threads', 'remove', wu, 'alpha', 'edges']);
-    assert.deepStrictEqual(merged.counts, { open: 0, digging: 0, learned: 1, parked: 1 });
+    sim.run(['research-threads', 'remove', wu, 'alpha', 'reach']);
+    assert.deepStrictEqual(merged.counts, { open: 1, digging: 0, learned: 0, parked: 1 });
+    sim.run(['research-threads', 'add', wu, 'alpha', 'scope', '--question', 'What does alpha have to cover?', '--origin', 'seed']);
+    sim.run(['research-threads', 'set', wu, 'alpha', 'scope', 'learned']);
     assert.match(sim.render(['research-threads', `${wu}.research.alpha`], { expect: 'content' }),
       /Research Threads — Alpha \(2 threads — 1 learned · 1 parked\)/);
     const gate = sim.render(['research-conclude-gate', `${wu}.research.alpha`, '--dead-end'], { expect: 'content' });
@@ -1910,6 +1926,13 @@ describe('pipeline simulation', () => {
     const feat = 'stray';
     sim.run(['workunit', 'create', epic, 'epic', '--description', 'The umbrella', '--session-log-file', sessionLog(sim, epic)]);
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'A stray feature', '--session-log-file', sessionLog(sim, feat)]);
+    // Research ran first and left a register — the absorb carries it whole.
+    sim.run(['topic', 'start', feat, 'research', feat]);
+    sim.write(`.workflows/${feat}/research/${feat}.md`, '# Research — Stray\n');
+    sim.run(['research-threads', 'add', feat, feat, 'reach', '--question', 'How far does stray reach?', '--origin', 'seed']);
+    sim.run(['research-threads', 'set', feat, feat, 'reach', 'parked', '--note', 'not this year']);
+    sim.run(['commit', feat, '-m', `research(${feat}): capture`, '--topic', `research/${feat}`]);
+    sim.run(['topic', 'complete', feat, 'research', feat]);
     sim.run(['topic', 'start', feat, 'discussion', feat]);
     sim.write(`.workflows/${feat}/discussion/${feat}.md`, '# Discussion — Stray\n');
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
@@ -1939,6 +1962,9 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].dismissed_grounds,
       ['the migration path is settled and out of scope'],
       'dismissed grounds follow the material — the absorbed topic never re-raises what was turned down');
+    assert.deepStrictEqual(m.phases.research.items['stray-topic'].threads,
+      { reach: { question: 'How far does stray reach?', status: 'parked', origin: 'seed', parent: null, note: 'not this year' } },
+      'the thread register follows the material to its new name');
     assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'discussion', 'stray-topic.md')),
       'discussion file moved into the epic');
 

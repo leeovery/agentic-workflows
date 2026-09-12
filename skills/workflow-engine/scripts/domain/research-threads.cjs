@@ -108,7 +108,7 @@ function addThread(manifest, topic, slug, { question, origin, parent = null }) {
     throw new Error(`thread slug must be a kebab-case slug (got "${slug}")`);
   }
   if (!isThreadOrigin(origin)) {
-    throw new Error(`thread origin must be seed, brief, user, conversation, a deep-dive id (deep-dive-NNN), or a topic name (got "${origin}")`);
+    throw new Error(`thread origin must be seed, brief, user, conversation, a deep-dive id (deep-dive-NNN), or a topic name — no slashes or dots (got "${origin}")`);
   }
   const asked = oneLine(question, 'question');
   if (!item.threads || typeof item.threads !== 'object') item.threads = {};
@@ -169,15 +169,25 @@ function reframeThread(manifest, topic, slug, question) {
 
 /**
  * Remove a thread — the merge's mechanical half, the survivor's file section
- * carrying the folded substance. Refused while children nest under it.
+ * carrying the folded substance. Children move under `into` (the survivor:
+ * top-level, existing, not the absorbed thread); without it a thread with
+ * children is refused.
  * @param {object} manifest @param {string} topic @param {string} slug
+ * @param {{into?: string|null}} [opts]
  */
-function removeThread(manifest, topic, slug) {
+function removeThread(manifest, topic, slug, { into = null } = {}) {
   const threads = threadsOf(manifest, topic);
   threadOf(threads, topic, slug);
   const children = Object.keys(threads).filter((name) => threads[name].parent === slug);
-  if (children.length) {
-    throw new Error(`thread "${slug}" can't be removed — ${quoted(children)} nest${children.length === 1 ? 's' : ''} under it; remove ${children.length === 1 ? 'it' : 'them'} first`);
+  if (into !== null) {
+    if (into === slug) throw new Error(`thread "${slug}" can't merge into itself`);
+    const survivor = threadOf(threads, topic, into);
+    if (survivor.parent !== null) {
+      throw new Error(`"${into}" is itself a child of "${survivor.parent}" — the register is two levels max`);
+    }
+    for (const name of children) threads[name].parent = into;
+  } else if (children.length) {
+    throw new Error(`thread "${slug}" can't be removed — ${quoted(children)} nest${children.length === 1 ? 's' : ''} under it; pass --into <survivor> to move ${children.length === 1 ? 'it' : 'them'}, or remove ${children.length === 1 ? 'it' : 'them'} first`);
   }
   delete threads[slug];
 }
@@ -325,12 +335,17 @@ function recordThreadReframe(cwd, workUnit, topic, slug, question) {
  * @param {string} workUnit
  * @param {string} topic
  * @param {string} slug
- * @returns {{thread: string, removed: true} & RegisterState}
+ * @param {{into?: string|null}} [opts]
+ * @returns {{thread: string, removed: true, into?: string} & RegisterState}
  */
-function recordThreadRemove(cwd, workUnit, topic, slug) {
+function recordThreadRemove(cwd, workUnit, topic, slug, { into = null } = {}) {
   return transaction(cwd, workUnit, (manifest) => {
-    removeThread(manifest, topic, slug);
-    return { thread: slug, removed: /** @type {true} */ (true), ...registerState(manifest, topic) };
+    removeThread(manifest, topic, slug, { into });
+    return {
+      thread: slug, removed: /** @type {true} */ (true),
+      ...(into !== null ? { into } : {}),
+      ...registerState(manifest, topic),
+    };
   });
 }
 

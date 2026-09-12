@@ -213,7 +213,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
 
     // The research move: the file must exist before anything mutates.
     const epicResearchDir = path.join(cwd, '.workflows', into, 'research');
-    /** @type {{from: string, target: string, status: string, dismissed_grounds?: string[], awaiting_experiments?: string[], reconcile_needed?: string}[]} */
+    /** @type {{from: string, target: string, status: string, threads?: Record<string, object>, dismissed_grounds?: string[], awaiting_experiments?: string[], reconcile_needed?: string}[]} */
     const researchPlan = [];
     const researchItem = featureResearch[feature];
     if (researchItem !== undefined) {
@@ -229,6 +229,8 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
         from: feature,
         target: topic,
         status,
+        // The register travels whole — every thread, its state, its origin.
+        ...(researchItem.threads !== undefined ? { threads: JSON.parse(JSON.stringify(researchItem.threads)) } : {}),
         ...(researchItem.dismissed_grounds !== undefined ? { dismissed_grounds: researchItem.dismissed_grounds } : {}),
         ...(researchItem.awaiting_experiments !== undefined ? { awaiting_experiments: researchItem.awaiting_experiments } : {}),
         ...(researchItem.reconcile_needed !== undefined ? { reconcile_needed: researchItem.reconcile_needed } : {}),
@@ -308,6 +310,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       for (const move of researchPlan) {
         researchItems[move.target] = {
           status: move.status,
+          ...(move.threads !== undefined ? { threads: move.threads } : {}),
           ...(move.dismissed_grounds !== undefined ? { dismissed_grounds: move.dismissed_grounds } : {}),
           ...(move.awaiting_experiments !== undefined ? { awaiting_experiments: move.awaiting_experiments } : {}),
           ...(move.reconcile_needed !== undefined ? { reconcile_needed: move.reconcile_needed } : {}),

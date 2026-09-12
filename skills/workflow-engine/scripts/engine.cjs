@@ -137,7 +137,7 @@ Commands:
   research-threads set <work-unit> <topic> <slug> <state> [--note <text>]
   research-threads set <work-unit> <topic> <slug>=<state> [<slug>=<state> …]
   research-threads reframe <work-unit> <topic> <slug> --question <text>
-  research-threads remove <work-unit> <topic> <slug>
+  research-threads remove <work-unit> <topic> <slug> [--into <slug>]
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map add <work-unit> <name> <research|discussion>
@@ -549,9 +549,9 @@ function runResearchThreads(argv) {
       respond(recordThreadReframe(cwd, workUnit, topic, slug, opts.question));
     } else if (command === 'remove') {
       if (!workUnit || !topic || !slug) {
-        throw new Error('Usage: engine research-threads remove <work-unit> <topic> <slug>');
+        throw new Error('Usage: engine research-threads remove <work-unit> <topic> <slug> [--into <slug>]');
       }
-      respond(recordThreadRemove(cwd, workUnit, topic, slug));
+      respond(recordThreadRemove(cwd, workUnit, topic, slug, { into: opts.into ?? null }));
     } else {
       throw new Error('Usage: engine research-threads <add|set|reframe|remove> …');
     }

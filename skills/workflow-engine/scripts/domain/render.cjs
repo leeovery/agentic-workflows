@@ -1978,7 +1978,8 @@ function rerouteOffer(cwd, { dotpath, file }) {
 // research-threads — the thread register: what the topic set out to learn,
 // rendered at the session's transitions and as the conclusion's hand-off.
 // The register is a lens — nothing gates on a thread's state, so the
-// display is the whole response and carries the continue instruction.
+// display is the whole response and carries the continue instruction; an
+// empty register answers empty, so no caller renders a header over nothing.
 
 /** The register block wrapped as its DISPLAY section. @param {string} topic @param {object} manifest @param {string} instruction */
 function researchThreadsSection(topic, manifest, instruction) {
@@ -1992,6 +1993,7 @@ function researchThreadsSection(topic, manifest, instruction) {
  */
 function researchThreadsSurface(cwd, { dotpath }) {
   const { topic, manifest } = resolveResearch(cwd, dotpath, 'research-threads');
+  if (registerState(manifest, topic).total === 0) return '';
   return researchThreadsSection(topic, manifest, CONTINUE_INSTRUCTION);
 }
 
@@ -2041,7 +2043,7 @@ function resolveResearch(cwd, dotpath, surface) {
 }
 
 // deep-dive-offer — the orchestrator's dispatch offer over a thread it judged
-// worth investigating independently. The thread description is the judgment
+// worth investigating independently. The thread's question is the judgment
 // content; the two-line opening and the y/n pair are fixed. The two lines
 // split by role: the statement names what was noticed and stays context, the
 // question beneath it is the ask and takes the decision glyph.
@@ -2056,10 +2058,10 @@ function deepDiveOffer(cwd, { dotpath, file }) {
   resolveResearch(cwd, dotpath, 'deep-dive-offer');
   const p = readJsonPayload(cwd, file, 'deep-dive-offer');
   if (!isFilled(p.thread)) {
-    throw new Error('render deep-dive-offer: "thread" must be a non-empty string — the thread description as it opens the offer');
+    throw new Error('render deep-dive-offer: "thread" must be a non-empty string — the thread\'s question as it opens the offer');
   }
   return section('MENU: deep dive offer', STOP_FOR_RESPONSE, menu(
-    `${p.thread} looks like it could use a deep dive.`,
+    `A thread worth digging: ${p.thread}`,
     [
       cmdOption('y', 'yes', 'Dispatch a deep-dive agent'),
       cmdOption('n', 'no', "Skip, we'll cover it in conversation"),

@@ -98,7 +98,7 @@ describe('research-threads domain: addThread', () => {
 
   it('throws on an origin outside the grammar — a malformed dive id never passes as a topic name', () => {
     const m = manifestWith();
-    for (const origin of ['Seed', 'deep dive', 'deep-dive-1', 'deep-dive-abc', 'deep-dive-001-', '', undefined]) {
+    for (const origin of ['auth/flow', 'auth.flow', 'deep-dive-1', 'deep-dive-abc', 'deep-dive-001-', '', undefined]) {
       assert.throws(() => addThread(m, 'space-homing', 'x', { question: 'Q?', origin }), /thread origin must be/, `origin ${JSON.stringify(origin)}`);
     }
   });
@@ -190,12 +190,34 @@ describe('research-threads domain: removeThread', () => {
       c1: row('Q?', 'open', 'brief', 'p'),
       c2: row('Q?', 'open', 'brief', 'p'),
     });
-    assert.throws(() => removeThread(m, 'space-homing', 'p'), /thread "p" can't be removed — "c1", "c2" nest under it; remove them first/);
+    assert.throws(() => removeThread(m, 'space-homing', 'p'), /thread "p" can't be removed — "c1", "c2" nest under it; pass --into <survivor> to move them, or remove them first/);
     removeThread(m, 'space-homing', 'c1');
-    assert.throws(() => removeThread(m, 'space-homing', 'p'), /"c2" nests under it; remove it first/);
+    assert.throws(() => removeThread(m, 'space-homing', 'p'), /"c2" nests under it; pass --into <survivor> to move it, or remove it first/);
     removeThread(m, 'space-homing', 'c2');
     removeThread(m, 'space-homing', 'p');
     assert.deepStrictEqual(threadsOf(m, 'space-homing'), {});
+  });
+
+  it('merges into a survivor — the children move under it; the survivor must exist, be top-level, and differ', () => {
+    const m = manifestWith({
+      p: row('Q?', 'open', 'seed'),
+      q: row('Q?', 'digging', 'user'),
+      c1: row('Q?', 'open', 'brief', 'p'),
+      c2: row('Q?', 'parked', 'brief', 'p', 'why'),
+      qc: row('Q?', 'open', 'brief', 'q'),
+    });
+    assert.throws(() => removeThread(m, 'space-homing', 'p', { into: 'p' }), /can't merge into itself/);
+    assert.throws(() => removeThread(m, 'space-homing', 'p', { into: 'ghost' }), /thread "ghost" not found/);
+    assert.throws(() => removeThread(m, 'space-homing', 'p', { into: 'qc' }), /"qc" is itself a child of "q"/);
+    removeThread(m, 'space-homing', 'p', { into: 'q' });
+    assert.deepStrictEqual(threadsOf(m, 'space-homing'), {
+      q: row('Q?', 'digging', 'user'),
+      c1: row('Q?', 'open', 'brief', 'q'),
+      c2: row('Q?', 'parked', 'brief', 'q', 'why'),
+      qc: row('Q?', 'open', 'brief', 'q'),
+    });
+    removeThread(m, 'space-homing', 'c1', { into: 'q' });
+    assert.deepStrictEqual(Object.keys(threadsOf(m, 'space-homing')), ['q', 'c2', 'qc'], 'a childless thread merges too');
   });
 
   it('throws when the thread does not exist', () => {
@@ -260,7 +282,7 @@ describe('research-threads projection: golden renders', () => {
     ].join('\n'));
   });
 
-  it('keeps every line within the width whatever the pane — a long question can never overrun', () => {
+  it('keeps every line within the pinned width — a long question wraps rather than overruns', () => {
     const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
     for (const l of researchThreads('space-homing', manifestWith(SPACE_HOMING)).split('\n')) {
       assert.ok(l.length <= TREE_WIDTH, `"${l}" (${l.length}) overruns ${TREE_WIDTH}`);
@@ -367,11 +389,11 @@ describe('schema: the thread vocabulary', () => {
     assert.deepStrictEqual(VALID_THREAD_STATUSES, ['open', 'digging', 'learned', 'parked']);
   });
 
-  it('isThreadOrigin admits the fixed words, dive ids, and topic slugs — and nothing else', () => {
-    for (const ok of ['seed', 'brief', 'user', 'conversation', 'deep-dive-001', 'deep-dive-001-auth', 'deep-dive-1234-a-b', 'auth-flow', 'x']) {
+  it('isThreadOrigin admits the fixed words, dive ids, and any topic name the map accepts — and nothing else', () => {
+    for (const ok of ['seed', 'brief', 'user', 'conversation', 'deep-dive-001', 'deep-dive-001-auth', 'deep-dive-1234-a-b', 'auth-flow', 'x', 'Auth Flow', 'auth_flow', 'v2 ranking']) {
       assert.strictEqual(isThreadOrigin(ok), true, ok);
     }
-    for (const bad of ['Seed', 'deep-dive-', 'deep-dive-01', 'deep-dive-abc', 'deep-dive-001-Auth', 'auth flow', '-x', '', 7, null, undefined]) {
+    for (const bad of ['deep-dive-', 'deep-dive-01', 'deep-dive-abc', 'deep-dive-001-Auth', 'auth/flow', 'auth.flow', 'a\\b', '', 7, null, undefined]) {
       assert.strictEqual(isThreadOrigin(/** @type {any} */ (bad)), false, String(bad));
     }
   });
@@ -424,7 +446,32 @@ describe('engine CLI: research-threads round-trip', () => {
       'placement-routes': row('Which routes place a window?', 'parked', 'brief', 'space-identity', 'needs a machine cycle'),
     });
 
-    assert.match(refuses(['remove', 'fumi', 'space-homing', 'space-identity']).error, /"placement-routes" nests under it; remove it first/);
+    assert.match(refuses(['add', 'fumi', 'space-homing', 'orphan', '--question', 'Q?', '--origin', 'user', '--parent', 'ghost']).error,
+      /parent thread "ghost" not found/);
+    assert.match(refuses(['remove', 'fumi', 'space-homing', 'space-identity']).error, /"placement-routes" nests under it; pass --into <survivor>/);
+    assert.deepStrictEqual(threads(['add', 'fumi', 'space-homing', 'survivor', '--question', 'Where does it all land?', '--origin', 'user']).total, 3);
+    assert.deepStrictEqual(threads(['remove', 'fumi', 'space-homing', 'space-identity', '--into', 'survivor']), {
+      ok: true, thread: 'space-identity', removed: true, into: 'survivor', counts: { ...zero.counts, open: 1, parked: 1 }, total: 2,
+    });
+    assert.strictEqual(saved()['placement-routes'].parent, 'survivor', 'the child moved under the survivor');
+    assert.deepStrictEqual(threads(['remove', 'fumi', 'space-homing', 'placement-routes']), {
+      ok: true, thread: 'placement-routes', removed: true, counts: { ...zero.counts, open: 1 }, total: 1,
+    });
+    assert.deepStrictEqual(threads(['remove', 'fumi', 'space-homing', 'survivor']), { ok: true, thread: 'survivor', removed: true, ...zero });
+    assert.deepStrictEqual(saved(), {});
+  });
+
+  it('remove refuses the merge target it cannot honour', () => {
+    createManifest(dir, 'fumi', manifestWith({ a: row('Q?', 'open', 'seed'), b: row('Q?', 'open', 'seed'), bc: row('Q?', 'open', 'seed', 'b') }));
+    assert.match(refuses(['remove', 'fumi', 'space-homing', 'a', '--into', 'ghost']).error, /thread "ghost" not found/);
+    assert.match(refuses(['remove', 'fumi', 'space-homing', 'a', '--into', 'bc']).error, /"bc" is itself a child of "b"/);
+    assert.match(refuses(['remove', 'fumi', 'space-homing', 'a', '--into', 'a']).error, /can't merge into itself/);
+    assert.deepStrictEqual(Object.keys(saved()), ['a', 'b', 'bc'], 'nothing written');
+  });
+
+  it('removes the last threads cleanly', () => {
+    createManifest(dir, 'fumi', manifestWith({ 'space-identity': row('Q?', 'digging', 'seed'), 'placement-routes': row('Q?', 'parked', 'brief', 'space-identity', 'needs a machine cycle') }));
+    const zero = { counts: { open: 0, digging: 0, learned: 0, parked: 0 }, total: 0 };
     assert.deepStrictEqual(threads(['remove', 'fumi', 'space-homing', 'placement-routes']), {
       ok: true, thread: 'placement-routes', removed: true, counts: { ...zero.counts, digging: 1 }, total: 1,
     });

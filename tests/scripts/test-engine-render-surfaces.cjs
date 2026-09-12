@@ -1239,9 +1239,8 @@ describe('render research-threads', () => {
     ].join('\n'));
   });
 
-  it('renders an empty register as the header line alone — no caller branch needed', () => {
-    const out = renderSurface(dir, 'research-threads', { dotpath: 'pay.research.shipping' });
-    assert.match(out, /=== DISPLAY: research threads \(emit verbatim as a code block — do not stop; continue as the workflow instructs\) ===\nResearch Threads — Shipping \(0 threads\)\n$/);
+  it('answers empty over an empty register — nothing to emit, no header over nothing', () => {
+    assert.strictEqual(renderSurface(dir, 'research-threads', { dotpath: 'pay.research.shipping' }), '');
   });
 
   it('pins the research address and refuses a topic with no research item', () => {
@@ -4984,11 +4983,11 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
   afterEach(() => teardown(dir));
 
   it('deep-dive-offer renders the statement then the ask byte-exactly — the question takes the glyph', () => {
-    const file = writePayload(dir, 'd.json', { thread: "The competitor's ranking pipeline" });
+    const file = writePayload(dir, 'd.json', { thread: 'How does the competitor rank a query it has never seen?' });
     assert.strictEqual(renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout', file }), [
       "=== MENU: deep dive offer (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
-      "The competitor's ranking pipeline looks like it could use a deep dive.",
+      'A thread worth digging: How does the competitor rank a query it has never seen?',
       '',
       '**`◆ Want me to spin up a background investigation while we keep going?`**',
       '',
