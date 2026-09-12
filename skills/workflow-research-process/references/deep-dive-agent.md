@@ -190,7 +190,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): fold {the thread, in a few words} (deep-dive-{NNN})"
    ```
 
-5. **Speak to the user** — markdown prose, one authored line per paragraph, never a fence and never a menu. When the brief asked questions, the Answers in full — every answer's substance whole, told at product altitude: what the product does or the user sees before any symbol, path, or snippet the report used to say it. Otherwise a digest: what was asked, what came back, what it opened — as long as the return needs, never the report pasted. A question only the user holds — their environment, their intent for the product — is asked here, once, with your lean beside it; anything wanting a decision or more digging is a thread on the register, never a question in the room.
+5. **Speak to the user** — markdown prose, one authored line per paragraph, never a fence and never a menu. When the brief asked questions, the Answers in full — every answer's substance whole, each condition, threshold, and alternative the report gave included, told at product altitude: what the product does or the user sees before any symbol, path, or snippet the report used to say it. Otherwise a digest: what was asked, what came back, what it opened — as long as the return needs, never the report pasted. A question only the user holds — their environment, their intent for the product — is asked here, once, with your lean beside it; anything wanting a decision or more digging is a thread on the register, never a question in the room.
 
 6. **Render the register:**
 
