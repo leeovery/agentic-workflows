@@ -6,9 +6,9 @@
 
 A final review ensures the discussion is thorough before moving to specification. Even if review agents ran during the session, the discussion may have progressed significantly since the last one.
 
-This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 6 re-runs — eventually all findings are drained and the engine incorporates the review, at which point Step 6 returns to the backbone to proceed toward conclusion.
+This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the surfacing protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 6 re-runs — eventually all findings are drained and the engine incorporates the review, at which point Step 6 returns to the backbone to proceed toward conclusion.
 
-The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
+The **never-dump rules apply in full**. Findings are raised one at a time via the surfacing protocol.
 
 **A completed artifact carries no unowned threads.** Every gap this review surfaces resolves before conclusion: settled here, corrected in place, routed to the topic that owns it — existing or newly created, confirmed with the user — parked on the roadmap as a staged product capability, or rejected by you (*not now*, or dismissed for good — the review advises, and the conclusion is yours to call). Closing a finding by writing it into the file as an open thread nobody owns is not a resolution.
 
@@ -190,7 +190,7 @@ When the agent returns:
 
 ## D. Surface via Final Review Menu
 
-→ Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with work_unit = `{work_unit}`, phase = `discussion`, topic = `{topic}`.
+→ Load **[final-review-menu.md](final-review-menu.md)** with work_unit = `{work_unit}`, phase = `discussion`, topic = `{topic}`.
 
 → On return, proceed to **E. Route Next**.
 

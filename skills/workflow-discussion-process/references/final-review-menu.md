@@ -1,10 +1,10 @@
 # Final Review Menu
 
-*Shared reference for end-of-phase final reviews (research, discussion). Wraps the background-agent-surfacing protocol with phase-conclusion menu wording.*
+*Reference for **[final-review](final-review.md)** — loaded at the discussion's conclusion when a review report is waiting. Wraps the surfacing protocol with phase-conclusion menu wording.*
 
 ---
 
-This reference is loaded at phase conclusion when a review agent's report is waiting. It renders a two-option menu (review / skip) and delegates the lane routing to the shared surfacing protocol. Lifecycle state lives in the engine's agent store.
+This reference is loaded at phase conclusion when a review agent's report is waiting. It renders a two-option menu (review / skip) and delegates the lane routing to the surfacing protocol. Lifecycle state lives in the engine's agent store.
 
 **Parameters** (provided by caller via Load directive):
 

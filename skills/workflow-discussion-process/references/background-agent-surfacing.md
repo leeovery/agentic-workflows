@@ -1,6 +1,6 @@
 # Background Agent Surfacing
 
-*Shared reference for workflow skills with background agents (review, perspective/synthesis, deep-dive).*
+*Reference for **[review-agent](review-agent.md)**, **[perspective-agents](perspective-agents.md)** and **[final-review-menu](final-review-menu.md)** — loaded when a background agent's report is waiting to surface.*
 
 ---
 
@@ -8,7 +8,7 @@ This reference defines how to surface findings from background agents. Findings 
 
 **Parameters** (provided by caller via Load directive):
 
-- `agent_type` — `review` | `synthesis` | `deep-dive` — human-readable name used in user-facing messages, and the row kind this invocation surfaces
+- `agent_type` — `review` | `synthesis` — human-readable name used in user-facing messages, and the row kind this invocation surfaces
 - `work_unit`, `phase`, `topic` — the agent store address
 
 **Lane declaration** — the calling reference's **Lanes** section, already in context, owns this phase's lane semantics: the walked lane's name and heading, and what approving each batch lane does. A caller with no **Lanes** section is all-walk; its raises render under `Needs A Decision`. A batched lane the declaration doesn't carry is walked — a report can only batch what its caller knows how to land.
@@ -25,7 +25,7 @@ This reference defines how to surface findings from background agents. Findings 
 
 Natural-break detection is guidance, not hard-enforced.
 
-→ Load **[natural-breaks.md](natural-breaks.md)** and follow its instructions as written.
+→ Load **[natural-breaks.md](../../workflow-shared/references/natural-breaks.md)** and follow its instructions as written.
 
 ## LLM Turn Semantics (IMPORTANT)
 
@@ -383,7 +383,7 @@ Emit the lane marker on this drain's first screen only — later screens and re-
 **`▪ Belongs Elsewhere`**
 ```
 
-Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per remaining finding — up to five, `remaining` counting the lane's findings beyond this screen: `title` is the report's own claim, `target` is the owning topic — or, when no topic on the map owns the finding, the new kebab-case name the report proposed (the landing creates the topic; say so in `detail`), `detail` is why it is theirs and which queue it lands in), then render it:
+Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per remaining finding — up to five, `remaining` counting the lane's findings beyond this screen: `title` is the report's own claim, `target` is the owning topic — or, when no topic on the map owns the finding, the new kebab-case name the report proposed (the landing creates the topic; say so in `detail`), `detail` is why it is theirs and which queue it lands in), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
@@ -397,7 +397,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker — exce
 
 Deliver each finding in turn, with the context built here so its target resolves it from cold — honouring triage-landing's one-ask-per-file rule: a finding making several asks the target could accept or reject independently is delivered as separate concerns. Write no reroute record and leave the Discussion Map untouched — the target's queue is the record.
 
-→ Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`.
+→ Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`.
 
 On return, a `result` of `cancelled` means nothing was written for that finding — leave it unsurfaced and re-present it on the next visit. When a landing response carried `reconcile_flagged` or `sources_staled`, also tell the user what it flagged — the target's discussion, live or decided (research landing) or the specification(s) named in `sources_staled` (discussion landing, their extraction now stale). When every delivery has returned, record the landed ids in one call:
 

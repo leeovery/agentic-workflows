@@ -1,6 +1,6 @@
 # Making It Land
 
-*Shared reference. Loaded by `background-agent-surfacing.md` (the findings walk) and `raising-a-decision.md` (the decision raise) at raise composition.*
+*Shared reference. Loaded by discussion's `composing-a-raise.md` (the findings walk) and `raising-a-decision.md` (the decision raise) at raise composition.*
 
 ---
 

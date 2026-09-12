@@ -243,6 +243,7 @@ Commands:
   render research-threads <wu.research.topic>
   render research-conclude-gate <wu.research.topic> [--dead-end]
   render deep-dive-offer  <wu.research.topic> --file <payload.json>
+  render perspective-offer <wu.discussion.topic> --file <payload.json>
   render in-flight-agents-gate <wu.research.topic> --count N
   render review-findings-gate <wu.discussion.topic>
   render reroute-candidates <wu.phase.topic> --file <payload.json>
