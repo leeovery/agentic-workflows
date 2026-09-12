@@ -2596,10 +2596,12 @@ function concludeGate(cwd, { dotpath }) {
 
 // closing-gate — the discussion close's own consents, on the road between
 // "we're done talking" and the conclude gate: the optional re-review offer,
-// the two faces of the mandatory review gate, and the wrap-up consent that
-// opens the reconciliation. One surface, variant-keyed; distinct from
-// conclude-gate, which is the final completion consent the same close
-// reaches later — the two stops coexist in one conclusion.
+// the three faces of the mandatory review gate (findings already back,
+// a review still running, no review ever run — each names what yes
+// does, so "another review" is never the reading), and the wrap-up
+// consent that opens the reconciliation. One surface, variant-keyed;
+// distinct from conclude-gate, which is the final completion consent the
+// same close reaches later — the two stops coexist in one conclusion.
 const CLOSING_GATES = {
   're-review': () => ({
     name: 'MENU: re-review gate',
@@ -2620,10 +2622,18 @@ const CLOSING_GATES = {
       promptOption('Keep going', 'Tell me what else to explore'),
     ],
   }),
-  /** @param {string} reason */
-  'final-review': (reason) => ({
+  'review-running': () => ({
+    name: 'MENU: review-running gate',
+    label: 'A review is still running over this discussion — what it finds must be heard before concluding. Nothing new is dispatched.',
+    question: 'Wait for it?',
+    options: [
+      cmdOption('y', 'yes', 'Wait for it and walk what it finds'),
+      promptOption('Keep going', 'Tell me what else to explore'),
+    ],
+  }),
+  'final-review': () => ({
     name: 'MENU: final-review gate',
-    label: `Next: a final gap review before concluding — ${reason}.`,
+    label: 'Next: a final gap review before concluding — no review has run yet.',
     question: 'Proceed?',
     options: [
       cmdOption('y', 'yes', 'Run the final review'),
@@ -2655,12 +2665,10 @@ function closingGate(cwd, { dotpath, variant, reason }) {
   if (!gate) {
     throw new Error(`render closing-gate: --variant must be one of ${Object.keys(CLOSING_GATES).join(', ')}, got "${variant ?? ''}"`);
   }
-  if (variant === 'final-review') {
-    if (!isFilled(reason)) throw new Error('render closing-gate: --reason is required with --variant final-review — the matched classification\'s quoted description');
-  } else if (reason !== undefined) {
-    throw new Error(`render closing-gate: --reason belongs to --variant final-review alone, not "${variant}"`);
+  if (reason !== undefined) {
+    throw new Error('render closing-gate: takes no --reason — every variant carries its own wording');
   }
-  const g = gate(/** @type {string} */ (reason));
+  const g = gate();
   return section(g.name, STOP_FOR_RESPONSE, menu(g.label, g.options, { question: g.question }));
 }
 
