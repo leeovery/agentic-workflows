@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.43] - 2026-09-12
+
+🔧 Changed
+- Research deep-dive fold answers now carry every condition, threshold, and alternative the report gave, not just its headline substance.
+- A research thread the user is carrying out to their own conclusion is handed off rather than re-offered a dive.
+- A reframed research thread updates in place instead of leaving a stale learned row beside the new one.
+- The triage queue check always re-reads the queue directly instead of reusing a count from resume detection or a prior iteration.
+
+🐛 Fixed
+- Discussion raises no longer omit a second cost the alternative carries, closing a gap in the pre-send altitude check.
+- A measurement thread with nothing left to ask now folds into Open Threads at the conclusion gate instead of stalling mid-session.
+
 ## [0.7.42] - 2026-09-12
 
 🔧 Changed
